@@ -29,7 +29,8 @@ pub struct FederationPeer {
     #[serde(deserialize_with = "deserialize_arc_vec")]
     pub shared_resources: Vec<Arc<str>>,
     pub status: FederationStatus,
-    pub last_heartbeat: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_heartbeat: std::time::SystemTime,
     pub trust_level: TrustLevel,
 }
 
@@ -115,7 +116,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     fn make_peer(status: FederationStatus, trust: TrustLevel) -> FederationPeer {
@@ -125,7 +125,7 @@ mod tests {
             capabilities: vec![Arc::from("compute"), Arc::from("storage")],
             shared_resources: vec![Arc::from("cpu")],
             status,
-            last_heartbeat: Utc::now(),
+            last_heartbeat: std::time::SystemTime::now(),
             trust_level: trust,
         }
     }

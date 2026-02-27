@@ -3,10 +3,9 @@
 //! This module defines all the data types used in workload submission,
 //! execution tracking, and event handling.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 // Re-export canonical JobPriority from toadstool core
@@ -121,9 +120,12 @@ impl From<toadstool::resources::ResourceRequirements> for ResourceRequirements {
 pub struct ExecutionInfo {
     pub execution_id: Uuid,
     pub status: ExecutionStatus,
-    pub submitted_at: DateTime<Utc>,
-    pub started_at: Option<DateTime<Utc>>,
-    pub completed_at: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub submitted_at: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub started_at: Option<SystemTime>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub completed_at: Option<SystemTime>,
     pub runtime_type: Option<String>,
     pub error_message: Option<String>,
     pub output: Option<ExecutionOutput>,

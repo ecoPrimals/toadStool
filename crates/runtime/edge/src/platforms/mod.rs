@@ -190,7 +190,8 @@ pub struct EdgeDeviceInfo {
     pub resources: EdgeDeviceResources,
     pub connection_info: ConnectionInfo,
     pub status: DeviceStatus,
-    pub last_seen: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_seen: std::time::SystemTime,
 }
 
 /// Device Resources

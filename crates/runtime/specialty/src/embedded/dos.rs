@@ -2,8 +2,8 @@
 //!
 //! This module provides DOS filesystem and interface support for 8086-based systems.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -56,7 +56,8 @@ pub struct DirectoryEntry {
     /// Starting cluster
     pub start_cluster: u16,
     /// Last modified time
-    pub last_modified: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_modified: SystemTime,
 }
 
 impl DOSInterface {

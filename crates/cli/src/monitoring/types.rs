@@ -1,6 +1,5 @@
 //! Monitoring types - structs and enums for metrics, alerts, and dashboards
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::time::Duration;
@@ -11,11 +10,11 @@ use uuid::Uuid;
 pub struct MonitoringSession {
     pub id: Uuid,
     pub target: MonitoringTarget,
-    pub started: DateTime<Utc>,
+    pub started: std::time::SystemTime,
     pub interval: Duration,
     pub metrics: Vec<String>,
     pub status: SessionStatus,
-    pub last_update: DateTime<Utc>,
+    pub last_update: std::time::SystemTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +37,8 @@ pub enum SessionStatus {
 /// Batch of collected metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetricBatch {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
     pub source: String,
     pub metrics: Vec<Metric>,
 }
@@ -49,7 +49,8 @@ pub struct Metric {
     pub name: String,
     pub value: MetricValue,
     pub labels: HashMap<String, String>,
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,7 +71,12 @@ pub struct AlertRule {
     pub severity: AlertSeverity,
     pub enabled: bool,
     pub cooldown: Duration,
-    pub last_triggered: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "toadstool_common::system_time_serde::opt"
+    )]
+    pub last_triggered: Option<std::time::SystemTime>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,7 +142,8 @@ pub struct TimeSeries {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataPoint {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
     pub value: f64,
 }
 
@@ -152,7 +159,8 @@ pub struct MetricStats {
 /// Real-time dashboard data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DashboardData {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
     pub system_health: SystemHealth,
     pub biome_status: Vec<BiomeStatusSummary>,
     pub resource_usage: SystemResourceUsage,
@@ -206,7 +214,8 @@ pub struct ActiveAlert {
     pub rule_name: String,
     pub severity: AlertSeverity,
     pub message: String,
-    pub triggered_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub triggered_at: std::time::SystemTime,
     pub target: String,
 }
 

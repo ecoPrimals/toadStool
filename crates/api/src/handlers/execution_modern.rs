@@ -4,14 +4,13 @@
 //! to replace manual loops and nested conditionals with iterator chains
 //! and combinators.
 
-use std::time::Instant;
+use std::time::SystemTime;
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     Json,
 };
-use chrono::Utc;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 use validator::Validate;
@@ -320,6 +319,7 @@ pub fn create_status_map_modern(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool::RuntimeType;
 
     #[test]
     fn test_modern_filtering() {
@@ -327,28 +327,28 @@ mod tests {
             ExecutionInfo {
                 execution_id: Uuid::new_v4(),
                 status: ExecutionStatus::Running,
-                runtime_type: None,
-                submitted_at: Utc::now(),
+                runtime_type: RuntimeType::Native,
+                submitted_at: SystemTime::now(),
                 started_at: None,
                 completed_at: None,
                 duration_ms: None,
                 progress: None,
                 error_message: None,
                 resource_usage: None,
-                metadata: None,
+                metadata: std::collections::HashMap::new(),
             },
             ExecutionInfo {
                 execution_id: Uuid::new_v4(),
                 status: ExecutionStatus::Completed,
-                runtime_type: None,
-                submitted_at: Utc::now(),
+                runtime_type: RuntimeType::Native,
+                submitted_at: SystemTime::now(),
                 started_at: None,
                 completed_at: None,
                 duration_ms: Some(1000),
                 progress: None,
                 error_message: None,
                 resource_usage: None,
-                metadata: None,
+                metadata: std::collections::HashMap::new(),
             },
         ];
 
@@ -362,28 +362,28 @@ mod tests {
             ExecutionInfo {
                 execution_id: Uuid::new_v4(),
                 status: ExecutionStatus::Submitted,
-                runtime_type: None,
-                submitted_at: Utc::now(),
+                runtime_type: RuntimeType::Native,
+                submitted_at: SystemTime::now(),
                 started_at: None,
                 completed_at: None,
                 duration_ms: None,
                 progress: None,
                 error_message: None,
                 resource_usage: None,
-                metadata: None,
+                metadata: std::collections::HashMap::new(),
             },
             ExecutionInfo {
                 execution_id: Uuid::new_v4(),
                 status: ExecutionStatus::Running,
-                runtime_type: None,
-                submitted_at: Utc::now(),
+                runtime_type: RuntimeType::Native,
+                submitted_at: SystemTime::now(),
                 started_at: None,
                 completed_at: None,
                 duration_ms: None,
                 progress: None,
                 error_message: None,
                 resource_usage: None,
-                metadata: None,
+                metadata: std::collections::HashMap::new(),
             },
         ];
 
@@ -397,28 +397,28 @@ mod tests {
             ExecutionInfo {
                 execution_id: Uuid::new_v4(),
                 status: ExecutionStatus::Completed,
-                runtime_type: None,
-                submitted_at: Utc::now(),
+                runtime_type: RuntimeType::Native,
+                submitted_at: SystemTime::now(),
                 started_at: None,
                 completed_at: None,
                 duration_ms: Some(1000),
                 progress: None,
                 error_message: None,
                 resource_usage: None,
-                metadata: None,
+                metadata: std::collections::HashMap::new(),
             },
             ExecutionInfo {
                 execution_id: Uuid::new_v4(),
                 status: ExecutionStatus::Failed,
-                runtime_type: None,
-                submitted_at: Utc::now(),
+                runtime_type: RuntimeType::Native,
+                submitted_at: SystemTime::now(),
                 started_at: None,
                 completed_at: None,
                 duration_ms: Some(500),
                 progress: None,
                 error_message: Some("error".to_string()),
                 resource_usage: None,
-                metadata: None,
+                metadata: std::collections::HashMap::new(),
             },
         ];
 

@@ -4,7 +4,6 @@
 //! startup, shutdown, and process management.
 
 use anyhow::Result;
-use chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
@@ -48,7 +47,7 @@ impl<'a> BiomeLifecycle<'a> {
         _security_level: &str,
     ) -> Result<BiomeInfo> {
         let biome_id = Uuid::new_v4();
-        let start_time = Utc::now();
+        let start_time = std::time::SystemTime::now();
 
         info!("🔧 Initializing biome infrastructure");
 

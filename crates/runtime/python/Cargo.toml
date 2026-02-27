@@ -42,7 +42,6 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 async-trait = { workspace = true }
-chrono = { workspace = true, features = ["serde"] }
 futures = { workspace = true }
 
 # Python integration

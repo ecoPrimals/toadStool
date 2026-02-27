@@ -1,6 +1,5 @@
 //! Comprehensive tests for protocol integration types
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
 use toadstool_integration_protocols::types::*;
@@ -232,7 +231,7 @@ fn test_protocol_message_creation() {
         destination: Some("service-b".to_string()),
         payload: serde_json::json!({"action": "ping"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -254,7 +253,7 @@ fn test_protocol_message_with_correlation() {
         destination: Some("service-a".to_string()),
         payload: serde_json::json!({"result": "pong"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: Some(correlation),
         reply_to: Some("service-a".to_string()),
@@ -275,7 +274,7 @@ fn test_protocol_message_with_ttl() {
         destination: None,
         payload: serde_json::json!({"event": "update"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::MessagePack,
         correlation_id: None,
         reply_to: None,
@@ -351,7 +350,7 @@ fn test_service_info_creation() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec!["http".to_string(), "websocket".to_string()],
     };
 
@@ -378,7 +377,7 @@ fn test_service_info_with_endpoints() {
         endpoints: vec![endpoint],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -461,7 +460,7 @@ fn test_message_serialization() {
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,

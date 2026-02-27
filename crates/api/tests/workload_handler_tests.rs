@@ -260,8 +260,6 @@ async fn test_workload_request_serialization() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_structure() {
-    use chrono::Utc;
-
     // Test response structure
     let response = WorkloadResponse {
         request_id: "test-123".to_string(),
@@ -270,7 +268,7 @@ async fn test_workload_response_structure() {
         output: None,
         error: None,
         execution_time_seconds: Some(1.5),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(response.request_id, "test-123");
@@ -281,8 +279,6 @@ async fn test_workload_response_structure() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_with_error() {
-    use chrono::Utc;
-
     let response = WorkloadResponse {
         request_id: "test-456".to_string(),
         execution_id: "exec-789".to_string(),
@@ -290,7 +286,7 @@ async fn test_workload_response_with_error() {
         output: None,
         error: Some("Execution failed".to_string()),
         execution_time_seconds: Some(0.5),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     matches!(response.status, WorkloadStatus::Failed);
@@ -299,8 +295,6 @@ async fn test_workload_response_with_error() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_status_variants() {
-    use chrono::Utc;
-
     let statuses = vec![
         WorkloadStatus::Accepted,
         WorkloadStatus::Running,
@@ -318,7 +312,7 @@ async fn test_workload_status_variants() {
             output: None,
             error: None,
             execution_time_seconds: None,
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         // Verify status is set correctly
@@ -436,8 +430,6 @@ async fn test_workload_execution_logs_request() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_logs_completion() {
-    use chrono::Utc;
-
     // Test that the handler logs the response
     let response = WorkloadResponse {
         request_id: "test-log".to_string(),
@@ -446,7 +438,7 @@ async fn test_workload_response_logs_completion() {
         output: None,
         error: None,
         execution_time_seconds: Some(1.0),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     // Verify response has required fields for logging

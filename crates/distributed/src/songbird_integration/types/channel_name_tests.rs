@@ -12,7 +12,7 @@ fn test_channel_name_capability_update() {
             specialized_hardware: vec![],
             software_capabilities: vec![],
         },
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
     assert_eq!(msg.channel_name(), "capability-updates");
 }
@@ -22,7 +22,7 @@ fn test_channel_name_health_update() {
     let msg = SongbirdBroadcastMessage::HealthUpdate {
         node_id: "n2".to_string(),
         health_status: "healthy".to_string(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
     assert_eq!(msg.channel_name(), "health-updates");
 }
@@ -32,7 +32,7 @@ fn test_channel_name_custom_message() {
     let msg = SongbirdBroadcastMessage::CustomMessage {
         message_type: "job-complete".to_string(),
         payload: serde_json::json!({}),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
     assert_eq!(msg.channel_name(), "job-complete");
 }

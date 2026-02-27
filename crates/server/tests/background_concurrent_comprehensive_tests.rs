@@ -192,7 +192,7 @@ async fn test_concurrent_statistics_updates() {
                 let exec = ActiveExecution {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: std::time::Duration::from_secs(30),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: toadstool_server::ClientInfo {
@@ -266,7 +266,7 @@ async fn test_concurrent_event_broadcasting_to_many_subscribers() {
     let _ = state.event_broadcaster.send(ServerEvent::ExecutionStarted {
         execution_id: uuid::Uuid::new_v4(),
         runtime_type: toadstool::RuntimeType::Native,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     });
 
     // Count receivers
@@ -322,7 +322,7 @@ async fn test_concurrent_cleanup_operations() {
             let exec = ActiveExecution {
                 execution_id: uuid::Uuid::new_v4(),
                 runtime_type: toadstool::RuntimeType::Native,
-                started_at: chrono::Utc::now(),
+                started_at: std::time::SystemTime::now(),
                 timeout: std::time::Duration::from_secs(30),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: toadstool_server::ClientInfo {
@@ -395,7 +395,7 @@ async fn test_stress_500_concurrent_event_listeners() {
             cpu_usage_percent: 50.0,
             memory_usage_percent: 45.0,
             active_executions: 0,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         });
 
     let mut received = 0;
@@ -440,7 +440,7 @@ async fn test_concurrent_background_service_resilience() {
                     let exec = ActiveExecution {
                         execution_id: exec_id,
                         runtime_type: toadstool::RuntimeType::Native,
-                        started_at: chrono::Utc::now(),
+                        started_at: std::time::SystemTime::now(),
                         timeout: std::time::Duration::from_secs(30),
                         status: toadstool::ExecutionStatus::Running,
                         client_info: toadstool_server::ClientInfo {

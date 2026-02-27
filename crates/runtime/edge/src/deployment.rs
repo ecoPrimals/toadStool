@@ -29,8 +29,8 @@ pub struct DeploymentInfo {
     pub status: DeploymentStatus,
     pub strategy: DeploymentStrategy,
     pub version: String,
-    pub started_at: chrono::DateTime<chrono::Utc>,
-    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub started_at: std::time::SystemTime,
+    pub completed_at: Option<std::time::SystemTime>,
     pub error: Option<String>,
 }
 
@@ -48,7 +48,7 @@ pub enum DeploymentStatus {
 #[derive(Debug, Clone)]
 pub enum DeploymentStrategy {
     Immediate,
-    Scheduled(chrono::DateTime<chrono::Utc>),
+    Scheduled(std::time::SystemTime),
     Staged,
     Canary,
 }
@@ -82,7 +82,7 @@ impl DeploymentCoordinator {
             status: DeploymentStatus::InProgress,
             strategy: DeploymentStrategy::Immediate,
             version: "1.0.0".to_string(),
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             completed_at: None,
             error: None,
         };
@@ -103,7 +103,7 @@ impl DeploymentCoordinator {
                 match result {
                     Ok(_) => {
                         deployment.status = DeploymentStatus::Completed;
-                        deployment.completed_at = Some(chrono::Utc::now());
+                        deployment.completed_at = Some(std::time::SystemTime::now());
                     }
                     Err(ref e) => {
                         deployment.status = DeploymentStatus::Failed;

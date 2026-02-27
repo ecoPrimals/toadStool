@@ -1,6 +1,6 @@
 //! Test module for ToadStool distributed computing integration
 
-use chrono::Utc;
+use std::time::SystemTime;
 use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
@@ -62,7 +62,7 @@ mod tests {
             dependencies: Vec::new(),
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         }
     }
 

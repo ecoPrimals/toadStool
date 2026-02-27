@@ -1,7 +1,7 @@
 //! Message types for Songbird integration
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -36,17 +36,20 @@ pub enum SongbirdBroadcastMessage {
     CapabilityUpdate {
         node_id: NodeId,
         capabilities: NodeCapabilities,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        timestamp: SystemTime,
     },
     HealthUpdate {
         node_id: NodeId,
         health_status: String,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        timestamp: SystemTime,
     },
     CustomMessage {
         message_type: String,
         payload: serde_json::Value,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        timestamp: SystemTime,
     },
 }
 

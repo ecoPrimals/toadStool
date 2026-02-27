@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use toadstool_common::constants::timeouts;
 
 use super::node::{NodeCapabilities, NodeId};
@@ -133,7 +133,7 @@ impl NodeRegistry {
 
 pub struct NetworkHealthMonitor {
     pub health_checks: HashMap<NodeId, ConnectionHealth>,
-    pub last_check: Option<DateTime<Utc>>,
+    pub last_check: Option<SystemTime>,
     pub check_interval: Duration,
 }
 
@@ -158,7 +158,7 @@ impl NetworkHealthMonitor {
     }
 
     pub async fn monitor_health(&mut self) {
-        self.last_check = Some(chrono::Utc::now());
+        self.last_check = Some(SystemTime::now());
         for (node_id, status) in &mut self.health_checks {
             tracing::debug!("Health check for node {}: {:?}", node_id, status);
         }
@@ -246,7 +246,7 @@ mod tests {
                 gpu: None,
             },
             retry_config: crate::types::DistributedRetryConfig::default(),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
         }
     }
 

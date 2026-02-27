@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
+use std::time::SystemTime;
 
 use super::node::{NodeCapabilities, NodeId};
 
@@ -23,7 +23,7 @@ impl CapabilityTracker {
 
 /// Snapshot of node capabilities at a point in time
 pub struct CapabilitySnapshot {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: SystemTime,
     pub capabilities: HashMap<NodeId, NodeCapabilities>,
 }
 
@@ -73,7 +73,7 @@ mod tests {
         let mut caps_map = HashMap::new();
         caps_map.insert("n1".to_string(), make_capabilities(4.0, 8.0));
         let snapshot = CapabilitySnapshot {
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
             capabilities: caps_map,
         };
         assert_eq!(snapshot.capabilities.len(), 1);

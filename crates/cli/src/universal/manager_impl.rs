@@ -109,7 +109,7 @@ impl UniversalComputeManager {
                                 } else {
                                     PlatformStatus::Degraded
                                 };
-                                platform.last_tested = Some(chrono::Utc::now());
+                                platform.last_tested = Some(std::time::SystemTime::now());
                             }
                             info!(
                                 "✅ Tested: {} - {}",
@@ -120,7 +120,7 @@ impl UniversalComputeManager {
                         Err(e) => {
                             if let Some(platform) = self.platforms.get_mut(&platform_id) {
                                 platform.status = PlatformStatus::Error(e.to_string());
-                                platform.last_tested = Some(chrono::Utc::now());
+                                platform.last_tested = Some(std::time::SystemTime::now());
                             }
                             warn!("❌ Test failed: {} - {}", platform_id, e);
                         }
@@ -132,7 +132,7 @@ impl UniversalComputeManager {
         // Save results to file if requested
         if let Some(output_path) = output_file {
             let detection_results = DetectionResults {
-                timestamp: chrono::Utc::now(),
+                timestamp: std::time::SystemTime::now(),
                 total_platforms: self.platforms.len(),
                 platforms: self.platforms.clone(),
                 categories: detection_categories,
@@ -327,7 +327,7 @@ impl UniversalComputeManager {
                     capabilities: response.capabilities.clone(), // Arc<str> clone is cheap
                     shared_resources: response.accepted_resources.clone(), // Arc<str> clone is cheap
                     status: FederationStatus::Connected,
-                    last_heartbeat: chrono::Utc::now(),
+                    last_heartbeat: std::time::SystemTime::now(),
                     trust_level: TrustLevel::Verified,
                 };
 
@@ -391,7 +391,8 @@ impl UniversalComputeManager {
 // Helper structs for serialization
 #[derive(Debug, Serialize)]
 struct DetectionResults {
-    timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    timestamp: std::time::SystemTime,
     total_platforms: usize,
     platforms: HashMap<String, DetectedPlatform>,
     categories: Vec<String>,

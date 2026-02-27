@@ -306,8 +306,8 @@ mod tests {
         DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJob,
         UniversalJobType,
     };
-    use chrono::Utc;
     use std::collections::HashMap;
+    use std::time::SystemTime;
 
     fn make_job(
         job_type: Option<UniversalJobType>,
@@ -322,7 +322,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         }
     }
 

@@ -109,9 +109,9 @@ mod tests {
         NodeCapabilities, ProtocolConfig, SongbirdBroadcastMessage, SongbirdConnection,
         SongbirdProtocol,
     };
-    use chrono::Utc;
     use std::collections::HashMap;
     use std::time::Duration;
+    use std::time::SystemTime;
 
     fn make_mock_connection() -> SongbirdConnection {
         SongbirdConnection {
@@ -185,7 +185,7 @@ mod tests {
                 specialized_hardware: vec![],
                 software_capabilities: vec![],
             },
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let result = broadcaster.broadcast(&msg).await;
@@ -204,7 +204,7 @@ mod tests {
         let msg = SongbirdBroadcastMessage::HealthUpdate {
             node_id: "n1".to_string(),
             health_status: "healthy".to_string(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let result = broadcaster.broadcast(&msg).await;
@@ -223,7 +223,7 @@ mod tests {
         let msg = SongbirdBroadcastMessage::CustomMessage {
             message_type: "job-complete".to_string(),
             payload: serde_json::json!({"job_id": "abc"}),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let result = broadcaster.broadcast(&msg).await;
@@ -283,7 +283,7 @@ mod tests {
         let msg = SongbirdBroadcastMessage::HealthUpdate {
             node_id: "n1".to_string(),
             health_status: "ok".to_string(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let result = broadcaster
@@ -304,7 +304,7 @@ mod tests {
         let msg = SongbirdBroadcastMessage::CustomMessage {
             message_type: "unregistered-type".to_string(),
             payload: serde_json::json!({}),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let result = broadcaster.broadcast(&msg).await;
@@ -327,7 +327,7 @@ mod tests {
         let msg = SongbirdBroadcastMessage::HealthUpdate {
             node_id: "n1".to_string(),
             health_status: "ok".to_string(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         broadcaster.broadcast(&msg).await.unwrap();

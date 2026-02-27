@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -124,10 +123,12 @@ pub struct ArtifactMetadata {
     pub checksum: String,
 
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: std::time::SystemTime,
 
     /// Last access timestamp
-    pub last_accessed: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub last_accessed: Option<std::time::SystemTime>,
 
     /// Tags for categorization
     pub tags: HashMap<String, String>,
@@ -174,7 +175,8 @@ pub struct VersionInfo {
     pub parent_version: Option<u64>,
 
     /// Version timestamp
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 
     /// Version description
     pub description: Option<String>,
@@ -193,7 +195,8 @@ pub struct ArtifactFilters {
     pub execution_id: Option<Uuid>,
 
     /// Filter by creation date (artifacts created since this date)
-    pub created_since: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub created_since: Option<std::time::SystemTime>,
 
     /// Filter by tags
     pub tags: HashMap<String, String>,
@@ -204,7 +207,7 @@ pub struct ArtifactFilters {
 pub struct CachedArtifact {
     pub metadata: ArtifactMetadata,
     pub data: Option<Vec<u8>>,
-    pub cached_at: DateTime<Utc>,
+    pub cached_at: std::time::SystemTime,
     pub access_count: u64,
 }
 
@@ -242,5 +245,5 @@ pub struct CacheEntry {
     /// Artifact metadata
     pub metadata: ArtifactMetadata,
     /// Cache timestamp
-    pub cached_at: DateTime<Utc>,
+    pub cached_at: std::time::SystemTime,
 }

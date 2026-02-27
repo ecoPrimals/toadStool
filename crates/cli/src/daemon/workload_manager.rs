@@ -36,7 +36,7 @@ pub struct WorkloadMetadata {
     pub environment: HashMap<String, String>,
 
     /// Started at timestamp
-    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub started_at: std::time::SystemTime,
 
     /// Persistent workload (keep running)
     pub persistent: bool,
@@ -122,7 +122,7 @@ impl WorkloadManager {
             requester: request.requester.clone(),
             biome_yaml: request.biome_yaml.clone(),
             environment: request.environment.clone(),
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             persistent: request.persistent,
             timeout_secs: request.timeout_secs.unwrap_or(3600),
         };
@@ -251,10 +251,14 @@ impl WorkloadManager {
         Some(WorkloadStatusResponse {
             workload_id: workload_id.to_string(),
             status,
-            started_at: Some(workload.metadata.started_at.to_rfc3339()),
+            started_at: Some(toadstool_common::system_time_serde::format_rfc3339(
+                workload.metadata.started_at,
+            )),
             completed_at: if status == WorkloadStatus::Completed || status == WorkloadStatus::Failed
             {
-                Some(chrono::Utc::now().to_rfc3339())
+                Some(toadstool_common::system_time_serde::format_rfc3339(
+                    std::time::SystemTime::now(),
+                ))
             } else {
                 None
             },

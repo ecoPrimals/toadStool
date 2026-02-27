@@ -154,7 +154,7 @@ async fn test_generate_optimal_config_low_end_hardware() {
     let ecosystem = DiscoveredServices {
         discovered_services: HashMap::new(),
         discovery_summary: Default::default(),
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     let usage_hints = UsageHints {
@@ -217,7 +217,7 @@ async fn test_generate_optimal_config_high_end_hardware() {
     let ecosystem = DiscoveredServices {
         discovered_services: HashMap::new(),
         discovery_summary: Default::default(),
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     let usage_hints = UsageHints {
@@ -412,7 +412,7 @@ async fn test_auto_config_handles_minimal_system() {
     let ecosystem = DiscoveredServices {
         discovered_services: HashMap::new(),
         discovery_summary: Default::default(),
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     let usage_hints = UsageHints {

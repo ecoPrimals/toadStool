@@ -40,16 +40,14 @@ fn create_test_manager() -> (FilePolicyManager, TempDir) {
 
 /// Create test security policy
 fn create_test_policy(id: &str, name: &str) -> SecurityPolicy {
-    use chrono::Utc;
-
     SecurityPolicy {
         id: id.to_string(),
         name: name.to_string(),
         version: "1.0.0".to_string(),
         description: Some("Test policy".to_string()),
         author: Some("Test".to_string()),
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![PolicyRule {
             id: format!("{}_rule_1", id),
             name: "Allow all".to_string(),

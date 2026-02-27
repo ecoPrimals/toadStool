@@ -21,7 +21,6 @@ async-trait = "0.1"
 anyhow = "1.0"
 thiserror = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 
 # HTTP client for service communication

@@ -409,11 +409,15 @@ fn test_start_biome_internal_records_start_time() {
     // Test: Start time recording
     // Covers: Line 305
 
-    use chrono::Utc;
+    let start_time = std::time::SystemTime::now();
 
-    let start_time = Utc::now();
-
-    assert!(start_time.timestamp() > 0);
+    assert!(
+        start_time
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            > 0
+    );
 }
 
 #[test]

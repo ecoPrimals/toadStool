@@ -70,7 +70,6 @@ pub use client::StorageClient as NestGateClient;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
     use std::collections::HashMap;
     use uuid::Uuid;
 
@@ -92,7 +91,7 @@ mod tests {
             content_type: "application/json".to_string(),
             size_bytes: 1024,
             checksum: "abc123".to_string(),
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
             last_accessed: None,
             tags: HashMap::new(),
             execution_id: Some(Uuid::new_v4()),

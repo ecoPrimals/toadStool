@@ -1,8 +1,17 @@
+//! ExecutionInfo and related tests (continuation from wasm_builders)
+
+use std::time::SystemTime;
+use toadstool_client::*;
+use uuid::Uuid;
+
+#[test]
+fn test_execution_info_timeout() {
+    let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Timeout,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("python".to_string()),
         error_message: Some("Execution exceeded timeout of 300s".to_string()),
         output: None,
@@ -18,8 +27,8 @@ fn test_execution_info_with_runtime_type() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         runtime_type: Some("container-docker".to_string()),
         error_message: None,
@@ -35,9 +44,9 @@ fn test_execution_info_serialization() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Completed,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("native".to_string()),
         error_message: None,
         output: None,
@@ -54,7 +63,7 @@ fn test_execution_info_clone() {
     let info1 = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
         completed_at: None,
         runtime_type: None,

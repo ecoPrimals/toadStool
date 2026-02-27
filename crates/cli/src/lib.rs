@@ -6,7 +6,6 @@
 //! Commands for managing biome.yaml manifests and orchestrating distributed workloads.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -106,8 +105,10 @@ pub struct BiomeMetadata {
     pub version: String,
     pub description: Option<String>,
     pub author: Option<String>,
-    pub created: DateTime<Utc>,
-    pub updated: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created: std::time::SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub updated: std::time::SystemTime,
     pub tags: Vec<String>,
 }
 
@@ -259,8 +260,13 @@ pub struct BiomeInfo {
     pub id: Uuid,
     pub name: String,
     pub status: BiomeStatus,
-    pub created: DateTime<Utc>,
-    pub started: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created: std::time::SystemTime,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "toadstool_common::system_time_serde::opt"
+    )]
+    pub started: Option<std::time::SystemTime>,
     pub manifest_path: PathBuf,
     pub resource_usage: ResourceUsage,
     pub services: Vec<ServiceInfo>,

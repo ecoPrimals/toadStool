@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Health status for a primal
@@ -15,7 +14,8 @@ pub enum PrimalHealthStatus {
 pub struct HealthCheck {
     pub primal_id: String,
     pub status: PrimalHealthStatus,
-    pub last_check: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_check: std::time::SystemTime,
     pub details: Option<String>,
     pub metrics: std::collections::HashMap<String, f64>,
 }
@@ -25,7 +25,7 @@ impl Default for HealthCheck {
         Self {
             primal_id: String::new(),
             status: PrimalHealthStatus::Unknown,
-            last_check: Utc::now(),
+            last_check: std::time::SystemTime::now(),
             details: None,
             metrics: std::collections::HashMap::new(),
         }
@@ -54,7 +54,7 @@ impl HealthMonitor {
         let check = HealthCheck {
             primal_id: primal_id.clone(),
             status,
-            last_check: Utc::now(),
+            last_check: std::time::SystemTime::now(),
             details: None,
             metrics: std::collections::HashMap::new(),
         };

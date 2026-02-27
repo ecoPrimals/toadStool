@@ -49,10 +49,9 @@ pub mod types;
 mod implementation {
     use std::collections::{HashMap, VecDeque};
     use std::sync::Arc;
-    use std::time::Duration;
+    use std::time::{Duration, SystemTime};
 
     use async_trait::async_trait;
-    use chrono::Utc;
     use tokio::sync::RwLock;
     use tracing::{debug, info};
 
@@ -116,8 +115,7 @@ mod implementation {
         async fn cleanup_old_metrics(&self) {
             let retention_duration =
                 Duration::from_secs(self.config.history_retention_hours * 3600);
-            let cutoff_time =
-                Utc::now() - chrono::Duration::from_std(retention_duration).unwrap_or_default();
+            let cutoff_time = SystemTime::now() - retention_duration;
 
             let mut history = self.metrics_history.write().await;
             while let Some(front) = history.front() {
@@ -451,7 +449,7 @@ mod implementation {
         ) -> ToadStoolResult<ResourcePrediction> {
             // Simplified prediction for now
             Ok(ResourcePrediction {
-                timestamp: Utc::now(),
+                timestamp: SystemTime::now(),
                 execution_time: Duration::from_secs(10),
                 memory_mb: 256.0,
                 cpu_percent: 50.0,
@@ -467,7 +465,7 @@ mod implementation {
 
             let stats = self.runtime_stats.read().await;
             let mut recs = Vec::new();
-            let now = Utc::now();
+            let now = SystemTime::now();
 
             for (rt, rs) in stats.iter() {
                 if rs.total_executions < self.config.min_prediction_samples as u64 {

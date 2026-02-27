@@ -339,7 +339,7 @@ async fn test_path_string_extraction() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_type_creation() {
-    use chrono::Utc;
+    use std::time::SystemTime;
     use toadstool_api::types::ApiError;
 
     // Test API error creation
@@ -347,7 +347,7 @@ async fn test_error_type_creation() {
         error_code: "TEST_ERROR".to_string(),
         message: "Test error message".to_string(),
         details: None,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         request_id: None,
         documentation_url: None,
     };

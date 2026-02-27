@@ -3,8 +3,8 @@
 //! This module contains all type definitions for embedded system adapters,
 //! including job types, languages, debugging interfaces, and file representations.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -40,9 +40,11 @@ pub struct EmbeddedJob {
     /// Programming log
     pub programming_log: String,
     /// Start time
-    pub start_time: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub start_time: Option<SystemTime>,
     /// End time
-    pub end_time: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub end_time: Option<SystemTime>,
 }
 
 /// Types of embedded jobs

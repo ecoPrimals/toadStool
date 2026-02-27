@@ -59,7 +59,7 @@ impl DisplayManager {
 
             let started = info
                 .started
-                .map(|dt| dt.format("%Y-%m-%d %H:%M").to_string())
+                .map(toadstool_common::system_time_serde::format_display)
                 .unwrap_or_else(|| "not started".to_string());
 
             println!(

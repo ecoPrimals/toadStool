@@ -21,7 +21,7 @@ members = [
     "crates/management/monitoring",
     "crates/management/performance",
     "crates/management/resources",
-    # "crates/management/analytics",    # DISABLED: sqlx (removed for Pure Rust) ✅
+    "crates/management/analytics",
     "crates/runtime/adaptive",        # NEW: Adaptive optimization (Jan 15, 2026)
     "crates/runtime/container",
     "crates/runtime/display",         # NEW: 100% Pure Rust display backend for petalTongue (Jan 19, 2026) 🍄🌸
@@ -116,7 +116,6 @@ tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
 anyhow = "1.0"
 thiserror = "2.0"
 async-trait = "0.1"
-chrono = { version = "0.4", default-features = false, features = ["serde", "clock", "std"] }
 regex = "1.10"
 
 # Configuration

@@ -1,4 +1,4 @@
-# Status -- February 26, 2026 (Sessions 32-68++: Precision Bottleneck + Standalone Resilience + Full Ecosystem Audit)
+# Status -- February 27, 2026 (Sessions 32-68+++: Precision Bottleneck + Standalone Resilience + Full Ecosystem Audit + chrono Elimination)
 
 ## Quality Gates
 
@@ -28,7 +28,7 @@
 | WGSL shaders | PASS | **700 (zero orphans, shader-first, 21 DF64 + 182 f64 + 497 f32, 0 f32-only — all f32 via LazyLock downcast from f64 canonical)** |
 | Dead code | PASS | **5 `#[allow(dead_code)]` remain — feature-gated TPU + PCIe diag + f64 shader accessors** |
 | Production println!/dbg! | PASS | **Zero — evolved to `tracing::info!`** |
-| External dep hygiene | PASS | **`instant` + `chrono` + `anyhow` + `log` eliminated; `async_trait` justified (dyn-required)** |
+| External dep hygiene | PASS | **`instant` + `chrono` (28 crates) + `anyhow` + `log` eliminated; `async_trait` justified (dyn-required)** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
 | Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
 | FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- FMA-optimized DF64 + transcendentals** |
@@ -38,9 +38,38 @@
 | License compliance | PASS | **AGPL-3.0-or-later: root LICENSE file + SPDX headers** |
 | Hardcoded primal names | PASS | **0 -- capability-based `get_primal_default_port()` pattern** |
 | Hardcoded ports | PASS | **0 inline literals -- `ports::discovery_fallback` named constants** |
-| Test coverage (llvm-cov) | 43.4% | **Target: 90% -- systematic gap analysis needed** |
+| Test coverage (llvm-cov) | 43.4% (barracuda 80.7%) | **Target: 90% -- barracuda near target; other crates need `--tests` capture** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 68+++: chrono Full Elimination — Deep Debt (Feb 27, 2026)
+
+Evolving external dependencies to pure Rust: `chrono` crate eliminated as a direct dependency across the entire workspace.
+
+### Migration Scope
+- **28 Cargo.toml files**: Every workspace crate had `chrono` removed.
+- **200+ source/test files**: `DateTime<Utc>` → `SystemTime`, `Utc::now()` → `SystemTime::now()`, `chrono::Duration` → `std::time::Duration`.
+- **Workspace `[workspace.dependencies]`**: `chrono` entry removed entirely.
+
+### Crates Migrated
+- **Core**: config, common (already done S68++), toadstool (already done S68++)
+- **Infrastructure**: server, client, distributed, cli, api
+- **Management**: monitoring, analytics, performance
+- **Security**: policies, sandbox
+- **Integration**: primals, nestgate, protocols, integration-tests
+- **Runtime**: display, edge, specialty, adaptive, python, wasm, container, gpu
+- **Supporting**: auto_config, testing, examples, showcase/cross-platform
+
+### Serde Infrastructure
+- `toadstool_common::system_time_serde` — serializes `SystemTime` as Unix seconds (u64)
+- `toadstool_common::system_time_serde::opt` — for `Option<SystemTime>` fields
+- `format_rfc3339()` and `format_display()` — formatted output helpers
+
+### Result
+- **Zero `chrono`** in direct dependencies. Only transitive via `procfs`.
+- All quality gates green: `cargo check`, `cargo clippy --all-targets`, `cargo fmt`, `cargo doc` — 0 warnings.
 
 ---
 

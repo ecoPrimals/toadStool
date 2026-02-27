@@ -11,8 +11,8 @@
 //! - statistical analysis functions
 //! - helper functions (calculate_median, calculate_percentile)
 
-use chrono::{Duration, Utc};
 use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 use toadstool::execution::RuntimeType;
 use toadstool_management_analytics::*;
 use uuid::Uuid;
@@ -39,7 +39,7 @@ async fn test_analyze_trends_with_single_data_point() {
     // Add a single data point
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test_metric".to_string(),
         value: 42.0,
         runtime_type: Some(RuntimeType::Native),
@@ -59,11 +59,11 @@ async fn test_analyze_trends_with_increasing_trend() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Create increasing trend data
-    let base_time = Utc::now() - Duration::hours(5);
+    let base_time = SystemTime::now() - Duration::from_secs(5 * 3600);
     for i in 0..10 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::hours(i),
+            timestamp: base_time + Duration::from_secs((i as u64) * 3600),
             metric_name: "increasing_metric".to_string(),
             value: 10.0 + (i as f64 * 5.0), // 10, 15, 20, 25, ...
             runtime_type: Some(RuntimeType::Native),
@@ -83,11 +83,11 @@ async fn test_analyze_trends_with_stable_data() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Create stable data (low variation)
-    let base_time = Utc::now() - Duration::hours(3);
+    let base_time = SystemTime::now() - Duration::from_secs(3 * 3600);
     for i in 0..10 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::hours(i),
+            timestamp: base_time + Duration::from_secs((i as u64) * 3600),
             metric_name: "stable_metric".to_string(),
             value: 50.0 + (i as f64 * 0.1), // Very small variation
             runtime_type: Some(RuntimeType::Wasm),
@@ -119,11 +119,11 @@ async fn test_predict_values_with_historical_data() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Add historical data for prediction
-    let base_time = Utc::now() - Duration::days(7);
+    let base_time = SystemTime::now() - Duration::from_secs(7 * 86400);
     for i in 0..50 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::hours(i * 3),
+            timestamp: base_time + Duration::from_secs((i * 3) as u64 * 3600),
             metric_name: "predict_metric".to_string(),
             value: 100.0 + (i as f64 * 2.0),
             runtime_type: Some(RuntimeType::Native),
@@ -142,11 +142,11 @@ async fn test_predict_values_short_horizon() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Add minimal data
-    let base_time = Utc::now() - Duration::hours(12);
+    let base_time = SystemTime::now() - Duration::from_secs(12 * 3600);
     for i in 0..5 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::hours(i * 2),
+            timestamp: base_time + Duration::from_secs((i * 2) as u64 * 3600),
             metric_name: "short_predict".to_string(),
             value: 50.0 + (i as f64),
             runtime_type: Some(RuntimeType::Wasm),
@@ -182,7 +182,7 @@ async fn test_evaluate_alerts_cpu_threshold() {
     // Add CPU metrics that exceed threshold
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "cpu_usage".to_string(),
         value: 85.0, // Above 70% threshold
         runtime_type: Some(RuntimeType::Native),
@@ -208,7 +208,7 @@ async fn test_evaluate_alerts_memory_threshold() {
     // Add memory metrics that exceed threshold
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "memory_usage".to_string(),
         value: 95.0, // Above 80% threshold
         runtime_type: Some(RuntimeType::Wasm),
@@ -231,7 +231,7 @@ async fn test_evaluate_alerts_below_threshold() {
     // Add metrics below all thresholds
     let cpu_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "cpu_usage".to_string(),
         value: 30.0, // Well below threshold
         runtime_type: Some(RuntimeType::Native),
@@ -242,7 +242,7 @@ async fn test_evaluate_alerts_below_threshold() {
 
     let memory_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "memory_usage".to_string(),
         value: 40.0, // Well below threshold
         runtime_type: Some(RuntimeType::Wasm),
@@ -311,11 +311,11 @@ async fn test_dashboard_with_panels() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // First, add some metrics data
-    let base_time = Utc::now() - Duration::hours(2);
+    let base_time = SystemTime::now() - Duration::from_secs(2 * 3600);
     for i in 0..5 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::minutes(i * 15),
+            timestamp: base_time + Duration::from_secs((i * 15) as u64 * 60),
             metric_name: "dashboard_metric".to_string(),
             value: 50.0 + (i as f64 * 10.0),
             runtime_type: Some(RuntimeType::Native),
@@ -336,7 +336,7 @@ async fn test_dashboard_with_panels() {
         metrics: vec!["dashboard_metric".to_string()],
         time_range: TimeRange {
             from: base_time,
-            to: Utc::now(),
+            to: SystemTime::now(),
             refresh_interval_secs: 60,
         },
         position: PanelPosition {
@@ -383,8 +383,8 @@ async fn test_dashboard_with_multiple_panels() {
         panel_type: PanelType::Gauge,
         metrics: vec!["cpu".to_string()],
         time_range: TimeRange {
-            from: Utc::now() - Duration::hours(1),
-            to: Utc::now(),
+            from: SystemTime::now() - Duration::from_secs(3600),
+            to: SystemTime::now(),
             refresh_interval_secs: 30,
         },
         position: PanelPosition {
@@ -401,8 +401,8 @@ async fn test_dashboard_with_multiple_panels() {
         panel_type: PanelType::BarChart,
         metrics: vec!["memory".to_string()],
         time_range: TimeRange {
-            from: Utc::now() - Duration::hours(1),
-            to: Utc::now(),
+            from: SystemTime::now() - Duration::from_secs(3600),
+            to: SystemTime::now(),
             refresh_interval_secs: 30,
         },
         position: PanelPosition {
@@ -485,7 +485,7 @@ async fn test_export_metrics_with_webhook() {
     // Add some data to export
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "export_metric".to_string(),
         value: 123.45,
         runtime_type: Some(RuntimeType::Native),
@@ -516,7 +516,7 @@ async fn test_collect_data_point_with_tags() {
 
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "tagged_metric".to_string(),
         value: 99.9,
         runtime_type: Some(RuntimeType::Wasm),
@@ -537,7 +537,7 @@ async fn test_collect_many_data_points() {
     for i in 0..100 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
             metric_name: format!("metric_{}", i),
             value: i as f64,
             runtime_type: Some(RuntimeType::Native),
@@ -560,7 +560,7 @@ async fn test_collect_data_point_buffer_limit() {
     for i in 0..1000 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
             metric_name: "overflow_test".to_string(),
             value: i as f64,
             runtime_type: None,
@@ -605,7 +605,7 @@ fn test_trend_statistics_fields() {
 #[test]
 fn test_prediction_point_fields() {
     let prediction = PredictionPoint {
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         predicted_value: 123.45,
         confidence_interval: (100.0, 150.0),
         prediction_method: "linear_regression".to_string(),
@@ -645,8 +645,8 @@ fn test_panel_types() {
 
 #[test]
 fn test_time_range_creation() {
-    let from = Utc::now() - Duration::hours(24);
-    let to = Utc::now();
+    let from = SystemTime::now() - Duration::from_secs(24 * 3600);
+    let to = SystemTime::now();
     let time_range = TimeRange {
         from,
         to,
@@ -809,7 +809,7 @@ fn test_alert_creation() {
             value: 80.0,
         },
         severity: AlertSeverity::Warning,
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         last_triggered: None,
         status: AlertStatus::Active,
         recipients: vec!["admin@example.com".to_string()],

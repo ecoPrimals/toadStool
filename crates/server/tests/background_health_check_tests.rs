@@ -338,7 +338,7 @@ async fn test_active_executions_tracking() {
                 toadstool_server::state::ActiveExecution {
                     execution_id,
                     runtime_type: RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
@@ -376,7 +376,7 @@ async fn test_too_many_active_executions() {
                 toadstool_server::state::ActiveExecution {
                     execution_id,
                     runtime_type: RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
@@ -414,7 +414,7 @@ async fn test_active_executions_within_limit() {
                 toadstool_server::state::ActiveExecution {
                     execution_id,
                     runtime_type: RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
@@ -472,7 +472,7 @@ async fn test_complete_health_check_scenario_healthy() {
                 toadstool_server::state::ActiveExecution {
                     execution_id,
                     runtime_type: RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
@@ -524,7 +524,7 @@ async fn test_complete_health_check_scenario_unhealthy() {
                 toadstool_server::state::ActiveExecution {
                     execution_id,
                     runtime_type: RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {

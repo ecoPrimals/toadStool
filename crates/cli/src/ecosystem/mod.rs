@@ -216,7 +216,7 @@ mod tests {
             permission_id: Uuid::new_v4(),
             granted_to: "test-service".to_string(),
             capabilities: vec!["read".to_string(), "write".to_string()],
-            valid_until: Utc::now() + chrono::Duration::hours(1),
+            valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
             signature: "test-signature".to_string(),
         };
 
@@ -252,7 +252,7 @@ mod tests {
             address: "127.0.0.1:8080".parse().unwrap(),
             trust_level: TrustLevel::Verified,
             capabilities,
-            last_seen: Utc::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         assert!(matches!(service.service_type, ServiceType::Songbird));
@@ -265,7 +265,7 @@ mod tests {
             algorithm: "ed25519".to_string(),
             signature: "base64-signature".to_string(),
             public_key: "base64-public-key".to_string(),
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             nonce: "random-nonce".to_string(),
         };
 
@@ -279,7 +279,7 @@ mod tests {
             algorithm: "ed25519".to_string(),
             signature: "sig123".to_string(),
             public_key: "key123".to_string(),
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             nonce: "nonce123".to_string(),
         };
 
@@ -288,7 +288,7 @@ mod tests {
             service_type: "songbird".to_string(),
             status: "active".to_string(),
             capabilities: vec!["discovery".to_string()],
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             signature,
         };
 
@@ -336,7 +336,7 @@ mod tests {
 
         let context = CryptoVerificationContext {
             trusted_public_keys: trusted_keys,
-            verification_timestamp: Utc::now(),
+            verification_timestamp: std::time::SystemTime::now(),
             revoked_keys: vec![],
             max_age_minutes: 60,
         };
@@ -379,7 +379,7 @@ mod tests {
             permission_id: Uuid::new_v4(),
             granted_to: "test-service".to_string(),
             capabilities: vec!["read".to_string(), "write".to_string()],
-            valid_until: Utc::now() + chrono::Duration::hours(1),
+            valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
             signature: "test-signature".to_string(),
         };
 
@@ -387,7 +387,10 @@ mod tests {
         let mut data = std::collections::BTreeMap::new();
         data.insert("permission_id", permission.permission_id.to_string());
         data.insert("granted_to", permission.granted_to.clone());
-        data.insert("valid_until", permission.valid_until.to_rfc3339());
+        data.insert(
+            "valid_until",
+            toadstool_common::system_time_serde::format_rfc3339(permission.valid_until),
+        );
 
         let capabilities_json = serde_json::to_string(&permission.capabilities).unwrap();
         data.insert("capabilities", capabilities_json);
@@ -504,8 +507,8 @@ mod tests {
 
     #[test]
     fn test_beardog_permission_expiration() {
-        let now = Utc::now();
-        let future = now + chrono::Duration::hours(2);
+        let now = std::time::SystemTime::now();
+        let future = now + std::time::Duration::from_secs(2 * 3600);
 
         let permission = BearDogPermission {
             permission_id: Uuid::new_v4(),
@@ -516,7 +519,7 @@ mod tests {
         };
 
         assert!(permission.valid_until > now);
-        assert!(permission.valid_until > Utc::now());
+        assert!(permission.valid_until > std::time::SystemTime::now());
     }
 
     #[test]
@@ -552,7 +555,7 @@ mod tests {
 
     #[test]
     fn test_service_signature_timestamp_validation() {
-        let old_time = Utc::now() - chrono::Duration::hours(1);
+        let old_time = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
         let signature = ServiceSignature {
             algorithm: "ed25519".to_string(),
             signature: "sig".to_string(),
@@ -561,7 +564,10 @@ mod tests {
             nonce: "nonce".to_string(),
         };
 
-        let age_minutes = (Utc::now() - signature.timestamp).num_minutes();
+        let age_minutes = std::time::SystemTime::now()
+            .duration_since(signature.timestamp)
+            .map(|d| d.as_secs() / 60)
+            .unwrap_or(0);
         assert!(age_minutes >= 59); // Should be about an hour old
     }
 

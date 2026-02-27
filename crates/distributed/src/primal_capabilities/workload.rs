@@ -2,9 +2,9 @@
 //!
 //! Handles incoming workload requests from primals and executes them using the UniversalScheduler
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use crate::types::UniversalJob;
@@ -100,7 +100,8 @@ pub struct WorkloadResponse {
     /// Execution time in seconds
     pub execution_time_seconds: Option<f64>,
     /// Timestamp
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 /// Workload status
@@ -201,7 +202,7 @@ impl WorkloadExecutor {
             output: None,
             error: None,
             execution_time_seconds: None,
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         })
     }
 

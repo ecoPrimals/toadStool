@@ -84,7 +84,7 @@ async fn test_get_execution_status_handler_found() {
             crate::ActiveExecution {
                 execution_id,
                 runtime_type: toadstool::RuntimeType::Native,
-                started_at: chrono::Utc::now(),
+                started_at: std::time::SystemTime::now(),
                 timeout: WORKLOAD_EXECUTION_TIMEOUT,
                 status: toadstool::ExecutionStatus::Running,
                 client_info: crate::ClientInfo {
@@ -123,7 +123,7 @@ async fn test_cancel_execution_handler_success() {
             crate::ActiveExecution {
                 execution_id,
                 runtime_type: toadstool::RuntimeType::Native,
-                started_at: chrono::Utc::now(),
+                started_at: std::time::SystemTime::now(),
                 timeout: WORKLOAD_EXECUTION_TIMEOUT,
                 status: toadstool::ExecutionStatus::Running,
                 client_info: crate::ClientInfo {

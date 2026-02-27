@@ -2,9 +2,9 @@
 //!
 //! This test suite covers the modern API v2 handlers with proper types
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 use toadstool::execution::RuntimeType;
 use toadstool_api::{
     types::{ExecutionInfo, ExecutionStatus, ResourceRequirements, WorkloadSpec},
@@ -217,7 +217,7 @@ async fn test_api_state_add_execution() {
         execution_id,
         status: ExecutionStatus::Submitted,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
         completed_at: None,
         duration_ms: None,
@@ -247,8 +247,8 @@ async fn test_api_state_multiple_executions() {
             execution_id,
             status: ExecutionStatus::Running,
             runtime_type: RuntimeType::Native,
-            submitted_at: Utc::now(),
-            started_at: Some(Utc::now()),
+            submitted_at: SystemTime::now(),
+            started_at: Some(SystemTime::now()),
             completed_at: None,
             duration_ms: None,
             progress: Some(0.5),
@@ -267,7 +267,7 @@ async fn test_api_state_multiple_executions() {
 
 #[tokio::test]
 async fn test_execution_info_timestamps() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let execution_info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
@@ -293,9 +293,9 @@ fn test_execution_info_with_error() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Failed,
         runtime_type: RuntimeType::Python,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         duration_ms: Some(1500),
         progress: Some(0.8),
         error_message: Some("Process exited with code 1".to_string()),
@@ -321,9 +321,9 @@ fn test_execution_info_with_metadata() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Completed,
         runtime_type: RuntimeType::Container,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         duration_ms: Some(3000),
         progress: Some(1.0),
         error_message: None,

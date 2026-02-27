@@ -52,7 +52,6 @@ serde_yaml = "0.9"
 bytes = { workspace = true }
 
 # Time and UUID for test data
-chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Temporary directories and files for testing
@@ -70,7 +69,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Random data generation
 rand = "0.8"
-fake = { version = "2.0", features = ["derive", "chrono", "uuid"] }
+fake = { version = "2.0", features = ["derive", "uuid"] }
 
 # Async trait support
 async-trait = "0.1"

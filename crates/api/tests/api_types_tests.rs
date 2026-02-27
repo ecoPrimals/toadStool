@@ -1,6 +1,6 @@
 //! Comprehensive tests for API types
 
-use chrono::Utc;
+use std::time::SystemTime;
 use toadstool_api::types::*;
 use uuid::Uuid;
 
@@ -388,7 +388,7 @@ fn test_execution_response_submitted() {
     let response = ExecutionResponse {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Submitted,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         estimated_completion: None,
         queue_position: Some(5),
         resource_allocation: None,
@@ -417,8 +417,12 @@ fn test_execution_response_running() {
     let response = ExecutionResponse {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
-        submitted_at: Utc::now(),
-        estimated_completion: Some(Utc::now() + chrono::Duration::minutes(10)),
+        submitted_at: SystemTime::now(),
+        estimated_completion: Some(
+            SystemTime::now()
+                .checked_add(std::time::Duration::from_secs(600))
+                .unwrap_or_else(SystemTime::now),
+        ),
         queue_position: None,
         resource_allocation: Some(allocation),
         monitoring_endpoints: MonitoringEndpoints {
@@ -440,7 +444,7 @@ fn test_execution_response_running() {
 #[test]
 fn test_log_entry_creation() {
     let entry = LogEntry {
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         level: LogLevel::Info,
         message: "Application started".to_string(),
         source: "main".to_string(),
@@ -453,7 +457,7 @@ fn test_log_entry_creation() {
 #[test]
 fn test_log_entry_error() {
     let entry = LogEntry {
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         level: LogLevel::Error,
         message: "Connection failed".to_string(),
         source: "network".to_string(),

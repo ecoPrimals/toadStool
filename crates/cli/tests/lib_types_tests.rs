@@ -1,6 +1,5 @@
 //! Comprehensive tests for CLI library types and structures
 
-use chrono::Utc;
 // HashMap import removed - unused
 use std::path::PathBuf;
 use toadstool_cli::*;
@@ -53,8 +52,8 @@ fn test_biome_metadata_creation() {
         version: "1.0.0".to_string(),
         description: Some("A test biome".to_string()),
         author: Some("Test Author".to_string()),
-        created: Utc::now(),
-        updated: Utc::now(),
+        created: std::time::SystemTime::now(),
+        updated: std::time::SystemTime::now(),
         tags: vec!["web".to_string(), "api".to_string()],
     };
 
@@ -70,8 +69,8 @@ fn test_biome_metadata_no_description() {
         version: "0.1.0".to_string(),
         description: None,
         author: None,
-        created: Utc::now(),
-        updated: Utc::now(),
+        created: std::time::SystemTime::now(),
+        updated: std::time::SystemTime::now(),
         tags: vec![],
     };
 
@@ -87,8 +86,8 @@ fn test_biome_metadata_serialization() {
         version: "1.0.0".to_string(),
         description: Some("desc".to_string()),
         author: None,
-        created: Utc::now(),
-        updated: Utc::now(),
+        created: std::time::SystemTime::now(),
+        updated: std::time::SystemTime::now(),
         tags: vec![],
     };
 
@@ -675,8 +674,8 @@ fn test_biome_info_creation() {
         id: Uuid::new_v4(),
         name: "prod-biome".to_string(),
         status: BiomeStatus::Running,
-        created: Utc::now(),
-        started: Some(Utc::now()),
+        created: std::time::SystemTime::now(),
+        started: Some(std::time::SystemTime::now()),
         manifest_path: PathBuf::from("/opt/biomes/prod.yaml"),
         resource_usage: ResourceUsage {
             cpu_percent: 25.0,
@@ -699,8 +698,8 @@ fn test_biome_info_with_services() {
         id: Uuid::new_v4(),
         name: "test-biome".to_string(),
         status: BiomeStatus::Running,
-        created: Utc::now(),
-        started: Some(Utc::now()),
+        created: std::time::SystemTime::now(),
+        started: Some(std::time::SystemTime::now()),
         manifest_path: PathBuf::from("/tmp/test.yaml"),
         resource_usage: ResourceUsage {
             cpu_percent: 10.0,
@@ -737,7 +736,7 @@ fn test_biome_info_not_started() {
         id: Uuid::new_v4(),
         name: "new-biome".to_string(),
         status: BiomeStatus::Starting,
-        created: Utc::now(),
+        created: std::time::SystemTime::now(),
         started: None,
         manifest_path: PathBuf::from("/tmp/new.yaml"),
         resource_usage: ResourceUsage {

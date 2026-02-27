@@ -21,7 +21,7 @@ fn test_capacity_info_cpu_utilization_zero() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(info.cpu_utilization(), 0.0);
@@ -39,7 +39,7 @@ fn test_capacity_info_cpu_utilization_half() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(info.cpu_utilization(), 0.5);
@@ -57,7 +57,7 @@ fn test_capacity_info_cpu_utilization_full() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(info.cpu_utilization(), 1.0);
@@ -75,7 +75,7 @@ fn test_capacity_info_memory_utilization() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(info.memory_utilization(), 0.75);
@@ -93,7 +93,7 @@ fn test_capacity_info_storage_utilization() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(info.storage_utilization(), 0.9);
@@ -111,7 +111,7 @@ fn test_capacity_info_has_capacity_sufficient() {
         total_gpu_units: Some(2),
         available_gpu_units: Some(1),
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -137,7 +137,7 @@ fn test_capacity_info_has_capacity_insufficient_cpu() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -163,7 +163,7 @@ fn test_capacity_info_has_capacity_with_gpu() {
         total_gpu_units: Some(2),
         available_gpu_units: Some(2),
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -189,7 +189,7 @@ fn test_capacity_info_has_capacity_insufficient_gpu() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1000000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -485,7 +485,7 @@ fn test_distribution_result_success() {
             estimated_duration_secs: 60,
         },
         targets_used: vec!["node1".to_string(), "node2".to_string()],
-        started_at: chrono::Utc::now(),
+        started_at: std::time::SystemTime::now(),
         success: true,
         error: None,
     };
@@ -507,7 +507,7 @@ fn test_distribution_result_failure() {
             estimated_duration_secs: 60,
         },
         targets_used: vec![],
-        started_at: chrono::Utc::now(),
+        started_at: std::time::SystemTime::now(),
         success: false,
         error: Some("No available targets".to_string()),
     };
@@ -643,7 +643,7 @@ fn test_load_metrics_creation() {
         request_rate: 100.0,
         error_rate: 0.02,
         health: HealthStatus::Healthy,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(metrics.active_count, 50);
@@ -689,7 +689,7 @@ fn test_load_metrics_high_error_rate() {
         request_rate: 20.0,
         error_rate: 0.25,
         health: HealthStatus::Degraded,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert!(metrics.error_rate > 0.2);

@@ -138,7 +138,7 @@ mod tests {
     use crate::types::{
         DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
     };
-    use chrono::Utc;
+    use std::time::SystemTime;
     use toadstool::ExecutionRequest;
     use uuid::Uuid;
 
@@ -152,7 +152,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         }
     }
 

@@ -33,7 +33,7 @@ impl BiomeExecutor {
         security_level: &str, // ✅ OPTIMIZED: Accept &str instead of String
     ) -> Result<BiomeInfo> {
         let biome_id = Uuid::new_v4();
-        let start_time = Utc::now();
+        let start_time = std::time::SystemTime::now();
 
         info!("🔧 Initializing biome infrastructure");
 
@@ -206,7 +206,7 @@ impl BiomeExecutor {
             process_type: ProcessType::Primal(name.to_string()),
             execution_id,
             pid: Some(1000 + (execution_id.as_u128() % 30000) as u32),
-            _started_at: Utc::now(),
+            _started_at: std::time::SystemTime::now(),
         })
     }
 
@@ -247,7 +247,7 @@ impl BiomeExecutor {
             process_type: ProcessType::Service(name.to_string()),
             execution_id,
             pid: Some(2000 + (execution_id.as_u128() % 30000) as u32),
-            _started_at: Utc::now(),
+            _started_at: std::time::SystemTime::now(),
         })
     }
 

@@ -5,8 +5,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 
-use chrono::{Datelike, Timelike};
 use regex::Regex;
 use tokio::sync::RwLock;
 use tracing::warn;
@@ -141,9 +141,13 @@ impl ConditionEvaluator {
                 end_hour,
                 days,
             } => {
-                let now = chrono::Utc::now();
-                let hour = now.hour() as u8;
-                let day = now.weekday().num_days_from_sunday() as u8;
+                let now = SystemTime::now();
+                let secs = now
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let hour = ((secs % 86400) / 3600) as u8;
+                let day = ((secs / 86400 + 4) % 7) as u8; // Jan 1 1970 = Thursday, Sunday=0
 
                 let hour_match = if start_hour <= end_hour {
                     hour >= *start_hour && hour <= *end_hour

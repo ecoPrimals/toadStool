@@ -220,7 +220,9 @@ impl DisplayCapabilities {
             metadata: CapabilityMetadata {
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 pure_rust: true,
-                timestamp: chrono::Utc::now().to_rfc3339(),
+                timestamp: toadstool_common::system_time_serde::format_rfc3339(
+                    std::time::SystemTime::now(),
+                ),
             },
         })
     }

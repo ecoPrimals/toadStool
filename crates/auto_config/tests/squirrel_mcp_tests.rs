@@ -3,7 +3,7 @@
 //! Tests cover squirrel_mcp.rs functionality (13.18% → 30%+ target)
 //! Focus: AI session management, preferences, request handling
 
-use chrono::Utc;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 #[test]
@@ -31,10 +31,16 @@ fn test_agent_id_validation() {
 #[test]
 fn test_session_timestamp() {
     // Test session timestamp generation
-    let started_at = Utc::now();
-    let last_activity = Utc::now();
+    let started_at = SystemTime::now();
+    let last_activity = SystemTime::now();
 
-    assert!(started_at.timestamp() > 0);
+    assert!(
+        started_at
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            > 0
+    );
     assert!(last_activity >= started_at);
 }
 
@@ -139,10 +145,13 @@ fn test_request_id_format() {
 #[test]
 fn test_request_timestamp() {
     // Test request timestamp
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
+    let since_epoch = timestamp
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default();
 
-    assert!(timestamp.timestamp() > 0);
-    assert!(timestamp.timestamp_millis() > 0);
+    assert!(since_epoch.as_secs() > 0);
+    assert!(since_epoch.as_millis() > 0);
 }
 
 #[test]
@@ -287,12 +296,16 @@ fn test_request_counter_increment() {
 #[test]
 fn test_session_activity_update() {
     // Test session activity update
-    let started_at = Utc::now();
-    let last_activity = Utc::now();
+    let started_at = SystemTime::now();
+    let last_activity = SystemTime::now();
 
-    let inactive_duration = last_activity.signed_duration_since(started_at);
+    let inactive_duration = last_activity.duration_since(started_at).unwrap_or_default();
 
-    assert!(inactive_duration.num_seconds() >= 0);
+    // Verify we can compute duration between timestamps (Duration is always non-negative)
+    assert!(
+        inactive_duration.as_secs() < 60,
+        "Activity timestamps should be within a minute"
+    );
 }
 
 #[test]

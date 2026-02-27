@@ -3,8 +3,8 @@
 //! These tests exercise the Squirrel MCP AI integration code paths.
 
 use anyhow::Result;
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -62,9 +62,9 @@ async fn test_session_storage() -> Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timestamp_tracking() -> Result<()> {
     // Test timestamp tracking for sessions
-    let started_at = Utc::now();
+    let started_at = SystemTime::now();
     tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
-    let last_activity = Utc::now();
+    let last_activity = SystemTime::now();
 
     assert!(last_activity > started_at);
 

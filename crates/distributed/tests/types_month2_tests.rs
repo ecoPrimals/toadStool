@@ -87,7 +87,7 @@ fn test_job_creation() {
         name: "test-job".to_string(),
         status: JobStatus::Pending,
         priority: 5,
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(job.id, "job-123");
@@ -314,7 +314,8 @@ struct Job {
     name: String,
     status: JobStatus,
     priority: u8,
-    created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    created_at: std::time::SystemTime,
 }
 
 impl Job {
@@ -324,7 +325,7 @@ impl Job {
             name: name.to_string(),
             status: JobStatus::Pending,
             priority: 5,
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         }
     }
 

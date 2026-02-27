@@ -3,8 +3,8 @@ use std::hash::Hash;
 use std::str::FromStr;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use toadstool::{ExecutionRequest, ToadStoolError, ToadStoolResult};
@@ -33,7 +33,8 @@ pub struct UniversalJob {
     /// Retry configuration
     pub retry_config: DistributedRetryConfig,
     /// Created timestamp
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
 }
 
 /// Universal job types for different execution scenarios
@@ -154,7 +155,7 @@ pub struct DependencyGraph {
 pub struct JobMetadata {
     pub job_id: Uuid,
     pub job_type: UniversalJobType,
-    pub created_at: DateTime<Utc>,
+    pub created_at: SystemTime,
     pub priority: JobPriority,
     pub estimated_duration: Option<Duration>,
 }
@@ -374,8 +375,8 @@ impl CompatibilityMode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
     use std::collections::HashMap;
+    use std::time::SystemTime;
     use uuid::Uuid;
 
     fn make_universal_job(
@@ -392,7 +393,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         }
     }
 

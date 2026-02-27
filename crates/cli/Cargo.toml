@@ -82,9 +82,6 @@ serde_yaml = "0.9"
 toml = "0.8"
 bytes = { workspace = true }
 
-# Time and date handling
-chrono = { version = "0.4", features = ["serde"] }
-
 # UUID generation
 uuid = { workspace = true, features = ["v4"] }
 

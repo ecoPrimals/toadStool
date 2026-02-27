@@ -2,15 +2,20 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
-
-use chrono::{DateTime, Utc};
+use std::time::{Duration, SystemTime};
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use toadstool::{ExecutionStatus, ResourceMonitor, RuntimeEngine, RuntimeType};
 
 use crate::config::ServerConfig;
+
+/// Helper to serialize SystemTime as Unix timestamp for JSON
+pub(crate) fn timestamp_to_unix_secs(t: &SystemTime) -> u64 {
+    t.duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
 
 /// Server events for broadcasting
 #[derive(Debug, Clone)]
@@ -19,7 +24,7 @@ pub enum ServerEvent {
     ExecutionStarted {
         execution_id: Uuid,
         runtime_type: RuntimeType,
-        timestamp: DateTime<Utc>,
+        timestamp: SystemTime,
     },
 
     /// Execution completed
@@ -27,13 +32,13 @@ pub enum ServerEvent {
         execution_id: Uuid,
         status: ExecutionStatus,
         duration_ms: u64,
-        timestamp: DateTime<Utc>,
+        timestamp: SystemTime,
     },
 
     /// Runtime engine registered
     RuntimeEngineRegistered {
         runtime_type: RuntimeType,
-        timestamp: DateTime<Utc>,
+        timestamp: SystemTime,
     },
 
     /// Resource usage update
@@ -41,14 +46,14 @@ pub enum ServerEvent {
         cpu_usage_percent: f64,
         memory_usage_percent: f64,
         active_executions: u32,
-        timestamp: DateTime<Utc>,
+        timestamp: SystemTime,
     },
 
     /// Health status change
     HealthStatusChanged {
         healthy: bool,
         message: String,
-        timestamp: DateTime<Utc>,
+        timestamp: SystemTime,
     },
 
     /// Error occurred
@@ -56,7 +61,7 @@ pub enum ServerEvent {
         error_type: String,
         message: String,
         execution_id: Option<Uuid>,
-        timestamp: DateTime<Utc>,
+        timestamp: SystemTime,
     },
 }
 
@@ -75,7 +80,7 @@ impl ServerEvent {
                 "data": {
                     "execution_id": execution_id,
                     "runtime_type": runtime_type,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp_to_unix_secs(timestamp),
                 }
             })
             .to_string(),
@@ -90,7 +95,7 @@ impl ServerEvent {
                     "execution_id": execution_id,
                     "status": status,
                     "duration_ms": duration_ms,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp_to_unix_secs(timestamp),
                 }
             })
             .to_string(),
@@ -101,7 +106,7 @@ impl ServerEvent {
                 "type": "runtime_engine_registered",
                 "data": {
                     "runtime_type": runtime_type,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp_to_unix_secs(timestamp),
                 }
             })
             .to_string(),
@@ -116,7 +121,7 @@ impl ServerEvent {
                     "cpu_usage_percent": cpu_usage_percent,
                     "memory_usage_percent": memory_usage_percent,
                     "active_executions": active_executions,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp_to_unix_secs(timestamp),
                 }
             })
             .to_string(),
@@ -129,7 +134,7 @@ impl ServerEvent {
                 "data": {
                     "healthy": healthy,
                     "message": message,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp_to_unix_secs(timestamp),
                 }
             })
             .to_string(),
@@ -144,7 +149,7 @@ impl ServerEvent {
                     "error_type": error_type,
                     "message": message,
                     "execution_id": execution_id,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp_to_unix_secs(timestamp),
                 }
             })
             .to_string(),
@@ -157,7 +162,7 @@ impl ServerEvent {
 pub struct ActiveExecution {
     pub execution_id: Uuid,
     pub runtime_type: RuntimeType,
-    pub started_at: DateTime<Utc>,
+    pub started_at: SystemTime,
     pub timeout: Duration,
     pub status: ExecutionStatus,
     pub client_info: ClientInfo,
@@ -236,7 +241,7 @@ mod tests {
         let event = ServerEvent::ExecutionStarted {
             execution_id: Uuid::new_v4(),
             runtime_type: RuntimeType::Native,
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("execution_started"));
@@ -249,7 +254,7 @@ mod tests {
             execution_id: Uuid::new_v4(),
             status: ExecutionStatus::Success,
             duration_ms: 1500,
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("execution_completed"));
@@ -261,7 +266,7 @@ mod tests {
         let event = ServerEvent::HealthStatusChanged {
             healthy: true,
             message: "ok".to_string(),
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("health_status_changed"));
@@ -274,7 +279,7 @@ mod tests {
             error_type: "Network".to_string(),
             message: "timeout".to_string(),
             execution_id: None,
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("error_occurred"));

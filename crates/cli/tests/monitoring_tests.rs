@@ -1,6 +1,5 @@
 //! Comprehensive tests for CLI monitoring system
 
-use chrono::Utc;
 use std::collections::HashMap;
 use toadstool_cli::monitoring::*;
 use tokio::time::Duration;
@@ -134,7 +133,7 @@ fn test_metric_creation() {
         name: "cpu_usage".to_string(),
         value: MetricValue::Gauge(75.5),
         labels: labels.clone(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(metric.name, "cpu_usage");
@@ -148,7 +147,7 @@ fn test_metric_no_labels() {
         name: "request_count".to_string(),
         value: MetricValue::Counter(100),
         labels: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(metric.name, "request_count");
@@ -161,7 +160,7 @@ fn test_metric_serialization() {
         name: "memory_bytes".to_string(),
         value: MetricValue::Counter(1024),
         labels: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let json = serde_json::to_string(&metric).unwrap();
@@ -177,7 +176,7 @@ fn test_metric_serialization() {
 #[test]
 fn test_metric_batch_empty() {
     let batch = MetricBatch {
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         source: "test-collector".to_string(),
         metrics: vec![],
     };
@@ -193,18 +192,18 @@ fn test_metric_batch_with_metrics() {
             name: "cpu".to_string(),
             value: MetricValue::Gauge(50.0),
             labels: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         },
         Metric {
             name: "memory".to_string(),
             value: MetricValue::Counter(2048),
             labels: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         },
     ];
 
     let batch = MetricBatch {
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         source: "system-monitor".to_string(),
         metrics: metrics.clone(),
     };
@@ -216,7 +215,7 @@ fn test_metric_batch_with_metrics() {
 #[test]
 fn test_metric_batch_serialization() {
     let batch = MetricBatch {
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         source: "test".to_string(),
         metrics: vec![],
     };
@@ -510,7 +509,7 @@ fn test_health_status_serialization() {
 #[test]
 fn test_data_point_creation() {
     let dp = DataPoint {
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         value: 42.0,
     };
 
@@ -520,7 +519,7 @@ fn test_data_point_creation() {
 #[test]
 fn test_data_point_zero() {
     let dp = DataPoint {
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         value: 0.0,
     };
 
@@ -530,7 +529,7 @@ fn test_data_point_zero() {
 #[test]
 fn test_data_point_negative() {
     let dp = DataPoint {
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         value: -15.5,
     };
 
@@ -540,7 +539,7 @@ fn test_data_point_negative() {
 #[test]
 fn test_data_point_serialization() {
     let dp = DataPoint {
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         value: 100.0,
     };
 
@@ -570,15 +569,15 @@ fn test_time_series_empty() {
 fn test_time_series_with_data() {
     let data_points = vec![
         DataPoint {
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             value: 10.0,
         },
         DataPoint {
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             value: 20.0,
         },
         DataPoint {
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             value: 30.0,
         },
     ];

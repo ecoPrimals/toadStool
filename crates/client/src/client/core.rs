@@ -199,9 +199,9 @@ impl ToadStoolClient {
                         return Ok(ExecutionInfo {
                             execution_id,
                             status: exec_status,
-                            submitted_at: chrono::Utc::now(),
+                            submitted_at: std::time::SystemTime::now(),
                             started_at: None,
-                            completed_at: Some(chrono::Utc::now()),
+                            completed_at: Some(std::time::SystemTime::now()),
                             runtime_type: None,
                             error_message: status
                                 .get("error")

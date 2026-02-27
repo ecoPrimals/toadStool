@@ -221,7 +221,7 @@ pub struct EnvironmentHint {
 /// Configuration snapshot for learning and optimization
 #[derive(Debug, Clone)]
 pub struct ConfigSnapshot {
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub timestamp: std::time::SystemTime,
     pub config: ToadStoolConfig,
     pub hardware: SystemCapabilities,
     pub usage_hints: UsageHints,

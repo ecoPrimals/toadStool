@@ -14,7 +14,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use chrono::Utc;
+use std::time::SystemTime;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 use validator::Validate;
@@ -64,7 +64,7 @@ pub async fn submit_execution(
     );
 
     let execution_id = Uuid::new_v4();
-    let now = Utc::now();
+    let now = SystemTime::now();
 
     // Create execution info
     let execution_info = ExecutionInfo {
@@ -292,11 +292,16 @@ pub async fn cancel_execution(
         }
 
         info.status = ExecutionStatus::Cancelled;
-        info.completed_at = Some(Utc::now());
+        info.completed_at = Some(SystemTime::now());
 
         // Calculate duration if started
         if let Some(started_at) = info.started_at {
-            info.duration_ms = Some((Utc::now() - started_at).num_milliseconds() as u64);
+            info.duration_ms = Some(
+                SystemTime::now()
+                    .duration_since(started_at)
+                    .unwrap_or_default()
+                    .as_millis() as u64,
+            );
         }
 
         // Broadcast event
@@ -304,7 +309,7 @@ pub async fn cancel_execution(
             execution_id,
             status: ExecutionStatus::Cancelled,
             duration_ms: info.duration_ms.unwrap_or(0),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
         let _ = state.event_broadcaster.send(event);
 

@@ -1,6 +1,5 @@
 //! Comprehensive tests for CLI universal types
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -233,7 +232,7 @@ fn test_federation_peer_creation() {
         capabilities: vec![Arc::from("compute"), Arc::from("storage")],
         shared_resources: vec![Arc::from("cpu")],
         status: FederationStatus::Connected,
-        last_heartbeat: Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         trust_level: TrustLevel::Verified,
     };
 
@@ -249,7 +248,7 @@ fn test_federation_peer_with_multiple_resources() {
         capabilities: vec![Arc::from("gpu")],
         shared_resources: vec![Arc::from("nvidia-3090"), Arc::from("amd-mi100")],
         status: FederationStatus::Ready,
-        last_heartbeat: Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         trust_level: TrustLevel::Sovereign,
     };
 
@@ -265,7 +264,7 @@ fn test_federation_peer_clone() {
         capabilities: vec![],
         shared_resources: vec![],
         status: FederationStatus::Connected,
-        last_heartbeat: Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         trust_level: TrustLevel::Unknown,
     };
 
@@ -404,7 +403,7 @@ fn test_federation_peer_with_sovereign_trust() {
         capabilities: vec![Arc::from("full-trust")],
         shared_resources: vec![Arc::from("all")],
         status: FederationStatus::Ready,
-        last_heartbeat: Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         trust_level: TrustLevel::Sovereign,
     };
 

@@ -37,8 +37,8 @@ pub use types::{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
     use std::collections::HashMap;
+    use std::time::SystemTime;
     use uuid::Uuid;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -55,7 +55,7 @@ mod tests {
 
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
             metric_name: "test_metric".to_string(),
             value: 42.0,
             runtime_type: None,

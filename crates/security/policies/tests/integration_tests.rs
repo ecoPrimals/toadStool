@@ -2,8 +2,8 @@
 //!
 //! Tests the complete policy evaluation workflow
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool_security_policies::{
     PolicyAction, PolicyCondition, PolicyManagerConfig, PolicyRule, SecurityPolicy, ViolationAction,
 };
@@ -17,7 +17,7 @@ fn test_complete_policy_workflow() {
     let config = PolicyManagerConfig::default();
     assert!(config.strict_enforcement);
 
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "integration-001".to_string(),
         name: "Integration Test Policy".to_string(),
@@ -38,7 +38,7 @@ fn test_complete_policy_workflow() {
 
 #[test]
 fn test_policy_with_multiple_rules_ordering() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let rules = vec![
         PolicyRule {
             id: "rule-1".to_string(),
@@ -91,7 +91,7 @@ fn test_policy_with_multiple_rules_ordering() {
 
 #[test]
 fn test_policy_inheritance_chain() {
-    let now = Utc::now();
+    let now = SystemTime::now();
 
     // Base policy
     let base_policy = SecurityPolicy {
@@ -160,7 +160,7 @@ fn test_config_with_permissive_enforcement() {
 
 #[test]
 fn test_policy_versioning() {
-    let now = Utc::now();
+    let now = SystemTime::now();
 
     let v1 = SecurityPolicy {
         id: "versioned-policy".to_string(),
@@ -196,7 +196,7 @@ fn test_policy_versioning() {
 
 #[test]
 fn test_policy_with_extensive_metadata() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let mut metadata = HashMap::new();
     metadata.insert("environment".to_string(), serde_json::json!("production"));
     metadata.insert("region".to_string(), serde_json::json!("us-west-2"));
@@ -227,7 +227,7 @@ fn test_policy_with_extensive_metadata() {
 
 #[test]
 fn test_rule_priority_conflict_resolution() {
-    let now = Utc::now();
+    let now = SystemTime::now();
 
     // Two rules with same priority
     let rules = vec![
@@ -275,7 +275,7 @@ fn test_policy_composition_depth() {
         ..PolicyManagerConfig::default()
     };
 
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "deep-inheritance".to_string(),
         name: "Deep Inheritance Policy".to_string(),
@@ -300,7 +300,7 @@ fn test_policy_composition_depth() {
 
 #[test]
 fn test_policy_with_signed_integrity() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "signed-policy".to_string(),
         name: "Cryptographically Signed Policy".to_string(),
@@ -321,7 +321,7 @@ fn test_policy_with_signed_integrity() {
 
 #[test]
 fn test_disabled_rules_in_policy() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let rules = vec![
         PolicyRule {
             id: "enabled-rule".to_string(),
@@ -401,7 +401,7 @@ fn test_validation_timeout_settings() {
 
 #[test]
 fn test_policy_serialization_round_trip() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let original = SecurityPolicy {
         id: "roundtrip-001".to_string(),
         name: "Roundtrip Policy".to_string(),

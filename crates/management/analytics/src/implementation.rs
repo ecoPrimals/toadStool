@@ -11,11 +11,9 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use ndarray::Array1;
 use statrs::statistics::Statistics;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, error, info};
@@ -112,7 +110,7 @@ impl IntelligentAnalyticsEngine {
     fn query_data_points<'a>(
         buffer: &'a VecDeque<AnalyticsDataPoint>,
         metric_name: &str,
-        since: DateTime<Utc>,
+        since: SystemTime,
     ) -> Vec<&'a AnalyticsDataPoint> {
         buffer
             .iter()
@@ -131,20 +129,18 @@ impl IntelligentAnalyticsEngine {
 
         let correlation_coefficient = if data.len() > 1 {
             let x: Vec<f64> = (0..data.len()).map(|i| i as f64).collect();
-            let x_array = Array1::from(x);
-            let y_array = Array1::from(data.to_vec());
+            let n = data.len() as f64;
+            let x_mean: f64 = x.iter().sum::<f64>() / n;
+            let y_mean: f64 = data.iter().sum::<f64>() / n;
 
-            let x_mean = x_array.mean().unwrap_or(0.0);
-            let y_mean = y_array.mean().unwrap_or(0.0);
-
-            let numerator: f64 = x_array
+            let numerator: f64 = x
                 .iter()
-                .zip(y_array.iter())
-                .map(|(x, y)| (x - x_mean) * (y - y_mean))
+                .zip(data.iter())
+                .map(|(xi, yi)| (xi - x_mean) * (yi - y_mean))
                 .sum();
 
-            let x_variance: f64 = x_array.iter().map(|x| (x - x_mean).powi(2)).sum();
-            let y_variance: f64 = y_array.iter().map(|y| (y - y_mean).powi(2)).sum();
+            let x_variance: f64 = x.iter().map(|xi| (xi - x_mean).powi(2)).sum();
+            let y_variance: f64 = data.iter().map(|yi| (yi - y_mean).powi(2)).sum();
 
             if x_variance > 0.0 && y_variance > 0.0 {
                 numerator / (x_variance * y_variance).sqrt()
@@ -187,7 +183,7 @@ impl IntelligentAnalyticsEngine {
         let slope = (n * sum_xy - sum_x * sum_y) / denominator;
         let intercept = (sum_y - slope * sum_x) / n;
 
-        let current_time = Utc::now();
+        let current_time = SystemTime::now();
 
         (1..=hours_ahead)
             .map(|i| {
@@ -207,7 +203,7 @@ impl IntelligentAnalyticsEngine {
                 );
 
                 PredictionPoint {
-                    timestamp: current_time + chrono::Duration::hours(i64::from(i)),
+                    timestamp: current_time + Duration::from_secs((i as u64) * 3600),
                     predicted_value,
                     confidence_interval,
                     prediction_method: "linear_regression".to_string(),
@@ -243,7 +239,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     ) -> ToadStoolResult<TrendAnalysis> {
         debug!("Analyzing trends for metric: {}", metric_name);
 
-        let cutoff_time = Utc::now() - chrono::Duration::hours(i64::from(hours_back));
+        let cutoff_time = SystemTime::now() - Duration::from_secs((hours_back as u64) * 3600);
         let buffer = self.data_buffer.read().await;
         let matching = Self::query_data_points(&buffer, metric_name, cutoff_time);
 
@@ -254,7 +250,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         }
 
         let values: Vec<f64> = matching.iter().map(|dp| dp.value).collect();
-        let timestamps: Vec<DateTime<Utc>> = matching.iter().map(|dp| dp.timestamp).collect();
+        let timestamps: Vec<SystemTime> = matching.iter().map(|dp| dp.timestamp).collect();
 
         let statistics = Self::perform_statistical_analysis(&values);
 
@@ -288,8 +284,8 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 
         Ok(TrendAnalysis {
             metric_name: metric_name.to_string(),
-            start_time: timestamps.first().copied().unwrap_or_else(Utc::now),
-            end_time: timestamps.last().copied().unwrap_or_else(Utc::now),
+            start_time: timestamps.first().copied().unwrap_or_else(SystemTime::now),
+            end_time: timestamps.last().copied().unwrap_or_else(SystemTime::now),
             trend,
             statistics,
             confidence,
@@ -304,7 +300,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     ) -> ToadStoolResult<Vec<PredictionPoint>> {
         debug!("Predicting values for metric: {}", metric_name);
 
-        let cutoff_time = Utc::now() - chrono::Duration::hours(168); // Last week
+        let cutoff_time = SystemTime::now() - Duration::from_secs(168 * 3600); // Last week
         let buffer = self.data_buffer.read().await;
         let matching = Self::query_data_points(&buffer, metric_name, cutoff_time);
 
@@ -321,7 +317,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     async fn evaluate_alerts(&self) -> ToadStoolResult<Vec<Alert>> {
         debug!("Evaluating alert conditions");
 
-        let recent_time = Utc::now() - chrono::Duration::minutes(5);
+        let recent_time = SystemTime::now() - Duration::from_secs(5 * 60);
         let buffer = self.data_buffer.read().await;
 
         let mut triggered_alerts = Vec::new();
@@ -346,8 +342,8 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
                         value: self.config.alert_thresholds.cpu_threshold,
                     },
                     severity: AlertSeverity::Warning,
-                    created_at: Utc::now(),
-                    last_triggered: Some(Utc::now()),
+                    created_at: SystemTime::now(),
+                    last_triggered: Some(SystemTime::now()),
                     status: AlertStatus::Active,
                     recipients: vec!["admin@example.com".to_string()],
                 });
@@ -366,8 +362,8 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
                         value: self.config.alert_thresholds.memory_threshold,
                     },
                     severity: AlertSeverity::Critical,
-                    created_at: Utc::now(),
-                    last_triggered: Some(Utc::now()),
+                    created_at: SystemTime::now(),
+                    last_triggered: Some(SystemTime::now()),
                     status: AlertStatus::Active,
                     recipients: vec!["admin@example.com".to_string()],
                 });
@@ -426,7 +422,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
                     })
                     .map(|dp| {
                         serde_json::json!({
-                            "timestamp": dp.timestamp.to_rfc3339(),
+                            "timestamp": toadstool_common::system_time_serde::format_rfc3339(dp.timestamp),
                             "value": dp.value
                         })
                     })

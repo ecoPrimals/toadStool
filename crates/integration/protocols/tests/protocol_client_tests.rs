@@ -1,6 +1,5 @@
 //! Comprehensive tests for ProtocolClient
 
-use chrono::Utc;
 use serde_json::json;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -52,7 +51,7 @@ fn create_test_service_info() -> ServiceInfo {
         }],
         health_status: HealthStatus::Healthy,
         metadata: HashMap::new(),
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec!["compute".to_string()],
     }
 }
@@ -126,7 +125,7 @@ async fn test_register_multiple_services() {
         endpoints: vec![],
         health_status: HealthStatus::Healthy,
         metadata: HashMap::new(),
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -137,7 +136,7 @@ async fn test_register_multiple_services() {
         endpoints: vec![],
         health_status: HealthStatus::Healthy,
         metadata: HashMap::new(),
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -247,9 +246,9 @@ async fn test_message_has_timestamp() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
 
-    let before = Utc::now();
+    let before = std::time::SystemTime::now();
     let message = client.create_message("test", json!({}));
-    let after = Utc::now();
+    let after = std::time::SystemTime::now();
 
     assert!(message.timestamp >= before && message.timestamp <= after);
 }
@@ -437,7 +436,7 @@ async fn test_discover_services_with_different_names() {
         endpoints: vec![],
         health_status: HealthStatus::Healthy,
         metadata: HashMap::new(),
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -448,7 +447,7 @@ async fn test_discover_services_with_different_names() {
         endpoints: vec![],
         health_status: HealthStatus::Healthy,
         metadata: HashMap::new(),
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 

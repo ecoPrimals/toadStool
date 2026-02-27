@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::types::ArtifactType;
@@ -183,10 +182,12 @@ pub struct PipelineStatus {
     pub status: PipelineExecutionStatus,
 
     /// Started timestamp
-    pub started_at: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub started_at: Option<std::time::SystemTime>,
 
     /// Completed timestamp
-    pub completed_at: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub completed_at: Option<std::time::SystemTime>,
 
     /// Progress information
     pub progress: PipelineProgress,
@@ -244,10 +245,12 @@ pub struct StepStatus {
     pub status: StepExecutionStatus,
 
     /// Started timestamp
-    pub started_at: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub started_at: Option<std::time::SystemTime>,
 
     /// Completed timestamp
-    pub completed_at: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub completed_at: Option<std::time::SystemTime>,
 
     /// Error message if failed
     pub error: Option<String>,

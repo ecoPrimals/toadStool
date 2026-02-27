@@ -1,4 +1,10 @@
 // ToadStoolEvent tests - use JSON-RPC polling (no WebSocket)
+
+use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
+use toadstool_client::*;
+use uuid::Uuid;
+
 #[test]
 fn test_event_execution_status_changed() {
     let event = ToadStoolEvent::ExecutionStatusChanged {
@@ -110,8 +116,8 @@ fn test_workload_submission_to_execution_info_integration() {
     let execution_info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         runtime_type: submission.runtime_hint.clone(),
         error_message: None,
@@ -125,7 +131,7 @@ fn test_workload_submission_to_execution_info_integration() {
 #[test]
 fn test_execution_lifecycle_integration() {
     let id = Uuid::new_v4();
-    let submitted_time = Utc::now();
+    let submitted_time = SystemTime::now();
 
     // Pending
     let pending = ExecutionInfo {
@@ -146,7 +152,7 @@ fn test_execution_lifecycle_integration() {
         execution_id: id,
         status: ExecutionStatus::Running,
         submitted_at: submitted_time,
-        started_at: Some(Utc::now()),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         runtime_type: Some("container".to_string()),
         error_message: None,
@@ -161,7 +167,7 @@ fn test_execution_lifecycle_integration() {
         status: ExecutionStatus::Completed,
         submitted_at: submitted_time,
         started_at: running.started_at,
-        completed_at: Some(Utc::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("container".to_string()),
         error_message: None,
         output: Some(ExecutionOutput {

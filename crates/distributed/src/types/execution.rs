@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use crate::types::resources::ResourceAllocation;
@@ -29,7 +29,8 @@ pub enum DistributedExecutionStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributedExecution {
     pub execution_id: Uuid,
-    pub distribution_time: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub distribution_time: SystemTime,
     pub node_assignments: Vec<NodeAssignment>,
     pub resource_allocations: Vec<ResourceAllocation>,
     pub status: DistributedExecutionStatus,
@@ -40,7 +41,8 @@ pub struct DistributedExecution {
 pub struct JobDistributionResult {
     pub job_id: Uuid,
     pub target_node: String,
-    pub distribution_time: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub distribution_time: SystemTime,
 }
 
 /// Universal execution result
@@ -197,7 +199,7 @@ mod tests {
         let result = JobDistributionResult {
             job_id: Uuid::new_v4(),
             target_node: "node-1".to_string(),
-            distribution_time: chrono::Utc::now(),
+            distribution_time: SystemTime::now(),
         };
         let json = serde_json::to_string(&result).unwrap();
         let parsed: JobDistributionResult = serde_json::from_str(&json).unwrap();

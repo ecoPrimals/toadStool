@@ -63,7 +63,7 @@ fn test_discovered_services_empty() {
     let services = DiscoveredServices {
         discovered_services: HashMap::new(),
         discovery_summary: DiscoverySummary::default(),
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(services.discovered_services.len(), 0);
@@ -195,7 +195,7 @@ fn test_discovery_no_services() {
             services_by_type: HashMap::new(),
             discovery_errors: vec![],
         },
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(discovered.discovered_services.len(), 0);
@@ -248,7 +248,7 @@ fn test_discovery_all_services() {
             services_by_type,
             discovery_errors: vec![],
         },
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(discovered.discovered_services.len(), 2);
@@ -347,7 +347,7 @@ async fn test_concurrent_discovery() {
             let discovered = DiscoveredServices {
                 discovered_services: HashMap::new(),
                 discovery_summary: DiscoverySummary::default(),
-                discovery_timestamp: chrono::Utc::now(),
+                discovery_timestamp: std::time::SystemTime::now(),
             };
 
             assert_eq!(discovered.discovered_services.len(), 0);
@@ -468,18 +468,18 @@ fn test_service_capability_search() {
 /// Test discovery timestamp validation
 #[test]
 fn test_discovery_timestamp() {
-    use chrono::Utc;
-
-    let now = Utc::now();
+    let now = std::time::SystemTime::now();
     let discovered = DiscoveredServices {
         discovered_services: HashMap::new(),
         discovery_summary: DiscoverySummary::default(),
         discovery_timestamp: now,
     };
 
-    // Timestamp should be recent (within last second for this test)
-    let elapsed = Utc::now().signed_duration_since(discovered.discovery_timestamp);
-    assert!(elapsed.num_seconds() < 5, "Timestamp should be recent");
+    // Timestamp should be recent (within last 5 seconds for this test)
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(discovered.discovery_timestamp)
+        .unwrap_or_default();
+    assert!(elapsed.as_secs() < 5, "Timestamp should be recent");
 }
 
 /// Test rapid successive discoveries (stress test)
@@ -490,7 +490,7 @@ fn test_rapid_discoveries() {
         let discovered = DiscoveredServices {
             discovered_services: HashMap::new(),
             discovery_summary: DiscoverySummary::default(),
-            discovery_timestamp: chrono::Utc::now(),
+            discovery_timestamp: std::time::SystemTime::now(),
         };
         assert_eq!(discovered.discovered_services.len(), 0);
     }

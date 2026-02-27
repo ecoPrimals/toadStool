@@ -2,9 +2,9 @@
 //! Target: crates/client/src/client/types.rs
 //! Focus: Type conversions, enums, and struct operations
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
+use std::time::SystemTime;
 use toadstool_client::*;
 use uuid::Uuid;
 
@@ -293,7 +293,7 @@ fn test_resource_requirements_debug() {
 #[test]
 fn test_execution_info_creation() {
     let execution_id = Uuid::new_v4();
-    let now = Utc::now();
+    let now = SystemTime::now();
 
     let info = ExecutionInfo {
         execution_id,
@@ -318,8 +318,8 @@ fn test_execution_info_clone() {
     let info = ExecutionInfo {
         execution_id,
         status: ExecutionStatus::Running,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         runtime_type: Some("container".to_string()),
         error_message: None,
@@ -336,9 +336,9 @@ fn test_execution_info_serialization() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Completed,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("python".to_string()),
         error_message: None,
         output: None,
@@ -354,9 +354,9 @@ fn test_execution_info_debug() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Failed,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("wasm".to_string()),
         error_message: Some("Test error".to_string()),
         output: None,

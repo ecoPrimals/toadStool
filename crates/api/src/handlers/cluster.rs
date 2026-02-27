@@ -1,7 +1,8 @@
 //! Cluster status and management handlers
 
+use std::time::SystemTime;
+
 use axum::{extract::State, response::IntoResponse, Json};
-use chrono::Utc;
 use tracing::debug;
 
 use crate::constants::DEFAULT_RUNTIME_TYPE;
@@ -97,7 +98,7 @@ pub async fn get_cluster_status(
         total_capacity,
         used_capacity: current_utilization,
         node_details,
-        last_updated: Utc::now(),
+        last_updated: SystemTime::now(),
     };
 
     Ok(Json(response))

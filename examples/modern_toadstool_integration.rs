@@ -224,8 +224,8 @@ async fn register_mock_services(registry: &ServiceRegistry) -> Result<(), Box<dy
             priority: 0,
         }],
         version: semver::Version::new(1, 0, 0),
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
         health: HealthStatus::Healthy,
     };
     registry.register(pki_service).await?;
@@ -247,8 +247,8 @@ async fn register_mock_services(registry: &ServiceRegistry) -> Result<(), Box<dy
             priority: 0,
         }],
         version: semver::Version::new(2, 1, 0),
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
         health: HealthStatus::Healthy,
     };
     registry.register(orchestration_service).await?;
@@ -270,8 +270,8 @@ async fn register_mock_services(registry: &ServiceRegistry) -> Result<(), Box<dy
             priority: 0,
         }],
         version: semver::Version::new(1, 5, 2),
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
         health: HealthStatus::Healthy,
     };
     registry.register(storage_service).await?;
@@ -289,8 +289,8 @@ async fn register_mock_services(registry: &ServiceRegistry) -> Result<(), Box<dy
             priority: 0,
         }],
         version: semver::Version::new(0, 9, 0),
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
         health: HealthStatus::Degraded, // Note: degraded but still usable
     };
     registry.register(ai_service).await?;

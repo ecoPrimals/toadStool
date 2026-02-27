@@ -30,7 +30,7 @@ pub enum MigrationType {
 #[derive(Debug, Clone)]
 pub struct WorkloadCheckpoint {
     pub biome_name: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub timestamp: std::time::SystemTime,
     pub data_path: PathBuf,
 }
 
@@ -55,5 +55,5 @@ pub struct ReplicationHandle {
 pub struct WorkloadSnapshot {
     pub biome_name: String,
     pub snapshot_id: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: std::time::SystemTime,
 }

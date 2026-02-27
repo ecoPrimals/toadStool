@@ -1,7 +1,7 @@
 //! Legacy job type definitions
 
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
+use std::time::SystemTime;
 use uuid::Uuid;
 use std::time::Duration;
 use std::path::PathBuf;
@@ -35,7 +35,8 @@ pub struct LegacyJob {
     /// Job priority
     pub priority: JobPriority,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
     /// Timeout
     pub timeout: Duration,
 }

@@ -1,7 +1,7 @@
 //! Job request/response, complexity, subtask, and coordination types
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use crate::ResourceRequirements;
@@ -35,7 +35,8 @@ pub enum SongbirdJobResponse {
         job_id: Uuid,
         status: String,
         message: String,
-        estimated_completion: Option<DateTime<Utc>>,
+        #[serde(with = "toadstool_common::system_time_serde::opt")]
+        estimated_completion: Option<SystemTime>,
     },
     Error {
         job_id: Uuid,
@@ -121,7 +122,8 @@ pub struct SubTaskHandle {
     pub subtask_id: Uuid,
     pub songbird_job_id: Uuid,
     pub target_nodes: Vec<String>,
-    pub submitted_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub submitted_at: SystemTime,
     pub status: SubTaskStatus,
 }
 
@@ -179,8 +181,10 @@ pub enum CoordinationStrategy {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionMetrics {
-    pub start_time: DateTime<Utc>,
-    pub end_time: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub start_time: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub end_time: SystemTime,
     pub cpu_usage: f64,
     pub memory_usage: u64,
     pub network_io: u64,

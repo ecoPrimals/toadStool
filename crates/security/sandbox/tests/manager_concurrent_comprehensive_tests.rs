@@ -388,8 +388,8 @@ async fn test_concurrent_security_policy_application() {
         version: "1.0.0".to_string(),
         description: Some("Test".to_string()),
         author: Some("Test".to_string()),
-        created_at: chrono::Utc::now(),
-        modified_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
+        modified_at: std::time::SystemTime::now(),
         rules: vec![PolicyRule {
             id: "rule_1".to_string(),
             name: "Allow all".to_string(),

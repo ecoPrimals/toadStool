@@ -3,10 +3,9 @@
 //! This test suite provides extensive coverage for security policy management,
 //! including policy creation, validation, composition, evaluation, and enforcement.
 
-use toadstool_security_policies::*;
-
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
+use toadstool_security_policies::*;
 use std::path::PathBuf;
 use toadstool::security::{Capability, IsolationLevel};
 
@@ -22,8 +21,8 @@ fn test_policy_creation_minimal() {
         version: "1.0.0".to_string(),
         description: Some("Test description".to_string()),
         author: Some("Test Author".to_string()),
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata: HashMap::new(),
@@ -53,8 +52,8 @@ fn test_policy_with_rules() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![rule.clone()],
         inherits: vec![],
         metadata: HashMap::new(),
@@ -73,8 +72,8 @@ fn test_policy_with_inheritance() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec!["parent-policy".to_string(), "base-policy".to_string()],
         metadata: HashMap::new(),
@@ -97,8 +96,8 @@ fn test_policy_with_metadata() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata,
@@ -116,8 +115,8 @@ fn test_policy_with_signature() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata: HashMap::new(),

@@ -252,26 +252,25 @@ fn test_instant_timing() {
 }
 
 // ============================================================================
-// chrono Tests (for timestamps)
+// SystemTime tests (for timestamps)
 // ============================================================================
 
 #[test]
 fn test_utc_timestamp() {
-    use chrono::Utc;
-
-    let now = Utc::now();
-    let timestamp = now.timestamp();
+    let now = std::time::SystemTime::now();
+    let timestamp = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
 
     assert!(timestamp > 0);
 }
 
 #[test]
 fn test_timestamp_comparison() {
-    use chrono::Utc;
-
-    let time1 = Utc::now();
+    let time1 = std::time::SystemTime::now();
     // ✅ MODERN: Immediate execution (sleep removed)
-    let time2 = Utc::now();
+    let time2 = std::time::SystemTime::now();
 
     assert!(time2 > time1);
 }

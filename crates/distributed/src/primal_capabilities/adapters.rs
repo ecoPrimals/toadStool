@@ -171,7 +171,7 @@ impl PrimalAdapter for SongbirdAdapter {
         // Songbird Federation API via JSON-RPC over unix socket
         let heartbeat = SongbirdHeartbeat {
             service_id: "toadstool".to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             status: "healthy".to_string(),
         };
 
@@ -199,7 +199,7 @@ impl PrimalAdapter for SongbirdAdapter {
             service_id: "toadstool".to_string(),
             capability_id: capability.id.clone(),
             available,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         let params = serde_json::to_value(&update)?;
@@ -271,7 +271,8 @@ struct SongbirdResourceRequirements {
 #[derive(Debug, Serialize, Deserialize)]
 struct SongbirdHeartbeat {
     service_id: String,
-    timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    timestamp: std::time::SystemTime,
     status: String,
 }
 
@@ -280,7 +281,8 @@ struct SongbirdCapabilityUpdate {
     service_id: String,
     capability_id: String,
     available: bool,
-    timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    timestamp: std::time::SystemTime,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

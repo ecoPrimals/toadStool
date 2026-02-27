@@ -17,7 +17,6 @@
 use self::discovery::*;
 
 use anyhow::{Context, Result};
-use chrono::Utc;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -239,7 +238,7 @@ impl EcosystemIntegrator {
                         trust_level: TrustLevel::Verified,
                     },
                     status: ConnectionStatus::Connected,
-                    last_heartbeat: Utc::now(),
+                    last_heartbeat: std::time::SystemTime::now(),
                     _auth_token: Some(reg_token.token),
                 };
 
@@ -341,7 +340,7 @@ impl EcosystemIntegrator {
                         trust_level: TrustLevel::Verified,
                     },
                     status: ConnectionStatus::Connected,
-                    last_heartbeat: Utc::now(),
+                    last_heartbeat: std::time::SystemTime::now(),
                     _auth_token: None,
                 };
 
@@ -440,10 +439,9 @@ impl EcosystemIntegrator {
                     connection.endpoint.service_type.name(),
                     connection.endpoint.address.to_string(),
                     format!("{:?}", connection.status),
-                    connection
-                        .last_heartbeat
-                        .format("%Y-%m-%d %H:%M:%S")
-                        .to_string()
+                    toadstool_common::system_time_serde::format_rfc3339(
+                        connection.last_heartbeat,
+                    )
                 );
             }
         }
@@ -599,7 +597,7 @@ impl EcosystemIntegrator {
                     address: addr,
                     trust_level: TrustLevel::Discovered,
                     capabilities,
-                    last_seen: Utc::now(),
+                    last_seen: std::time::SystemTime::now(),
                 });
             }
         }

@@ -3,7 +3,6 @@
 //! These tests cover the BearDog security integration layer,
 //! including authentication, authorization, and audit functionality.
 
-use chrono::Utc;
 use std::collections::HashMap;
 use toadstool::security::SecurityContext;
 use toadstool_integration_protocols::*;
@@ -67,7 +66,7 @@ fn test_auth_request_creation() {
         service_type: "compute".to_string(),
         capabilities: vec!["execute".to_string(), "schedule".to_string()],
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(auth_request.service_id, "toadstool-1");
@@ -82,7 +81,7 @@ fn test_auth_request_serialization() {
         service_type: "test".to_string(),
         capabilities: vec!["test-cap".to_string()],
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let serialized = serde_json::to_string(&auth_request).expect("Failed to serialize");
@@ -118,7 +117,7 @@ fn test_auth_response_with_policies() {
         description: "A test security policy".to_string(),
         rules: vec![],
         enforcement_level: "strict".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let auth_response = AuthResponse {
@@ -149,7 +148,7 @@ fn test_authz_request_creation() {
         resource: "/api/compute/execute".to_string(),
         action: "POST".to_string(),
         context,
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(authz_request.resource, "/api/compute/execute");
@@ -164,7 +163,7 @@ fn test_authz_request_serialization() {
         resource: "/test/resource".to_string(),
         action: "READ".to_string(),
         context: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let serialized = serde_json::to_string(&authz_request).expect("Failed to serialize");
@@ -220,7 +219,7 @@ fn test_security_policy_creation() {
         description: "Controls access to sensitive data".to_string(),
         rules: vec![],
         enforcement_level: "strict".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(policy.id, "pol-123");
@@ -265,7 +264,7 @@ fn test_security_policy_with_rules() {
         description: "Policy with multiple rules".to_string(),
         rules: vec![rule1, rule2],
         enforcement_level: "moderate".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(policy.rules.len(), 2);
@@ -292,7 +291,7 @@ fn test_audit_event_creation() {
         result: "allowed".to_string(),
         security_context: SecurityContext::default(),
         metadata,
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(audit_event.event_type, "authorization_check");
@@ -312,7 +311,7 @@ fn test_audit_event_serialization() {
         result: "denied".to_string(),
         security_context: SecurityContext::default(),
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let serialized = serde_json::to_string(&audit_event).expect("Failed to serialize");
@@ -361,7 +360,7 @@ fn test_empty_capabilities_list() {
         service_type: "test".to_string(),
         capabilities: vec![], // Empty capabilities
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert!(auth_request.capabilities.is_empty());
@@ -376,7 +375,7 @@ fn test_large_capabilities_list() {
         service_type: "test".to_string(),
         capabilities: capabilities.clone(),
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(auth_request.capabilities.len(), 100);
@@ -391,7 +390,7 @@ fn test_empty_authz_context() {
         resource: "/resource".to_string(),
         action: "READ".to_string(),
         context: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert!(authz_request.context.is_empty());
@@ -418,7 +417,7 @@ fn test_complex_authz_context() {
         resource: "/api/admin".to_string(),
         action: "POST".to_string(),
         context,
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(authz_request.context.len(), 3);
@@ -460,7 +459,7 @@ fn test_enforcement_levels() {
             description: String::new(),
             rules: vec![],
             enforcement_level: level.to_string(),
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert_eq!(policy.enforcement_level, level);
@@ -512,7 +511,7 @@ fn test_multiple_policies_in_response() {
             description: String::new(),
             rules: vec![],
             enforcement_level: "strict".to_string(),
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
         },
         SecurityPolicy {
             id: "pol-2".to_string(),
@@ -520,7 +519,7 @@ fn test_multiple_policies_in_response() {
             description: String::new(),
             rules: vec![],
             enforcement_level: "moderate".to_string(),
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
         },
         SecurityPolicy {
             id: "pol-3".to_string(),
@@ -528,7 +527,7 @@ fn test_multiple_policies_in_response() {
             description: String::new(),
             rules: vec![],
             enforcement_level: "audit".to_string(),
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
         },
     ];
 

@@ -1,6 +1,5 @@
 //! Biome Executor - Type Definitions
 
-use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -22,7 +21,7 @@ pub(super) struct BiomeProcess {
     pub(super) process_type: ProcessType,
     pub(super) execution_id: Uuid,
     pub(super) pid: Option<u32>,
-    pub(super) _started_at: DateTime<Utc>,
+    pub(super) _started_at: std::time::SystemTime,
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +100,7 @@ mod tests {
             process_type: ProcessType::Service("web-service".to_string()),
             execution_id: Uuid::new_v4(),
             pid: Some(1234),
-            _started_at: Utc::now(),
+            _started_at: std::time::SystemTime::now(),
         };
         assert_eq!(bp.process_type_name(), "service");
     }
@@ -114,7 +113,7 @@ mod tests {
             process_type: ProcessType::Primal("toadstool".to_string()),
             execution_id: id,
             pid: None,
-            _started_at: Utc::now(),
+            _started_at: std::time::SystemTime::now(),
         };
         let display = bp._display_name();
         assert!(display.contains("toadstool"));
@@ -128,7 +127,7 @@ mod tests {
             process_type: ProcessType::Service("worker".to_string()),
             execution_id: Uuid::new_v4(),
             pid: None,
-            _started_at: Utc::now(),
+            _started_at: std::time::SystemTime::now(),
         };
         assert!(bp.pid.is_none());
     }

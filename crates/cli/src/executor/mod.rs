@@ -38,7 +38,6 @@ pub mod workload;
 
 // Core imports
 use anyhow::{bail, Context, Result};
-use chrono::Utc;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -116,7 +115,6 @@ mod wasm_ops; // WASM operations (loading, verification, execution)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
 
     #[test]
     fn test_process_type_variants() {
@@ -350,7 +348,7 @@ mod tests {
             process_type: ProcessType::Service("web".to_string()),
             execution_id: Uuid::new_v4(),
             pid: Some(12345),
-            _started_at: Utc::now(),
+            _started_at: std::time::SystemTime::now(),
         };
 
         assert_eq!(process.name, "test-service");
@@ -364,7 +362,7 @@ mod tests {
             process_type: ProcessType::Primal("songbird".to_string()),
             execution_id: Uuid::new_v4(),
             pid: None,
-            _started_at: Utc::now(),
+            _started_at: std::time::SystemTime::now(),
         };
 
         assert_eq!(process.name, "pending-service");

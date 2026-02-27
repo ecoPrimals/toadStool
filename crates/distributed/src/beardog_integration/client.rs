@@ -354,7 +354,10 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
             nonce: Vec::new(),
             aad: None,
             kdf_info: None,
-            encrypted_at: chrono::Utc::now().timestamp(),
+            encrypted_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64,
         };
 
         Ok((payload, metadata))

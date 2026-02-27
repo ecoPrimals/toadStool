@@ -3,7 +3,6 @@
 //! Week 17 Sprint 5: Integration Protocol types and structures tests
 //! Target: ~20 tests
 
-use chrono::Utc;
 use std::collections::HashMap;
 use toadstool::security::SecurityContext;
 use toadstool_integration_protocols::*;
@@ -66,7 +65,7 @@ fn test_auth_request_creation() {
         service_type: "compute".to_string(),
         capabilities: vec!["wasm".to_string(), "native".to_string()],
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(auth_request.service_id, "toadstool-123");
@@ -81,7 +80,7 @@ fn test_auth_request_clone() {
         service_type: "compute".to_string(),
         capabilities: vec!["wasm".to_string()],
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let auth_request2 = auth_request1.clone();
@@ -96,7 +95,7 @@ fn test_auth_request_debug() {
         service_type: "compute".to_string(),
         capabilities: vec![],
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let debug_str = format!("{:?}", auth_request);
@@ -118,7 +117,7 @@ fn test_auth_request_with_multiple_capabilities() {
         service_type: "universal-compute".to_string(),
         capabilities: capabilities.clone(),
         security_context: SecurityContext::default(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(auth_request.capabilities.len(), 5);
@@ -154,7 +153,7 @@ fn test_auth_response_with_policies() {
         description: "Test description".to_string(),
         rules: vec![],
         enforcement_level: "strict".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let auth_response = AuthResponse {
@@ -199,7 +198,7 @@ fn test_authz_request_creation() {
         resource: "/api/workloads".to_string(),
         action: "create".to_string(),
         context: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(authz_request.resource, "/api/workloads");
@@ -218,7 +217,7 @@ fn test_authz_request_with_context() {
         resource: "/api/admin".to_string(),
         action: "delete".to_string(),
         context: context.clone(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(authz_request.context.len(), 3);
@@ -235,7 +234,7 @@ fn test_authz_request_clone_debug() {
         resource: "/resource".to_string(),
         action: "read".to_string(),
         context: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let authz_request2 = authz_request1.clone();
@@ -311,7 +310,7 @@ fn test_security_policy_creation() {
         description: "Enforces strict security controls".to_string(),
         rules: vec![],
         enforcement_level: "strict".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(policy.id, "policy-secure-123");
@@ -354,7 +353,7 @@ fn test_security_policy_with_rules() {
         description: "Policy with multiple rules".to_string(),
         rules: vec![rule1, rule2],
         enforcement_level: "maximum".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(policy.rules.len(), 2);
@@ -370,7 +369,7 @@ fn test_security_policy_clone_debug() {
         description: "Test policy".to_string(),
         rules: vec![],
         enforcement_level: "basic".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let policy2 = policy1.clone();
@@ -400,7 +399,7 @@ fn test_security_audit_event_creation() {
         result: "allowed".to_string(),
         security_context: SecurityContext::default(),
         metadata: metadata.clone(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(audit_event.event_type, "authorization_decision");
@@ -421,7 +420,7 @@ fn test_security_audit_event_denied() {
         result: "denied".to_string(),
         security_context: SecurityContext::default(),
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(audit_event.result, "denied");
@@ -440,7 +439,7 @@ fn test_security_audit_event_clone_debug() {
         result: "success".to_string(),
         security_context: SecurityContext::default(),
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let audit_event2 = audit_event1.clone();

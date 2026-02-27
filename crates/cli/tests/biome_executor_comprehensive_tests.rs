@@ -224,19 +224,17 @@ async fn test_biome_id_generation() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timestamp_generation() {
     // Test timestamp generation for biome start time
-    use chrono::Utc;
-
-    let start_time1 = Utc::now();
+    let start_time1 = std::time::SystemTime::now();
     tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
-    let start_time2 = Utc::now();
+    let start_time2 = std::time::SystemTime::now();
 
     // Timestamps should be ordered
     assert!(start_time2 > start_time1);
 
     // Timestamps should be recent (within last minute)
-    let now = Utc::now();
-    let diff = now - start_time1;
-    assert!(diff.num_seconds() < 60);
+    let now = std::time::SystemTime::now();
+    let diff = now.duration_since(start_time1).unwrap_or_default();
+    assert!(diff.as_secs() < 60);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

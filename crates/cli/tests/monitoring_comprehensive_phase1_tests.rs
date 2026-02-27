@@ -185,17 +185,20 @@ async fn test_collect_network_metrics() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_timestamp() {
     // Test: Metrics include timestamps
-    use chrono::Utc;
-
     let metric = Metric {
         name: "test".to_string(),
         value: 42.0,
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels: HashMap::new(),
     };
 
     assert!(
-        metric.timestamp.timestamp() > 0,
+        metric
+            .timestamp
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            > 0,
         "Timestamp should be valid"
     );
 }
@@ -210,7 +213,7 @@ async fn test_metric_labels() {
     let metric = Metric {
         name: "test".to_string(),
         value: 42.0,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels,
     };
 
@@ -573,10 +576,8 @@ async fn test_generate_report() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_report_time_range() {
     // Test: Reports support time ranges
-    use chrono::{Duration as ChronoDuration, Utc};
-
-    let start = Utc::now() - ChronoDuration::hours(1);
-    let end = Utc::now();
+    let start = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    let end = std::time::SystemTime::now();
 
     assert!(end > start, "End should be after start");
 }
@@ -754,7 +755,7 @@ fn collect_cpu_metric() -> Metric {
     Metric {
         name: "cpu_percent".to_string(),
         value: 45.0,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels: HashMap::new(),
     }
 }
@@ -763,7 +764,7 @@ fn collect_memory_metric() -> Metric {
     Metric {
         name: "memory_bytes".to_string(),
         value: 1024.0 * 1024.0 * 1024.0, // 1GB
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels: HashMap::new(),
     }
 }
@@ -772,7 +773,7 @@ fn collect_disk_metric() -> Metric {
     Metric {
         name: "disk_bytes".to_string(),
         value: 10.0 * 1024.0 * 1024.0 * 1024.0, // 10GB
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels: HashMap::new(),
     }
 }
@@ -781,7 +782,7 @@ fn collect_network_rx_metric() -> Metric {
     Metric {
         name: "network_rx_bytes".to_string(),
         value: 1000000.0,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels: HashMap::new(),
     }
 }
@@ -790,7 +791,7 @@ fn collect_network_tx_metric() -> Metric {
     Metric {
         name: "network_tx_bytes".to_string(),
         value: 500000.0,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels: HashMap::new(),
     }
 }
@@ -799,7 +800,7 @@ fn create_test_metric() -> Metric {
     Metric {
         name: "test_metric".to_string(),
         value: 42.0,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         labels: HashMap::new(),
     }
 }
@@ -880,7 +881,7 @@ struct MonitorConfig {
 struct Metric {
     name: String,
     value: f64,
-    timestamp: chrono::DateTime<chrono::Utc>,
+    timestamp: std::time::SystemTime,
     labels: HashMap<String, String>,
 }
 

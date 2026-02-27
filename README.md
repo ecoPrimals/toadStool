@@ -290,8 +290,7 @@ toadStool/
 
 ### Active / Next
 - **Spring math evolution** -- springs migrate from local math to barracuda universal dispatch. Many interactions to evolve per spring.
-- **Test coverage 43% → 90%** -- systematic `cargo llvm-cov` gap analysis per crate
-- **chrono full elimination** -- partially migrated (common, byob, ecosystem); remaining modules need migration
+- **Test coverage 43% → 90%** -- barracuda at 80.7%, other crates need integration-test coverage capture (`--tests`)
 - **DF64 transcendental coverage** -- extend `asin_df64`, `acos_df64`, `atan_df64`, `sinh_df64`, `cosh_df64`, `gamma_df64`, `erf_df64`
 - **ComputeDispatch migration** -- Builder pattern created; migrating existing ops to reduce boilerplate
 - **Conv2D/Pool stride/padding/channels** -- WGSL exists, single-channel wired; full parametric support pending (D-S46-001)
@@ -299,7 +298,8 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
 ### Recently Completed
-- **Session 68++: Full ecosystem audit** -- AGPL-3 LICENSE + 29 header fixes, 0 clippy warnings across `--all-targets`, all files under 1000 lines, hardcoded primal names → capability-based, hardcoded ports → named discovery constants, `chrono` eliminated from `toadstool-common`, `println!` → `tracing` in barracuda
+- **Session 68+++: chrono full elimination** -- `chrono` removed as direct dependency from all 28 workspace Cargo.toml files. Migrated 200+ source/test files to `std::time::SystemTime` + `system_time_serde`. Zero chrono in dependency tree (only transitive via `procfs`).
+- **Session 68++: Full ecosystem audit** -- AGPL-3 LICENSE + 29 header fixes, 0 clippy warnings across `--all-targets`, all files under 1000 lines, hardcoded primal names → capability-based, hardcoded ports → named discovery constants, `println!` → `tracing` in barracuda
 - **Session 68+: Standalone resilience** -- GPU device-lost recovery (no more test cascades), `RUST_TEST_THREADS=4` default, stale scripts/docs archived to fossil
 - **Session 68: Dual-layer universal precision** -- `op_preamble` + naga-guided `df64_rewrite`. Precision bottleneck RESOLVED. 122 shader tests.
 - **Sessions 58-67: Sovereign compiler + deep debt** -- naga-IR FMA fusion, DF64 transcendentals, 46 cross-spring absorptions, 20+ files smart-refactored
@@ -336,4 +336,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 26, 2026 -- Session 68++: Full ecosystem audit COMPLETE. AGPL-3 license compliant. 0 clippy warnings (`--all-targets`). All files under 1000 lines. Hardcoded primals → capability-based. `chrono` partially eliminated. 43% test coverage (target: 90%). 700 WGSL shaders. 2,546+ barracuda tests.
+**Last Updated**: February 27, 2026 -- Session 68+++: chrono FULLY ELIMINATED (28 Cargo.toml, 200+ files migrated to std::time). AGPL-3 compliant. 0 clippy warnings (`--all-targets`). All quality gates green. Barracuda 80.7% coverage. 700 WGSL shaders. 2,546+ barracuda tests.

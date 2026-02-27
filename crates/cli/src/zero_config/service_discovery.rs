@@ -105,7 +105,7 @@ impl ServiceDiscovery {
                 version: "1.0.0".to_string(),
                 status: "discovered".to_string(),
                 auth_required: false,
-                discovered_at: chrono::Utc::now(),
+                discovered_at: std::time::SystemTime::now(),
             }));
         }
 
@@ -182,7 +182,7 @@ impl ServiceDiscovery {
                         version: "unknown".to_string(),
                         status: "discovered".to_string(),
                         auth_required: false,
-                        discovered_at: chrono::Utc::now(),
+                        discovered_at: std::time::SystemTime::now(),
                     }));
                 }
                 Ok(None)

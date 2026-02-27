@@ -4,9 +4,9 @@ use super::super::protocols;
 use super::super::*;
 use super::make_test_job;
 use crate::ResourceRequirements;
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
+use std::time::SystemTime;
 use uuid::Uuid;
 #[test]
 fn test_connection_health_variants() {
@@ -85,7 +85,7 @@ fn test_sub_task_handle_constructor() {
         subtask_id: Uuid::new_v4(),
         songbird_job_id: Uuid::new_v4(),
         target_nodes: vec![],
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         status: SubTaskStatus::Submitted,
     };
     assert!(matches!(handle.status, SubTaskStatus::Submitted));
@@ -182,7 +182,7 @@ fn test_broadcast_channel_publish_and_subscribe() {
     let msg = SongbirdBroadcastMessage::HealthUpdate {
         node_id: "n1".to_string(),
         health_status: "ok".to_string(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
     let result = ch.publish(msg);
     assert!(result.is_ok());
@@ -223,8 +223,8 @@ fn test_job_coordinator_with_strategy() {
 #[test]
 fn test_execution_metrics_serde() {
     let m = ExecutionMetrics {
-        start_time: Utc::now(),
-        end_time: Utc::now(),
+        start_time: SystemTime::now(),
+        end_time: SystemTime::now(),
         cpu_usage: 0.5,
         memory_usage: 1024,
         network_io: 0,
@@ -262,7 +262,7 @@ fn test_songbird_job_response_success_serde() {
         job_id: Uuid::new_v4(),
         status: "done".to_string(),
         message: "OK".to_string(),
-        estimated_completion: Some(Utc::now()),
+        estimated_completion: Some(SystemTime::now()),
     };
     let json = serde_json::to_string(&resp).unwrap();
     let parsed: SongbirdJobResponse = serde_json::from_str(&json).unwrap();
@@ -287,8 +287,8 @@ fn test_job_result_serde() {
         status: "completed".to_string(),
         output: vec![1, 2, 3],
         metrics: ExecutionMetrics {
-            start_time: Utc::now(),
-            end_time: Utc::now(),
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now(),
             cpu_usage: 0.5,
             memory_usage: 1024,
             network_io: 0,
@@ -378,7 +378,7 @@ fn test_sub_task_handle_serde() {
         subtask_id: Uuid::new_v4(),
         songbird_job_id: Uuid::new_v4(),
         target_nodes: vec!["n1".to_string()],
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         status: SubTaskStatus::Running,
     };
     let json = serde_json::to_string(&handle).unwrap();
@@ -461,8 +461,8 @@ fn test_massive_job_result_local_serde() {
             status: "ok".to_string(),
             output: vec![],
             metrics: ExecutionMetrics {
-                start_time: Utc::now(),
-                end_time: Utc::now(),
+                start_time: SystemTime::now(),
+                end_time: SystemTime::now(),
                 cpu_usage: 0.0,
                 memory_usage: 0,
                 network_io: 0,
@@ -499,7 +499,7 @@ fn test_songbird_broadcast_message_serde() {
             specialized_hardware: vec![],
             software_capabilities: vec![],
         },
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
     let json = serde_json::to_string(&msg).unwrap();
     let parsed: SongbirdBroadcastMessage = serde_json::from_str(&json).unwrap();
@@ -540,7 +540,7 @@ fn test_subscription_manager_publish_no_channel() {
     let msg = SongbirdBroadcastMessage::HealthUpdate {
         node_id: "n1".to_string(),
         health_status: "ok".to_string(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
     let n = mgr.publish("nonexistent", msg);
     assert_eq!(n, 0);
@@ -554,7 +554,7 @@ fn test_subscription_manager_close_channel() {
     let msg = SongbirdBroadcastMessage::HealthUpdate {
         node_id: "n1".to_string(),
         health_status: "ok".to_string(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
     let n = mgr.publish("ch", msg);
     assert_eq!(n, 0);
@@ -613,7 +613,7 @@ fn test_songbird_broadcast_message_health_update_serde() {
     let msg = SongbirdBroadcastMessage::HealthUpdate {
         node_id: "n1".to_string(),
         health_status: "ok".to_string(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
     let json = serde_json::to_string(&msg).unwrap();
     let parsed: SongbirdBroadcastMessage = serde_json::from_str(&json).unwrap();
@@ -625,7 +625,7 @@ fn test_songbird_broadcast_message_custom_message_serde() {
     let msg = SongbirdBroadcastMessage::CustomMessage {
         message_type: "job-complete".to_string(),
         payload: serde_json::json!({"job_id": "abc"}),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
     let json = serde_json::to_string(&msg).unwrap();
     let parsed: SongbirdBroadcastMessage = serde_json::from_str(&json).unwrap();

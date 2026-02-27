@@ -1,6 +1,5 @@
 //! Type definitions for zero-configuration deployment
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
@@ -170,7 +169,8 @@ pub struct ServiceEndpoint {
     /// Authentication required
     pub auth_required: bool,
     /// Discovery timestamp
-    pub discovered_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub discovered_at: std::time::SystemTime,
 }
 
 /// Auto-generated configuration

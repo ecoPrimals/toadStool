@@ -21,7 +21,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::Semaphore;
 
 use toadstool::universal::UniversalComputePlatform;
@@ -795,10 +795,12 @@ async fn save_benchmark_results(results: &[NetworkBenchmarkResults]) -> ToadStoo
     let json_results = serde_json::to_string_pretty(results)
         .map_err(|e| ToadStoolError::from(std::io::Error::other(e.to_string())))?;
 
-    let filename = format!(
-        "network_benchmark_results_{}.json",
-        chrono::Utc::now().format("%Y%m%d_%H%M%S")
-    );
+    let rfc = toadstool_common::system_time_serde::format_rfc3339(SystemTime::now());
+    let datetime = rfc
+        .replace('-', "")
+        .replace('T', "_")
+        .replace([':', 'Z'], "");
+    let filename = format!("network_benchmark_results_{}.json", datetime);
 
     tokio::fs::write(&filename, json_results)
         .await

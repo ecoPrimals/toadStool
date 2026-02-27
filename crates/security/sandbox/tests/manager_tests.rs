@@ -62,8 +62,8 @@ mod tests {
             version: "1.0.0".to_string(),
             description: Some("Test policy for sandbox validation".to_string()),
             author: Some("Test Author".to_string()),
-            created_at: chrono::Utc::now(),
-            modified_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
+            modified_at: std::time::SystemTime::now(),
             rules: vec![toadstool_security_policies::PolicyRule {
                 id: "rule-1".to_string(),
                 name: "Allow Native Workloads".to_string(),

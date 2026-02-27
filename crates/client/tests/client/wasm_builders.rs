@@ -4,8 +4,8 @@
 //! ExecutionInfo, ExecutionOutput, ExecutionMetrics, ToadStoolEvent,
 //! ClientError, and integration scenarios.
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use std::time::Duration;
 use toadstool_client::*;
 use uuid::Uuid;
@@ -253,7 +253,7 @@ fn test_execution_info_pending() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Pending,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
         completed_at: None,
         runtime_type: None,
@@ -272,8 +272,8 @@ fn test_execution_info_running() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         runtime_type: Some("native".to_string()),
         error_message: None,
@@ -291,9 +291,9 @@ fn test_execution_info_completed() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Completed,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("container".to_string()),
         error_message: None,
         output: Some(ExecutionOutput {
@@ -323,9 +323,9 @@ fn test_execution_info_failed() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Failed,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("wasm".to_string()),
         error_message: Some("Runtime error: Out of memory".to_string()),
         output: Some(ExecutionOutput {
@@ -347,9 +347,9 @@ fn test_execution_info_cancelled() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Cancelled,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
-        completed_at: Some(Utc::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: None,
         error_message: Some("Cancelled by user".to_string()),
         output: None,
@@ -363,3 +363,17 @@ fn test_execution_info_cancelled() {
 #[test]
 fn test_execution_info_timeout() {
     let info = ExecutionInfo {
+        execution_id: Uuid::new_v4(),
+        status: ExecutionStatus::Timeout,
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
+        runtime_type: Some("python".to_string()),
+        error_message: Some("Execution exceeded timeout of 300s".to_string()),
+        output: None,
+        metrics: None,
+    };
+
+    assert!(matches!(info.status, ExecutionStatus::Timeout));
+    assert!(info.error_message.as_ref().unwrap().contains("timeout"));
+}

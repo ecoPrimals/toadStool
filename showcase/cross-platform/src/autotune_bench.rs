@@ -10,8 +10,67 @@
 
 use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use wgpu::util::DeviceExt;
+
+/// Format SystemTime as RFC3339 string (e.g. "2025-02-27T12:00:00Z")
+fn format_rfc3339(t: SystemTime) -> String {
+    let d = t.duration_since(UNIX_EPOCH).unwrap_or_default();
+    let secs = d.as_secs();
+    const SECS_PER_DAY: u64 = 86400;
+    let days = (secs / SECS_PER_DAY) as u32;
+    let time_of_day = secs % SECS_PER_DAY;
+    let hour = (time_of_day / 3600) as u8;
+    let minute = ((time_of_day % 3600) / 60) as u8;
+    let second = (time_of_day % 60) as u8;
+    let (year, month, day) = days_since_epoch_to_ymd(days);
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        year, month, day, hour, minute, second
+    )
+}
+
+fn days_since_epoch_to_ymd(days: u32) -> (u32, u8, u8) {
+    const EPOCH: u32 = 719_163;
+    let rd = days + EPOCH;
+    let (year, doy) = rd_to_year_doy(rd);
+    let (month, day) = doy_to_month_day(year, doy);
+    (year, month, day)
+}
+
+fn rd_to_year_doy(rd: u32) -> (u32, u16) {
+    let mut doy = rd;
+    let mut year = (doy as u64 * 400 / 146_097) as u32;
+    doy -= (year as u64 * 146_097 / 400) as u32;
+    year += (doy / 36524) * 100;
+    doy %= 36524;
+    year += (doy / 1461) * 4;
+    doy %= 1461;
+    year += doy / 365;
+    doy %= 365;
+    if doy == 0 {
+        year -= 1;
+        doy = 365;
+    }
+    (year, doy as u16)
+}
+
+fn doy_to_month_day(year: u32, doy: u16) -> (u8, u8) {
+    let leap = (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400);
+    let days_in_month: [u16; 12] = if leap {
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    } else {
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    };
+    let mut d = doy;
+    for (i, &dim) in days_in_month.iter().enumerate() {
+        if d <= dim {
+            return ((i + 1) as u8, d as u8);
+        }
+        d -= dim;
+    }
+    (12, 31)
+}
 
 /// Calibration result for a specific GPU
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -474,7 +533,7 @@ pub async fn calibrate_gpu(
         optimal_batch_size: optimal_batch,
         peak_bandwidth_gbps: peak_bw,
         single_op_latency_us: single_op_latency,
-        calibrated_at: chrono::Utc::now().to_rfc3339(),
+        calibrated_at: format_rfc3339(std::time::SystemTime::now()),
     };
 
     println!("\n  ══════════════════════════════════════════");

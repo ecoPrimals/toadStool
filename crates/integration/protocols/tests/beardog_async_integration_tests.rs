@@ -157,7 +157,7 @@ async fn test_auth_request_serialization() {
         service_type: "compute".to_string(),
         capabilities: vec!["execute".to_string()],
         security_context: SecurityContext::default(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     // Test serialization
@@ -199,7 +199,7 @@ async fn test_authz_request_serialization() {
         resource: "/api/test".to_string(),
         action: "read".to_string(),
         context,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let json = serde_json::to_string(&request);
@@ -228,7 +228,7 @@ async fn test_security_policy_serialization() {
         description: "Test".to_string(),
         rules: vec![],
         enforcement_level: "strict".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let json = serde_json::to_string(&policy);
@@ -247,7 +247,7 @@ async fn test_security_audit_event_serialization() {
         result: "success".to_string(),
         security_context: SecurityContext::default(),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let json = serde_json::to_string(&event);
@@ -267,7 +267,7 @@ async fn test_auth_request_with_many_capabilities() {
         service_type: "compute".to_string(),
         capabilities,
         security_context: SecurityContext::default(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(request.capabilities.len(), 100);
@@ -293,7 +293,7 @@ async fn test_authz_request_with_complex_context() {
         resource: "/api/sensitive".to_string(),
         action: "write".to_string(),
         context,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(request.context.len(), 5);
@@ -315,7 +315,7 @@ async fn test_security_policy_with_many_rules() {
         description: "Policy with many rules".to_string(),
         rules,
         enforcement_level: "strict".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(policy.rules.len(), 50);
@@ -330,7 +330,7 @@ async fn test_auth_response_with_many_policies() {
             description: "Auto-generated policy".to_string(),
             rules: vec![],
             enforcement_level: "medium".to_string(),
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         })
         .collect();
 

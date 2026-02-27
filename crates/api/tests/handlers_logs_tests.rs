@@ -32,8 +32,8 @@ fn create_test_execution(id: Uuid) -> ExecutionInfo {
         execution_id: id,
         status: ExecutionStatus::Running,
         runtime_type: RuntimeType::Container,
-        submitted_at: chrono::Utc::now(),
-        started_at: Some(chrono::Utc::now()),
+        submitted_at: std::time::SystemTime::now(),
+        started_at: Some(std::time::SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: None,
@@ -59,8 +59,10 @@ async fn test_get_execution_logs_success() {
     }
 
     let time_range = TimeRange {
-        start: chrono::Utc::now() - chrono::Duration::hours(1),
-        end: chrono::Utc::now(),
+        start: std::time::SystemTime::now()
+            .checked_sub(std::time::Duration::from_secs(3600))
+            .unwrap_or(std::time::UNIX_EPOCH),
+        end: std::time::SystemTime::now(),
     };
 
     let result = get_execution_logs(State(state), Path(execution_id), Query(time_range)).await;
@@ -74,8 +76,10 @@ async fn test_get_execution_logs_not_found() {
     let execution_id = Uuid::new_v4();
 
     let time_range = TimeRange {
-        start: chrono::Utc::now() - chrono::Duration::hours(1),
-        end: chrono::Utc::now(),
+        start: std::time::SystemTime::now()
+            .checked_sub(std::time::Duration::from_secs(3600))
+            .unwrap_or(std::time::UNIX_EPOCH),
+        end: std::time::SystemTime::now(),
     };
 
     let result = get_execution_logs(State(state), Path(execution_id), Query(time_range)).await;
@@ -97,8 +101,10 @@ async fn test_get_execution_logs_with_time_range() {
     }
 
     let time_range = TimeRange {
-        start: chrono::Utc::now() - chrono::Duration::days(1),
-        end: chrono::Utc::now(),
+        start: std::time::SystemTime::now()
+            .checked_sub(std::time::Duration::from_secs(86400))
+            .unwrap_or(std::time::UNIX_EPOCH),
+        end: std::time::SystemTime::now(),
     };
 
     let result = get_execution_logs(State(state), Path(execution_id), Query(time_range)).await;
@@ -198,8 +204,10 @@ async fn test_concurrent_log_requests() {
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
             let time_range = TimeRange {
-                start: chrono::Utc::now() - chrono::Duration::hours(1),
-                end: chrono::Utc::now(),
+                start: std::time::SystemTime::now()
+                    .checked_sub(std::time::Duration::from_secs(3600))
+                    .unwrap_or(std::time::UNIX_EPOCH),
+                end: std::time::SystemTime::now(),
             };
             get_execution_logs(State(state_clone), Path(exec_id), Query(time_range))
                 .await
@@ -272,8 +280,10 @@ async fn test_logs_while_executions_changing() {
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
             let time_range = TimeRange {
-                start: chrono::Utc::now() - chrono::Duration::hours(1),
-                end: chrono::Utc::now(),
+                start: std::time::SystemTime::now()
+                    .checked_sub(std::time::Duration::from_secs(3600))
+                    .unwrap_or(std::time::UNIX_EPOCH),
+                end: std::time::SystemTime::now(),
             };
             get_execution_logs(State(state_clone), Path(exec_id), Query(time_range))
                 .await
@@ -331,8 +341,10 @@ async fn test_stress_100_concurrent_log_requests() {
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
             let time_range = TimeRange {
-                start: chrono::Utc::now() - chrono::Duration::hours(1),
-                end: chrono::Utc::now(),
+                start: std::time::SystemTime::now()
+                    .checked_sub(std::time::Duration::from_secs(3600))
+                    .unwrap_or(std::time::UNIX_EPOCH),
+                end: std::time::SystemTime::now(),
             };
             get_execution_logs(State(state_clone), Path(exec_id), Query(time_range))
                 .await
@@ -405,8 +417,10 @@ async fn test_get_logs_for_multiple_executions() {
 
     for execution_id in execution_ids {
         let time_range = TimeRange {
-            start: chrono::Utc::now() - chrono::Duration::hours(1),
-            end: chrono::Utc::now(),
+            start: std::time::SystemTime::now()
+                .checked_sub(std::time::Duration::from_secs(3600))
+                .unwrap_or(std::time::UNIX_EPOCH),
+            end: std::time::SystemTime::now(),
         };
         let result =
             get_execution_logs(State(state.clone()), Path(execution_id), Query(time_range)).await;
@@ -447,8 +461,10 @@ async fn test_logs_performance() {
 
     let start = std::time::Instant::now();
     let time_range = TimeRange {
-        start: chrono::Utc::now() - chrono::Duration::hours(1),
-        end: chrono::Utc::now(),
+        start: std::time::SystemTime::now()
+            .checked_sub(std::time::Duration::from_secs(3600))
+            .unwrap_or(std::time::UNIX_EPOCH),
+        end: std::time::SystemTime::now(),
     };
     let result = get_execution_logs(State(state), Path(execution_id), Query(time_range)).await;
     let duration = start.elapsed();

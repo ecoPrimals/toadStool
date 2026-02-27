@@ -2,10 +2,10 @@
 //!
 //! These tests target the background.rs module to achieve 40%+ coverage
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::SystemTime;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
@@ -138,8 +138,8 @@ mod background_services_tests {
         let execution = ActiveExecution {
             execution_id,
             runtime_type: RuntimeType::Native,
-            started_at: Utc::now() - chrono::Duration::seconds(400), // Started 400 seconds ago
-            timeout: Duration::from_secs(300),                       // Timeout is 300 seconds
+            started_at: SystemTime::now() - std::time::Duration::from_secs(400), // Started 400 seconds ago
+            timeout: Duration::from_secs(300), // Timeout is 300 seconds
             status: ExecutionStatus::Running,
             client_info: ClientInfo {
                 ip_address: Some("127.0.0.1".to_string()),
@@ -201,7 +201,7 @@ mod background_services_tests {
             let execution = ActiveExecution {
                 execution_id,
                 runtime_type: RuntimeType::Native,
-                started_at: Utc::now(),
+                started_at: SystemTime::now(),
                 timeout: Duration::from_secs(300),
                 status: ExecutionStatus::Running,
                 client_info: ClientInfo {

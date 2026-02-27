@@ -1,6 +1,5 @@
 //! Comprehensive tests for NestGate integration types
 
-use chrono::Utc;
 use std::collections::HashMap;
 use toadstool_integration_nestgate::*;
 use uuid::Uuid;
@@ -318,7 +317,7 @@ fn test_artifact_metadata_minimal() {
         content_type: "application/octet-stream".to_string(),
         size_bytes: 1024,
         checksum: "sha256:abc123".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags: HashMap::new(),
         execution_id: None,
@@ -350,8 +349,8 @@ fn test_artifact_metadata_with_tags() {
         content_type: "application/x-tensorflow".to_string(),
         size_bytes: 10240,
         checksum: "sha256:def456".to_string(),
-        created_at: Utc::now(),
-        last_accessed: Some(Utc::now()),
+        created_at: std::time::SystemTime::now(),
+        last_accessed: Some(std::time::SystemTime::now()),
         tags: tags.clone(),
         execution_id: Some(Uuid::new_v4()),
         storage_info: StorageInfo {
@@ -377,7 +376,7 @@ fn test_artifact_metadata_large_size() {
         content_type: "application/json".to_string(),
         size_bytes: 10_737_418_240, // 10 GB
         checksum: "sha256:large".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags: HashMap::new(),
         execution_id: None,
@@ -403,7 +402,7 @@ fn test_artifact_metadata_serialization() {
         content_type: "text/plain".to_string(),
         size_bytes: 512,
         checksum: "sha256:test".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags: HashMap::new(),
         execution_id: None,
@@ -437,7 +436,7 @@ fn test_scenario_ml_model_storage() {
         content_type: "application/x-pytorch".to_string(),
         size_bytes: 524_288_000, // 500 MB
         checksum: "sha256:model123".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags: {
             let mut tags = HashMap::new();
@@ -470,7 +469,7 @@ fn test_scenario_log_archival() {
         content_type: "text/plain".to_string(),
         size_bytes: 1_048_576, // 1 MB
         checksum: "sha256:logs".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags: HashMap::new(),
         execution_id: None,
@@ -500,8 +499,8 @@ fn test_scenario_wasm_module_deployment() {
         content_type: "application/wasm".to_string(),
         size_bytes: 204_800, // 200 KB
         checksum: "sha256:wasm".to_string(),
-        created_at: Utc::now(),
-        last_accessed: Some(Utc::now()),
+        created_at: std::time::SystemTime::now(),
+        last_accessed: Some(std::time::SystemTime::now()),
         tags: {
             let mut tags = HashMap::new();
             tags.insert("service".to_string(), "api".to_string());

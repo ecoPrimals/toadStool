@@ -1,7 +1,7 @@
 //! Comprehensive tests for common capacity management types
 
-use chrono::Utc;
 use std::time::Duration;
+use std::time::SystemTime;
 use toadstool_distributed::common::capacity::types::{
     AvailableCapacity, CapacityAlert, CapacityConfig, CapacityInfo, CapacityRequirement,
     NetworkCapacity, ResourceUsageSnapshot,
@@ -23,7 +23,7 @@ fn test_capacity_info_creation() {
         total_gpu_units: Some(2),
         available_gpu_units: Some(1),
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(info.total_cpu_cores, 8.0);
@@ -43,7 +43,7 @@ fn test_capacity_info_cpu_utilization() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 0,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let utilization = info.cpu_utilization();
@@ -62,7 +62,7 @@ fn test_capacity_info_cpu_utilization_zero_total() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 0,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(info.cpu_utilization(), 0.0);
@@ -80,7 +80,7 @@ fn test_capacity_info_memory_utilization() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 0,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let utilization = info.memory_utilization();
@@ -99,7 +99,7 @@ fn test_capacity_info_memory_utilization_zero_total() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 0,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(info.memory_utilization(), 0.0);
@@ -117,7 +117,7 @@ fn test_capacity_info_storage_utilization() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 0,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let utilization = info.storage_utilization();
@@ -136,7 +136,7 @@ fn test_capacity_info_storage_utilization_zero_total() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 0,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(info.storage_utilization(), 0.0);
@@ -154,7 +154,7 @@ fn test_capacity_info_has_capacity_sufficient() {
         total_gpu_units: Some(2),
         available_gpu_units: Some(1),
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -180,7 +180,7 @@ fn test_capacity_info_has_capacity_insufficient_cpu() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -206,7 +206,7 @@ fn test_capacity_info_has_capacity_insufficient_memory() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -232,7 +232,7 @@ fn test_capacity_info_has_capacity_insufficient_gpu() {
         total_gpu_units: Some(2),
         available_gpu_units: Some(0),
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -258,7 +258,7 @@ fn test_capacity_info_has_capacity_no_gpu_required() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -284,7 +284,7 @@ fn test_capacity_info_has_capacity_no_gpu_available_but_required() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -502,7 +502,7 @@ fn test_resource_usage_snapshot_creation() {
         total_gpu_units: Some(2),
         available_gpu_units: Some(1),
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let snapshot = ResourceUsageSnapshot {
@@ -510,7 +510,7 @@ fn test_resource_usage_snapshot_creation() {
         capacity: capacity_info,
         active_workloads: 10,
         pending_workloads: 5,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(snapshot.target_id, "node-001");
@@ -530,7 +530,7 @@ fn test_resource_usage_snapshot_serialization() {
         total_gpu_units: None,
         available_gpu_units: None,
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let snapshot = ResourceUsageSnapshot {
@@ -538,7 +538,7 @@ fn test_resource_usage_snapshot_serialization() {
         capacity: capacity_info,
         active_workloads: 20,
         pending_workloads: 10,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let json = serde_json::to_string(&snapshot).unwrap();
@@ -638,7 +638,7 @@ fn test_capacity_workflow_sufficient_resources() {
         total_gpu_units: Some(4),
         available_gpu_units: Some(3),
         network_bandwidth_bps: 10_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {
@@ -665,7 +665,7 @@ fn test_capacity_workflow_insufficient_resources() {
         total_gpu_units: Some(1),
         available_gpu_units: Some(0),
         network_bandwidth_bps: 1_000_000_000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let requirement = CapacityRequirement {

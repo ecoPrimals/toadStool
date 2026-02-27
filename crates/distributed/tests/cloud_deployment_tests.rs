@@ -154,7 +154,7 @@ fn test_cloud_deployment_result_single() {
         job_id: Uuid::new_v4(),
         provider_job_id: "job-123".to_string(),
         provider_name: "AWS".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let result = CloudDeploymentResult::Single {
@@ -179,14 +179,14 @@ fn test_cloud_deployment_result_multi() {
         job_id: Uuid::new_v4(),
         provider_job_id: "aws-job-123".to_string(),
         provider_name: "AWS".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let azure_handle = CloudJobHandle {
         job_id: Uuid::new_v4(),
         provider_job_id: "azure-job-456".to_string(),
         provider_name: "Azure".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     handles.insert("AWS".to_string(), aws_handle);
@@ -326,7 +326,7 @@ fn test_cloud_job_handle_creation() {
         job_id: Uuid::new_v4(),
         provider_job_id: "provider-123".to_string(),
         provider_name: "AWS".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(handle.provider_job_id, "provider-123");
@@ -339,14 +339,14 @@ fn test_cloud_job_handle_different_providers() {
         job_id: Uuid::new_v4(),
         provider_job_id: "aws-123".to_string(),
         provider_name: "AWS".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let azure_handle = CloudJobHandle {
         job_id: Uuid::new_v4(),
         provider_job_id: "azure-456".to_string(),
         provider_name: "Azure".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_ne!(aws_handle.provider_name, azure_handle.provider_name);

@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use chrono::Utc;
+use std::time::SystemTime;
 use toadstool_common::constants::timeouts;
 use tokio::sync::RwLock;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -125,7 +125,7 @@ impl SongbirdConnection {
         // Update last discovery time
         {
             let mut last = self.last_discovery.write().await;
-            *last = Some(Utc::now());
+            *last = Some(SystemTime::now());
         }
 
         Ok(healthy_services)
@@ -141,8 +141,10 @@ impl SongbirdConnection {
             match *last {
                 None => true,
                 Some(last_time) => {
-                    let age = Utc::now().signed_duration_since(last_time);
-                    age.num_seconds() > 300 // 5 minutes
+                    let age = SystemTime::now()
+                        .duration_since(last_time)
+                        .unwrap_or_default();
+                    age.as_secs() > 300 // 5 minutes
                 }
             }
         };
@@ -277,7 +279,10 @@ impl SongbirdConnection {
             available_services: services.len(),
             last_discovery: *last,
             cache_age_seconds: last.map(|t| {
-                Utc::now().signed_duration_since(t).num_seconds()
+                SystemTime::now()
+                    .duration_since(t)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0)
             }),
         }
     }
@@ -287,7 +292,7 @@ impl SongbirdConnection {
 #[derive(Debug, Clone)]
 pub struct ConnectionStats {
     pub available_services: usize,
-    pub last_discovery: Option<chrono::DateTime<Utc>>,
+    pub last_discovery: Option<SystemTime>,
     pub cache_age_seconds: Option<i64>,
 }
 

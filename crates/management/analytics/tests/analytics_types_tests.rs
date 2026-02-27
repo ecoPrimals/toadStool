@@ -1,7 +1,7 @@
 //! Comprehensive tests for analytics types
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 use toadstool_management_analytics::*;
 use uuid::Uuid;
 
@@ -102,7 +102,7 @@ fn test_analytics_data_point_creation() {
 
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "cpu_usage".to_string(),
         value: 75.5,
         runtime_type: None,
@@ -119,7 +119,7 @@ fn test_analytics_data_point_creation() {
 fn test_analytics_data_point_no_tags() {
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "memory_usage".to_string(),
         value: 60.0,
         runtime_type: None,
@@ -135,7 +135,7 @@ fn test_analytics_data_point_no_tags() {
 fn test_analytics_data_point_serialization() {
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test".to_string(),
         value: 42.0,
         runtime_type: None,
@@ -213,7 +213,7 @@ fn test_trend_statistics_creation() {
 #[test]
 fn test_prediction_point_creation() {
     let prediction = PredictionPoint {
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         predicted_value: 80.0,
         confidence_interval: (70.0, 90.0),
         prediction_method: "linear_regression".to_string(),
@@ -228,8 +228,8 @@ fn test_prediction_point_creation() {
 fn test_trend_analysis_creation() {
     let trend = TrendAnalysis {
         metric_name: "cpu_usage".to_string(),
-        start_time: Utc::now(),
-        end_time: Utc::now(),
+        start_time: SystemTime::now(),
+        end_time: SystemTime::now(),
         trend: TrendDirection::Increasing { slope: 0.5 },
         statistics: TrendStatistics {
             mean: 70.0,
@@ -334,7 +334,7 @@ fn test_alert_creation() {
             value: 80.0,
         },
         severity: AlertSeverity::Warning,
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         last_triggered: None,
         status: AlertStatus::Active,
         recipients: vec!["admin@example.com".to_string()],
@@ -356,8 +356,8 @@ fn test_alert_with_multiple_recipients() {
             value: 5.0,
         },
         severity: AlertSeverity::Critical,
-        created_at: Utc::now(),
-        last_triggered: Some(Utc::now()),
+        created_at: SystemTime::now(),
+        last_triggered: Some(SystemTime::now()),
         status: AlertStatus::Active,
         recipients: vec![
             "admin@example.com".to_string(),
@@ -400,9 +400,9 @@ fn test_panel_type_variants() {
 
 #[test]
 fn test_time_range_creation() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let time_range = TimeRange {
-        from: now - chrono::Duration::hours(24),
+        from: now - Duration::from_secs(24 * 3600),
         to: now,
         refresh_interval_secs: 30,
     };
@@ -426,14 +426,14 @@ fn test_panel_position_creation() {
 
 #[test]
 fn test_dashboard_panel_creation() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let panel = DashboardPanel {
         id: "panel-1".to_string(),
         title: "CPU Usage".to_string(),
         panel_type: PanelType::LineChart,
         metrics: vec!["cpu_usage".to_string(), "cpu_load".to_string()],
         time_range: TimeRange {
-            from: now - chrono::Duration::hours(1),
+            from: now - Duration::from_secs(3600),
             to: now,
             refresh_interval_secs: 10,
         },
@@ -513,14 +513,14 @@ fn test_dashboard_creation() {
 
 #[test]
 fn test_dashboard_with_multiple_panels() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let panel1 = DashboardPanel {
         id: "panel-1".to_string(),
         title: "CPU".to_string(),
         panel_type: PanelType::LineChart,
         metrics: vec!["cpu".to_string()],
         time_range: TimeRange {
-            from: now - chrono::Duration::hours(1),
+            from: now - Duration::from_secs(3600),
             to: now,
             refresh_interval_secs: 10,
         },
@@ -538,7 +538,7 @@ fn test_dashboard_with_multiple_panels() {
         panel_type: PanelType::LineChart,
         metrics: vec!["memory".to_string()],
         time_range: TimeRange {
-            from: now - chrono::Duration::hours(1),
+            from: now - Duration::from_secs(3600),
             to: now,
             refresh_interval_secs: 10,
         },
@@ -618,7 +618,7 @@ fn test_trend_direction_serialization() {
 #[test]
 fn test_prediction_high_confidence() {
     let prediction = PredictionPoint {
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         predicted_value: 85.0,
         confidence_interval: (84.0, 86.0),
         prediction_method: "arima".to_string(),
@@ -631,7 +631,7 @@ fn test_prediction_high_confidence() {
 #[test]
 fn test_prediction_low_confidence() {
     let prediction = PredictionPoint {
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         predicted_value: 75.0,
         confidence_interval: (60.0, 90.0),
         prediction_method: "naive".to_string(),

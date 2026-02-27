@@ -34,7 +34,7 @@ pub async fn submit_execution_handler(
     let execution_info = crate::state::ActiveExecution {
         execution_id,
         runtime_type: runtime_type.clone(),
-        started_at: chrono::Utc::now(),
+        started_at: std::time::SystemTime::now(),
         timeout: WORKLOAD_EXECUTION_TIMEOUT,
         status: toadstool::ExecutionStatus::Pending,
         client_info: crate::state::ClientInfo {
@@ -55,7 +55,7 @@ pub async fn submit_execution_handler(
         .send(ServerEvent::ExecutionStarted {
             execution_id,
             runtime_type: runtime_type.clone(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         })
         .is_err()
     {
@@ -68,7 +68,7 @@ pub async fn submit_execution_handler(
             "execution_id": execution_id,
             "status": "accepted",
             "runtime_type": runtime_type,
-            "timestamp": chrono::Utc::now(),
+            "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
         })),
     )
 }
@@ -88,9 +88,9 @@ pub async fn get_execution_status_handler(
                 "execution_id": execution.execution_id,
                 "status": execution.status,
                 "runtime_type": execution.runtime_type,
-                "started_at": execution.started_at,
+                "started_at": crate::state::timestamp_to_unix_secs(&execution.started_at),
                 "timeout": execution.timeout.as_secs(),
-                "timestamp": chrono::Utc::now(),
+                "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
             });
             (StatusCode::OK, Json(response))
         }
@@ -99,7 +99,7 @@ pub async fn get_execution_status_handler(
             Json(json!({
                 "error": "Execution not found",
                 "execution_id": execution_id,
-                "timestamp": chrono::Utc::now(),
+                "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
             })),
         ),
     }
@@ -129,7 +129,7 @@ pub async fn cancel_execution_handler(
                     Json(json!({
                         "execution_id": execution_id,
                         "status": "cancelled",
-                        "timestamp": chrono::Utc::now(),
+                        "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
                         "message": "Execution cancelled successfully"
                     })),
                 )

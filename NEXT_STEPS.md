@@ -1,12 +1,21 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 26, 2026 -- Session 68++
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings (--all-targets) | Standalone-resilient | 700 WGSL shaders | 2,546+ barracuda tests | 43% coverage (target: 90%)
-**Evolving**: Springs transition from fp64 shaders → true math. Coverage gap analysis. chrono full elimination.
+**Updated**: February 27, 2026 -- Session 68+++
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings (--all-targets) | Standalone-resilient | Zero chrono (pure std::time) | 700 WGSL shaders | 2,546+ barracuda tests | Barracuda 80.7% coverage
+**Evolving**: Springs transition from fp64 shaders → true math. Coverage gap analysis (barracuda 80.7% → 90%). manual_jsonrpc → pure_jsonrpc serving layer.
 
 ---
 
 ## Completed This Session
+
+### Session 68+++: chrono Full Elimination — Deep Debt ✅
+
+- **28 Cargo.toml files**: `chrono` removed as direct dependency from every workspace crate.
+- **200+ source/test files migrated**: `DateTime<Utc>` → `SystemTime`, `Utc::now()` → `SystemTime::now()`, `chrono::Duration` → `std::time::Duration`.
+- **`system_time_serde` module**: Extended with `format_rfc3339()` and `format_display()` helpers for formatted output.
+- **Workspace `[workspace.dependencies]`**: `chrono` entry removed — no crate references it.
+- **Crates migrated**: config, client, server, distributed, cli, api, management (monitoring, analytics, performance), security (policies, sandbox), integration (primals, nestgate, protocols, integration-tests), runtime (display, edge, specialty, adaptive, python, wasm, container, gpu), auto_config, testing, examples, showcase.
+- **All quality gates green**: `cargo check`, `cargo clippy --all-targets`, `cargo fmt`, `cargo doc` — zero warnings.
 
 ### Session 68+: Standalone Resilience — Deep Debt ✅
 

@@ -439,7 +439,7 @@ async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> Toad
                 endpoint: format!("http://localhost:8080/{primal_type}"),
                 payload: serde_json::json!({
                     "operation": "health_check",
-                    "timestamp": chrono::Utc::now().to_rfc3339()
+                    "timestamp": toadstool_common::system_time_serde::format_rfc3339(SystemTime::now())
                 }),
             },
             priority: JobPriority::Normal,
@@ -473,7 +473,10 @@ fn create_demo_context(demo_name: &str, security_level: SecurityLevel) -> Primal
             let mut metadata = HashMap::new();
             metadata.insert("demo".to_string(), "true".to_string());
             metadata.insert("demo_name".to_string(), demo_name.to_string());
-            metadata.insert("timestamp".to_string(), chrono::Utc::now().to_rfc3339());
+            metadata.insert(
+                "timestamp".to_string(),
+                toadstool_common::system_time_serde::format_rfc3339(SystemTime::now()),
+            );
             metadata
         },
     }

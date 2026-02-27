@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -57,11 +58,18 @@ pub struct ComputeJob {
     pub id: JobId,
     pub job_type: JobType,
     pub state: JobState,
-    pub submitted_at: chrono::DateTime<chrono::Utc>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub submitted_at: SystemTime,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "toadstool_common::system_time_serde::opt"
+    )]
+    pub started_at: Option<SystemTime>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "toadstool_common::system_time_serde::opt"
+    )]
+    pub completed_at: Option<SystemTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -132,7 +140,7 @@ impl GpuJobQueue {
             id,
             job_type,
             state: JobState::Pending,
-            submitted_at: chrono::Utc::now(),
+            submitted_at: SystemTime::now(),
             started_at: None,
             completed_at: None,
             result: None,
@@ -188,7 +196,7 @@ impl GpuJobQueue {
         match job.state {
             JobState::Pending | JobState::Running => {
                 job.state = JobState::Cancelled;
-                job.completed_at = Some(chrono::Utc::now());
+                job.completed_at = Some(SystemTime::now());
                 tracing::info!(%job_id, "Compute job cancelled");
                 Ok(())
             }
@@ -231,7 +239,7 @@ impl GpuJobQueue {
         }
 
         job.state = JobState::Running;
-        job.started_at = Some(chrono::Utc::now());
+        job.started_at = Some(SystemTime::now());
         Ok(())
     }
 
@@ -247,7 +255,7 @@ impl GpuJobQueue {
             .ok_or(JobQueueError::JobNotFound { id: job_id })?;
 
         job.state = JobState::Completed;
-        job.completed_at = Some(chrono::Utc::now());
+        job.completed_at = Some(SystemTime::now());
         job.result = Some(result);
         tracing::info!(%job_id, "Compute job completed");
         Ok(())
@@ -265,7 +273,7 @@ impl GpuJobQueue {
             .ok_or(JobQueueError::JobNotFound { id: job_id })?;
 
         job.state = JobState::Failed;
-        job.completed_at = Some(chrono::Utc::now());
+        job.completed_at = Some(SystemTime::now());
         job.error = Some(error.into());
         tracing::warn!(%job_id, "Compute job failed");
         Ok(())
@@ -298,7 +306,7 @@ impl GpuJobQueue {
 
     /// Clean up old completed/failed/cancelled jobs older than the given duration
     pub async fn cleanup(&self, max_age: std::time::Duration) {
-        let cutoff = chrono::Utc::now() - chrono::Duration::from_std(max_age).unwrap_or_default();
+        let cutoff = SystemTime::now() - max_age;
         let mut jobs = self.jobs.write().await;
         jobs.retain(|_, job| {
             match job.state {

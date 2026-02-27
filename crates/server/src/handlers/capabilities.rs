@@ -24,7 +24,7 @@ pub async fn list_runtime_engines_handler(State(state): State<ServerState>) -> i
     let response = json!({
         "runtime_engines": engines,
         "total_count": engines.len(),
-        "timestamp": chrono::Utc::now(),
+        "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
     });
 
     (StatusCode::OK, Json(response))

@@ -69,7 +69,7 @@ impl ComponentRegistry {
             id: instance_id.clone(),
             interfaces: instance_interfaces,
             state: ComponentState::Initializing,
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
             resource_usage: ComponentResourceUsage::default(),
         };
 

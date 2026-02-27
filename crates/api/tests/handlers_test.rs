@@ -9,7 +9,7 @@ use std::sync::Arc;
 use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
 use axum::Json;
-use chrono::Utc;
+use std::time::SystemTime;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
@@ -126,8 +126,8 @@ async fn test_get_execution_status_existing() {
         execution_id,
         status: ExecutionStatus::Running,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: Some(50.0),
@@ -185,8 +185,8 @@ async fn test_list_executions_with_data() {
                 ExecutionStatus::Running
             },
             runtime_type: RuntimeType::Native,
-            submitted_at: Utc::now(),
-            started_at: Some(Utc::now()),
+            submitted_at: SystemTime::now(),
+            started_at: Some(SystemTime::now()),
             completed_at: None,
             duration_ms: None,
             progress: Some(i as f64 * 20.0),
@@ -217,8 +217,8 @@ async fn test_cancel_execution_running() {
         execution_id,
         status: ExecutionStatus::Running,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: Some(30.0),
@@ -282,8 +282,8 @@ async fn test_get_execution_logs_not_found() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
     let filter = Query(TimeRange {
-        start: Utc::now(),
-        end: Utc::now(),
+        start: SystemTime::now(),
+        end: SystemTime::now(),
     });
 
     let result = get_execution_logs(State(state), Path(execution_id), filter).await;
@@ -341,7 +341,7 @@ async fn test_execution_lifecycle() {
         execution_id,
         status: ExecutionStatus::Submitted,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
         completed_at: None,
         duration_ms: None,
@@ -361,7 +361,7 @@ async fn test_execution_lifecycle() {
         let mut executions = state.executions.write().await;
         if let Some(exec) = executions.get_mut(&execution_id) {
             exec.status = ExecutionStatus::Running;
-            exec.started_at = Some(Utc::now());
+            exec.started_at = Some(SystemTime::now());
             exec.progress = Some(50.0);
         }
     }
@@ -371,7 +371,7 @@ async fn test_execution_lifecycle() {
         let mut executions = state.executions.write().await;
         if let Some(exec) = executions.get_mut(&execution_id) {
             exec.status = ExecutionStatus::Completed;
-            exec.completed_at = Some(Utc::now());
+            exec.completed_at = Some(SystemTime::now());
             exec.progress = Some(100.0);
             exec.duration_ms = Some(1500);
         }
@@ -548,8 +548,8 @@ async fn test_list_executions_with_status_filter() {
             execution_id,
             status,
             runtime_type: RuntimeType::Native,
-            submitted_at: Utc::now(),
-            started_at: Some(Utc::now()),
+            submitted_at: SystemTime::now(),
+            started_at: Some(SystemTime::now()),
             completed_at: None,
             duration_ms: None,
             progress: Some(50.0),
@@ -592,8 +592,8 @@ async fn test_get_execution_logs_error_handling() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
     let query = Query(TimeRange {
-        start: Utc::now(),
-        end: Utc::now(),
+        start: SystemTime::now(),
+        end: SystemTime::now(),
     });
 
     let result = get_execution_logs(State(state), Path(execution_id), query).await;
@@ -649,7 +649,7 @@ async fn test_execution_state_transitions() {
         execution_id,
         status: ExecutionStatus::Submitted,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
         completed_at: None,
         duration_ms: None,
@@ -699,8 +699,8 @@ async fn test_execution_progress_updates() {
         execution_id,
         status: ExecutionStatus::Running,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: Some(0.0),
@@ -734,9 +734,9 @@ async fn test_execution_with_error_message() {
         execution_id,
         status: ExecutionStatus::Failed,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         duration_ms: Some(500),
         progress: Some(30.0),
         error_message: Some("Test error message".to_string()),
@@ -774,8 +774,8 @@ async fn test_concurrent_status_queries() {
         execution_id,
         status: ExecutionStatus::Running,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: Some(50.0),
@@ -822,8 +822,8 @@ async fn test_multiple_executions_different_runtime_types() {
             execution_id,
             status: ExecutionStatus::Running,
             runtime_type,
-            submitted_at: Utc::now(),
-            started_at: Some(Utc::now()),
+            submitted_at: SystemTime::now(),
+            started_at: Some(SystemTime::now()),
             completed_at: None,
             duration_ms: None,
             progress: Some((i as f64 + 1.0) * 25.0),

@@ -69,7 +69,7 @@ impl ESP32Device {
             resources,
             connection_info,
             status: DeviceStatus::Offline,
-            last_seen: chrono::Utc::now(),
+            last_seen: std::time::SystemTime::now(),
         };
         
         Ok(Self {

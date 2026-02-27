@@ -10,9 +10,9 @@
 //! Evolved from squirrel_mcp (primal-specific) to ai_mcp_interface (agnostic).
 //! Works with ANY AI provider via runtime capability discovery.
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
+use std::time::SystemTime;
 
 use toadstool_auto_config::ai_mcp_interface::{
     AiMcpInterface, AiPreferences, ExecutionIntent, IoIntensity, McpRequest, McpRequestType,
@@ -69,7 +69,7 @@ async fn test_create_session_basic() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -110,7 +110,7 @@ async fn test_create_session_with_preferences() {
             preferences: Some(custom_prefs.clone()),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -142,7 +142,7 @@ async fn test_create_multiple_sessions() {
         agent_id: "agent-1".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response1 = interface.process_ai_request(request1).await;
@@ -155,7 +155,7 @@ async fn test_create_multiple_sessions() {
         agent_id: "agent-2".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response2 = interface.process_ai_request(request2).await;
@@ -183,7 +183,7 @@ async fn test_update_preferences_success() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let create_response = interface.process_ai_request(create_request).await.unwrap();
@@ -215,7 +215,7 @@ async fn test_update_preferences_success() {
             preferences: new_prefs.clone(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let update_response = interface.process_ai_request(update_request).await;
@@ -245,7 +245,7 @@ async fn test_update_preferences_nonexistent_session() {
             preferences: AiPreferences::default(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(update_request).await;
@@ -271,7 +271,7 @@ async fn test_update_preferences_no_session_id() {
             preferences: AiPreferences::default(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(update_request).await;
@@ -299,7 +299,7 @@ async fn test_get_system_status() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -349,7 +349,7 @@ async fn test_request_counter_increments() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let _ = interface.process_ai_request(request).await;
@@ -382,7 +382,7 @@ async fn test_request_counter_multiple_requests() {
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::GetSystemStatus,
             metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let _ = interface.process_ai_request(request).await;
@@ -415,7 +415,7 @@ async fn test_session_activity_updates() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let create_response = interface.process_ai_request(create_request).await.unwrap();
@@ -434,7 +434,7 @@ async fn test_session_activity_updates() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(status_request).await;
@@ -477,7 +477,7 @@ async fn test_execute_with_intent_basic() {
             intent,
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -523,7 +523,7 @@ async fn test_execute_with_high_security_intent() {
             intent,
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -569,7 +569,7 @@ async fn test_execute_with_gpu_intent() {
             intent,
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -603,7 +603,7 @@ async fn test_optimize_for_task() {
             task_description: "Machine learning inference".to_string(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -635,7 +635,7 @@ async fn test_natural_language_config() {
             instruction: "Configure for high performance".to_string(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -668,7 +668,7 @@ async fn test_metadata_handling() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;

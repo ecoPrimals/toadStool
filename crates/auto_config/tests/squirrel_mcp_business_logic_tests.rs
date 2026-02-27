@@ -10,8 +10,8 @@
 //! - Response construction
 //! - Metadata handling
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool_auto_config::ai_mcp_interface::{
     AiMcpInterface, AiPreferences, McpRequest, McpRequestType, ResourcePreferences,
 };
@@ -47,7 +47,7 @@ async fn test_create_session_generates_unique_ids() {
                 preferences: Some(prefs.clone()),
             },
             metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let response = interface.process_ai_request(request).await.unwrap();
@@ -76,7 +76,7 @@ async fn test_session_stores_agent_id() {
         agent_id: "my-special-agent-123".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -111,7 +111,7 @@ async fn test_update_preferences_validates_session_id() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::UpdatePreferences { preferences: prefs },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -142,7 +142,7 @@ async fn test_update_preferences_requires_session_id() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::UpdatePreferences { preferences: prefs },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -160,7 +160,7 @@ async fn test_session_timestamps_update() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let create_response = interface.process_ai_request(create_request).await.unwrap();
@@ -186,7 +186,7 @@ async fn test_session_timestamps_update() {
             },
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let update_response = interface.process_ai_request(update_request).await.unwrap();
@@ -223,7 +223,7 @@ async fn test_request_counter_increments_per_request() {
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::CreateSession { preferences: None },
             metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
         interface.process_ai_request(request).await.unwrap();
     }
@@ -256,7 +256,7 @@ async fn test_request_counter_increments_even_on_errors() {
             },
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let _response1 = interface.process_ai_request(request1).await;
@@ -268,7 +268,7 @@ async fn test_request_counter_increments_even_on_errors() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     interface.process_ai_request(request2).await.unwrap();
@@ -296,7 +296,7 @@ async fn test_default_preferences_applied() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -340,7 +340,7 @@ async fn test_custom_preferences_stored() {
             preferences: Some(custom_prefs.clone()),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -380,7 +380,7 @@ async fn test_preferences_can_be_updated() {
             preferences: Some(initial_prefs),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let create_response = interface.process_ai_request(create_request).await.unwrap();
@@ -407,7 +407,7 @@ async fn test_preferences_can_be_updated() {
             preferences: updated_prefs,
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let update_response = interface.process_ai_request(update_request).await.unwrap();
@@ -441,7 +441,7 @@ async fn test_metadata_accepted_in_requests() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     // Should not error with metadata
@@ -459,7 +459,7 @@ async fn test_empty_metadata_accepted() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -483,7 +483,7 @@ async fn test_successful_response_structure() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -517,7 +517,7 @@ async fn test_failed_response_structure() {
             },
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -539,7 +539,7 @@ async fn test_response_includes_suggestions() {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::CreateSession { preferences: None },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await.unwrap();
@@ -590,7 +590,7 @@ async fn test_get_session_stats_tracks_sessions() {
             agent_id: format!("agent-{}", i),
             request_type: McpRequestType::CreateSession { preferences: None },
             metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
         interface.process_ai_request(request).await.unwrap();
     }
@@ -613,7 +613,7 @@ async fn test_get_session_stats_tracks_requests() {
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::CreateSession { preferences: None },
             metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
         interface.process_ai_request(request).await.unwrap();
     }

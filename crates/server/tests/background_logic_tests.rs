@@ -120,16 +120,16 @@ fn test_cleanup_threshold() {
 #[test]
 fn test_cleanup_candidate_identification() {
     // Test cleanup candidate identification
-    use chrono::{Duration as ChronoDuration, Utc};
+    use std::time::{Duration, SystemTime};
 
-    let now = Utc::now();
-    let old_timestamp = now - ChronoDuration::hours(48);
-    let recent_timestamp = now - ChronoDuration::hours(12);
+    let now = SystemTime::now();
+    let old_timestamp = now - Duration::from_secs(48 * 3600);
+    let recent_timestamp = now - Duration::from_secs(12 * 3600);
 
-    let age_threshold = ChronoDuration::hours(24);
+    let age_threshold = Duration::from_secs(24 * 3600);
 
-    let is_old = (now - old_timestamp) > age_threshold;
-    let is_recent = (now - recent_timestamp) < age_threshold;
+    let is_old = now.duration_since(old_timestamp).unwrap_or_default() > age_threshold;
+    let is_recent = now.duration_since(recent_timestamp).unwrap_or_default() < age_threshold;
 
     assert!(is_old);
     assert!(is_recent);
@@ -153,11 +153,13 @@ fn test_statistics_collection_interval() {
 #[test]
 fn test_metrics_aggregation() {
     // Test metrics aggregation
+    use std::time::SystemTime;
+
     struct MetricsSnapshot {
         cpu: f64,
         memory: f64,
         disk: f64,
-        timestamp: chrono::DateTime<chrono::Utc>,
+        timestamp: SystemTime,
     }
 
     let snapshots = vec![
@@ -165,13 +167,13 @@ fn test_metrics_aggregation() {
             cpu: 50.0,
             memory: 60.0,
             disk: 70.0,
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         },
         MetricsSnapshot {
             cpu: 55.0,
             memory: 65.0,
             disk: 72.0,
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         },
     ];
 
@@ -186,7 +188,12 @@ fn test_metrics_aggregation() {
     let avg_disk = snapshots.iter().map(|s| s.disk).sum::<f64>() / snapshots.len() as f64;
     assert!((avg_disk - 71.0).abs() < 0.01);
 
-    assert!(snapshots.iter().all(|s| s.timestamp.timestamp() > 0));
+    assert!(snapshots.iter().all(|s| {
+        s.timestamp
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() > 0)
+            .unwrap_or(false)
+    }));
 }
 
 #[test]
@@ -260,7 +267,10 @@ fn test_health_check_response_format() {
             "memory": "ok",
             "disk": "ok"
         },
-        "timestamp": chrono::Utc::now()
+        "timestamp": std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
     });
 
     assert_eq!(health_response["status"], "healthy");
@@ -270,14 +280,14 @@ fn test_health_check_response_format() {
 #[test]
 fn test_uptime_calculation() {
     // Test uptime calculation
-    use chrono::{Duration, Utc};
+    use std::time::{Duration, SystemTime};
 
-    let start_time = Utc::now() - Duration::hours(2);
-    let current_time = Utc::now();
-    let uptime = current_time - start_time;
+    let start_time = SystemTime::now() - Duration::from_secs(2 * 3600);
+    let current_time = SystemTime::now();
+    let uptime = current_time.duration_since(start_time).unwrap_or_default();
 
-    assert!(uptime.num_hours() >= 2);
-    assert!(uptime.num_seconds() > 0);
+    assert!(uptime.as_secs() >= 7200); // 2 hours
+    assert!(uptime.as_secs() > 0);
 }
 
 #[test]
@@ -374,7 +384,10 @@ fn test_resource_snapshot() {
         memory_mb: 4096,
         disk_gb: 250,
         network_bytes: 1024 * 1024,
-        timestamp: chrono::Utc::now().timestamp(),
+        timestamp: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64,
     };
 
     assert!(snapshot.cpu_percent >= 0.0);
@@ -408,13 +421,13 @@ fn test_alert_deduplication() {
 #[test]
 fn test_monitoring_window() {
     // Test monitoring time window
-    use chrono::{Duration, Utc};
+    use std::time::{Duration, SystemTime};
 
-    let window_size = Duration::minutes(5);
-    let now = Utc::now();
+    let window_size = Duration::from_secs(5 * 60);
+    let now = SystemTime::now();
     let window_start = now - window_size;
 
-    let data_timestamp = now - Duration::minutes(3);
+    let data_timestamp = now - Duration::from_secs(3 * 60);
 
     let is_within_window = data_timestamp > window_start && data_timestamp <= now;
     assert!(is_within_window);
@@ -485,24 +498,30 @@ fn test_task_completion_tracking() {
 #[test]
 fn test_background_service_health() {
     // Test background service health check
+    use std::time::SystemTime;
+
     struct ServiceHealth {
         service_name: String,
         is_running: bool,
-        last_run: chrono::DateTime<chrono::Utc>,
+        last_run: SystemTime,
         error_count: u64,
     }
 
     let health = ServiceHealth {
         service_name: "resource_monitor".to_string(),
         is_running: true,
-        last_run: chrono::Utc::now(),
+        last_run: SystemTime::now(),
         error_count: 0,
     };
 
     assert!(health.is_running);
     assert_eq!(health.error_count, 0);
     assert!(!health.service_name.is_empty());
-    assert!(health.last_run.timestamp() > 0);
+    assert!(health
+        .last_run
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() > 0)
+        .unwrap_or(false));
 }
 
 #[test]

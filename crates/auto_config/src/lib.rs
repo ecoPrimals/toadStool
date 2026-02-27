@@ -329,7 +329,7 @@ impl ConfigBuilder {
             DiscoveredServices {
                 discovered_services: std::collections::HashMap::new(),
                 discovery_summary: ecosystem::DiscoverySummary::default(),
-                discovery_timestamp: chrono::Utc::now(),
+                discovery_timestamp: std::time::SystemTime::now(),
             }
         };
 
@@ -539,7 +539,7 @@ mod tests {
         let ecosystem = DiscoveredServices {
             discovered_services: std::collections::HashMap::new(),
             discovery_summary: ecosystem::DiscoverySummary::default(),
-            discovery_timestamp: chrono::Utc::now(),
+            discovery_timestamp: std::time::SystemTime::now(),
         };
 
         let summary = SystemSummary::from_capabilities(&capabilities, &ecosystem);

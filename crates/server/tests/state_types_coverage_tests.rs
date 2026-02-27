@@ -3,7 +3,7 @@
 //! These tests directly instantiate and use types from server/src/state.rs
 //! to increase llvm-cov coverage
 
-use chrono::Utc;
+use std::time::SystemTime;
 use toadstool::{ExecutionStatus, RuntimeType};
 use toadstool_server::{ActiveExecution, ClientInfo, ServerEvent, ServerStatistics};
 use uuid::Uuid;
@@ -138,7 +138,7 @@ fn test_active_execution_creation() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Native,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(300),
         status: ExecutionStatus::Pending,
         client_info: ClientInfo {
@@ -161,7 +161,7 @@ fn test_active_execution_with_wasm_runtime() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Wasm,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(60),
         status: ExecutionStatus::Pending,
         client_info: ClientInfo {
@@ -182,7 +182,7 @@ fn test_active_execution_clone() {
     let execution1 = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(120),
         status: ExecutionStatus::Pending,
         client_info: ClientInfo {
@@ -207,7 +207,7 @@ fn test_server_event_execution_started() {
     let event = ServerEvent::ExecutionStarted {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Native,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     // Test Debug implementation
@@ -222,7 +222,7 @@ fn test_server_event_execution_completed() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Success,
         duration_ms: 1500,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let debug_str = format!("{:?}", event);
@@ -234,7 +234,7 @@ fn test_server_event_execution_completed() {
 fn test_server_event_runtime_engine_registered() {
     let event = ServerEvent::RuntimeEngineRegistered {
         runtime_type: RuntimeType::Wasm,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let debug_str = format!("{:?}", event);
@@ -247,7 +247,7 @@ fn test_server_event_resource_usage_update() {
         cpu_usage_percent: 75.5,
         memory_usage_percent: 60.2,
         active_executions: 5,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let debug_str = format!("{:?}", event);
@@ -260,7 +260,7 @@ fn test_server_event_health_status_changed() {
     let event = ServerEvent::HealthStatusChanged {
         healthy: true,
         message: "System healthy".to_string(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let debug_str = format!("{:?}", event);
@@ -273,7 +273,7 @@ fn test_server_event_error_occurred() {
         error_type: "ExecutionFailure".to_string(),
         message: "Process crashed".to_string(),
         execution_id: Some(Uuid::new_v4()),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let debug_str = format!("{:?}", event);
@@ -286,7 +286,7 @@ fn test_server_event_clone() {
     let event1 = ServerEvent::ExecutionStarted {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Python,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let event2 = event1.clone();
@@ -313,7 +313,7 @@ fn test_execution_with_client_tracking() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Native,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(300),
         status: ExecutionStatus::Pending,
         client_info: client,
@@ -368,7 +368,7 @@ fn test_runtime_type_variants_in_events() {
     for runtime_type in runtime_types {
         let event = ServerEvent::RuntimeEngineRegistered {
             runtime_type,
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let debug_str = format!("{:?}", event);
@@ -384,7 +384,7 @@ fn test_execution_status_transitions() {
     let start_event = ServerEvent::ExecutionStarted {
         execution_id,
         runtime_type: RuntimeType::Native,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     // Completed
@@ -392,7 +392,7 @@ fn test_execution_status_transitions() {
         execution_id,
         status: ExecutionStatus::Success,
         duration_ms: 2000,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let start_debug = format!("{:?}", start_event);

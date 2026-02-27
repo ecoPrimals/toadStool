@@ -1,7 +1,6 @@
 //! System and ecosystem discovery functionality
 
 use anyhow::{Context, Result};
-use chrono::Utc;
 use std::future::Future;
 // use std::time::Duration;  // Unused after HTTP removal
 use tokio::process::Command;
@@ -479,7 +478,7 @@ impl ZeroConfigDeployment {
             version: "1.0.0".to_string(),
             status: "discovered".to_string(),
             auth_required: false,
-            discovered_at: Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
         }))
     }
 

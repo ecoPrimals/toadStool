@@ -2,6 +2,12 @@
 // Extended Policy Action Tests
 // ============================================================================
 
+use std::collections::HashMap;
+use std::time::SystemTime;
+use toadstool_security_policies::*;
+use toadstool::security::Capability;
+use toadstool::security::IsolationLevel;
+
 #[test]
 fn test_allow_with_warning_action() {
     let action = PolicyAction::AllowWithWarning {
@@ -271,8 +277,8 @@ fn test_policy_single_inheritance() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec!["parent".to_string()],
         metadata: HashMap::new(),
@@ -291,8 +297,8 @@ fn test_policy_multiple_inheritance() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![
             "base".to_string(),
@@ -314,8 +320,8 @@ fn test_policy_no_inheritance() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata: HashMap::new(),
@@ -341,8 +347,8 @@ fn test_policy_metadata_environment() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata,
@@ -370,8 +376,8 @@ fn test_policy_metadata_tags() {
         version: "1.0.0".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata,
@@ -393,8 +399,8 @@ fn test_policy_version_semantic() {
         version: "2.1.3".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata: HashMap::new(),
@@ -412,8 +418,8 @@ fn test_policy_version_with_prerelease() {
         version: "1.0.0-beta.1".to_string(),
         description: None,
         author: None,
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata: HashMap::new(),

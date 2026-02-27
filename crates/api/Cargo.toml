@@ -42,7 +42,7 @@ tower-http = { version = "0.5", features = ["cors", "fs", "trace", "timeout", "v
 hyper = { version = "1.0", features = ["full"] }
 
 # OpenAPI and documentation
-utoipa = { version = "4.0", features = ["axum_extras", "chrono", "uuid"] }
+utoipa = { version = "4.0", features = ["axum_extras", "uuid"] }
 utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
 utoipa-redoc = { version = "3.0", features = ["axum"] }
 utoipa-rapidoc = { version = "3.0", features = ["axum"] }
@@ -57,9 +57,6 @@ validator = { version = "0.16", features = ["derive"] }
 # If JWT needed in future, use jwt-simple (pure Rust alternative)
 bcrypt = "0.15"
 argon2 = "0.5"
-
-# Time handling
-chrono = { version = "0.4", features = ["serde"] }
 
 # Database with migrations - REMOVED: Unused, brings in ring via rustls
 # PURE RUST: sqlx removed - was unused and violated pure Rust principle

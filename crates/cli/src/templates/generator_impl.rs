@@ -3,7 +3,6 @@
 use super::{BiomeTemplate, TemplateGenerator};
 use crate::{BiomeManifest, BiomeMetadata};
 use anyhow::{Context, Result};
-use chrono::Utc;
 use std::path::PathBuf;
 use tokio::fs;
 use tracing::info;
@@ -108,7 +107,7 @@ impl TemplateGenerator {
     }
 
     fn create_manifest(&self, template: &BiomeTemplate) -> Result<BiomeManifest> {
-        let now = Utc::now();
+        let now = std::time::SystemTime::now();
 
         let (name, description, primals, services, resources, security, networking, storage) =
             match template {

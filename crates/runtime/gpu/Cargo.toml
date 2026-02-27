@@ -48,8 +48,6 @@ tracing = "0.1"
 log = "0.4"
 anyhow = "1.0"
 thiserror = { workspace = true }
-chrono = { version = "0.4", features = ["serde"] }
-
 # Concurrency primitives (for unified memory)
 # dashmap removed: evolved to std::sync::RwLock<HashMap> (consistent with barracuda pattern)
 parking_lot = "0.12"

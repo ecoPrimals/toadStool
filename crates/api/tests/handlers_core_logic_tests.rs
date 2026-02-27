@@ -217,14 +217,17 @@ fn test_status_filtering_logic() {
 #[test]
 fn test_time_based_sorting() {
     // Test sorting by submission time
-    use chrono::{Duration, Utc};
+    use std::time::{Duration, SystemTime};
 
-    let now = Utc::now();
+    let now = SystemTime::now();
 
     let mut times = vec![
-        now - Duration::seconds(500),
-        now - Duration::seconds(100),
-        now - Duration::seconds(300),
+        now.checked_sub(Duration::from_secs(500))
+            .unwrap_or(std::time::UNIX_EPOCH),
+        now.checked_sub(Duration::from_secs(100))
+            .unwrap_or(std::time::UNIX_EPOCH),
+        now.checked_sub(Duration::from_secs(300))
+            .unwrap_or(std::time::UNIX_EPOCH),
     ];
 
     // Sort oldest first
@@ -368,12 +371,17 @@ fn test_queue_position_calculation() {
 #[test]
 fn test_duration_calculation() {
     // Test execution duration calculation
-    use chrono::{Duration, Utc};
+    use std::time::{Duration, SystemTime};
 
-    let start_time = Utc::now();
-    let end_time = start_time + Duration::milliseconds(1500);
+    let start_time = SystemTime::now();
+    let end_time = start_time
+        .checked_add(Duration::from_millis(1500))
+        .unwrap_or(start_time);
 
-    let duration_ms = (end_time - start_time).num_milliseconds();
+    let duration_ms = end_time
+        .duration_since(start_time)
+        .unwrap_or_default()
+        .as_millis();
     assert_eq!(duration_ms, 1500);
 }
 
@@ -393,9 +401,7 @@ fn test_progress_percentage_validation() {
 #[test]
 fn test_metric_point_creation() {
     // Test metric data point creation
-    use chrono::Utc;
-
-    let _timestamp = Utc::now();
+    let _timestamp = std::time::SystemTime::now();
     let metric_name: &str = "cpu_usage";
     let value = 75.5;
 
@@ -406,11 +412,15 @@ fn test_metric_point_creation() {
 #[test]
 fn test_log_entry_ordering() {
     // Test log entry timestamp ordering
-    use chrono::{Duration, Utc};
+    use std::time::{Duration, SystemTime};
 
-    let now = Utc::now();
+    let now = SystemTime::now();
 
-    let log_times = vec![now, now + Duration::seconds(1), now + Duration::seconds(2)];
+    let log_times = vec![
+        now,
+        now.checked_add(Duration::from_secs(1)).unwrap_or(now),
+        now.checked_add(Duration::from_secs(2)).unwrap_or(now),
+    ];
 
     // Verify order
     for i in 0..log_times.len() - 1 {

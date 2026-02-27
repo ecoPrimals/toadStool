@@ -146,7 +146,7 @@ pub enum TrustLevel {
 pub(super) struct ServiceConnection {
     pub(super) endpoint: ServiceEndpoint,
     pub(super) status: ConnectionStatus,
-    pub(super) last_heartbeat: chrono::DateTime<chrono::Utc>,
+    pub(super) last_heartbeat: std::time::SystemTime,
     pub(super) _auth_token: Option<String>,
 }
 
@@ -179,7 +179,8 @@ pub struct BearDogPermission {
     pub permission_id: Uuid,
     pub granted_to: String,
     pub capabilities: Vec<String>,
-    pub valid_until: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub valid_until: std::time::SystemTime,
     pub signature: String,
 }
 
@@ -200,7 +201,8 @@ pub struct DiscoveredService {
     pub address: SocketAddr,
     pub trust_level: TrustLevel,
     pub capabilities: HashMap<String, String>,
-    pub last_seen: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_seen: std::time::SystemTime,
 }
 
 #[deprecated(
@@ -258,7 +260,8 @@ pub struct ServiceSignature {
     pub algorithm: String,
     pub signature: String,
     pub public_key: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
     pub nonce: String,
 }
 
@@ -268,7 +271,8 @@ pub struct SignedServiceResponse {
     pub service_type: String,
     pub status: String,
     pub capabilities: Vec<String>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
     pub signature: ServiceSignature,
 }
 
@@ -276,7 +280,8 @@ pub struct SignedServiceResponse {
 pub struct CryptoVerificationContext {
     pub trusted_public_keys: HashMap<String, String>,
     pub revoked_keys: Vec<String>,
-    pub verification_timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub verification_timestamp: std::time::SystemTime,
     pub max_age_minutes: u32,
 }
 
@@ -299,7 +304,7 @@ impl Default for CryptoVerificationContext {
         Self {
             trusted_public_keys: trusted_keys,
             revoked_keys: Vec::new(),
-            verification_timestamp: chrono::Utc::now(),
+            verification_timestamp: std::time::SystemTime::now(),
             max_age_minutes: 5, // 5 minute max age for responses
         }
     }
@@ -367,11 +372,12 @@ impl CryptoVerificationContext {
         }
 
         // Check response age
-        let response_age = chrono::Utc::now()
-            .signed_duration_since(response.timestamp)
-            .num_minutes();
+        let response_age = std::time::SystemTime::now()
+            .duration_since(response.timestamp)
+            .map(|d| d.as_secs() / 60)
+            .unwrap_or(0);
 
-        if response_age > i64::from(self.max_age_minutes) {
+        if response_age > u64::from(self.max_age_minutes) {
             warn!("Service response is too old: {} minutes", response_age);
             return Ok(false);
         }
@@ -398,7 +404,7 @@ impl CryptoVerificationContext {
         data.insert("service_id", &response.service_id);
         data.insert("service_type", &response.service_type);
         data.insert("status", &response.status);
-        let timestamp = response.timestamp.to_rfc3339();
+        let timestamp = toadstool_common::system_time_serde::format_rfc3339(response.timestamp);
         data.insert("timestamp", &timestamp);
         data.insert("nonce", &response.signature.nonce);
 

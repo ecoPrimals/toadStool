@@ -28,7 +28,8 @@ pub struct CapacityInfo {
     /// Network bandwidth (bytes/sec)
     pub network_bandwidth_bps: u64,
     /// Timestamp of measurement
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 impl CapacityInfo {
@@ -153,7 +154,8 @@ pub struct ResourceUsageSnapshot {
     /// Pending workloads count
     pub pending_workloads: u64,
     /// Timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 /// Capacity alert
@@ -191,7 +193,7 @@ mod tests {
             total_gpu_units: Some(2),
             available_gpu_units: Some(1),
             network_bandwidth_bps: network_bps,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         }
     }
 
@@ -263,7 +265,7 @@ mod tests {
             total_gpu_units: None,
             available_gpu_units: None,
             network_bandwidth_bps: 1000,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let req = CapacityRequirement {
             cpu_cores: 1.0,

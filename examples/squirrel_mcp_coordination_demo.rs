@@ -84,7 +84,7 @@ async fn demo_natural_language_config(
                 instruction: request.to_string(),
             },
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         let response = interface.process_ai_request(mcp_request).await?;
@@ -133,7 +133,7 @@ async fn demo_session_management(
             }),
         },
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let session_response = interface.process_ai_request(create_session_request).await?;
@@ -156,7 +156,7 @@ async fn demo_session_management(
                 instruction: "Configure for neural network training".to_string(),
             },
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         let config_response = interface.process_ai_request(session_config_request).await?;
@@ -264,7 +264,7 @@ async def process_data(data: dict):
                 intent: intent.clone(),
             },
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         let response = interface.process_ai_request(intent_request).await?;
@@ -311,7 +311,7 @@ async fn demo_task_optimization(
                 task_description: task.to_string(),
             },
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         let response = interface.process_ai_request(optimization_request).await?;
@@ -340,7 +340,7 @@ async fn demo_system_status(
         agent_id: "monitoring-agent".to_string(),
         request_type: SquirrelRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let response = interface.process_ai_request(status_request).await?;
@@ -403,7 +403,7 @@ async fn demo_real_time_coordination(
             agent_id: "realtime-agent".to_string(),
             request_type,
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         let start_time = std::time::Instant::now();

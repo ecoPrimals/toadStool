@@ -45,16 +45,14 @@ async fn create_test_executor() -> Result<BiomeExecutor> {
 
 #[allow(dead_code)]
 fn create_minimal_manifest(name: &str) -> BiomeManifest {
-    use chrono::Utc;
-
     BiomeManifest {
         metadata: BiomeMetadata {
             name: name.to_string(),
             version: "1.0.0".to_string(),
             description: Some("Test biome".to_string()),
             author: Some("Test".to_string()),
-            created: Utc::now(),
-            updated: Utc::now(),
+            created: std::time::SystemTime::now(),
+            updated: std::time::SystemTime::now(),
             tags: vec![],
         },
         primals: HashMap::new(),

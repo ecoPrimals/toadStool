@@ -108,7 +108,7 @@ fn test_discovered_service_creation() {
         address: "127.0.0.1:8080".parse().unwrap(),
         trust_level: TrustLevel::Discovered,
         capabilities: capabilities.clone(),
-        last_seen: chrono::Utc::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert!(matches!(service.service_type, ServiceType::Songbird));
@@ -123,7 +123,7 @@ fn test_discovered_service_with_empty_capabilities() {
         address: "192.168.1.1:8443".parse().unwrap(),
         trust_level: TrustLevel::Unknown,
         capabilities: HashMap::new(),
-        last_seen: chrono::Utc::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert!(service.capabilities.is_empty());
@@ -143,7 +143,7 @@ fn test_discovered_service_multiple_capabilities() {
         address: "10.0.0.1:8443".parse().unwrap(),
         trust_level: TrustLevel::Verified,
         capabilities,
-        last_seen: chrono::Utc::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert_eq!(service.capabilities.len(), 4);
@@ -212,7 +212,7 @@ fn test_beardog_permission_creation() {
         permission_id: uuid::Uuid::new_v4(),
         granted_to: "toadstool-instance-001".to_string(),
         capabilities: vec!["read".to_string(), "execute".to_string()],
-        valid_until: chrono::Utc::now() + chrono::Duration::hours(24),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(24 * 3600),
         signature: "ed25519-signature-base64".to_string(),
     };
 
@@ -234,7 +234,7 @@ fn test_beardog_permission_multiple_capabilities() {
         permission_id: uuid::Uuid::new_v4(),
         granted_to: "admin-service".to_string(),
         capabilities: capabilities.clone(),
-        valid_until: chrono::Utc::now() + chrono::Duration::weeks(1),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(7 * 24 * 3600),
         signature: "signature123".to_string(),
     };
 

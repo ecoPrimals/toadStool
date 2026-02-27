@@ -1,7 +1,7 @@
 //! Comprehensive tests for distributed execution types
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool_distributed::types::execution::*;
 use toadstool_distributed::*;
 use uuid::Uuid;
@@ -102,7 +102,7 @@ fn test_node_assignment_serialization() {
 fn test_distributed_execution_creation() {
     let execution = DistributedExecution {
         execution_id: Uuid::new_v4(),
-        distribution_time: Utc::now(),
+        distribution_time: SystemTime::now(),
         node_assignments: vec![],
         resource_allocations: vec![],
         status: DistributedExecutionStatus::Pending,
@@ -125,7 +125,7 @@ fn test_distributed_execution_with_assignments() {
 
     let execution = DistributedExecution {
         execution_id: Uuid::new_v4(),
-        distribution_time: Utc::now(),
+        distribution_time: SystemTime::now(),
         node_assignments: vec![assignment],
         resource_allocations: vec![],
         status: DistributedExecutionStatus::Running,
@@ -139,7 +139,7 @@ fn test_distributed_execution_with_assignments() {
 fn test_distributed_execution_serialization() {
     let execution = DistributedExecution {
         execution_id: Uuid::new_v4(),
-        distribution_time: Utc::now(),
+        distribution_time: SystemTime::now(),
         node_assignments: vec![],
         resource_allocations: vec![],
         status: DistributedExecutionStatus::Completed,
@@ -160,7 +160,7 @@ fn test_job_distribution_result_creation() {
     let result = JobDistributionResult {
         job_id: Uuid::new_v4(),
         target_node: "node-001".to_string(),
-        distribution_time: Utc::now(),
+        distribution_time: SystemTime::now(),
     };
 
     assert_eq!(result.target_node, "node-001");
@@ -171,7 +171,7 @@ fn test_job_distribution_result_serialization() {
     let result = JobDistributionResult {
         job_id: Uuid::new_v4(),
         target_node: "test-node".to_string(),
-        distribution_time: Utc::now(),
+        distribution_time: SystemTime::now(),
     };
 
     let json = serde_json::to_string(&result).unwrap();

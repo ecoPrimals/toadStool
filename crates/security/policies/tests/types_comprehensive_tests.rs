@@ -9,10 +9,10 @@
 //! - ViolationAction
 //! - Evaluation results
 
-use chrono::Utc;
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::SystemTime;
 use toadstool_security_policies::{
     PolicyAction, PolicyCondition, PolicyManagerConfig, PolicyRule, SecurityPolicy, ViolationAction,
 };
@@ -159,7 +159,7 @@ fn test_policy_manager_config_validation_timeout() {
 
 #[test]
 fn test_security_policy_creation() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-001".to_string(),
         name: "Test Policy".to_string(),
@@ -181,7 +181,7 @@ fn test_security_policy_creation() {
 
 #[test]
 fn test_security_policy_with_rules() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let rule = PolicyRule {
         id: "rule-001".to_string(),
         name: "Test Rule".to_string(),
@@ -212,7 +212,7 @@ fn test_security_policy_with_rules() {
 
 #[test]
 fn test_security_policy_with_inheritance() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-003".to_string(),
         name: "Child Policy".to_string(),
@@ -233,7 +233,7 @@ fn test_security_policy_with_inheritance() {
 
 #[test]
 fn test_security_policy_with_metadata() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let mut metadata = HashMap::new();
     metadata.insert("environment".to_string(), json!("production"));
     metadata.insert("version".to_string(), json!("2.0"));
@@ -258,7 +258,7 @@ fn test_security_policy_with_metadata() {
 
 #[test]
 fn test_security_policy_clone() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-005".to_string(),
         name: "Cloneable Policy".to_string(),
@@ -280,7 +280,7 @@ fn test_security_policy_clone() {
 
 #[test]
 fn test_security_policy_serialization() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-006".to_string(),
         name: "Serializable Policy".to_string(),
@@ -302,7 +302,7 @@ fn test_security_policy_serialization() {
 
 #[test]
 fn test_security_policy_with_signature() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-007".to_string(),
         name: "Signed Policy".to_string(),
@@ -323,7 +323,7 @@ fn test_security_policy_with_signature() {
 
 #[test]
 fn test_security_policy_multiple_rules() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let rules = vec![
         PolicyRule {
             id: "rule-1".to_string(),
@@ -366,7 +366,7 @@ fn test_security_policy_multiple_rules() {
 
 #[test]
 fn test_security_policy_version_format() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-009".to_string(),
         name: "Versioned Policy".to_string(),
@@ -387,8 +387,8 @@ fn test_security_policy_version_format() {
 
 #[test]
 fn test_security_policy_timestamp_ordering() {
-    let created = Utc::now();
-    let modified = Utc::now();
+    let created = SystemTime::now();
+    let modified = SystemTime::now();
 
     let policy = SecurityPolicy {
         id: "policy-010".to_string(),
@@ -409,7 +409,7 @@ fn test_security_policy_timestamp_ordering() {
 
 #[test]
 fn test_security_policy_empty_description() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-011".to_string(),
         name: "No Description".to_string(),
@@ -429,7 +429,7 @@ fn test_security_policy_empty_description() {
 
 #[test]
 fn test_security_policy_with_author() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let policy = SecurityPolicy {
         id: "policy-012".to_string(),
         name: "Authored Policy".to_string(),

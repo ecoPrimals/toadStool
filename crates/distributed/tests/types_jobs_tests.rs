@@ -1,8 +1,8 @@
 //! Comprehensive tests for distributed job types
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::time::SystemTime;
 use toadstool::{ExecutableSource, ExecutionRequest, PythonSource, WorkloadSpec};
 use toadstool_distributed::types::DistributedRetryConfig;
 use toadstool_distributed::*;
@@ -534,7 +534,7 @@ fn test_universal_job_creation() {
         dependencies: vec![],
         resource_requirements: ResourceRequirements::default(),
         retry_config: DistributedRetryConfig::default(),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     assert!(matches!(job.priority, JobPriority::Normal));
@@ -565,7 +565,7 @@ fn test_universal_job_with_dependencies() {
         dependencies: vec![dep1, dep2],
         resource_requirements: ResourceRequirements::default(),
         retry_config: DistributedRetryConfig::default(),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     assert_eq!(job.dependencies.len(), 2);
@@ -593,7 +593,7 @@ fn test_universal_job_serialization() {
         dependencies: vec![],
         resource_requirements: ResourceRequirements::default(),
         retry_config: DistributedRetryConfig::default(),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     let json = serde_json::to_string(&job).unwrap();

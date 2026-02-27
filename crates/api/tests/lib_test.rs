@@ -199,7 +199,7 @@ fn test_api_event_execution_started() {
     let event = ApiEvent::ExecutionStarted {
         execution_id: Uuid::new_v4(),
         runtime_type: toadstool::RuntimeType::Native,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     match event {
@@ -221,7 +221,7 @@ fn test_api_event_execution_completed() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Completed,
         duration_ms: 1500,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     match event {
@@ -244,7 +244,7 @@ fn test_api_event_execution_failed() {
     let event = ApiEvent::ExecutionFailed {
         execution_id: Uuid::new_v4(),
         error: "Test error".to_string(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     match event {
@@ -270,8 +270,8 @@ fn test_execution_info_running() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
         runtime_type: toadstool::RuntimeType::Native,
-        submitted_at: chrono::Utc::now(),
-        started_at: Some(chrono::Utc::now()),
+        submitted_at: std::time::SystemTime::now(),
+        started_at: Some(std::time::SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: Some(0.5),
@@ -295,9 +295,9 @@ fn test_execution_info_completed() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Completed,
         runtime_type: toadstool::RuntimeType::Python,
-        submitted_at: chrono::Utc::now(),
-        started_at: Some(chrono::Utc::now()),
-        completed_at: Some(chrono::Utc::now()),
+        submitted_at: std::time::SystemTime::now(),
+        started_at: Some(std::time::SystemTime::now()),
+        completed_at: Some(std::time::SystemTime::now()),
         duration_ms: Some(1500),
         progress: Some(1.0),
         error_message: None,
@@ -324,9 +324,9 @@ fn test_execution_info_failed() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Failed,
         runtime_type: toadstool::RuntimeType::Container,
-        submitted_at: chrono::Utc::now(),
-        started_at: Some(chrono::Utc::now()),
-        completed_at: Some(chrono::Utc::now()),
+        submitted_at: std::time::SystemTime::now(),
+        started_at: Some(std::time::SystemTime::now()),
+        completed_at: Some(std::time::SystemTime::now()),
         duration_ms: Some(500),
         progress: Some(0.25),
         error_message: Some("Container failed to start".to_string()),

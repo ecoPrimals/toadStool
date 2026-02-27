@@ -61,7 +61,7 @@ fn test_auth_request_creation() {
         service_type: "compute".to_string(),
         capabilities: vec!["execute".to_string()],
         security_context: toadstool::security::SecurityContext::default(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(request.service_id, "test-service");
@@ -75,7 +75,7 @@ fn test_auth_request_clone() {
         service_type: "test".to_string(),
         capabilities: vec![],
         security_context: toadstool::security::SecurityContext::default(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let request2 = request1.clone();
@@ -110,7 +110,7 @@ fn test_auth_response_with_policies() {
         description: "Test policy".to_string(),
         rules: vec![],
         enforcement_level: "strict".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     let response = AuthResponse {
@@ -136,7 +136,7 @@ fn test_authz_request_creation() {
         resource: "/api/data".to_string(),
         action: "read".to_string(),
         context: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(request.resource, "/api/data");
@@ -154,7 +154,7 @@ fn test_authz_request_with_context() {
         resource: "/api/data".to_string(),
         action: "write".to_string(),
         context,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(request.context.len(), 2);
@@ -205,7 +205,7 @@ fn test_security_policy_creation() {
         description: "Controls data access".to_string(),
         rules: vec![],
         enforcement_level: "strict".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(policy.id, "policy-1");
@@ -226,7 +226,7 @@ fn test_security_policy_with_rules() {
         description: "API access rules".to_string(),
         rules: vec![rule],
         enforcement_level: "moderate".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(policy.rules.len(), 1);
@@ -278,7 +278,7 @@ fn test_security_audit_event_creation() {
         result: "allowed".to_string(),
         security_context: toadstool::security::SecurityContext::default(),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(event.event_type, "authorization");
@@ -301,7 +301,7 @@ fn test_security_audit_event_with_metadata() {
         result: "success".to_string(),
         security_context: toadstool::security::SecurityContext::default(),
         metadata,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     assert_eq!(event.metadata.len(), 2);
@@ -320,7 +320,7 @@ fn test_security_audit_event_clone() {
         result: "success".to_string(),
         security_context: toadstool::security::SecurityContext::default(),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let event2 = event1.clone();

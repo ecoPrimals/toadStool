@@ -5,8 +5,8 @@
 //! ## Sovereignty
 //! Evolved from squirrel_mcp (primal-specific) to ai_mcp_interface (agnostic).
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool_auto_config::ai_mcp_interface::*;
 use toadstool_auto_config::ToadStoolResult;
 
@@ -47,8 +47,8 @@ fn test_ai_session_creation() {
         session_id: "test-session-123".to_string(),
         agent_id: "test-agent".to_string(),
         current_config: None,
-        started_at: Utc::now(),
-        last_activity: Utc::now(),
+        started_at: SystemTime::now(),
+        last_activity: SystemTime::now(),
         preferences: AiPreferences {
             security_level: Some("high".to_string()),
             performance_priority: 0.7,
@@ -137,7 +137,7 @@ async fn test_create_session_request() -> ToadStoolResult<()> {
             }),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await?;
@@ -168,7 +168,7 @@ async fn test_get_system_status_request() -> ToadStoolResult<()> {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await?;
@@ -193,7 +193,7 @@ async fn test_natural_language_config_request() -> ToadStoolResult<()> {
             instruction: "Set up a secure development environment".to_string(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await?;
@@ -221,7 +221,7 @@ async fn test_optimize_for_task_request() -> ToadStoolResult<()> {
             task_description: "machine learning model training".to_string(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await?;
@@ -272,7 +272,7 @@ async fn test_execute_with_intent_request() -> ToadStoolResult<()> {
             intent,
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await?;
@@ -308,7 +308,7 @@ async fn test_concurrent_session_creation() -> ToadStoolResult<()> {
                 agent_id: format!("agent-{}", i),
                 request_type: McpRequestType::CreateSession { preferences: None },
                 metadata: HashMap::new(),
-                timestamp: Utc::now(),
+                timestamp: SystemTime::now(),
             };
 
             interface.process_ai_request(request).await
@@ -351,7 +351,7 @@ async fn test_concurrent_status_requests() -> ToadStoolResult<()> {
                 agent_id: "test-agent".to_string(),
                 request_type: McpRequestType::GetSystemStatus,
                 metadata: HashMap::new(),
-                timestamp: Utc::now(),
+                timestamp: SystemTime::now(),
             };
 
             interface.process_ai_request(request).await
@@ -396,7 +396,7 @@ async fn test_request_with_empty_agent_id() -> ToadStoolResult<()> {
         agent_id: "".to_string(), // Empty agent ID
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await;
@@ -425,7 +425,7 @@ async fn test_request_with_large_metadata() -> ToadStoolResult<()> {
         agent_id: "test-agent".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let response = interface.process_ai_request(request).await?;
@@ -484,7 +484,7 @@ async fn test_multiple_sequential_requests() -> ToadStoolResult<()> {
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::GetSystemStatus,
             metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let response = interface.process_ai_request(request).await?;

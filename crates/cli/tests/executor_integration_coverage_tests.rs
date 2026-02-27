@@ -286,18 +286,17 @@ async fn test_process_type_categorization() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_info_structure() {
-    use chrono::Utc;
     use uuid::Uuid;
 
     // Test BiomeInfo-like structure creation
     let _id = Uuid::new_v4();
     let name = "test-biome".to_string();
     let status = "running".to_string();
-    let started_at = Utc::now();
+    let started_at = std::time::SystemTime::now();
 
     assert!(!name.is_empty());
     assert_eq!(status, "running");
-    assert!(started_at <= Utc::now());
+    assert!(started_at <= std::time::SystemTime::now());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

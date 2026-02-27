@@ -74,7 +74,8 @@ pub struct AuthRequest {
     pub service_type: String,
     pub capabilities: Vec<String>,
     pub security_context: SecurityContext,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 /// Authentication response from `BearDog`
@@ -95,7 +96,8 @@ pub struct AuthzRequest {
     pub resource: String,
     pub action: String,
     pub context: HashMap<String, serde_json::Value>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 /// Authorization response from `BearDog`
@@ -116,7 +118,8 @@ pub struct SecurityPolicy {
     pub description: String,
     pub rules: Vec<PolicyRule>,
     pub enforcement_level: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: std::time::SystemTime,
 }
 
 /// Policy rule definition
@@ -139,7 +142,8 @@ pub struct SecurityAuditEvent {
     pub result: String,
     pub security_context: SecurityContext,
     pub metadata: HashMap<String, serde_json::Value>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 /// `BearDog` security integration client
@@ -188,7 +192,7 @@ impl BearDogIntegration {
             service_type: service_type.to_string(),
             capabilities,
             security_context,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         // Try to call BearDog via Pure Rust Unix socket
@@ -259,7 +263,7 @@ impl BearDogIntegration {
             resource: resource.to_string(),
             action: action.to_string(),
             context,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         // Try to call BearDog via Pure Rust Unix socket
@@ -312,7 +316,10 @@ impl BearDogIntegration {
         info!("🛡️ Performing zero-trust validation with BearDog");
 
         let validation_request = serde_json::json!({
-            "timestamp": chrono::Utc::now(),
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
             "security_context": security_context,
             "validation_type": "zero_trust",
             "continuous_monitoring": self.config.continuous_monitoring,
@@ -469,7 +476,7 @@ impl BearDogIntegration {
                 );
                 metadata
             },
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
 
         let mut buffer = self.audit_buffer.lock().await;
@@ -489,7 +496,10 @@ impl BearDogIntegration {
 
         let audit_payload = serde_json::json!({
             "events": events,
-            "timestamp": chrono::Utc::now(),
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
         });
 
         // Try to flush to BearDog via Pure Rust Unix socket

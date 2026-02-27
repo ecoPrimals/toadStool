@@ -3,9 +3,9 @@
 //! Target: squirrel_mcp.rs (440 lines, 13.18% → 70%+ coverage)
 //! Focus: AI request processing, session management, type serialization
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
+use std::time::SystemTime;
 
 use toadstool_auto_config::ai_mcp_interface::{
     AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, IoIntensity, McpRequest,
@@ -133,7 +133,7 @@ fn test_squirrel_request_natural_language_config() {
             instruction: "Enable high performance mode".to_string(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(request.request_id, "req-001");
@@ -169,7 +169,7 @@ fn test_squirrel_request_execute_with_intent() {
             intent,
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(request.request_id, "req-002");
@@ -185,7 +185,7 @@ fn test_squirrel_request_optimize_for_task() {
             task_description: "Machine learning inference".to_string(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(request.request_id, "req-003");
@@ -199,7 +199,7 @@ fn test_squirrel_request_get_system_status() {
         agent_id: "agent-ai".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(request.request_id, "req-004");
@@ -215,7 +215,7 @@ fn test_squirrel_request_create_session() {
             preferences: Some(AiPreferences::default()),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(request.request_id, "req-005");
@@ -231,7 +231,7 @@ fn test_squirrel_request_update_preferences() {
             preferences: AiPreferences::default(),
         },
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     assert_eq!(request.request_id, "req-006");
@@ -246,7 +246,7 @@ fn test_squirrel_request_serialization() {
         agent_id: "agent-ai".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let json = serde_json::to_string(&request).unwrap();
@@ -574,8 +574,8 @@ fn test_ai_session_creation() {
         session_id: "session-001".to_string(),
         agent_id: "agent-ai".to_string(),
         current_config: None,
-        started_at: Utc::now(),
-        last_activity: Utc::now(),
+        started_at: SystemTime::now(),
+        last_activity: SystemTime::now(),
         preferences: AiPreferences::default(),
     };
 
@@ -589,8 +589,8 @@ fn test_ai_session_clone() {
         session_id: "session-001".to_string(),
         agent_id: "agent-ai".to_string(),
         current_config: None,
-        started_at: Utc::now(),
-        last_activity: Utc::now(),
+        started_at: SystemTime::now(),
+        last_activity: SystemTime::now(),
         preferences: AiPreferences::default(),
     };
 
@@ -728,7 +728,7 @@ fn test_request_response_round_trip() {
         agent_id: "agent-ai".to_string(),
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let request_json = serde_json::to_string(&request).unwrap();

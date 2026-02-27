@@ -2,8 +2,9 @@
 
 use std::time::Instant;
 
+use std::time::SystemTime;
+
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use chrono::Utc;
 
 use crate::types::{ApiError, HealthCheck, HealthResponse};
 use crate::ApiState;
@@ -81,7 +82,7 @@ pub async fn health_check(State(state): State<ApiState>) -> Result<impl IntoResp
         status: overall_status.to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_seconds: start_time.elapsed().as_secs(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         checks,
     };
 

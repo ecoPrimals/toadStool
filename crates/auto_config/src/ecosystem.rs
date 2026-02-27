@@ -150,7 +150,7 @@ impl EcosystemDiscoverer {
                     services_by_type: HashMap::new(),
                     discovery_errors: Vec::new(),
                 },
-                discovery_timestamp: chrono::Utc::now(),
+                discovery_timestamp: std::time::SystemTime::now(),
             });
         }
 
@@ -194,7 +194,7 @@ impl EcosystemDiscoverer {
         let services = DiscoveredServices {
             discovered_services,
             discovery_summary,
-            discovery_timestamp: chrono::Utc::now(),
+            discovery_timestamp: std::time::SystemTime::now(),
         };
 
         // Cache the results
@@ -516,7 +516,8 @@ pub struct DiscoveredServices {
     /// Summary of the discovery process
     pub discovery_summary: DiscoverySummary,
     /// When the discovery was performed
-    pub discovery_timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub discovery_timestamp: std::time::SystemTime,
 }
 
 /// Information about a discovered service

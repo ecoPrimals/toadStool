@@ -5,9 +5,9 @@
 //! ToadStool knows what it NEEDS (service-discovery, load-balancing),
 //! not what specific service provides it.
 
-use chrono::{DateTime, Utc};
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::SystemTime;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::timeouts;
 use toadstool_common::infant_discovery::{
@@ -39,7 +39,7 @@ pub struct CapabilityClient {
     cached_services: Arc<RwLock<Vec<DiscoveredService>>>,
 
     /// Last discovery timestamp
-    last_discovery: Arc<RwLock<Option<DateTime<Utc>>>>,
+    last_discovery: Arc<RwLock<Option<SystemTime>>>,
 }
 
 impl CapabilityClient {
@@ -149,7 +149,7 @@ impl CapabilityClient {
         // Update last discovery time
         {
             let mut last = self.last_discovery.write().await;
-            *last = Some(Utc::now());
+            *last = Some(SystemTime::now());
         }
 
         Ok(discovered_services)
@@ -162,8 +162,10 @@ impl CapabilityClient {
             match *last {
                 None => true,
                 Some(last_time) => {
-                    let age = Utc::now().signed_duration_since(last_time);
-                    age.num_seconds() > 300 // 5 minutes
+                    let age = SystemTime::now()
+                        .duration_since(last_time)
+                        .unwrap_or_default();
+                    age.as_secs() > 300 // 5 minutes
                 }
             }
         };
@@ -278,7 +280,12 @@ impl CapabilityClient {
         ClientStats {
             available_services: services.len(),
             last_discovery: *last,
-            cache_age_seconds: last.map(|t| Utc::now().signed_duration_since(t).num_seconds()),
+            cache_age_seconds: last.map(|t| {
+                SystemTime::now()
+                    .duration_since(t)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0)
+            }),
         }
     }
 }
@@ -287,7 +294,7 @@ impl CapabilityClient {
 #[derive(Debug, Clone)]
 pub struct ClientStats {
     pub available_services: usize,
-    pub last_discovery: Option<DateTime<Utc>>,
+    pub last_discovery: Option<SystemTime>,
     pub cache_age_seconds: Option<i64>,
 }
 
@@ -500,7 +507,7 @@ mod tests {
     async fn test_client_stats_debug() {
         let stats = ClientStats {
             available_services: 3,
-            last_discovery: Some(Utc::now()),
+            last_discovery: Some(SystemTime::now()),
             cache_age_seconds: Some(0),
         };
         let _ = format!("{:?}", stats);

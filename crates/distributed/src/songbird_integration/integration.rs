@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use chrono::Utc;
+use std::time::SystemTime;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tracing::debug;
 
@@ -203,7 +203,7 @@ impl ToadStoolSongbirdIntegration {
             subtask_id: subtask.id,
             songbird_job_id: job_id,
             target_nodes,
-            submitted_at: Utc::now(),
+            submitted_at: SystemTime::now(),
             status: SubTaskStatus::Submitted,
         })
     }
@@ -250,7 +250,7 @@ impl ToadStoolSongbirdIntegration {
             job_id: uuid::Uuid::new_v4(),
             status: "accepted".to_string(),
             message: "Job submitted successfully via gRPC".to_string(),
-            estimated_completion: Some(chrono::Utc::now() + chrono::Duration::minutes(5)),
+            estimated_completion: Some(SystemTime::now() + std::time::Duration::from_secs(300)),
         })
     }
 
@@ -276,7 +276,7 @@ impl ToadStoolSongbirdIntegration {
             job_id: uuid::Uuid::new_v4(),
             status: "queued".to_string(),
             message: "Job submitted successfully to message queue".to_string(),
-            estimated_completion: Some(chrono::Utc::now() + chrono::Duration::minutes(7)),
+            estimated_completion: Some(SystemTime::now() + std::time::Duration::from_secs(420)),
         })
     }
 
@@ -486,7 +486,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: crate::ResourceRequirements::default(),
             retry_config: crate::DistributedRetryConfig::default(),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
         }
     }
 

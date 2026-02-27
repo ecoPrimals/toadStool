@@ -91,7 +91,7 @@ async fn resource_monitoring_task(state: ServerState) {
                 cpu_usage_percent,
                 memory_usage_percent,
                 active_executions,
-                timestamp: chrono::Utc::now(),
+                timestamp: std::time::SystemTime::now(),
             })
             .is_err()
         {
@@ -137,7 +137,7 @@ async fn health_monitoring_task(state: ServerState) {
                         "System is unhealthy"
                     }
                     .to_string(),
-                    timestamp: chrono::Utc::now(),
+                    timestamp: std::time::SystemTime::now(),
                 })
                 .is_err()
             {
@@ -182,13 +182,15 @@ async fn cleanup_task(state: ServerState) {
         interval.tick().await;
 
         let mut active_executions = state.active_executions.write().await;
-        let now = chrono::Utc::now();
+        let now = std::time::SystemTime::now();
 
         // Clean up timed-out executions
         let mut to_remove = Vec::new();
         for (id, execution) in active_executions.iter() {
-            let elapsed = now.signed_duration_since(execution.started_at);
-            if elapsed.to_std().unwrap_or(Duration::ZERO) > execution.timeout {
+            let elapsed = now
+                .duration_since(execution.started_at)
+                .unwrap_or(Duration::ZERO);
+            if elapsed > execution.timeout {
                 to_remove.push(*id);
             }
         }
@@ -466,7 +468,7 @@ mod tests {
                 ActiveExecution {
                     execution_id: id,
                     runtime_type: RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: ExecutionStatus::Running,
                     client_info: ClientInfo {
@@ -552,7 +554,7 @@ mod tests {
         let event = ServerEvent::ExecutionStarted {
             execution_id: Uuid::new_v4(),
             runtime_type: RuntimeType::Native,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("execution_started"));
@@ -565,7 +567,7 @@ mod tests {
             execution_id: Uuid::new_v4(),
             status: ExecutionStatus::Success,
             duration_ms: 100,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("execution_completed"));
@@ -577,7 +579,7 @@ mod tests {
             cpu_usage_percent: 50.0,
             memory_usage_percent: 60.0,
             active_executions: 5,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("resource_usage_update"));
@@ -588,7 +590,7 @@ mod tests {
         let event = ServerEvent::HealthStatusChanged {
             healthy: true,
             message: "OK".to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("health_status_changed"));
@@ -600,7 +602,7 @@ mod tests {
             error_type: "Timeout".to_string(),
             message: "Execution timed out".to_string(),
             execution_id: Some(Uuid::new_v4()),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("error_occurred"));
@@ -610,7 +612,7 @@ mod tests {
     async fn test_server_event_runtime_engine_registered_to_json() {
         let event = ServerEvent::RuntimeEngineRegistered {
             runtime_type: RuntimeType::Native,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("runtime_engine_registered"));
@@ -635,7 +637,7 @@ mod tests {
                 ActiveExecution {
                     execution_id: id,
                     runtime_type: RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: ExecutionStatus::Running,
                     client_info: ClientInfo {
@@ -659,7 +661,7 @@ mod tests {
         let event = ServerEvent::ExecutionStarted {
             execution_id: id,
             runtime_type: RuntimeType::Native,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -675,7 +677,7 @@ mod tests {
                 error: "timeout".to_string(),
             },
             duration_ms: 5000,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("execution_completed"));
@@ -689,7 +691,7 @@ mod tests {
             error_type: "Timeout".to_string(),
             message: "Job timed out".to_string(),
             execution_id: Some(exec_id),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains(exec_id.to_string().as_str()));
@@ -701,7 +703,7 @@ mod tests {
             error_type: "System".to_string(),
             message: "Out of memory".to_string(),
             execution_id: None,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("error_occurred"));
@@ -783,7 +785,7 @@ mod tests {
         let event = ServerEvent::HealthStatusChanged {
             healthy: false,
             message: "High CPU".to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let json = event.to_json();
         assert!(json.contains("health_status_changed"));
@@ -824,7 +826,7 @@ mod tests {
             ActiveExecution {
                 execution_id: id,
                 runtime_type: RuntimeType::Native,
-                started_at: chrono::Utc::now(),
+                started_at: std::time::SystemTime::now(),
                 timeout: WORKLOAD_EXECUTION_TIMEOUT,
                 status: ExecutionStatus::Running,
                 client_info: ClientInfo {

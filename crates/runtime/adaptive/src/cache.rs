@@ -6,11 +6,11 @@
 use crate::fingerprint::GpuFingerprint;
 use crate::types::{OpType, SizeClass};
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 /// Workgroup configuration for specific operation + size
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,7 +24,8 @@ pub struct WorkgroupConfig {
     /// Number of measurements taken
     pub sample_count: usize,
     /// Last validation time
-    pub last_validated: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_validated: SystemTime,
 }
 
 impl WorkgroupConfig {
@@ -36,7 +37,7 @@ impl WorkgroupConfig {
             performance_us,
             confidence: 0.8, // Initial confidence
             sample_count: 1,
-            last_validated: Utc::now(),
+            last_validated: SystemTime::now(),
         }
     }
 
@@ -48,7 +49,7 @@ impl WorkgroupConfig {
 
         self.sample_count += 1;
         self.confidence = (self.confidence + 0.05).min(1.0);
-        self.last_validated = Utc::now();
+        self.last_validated = SystemTime::now();
     }
 }
 
@@ -91,9 +92,11 @@ pub struct OptimizationCache {
     /// GPU fingerprint this cache is for
     pub gpu_fingerprint: GpuFingerprint,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
     /// Last update timestamp
-    pub last_updated: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_updated: SystemTime,
     /// Profiles per operation
     pub profiles: HashMap<OpType, OperationProfile>,
 }
@@ -131,7 +134,7 @@ impl OptimizationCache {
                 cache.invalidate_stale();
             }
 
-            cache.last_updated = Utc::now();
+            cache.last_updated = SystemTime::now();
             Ok(cache)
         } else {
             // Create new cache
@@ -141,7 +144,7 @@ impl OptimizationCache {
 
     /// Create new empty cache
     pub(crate) fn new(gpu_fingerprint: GpuFingerprint) -> Self {
-        let now = Utc::now();
+        let now = SystemTime::now();
         Self {
             version: Self::VERSION,
             gpu_fingerprint,
@@ -204,7 +207,7 @@ impl OptimizationCache {
     /// Add operation profile
     pub fn add_profile(&mut self, profile: OperationProfile) {
         self.profiles.insert(profile.op_type, profile);
-        self.last_updated = Utc::now();
+        self.last_updated = SystemTime::now();
     }
 
     /// Update with new measurement
@@ -235,7 +238,7 @@ impl OptimizationCache {
             profile.add_config(size_class, WorkgroupConfig::new(workgroup, performance_us));
         }
 
-        self.last_updated = Utc::now();
+        self.last_updated = SystemTime::now();
     }
 
     /// Invalidate stale entries
@@ -252,7 +255,7 @@ impl OptimizationCache {
         self.profiles
             .retain(|_, profile| !profile.size_configs.is_empty());
 
-        self.last_updated = Utc::now();
+        self.last_updated = SystemTime::now();
     }
 
     /// Check if cache is empty
@@ -264,7 +267,7 @@ impl OptimizationCache {
     /// Clear all cached configurations
     pub fn clear(&mut self) {
         self.profiles.clear();
-        self.last_updated = Utc::now();
+        self.last_updated = SystemTime::now();
     }
 }
 

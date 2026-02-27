@@ -2,7 +2,7 @@
 //!
 //! Goal: Increase client coverage from 0% to 70%+
 
-use chrono::Utc;
+use std::time::SystemTime;
 use toadstool_client::{
     ClusterStatus, ExecutionInfo, ExecutionMetrics, ExecutionOutput, ExecutionStatus, JobPriority,
     ResourceRequirements, ToadStoolEvent, WorkloadType,
@@ -204,7 +204,7 @@ fn test_execution_status_variants() {
 #[test]
 fn test_execution_info_creation() {
     let execution_id = Uuid::new_v4();
-    let now = Utc::now();
+    let now = SystemTime::now();
 
     let info = ExecutionInfo {
         execution_id,
@@ -227,7 +227,7 @@ fn test_execution_info_with_error() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Failed,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
         completed_at: None,
         runtime_type: None,
@@ -252,9 +252,9 @@ fn test_execution_info_with_output() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Completed,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
-        completed_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
+        completed_at: Some(SystemTime::now()),
         runtime_type: Some("container".to_string()),
         error_message: None,
         output: Some(output.clone()),
@@ -396,7 +396,7 @@ fn test_execution_info_serialization() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Pending,
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         started_at: None,
         completed_at: None,
         runtime_type: None,

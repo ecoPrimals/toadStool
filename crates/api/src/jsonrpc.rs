@@ -255,7 +255,7 @@ async fn handle_execution_submit(state: &ApiState, params: &Value) -> JsonRpcRes
         execution_id,
         status: crate::ExecutionStatus::Submitted,
         runtime_type,
-        submitted_at: chrono::Utc::now(),
+        submitted_at: std::time::SystemTime::now(),
         started_at: None,
         completed_at: None,
         duration_ms: None,
@@ -315,9 +315,9 @@ async fn handle_execution_status(state: &ApiState, params: &Value) -> JsonRpcRes
                 "execution_id": info.execution_id.to_string(),
                 "status": format!("{:?}", info.status),
                 "runtime_type": format!("{:?}", info.runtime_type),
-                "submitted_at": info.submitted_at.to_rfc3339(),
-                "started_at": info.started_at.map(|t| t.to_rfc3339()),
-                "completed_at": info.completed_at.map(|t| t.to_rfc3339()),
+                "submitted_at": toadstool_common::system_time_serde::format_rfc3339(info.submitted_at),
+                "started_at": info.started_at.map(toadstool_common::system_time_serde::format_rfc3339),
+                "completed_at": info.completed_at.map(toadstool_common::system_time_serde::format_rfc3339),
                 "duration_ms": info.duration_ms,
                 "progress": info.progress,
                 "error_message": info.error_message
@@ -341,7 +341,7 @@ async fn handle_execution_list(state: &ApiState) -> JsonRpcResponse {
                 "execution_id": info.execution_id.to_string(),
                 "status": format!("{:?}", info.status),
                 "runtime_type": format!("{:?}", info.runtime_type),
-                "submitted_at": info.submitted_at.to_rfc3339()
+                "submitted_at": toadstool_common::system_time_serde::format_rfc3339(info.submitted_at)
             })
         })
         .collect();
@@ -374,7 +374,7 @@ async fn handle_execution_cancel(state: &ApiState, params: &Value) -> JsonRpcRes
     match executions.get_mut(&execution_id) {
         Some(info) => {
             info.status = crate::ExecutionStatus::Cancelled;
-            info.completed_at = Some(chrono::Utc::now());
+            info.completed_at = Some(std::time::SystemTime::now());
             JsonRpcResponse::success(
                 json!({
                     "execution_id": execution_id.to_string(),

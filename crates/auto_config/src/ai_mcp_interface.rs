@@ -30,7 +30,7 @@
 use crate::{IntelligentAutoConfig, NaturalLanguageConfig, ToadStoolResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -61,9 +61,9 @@ pub struct AiSession {
     /// Current configuration state
     pub current_config: Option<toadstool_config::ToadStoolConfig>,
     /// Session start time
-    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub started_at: SystemTime,
     /// Last activity timestamp
-    pub last_activity: chrono::DateTime<chrono::Utc>,
+    pub last_activity: SystemTime,
     /// AI preferences learned
     pub preferences: AiPreferences,
 }
@@ -108,7 +108,8 @@ pub struct McpRequest {
     /// Request metadata
     pub metadata: HashMap<String, String>,
     /// Request timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
 }
 
 /// Types of MCP requests from AI providers
@@ -583,8 +584,8 @@ impl AiMcpInterface {
             session_id: session_id.clone(),
             agent_id: agent_id.clone(),
             current_config: None,
-            started_at: chrono::Utc::now(),
-            last_activity: chrono::Utc::now(),
+            started_at: SystemTime::now(),
+            last_activity: SystemTime::now(),
             preferences: preferences.unwrap_or_else(|| AiPreferences {
                 security_level: Some("balanced".to_string()),
                 performance_priority: 0.7,
@@ -610,7 +611,7 @@ impl AiMcpInterface {
             data: Some(serde_json::json!({
                 "session_id": session_id,
                 "agent_id": agent_id,
-                "created_at": session.started_at
+                "created_at": session.started_at.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default().as_secs()
             })),
             suggestions: vec![
                 "Session created successfully".to_string(),
@@ -637,7 +638,7 @@ impl AiMcpInterface {
             let mut sessions = self.active_sessions.write().await;
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.preferences = preferences.clone();
-                session.last_activity = chrono::Utc::now();
+                session.last_activity = SystemTime::now();
 
                 info!("🔧 Updated preferences for session: {}", session_id);
 
@@ -731,7 +732,7 @@ impl AiMcpInterface {
     async fn update_session_activity(&self, session_id: &str) {
         let mut sessions = self.active_sessions.write().await;
         if let Some(session) = sessions.get_mut(session_id) {
-            session.last_activity = chrono::Utc::now();
+            session.last_activity = SystemTime::now();
         }
     }
 
@@ -797,7 +798,7 @@ mod tests {
                 instruction: "Enable high performance mode".to_string(),
             },
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let response = interface.process_ai_request(request).await;

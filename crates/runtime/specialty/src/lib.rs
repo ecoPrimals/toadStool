@@ -23,7 +23,6 @@
 //! ```
 
 // Migrated to native async traits
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
@@ -643,7 +642,7 @@ impl SpecialtyRuntimeEngine {
             },
             communication_settings: CommunicationSettings::default(),
             priority: JobPriority::Normal,
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
             timeout: Duration::from_secs(3600),
         })
     }
@@ -794,7 +793,7 @@ mod tests {
             },
             communication_settings: CommunicationSettings::default(),
             priority: JobPriority::Normal,
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
             timeout: Duration::from_secs(3600),
         };
         

@@ -13,7 +13,7 @@ mod tests {
         CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
     };
     use crate::{ResourceRequirements, UniversalJob, UniversalJobType};
-    use std::time::Duration;
+    use std::time::{Duration, SystemTime};
 
     fn make_orchestrator_config() -> CloudOrchestratorConfig {
         CloudOrchestratorConfig {
@@ -241,7 +241,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_deploy_universal_job_no_providers() {
-        use chrono::Utc;
+        use std::time::SystemTime;
         use toadstool::ExecutionRequest;
         use uuid::Uuid;
 
@@ -261,7 +261,7 @@ mod tests {
                 50 * 1024 * 1024 * 1024,
             ),
             retry_config: crate::types::DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let result = orch.deploy_universal_job(&job).await;
@@ -323,7 +323,7 @@ mod tests {
     #[tokio::test]
     async fn test_job_scheduling_across_providers_with_mock() {
         use async_trait::async_trait;
-        use chrono::Utc;
+        use std::time::SystemTime;
         use toadstool::ExecutionRequest;
         use uuid::Uuid;
 
@@ -343,7 +343,7 @@ mod tests {
                     job_id: job.job_id,
                     provider_job_id: format!("mock-{}", Uuid::new_v4()),
                     provider_name: self.name.clone(),
-                    created_at: Utc::now(),
+                    created_at: SystemTime::now(),
                 })
             }
 
@@ -430,7 +430,7 @@ mod tests {
                 50 * 1024 * 1024 * 1024,
             ),
             retry_config: crate::types::DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let result = orch.deploy_universal_job(&job).await;
@@ -473,7 +473,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_error_handling_provider_not_found() {
-        use chrono::Utc;
+        use std::time::SystemTime;
         use toadstool::ExecutionRequest;
 
         let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
@@ -492,7 +492,7 @@ mod tests {
                 10 * 1024 * 1024 * 1024,
             ),
             retry_config: crate::types::DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let result = orch.deploy_universal_job(&job).await;
@@ -522,7 +522,7 @@ mod tests {
                     job_id: job.job_id,
                     provider_job_id: "test-id".to_string(),
                     provider_name: "minimal".to_string(),
-                    created_at: chrono::Utc::now(),
+                    created_at: SystemTime::now(),
                 })
             }
 
@@ -669,7 +669,7 @@ mod tests {
     #[tokio::test]
     async fn test_cloud_deployment_result_variants() {
         use crate::cloud::types::{CloudDeploymentResult, CloudJobHandle, FederatedDeployment};
-        use chrono::Utc;
+        use std::time::SystemTime;
 
         let single = CloudDeploymentResult::Single {
             provider: "aws".to_string(),
@@ -677,7 +677,7 @@ mod tests {
                 job_id: uuid::Uuid::new_v4(),
                 provider_job_id: "pj-1".to_string(),
                 provider_name: "aws".to_string(),
-                created_at: Utc::now(),
+                created_at: SystemTime::now(),
             },
         };
         assert!(matches!(single, CloudDeploymentResult::Single { .. }));

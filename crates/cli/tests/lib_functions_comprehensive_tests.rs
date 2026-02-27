@@ -2,7 +2,6 @@
 //! Target: crates/cli/src/lib.rs (0% coverage → 100%)
 //! Focus: load_biome_manifest(), validate_manifest(), CliContext
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -125,8 +124,8 @@ async fn test_load_biome_manifest_valid() {
 metadata:
   name: test-biome
   version: "1.0.0"
-  created: "2025-01-01T00:00:00Z"
-  updated: "2025-01-01T00:00:00Z"
+  created: 1735689600
+  updated: 1735689600
   tags: []
 
 primals: {}
@@ -173,8 +172,8 @@ async fn test_load_biome_manifest_with_primals() {
 metadata:
   name: primal-biome
   version: "1.0.0"
-  created: "2025-01-01T00:00:00Z"
-  updated: "2025-01-01T00:00:00Z"
+  created: 1735689600
+  updated: 1735689600
   tags: ["primal"]
 
 primals:
@@ -279,8 +278,8 @@ async fn test_load_biome_manifest_with_services() {
 metadata:
   name: service-biome
   version: "1.0.0"
-  created: "2025-01-01T00:00:00Z"
-  updated: "2025-01-01T00:00:00Z"
+  created: 1735689600
+  updated: 1735689600
   tags: []
 
 primals: {}
@@ -342,8 +341,8 @@ fn create_test_manifest() -> BiomeManifest {
             version: "1.0.0".to_string(),
             description: None,
             author: None,
-            created: Utc::now(),
-            updated: Utc::now(),
+            created: std::time::SystemTime::now(),
+            updated: std::time::SystemTime::now(),
             tags: vec![],
         },
         primals: HashMap::new(),
@@ -665,8 +664,8 @@ metadata:
   name: roundtrip-biome
   version: "1.0.0"
   description: "Test roundtrip"
-  created: "2025-01-01T00:00:00Z"
-  updated: "2025-01-01T00:00:00Z"
+  created: 1735689600
+  updated: 1735689600
   tags: ["test"]
 
 primals: {}

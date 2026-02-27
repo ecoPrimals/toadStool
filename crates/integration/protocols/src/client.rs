@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use chrono::Utc;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info};
 
@@ -135,7 +134,7 @@ impl ProtocolClient {
             destination: None,
             payload,
             headers: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             format: self.config.default_format.clone(),
             correlation_id: None,
             reply_to: None,
@@ -521,7 +520,7 @@ mod tests {
             }],
             metadata: HashMap::new(),
             health_status: status,
-            last_seen: Utc::now(),
+            last_seen: std::time::SystemTime::now(),
             capabilities: vec!["test".to_string()],
         }
     }
@@ -535,7 +534,7 @@ mod tests {
             destination: None,
             payload: serde_json::json!({"test": "data"}),
             headers: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             format: MessageFormat::Json,
             correlation_id: None,
             reply_to: None,
@@ -638,7 +637,7 @@ mod tests {
                 destination: Some(msg.source.clone()),
                 payload: msg.payload.clone(),
                 headers: HashMap::new(),
-                timestamp: Utc::now(),
+                timestamp: std::time::SystemTime::now(),
                 format: MessageFormat::Json,
                 correlation_id: Some(msg.id),
                 reply_to: None,
@@ -792,7 +791,7 @@ mod tests {
                 destination: Some(msg.source.clone()),
                 payload: msg.payload.clone(),
                 headers: HashMap::new(),
-                timestamp: Utc::now(),
+                timestamp: std::time::SystemTime::now(),
                 format: msg.format.clone(),
                 correlation_id: Some(msg.id),
                 reply_to: None,

@@ -109,7 +109,7 @@ pub struct EdgeExecutionHandle {
     pub device_id: Uuid,
     pub platform: EdgePlatform,
     pub status: ExecutionStatus,
-    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub started_at: std::time::SystemTime,
     pub resource_usage: ResourceUsage,
 }
 
@@ -231,7 +231,7 @@ impl EdgeRuntimeEngine {
             .ok_or_else(|| ToadStoolError::not_found(format!("Device {} not found", device_id)))?;
         
         let execution_id = Uuid::new_v4();
-        let started_at = chrono::Utc::now();
+        let started_at = std::time::SystemTime::now();
         
         // Create execution handle
         let handle = EdgeExecutionHandle {
@@ -461,7 +461,7 @@ mod tests {
             device_id: Uuid::new_v4(),
             platform: EdgePlatform::RaspberryPi,
             status: ExecutionStatus::Running,
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             resource_usage: ResourceUsage {
                 cpu_percent: 25.5,
                 memory_bytes: 1024000,
@@ -522,7 +522,7 @@ mod tests {
             device_id: Uuid::new_v4(),
             platform: EdgePlatform::ESP32,
             status: ExecutionStatus::Success,
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             resource_usage: ResourceUsage {
                 cpu_percent: 10.0,
                 memory_bytes: 512000,

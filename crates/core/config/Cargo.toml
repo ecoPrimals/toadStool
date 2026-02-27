@@ -42,7 +42,6 @@ validator = { version = "0.18", features = ["derive"] }
 # Acceptable: inotify is a thin kernel syscall wrapper, not a heavy C library.
 # Future: consider rustix-backed watcher or polling fallback for pure Rust.
 notify = "6.1"
-chrono = { workspace = true }
 # ring = "0.17"  # REMOVED: Unused, violates pure Rust principle (C dependency)
 base64 = "0.22"
 async-trait = "0.1"

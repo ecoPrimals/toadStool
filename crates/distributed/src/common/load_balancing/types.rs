@@ -164,5 +164,6 @@ pub struct LoadMetrics {
     /// Health status
     pub health: HealthStatus,
     /// Timestamp of measurement
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }

@@ -1,7 +1,7 @@
 //! Comprehensive tests for API types
 
 use super::*;
-use chrono::Utc;
+use std::time::SystemTime;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -236,8 +236,8 @@ fn test_execution_response_creation() {
     let response = ExecutionResponse {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Queued,
-        submitted_at: Utc::now(),
-        estimated_completion: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        estimated_completion: Some(SystemTime::now()),
         queue_position: Some(5),
         resource_allocation: None,
         monitoring_endpoints: MonitoringEndpoints {
@@ -336,8 +336,8 @@ fn test_execution_filter_validation() {
     let filter = ExecutionFilter {
         status: Some(ExecutionStatus::Running),
         runtime_type: Some(RuntimeType::Native),
-        submitted_after: Some(Utc::now()),
-        submitted_before: Some(Utc::now()),
+        submitted_after: Some(SystemTime::now()),
+        submitted_before: Some(SystemTime::now()),
         page: Some(1),
         per_page: Some(50),
     };
@@ -574,8 +574,10 @@ fn test_resource_usage_serialization() {
 
 #[test]
 fn test_time_range_serialization() {
-    let start = Utc::now();
-    let end = start + chrono::Duration::hours(1);
+    let start = SystemTime::now();
+    let end = start
+        .checked_add(std::time::Duration::from_secs(3600))
+        .unwrap_or(start);
 
     let time_range = TimeRange { start, end };
 
@@ -595,8 +597,8 @@ fn test_execution_info_clone() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Running,
         runtime_type: RuntimeType::Native,
-        submitted_at: Utc::now(),
-        started_at: Some(Utc::now()),
+        submitted_at: SystemTime::now(),
+        started_at: Some(SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: Some(0.5),

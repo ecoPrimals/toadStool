@@ -6,7 +6,6 @@
 
 #![allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -229,7 +228,7 @@ fn test_beardog_permission_creation() {
         permission_id: Uuid::new_v4(),
         granted_to: "user@example.com".to_string(),
         capabilities: vec!["read".to_string(), "write".to_string()],
-        valid_until: Utc::now() + chrono::Duration::hours(24),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(24 * 3600),
         signature: "sig123".to_string(),
     };
 
@@ -248,7 +247,7 @@ fn test_beardog_permission_with_multiple_capabilities() {
             "execute".to_string(),
             "admin".to_string(),
         ],
-        valid_until: Utc::now() + chrono::Duration::days(7),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(7 * 24 * 3600),
         signature: "admin-sig-456".to_string(),
     };
 
@@ -262,7 +261,7 @@ fn test_beardog_permission_clone() {
         permission_id: Uuid::new_v4(),
         granted_to: "test@test.com".to_string(),
         capabilities: vec![],
-        valid_until: Utc::now(),
+        valid_until: std::time::SystemTime::now(),
         signature: "test-sig".to_string(),
     };
 
@@ -329,7 +328,7 @@ fn test_discovered_service_creation() {
         address: "10.0.0.1:8080".parse().unwrap(),
         trust_level: TrustLevel::Discovered,
         capabilities: HashMap::new(),
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert!(matches!(service.service_type, ServiceType::Songbird));
@@ -347,7 +346,7 @@ fn test_discovered_service_with_capabilities() {
         address: "192.168.1.100:9000".parse().unwrap(),
         trust_level: TrustLevel::Verified,
         capabilities,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert_eq!(service.capabilities.len(), 2);
@@ -361,7 +360,7 @@ fn test_discovered_service_clone() {
         address: "127.0.0.1:7000".parse().unwrap(),
         trust_level: TrustLevel::Sovereign,
         capabilities: HashMap::new(),
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     let cloned = service.clone();
@@ -378,7 +377,7 @@ fn test_service_signature_creation() {
         algorithm: "Ed25519".to_string(),
         signature: "base64-signature".to_string(),
         public_key: "public-key-123".to_string(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         nonce: "nonce-456".to_string(),
     };
 
@@ -392,7 +391,7 @@ fn test_service_signature_with_different_algorithm() {
         algorithm: "RSA-2048".to_string(),
         signature: "rsa-sig".to_string(),
         public_key: "rsa-pubkey".to_string(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         nonce: "random-nonce".to_string(),
     };
 

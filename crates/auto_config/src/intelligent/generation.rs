@@ -194,7 +194,7 @@ impl ConfigGenerator {
         usage_hints: &UsageHints,
     ) -> ToadStoolResult<()> {
         let snapshot = ConfigSnapshot {
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             config: config.clone(),
             hardware: hardware.clone(),
             usage_hints: usage_hints.clone(),

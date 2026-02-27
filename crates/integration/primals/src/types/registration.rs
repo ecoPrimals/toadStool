@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Registration request for a primal
@@ -9,7 +8,8 @@ pub struct PrimalRegistration {
     pub endpoint: String,
     pub capabilities: Vec<String>,
     pub metadata: std::collections::HashMap<String, String>,
-    pub registered_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub registered_at: std::time::SystemTime,
 }
 
 /// Registration response

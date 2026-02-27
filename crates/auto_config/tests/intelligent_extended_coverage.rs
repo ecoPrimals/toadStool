@@ -643,7 +643,7 @@ async fn test_intelligent_autoconfig_generate_optimal_config_high_end() {
             services_by_type: std::collections::HashMap::new(),
             discovery_errors: Vec::new(),
         },
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     let usage_hints = UsageHints {
@@ -714,7 +714,7 @@ async fn test_intelligent_autoconfig_generate_optimal_config_low_end() {
             services_by_type: std::collections::HashMap::new(),
             discovery_errors: Vec::new(),
         },
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     let usage_hints = UsageHints::default();
@@ -791,7 +791,7 @@ async fn test_config_validation_valid() {
             services_by_type: std::collections::HashMap::new(),
             discovery_errors: Vec::new(),
         },
-        discovery_timestamp: chrono::Utc::now(),
+        discovery_timestamp: std::time::SystemTime::now(),
     };
 
     let usage_hints = UsageHints::default();

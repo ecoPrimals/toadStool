@@ -1,7 +1,7 @@
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::SystemTime;
 use toadstool_common::constants::timeouts;
 use uuid::Uuid;
 
@@ -105,7 +105,7 @@ impl NetworkDistributor {
 
         Ok(DistributedExecution {
             execution_id: Uuid::new_v4(),
-            distribution_time: Utc::now(),
+            distribution_time: SystemTime::now(),
             node_assignments: vec![assignment],
             resource_allocations: Vec::new(),
             status: crate::types::execution::DistributedExecutionStatus::Pending,
@@ -117,7 +117,7 @@ impl NetworkDistributor {
         let req = &job.resource_requirements;
         DistributedExecution {
             execution_id: Uuid::new_v4(),
-            distribution_time: Utc::now(),
+            distribution_time: SystemTime::now(),
             node_assignments: vec![crate::types::execution::NodeAssignment {
                 node_id: env!("CARGO_PKG_NAME").to_string(),
                 resources: crate::types::resources::ResourceAllocation {
@@ -218,7 +218,7 @@ mod tests {
         use crate::types::{
             DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
         };
-        use chrono::Utc;
+        use std::time::SystemTime;
         use toadstool::ExecutionRequest;
 
         let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
@@ -232,7 +232,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let execution = distributor.distribute_job(job).await.unwrap();
@@ -251,7 +251,7 @@ mod tests {
         use crate::types::{
             DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
         };
-        use chrono::Utc;
+        use std::time::SystemTime;
         use toadstool::ExecutionRequest;
 
         let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
@@ -276,7 +276,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let execution = distributor.distribute_job(job).await.unwrap();
@@ -289,7 +289,7 @@ mod tests {
         use crate::types::{
             DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
         };
-        use chrono::Utc;
+        use std::time::SystemTime;
         use toadstool::ExecutionRequest;
 
         let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
@@ -303,7 +303,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let exec1 = distributor.distribute_job(make_job()).await.unwrap();
@@ -338,7 +338,7 @@ mod tests {
         use crate::types::{
             DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
         };
-        use chrono::Utc;
+        use std::time::SystemTime;
         use toadstool::ExecutionRequest;
 
         let config = NetworkDistributorConfig {
@@ -356,7 +356,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: ResourceRequirements::default(),
             retry_config: DistributedRetryConfig::default(),
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let execution = distributor.distribute_job(job).await.unwrap();

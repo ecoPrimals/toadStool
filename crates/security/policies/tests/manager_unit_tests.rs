@@ -1,7 +1,6 @@
 //! Unit tests for policy manager
 //! Target: security/policies/src/manager.rs (181 lines, 6.63% → 60% coverage)
 
-use chrono::Utc;
 use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 use tempfile::TempDir;
@@ -33,8 +32,8 @@ fn create_test_policy(id: &str, name: &str) -> SecurityPolicy {
         version: "1.0.0".to_string(),
         description: Some("Test policy".to_string()),
         author: Some("Test Author".to_string()),
-        created_at: Utc::now(),
-        modified_at: Utc::now(),
+        created_at: SystemTime::now(),
+        modified_at: SystemTime::now(),
         rules: vec![],
         inherits: vec![],
         metadata: HashMap::new(),

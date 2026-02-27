@@ -114,7 +114,7 @@ fn test_server_event_error_occurred_with_execution_id() {
         error_type: "Execution".to_string(),
         message: "timeout".to_string(),
         execution_id: Some(exec_id),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
     let json = event.to_json();
     assert!(json.contains("error_occurred"));
@@ -215,7 +215,7 @@ async fn test_method_not_found_increments_error_count() {
 fn test_server_event_runtime_engine_registered_to_json() {
     let event = ServerEvent::RuntimeEngineRegistered {
         runtime_type: RuntimeType::Wasm,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
     let json = event.to_json();
     assert!(json.contains("runtime_engine_registered"));
@@ -228,7 +228,7 @@ fn test_server_event_resource_usage_update_to_json() {
         cpu_usage_percent: 45.5,
         memory_usage_percent: 62.3,
         active_executions: 3,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
     let json = event.to_json();
     assert!(json.contains("resource_usage_update"));
@@ -245,7 +245,7 @@ fn test_server_event_execution_completed_to_json() {
             error: "test error".to_string(),
         },
         duration_ms: 5000,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
     let json = event.to_json();
     assert!(json.contains("execution_completed"));

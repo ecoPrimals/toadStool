@@ -245,7 +245,7 @@ mod tests {
             dependencies: vec![],
             resource_requirements: crate::types::ResourceRequirements::default(),
             retry_config: crate::types::DistributedRetryConfig::default(),
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         let constraints = enforcer.get_constraints_for_job(&job).await.unwrap();

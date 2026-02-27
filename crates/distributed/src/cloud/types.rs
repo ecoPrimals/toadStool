@@ -309,12 +309,13 @@ pub enum ComplianceCertification {
 // ============================================================================
 
 /// Handle for a cloud job
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudJobHandle {
     pub job_id: Uuid,
     pub provider_job_id: String,
     pub provider_name: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: std::time::SystemTime,
 }
 
 /// Cloud job status

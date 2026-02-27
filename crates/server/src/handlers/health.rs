@@ -23,7 +23,7 @@ pub async fn health_check_handler(State(state): State<ServerState>) -> impl Into
                 Json(json!({
                     "status": "error",
                     "message": "Failed to get system resources",
-                    "timestamp": chrono::Utc::now(),
+                    "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
                 })),
             );
         }
@@ -60,7 +60,7 @@ pub async fn health_check_handler(State(state): State<ServerState>) -> impl Into
 
     let response = json!({
         "status": if healthy { "healthy" } else { "unhealthy" },
-        "timestamp": chrono::Utc::now(),
+        "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
         "version": env!("CARGO_PKG_VERSION"),
         "resources": {
             "cpu_usage_percent": cpu_usage_percent,
@@ -90,7 +90,7 @@ pub async fn readiness_check_handler(State(state): State<ServerState>) -> impl I
 
     let response = json!({
         "status": if has_engines { "ready" } else { "not_ready" },
-        "timestamp": chrono::Utc::now(),
+        "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
         "runtime_engines": runtime_engines.len(),
         "registered_engines": runtime_engines.keys().collect::<Vec<_>>(),
     });
@@ -110,7 +110,7 @@ pub async fn metrics_handler(State(state): State<ServerState>) -> impl IntoRespo
     let active_executions = state.active_executions.read().await;
 
     let response = json!({
-        "timestamp": chrono::Utc::now(),
+        "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
         "statistics": {
             "total_executions": stats.total_executions,
             "successful_executions": stats.successful_executions,

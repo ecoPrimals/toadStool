@@ -204,12 +204,12 @@ async fn test_config_history_storage() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timestamp_generation() -> Result<()> {
-    use chrono::Utc;
+    use std::time::SystemTime;
 
     // Test timestamp generation (used in config snapshots)
-    let ts1 = Utc::now();
+    let ts1 = SystemTime::now();
     tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
-    let ts2 = Utc::now();
+    let ts2 = SystemTime::now();
 
     assert!(ts2 > ts1);
 

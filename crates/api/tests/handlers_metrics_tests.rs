@@ -32,8 +32,8 @@ fn create_test_execution(id: Uuid) -> ExecutionInfo {
         execution_id: id,
         status: ExecutionStatus::Running,
         runtime_type: RuntimeType::Container,
-        submitted_at: chrono::Utc::now(),
-        started_at: Some(chrono::Utc::now()),
+        submitted_at: std::time::SystemTime::now(),
+        started_at: Some(std::time::SystemTime::now()),
         completed_at: None,
         duration_ms: None,
         progress: None,
@@ -95,14 +95,20 @@ async fn test_get_execution_metrics_with_time_range() {
         executions.insert(execution_id, create_test_execution(execution_id));
     }
 
-    // Add time range parameters
-    let now = chrono::Utc::now();
+    // Add time range parameters (unix timestamps)
+    let now = std::time::SystemTime::now();
+    let now_secs = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let start_secs = now
+        .checked_sub(std::time::Duration::from_secs(7200))
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     let mut params: HashMap<String, String> = HashMap::new();
-    params.insert(
-        "start".to_string(),
-        (now - chrono::Duration::hours(2)).to_rfc3339(),
-    );
-    params.insert("end".to_string(), now.to_rfc3339());
+    params.insert("start".to_string(), start_secs.to_string());
+    params.insert("end".to_string(), now_secs.to_string());
 
     let result = get_execution_metrics(State(state), Path(execution_id), Query(params)).await;
 

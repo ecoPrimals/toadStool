@@ -284,7 +284,8 @@ pub struct HealthStatus {
     /// Health checks
     pub checks: Vec<HealthCheck>,
     /// Last health check timestamp
-    pub last_check: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_check: std::time::SystemTime,
 }
 
 /// Individual health check
@@ -327,7 +328,8 @@ pub struct PrimalMetrics {
     /// Custom metrics
     pub custom_metrics: HashMap<String, serde_json::Value>,
     /// Metrics timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 }
 
 /// Inter-Primal communication message
@@ -344,7 +346,8 @@ pub struct PrimalMessage {
     /// Message payload
     pub payload: serde_json::Value,
     /// Message timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
     /// Message headers
     pub headers: HashMap<String, String>,
 }
@@ -618,7 +621,7 @@ impl PrimalIntegrationManager {
                                 message: Some(e.to_string()),
                                 duration: Duration::from_millis(0),
                             }],
-                            last_check: chrono::Utc::now(),
+                            last_check: std::time::SystemTime::now(),
                         },
                     );
                 }
@@ -720,7 +723,7 @@ mod tests {
             Ok(HealthStatus {
                 healthy: true,
                 checks: vec![],
-                last_check: chrono::Utc::now(),
+                last_check: std::time::SystemTime::now(),
             })
         }
 
@@ -740,7 +743,7 @@ mod tests {
                 network_bytes_sent: 0,
                 network_bytes_received: 0,
                 custom_metrics: HashMap::new(),
-                timestamp: chrono::Utc::now(),
+                timestamp: std::time::SystemTime::now(),
             })
         }
 

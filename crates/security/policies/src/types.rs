@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -61,9 +60,11 @@ pub struct SecurityPolicy {
     /// Policy author/organization
     pub author: Option<String>,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
     /// Last modified timestamp
-    pub modified_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub modified_at: SystemTime,
     /// Policy rules
     pub rules: Vec<PolicyRule>,
     /// Policy inheritance (parent policies)

@@ -132,7 +132,7 @@ impl MockEcosystemDiscoverer {
                     services_by_type: std::collections::HashMap::new(),
                     discovery_errors: Vec::new(),
                 },
-                discovery_timestamp: chrono::Utc::now(),
+                discovery_timestamp: std::time::SystemTime::now(),
             },
         }
     }

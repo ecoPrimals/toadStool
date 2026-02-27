@@ -9,7 +9,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use chrono::Utc;
+use std::time::{Duration, SystemTime};
 use tracing::debug;
 use uuid::Uuid;
 
@@ -53,15 +53,20 @@ pub async fn get_execution_metrics(
     }
     drop(executions);
 
-    // Parse time range from params
-    let now = Utc::now();
+    // Parse time range from params (unix timestamp or default)
+    let now = SystemTime::now();
     let start = params
         .get("start")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or_else(|| now - chrono::Duration::hours(1));
+        .and_then(|s| s.parse::<u64>().ok())
+        .map(|secs| SystemTime::UNIX_EPOCH + Duration::from_secs(secs))
+        .unwrap_or_else(|| {
+            now.checked_sub(Duration::from_secs(3600))
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+        });
     let end = params
         .get("end")
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse::<u64>().ok())
+        .map(|secs| SystemTime::UNIX_EPOCH + Duration::from_secs(secs))
         .unwrap_or(now);
 
     // Generate sample metrics

@@ -132,13 +132,19 @@ fn test_optimization_level_selection() {
 #[test]
 fn test_config_snapshot_creation() {
     // Test configuration snapshot creation
-    use chrono::Utc;
+    use std::time::SystemTime;
 
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
     let cpu_cores = 8u32;
     let memory_gb = 16.0f64;
 
-    assert!(timestamp.timestamp() > 0);
+    assert!(
+        timestamp
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            > 0
+    );
     assert_eq!(cpu_cores, 8);
     assert_eq!(memory_gb, 16.0);
 }

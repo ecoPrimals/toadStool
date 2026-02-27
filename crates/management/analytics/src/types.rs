@@ -1,8 +1,8 @@
 //! Analytics data types
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool::execution::RuntimeType;
 use uuid::Uuid;
 
@@ -12,7 +12,8 @@ pub struct AnalyticsDataPoint {
     /// Unique identifier
     pub id: Uuid,
     /// Timestamp of the data point
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
     /// Metric name
     pub metric_name: String,
     /// Metric value
@@ -31,8 +32,10 @@ pub struct TrendAnalysis {
     /// Metric being analyzed
     pub metric_name: String,
     /// Time period of analysis
-    pub start_time: DateTime<Utc>,
-    pub end_time: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub start_time: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub end_time: SystemTime,
     /// Trend direction and strength
     pub trend: TrendDirection,
     /// Statistical measures
@@ -68,7 +71,8 @@ pub struct TrendStatistics {
 /// Prediction point for forecasting
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PredictionPoint {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
     pub predicted_value: f64,
     pub confidence_interval: (f64, f64),
     pub prediction_method: String,
@@ -88,9 +92,11 @@ pub struct Alert {
     /// Alert severity
     pub severity: AlertSeverity,
     /// When the alert was created
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
     /// When the alert was last triggered
-    pub last_triggered: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub last_triggered: Option<SystemTime>,
     /// Alert status
     pub status: AlertStatus,
     /// Recipients for notifications
@@ -165,8 +171,10 @@ pub enum PanelType {
 /// Time range for panel data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeRange {
-    pub from: DateTime<Utc>,
-    pub to: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub from: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub to: SystemTime,
     pub refresh_interval_secs: u64,
 }
 

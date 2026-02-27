@@ -15,7 +15,7 @@ pub struct ComponentInstance {
     /// Instance state
     pub state: ComponentState,
     /// Creation timestamp
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: std::time::SystemTime,
     /// Resource usage
     pub resource_usage: ComponentResourceUsage,
 }

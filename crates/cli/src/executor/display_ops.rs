@@ -43,7 +43,8 @@ impl BiomeExecutor {
                 BiomeStatus::Migrating => "migrating",
             };
 
-            let created_str = biome.info.created.format("%Y-%m-%d %H:%M").to_string();
+            let created_str =
+                toadstool_common::system_time_serde::format_display(biome.info.created);
             let id_short = biome.info.id.to_string()[..8].to_string();
 
             println!(

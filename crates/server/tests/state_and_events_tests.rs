@@ -3,9 +3,9 @@
 //! Week 13 Day 1: State Management and Event Handling Tests
 //! Target: Verify ServerState, ServerEvent, and related types
 
-use chrono::Utc;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::SystemTime;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
@@ -71,7 +71,7 @@ impl ResourceMonitor for MockResourceMonitor {
 #[test]
 fn test_server_event_to_json() {
     let execution_id = Uuid::new_v4();
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
     let event = ServerEvent::ExecutionStarted {
         execution_id,
         runtime_type: RuntimeType::Native,
@@ -86,7 +86,7 @@ fn test_server_event_to_json() {
 #[test]
 fn test_server_event_execution_started() {
     let execution_id = Uuid::new_v4();
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::ExecutionStarted {
         execution_id,
@@ -112,7 +112,7 @@ fn test_server_event_execution_started() {
 #[test]
 fn test_server_event_execution_completed() {
     let execution_id = Uuid::new_v4();
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::ExecutionCompleted {
         execution_id,
@@ -139,7 +139,7 @@ fn test_server_event_execution_completed() {
 #[test]
 fn test_server_event_execution_failed() {
     let execution_id = Uuid::new_v4();
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::ExecutionCompleted {
         execution_id,
@@ -163,7 +163,7 @@ fn test_server_event_execution_failed() {
 
 #[test]
 fn test_server_event_runtime_engine_registered() {
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::RuntimeEngineRegistered {
         runtime_type: RuntimeType::Wasm,
@@ -180,7 +180,7 @@ fn test_server_event_runtime_engine_registered() {
 
 #[test]
 fn test_server_event_resource_usage_update() {
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::ResourceUsageUpdate {
         cpu_usage_percent: 45.5,
@@ -206,7 +206,7 @@ fn test_server_event_resource_usage_update() {
 
 #[test]
 fn test_server_event_health_status_changed() {
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::HealthStatusChanged {
         healthy: true,
@@ -228,7 +228,7 @@ fn test_server_event_health_status_changed() {
 #[test]
 fn test_server_event_error_occurred() {
     let execution_id = Uuid::new_v4();
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::ErrorOccurred {
         error_type: "RuntimeError".to_string(),
@@ -258,7 +258,7 @@ fn test_server_event_clone() {
         cpu_usage_percent: 50.0,
         memory_usage_percent: 60.0,
         active_executions: 5,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let cloned = event.clone();
@@ -275,7 +275,7 @@ fn test_server_event_clone() {
 #[test]
 fn test_active_execution_creation() {
     let execution_id = Uuid::new_v4();
-    let started_at = Utc::now();
+    let started_at = SystemTime::now();
     let timeout = Duration::from_secs(300);
 
     let execution = ActiveExecution {
@@ -304,7 +304,7 @@ fn test_active_execution_clone() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(600),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
@@ -421,7 +421,7 @@ async fn test_server_state_event_broadcasting() {
     let test_event = ServerEvent::HealthStatusChanged {
         healthy: true,
         message: "Test message".to_string(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let _ = state.event_broadcaster.send(test_event.clone());
@@ -462,7 +462,7 @@ async fn test_server_state_active_executions() {
     let execution = ActiveExecution {
         execution_id,
         runtime_type: RuntimeType::Native,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(300),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {

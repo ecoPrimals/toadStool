@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -149,7 +148,8 @@ pub struct ProtocolMessage {
     pub headers: HashMap<String, String>,
 
     /// Message timestamp
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
 
     /// Message format
     pub format: MessageFormat,
@@ -189,7 +189,8 @@ pub struct ServiceInfo {
     pub health_status: HealthStatus,
 
     /// Last seen timestamp
-    pub last_seen: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_seen: std::time::SystemTime,
 
     /// Service capabilities
     pub capabilities: Vec<String>,

@@ -11,7 +11,11 @@ pub struct DetectedPlatform {
     pub capabilities: SubstrateCapabilities,
     pub status: PlatformStatus,
     pub performance_score: Option<f64>,
-    pub last_tested: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "toadstool_common::system_time_serde::opt"
+    )]
+    pub last_tested: Option<std::time::SystemTime>,
     pub metadata: HashMap<String, String>,
 }
 

@@ -21,7 +21,7 @@ fn create_test_message() -> ProtocolMessage {
         destination: Some("target-service".to_string()),
         payload: serde_json::json!({"test": "data"}),
         headers: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,

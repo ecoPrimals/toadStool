@@ -2,9 +2,8 @@
 //!
 //! Core types for performance optimization, metrics, and statistics.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use toadstool::execution::RuntimeType;
 use toadstool::resources::RuntimeMetrics;
@@ -97,9 +96,11 @@ pub struct PerformanceMetrics {
     /// Workload type
     pub workload_type: String,
     /// Execution start time
-    pub start_time: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub start_time: SystemTime,
     /// Execution end time
-    pub end_time: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub end_time: Option<SystemTime>,
     /// Total execution duration
     pub execution_duration: Option<Duration>,
     /// Resource metrics
@@ -143,7 +144,7 @@ pub struct RuntimeStats {
 #[derive(Debug, Clone)]
 pub struct ResourcePrediction {
     /// Prediction timestamp
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: SystemTime,
     /// Predicted execution time
     pub execution_time: Duration,
     /// Predicted memory usage in MB
@@ -172,7 +173,7 @@ pub struct OptimizationRecommendation {
     /// Specific action items
     pub actions: Vec<String>,
     /// Timestamp
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: SystemTime,
 }
 
 /// Types of optimization recommendations
@@ -252,7 +253,7 @@ mod tests {
     #[test]
     fn test_resource_prediction_fields() {
         let pred = ResourcePrediction {
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
             execution_time: std::time::Duration::from_secs(5),
             memory_mb: 256.0,
             cpu_percent: 30.0,
@@ -272,7 +273,7 @@ mod tests {
             expected_improvement: 15.0,
             description: "Switch runtimes".to_string(),
             actions: vec!["action1".to_string()],
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
         assert_eq!(rec.id, "rec-001");
         assert_eq!(rec.priority, 5);

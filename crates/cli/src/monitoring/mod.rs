@@ -11,7 +11,6 @@ mod display;
 mod types;
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -79,11 +78,11 @@ impl MonitoringSystem {
         let session = MonitoringSession {
             id: session_id,
             target: target.clone(),
-            started: Utc::now(),
+            started: std::time::SystemTime::now(),
             interval: session_interval,
             metrics: metrics.clone(),
             status: SessionStatus::Active,
-            last_update: Utc::now(),
+            last_update: std::time::SystemTime::now(),
         };
 
         {
@@ -103,14 +102,14 @@ impl MonitoringSystem {
         let mut sessions = self.sessions.write().await;
         if let Some(session) = sessions.get_mut(&session_id.to_string()) {
             session.status = SessionStatus::Stopped;
-            session.last_update = Utc::now();
+            session.last_update = std::time::SystemTime::now();
         }
 
         Ok(())
     }
 
     pub async fn get_dashboard_data(&self) -> Result<DashboardData> {
-        let timestamp = Utc::now();
+        let timestamp = std::time::SystemTime::now();
 
         let system_health = self.collect_system_health().await?;
         let biome_status = self.collect_biome_status().await?;
@@ -131,8 +130,8 @@ impl MonitoringSystem {
     pub async fn query_metrics(
         &self,
         metric_name: String,
-        start_time: DateTime<Utc>,
-        end_time: DateTime<Utc>,
+        start_time: std::time::SystemTime,
+        end_time: std::time::SystemTime,
         _labels: HashMap<String, String>,
     ) -> Result<Vec<DataPoint>> {
         let metrics_store = self.metrics_store.read().await;
@@ -386,20 +385,12 @@ impl MetricsStore {
     }
 
     async fn cleanup_old_data(&mut self) {
-        match chrono::Duration::from_std(self.retention_period) {
-            Ok(duration) => {
-                let cutoff_time = Utc::now() - duration;
-
-                for series in self.series.values_mut() {
-                    series
-                        .data_points
-                        .retain(|point| point.timestamp > cutoff_time);
-                }
-            }
-            Err(_) => {
-                tracing::warn!(
-                    "Failed to convert retention period to chrono::Duration, skipping cleanup"
-                );
+        let now = std::time::SystemTime::now();
+        if let Some(cutoff_time) = now.checked_sub(self.retention_period) {
+            for series in self.series.values_mut() {
+                series
+                    .data_points
+                    .retain(|point| point.timestamp > cutoff_time);
             }
         }
     }

@@ -1,7 +1,6 @@
 //! Comprehensive tests for server state types
 
-use chrono::Utc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use toadstool::{ExecutionStatus, RuntimeType};
 use toadstool_server::*;
 use uuid::Uuid;
@@ -14,7 +13,7 @@ use uuid::Uuid;
 fn test_server_event_execution_started_creation() {
     let execution_id = Uuid::new_v4();
     let runtime_type = RuntimeType::Native;
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::ExecutionStarted {
         execution_id,
@@ -40,7 +39,7 @@ fn test_server_event_execution_completed_creation() {
     let execution_id = Uuid::new_v4();
     let status = ExecutionStatus::Success;
     let duration_ms = 1500u64;
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::ExecutionCompleted {
         execution_id,
@@ -67,7 +66,7 @@ fn test_server_event_execution_completed_creation() {
 #[test]
 fn test_server_event_runtime_engine_registered_creation() {
     let runtime_type = RuntimeType::Wasm;
-    let timestamp = Utc::now();
+    let timestamp = SystemTime::now();
 
     let event = ServerEvent::RuntimeEngineRegistered {
         runtime_type,
@@ -90,7 +89,7 @@ fn test_server_event_resource_usage_update_creation() {
         cpu_usage_percent: 45.5,
         memory_usage_percent: 67.3,
         active_executions: 12,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     match event {
@@ -113,7 +112,7 @@ fn test_server_event_health_status_changed_creation() {
     let event = ServerEvent::HealthStatusChanged {
         healthy: true,
         message: "All systems operational".to_string(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     match event {
@@ -134,7 +133,7 @@ fn test_server_event_error_occurred_creation() {
         error_type: "RuntimeError".to_string(),
         message: "Execution timeout".to_string(),
         execution_id: Some(execution_id),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     match event {
@@ -158,7 +157,7 @@ fn test_server_event_error_occurred_without_execution_id() {
         error_type: "ConfigError".to_string(),
         message: "Invalid configuration".to_string(),
         execution_id: None,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     match event {
@@ -176,7 +175,7 @@ fn test_server_event_clone() {
     let event = ServerEvent::ExecutionStarted {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let cloned = event.clone();
@@ -201,7 +200,7 @@ fn test_server_event_debug_format() {
     let event = ServerEvent::ExecutionStarted {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Python,
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let debug_str = format!("{:?}", event);
@@ -217,7 +216,7 @@ fn test_server_event_debug_format() {
 fn test_active_execution_creation() {
     let execution_id = Uuid::new_v4();
     let runtime_type = RuntimeType::Native;
-    let started_at = Utc::now();
+    let started_at = SystemTime::now();
     let timeout = Duration::from_secs(300);
     let status = ExecutionStatus::Running;
 
@@ -248,7 +247,7 @@ fn test_active_execution_clone() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Gpu,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(600),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
@@ -271,7 +270,7 @@ fn test_active_execution_debug_format() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Wasm,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(120),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
@@ -300,7 +299,7 @@ fn test_active_execution_with_different_timeouts() {
         let execution = ActiveExecution {
             execution_id: Uuid::new_v4(),
             runtime_type: RuntimeType::Native,
-            started_at: Utc::now(),
+            started_at: SystemTime::now(),
             timeout,
             status: ExecutionStatus::Running,
             client_info: ClientInfo {
@@ -329,7 +328,7 @@ fn test_active_execution_with_all_runtime_types() {
         let execution = ActiveExecution {
             execution_id: Uuid::new_v4(),
             runtime_type: rt.clone(),
-            started_at: Utc::now(),
+            started_at: SystemTime::now(),
             timeout: Duration::from_secs(300),
             status: ExecutionStatus::Running,
             client_info: ClientInfo {
@@ -359,7 +358,7 @@ fn test_active_execution_with_all_execution_statuses() {
         let execution = ActiveExecution {
             execution_id: Uuid::new_v4(),
             runtime_type: RuntimeType::Native,
-            started_at: Utc::now(),
+            started_at: SystemTime::now(),
             timeout: Duration::from_secs(300),
             status: status.clone(),
             client_info: ClientInfo {

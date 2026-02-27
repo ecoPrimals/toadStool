@@ -100,7 +100,7 @@ async fn test_health_check_exactly_at_max_executions() {
                 ActiveExecution {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
@@ -142,7 +142,7 @@ async fn test_cleanup_sends_completion_event() {
             ActiveExecution {
                 execution_id,
                 runtime_type: toadstool::RuntimeType::Native,
-                started_at: chrono::Utc::now() - chrono::Duration::seconds(400),
+                started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(400),
                 timeout: Duration::from_secs(300),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: ClientInfo {
@@ -301,7 +301,7 @@ async fn test_cleanup_logs_when_executions_cleaned() {
                 ActiveExecution {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
-                    started_at: chrono::Utc::now() - chrono::Duration::seconds(400),
+                    started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(400),
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
@@ -357,7 +357,7 @@ async fn test_statistics_collection_with_runtime_engines() {
                 ActiveExecution {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {

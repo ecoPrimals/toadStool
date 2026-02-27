@@ -130,7 +130,8 @@ pub struct DistributionResult {
     /// Actual targets used
     pub targets_used: Vec<String>,
     /// Start time
-    pub started_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub started_at: std::time::SystemTime,
     /// Success status
     pub success: bool,
     /// Error message (if failed)

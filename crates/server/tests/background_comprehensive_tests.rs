@@ -171,7 +171,7 @@ async fn test_peak_concurrent_executions_tracking() {
                 ActiveExecution {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
-                    started_at: chrono::Utc::now(),
+                    started_at: std::time::SystemTime::now(),
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
@@ -239,7 +239,7 @@ async fn test_cleanup_task_removes_timed_out_executions() {
             ActiveExecution {
                 execution_id,
                 runtime_type: toadstool::RuntimeType::Native,
-                started_at: chrono::Utc::now() - chrono::Duration::seconds(400), // Started 400s ago
+                started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(400), // Started 400s ago
                 timeout: Duration::from_secs(300), // 300s timeout - already expired
                 status: toadstool::ExecutionStatus::Running,
                 client_info: ClientInfo {
@@ -319,7 +319,7 @@ async fn test_cleanup_task_preserves_non_timed_out_executions() {
             ActiveExecution {
                 execution_id,
                 runtime_type: toadstool::RuntimeType::Native,
-                started_at: chrono::Utc::now(), // Just started
+                started_at: std::time::SystemTime::now(), // Just started
                 timeout: Duration::from_secs(300),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: ClientInfo {
@@ -507,7 +507,7 @@ async fn test_cleanup_handles_multiple_timed_out_executions() {
                 ActiveExecution {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
-                    started_at: chrono::Utc::now() - chrono::Duration::seconds(400),
+                    started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(400),
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {

@@ -16,7 +16,7 @@ pub async fn get_cluster_status_handler(State(state): State<ServerState>) -> imp
         "status": "healthy",
         "runtime_engines": state.runtime_engines.read().await.len(),
         "active_executions": state.active_executions.read().await.len(),
-        "timestamp": chrono::Utc::now(),
+        "timestamp": crate::state::timestamp_to_unix_secs(&std::time::SystemTime::now()),
     });
 
     (StatusCode::OK, Json(response))

@@ -41,7 +41,6 @@ tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 async-trait = { workspace = true }
-chrono = { workspace = true, features = ["serde"] }
 futures = { workspace = true }
 # PURE RUST: reqwest removed - unix sockets only! ✅
 url = { workspace = true }

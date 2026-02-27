@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 use toadstool::ToadStoolResult;
 use tokio::sync::RwLock;
 
@@ -35,7 +35,7 @@ pub struct ChildToadStoolInstance {
     /// Status
     pub status: InstanceStatus,
     /// Started timestamp
-    pub started_at: DateTime<Utc>,
+    pub started_at: SystemTime,
 }
 
 /// Child resource allocator
@@ -87,7 +87,7 @@ impl RecursiveHostingManager {
             resource_allocation: toadstool_config.resource_allocation.unwrap_or_default(),
             endpoint: format!("http://{host}:{port}/{instance_id}"),
             status: InstanceStatus::Starting,
-            started_at: Utc::now(),
+            started_at: SystemTime::now(),
         };
 
         let mut instances = self.child_instances.write().await;
@@ -177,7 +177,7 @@ mod tests {
             resource_allocation: ResourceAllocation::default(),
             endpoint: "http://127.0.0.1:8084/inst-1".to_string(),
             status: InstanceStatus::Starting,
-            started_at: Utc::now(),
+            started_at: SystemTime::now(),
         };
         let cloned = instance.clone();
         assert_eq!(instance.instance_id, cloned.instance_id);

@@ -233,7 +233,7 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         info!("📸 Creating workload checkpoint: {}", biome);
         Ok(WorkloadCheckpoint {
             biome_name: biome.to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             // Use runtime-discovered temp directory (Deep Debt compliant)
             data_path: {
                 let mut path = super::constants::paths::checkpoint_prefix();
@@ -335,7 +335,7 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         Ok(WorkloadSnapshot {
             biome_name: biome.to_string(),
             snapshot_id: uuid::Uuid::new_v4().to_string(),
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         })
     }
 

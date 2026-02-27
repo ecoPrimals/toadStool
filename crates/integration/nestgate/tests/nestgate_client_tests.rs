@@ -82,7 +82,6 @@ fn test_nestgate_config_clone() {
 #[test]
 fn test_artifact_metadata_creation() {
     // Test artifact metadata structure
-    use chrono::Utc;
     use std::collections::HashMap;
     use uuid::Uuid;
 
@@ -101,7 +100,7 @@ fn test_artifact_metadata_creation() {
         content_type: "application/octet-stream".to_string(),
         size_bytes: 1024,
         checksum: "abc123".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags: HashMap::new(),
         execution_id: None,
@@ -307,7 +306,6 @@ fn test_nestgate_result_err() {
 #[test]
 fn test_scenario_data_pipeline_artifact_flow() {
     // Test a complete artifact flow scenario
-    use chrono::Utc;
     use std::collections::HashMap;
     use uuid::Uuid;
 
@@ -331,7 +329,7 @@ fn test_scenario_data_pipeline_artifact_flow() {
         content_type: "application/json".to_string(),
         size_bytes: 1024,
         checksum: "abc123".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags,
         execution_id: Some(Uuid::new_v4()),
@@ -349,7 +347,6 @@ fn test_scenario_data_pipeline_artifact_flow() {
 #[test]
 fn test_scenario_archival_workflow() {
     // Test artifact archival scenario
-    use chrono::Utc;
     use std::collections::HashMap;
     use uuid::Uuid;
 
@@ -373,7 +370,7 @@ fn test_scenario_archival_workflow() {
         content_type: "application/octet-stream".to_string(),
         size_bytes: 1_000_000,
         checksum: "archive123".to_string(),
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
         last_accessed: None,
         tags,
         execution_id: None,

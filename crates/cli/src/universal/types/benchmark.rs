@@ -11,7 +11,8 @@ use super::SystemInfo;
 pub struct BenchmarkResult {
     pub platform: String,
     pub suite: String,
-    pub started: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub started: std::time::SystemTime,
     pub duration: Duration,
     pub tests: Vec<BenchmarkTest>,
     pub overall_score: f64,

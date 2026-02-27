@@ -100,7 +100,7 @@ async fn test_metrics_with_active_executions() {
         let execution = toadstool_server::ActiveExecution {
             execution_id: uuid::Uuid::new_v4(),
             runtime_type: toadstool::RuntimeType::Native,
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             timeout: std::time::Duration::from_secs(300),
             status: toadstool::ExecutionStatus::Running,
             client_info: toadstool_server::ClientInfo {
@@ -225,7 +225,7 @@ async fn test_get_status_existing_execution() {
         let execution = toadstool_server::ActiveExecution {
             execution_id,
             runtime_type: toadstool::RuntimeType::Native,
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             timeout: std::time::Duration::from_secs(300),
             status: toadstool::ExecutionStatus::Running,
             client_info: toadstool_server::ClientInfo {
@@ -275,7 +275,7 @@ async fn test_cancel_existing_execution() {
         let execution = toadstool_server::ActiveExecution {
             execution_id,
             runtime_type: toadstool::RuntimeType::Native,
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             timeout: std::time::Duration::from_secs(300),
             status: toadstool::ExecutionStatus::Running,
             client_info: toadstool_server::ClientInfo {
@@ -322,7 +322,7 @@ async fn test_cluster_status_with_active_executions() {
             let execution = toadstool_server::ActiveExecution {
                 execution_id,
                 runtime_type: toadstool::RuntimeType::Native,
-                started_at: chrono::Utc::now(),
+                started_at: std::time::SystemTime::now(),
                 timeout: std::time::Duration::from_secs(300),
                 status: if i == 0 {
                     toadstool::ExecutionStatus::Pending
@@ -501,7 +501,7 @@ async fn test_full_execution_lifecycle() {
         let execution = toadstool_server::ActiveExecution {
             execution_id,
             runtime_type: toadstool::RuntimeType::Native,
-            started_at: chrono::Utc::now(),
+            started_at: std::time::SystemTime::now(),
             timeout: std::time::Duration::from_secs(300),
             status: toadstool::ExecutionStatus::Pending,
             client_info: toadstool_server::ClientInfo {

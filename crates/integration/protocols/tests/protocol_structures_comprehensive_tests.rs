@@ -3,7 +3,6 @@
 //! This test suite provides extensive coverage of structure types used in protocol integration,
 //! including ProtocolMessage, ServiceInfo, ServiceEndpoint, and their operations.
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
 // Removed unused import: ServiceAuthConfig
@@ -23,7 +22,7 @@ fn test_protocol_message_creation() {
         destination: Some("service-b".to_string()),
         payload: serde_json::json!({"action": "test"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -49,7 +48,7 @@ fn test_protocol_message_with_headers() {
         destination: Some("service-b".to_string()),
         payload: serde_json::json!({}),
         headers: headers.clone(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -74,7 +73,7 @@ fn test_protocol_message_with_correlation_id() {
         destination: Some("service-a".to_string()),
         payload: serde_json::json!({"result": "ok"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: Some(correlation_id),
         reply_to: Some("service-a".to_string()),
@@ -95,7 +94,7 @@ fn test_protocol_message_with_ttl() {
         destination: Some("service-b".to_string()),
         payload: serde_json::json!({}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -115,7 +114,7 @@ fn test_protocol_message_with_priority() {
         destination: None,
         payload: serde_json::json!({"alert": "critical"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -135,7 +134,7 @@ fn test_protocol_message_broadcast() {
         destination: None, // No specific destination = broadcast
         payload: serde_json::json!({"announcement": "test"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -155,7 +154,7 @@ fn test_protocol_message_serialization() {
         destination: Some("service-b".to_string()),
         payload: serde_json::json!({"key": "value"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -180,7 +179,7 @@ fn test_protocol_message_clone() {
         destination: Some("service-b".to_string()),
         payload: serde_json::json!({}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -206,7 +205,7 @@ fn test_service_info_creation() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -234,7 +233,7 @@ fn test_service_info_with_endpoints() {
         endpoints: vec![endpoint],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -255,7 +254,7 @@ fn test_service_info_with_metadata() {
         endpoints: vec![],
         metadata: metadata.clone(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -275,7 +274,7 @@ fn test_service_info_with_capabilities() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![
             "compute".to_string(),
             "storage".to_string(),
@@ -296,7 +295,7 @@ fn test_service_info_health_status() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Degraded,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -312,7 +311,7 @@ fn test_service_info_serialization() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -333,7 +332,7 @@ fn test_service_info_clone() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -496,7 +495,7 @@ fn test_service_with_multiple_endpoints() {
         endpoints,
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -514,7 +513,7 @@ fn test_message_with_service_info() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -525,7 +524,7 @@ fn test_message_with_service_info() {
         destination: Some("client".to_string()),
         payload: serde_json::to_value(&service).expect("Failed to serialize service"),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,

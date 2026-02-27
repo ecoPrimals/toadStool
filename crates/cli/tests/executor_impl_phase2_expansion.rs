@@ -40,10 +40,14 @@ fn test_biome_start_records_timestamp() {
     // Test: Start time is recorded
     // Covers: Timestamp recording
 
-    use chrono::Utc;
-
-    let start_time = Utc::now();
-    assert!(start_time.timestamp() > 0);
+    let start_time = std::time::SystemTime::now();
+    assert!(
+        start_time
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            > 0
+    );
 }
 
 #[test]
@@ -434,13 +438,11 @@ fn test_ps_shows_uptime() {
     // Test: Uptime calculation
     // Covers: Uptime tracking
 
-    use chrono::{Duration, Utc};
+    let start_time = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    let current_time = std::time::SystemTime::now();
+    let uptime = current_time.duration_since(start_time).unwrap_or_default();
 
-    let start_time = Utc::now() - Duration::seconds(3600);
-    let current_time = Utc::now();
-    let uptime = current_time - start_time;
-
-    assert!(uptime.num_seconds() >= 3600);
+    assert!(uptime.as_secs() >= 3600);
 }
 
 #[test]

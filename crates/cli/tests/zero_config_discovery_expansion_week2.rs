@@ -169,7 +169,7 @@ fn test_service_endpoint_creation() {
         version: "1.0.0".to_string(),
         status: "healthy".to_string(),
         auth_required: false,
-        discovered_at: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
     };
     assert_eq!(endpoint.endpoint, "http://localhost:8080");
     assert_eq!(endpoint.status, "healthy");
@@ -183,7 +183,7 @@ fn test_service_endpoint_with_auth() {
         version: "2.0.0".to_string(),
         status: "unhealthy".to_string(),
         auth_required: true,
-        discovered_at: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
     };
     assert!(endpoint.auth_required);
     assert_eq!(endpoint.status, "unhealthy");
@@ -198,7 +198,7 @@ fn test_ecosystem_services_all_available() {
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
-            discovered_at: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
         }),
         beardog: Some(ServiceEndpoint {
             name: "beardog".to_string(),
@@ -206,7 +206,7 @@ fn test_ecosystem_services_all_available() {
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: true,
-            discovered_at: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
         }),
         nestgate: Some(ServiceEndpoint {
             name: "nestgate".to_string(),
@@ -214,7 +214,7 @@ fn test_ecosystem_services_all_available() {
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
-            discovered_at: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
         }),
         squirrel: Some(ServiceEndpoint {
             name: "squirrel".to_string(),
@@ -222,7 +222,7 @@ fn test_ecosystem_services_all_available() {
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
-            discovered_at: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
         }),
         toadstool_peers: vec![],
     };
@@ -242,7 +242,7 @@ fn test_ecosystem_services_partial_availability() {
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
-            discovered_at: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
         }),
         beardog: None,
         nestgate: None,
@@ -262,7 +262,7 @@ fn test_service_endpoint_status() {
         version: "1.0.0".to_string(),
         status: "healthy".to_string(),
         auth_required: false,
-        discovered_at: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
     };
 
     let unhealthy = ServiceEndpoint {
@@ -271,7 +271,7 @@ fn test_service_endpoint_status() {
         version: "1.0.0".to_string(),
         status: "unhealthy".to_string(),
         auth_required: false,
-        discovered_at: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(healthy.status, "healthy");
@@ -418,7 +418,7 @@ fn test_service_endpoint_url_format() {
         version: "1.0.0".to_string(),
         status: "healthy".to_string(),
         auth_required: false,
-        discovered_at: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
     };
 
     assert!(endpoint.endpoint.starts_with("http://"));

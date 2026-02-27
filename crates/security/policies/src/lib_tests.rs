@@ -6,8 +6,8 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    use chrono::Utc;
     use std::collections::HashMap;
+    use std::time::SystemTime;
     use toadstool::security::Capability;
 
     // ============================================================================
@@ -219,8 +219,8 @@ mod tests {
             version: "1.0.0".to_string(),
             description: Some("Test policy description".to_string()),
             author: Some("ToadStool Team".to_string()),
-            created_at: Utc::now(),
-            modified_at: Utc::now(),
+            created_at: SystemTime::now(),
+            modified_at: SystemTime::now(),
             rules: vec![],
             inherits: vec![],
             metadata: HashMap::new(),

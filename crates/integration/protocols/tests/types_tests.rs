@@ -2,7 +2,6 @@
 //!
 //! Tests for message types, health status, and service information structures.
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
 use toadstool_integration_protocols::types::*;
@@ -190,7 +189,7 @@ fn test_protocol_message_creation() {
         destination: Some("service-b".to_string()),
         payload: serde_json::json!({"action": "compute"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: Some(Uuid::new_v4()),
         reply_to: None,
@@ -217,7 +216,7 @@ fn test_protocol_message_with_headers() {
         destination: Some("auth-server".to_string()),
         payload: serde_json::json!({}),
         headers,
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -252,7 +251,7 @@ fn test_service_info_creation() {
         endpoints: vec![endpoint],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec!["execute".to_string(), "schedule".to_string()],
     };
 
@@ -292,7 +291,7 @@ fn test_service_info_multiple_endpoints() {
         endpoints: vec![ep1, ep2],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -412,7 +411,7 @@ fn test_protocol_message_with_ttl() {
         destination: Some("worker".to_string()),
         payload: serde_json::json!({"cmd": "execute"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -433,7 +432,7 @@ fn test_protocol_message_without_ttl() {
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -454,7 +453,7 @@ fn test_protocol_message_correlation_id() {
         destination: Some("requester".to_string()),
         payload: serde_json::json!({"status": "ok"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: Some(corr_id),
         reply_to: None,
@@ -474,7 +473,7 @@ fn test_protocol_message_reply_to() {
         destination: Some("server".to_string()),
         payload: serde_json::json!({"query": "data"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: Some("client-queue".to_string()),
@@ -494,7 +493,7 @@ fn test_protocol_message_broadcast() {
         destination: None, // No specific destination = broadcast
         payload: serde_json::json!({"announcement": "System update"}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -519,7 +518,7 @@ fn test_service_info_with_metadata() {
         endpoints: vec![],
         metadata,
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -539,7 +538,7 @@ fn test_service_info_with_capabilities() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![
             "compute".to_string(),
             "storage".to_string(),
@@ -560,7 +559,7 @@ fn test_service_info_version_parsing() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Healthy,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -730,7 +729,7 @@ fn test_protocol_message_empty_payload() {
         destination: Some("target".to_string()),
         payload: serde_json::json!({}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -764,7 +763,7 @@ fn test_protocol_message_complex_payload() {
         destination: Some("worker-01".to_string()),
         payload,
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: Some("scheduler-queue".to_string()),
@@ -785,7 +784,7 @@ fn test_service_info_no_endpoints() {
         endpoints: vec![],
         metadata: HashMap::new(),
         health_status: HealthStatus::Unknown,
-        last_seen: Utc::now(),
+        last_seen: std::time::SystemTime::now(),
         capabilities: vec![],
     };
 
@@ -874,7 +873,7 @@ fn test_protocol_message_unique_ids() {
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -889,7 +888,7 @@ fn test_protocol_message_unique_ids() {
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),
-        timestamp: Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
@@ -902,7 +901,7 @@ fn test_protocol_message_unique_ids() {
 
 #[test]
 fn test_service_info_timestamp() {
-    let now = Utc::now();
+    let now = std::time::SystemTime::now();
     let service = ServiceInfo {
         id: "timestamp-test".to_string(),
         name: "Timestamp Test".to_string(),

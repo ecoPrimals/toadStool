@@ -12,8 +12,8 @@
 //! - Metric aggregation scenarios
 //! - Webhook integration tests
 
-use chrono::{Duration, Utc};
 use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 use toadstool::execution::RuntimeType;
 use toadstool_management_analytics::*;
 use uuid::Uuid;
@@ -240,7 +240,7 @@ fn test_trend_statistics_extreme_values() {
 
 #[test]
 fn test_prediction_point_basic() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let prediction = PredictionPoint {
         timestamp: now,
         predicted_value: 75.0,
@@ -255,7 +255,7 @@ fn test_prediction_point_basic() {
 
 #[test]
 fn test_prediction_point_narrow_interval() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let prediction = PredictionPoint {
         timestamp: now,
         predicted_value: 50.0,
@@ -269,7 +269,7 @@ fn test_prediction_point_narrow_interval() {
 
 #[test]
 fn test_prediction_point_wide_interval() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let prediction = PredictionPoint {
         timestamp: now,
         predicted_value: 50.0,
@@ -283,7 +283,7 @@ fn test_prediction_point_wide_interval() {
 
 #[test]
 fn test_prediction_point_future_timestamp() {
-    let future = Utc::now() + Duration::hours(24);
+    let future = SystemTime::now() + Duration::from_secs(24 * 3600);
     let prediction = PredictionPoint {
         timestamp: future,
         predicted_value: 100.0,
@@ -291,12 +291,12 @@ fn test_prediction_point_future_timestamp() {
         prediction_method: "arima".to_string(),
     };
 
-    assert!(prediction.timestamp > Utc::now());
+    assert!(prediction.timestamp > SystemTime::now());
 }
 
 #[test]
 fn test_prediction_point_multiple_methods() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let methods = vec![
         "linear_regression",
         "moving_average",
@@ -319,7 +319,7 @@ fn test_prediction_point_multiple_methods() {
 
 #[test]
 fn test_prediction_point_zero_value() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let prediction = PredictionPoint {
         timestamp: now,
         predicted_value: 0.0,
@@ -332,7 +332,7 @@ fn test_prediction_point_zero_value() {
 
 #[test]
 fn test_prediction_point_negative_value() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let prediction = PredictionPoint {
         timestamp: now,
         predicted_value: -10.0,
@@ -583,14 +583,14 @@ fn test_dashboard_permissions_with_users() {
 
 #[test]
 fn test_dashboard_panel_creation() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let panel = DashboardPanel {
         id: "panel_1".to_string(),
         title: "CPU Usage".to_string(),
         panel_type: PanelType::LineChart,
         metrics: vec!["cpu_usage".to_string()],
         time_range: TimeRange {
-            from: now - Duration::hours(1),
+            from: now - Duration::from_secs(3600),
             to: now,
             refresh_interval_secs: 30,
         },
@@ -637,7 +637,7 @@ fn test_data_point_with_all_runtimes() {
     for runtime in runtimes {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
             metric_name: "test_metric".to_string(),
             value: 50.0,
             runtime_type: Some(runtime.clone()),
@@ -653,7 +653,7 @@ fn test_data_point_with_all_runtimes() {
 fn test_data_point_no_runtime() {
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test_metric".to_string(),
         value: 50.0,
         runtime_type: None,
@@ -674,7 +674,7 @@ fn test_data_point_many_tags() {
 
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test_metric".to_string(),
         value: 50.0,
         runtime_type: None,
@@ -689,7 +689,7 @@ fn test_data_point_many_tags() {
 fn test_data_point_extreme_value_positive() {
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test_metric".to_string(),
         value: f64::MAX / 2.0,
         runtime_type: None,
@@ -704,7 +704,7 @@ fn test_data_point_extreme_value_positive() {
 fn test_data_point_extreme_value_negative() {
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test_metric".to_string(),
         value: f64::MIN / 2.0,
         runtime_type: None,
@@ -719,7 +719,7 @@ fn test_data_point_extreme_value_negative() {
 fn test_data_point_value_zero() {
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test_metric".to_string(),
         value: 0.0,
         runtime_type: None,

@@ -4,9 +4,9 @@ use super::super::protocols;
 use super::super::*;
 use super::make_test_job;
 use crate::ResourceRequirements;
-use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
+use std::time::SystemTime;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 #[test]
@@ -33,8 +33,8 @@ fn test_complexity_level_all_variants() {
 #[test]
 fn test_execution_metrics_constructor() {
     let m = ExecutionMetrics {
-        start_time: Utc::now(),
-        end_time: Utc::now(),
+        start_time: SystemTime::now(),
+        end_time: SystemTime::now(),
         cpu_usage: 0.5,
         memory_usage: 1024,
         network_io: 100,
@@ -523,8 +523,8 @@ fn test_job_result_empty_output_serde() {
         status: "ok".to_string(),
         output: vec![],
         metrics: ExecutionMetrics {
-            start_time: Utc::now(),
-            end_time: Utc::now(),
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now(),
             cpu_usage: 0.0,
             memory_usage: 0,
             network_io: 0,
@@ -667,7 +667,7 @@ fn test_sub_task_handle_empty_target_nodes_serde() {
         subtask_id: Uuid::new_v4(),
         songbird_job_id: Uuid::new_v4(),
         target_nodes: vec![],
-        submitted_at: Utc::now(),
+        submitted_at: SystemTime::now(),
         status: SubTaskStatus::Failed,
     };
     let json = serde_json::to_string(&handle).unwrap();
@@ -776,7 +776,7 @@ fn test_songbird_broadcast_message_all_channel_names() {
                 specialized_hardware: vec![],
                 software_capabilities: vec![],
             },
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         }
         .channel_name(),
         "capability-updates"
@@ -785,7 +785,7 @@ fn test_songbird_broadcast_message_all_channel_names() {
         SongbirdBroadcastMessage::HealthUpdate {
             node_id: "n".to_string(),
             health_status: "ok".to_string(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         }
         .channel_name(),
         "health-updates"
@@ -794,7 +794,7 @@ fn test_songbird_broadcast_message_all_channel_names() {
         SongbirdBroadcastMessage::CustomMessage {
             message_type: "custom".to_string(),
             payload: serde_json::Value::Null,
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         }
         .channel_name(),
         "custom"
@@ -804,8 +804,8 @@ fn test_songbird_broadcast_message_all_channel_names() {
 #[test]
 fn test_execution_metrics_zero_values_serde() {
     let m = ExecutionMetrics {
-        start_time: Utc::now(),
-        end_time: Utc::now(),
+        start_time: SystemTime::now(),
+        end_time: SystemTime::now(),
         cpu_usage: 0.0,
         memory_usage: 0,
         network_io: 0,

@@ -290,7 +290,7 @@ impl ToadStoolServer {
             .event_broadcaster
             .send(ServerEvent::RuntimeEngineRegistered {
                 runtime_type: rt_type,
-                timestamp: chrono::Utc::now(),
+                timestamp: std::time::SystemTime::now(),
             });
 
         Ok(())
@@ -413,10 +413,11 @@ impl ToadStoolServer {
                 .send(ServerEvent::ExecutionCompleted {
                     execution_id: id,
                     status: toadstool::ExecutionStatus::Cancelled,
-                    duration_ms: chrono::Utc::now()
-                        .signed_duration_since(execution.started_at)
-                        .num_milliseconds() as u64,
-                    timestamp: chrono::Utc::now(),
+                    duration_ms: std::time::SystemTime::now()
+                        .duration_since(execution.started_at)
+                        .unwrap_or_default()
+                        .as_millis() as u64,
+                    timestamp: std::time::SystemTime::now(),
                 });
         }
 
@@ -644,7 +645,7 @@ mod tests {
         let event = ServerEvent::ExecutionStarted {
             execution_id: uuid::Uuid::new_v4(),
             runtime_type: RuntimeType::Native,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let formatted = format!("{event:?}");
         assert!(formatted.contains("ExecutionStarted"));
@@ -656,7 +657,7 @@ mod tests {
             execution_id: uuid::Uuid::new_v4(),
             status: toadstool::ExecutionStatus::Success,
             duration_ms: 100,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let formatted = format!("{event:?}");
         assert!(formatted.contains("ExecutionCompleted"));
@@ -666,7 +667,7 @@ mod tests {
     fn test_server_event_runtime_engine_registered() {
         let event = ServerEvent::RuntimeEngineRegistered {
             runtime_type: RuntimeType::Wasm,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let formatted = format!("{event:?}");
         assert!(formatted.contains("RuntimeEngineRegistered"));
@@ -678,7 +679,7 @@ mod tests {
             cpu_usage_percent: 50.0,
             memory_usage_percent: 60.0,
             active_executions: 2,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let formatted = format!("{event:?}");
         assert!(formatted.contains("ResourceUsageUpdate"));
@@ -689,7 +690,7 @@ mod tests {
         let event = ServerEvent::HealthStatusChanged {
             healthy: true,
             message: "ok".to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let formatted = format!("{event:?}");
         assert!(formatted.contains("HealthStatusChanged"));
@@ -701,7 +702,7 @@ mod tests {
             error_type: "Network".to_string(),
             message: "connection failed".to_string(),
             execution_id: None,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let formatted = format!("{event:?}");
         assert!(formatted.contains("ErrorOccurred"));

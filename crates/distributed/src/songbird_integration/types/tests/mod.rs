@@ -5,7 +5,7 @@ mod tests_extra;
 
 use super::*;
 use crate::{DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJobType};
-use chrono::Utc;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 pub(super) fn make_test_job(resource_requirements: ResourceRequirements) -> crate::UniversalJob {
@@ -18,6 +18,6 @@ pub(super) fn make_test_job(resource_requirements: ResourceRequirements) -> crat
         dependencies: vec![],
         resource_requirements,
         retry_config: DistributedRetryConfig::default(),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     }
 }

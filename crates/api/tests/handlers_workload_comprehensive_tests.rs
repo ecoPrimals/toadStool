@@ -165,10 +165,14 @@ async fn test_workload_response_includes_id() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_includes_timestamp() {
     // Test: Response includes creation timestamp
-    use chrono::Utc;
-
-    let timestamp = Utc::now();
-    assert!(timestamp.timestamp() > 0, "Timestamp should be valid");
+    let timestamp = std::time::SystemTime::now();
+    assert!(
+        timestamp
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() > 0)
+            .unwrap_or(false),
+        "Timestamp should be valid"
+    );
 }
 
 // ============================================================================

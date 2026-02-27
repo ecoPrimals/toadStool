@@ -1,13 +1,13 @@
 //! Modern API types with `OpenAPI` support and validation
 
 use std::collections::HashMap;
+use std::time::SystemTime;
 
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -169,8 +169,12 @@ pub struct ResourceRequirements {
 pub struct ExecutionResponse {
     pub execution_id: Uuid,
     pub status: ExecutionStatus,
-    pub submitted_at: DateTime<Utc>,
-    pub estimated_completion: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub submitted_at: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    #[schema(value_type = Option<u64>)]
+    pub estimated_completion: Option<SystemTime>,
     pub queue_position: Option<u32>,
     pub resource_allocation: Option<ResourceAllocation>,
     pub monitoring_endpoints: MonitoringEndpoints,
@@ -203,9 +207,15 @@ pub struct ExecutionInfo {
     pub execution_id: Uuid,
     pub status: ExecutionStatus,
     pub runtime_type: RuntimeType,
-    pub submitted_at: DateTime<Utc>,
-    pub started_at: Option<DateTime<Utc>>,
-    pub completed_at: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub submitted_at: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    #[schema(value_type = Option<u64>)]
+    pub started_at: Option<SystemTime>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    #[schema(value_type = Option<u64>)]
+    pub completed_at: Option<SystemTime>,
     pub duration_ms: Option<u64>,
     pub progress: Option<f64>,
     pub error_message: Option<String>,
@@ -236,7 +246,9 @@ pub struct ClusterStatusResponse {
     pub total_capacity: ClusterCapacity,
     pub used_capacity: ClusterCapacity,
     pub node_details: Vec<ClusterNodeInfo>,
-    pub last_updated: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub last_updated: SystemTime,
 }
 
 /// Cluster capacity information
@@ -285,33 +297,45 @@ pub enum ApiEvent {
     ExecutionStarted {
         execution_id: Uuid,
         runtime_type: RuntimeType,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
     ExecutionCompleted {
         execution_id: Uuid,
         status: ExecutionStatus,
         duration_ms: u64,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
     ExecutionFailed {
         execution_id: Uuid,
         error: String,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
 
     /// Cluster events
     ClusterNodeAdded {
         node_id: String,
         node_info: ClusterNodeInfo,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
     ClusterNodeRemoved {
         node_id: String,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
     ClusterLoadChanged {
         current_load: f64,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
 
     /// System events
@@ -319,11 +343,15 @@ pub enum ApiEvent {
         alert_id: Uuid,
         severity: AlertSeverity,
         message: String,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
     MetricsUpdated {
         metrics: ApiMetrics,
-        timestamp: DateTime<Utc>,
+        #[serde(with = "toadstool_common::system_time_serde")]
+        #[schema(value_type = u64)]
+        timestamp: SystemTime,
     },
 }
 
@@ -361,7 +389,9 @@ pub struct ExecutionLogs {
 /// Log entry structure
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct LogEntry {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub timestamp: SystemTime,
     pub level: LogLevel,
     pub message: String,
     pub source: String,
@@ -389,7 +419,9 @@ pub struct ExecutionMetrics {
 /// Metric point
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MetricPoint {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub timestamp: SystemTime,
     pub metric_name: String,
     pub value: f64,
     pub unit: String,
@@ -398,8 +430,12 @@ pub struct MetricPoint {
 /// Time range for metrics
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct TimeRange {
-    pub start: DateTime<Utc>,
-    pub end: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub start: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub end: SystemTime,
 }
 
 /// Paginated response wrapper
@@ -426,8 +462,12 @@ pub struct PaginationInfo {
 pub struct ExecutionFilter {
     pub status: Option<ExecutionStatus>,
     pub runtime_type: Option<RuntimeType>,
-    pub submitted_after: Option<DateTime<Utc>>,
-    pub submitted_before: Option<DateTime<Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    #[schema(value_type = Option<u64>)]
+    pub submitted_after: Option<SystemTime>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    #[schema(value_type = Option<u64>)]
+    pub submitted_before: Option<SystemTime>,
     #[validate(range(min = 1, max = 1000))]
     pub page: Option<u32>,
     #[validate(range(min = 1, max = 100))]
@@ -453,7 +493,9 @@ pub struct ApiError {
     pub error_code: String,
     pub message: String,
     pub details: Option<serde_json::Value>,
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub timestamp: SystemTime,
     pub request_id: Option<String>,
     pub documentation_url: Option<String>,
 }
@@ -465,7 +507,7 @@ impl ApiError {
             error_code: error_code.to_string(),
             message: message.to_string(),
             details: None,
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
             request_id: None,
             documentation_url: Some("https://docs.toadstool.dev/api/errors".to_string()),
         }
@@ -654,7 +696,9 @@ pub struct AuthResponse {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct HealthResponse {
     pub status: String,
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    #[schema(value_type = u64)]
+    pub timestamp: SystemTime,
     pub version: String,
     pub uptime_seconds: u64,
     pub checks: Vec<HealthCheck>,

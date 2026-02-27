@@ -10,8 +10,8 @@
 //! - Helper functions
 //! - Edge cases and error handling
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 use toadstool_management_analytics::*;
 use uuid::Uuid;
 
@@ -99,7 +99,7 @@ fn test_analytics_data_point_creation() {
 
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "cpu_usage".to_string(),
         value: 75.5,
         runtime_type: Some(toadstool::RuntimeType::Native),
@@ -118,7 +118,7 @@ fn test_analytics_data_point_creation() {
 fn test_analytics_data_point_without_optional_fields() {
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "request_count".to_string(),
         value: 1000.0,
         runtime_type: None,
@@ -190,7 +190,7 @@ fn test_trend_statistics_creation() {
 #[test]
 fn test_prediction_point_creation() {
     let prediction = PredictionPoint {
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         predicted_value: 65.5,
         confidence_interval: (60.0, 71.0),
         prediction_method: "linear_regression".to_string(),
@@ -311,8 +311,8 @@ fn test_alert_creation() {
             value: 80.0,
         },
         severity: AlertSeverity::Warning,
-        created_at: Utc::now(),
-        last_triggered: Some(Utc::now()),
+        created_at: SystemTime::now(),
+        last_triggered: Some(SystemTime::now()),
         status: AlertStatus::Active,
         recipients: vec!["admin@example.com".to_string()],
     };
@@ -362,8 +362,8 @@ fn test_dashboard_panel_creation() {
         panel_type: PanelType::LineChart,
         metrics: vec!["cpu_usage".to_string(), "cpu_load".to_string()],
         time_range: TimeRange {
-            from: Utc::now() - chrono::Duration::hours(24),
-            to: Utc::now(),
+            from: SystemTime::now() - Duration::from_secs(24 * 3600),
+            to: SystemTime::now(),
             refresh_interval_secs: 30,
         },
         position: PanelPosition {
@@ -420,8 +420,8 @@ fn test_panel_type_variants() {
 
 #[test]
 fn test_time_range_creation() {
-    let now = Utc::now();
-    let past = now - chrono::Duration::hours(1);
+    let now = SystemTime::now();
+    let past = now - Duration::from_secs(3600);
 
     let time_range = TimeRange {
         from: past,
@@ -512,7 +512,7 @@ async fn test_collect_single_data_point() {
 
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "test_metric".to_string(),
         value: 42.0,
         runtime_type: None,
@@ -532,7 +532,7 @@ async fn test_collect_multiple_data_points() {
     for i in 0..10 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
             metric_name: format!("metric_{}", i),
             value: i as f64,
             runtime_type: None,
@@ -552,7 +552,7 @@ async fn test_collect_data_point_with_runtime_type() {
 
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "native_execution_time".to_string(),
         value: 125.5,
         runtime_type: Some(toadstool::RuntimeType::Native),
@@ -576,7 +576,7 @@ async fn test_collect_data_point_with_tags() {
 
     let data_point = AnalyticsDataPoint {
         id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+        timestamp: SystemTime::now(),
         metric_name: "response_time".to_string(),
         value: 45.2,
         runtime_type: None,

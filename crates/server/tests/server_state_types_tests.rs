@@ -1,7 +1,6 @@
 //! Tests for server state types
 
-use chrono::Utc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use toadstool::{ExecutionStatus, RuntimeType};
 use toadstool_server::state::*;
 use uuid::Uuid;
@@ -58,7 +57,7 @@ fn test_active_execution_creation() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Native,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(3600),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
@@ -78,7 +77,7 @@ fn test_active_execution_with_timeout() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(7200), // 2 hours
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
@@ -97,7 +96,7 @@ fn test_active_execution_clone() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Wasm,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(1800),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
@@ -129,7 +128,7 @@ fn test_execution_with_client_context() {
     let execution = ActiveExecution {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
-        started_at: Utc::now(),
+        started_at: SystemTime::now(),
         timeout: Duration::from_secs(3600),
         status: ExecutionStatus::Running,
         client_info: client,

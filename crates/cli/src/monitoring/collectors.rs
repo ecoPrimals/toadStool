@@ -1,7 +1,6 @@
 //! Metrics collectors - system, process, and network data collection
 
 use anyhow::Result;
-use chrono::Utc;
 use std::collections::HashMap;
 use sysinfo::{Disks, Networks, System};
 
@@ -35,7 +34,7 @@ impl MetricsCollector for SystemMetricsCollector {
     }
 
     fn collect(&self) -> Result<MetricBatch> {
-        let timestamp = Utc::now();
+        let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
 
         // System metrics (CPU, memory)
@@ -123,7 +122,7 @@ impl MetricsCollector for ProcessMetricsCollector {
     }
 
     fn collect(&self) -> Result<MetricBatch> {
-        let timestamp = Utc::now();
+        let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
         let mut system = System::new_all();
         system.refresh_processes();
@@ -170,7 +169,7 @@ impl MetricsCollector for NetworkMetricsCollector {
     }
 
     fn collect(&self) -> Result<MetricBatch> {
-        let timestamp = Utc::now();
+        let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
 
         // sysinfo 0.30+ uses separate Networks struct

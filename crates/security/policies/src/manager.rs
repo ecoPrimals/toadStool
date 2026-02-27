@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use async_trait::async_trait;
-use chrono::Utc;
 use hex;
 use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
@@ -487,8 +486,8 @@ impl PolicyManager for FilePolicyManager {
             version: "1.0.0".to_string(),
             description: Some("Automatically composed policy".to_string()),
             author: Some("ToadStool Policy Manager".to_string()),
-            created_at: Utc::now(),
-            modified_at: Utc::now(),
+            created_at: SystemTime::now(),
+            modified_at: SystemTime::now(),
             rules: Vec::new(),
             inherits: Vec::new(),
             metadata: HashMap::new(),

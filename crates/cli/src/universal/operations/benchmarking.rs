@@ -82,7 +82,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         Ok(crate::universal::types::BenchmarkResult {
             platform: platform_id.to_string(),
             suite: suite.to_string(),
-            started: chrono::Utc::now(),
+            started: std::time::SystemTime::now(),
             duration,
             tests,
             overall_score,

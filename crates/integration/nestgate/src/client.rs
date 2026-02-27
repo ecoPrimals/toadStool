@@ -21,7 +21,6 @@
 //! client.store_artifact("model.bin", data).await?;
 //! ```
 
-use chrono::Utc;
 // PURE RUST: Using unix sockets instead of HTTP
 use sha2::Digest;
 use sha2::Sha256;
@@ -229,7 +228,7 @@ impl StorageClient {
             content_type: Self::detect_content_type(data),
             size_bytes: data.len() as u64,
             checksum,
-            created_at: Utc::now(),
+            created_at: std::time::SystemTime::now(),
             last_accessed: None,
             tags: HashMap::new(),
             execution_id: None,
