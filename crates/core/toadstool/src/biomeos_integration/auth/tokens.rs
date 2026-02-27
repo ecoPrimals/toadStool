@@ -1,6 +1,7 @@
 //! Token types and validation
 
 use std::collections::HashMap;
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
@@ -11,8 +12,10 @@ pub struct AuthenticationToken {
     pub token_type: String,
     pub token: String,
     pub public_key: String,
-    pub expires_at: chrono::DateTime<chrono::Utc>,
-    pub issued_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub expires_at: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub issued_at: SystemTime,
     pub issuer: String,
     pub audience: Vec<String>,
     pub scope: Vec<String>,
@@ -25,21 +28,24 @@ pub struct TokenRequest {
     pub requesting_primal: String,
     pub scope: Vec<String>,
     pub audience: Vec<String>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
 }
 
 /// Token refresh request
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenRefreshRequest {
     pub requesting_primal: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
 }
 
 /// Token verification request
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenVerificationRequest {
     pub primal_name: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
     pub signature: String,
 }
 
@@ -47,7 +53,8 @@ pub struct TokenVerificationRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenVerificationResponse {
     pub status: TokenVerificationStatus,
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default, with = "toadstool_common::system_time_serde::opt")]
+    pub expires_at: Option<SystemTime>,
     pub details: Option<String>,
 }
 

@@ -48,7 +48,7 @@ use crate::self_identity::{Capability, SelfIdentity};
 use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
@@ -287,7 +287,7 @@ fn parse_service_info_impl(info: &ServiceInfo) -> ToadStoolResult<DiscoveredServ
         }
     }
 
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     Ok(DiscoveredService {
         instance_id,
@@ -557,8 +557,8 @@ mod tests {
             }],
             endpoint: "localhost:9000".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: HashMap::new(),
         };
 
@@ -574,8 +574,8 @@ mod tests {
             }],
             endpoint: "localhost:9001".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: HashMap::new(),
         };
 
@@ -714,8 +714,8 @@ mod tests {
             }],
             endpoint: "localhost:9000".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: HashMap::new(),
         };
 

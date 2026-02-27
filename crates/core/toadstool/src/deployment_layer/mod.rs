@@ -1,5 +1,5 @@
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Deployment Layer Detection and Adaptation
 //!

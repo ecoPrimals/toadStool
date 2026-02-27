@@ -15,6 +15,39 @@ use crate::network;
 pub struct ConfigUtils;
 
 impl ConfigUtils {
+    /// Get primal port by capability/env name (capability-based lookup)
+    ///
+    /// **Purpose**: Defaults for initial connection discovery before runtime discovery.
+    /// Used when capability-based discovery (Songbird, mDNS) is not yet available.
+    ///
+    /// **Production**: Prefer `RuntimeDiscovery::discover_capability()` instead.
+    /// This is the cold-start bootstrap path only.
+    ///
+    /// **Env pattern**: Checks `{PRIMAL_NAME}_PORT` (e.g. `SONGBIRD_PORT`, `BEARDOG_PORT`).
+    /// Primal names use UPPERCASE for env var convention.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let port = ConfigUtils::get_primal_default_port("SONGBIRD");
+    /// // Returns SONGBIRD_PORT env value or 8080
+    /// ```
+    #[must_use]
+    pub fn get_primal_default_port(primal_name: &str) -> u16 {
+        use crate::ports::{discovery_fallback, get_primal_port};
+
+        let fallback = match primal_name {
+            "SONGBIRD" => discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT,
+            "BEARDOG" => discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT,
+            "NESTGATE" => discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT,
+            "SQUIRREL" => discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT,
+            "BIOMEOS" => discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT,
+            _ => crate::defaults::network::API_PORT, // Unknown primal: use ToadStool default
+        };
+
+        get_primal_port(primal_name, fallback)
+    }
+
     /// Get Songbird port from environment or default
     ///
     /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
@@ -37,15 +70,8 @@ impl ConfigUtils {
         note = "Use capability-based discovery (RuntimeDiscovery::discover_capability) instead of hardcoded primal endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using legacy fallback constant during migration
     pub fn get_songbird_port() -> u16 {
-        // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
-        // Use constant default, not cached config value (avoids double-loading issue)
-        let loader = EnvConfigLoader::with_prefix(""); // Check SONGBIRD_PORT, not TOADSTOOL_SONGBIRD_PORT
-        loader.get_u16(
-            "SONGBIRD_PORT",
-            crate::defaults::network::COORDINATION_FALLBACK_PORT,
-        )
+        Self::get_primal_default_port("SONGBIRD")
     }
 
     /// Get `BearDog` port from environment or default
@@ -64,15 +90,8 @@ impl ConfigUtils {
         note = "Use capability-based discovery for crypto services instead of hardcoded endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using legacy fallback constant during migration
     pub fn get_beardog_port() -> u16 {
-        // ✅ DEEP SOLUTION: No prefix for other primals - they manage their own env vars
-        // Use constant default, not cached config value (avoids double-loading issue)
-        let loader = EnvConfigLoader::with_prefix(""); // No prefix - check raw BEARDOG_PORT
-        loader.get_u16(
-            "BEARDOG_PORT",
-            crate::defaults::network::SECURITY_FALLBACK_PORT,
-        )
+        Self::get_primal_default_port("BEARDOG")
     }
 
     /// Get `NestGate` port from environment or default
@@ -86,15 +105,8 @@ impl ConfigUtils {
         note = "Use capability-based discovery for storage services instead of hardcoded endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using legacy fallback constant during migration
     pub fn get_nestgate_port() -> u16 {
-        // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
-        // Use constant default, not cached config value (avoids double-loading issue)
-        let loader = EnvConfigLoader::with_prefix(""); // Check NESTGATE_PORT, not TOADSTOOL_NESTGATE_PORT
-        loader.get_u16(
-            "NESTGATE_PORT",
-            crate::defaults::network::STORAGE_FALLBACK_PORT,
-        )
+        Self::get_primal_default_port("NESTGATE")
     }
 
     /// Get Squirrel port from environment or default
@@ -108,13 +120,8 @@ impl ConfigUtils {
         note = "Use capability-based discovery for AI services instead of hardcoded endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
-    #[allow(deprecated)] // Using legacy fallback constant during migration
     pub fn get_squirrel_port() -> u16 {
-        // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
-        // Use constant default, not cached config value
-        let loader = EnvConfigLoader::with_prefix(""); // Check SQUIRREL_PORT, not TOADSTOOL_SQUIRREL_PORT
-        loader.get_u16("SQUIRREL_PORT", crate::defaults::network::AI_FALLBACK_PORT)
+        Self::get_primal_default_port("SQUIRREL")
     }
 
     /// Get `ToadStool` port from environment or default

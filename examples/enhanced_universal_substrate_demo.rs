@@ -3,8 +3,7 @@
 //! This demo shows ToadStool's universal compute capabilities
 //! with a focus on core functionality and simplified examples.
 
-use chrono::Utc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 use toadstool::error::ToadStoolResult;
@@ -55,7 +54,7 @@ async fn demonstrate_basic_execution(platform: &UniversalComputePlatform) -> Toa
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 
@@ -87,7 +86,7 @@ async fn demonstrate_job_types(platform: &UniversalComputePlatform) -> ToadStool
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(10)),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context: context.clone(),
     };
 
@@ -106,7 +105,7 @@ async fn demonstrate_job_types(platform: &UniversalComputePlatform) -> ToadStool
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(15)),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 
@@ -157,7 +156,7 @@ async fn demonstrate_resource_management(
             gpu: None,
         },
         timeout: Some(Duration::from_secs(5)),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 

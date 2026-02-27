@@ -19,7 +19,6 @@ fn create_test_state() -> ServerState {
         bind_address: "127.0.0.1:8080".to_string(),
         resource_monitoring_interval: Duration::from_millis(50), // Fast for testing
         enable_api: true,
-        enable_websocket: true,
         enable_cors: false,
         max_concurrent_executions: 1000,
         default_timeout: Duration::from_secs(30),

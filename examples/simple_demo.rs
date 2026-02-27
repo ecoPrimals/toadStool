@@ -2,7 +2,7 @@
 //!
 //! This demonstrates the core functionality of ToadStool without external dependencies
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 use toadstool::error::ToadStoolResult;
@@ -46,7 +46,7 @@ async fn main() -> ToadStoolResult<()> {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 

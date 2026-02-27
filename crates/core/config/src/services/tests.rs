@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+mod service_registry_tests {
     use super::super::*;
 
     #[test]

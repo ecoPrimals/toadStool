@@ -7,6 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 /// ToadStool's self-identity - what we know about OURSELVES
@@ -343,13 +344,15 @@ pub struct DiscoveredService {
     pub capabilities: Vec<Capability>,
     pub endpoint: String,
     pub protocols: Vec<String>,
-    pub discovered_at: chrono::DateTime<chrono::Utc>,
-    pub last_seen: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub discovered_at: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_seen: SystemTime,
 }
 
 impl From<ServiceAdvertisement> for DiscoveredService {
     fn from(ad: ServiceAdvertisement) -> Self {
-        let now = chrono::Utc::now();
+        let now = SystemTime::now();
         Self {
             instance_id: ad.instance_id,
             primal_type: ad.primal_type,
@@ -464,8 +467,8 @@ mod tests {
             }],
             endpoint: "localhost:8082".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
         };
 
         assert!(identity.matches_requirement(&requirement, &service));

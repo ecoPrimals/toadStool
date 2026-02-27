@@ -81,13 +81,6 @@ fn test_client_error_timeout() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_client_error_websocket() {
-    let error = ClientError::WebSocket("Connection closed".to_string());
-    assert!(error.to_string().contains("Connection closed"));
-}
-
-#[test]
 fn test_client_error_debug() {
     let error = ClientError::Configuration("test".to_string());
     let debug_str = format!("{:?}", error);

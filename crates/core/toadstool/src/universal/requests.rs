@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use super::types::PrimalContext;
@@ -43,7 +44,8 @@ pub struct PrimalRequest {
     /// Request metadata
     pub metadata: HashMap<String, String>,
     /// Request timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
 }
 
 /// Response status
@@ -71,7 +73,8 @@ pub struct PrimalResponse {
     /// Response metadata
     pub metadata: HashMap<String, String>,
     /// Response timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
 }
 
 #[cfg(test)]
@@ -167,7 +170,7 @@ mod tests {
             payload: serde_json::json!({"token": "xyz"}),
             context: sample_primal_context(),
             metadata,
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
         assert_eq!(req.source, "toadstool");
         assert_eq!(req.target, "bear-dog");
@@ -227,7 +230,7 @@ mod tests {
             status: ResponseStatus::Success,
             payload: serde_json::json!({"result": "ok"}),
             metadata,
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
         assert!(matches!(resp.status, ResponseStatus::Success));
         assert_eq!(resp.payload["result"], "ok");
@@ -240,7 +243,7 @@ mod tests {
             status: ResponseStatus::Success,
             payload: serde_json::json!({"data": [1, 2, 3]}),
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
         let json = serde_json::to_string(&resp).expect("serialize");
         let parsed: PrimalResponse = serde_json::from_str(&json).expect("deserialize");

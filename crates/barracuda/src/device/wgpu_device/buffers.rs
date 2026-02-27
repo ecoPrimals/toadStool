@@ -18,7 +18,9 @@ impl WgpuDevice {
             return Ok(Vec::new());
         }
         if self.is_lost() {
-            return Err(BarracudaError::device("GPU device lost — cannot read buffer"));
+            return Err(BarracudaError::device(
+                "GPU device lost — cannot read buffer",
+            ));
         }
         let byte_size = (count * std::mem::size_of::<T>()) as u64;
 
@@ -40,7 +42,9 @@ impl WgpuDevice {
         self.submit_and_poll_inner(Some(encoder.finish()));
 
         if self.is_lost() {
-            return Err(BarracudaError::device("GPU device lost during readback copy"));
+            return Err(BarracudaError::device(
+                "GPU device lost during readback copy",
+            ));
         }
 
         self.map_staging_buffer(&staging, count)
@@ -63,7 +67,9 @@ impl WgpuDevice {
             return Ok(Vec::new());
         }
         if self.is_lost() {
-            return Err(BarracudaError::device("GPU device lost — cannot map buffer"));
+            return Err(BarracudaError::device(
+                "GPU device lost — cannot map buffer",
+            ));
         }
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();

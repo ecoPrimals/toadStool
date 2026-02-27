@@ -385,7 +385,7 @@ async fn test_config_skips_malformed_endpoint() {
     let all = disc.discover_all().await.unwrap();
     assert_eq!(all.len(), 1);
     // Should have 2 valid endpoints (invalid one skipped)
-    assert!(all[0].endpoints.len() >= 1);
+    assert!(!all[0].endpoints.is_empty());
 }
 
 #[tokio::test]

@@ -11,6 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::time::SystemTime;
 
 /// Self-identity: What this primal knows about itself
 ///
@@ -150,10 +151,12 @@ pub struct DiscoveredService {
     pub version: semver::Version,
 
     /// When it was discovered
-    pub discovered_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "crate::system_time_serde")]
+    pub discovered_at: SystemTime,
 
     /// Last health check
-    pub last_seen: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "crate::system_time_serde")]
+    pub last_seen: SystemTime,
 
     /// Health status
     pub health: HealthStatus,

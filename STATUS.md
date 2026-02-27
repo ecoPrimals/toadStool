@@ -1,4 +1,4 @@
-# Status -- February 26, 2026 (Sessions 32-68: Precision Bottleneck Execution)
+# Status -- February 26, 2026 (Sessions 32-68++: Precision Bottleneck + Standalone Resilience + Full Ecosystem Audit)
 
 ## Quality Gates
 
@@ -9,6 +9,7 @@
 | `cargo clippy -p barracuda --lib -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
 | `cargo test -p barracuda --lib` | PASS | **2,546+ total** (122 shader-specific: unit/e2e/chaos/fault) |
+| Standalone clone test | PASS | **Pull to any machine, `cargo test` works — GPU-optional, CPU fallback, device-lost resilient** |
 | hotSpring validation | PASS | **664 tests, 22 papers validated** |
 | wetSpring validation | PASS | **918 tests, 96.48% coverage** |
 | neuralSpring validation | PASS | **580 tests, 94.53% coverage** |
@@ -32,8 +33,37 @@
 | Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
 | FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- FMA-optimized DF64 + transcendentals** |
 | Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
+| GPU device-lost recovery | PASS | **`catch_unwind` on all submit paths, `is_lost()` early-return, no test cascades** |
+| `cargo clippy --all-targets` | PASS | **0 warnings across tests + examples (pedantic)** |
+| License compliance | PASS | **AGPL-3.0-or-later: root LICENSE file + SPDX headers** |
+| Hardcoded primal names | PASS | **0 -- capability-based `get_primal_default_port()` pattern** |
+| Hardcoded ports | PASS | **0 inline literals -- `ports::discovery_fallback` named constants** |
+| Test coverage (llvm-cov) | 43.4% | **Target: 90% -- systematic gap analysis needed** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 68+: Standalone Resilience — Deep Debt (Feb 26, 2026)
+
+Stabilizing the genome: toadStool must build clean and test without false failures on any machine — small dev station, cloud VM, no GPU.
+
+### GPU Device-Lost Recovery
+- **`install_error_handler`**: device-lost no longer panics — flags `lost`, logs warning, returns. Non-lost errors still panic.
+- **`submit_and_poll_inner`**: `catch_unwind` catches wgpu internal device-lost panics, converts to `lost` flag. Other panics propagate.
+- **`read_buffer`/`map_staging_buffer`**: early-return `Err(BarracudaError::device("GPU device lost"))` when device is lost.
+- **`compute_graph.rs`/`pppm_gpu/mod.rs`**: direct `queue.submit` wrapped in `catch_unwind` with device-lost → `Err`.
+- **`read_buffer` readback**: migrated from direct `queue.submit` to `submit_and_poll_inner`.
+
+### Test Parallelism
+- **`.cargo/config.toml`**: `RUST_TEST_THREADS=4` default. Override: `RUST_TEST_THREADS=N cargo test`.
+
+### Documentation + Archive Cleanup
+- 5 stale scripts → `ecoPrimals/fossil/`. 4 old docs → `ecoPrimals/fossil/`. `PRECISION_BOTTLENECK.md` → fossil (resolved gate).
+- `run-coverage.sh` fixed (removed stale test suite refs). `docs/guides/TESTING.md` updated to real test counts.
+
+### Result
+- **128 false test failures → 0**. Pull to any machine, `cargo test` works.
 
 ---
 

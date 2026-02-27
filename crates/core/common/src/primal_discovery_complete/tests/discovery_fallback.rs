@@ -292,7 +292,10 @@ async fn test_create_fallback_service_malformed_url_uses_defaults() {
     };
     let services = engine.discover_by_capability(&cap).await.unwrap();
     assert_eq!(services.len(), 1);
-    assert_eq!(services[0].endpoints[0].address, "localhost");
+    assert_eq!(
+        services[0].endpoints[0].address,
+        crate::constants::network::LOCALHOST_IPV4
+    );
     assert_eq!(
         services[0].endpoints[0].port,
         crate::constants::network::DEFAULT_HTTP_PORT

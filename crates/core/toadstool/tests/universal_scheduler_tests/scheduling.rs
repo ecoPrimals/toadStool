@@ -68,7 +68,7 @@ async fn test_scheduler_schedule_wasm_job() {
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
     // Ok or Err both acceptable — no WASM engine required
@@ -103,7 +103,7 @@ async fn test_scheduler_sequential_job_submission() {
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: Some(Duration::from_secs(30)),
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
             context: create_test_context(),
         };
         assert!(
@@ -159,7 +159,7 @@ async fn test_scheduler_job_with_custom_resources() {
         priority: JobPriority::Normal,
         resources: create_resource_spec(2.0, Some(4.0), 1, Some(2)),
         timeout: Some(Duration::from_secs(60)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
     assert!(scheduler.schedule_job(job).await.is_ok());
@@ -179,7 +179,7 @@ async fn test_scheduler_job_with_minimal_resources() {
         priority: JobPriority::Background,
         resources: ResourceRequirements::default(),
         timeout: None,
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
     assert!(scheduler.schedule_job(job).await.is_ok());

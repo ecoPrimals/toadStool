@@ -191,8 +191,7 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
 
     // Timing should be consistent
     assert!(
-        metrics.timing.duration
-            <= chrono::Duration::from_std(response.duration).unwrap_or_default(),
+        metrics.timing.duration <= response.duration,
         "Timing duration should be consistent with response duration"
     );
 

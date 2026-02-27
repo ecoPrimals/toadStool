@@ -446,10 +446,9 @@ impl RuntimeEngine for ContainerRuntimeEngine {
             };
 
             let timing_metrics = TimingMetrics {
-                start_time: chrono::DateTime::from(start_time),
-                end_time: Some(chrono::Utc::now()),
-                duration: chrono::Duration::from_std(start_time.elapsed().unwrap_or_default())
-                    .unwrap_or_default(),
+                start_time,
+                end_time: Some(SystemTime::now()),
+                duration: start_time.elapsed().unwrap_or_default(),
             };
 
             Ok(RuntimeMetrics {

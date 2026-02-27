@@ -3,8 +3,8 @@
 //! Target: 36% → 60% coverage (~60 tests)
 //! Focus: Data structures, validation, status handling
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use toadstool::byob::*;
@@ -777,7 +777,7 @@ fn test_byob_deployment_request_creation() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     assert_eq!(request.team_id, "team-123");
@@ -811,7 +811,7 @@ fn test_byob_deployment_request_serialization() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     let json = serde_json::to_string(&request).unwrap();

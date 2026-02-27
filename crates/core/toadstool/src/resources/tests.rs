@@ -10,7 +10,7 @@ use super::types::*;
 
 #[test]
 fn test_resource_requirements_via_reexport() {
-    use super::{CpuRequirements, MemoryRequirements, ResourceRequirements};
+    use super::ResourceRequirements;
     let req = ResourceRequirements::default();
     assert_eq!(req.cpu.min_cores, 1.0);
     assert_eq!(req.memory.min_bytes, 1024 * 1024 * 1024);
@@ -142,7 +142,7 @@ fn test_process_info_via_reexport() {
 fn test_timing_metrics_via_reexport() {
     use super::TimingMetrics;
     let t = TimingMetrics::default();
-    assert_eq!(t.duration.num_seconds(), 0);
+    assert_eq!(t.duration.as_secs(), 0);
 }
 
 #[test]
@@ -611,10 +611,11 @@ fn test_storage_metrics_default() {
 
 #[test]
 fn test_timing_metrics_serialization() {
+    use std::time::{Duration, SystemTime};
     let t = TimingMetrics {
-        start_time: chrono::Utc::now(),
-        end_time: Some(chrono::Utc::now()),
-        duration: chrono::Duration::seconds(60),
+        start_time: SystemTime::now(),
+        end_time: Some(SystemTime::now()),
+        duration: Duration::from_secs(60),
     };
     let json = serde_json::to_string(&t).expect("serialize");
     let _: TimingMetrics = serde_json::from_str(&json).expect("deserialize");
@@ -634,14 +635,15 @@ fn test_load_averages_serialization() {
 
 #[test]
 fn test_resource_limits_with_timeout() {
+    use std::time::Duration;
     let limits = ResourceLimits {
         cpu_limits: CpuLimits::default(),
         memory_limits: MemoryLimits::default(),
         storage_limits: StorageLimits::default(),
         network_limits: NetworkLimits::default(),
-        execution_timeout: Some(chrono::Duration::seconds(600)),
+        execution_timeout: Some(Duration::from_secs(600)),
     };
-    assert_eq!(limits.execution_timeout.unwrap().num_seconds(), 600);
+    assert_eq!(limits.execution_timeout.unwrap().as_secs(), 600);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -665,5 +667,5 @@ async fn test_resource_monitor_get_metrics_after_start() {
     let monitor = SystemResourceMonitor::new();
     let _ = monitor.start_monitoring("wl-get");
     let metrics = monitor.get_metrics("wl-get").await.unwrap();
-    assert!(metrics.timing.start_time <= chrono::Utc::now());
+    assert!(metrics.timing.start_time <= std::time::SystemTime::now());
 }

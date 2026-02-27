@@ -70,7 +70,7 @@ impl UniversalPrimalProvider for SucceedingMockProvider {
                 "exit_code": 0
             }),
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         })
     }
     async fn initialize(&mut self, _config: serde_json::Value) -> toadstool::ToadStoolResult<()> {
@@ -187,7 +187,7 @@ pub fn create_test_native_job(priority: JobPriority) -> UniversalJob {
         priority,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     }
 }

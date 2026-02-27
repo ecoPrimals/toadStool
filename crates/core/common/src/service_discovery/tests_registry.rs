@@ -480,7 +480,7 @@ async fn test_registry_http_mock_filter_invalid_endpoints() {
     let disc = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Registry { endpoint });
     let services = disc.discover_all().await.unwrap();
     assert_eq!(services.len(), 1);
-    assert!(services[0].endpoints.len() >= 1);
+    assert!(!services[0].endpoints.is_empty());
 }
 
 #[tokio::test]

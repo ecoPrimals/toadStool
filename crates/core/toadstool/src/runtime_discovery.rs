@@ -75,7 +75,7 @@ struct DiscoveryState {
 
     /// Last discovery time
     #[allow(dead_code)] // Timestamped for future stale-service reporting
-    last_discovery: Option<chrono::DateTime<chrono::Utc>>,
+    last_discovery: Option<std::time::SystemTime>,
 
     /// Discovery statistics
     stats: DiscoveryStats,
@@ -296,13 +296,16 @@ impl RuntimeDiscovery {
         config: &DiscoveryConfig,
     ) {
         let mut services_write = services.write().await;
-        let now = chrono::Utc::now();
-        let timeout = chrono::Duration::from_std(config.service_timeout)
-            .unwrap_or_else(|_| chrono::Duration::seconds(300));
+        let now = std::time::SystemTime::now();
+        let timeout = config.service_timeout;
 
         let stale: Vec<Uuid> = services_write
             .iter()
-            .filter(|(_, service)| now.signed_duration_since(service.last_seen) > timeout)
+            .filter(|(_, service)| {
+                now.duration_since(service.last_seen)
+                    .map(|elapsed| elapsed > timeout)
+                    .unwrap_or(true)
+            })
             .map(|(id, _)| *id)
             .collect();
 
@@ -349,8 +352,8 @@ mod tests {
             }],
             endpoint: "localhost:8080".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery
@@ -380,8 +383,8 @@ mod tests {
             }],
             endpoint: "localhost:8082".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery
@@ -438,8 +441,8 @@ mod tests {
             capabilities: vec![],
             endpoint: "localhost:8080".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery
@@ -497,8 +500,8 @@ mod tests {
                 capabilities: vec![],
                 endpoint: "localhost:8080".to_string(),
                 protocols: vec![],
-                discovered_at: chrono::Utc::now(),
-                last_seen: chrono::Utc::now(),
+                discovered_at: std::time::SystemTime::now(),
+                last_seen: std::time::SystemTime::now(),
             };
             discovery.register_service(service).await.unwrap();
         }
@@ -510,8 +513,8 @@ mod tests {
             capabilities: vec![],
             endpoint: "localhost:8080".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         let result = discovery.register_service(third).await;
@@ -534,8 +537,8 @@ mod tests {
             capabilities: vec![],
             endpoint: "localhost:8080".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery.register_service(service).await.unwrap();
@@ -573,8 +576,8 @@ mod tests {
                 capabilities: vec![cap.clone()],
                 endpoint: format!("localhost:808{i}"),
                 protocols: vec![],
-                discovered_at: chrono::Utc::now(),
-                last_seen: chrono::Utc::now(),
+                discovered_at: std::time::SystemTime::now(),
+                last_seen: std::time::SystemTime::now(),
             };
             discovery.register_service(service).await.unwrap();
         }
@@ -600,8 +603,8 @@ mod tests {
             }],
             endpoint: "localhost:8082".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
         discovery.register_service(service).await.unwrap();
 
@@ -638,8 +641,8 @@ mod tests {
             capabilities: vec![],
             endpoint: "localhost:8080".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery.register_service(service).await.unwrap();
@@ -679,8 +682,8 @@ mod tests {
             }],
             endpoint: "localhost:8082".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
         discovery.register_service(service).await.unwrap();
 
@@ -722,8 +725,8 @@ mod tests {
             ],
             endpoint: "localhost:8090".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
         discovery.register_service(service).await.unwrap();
 
@@ -747,8 +750,8 @@ mod tests {
             capabilities: vec![],
             endpoint: "localhost:8080".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery.register_service(service).await.unwrap();
@@ -790,8 +793,8 @@ mod tests {
                 capabilities: vec![],
                 endpoint: format!("localhost:808{i}"),
                 protocols: vec![],
-                discovered_at: chrono::Utc::now(),
-                last_seen: chrono::Utc::now(),
+                discovered_at: std::time::SystemTime::now(),
+                last_seen: std::time::SystemTime::now(),
             };
             discovery.register_service(service).await.unwrap();
         }
@@ -825,8 +828,8 @@ mod tests {
             }],
             endpoint: "localhost:8085".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
         discovery.register_service(service).await.unwrap();
 

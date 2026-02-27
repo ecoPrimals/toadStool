@@ -82,25 +82,29 @@ pub struct NetworkEnvConfig {
 impl NetworkEnvConfig {
     /// Load network configuration from environment variables.
     #[must_use]
-    #[allow(deprecated)]
+    #[allow(deprecated)] // Struct fields deprecated; from_env still needed for bootstrap
     pub fn from_env() -> Self {
+        use crate::ports::{discovery_fallback, get_primal_port};
+
         let loader = EnvConfigLoader::new();
-        let ext = EnvConfigLoader::with_prefix(""); // unprefixed for other primals
 
         Self {
-            songbird_port: ext.get_u16(
-                "SONGBIRD_PORT",
-                crate::defaults::network::COORDINATION_FALLBACK_PORT,
+            songbird_port: get_primal_port(
+                "SONGBIRD",
+                discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT,
             ),
-            beardog_port: ext.get_u16(
-                "BEARDOG_PORT",
-                crate::defaults::network::SECURITY_FALLBACK_PORT,
+            beardog_port: get_primal_port(
+                "BEARDOG",
+                discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT,
             ),
-            nestgate_port: ext.get_u16(
-                "NESTGATE_PORT",
-                crate::defaults::network::STORAGE_FALLBACK_PORT,
+            nestgate_port: get_primal_port(
+                "NESTGATE",
+                discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT,
             ),
-            squirrel_port: ext.get_u16("SQUIRREL_PORT", crate::defaults::network::AI_FALLBACK_PORT),
+            squirrel_port: get_primal_port(
+                "SQUIRREL",
+                discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT,
+            ),
             toadstool_port: loader.get_u16("TOADSTOOL_PORT", crate::defaults::network::API_PORT),
             federation_port: loader
                 .get_u16("FEDERATION_PORT", crate::defaults::network::FEDERATION_PORT),

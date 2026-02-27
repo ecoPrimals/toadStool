@@ -19,7 +19,7 @@ fn make_capability(name: &str) -> Capability {
 }
 
 fn make_service(primal_type: &str, endpoint: &str, caps: Vec<Capability>) -> DiscoveredService {
-    let now = chrono::Utc::now();
+    let now = std::time::SystemTime::now();
     DiscoveredService {
         instance_id: Uuid::new_v4(),
         primal_type: primal_type.to_string(),

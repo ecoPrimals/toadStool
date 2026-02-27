@@ -32,16 +32,18 @@ Nest    = Tower  + NestGate           <- storage
 |------|--------|
 | `cargo build --workspace` | Clean |
 | `cargo fmt --all -- --check` | 0 diffs |
-| `cargo clippy --workspace --all-targets` | 0 warnings |
+| `cargo clippy --workspace --all-targets` | 0 warnings (tests + examples included) |
 | `cargo doc --workspace --no-deps` | 0 warnings |
 | `cargo test --workspace --lib` | 2,546+ barracuda (122 shader-specific) + 21,599 workspace tests |
+| Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | Four springs validation | 4,000+ acceptance checks |
 | `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs | 0 -- all evolved to formal `BLOCKED(reason)` markers |
-| Hardcoded primal names | 0 -- capability-based discovery throughout |
-| Hardcoded localhost/ports | 0 -- bind `0.0.0.0`, port 0 (OS-assigned), `discover_self_ip_address()` |
+| Hardcoded primal names | 0 -- capability-based, `get_primal_default_port()` pattern |
+| Hardcoded ports | 0 inline literals -- all via `ports::discovery_fallback` named constants |
+| License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | Orphan shaders | 0 -- all 700 WGSL shaders wired to Rust (21 DF64 files) |
 | CPU-only math in production | 0 -- all math dispatches GPU shaders |
 | File size limit | All production files under 1000 lines |
@@ -284,76 +286,23 @@ toadStool/
 
 ## Evolution
 
-**We are still evolving.** The transition from fp64 shaders to true math is underway — the springs (hotSpring, neuralSpring, airSpring, groundSpring) will have many interactions to evolve now that barracuda owns the math at all precisions. Every spring absorption inherits dual-layer universal precision automatically.
+**We are still evolving.** The transition from fp64 shaders to true math is underway — the springs will have many interactions to evolve now that barracuda owns the math at all precisions.
 
 ### Active / Next
-- **Spring math evolution** -- springs migrate from local math to barracuda universal dispatch (fp64 → true math). Many interactions to evolve per spring.
-- **Deep debt: Large file refactoring** -- smart structural refactoring (not just splitting), extract modules by concern
-- **Deep debt: External dependencies** -- analyze remaining external deps, evolve to pure Rust where possible
-- **Deep debt: Unsafe evolution** -- evolve unsafe blocks to safe Rust (fast AND safe)
+- **Spring math evolution** -- springs migrate from local math to barracuda universal dispatch. Many interactions to evolve per spring.
+- **Test coverage 43% → 90%** -- systematic `cargo llvm-cov` gap analysis per crate
+- **chrono full elimination** -- partially migrated (common, byob, ecosystem); remaining modules need migration
+- **DF64 transcendental coverage** -- extend `asin_df64`, `acos_df64`, `atan_df64`, `sinh_df64`, `cosh_df64`, `gamma_df64`, `erf_df64`
 - **ComputeDispatch migration** -- Builder pattern created; migrating existing ops to reduce boilerplate
 - **Conv2D/Pool stride/padding/channels** -- WGSL exists, single-channel wired; full parametric support pending (D-S46-001)
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
-- **NVK/Titan V readiness** -- Ensure f64 workarounds complete for NVK/Volta including NAK-specific paths
+- **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
-### Completed (Session 68: Dual-Layer Universal Precision + Deep Audit, Feb 26, 2026)
-- **Dual-layer universal precision architecture**: Layer 1 (source) — `Precision::op_preamble()` provides `op_add`/`op_mul`/`op_pack`/`op_unpack`/`Scalar` for all 4 precisions (f16/f32/f64/DF64). `compile_op_shader()` injects the right preamble. Layer 2 (compiler) — `sovereign/df64_rewrite.rs` parses f64 WGSL with naga, identifies f64 `Binary{+,-,*,/}` by type analysis, replaces with bridge functions (`_df64_add_f64` etc.) that route computation through DF64 while keeping the f64 type system intact.
-- **Precision bottleneck execution**: 296 f32 WGSL files deleted. Zero f32-only shaders remain — all f64 canonical with `LazyLock` downcast.
-- **F16 downcast hardened**: `downcast_f64_to_f16()` with sentinel protection (`_f64(` preserved) + f16 literal clamping (65504.0).
-- **DF64 transcendental mapping cleaned**: Removed 8 ghost mappings to non-existent functions (tan/asin/acos/atan/atan2/sinh/cosh/erf_df64).
-- **NaN-safe bridge functions**: `_df64_gte_f64`/`_df64_lte_f64` use equality check instead of `!lt`/`!gt` (correct IEEE 754 NaN handling).
-- **Comprehensive audit**: All critical/important findings fixed — span bounds validation, undefined span fallbacks, op_pack/op_unpack for all precisions.
-- **122 shader tests**: unit (edge cases, downcasts), e2e (real shaders at all precisions via naga), chaos (15: empty input, adversarial patterns, boundary values), fault (13: idempotency, graceful degradation, dedup correctness).
-
-### Completed (Session 67: Universal Precision Architecture, Feb 24, 2026)
-- **Universal precision system**: `compile_shader_universal()` — one source, any precision (f32/f64/df64). Math is universal, precision is silicon.
-- **`Precision::Df64` variant** — extends enum with DF64 double-float (f32-pair, ~48-bit mantissa). `is_f64_class()` for f64-equivalent detection.
-- **`downcast_f64_to_f32()`** — text-transforms f64 shaders to f32 with sentinel-protected function names (`_f64(` preserved).
-- **`downcast_f64_to_f32_with_transcendentals()`** — also maps polyfill calls to native builtins (`exp_f64` → `exp`).
-- **`compile_template()`** — compiles `{{SCALAR}}`-templated shaders at any precision, routing through the appropriate pipeline.
-- **12 universal shader templates**: elementwise add/mul/sub/fma/abs/neg/clamp/saxpy, dot product, reduce sum/mean, MSE loss, MAE loss.
-- **Full precision inventory**: 707 shaders — 510 f32, 195 f64, 20 Df64. ~50 universal candidates identified.
-- **Root docs cleaned**: all stale counts updated (707 shaders, 21 DF64, 2,541 tests).
-- **5 new tests**, all passing. Zero clippy warnings.
-
-### Completed (Session 66: Absorption + Deep Debt + Multi-Precision Expansion, Feb 26, 2026)
-- **Cross-spring absorption**: 4 new modules from airSpring/groundSpring (regression, hydrology, moving_window_f64, RAWR). Richards PDE evolved (8 named soil constants, buffer preallocation).
-- **Multi-precision expansion**: `compile_shader_df64()` pipeline, 6 DF64 math shaders, 5 f64 reduce gap-fills, 2 f64 science losses. 702 WGSL shaders total (21 DF64, 182 f64, 499 f32, 5 consolidated).
-- **Smart refactoring**: 15 files refactored across 3 waves (20-44% reductions each). `precision/mod.rs` 733→452, `workload.rs` 812→452, `cholesky.rs` 815→557, etc.
-- **Dependencies eliminated**: `anyhow` → typed `BarracudaError`, `log` → unified `tracing` (68 calls migrated). `async_trait` justified (dyn-required).
-- **Dead code**: 13→3 `#[allow(dead_code)]` (10 resolved via accessors/wiring). Remaining 3 are feature-gated/Phase 5+.
-- **Hardcoding**: GPU executor scoring → 15 named constants, timeseries ESN → 6 named constants.
-- **Production safety**: `expect()` audit (29 all Mutex/RwLock poison guards), 2 evolved to idiomatic patterns.
-- **+36 new tests**, all passing. Zero `todo!()`, zero `unimplemented!()`, zero production `unwrap()`.
-
-### Completed (Sessions 64-65: Cross-Spring Absorption + Smart Refactoring, Feb 25, 2026)
-- **Cross-spring absorption**: 8 lattice QCD shaders (SU(3), PRNG, DF64 gauge force/kinetic, BLAS-like), `stats::metrics` (RMSE, NSE, R², etc.), `stats::diversity` (Shannon, Bray-Curtis, rarefaction), `chrono` dependency eliminated.
-- **Smart refactoring**: 5 large files reduced by 32-44% — `compute_graph.rs` 819→522 (generic `dispatch_pass`), `esn_v2/model.rs` 861→482, `tensor/mod.rs` 808→529 (duplicate test merged), `special/gamma.rs` 685→463, `numerical/rk45.rs` 579→352.
-- **Production safety**: `coulomb_f64` `map_async` callback `expect()` → graceful `let _ = tx.send()`. Kernel router magic numbers → named constants.
-- **Dead code**: 17→13 `#[allow(dead_code)]` (4 resolved via public accessors).
-
-### Completed (Sessions 61-63: Sovereign Compiler + Deep Debt Evolution, Feb 25, 2026)
-- **Sovereign Compiler Phase 4**: `SovereignCompiler` built on naga-IR — parse WGSL, apply FMA fusion (Mul+Add→fma, ~1.3x), dead expression elimination, emit SPIR-V. `SPIRV_SHADER_PASSTHROUGH` in all device paths. Three-stage `compile_shader_f64()` pipeline with WGSL text fallback.
-- **Codebase-wide deep debt resolution**: 25+ `#[allow(dead_code)]` WGSL constants evolved to documented `pub` API. Fossil `wgsl_shader()` methods converted to `pub const`. Platform-aware OS compat stubs. Table-driven discovery fallbacks.
-- **Smart refactoring**: `morse_f64.rs` 953→804 lines (MorseBuffers + reduce_bond_forces extraction). `coulomb_f64/mod.rs` 610→369 lines (CoulombBuffers + staging helpers). Zero duplication in GPU pipeline code.
-- **Dead code → live code**: `solve_gpu_parallel` wired into cyclic reduction for n≥2048 (was complete but unused). `partial_maximin` O(n) optimization wired into maximin_lhs loop (was O(n²)). `erfc_deriv` promoted to public electrostatics API.
-- **Hygiene**: `instant` crate removed, `WebGPUAdapter::mock_data` → zero-size `()`, GriffinLim dead_code annotations cleaned.
-
-### Completed (Session 60: DF64 FMA + Transcendentals + Polyfill Hardening, Feb 25, 2026)
-- **FMA-optimized DF64**: `two_prod` reduced from 17 ops to 2 via `fma(a, b, -p)` -- eliminates Dekker splitting entirely. `df64_mul` cross-terms use FMA. Critical for Krylov solver convergence.
-- **DF64 transcendental library**: new `df64_transcendentals.wgsl` with `sqrt_df64` (Newton-Raphson), `exp_df64` (Cody-Waite), `log_df64` (atanh series), `sin_df64`/`cos_df64` (Cody-Waite π/2 reduction), `pow_df64`, `tanh_df64` -- all at FP32 core speed, no vendor library dependency
-- **4 force shaders evolved** from hybrid to full FP32 core streaming: Born-Mayer, Morse, Yukawa, Lennard-Jones DF64 shaders no longer round-trip through f64 units for transcendentals
-- **Polyfill patcher hardened**: `patch_transcendentals_in_code()` protects `ldexp()`, `exp_df64()`, `log_df64()` from substring collision mangling
-- **Multi-GPU adapter selection**: deterministic GPU pinning via `BARRACUDA_GPU_ADAPTER` (absorbed from hotSpring)
-
-### Completed (Session 59: Deep Audit + Comprehensive Evolution, Feb 24, 2026)
-- **`#![deny(unsafe_code)]`** added to 36 crates. TarpcClientWrapper JSON-RPC fallback. Dependency security hardening. Smart refactoring (5 files). 21,599 tests.
-
-### Completed (Session 58: Hybrid DF64 Core Streaming, Feb 24, 2026)
-- **6 DF64 shader variants** + `Fp64Strategy` auto-selection + `ComputeDispatch` builder + `unified_hardware` refactored
-
-### Completed (Sessions 43-57: Shader-First + Deep Debt + Cross-Spring Absorption)
-- All 46 cross-spring absorptions, 14 lattice QCD shaders, zero CPU-only math, 95+ unsafe blocks audited, hardcoded localhost eliminated
+### Recently Completed
+- **Session 68++: Full ecosystem audit** -- AGPL-3 LICENSE + 29 header fixes, 0 clippy warnings across `--all-targets`, all files under 1000 lines, hardcoded primal names → capability-based, hardcoded ports → named discovery constants, `chrono` eliminated from `toadstool-common`, `println!` → `tracing` in barracuda
+- **Session 68+: Standalone resilience** -- GPU device-lost recovery (no more test cascades), `RUST_TEST_THREADS=4` default, stale scripts/docs archived to fossil
+- **Session 68: Dual-layer universal precision** -- `op_preamble` + naga-guided `df64_rewrite`. Precision bottleneck RESOLVED. 122 shader tests.
+- **Sessions 58-67: Sovereign compiler + deep debt** -- naga-IR FMA fusion, DF64 transcendentals, 46 cross-spring absorptions, 20+ files smart-refactored
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -387,4 +336,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 26, 2026 -- Session 68+: Dual-layer universal precision COMPLETE. Precision bottleneck RESOLVED. **Now evolving**: springs transition from fp64 shaders to true math — barracuda owns all precision, every spring absorption inherits universal dispatch. 700 WGSL shaders. 2,546+ barracuda tests. 0 clippy warnings. Root docs cleaned, stale scripts archived to ecoPrimals/fossil.
+**Last Updated**: February 26, 2026 -- Session 68++: Full ecosystem audit COMPLETE. AGPL-3 license compliant. 0 clippy warnings (`--all-targets`). All files under 1000 lines. Hardcoded primals → capability-based. `chrono` partially eliminated. 43% test coverage (target: 90%). 700 WGSL shaders. 2,546+ barracuda tests.

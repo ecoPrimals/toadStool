@@ -104,7 +104,7 @@ impl toadstool::universal::UniversalPrimalProvider for MockPrimalProvider {
             status: ResponseStatus::Success,
             payload: serde_json::json!({"handled_by": self.instance_id}),
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         })
     }
 
@@ -430,7 +430,7 @@ async fn test_registry_route_request_success() {
         payload: serde_json::json!({}),
         context: create_test_context("user-1"),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let result = registry.route_request(request).await;
@@ -462,7 +462,7 @@ async fn test_registry_route_request_target_not_found() {
         payload: serde_json::json!({}),
         context: create_test_context("user-1"),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let result = registry.route_request(request).await;
@@ -491,7 +491,7 @@ async fn test_registry_route_request_provider_returns_error() {
         payload: serde_json::json!({}),
         context: create_test_context("user-1"),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let result = registry.route_request(request).await;
@@ -510,7 +510,7 @@ async fn test_registry_route_request_empty_registry() {
         payload: serde_json::json!({}),
         context: create_test_context("user-1"),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let result = registry.route_request(request).await;

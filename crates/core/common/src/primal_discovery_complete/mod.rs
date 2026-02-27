@@ -133,7 +133,7 @@ impl DiscoveryConfig {
 
         let bind_host = std::env::var("TOADSTOOL_BIND_HOST")
             .or_else(|_| std::env::var("BIND_HOST"))
-            .unwrap_or_else(|_| "localhost".to_string());
+            .unwrap_or_else(|_| crate::constants::network::DEFAULT_HOSTNAME.to_string());
 
         // Capability → (env_var, default_port, capability_keys)
         let specs: &[(&str, u16, &[&str])] = &[
@@ -345,10 +345,10 @@ impl PrimalDiscoveryEngine {
                     metadata: HashMap::new(),
                 }
             } else {
-                // Fallback
+                // Fallback when URL parsing fails - use configurable localhost constant
                 crate::primal_identity::ServiceEndpoint {
                     protocol: "http".to_string(),
-                    address: "localhost".to_string(),
+                    address: crate::constants::network::LOCALHOST_IPV4.to_string(),
                     port: crate::constants::network::DEFAULT_HTTP_PORT,
                     path: Some("/".to_string()),
                     metadata: HashMap::new(),
@@ -364,10 +364,10 @@ impl PrimalDiscoveryEngine {
                 metadata: HashMap::new(),
             }
         } else {
-            // Fallback for any other format - create basic HTTP endpoint
+            // Fallback for any other format - use configurable localhost constant
             crate::primal_identity::ServiceEndpoint {
                 protocol: "http".to_string(),
-                address: "localhost".to_string(),
+                address: crate::constants::network::LOCALHOST_IPV4.to_string(),
                 port: crate::constants::network::DEFAULT_HTTP_PORT,
                 path: Some("/".to_string()),
                 metadata: HashMap::new(),

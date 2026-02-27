@@ -213,25 +213,26 @@ impl PppmParams {
 
     /// Print parameter summary
     pub fn print_summary(&self) {
-        println!("PPPM Parameters:");
-        println!(
-            "  Box: [{:.3}, {:.3}, {:.3}]",
-            self.box_dims[0], self.box_dims[1], self.box_dims[2]
+        tracing::info!(
+            "PPPM Parameters: Box: [{:.3}, {:.3}, {:.3}], Particles: {}",
+            self.box_dims[0],
+            self.box_dims[1],
+            self.box_dims[2],
+            self.n_particles
         );
-        println!("  Particles: {}", self.n_particles);
-        println!(
-            "  Mesh: {}×{}×{}",
-            self.mesh_dims[0], self.mesh_dims[1], self.mesh_dims[2]
+        tracing::info!(
+            "  Mesh: {}×{}×{}, α = {:.4}, rc = {:.4}, order: {}",
+            self.mesh_dims[0],
+            self.mesh_dims[1],
+            self.mesh_dims[2],
+            self.alpha,
+            self.real_cutoff,
+            self.interpolation_order
         );
-        println!("  α = {:.4}, rc = {:.4}", self.alpha, self.real_cutoff);
-        println!("  Interpolation order: {}", self.interpolation_order);
-        println!(
-            "  Est. memory: {:.1} MB",
-            self.estimated_memory() as f64 / 1e6
-        );
-        println!("  Est. real error: {:.2e}", self.estimated_real_error());
-        println!(
-            "  Est. k-space error: {:.2e}",
+        tracing::info!(
+            "  Est. memory: {:.1} MB, real error: {:.2e}, k-space error: {:.2e}",
+            self.estimated_memory() as f64 / 1e6,
+            self.estimated_real_error(),
             self.estimated_kspace_error()
         );
     }

@@ -39,6 +39,7 @@ pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discover
 pub mod runtime_ports; // NEW: Deep Debt compliant dynamic port discovery
 pub mod self_identity; // Self-aware primal identity and capability discovery
 pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
+pub mod system_time_serde; // Serde for std::time::SystemTime (Unix timestamp)
 pub mod uid_detector; // NEW: Pure Rust unix socket path discovery (100% pure Rust!)
 pub mod universal_adapter;
 pub mod unix_jsonrpc_client; // NEW: JSON-RPC 2.0 over unix sockets (pure Rust!) // NEW: Phase 1B - Capability-based primal discovery (infant discovery)

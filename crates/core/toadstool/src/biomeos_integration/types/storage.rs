@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 /// Storage configuration for the biome
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,7 +91,8 @@ pub struct VolumeInfo {
     /// Status
     pub status: String,
     /// Created timestamp
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
 }
 
 /// Volume mount information

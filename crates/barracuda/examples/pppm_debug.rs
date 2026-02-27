@@ -15,7 +15,9 @@ fn main() {
     let charges = vec![1.0, -1.0];
 
     let pppm = Pppm::new(device.clone(), params.clone());
-    let (forces, energy) = pppm.compute(&positions, &charges).unwrap();
+    let (forces, energy) = pppm
+        .compute(&positions, &charges)
+        .expect("PPPM compute failed");
 
     let (_e_short_forces, e_short) = compute_short_range(&positions, &charges, &params);
     let e_self = self_energy_correction(&charges, params.alpha, params.coulomb_constant);

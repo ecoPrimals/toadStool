@@ -297,8 +297,8 @@ fn test_matches_requirement_exact() {
         }],
         endpoint: "localhost:8080".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert!(identity.matches_requirement(&requirement, &service));
@@ -329,8 +329,8 @@ fn test_matches_requirement_missing_feature() {
         }],
         endpoint: "localhost:8080".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert!(!identity.matches_requirement(&requirement, &service));
@@ -361,8 +361,8 @@ fn test_matches_requirement_wrong_capability() {
         }],
         endpoint: "localhost:8080".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     assert!(!identity.matches_requirement(&requirement, &service));
@@ -393,8 +393,8 @@ fn test_matches_requirement_empty_features() {
         }],
         endpoint: "localhost:8082".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     // Should match because no specific features required
@@ -528,8 +528,8 @@ fn test_discovered_service_serialization() {
         capabilities: vec![],
         endpoint: "localhost:8080".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     let json = serde_json::to_string(&service).expect("Should serialize");

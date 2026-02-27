@@ -525,20 +525,9 @@ mod tests {
             Duration::from_millis(toadstool_config::defaults::timeouts::REQUEST_MS)
         );
         assert_eq!(
-            config.websocket_timeout,
-            Duration::from_millis(toadstool_config::defaults::timeouts::CONNECTION_MS)
-        );
-        assert_eq!(
             config.retry_backoff,
             Duration::from_millis(toadstool_config::defaults::retries::BACKOFF_MS)
         );
-        #[allow(deprecated)]
-        {
-            assert!(
-                !config.enable_websocket,
-                "WebSocket disabled by default since deprecation"
-            );
-        }
         assert!(config.auth.is_none());
         assert!(config.custom_headers.is_empty());
     }

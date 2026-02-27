@@ -7,8 +7,8 @@
 //!
 //! Strategy: Test the untested data structure creation, serialization, and edge cases
 
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool::byob::*;
 use uuid::Uuid;
 
@@ -43,7 +43,7 @@ fn test_byob_deployment_request_creation() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     assert_eq!(request.deployment_id, deployment_id);
@@ -101,7 +101,7 @@ fn test_byob_deployment_request_with_services() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     assert_eq!(request.services.len(), 1);
@@ -135,7 +135,7 @@ fn test_byob_deployment_request_clone() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     let cloned = request.clone();
@@ -169,7 +169,7 @@ fn test_byob_deployment_request_serialization() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     let serialized = serde_json::to_string(&request);
@@ -208,10 +208,13 @@ fn test_byob_deployment_request_deserialization() {
             "dns_config": null,
             "load_balancer": null
         }},
-        "created_at": "{}"
+        "created_at": {}
     }}"#,
         Uuid::new_v4(),
-        Utc::now().to_rfc3339()
+        SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
     );
 
     let result: Result<ByobDeploymentRequest, _> = serde_json::from_str(&json);

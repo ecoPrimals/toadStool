@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 use toadstool::universal::*;
@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         priority: JobPriority::Normal,
         resources: Default::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context: PrimalContext {
             user_id: "test_user".to_string(),
             device_id: "test_device".to_string(),
@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         priority: JobPriority::High,
         resources: Default::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context: PrimalContext {
             user_id: "test_user".to_string(),
             device_id: "test_device".to_string(),
@@ -104,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         priority: JobPriority::Normal,
         resources: Default::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context: PrimalContext {
             user_id: "test_user".to_string(),
             device_id: "test_device".to_string(),
@@ -146,7 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             metadata: HashMap::new(),
         },
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     println!("🎯 Testing primal request routing...");

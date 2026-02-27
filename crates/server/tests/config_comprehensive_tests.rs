@@ -19,7 +19,6 @@ fn test_server_config_default_values() {
     // Verify default values are sensible
     assert!(config.bind_address.contains(':'));
     assert!(config.enable_api);
-    assert!(!config.enable_websocket); // Disabled by default for security - opt-in required
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
     assert_eq!(config.default_timeout, Duration::from_secs(300));
@@ -31,13 +30,11 @@ fn test_server_config_builder_pattern() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:3000")
         .enable_api(true)
-        .enable_websocket(false)
         .max_concurrent_executions(50)
         .default_timeout(Duration::from_secs(600));
 
     assert_eq!(config.bind_address, "127.0.0.1:3000");
     assert!(config.enable_api);
-    assert!(!config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 50);
     assert_eq!(config.default_timeout, Duration::from_secs(600));
 }
@@ -84,13 +81,11 @@ fn test_server_config_chaining_multiple_settings() {
     let config = ServerConfig::default()
         .bind_address("0.0.0.0:8080")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(150)
         .default_timeout(Duration::from_secs(900));
 
     assert_eq!(config.bind_address, "0.0.0.0:8080");
     assert!(config.enable_api);
-    assert!(config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 150);
     assert_eq!(config.default_timeout, Duration::from_secs(900));
 }
@@ -317,7 +312,6 @@ fn test_full_production_config() {
     let config = ServerConfig::default()
         .bind_address("0.0.0.0:443")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(500)
         .default_timeout(Duration::from_secs(1800))
         .auth(auth)
@@ -336,7 +330,6 @@ fn test_development_config() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:8080")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(10);
 
     // Verify development settings
@@ -350,12 +343,10 @@ fn test_development_config() {
 fn test_minimal_config() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:3000")
-        .enable_api(true)
-        .enable_websocket(false);
+        .enable_api(true);
 
     assert_eq!(config.bind_address, "127.0.0.1:3000");
     assert!(config.enable_api);
-    assert!(!config.enable_websocket);
 }
 
 #[test]

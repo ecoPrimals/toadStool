@@ -5,6 +5,45 @@
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
 
+## Session 68++ Deep Debt: Full Ecosystem Audit (Feb 26, 2026)
+
+**Principle**: Every solve is deep. Primal code has self-knowledge only. Modern idiomatic Rust. Zero clippy warnings across `--all-targets`. Every quality gate passes.
+
+### License Compliance
+- **R-S68++-001**: Root `LICENSE` file created (AGPL-3.0-or-later, copied from ecosystem springs).
+- **R-S68++-002**: 29 files in `crates/core/toadstool` had `SPDX-License-Identifier: Apache-2.0` → corrected to `AGPL-3.0-or-later`.
+
+### Clippy Pedantic (0 warnings across --all-targets)
+- **R-S68++-003**: `barracuda` — `richards.rs` constant assertions → compile-time `const { assert!() }`. Examples `.unwrap()` → `.expect()`. Test `.unwrap()` → `.expect()`.
+- **R-S68++-004**: `toadstool-config` — 14 binary expression simplifications. Map iteration → `.keys()`. Length comparisons → `.is_empty()`. `Default::default()` field assignment → struct literals. Module inception renamed. Unused variable prefixed. Constant assertions removed (compile-time checks sufficient).
+- **R-S68++-005**: `toadstool-common` — `unreachable!()` → explicit error variant. Manual `Range::contains` → idiomatic. Length comparisons → `.is_empty()`. Deprecated `ServiceEndpoint::websocket` test → `ServiceEndpoint::http().with_path("/jsonrpc")`.
+- **R-S68++-006**: `toadstool-client` — deprecated WebSocket field references wrapped with `#[allow(deprecated)]` (tests exercise deprecated API during migration).
+- **R-S68++-007**: `toadstool-distributed` — unused imports removed. `Arc::clone()` style. `Default::default()` → struct literals. Module inception renamed. Unit struct constructors.
+- **R-S68++-008**: `toadstool` core — length comparisons, `match` → `if let`, unused imports removed, unnecessary borrows removed, module inception renamed, `assert_eq!(x, true)` → `assert!(x)`.
+- **R-S68++-009**: `toadstool-server` — 135+ deprecated `manual_jsonrpc` test errors resolved with `#[cfg_attr(test, allow(deprecated))]`. WebSocket config test files → `#![allow(deprecated)]`. Unused imports removed. `Arc::clone()` style. Equality/length lint fixes.
+- **R-S68++-010**: `toadstool-integration-tests` — inner/outer attribute conflict fixed.
+- **R-S68++-011**: `toadstool-cli` — `.parse().expect()` → `SocketAddr::from()`.
+
+### File Size Compliance
+- **R-S68++-012**: `precision_tests.rs` 1011→923 lines. Chaos tests extracted to `precision_chaos_tests.rs` (90 lines). All files under 1000 lines.
+
+### Hardcoded Primal Names → Capability-Based
+- **R-S68++-013**: `config_utils/mod.rs` — new `get_primal_default_port(primal_name)` generic function. `get_songbird_port()`, `get_beardog_port()` etc. now delegate to it.
+- **R-S68++-014**: `network.rs` — primal port getters delegate to `ConfigUtils::get_primal_default_port()`.
+
+### Hardcoded Ports → Named Constants
+- **R-S68++-015**: `ports.rs` — new `discovery_fallback` module with `DEFAULT_SONGBIRD_DISCOVERY_PORT`, `DEFAULT_BEARDOG_DISCOVERY_PORT`, etc. Old `fallback` module deprecated, re-exports from `discovery_fallback`.
+- **R-S68++-016**: `constants.rs` — port constants consolidated, re-export from `ports::discovery_fallback`.
+- **R-S68++-017**: `primal_discovery_complete/mod.rs` — hardcoded `"localhost"` → `constants::network::DEFAULT_HOSTNAME` / `LOCALHOST_IPV4`.
+
+### External Dependency Evolution
+- **R-S68++-018**: `chrono` eliminated from `toadstool-common` — `DateTime<Utc>` → `SystemTime` with custom serde helpers (`system_time_serde`). `DiscoveredService` fields migrated.
+- **R-S68++-019**: `chrono` partially eliminated from `toadstool` core — byob, ecosystem, self_identity, runtime_discovery modules migrated. 7 test files updated. Still used in biomeos_integration, plugin_system, etc.
+
+### Production println! → tracing
+- **R-S68++-020**: `akida_executor.rs` — neuromorphic comparison report `println!` → `tracing::info!`.
+- **R-S68++-021**: `pppm_params.rs` — PPPM parameter summary `println!` → `tracing::info!`.
+
 ## Session 68+ Deep Debt: Standalone Resilience (Feb 26, 2026)
 
 **Principle**: Pull toadStool to any machine — small dev station, cloud VM, no GPU — it must build clean and test without false failures.

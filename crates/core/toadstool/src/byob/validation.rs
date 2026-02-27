@@ -181,7 +181,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_ok());
@@ -218,7 +218,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -255,7 +255,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -292,7 +292,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -329,7 +329,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -363,7 +363,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -400,7 +400,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -438,7 +438,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -486,7 +486,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_err());
@@ -524,7 +524,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_ok());
@@ -577,7 +577,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_ok());
@@ -619,7 +619,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_ok());
@@ -667,7 +667,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: std::time::SystemTime::now(),
         };
 
         assert!(DeploymentValidator::validate_deployment(&request).is_ok());

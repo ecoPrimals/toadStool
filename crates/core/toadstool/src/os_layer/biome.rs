@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
@@ -66,8 +67,10 @@ pub struct BiomeDeployment {
     pub team_id: String,
     pub biome_manifest: serde_json::Value,
     pub status: BiomeDeploymentStatus,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub updated_at: SystemTime,
 }
 
 /// Deployment status
@@ -114,6 +117,7 @@ mod tests {
     use crate::universal::types::{NetworkLocation, PrimalContext, SecurityLevel};
     use crate::universal::{JobPriority, UniversalJobType};
     use std::collections::HashMap;
+    use std::time::SystemTime;
     use uuid::Uuid;
 
     fn sample_job() -> UniversalJob {
@@ -126,7 +130,7 @@ mod tests {
             priority: JobPriority::Normal,
             resources: crate::resources::ResourceRequirements::default(),
             timeout: None,
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context: PrimalContext {
                 user_id: "user".to_string(),
                 device_id: "device".to_string(),
@@ -185,8 +189,8 @@ mod tests {
             team_id: "team-1".to_string(),
             biome_manifest: serde_json::json!({"key": "value"}),
             status: BiomeDeploymentStatus::Running,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
+            updated_at: SystemTime::now(),
         };
         let json = serde_json::to_string(&deployment).expect("serialize");
         let restored: BiomeDeployment = serde_json::from_str(&json).expect("deserialize");

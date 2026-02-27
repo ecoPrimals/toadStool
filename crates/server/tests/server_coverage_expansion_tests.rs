@@ -2,6 +2,8 @@
 //!
 //! Focus on error paths, edge cases, and state transitions.
 
+#![allow(deprecated)]
+
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -24,7 +26,7 @@ async fn test_invalid_jsonrpc_version_increments_error_count() {
     let handler = JsonRpcHandler::new(
         Arc::new(StandaloneExecutor::new()),
         "1.0.0".to_string(),
-        Some(error_count.clone()),
+        Some(Arc::clone(&error_count)),
     );
 
     let request = JsonRpcRequest {
@@ -193,7 +195,7 @@ async fn test_method_not_found_increments_error_count() {
     let handler = JsonRpcHandler::new(
         Arc::new(StandaloneExecutor::new()),
         "1.0.0".to_string(),
-        Some(error_count.clone()),
+        Some(Arc::clone(&error_count)),
     );
 
     let request = JsonRpcRequest {

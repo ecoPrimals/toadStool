@@ -6,6 +6,7 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 use tokio::sync::Mutex;
 
 use toadstool_common::constants::ecosystem::well_known;
@@ -43,7 +44,7 @@ pub trait AuthBackend: Send + Sync {
     /// Validate a token (optional, default implementation)
     fn validate_token(&self, token: &AuthenticationToken) -> ToadStoolResult<()> {
         // Check expiration
-        if token.expires_at <= chrono::Utc::now() {
+        if token.expires_at <= SystemTime::now() {
             return Err(ToadStoolError::runtime(
                 "Token is already expired".to_string(),
             ));
@@ -208,8 +209,8 @@ impl InMemoryAuthBackend {
             token_type: "Bearer".to_string(),
             token: format!("test-token-value-{}", requesting_primal),
             public_key: "test-public-key".to_string(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-            issued_at: chrono::Utc::now(),
+            expires_at: SystemTime::now() + Duration::from_secs(3600),
+            issued_at: SystemTime::now(),
             issuer: well_known::BEARDOG.to_string(),
             audience: vec![
                 PRIMAL_NAME.to_string(),
@@ -250,8 +251,8 @@ impl AuthBackend for InMemoryAuthBackend {
             token_type: "Bearer".to_string(),
             token: format!("test-refreshed-value-{}", request.requesting_primal),
             public_key: "test-public-key".to_string(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-            issued_at: chrono::Utc::now(),
+            expires_at: SystemTime::now() + Duration::from_secs(3600),
+            issued_at: SystemTime::now(),
             issuer: well_known::BEARDOG.to_string(),
             audience: vec![
                 PRIMAL_NAME.to_string(),
@@ -281,7 +282,7 @@ mod tests {
             requesting_primal: "toadstool".to_string(),
             scope: vec!["cross-primal".to_string()],
             audience: vec!["songbird".to_string()],
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let result = backend.request_token(&request).await;
@@ -289,7 +290,7 @@ mod tests {
 
         let token = result.unwrap();
         assert_eq!(token.issuer, well_known::BEARDOG);
-        assert!(token.expires_at > chrono::Utc::now());
+        assert!(token.expires_at > SystemTime::now());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -297,7 +298,7 @@ mod tests {
         let backend = InMemoryAuthBackend::new();
         let request = TokenRefreshRequest {
             requesting_primal: "toadstool".to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let result = backend.refresh_token(&request).await;
@@ -315,7 +316,7 @@ mod tests {
             requesting_primal: "toadstool".to_string(),
             scope: vec!["cross-primal".to_string()],
             audience: vec!["songbird".to_string()],
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
 
         let token = backend.request_token(&request).await.unwrap();
@@ -331,8 +332,8 @@ mod tests {
             token_type: "Bearer".to_string(),
             token: "test-value".to_string(),
             public_key: "test-key".to_string(),
-            expires_at: chrono::Utc::now() - chrono::Duration::hours(1), // Expired!
-            issued_at: chrono::Utc::now() - chrono::Duration::hours(2),
+            expires_at: SystemTime::now() - Duration::from_secs(3600), // Expired!
+            issued_at: SystemTime::now() - Duration::from_secs(7200),
             issuer: well_known::BEARDOG.to_string(),
             audience: vec![PRIMAL_NAME.to_string()],
             scope: vec!["test".to_string()],
@@ -343,7 +344,7 @@ mod tests {
         assert!(result.is_err());
 
         // Fix expiration
-        token.expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
+        token.expires_at = SystemTime::now() + Duration::from_secs(3600);
         let result = backend.validate_token(&token);
         assert!(result.is_ok());
     }

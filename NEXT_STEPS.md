@@ -1,12 +1,20 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 26, 2026 -- Session 68+
-**Status**: Production-grade | 700 WGSL shaders (21 DF64, 0 f32-only, all f64 canonical) | 2,546+ barracuda tests (122 shader-specific) | Dual-layer universal precision | Precision gate OPEN | All quality gates green
-**Evolving**: Springs transition from fp64 shaders → true math. Many interactions to evolve per spring.
+**Updated**: February 26, 2026 -- Session 68++
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings (--all-targets) | Standalone-resilient | 700 WGSL shaders | 2,546+ barracuda tests | 43% coverage (target: 90%)
+**Evolving**: Springs transition from fp64 shaders → true math. Coverage gap analysis. chrono full elimination.
 
 ---
 
 ## Completed This Session
+
+### Session 68+: Standalone Resilience — Deep Debt ✅
+
+- **GPU device-lost recovery**: `install_error_handler` no longer panics on device-lost — flags and returns. `submit_and_poll_inner` catches wgpu internal panics via `catch_unwind`, converts device-lost to `lost` flag. `read_buffer`/`map_staging_buffer` early-return `Err` when device is lost.
+- **All submit paths hardened**: `compute_graph.rs` and `pppm_gpu/mod.rs` direct `queue.submit` calls wrapped in `catch_unwind`.
+- **Test parallelism**: `.cargo/config.toml` sets `RUST_TEST_THREADS=4` (override: `RUST_TEST_THREADS=N cargo test`).
+- **Stale debris archived**: 5 scripts + 4 docs → `ecoPrimals/fossil/`, `run-coverage.sh` fixed, `PRECISION_BOTTLENECK.md` archived as resolved gate.
+- **Result**: 128 false test failures → 0. Pull to any machine, `cargo test` works.
 
 ### Session 68: Dual-Layer Universal Precision + Precision Bottleneck ✅
 

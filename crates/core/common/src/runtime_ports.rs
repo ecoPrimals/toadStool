@@ -260,7 +260,7 @@ mod tests {
         let port = discovery.discover_port(Some(preferred));
         assert!(port.is_ok());
         let port = port.expect("port");
-        assert!(port >= 25000 && port < 25100);
+        assert!((25000..25100).contains(&port));
     }
 
     #[test]

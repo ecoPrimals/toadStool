@@ -428,34 +428,33 @@ mod ecosystem_logic_tests {
 
     #[test]
     fn test_heartbeat_timestamp() {
-        use chrono::Utc;
-        let now = Utc::now();
+        let now = std::time::SystemTime::now();
 
-        assert!(now.timestamp() > 0);
+        assert!(now.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() > 0);
     }
 
     #[test]
     fn test_heartbeat_timeout_check() {
-        use chrono::{Duration as ChronoDuration, Utc};
-
-        let last_heartbeat = Utc::now() - ChronoDuration::seconds(60);
+        let last_heartbeat = std::time::SystemTime::now() - Duration::from_secs(60);
         let timeout = Duration::from_secs(30);
 
-        let elapsed = Utc::now() - last_heartbeat;
-        let is_timeout = elapsed.num_seconds() as u64 > timeout.as_secs();
+        let elapsed = std::time::SystemTime::now()
+            .duration_since(last_heartbeat)
+            .unwrap_or_default();
+        let is_timeout = elapsed.as_secs() > timeout.as_secs();
 
         assert!(is_timeout);
     }
 
     #[test]
     fn test_heartbeat_within_timeout() {
-        use chrono::{Duration as ChronoDuration, Utc};
-
-        let last_heartbeat = Utc::now() - ChronoDuration::seconds(10);
+        let last_heartbeat = std::time::SystemTime::now() - Duration::from_secs(10);
         let timeout = Duration::from_secs(30);
 
-        let elapsed = Utc::now() - last_heartbeat;
-        let is_timeout = elapsed.num_seconds() as u64 > timeout.as_secs();
+        let elapsed = std::time::SystemTime::now()
+            .duration_since(last_heartbeat)
+            .unwrap_or_default();
+        let is_timeout = elapsed.as_secs() > timeout.as_secs();
 
         assert!(!is_timeout);
     }

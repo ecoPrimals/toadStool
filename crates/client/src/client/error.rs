@@ -18,13 +18,6 @@ pub enum ClientError {
     #[error("HTTP request failed: {0}")]
     Http(String), // EVOLVED: No reqwest dependency! ✅
 
-    #[error("WebSocket error: {0}")]
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    WebSocket(String),
-
     #[error("Authentication failed: {0}")]
     Authentication(String),
 
@@ -52,19 +45,12 @@ pub enum ClientError {
 // ============================================================================
 
 impl From<ClientError> for ToadStoolError {
-    #[allow(deprecated)]
     fn from(error: ClientError) -> Self {
         match error {
             ClientError::Http(e) => ToadStoolError::Network(NetworkError::ConnectionFailed {
                 endpoint: "json-rpc".to_string(),
                 reason: e,
             }),
-            ClientError::WebSocket(msg) => {
-                ToadStoolError::Network(NetworkError::ConnectionFailed {
-                    endpoint: "websocket".to_string(),
-                    reason: msg,
-                })
-            }
             ClientError::Authentication(msg) => {
                 ToadStoolError::Security(SecurityError::AuthenticationFailed { reason: msg })
             }

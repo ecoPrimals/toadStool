@@ -6,7 +6,7 @@
 //! Test Coverage Sprint - Week 3, Nov 7, 2025
 //! Target: Bring resources.rs from 45% → 60%+
 
-use chrono::{Duration as ChronoDuration, Utc};
+use std::time::{Duration, SystemTime};
 use toadstool::resources::*;
 
 // ============================================================================
@@ -579,43 +579,43 @@ fn test_network_metrics_clone() {
 #[test]
 fn test_timing_metrics_default() {
     let metrics = TimingMetrics::default();
-    assert_eq!(metrics.duration, ChronoDuration::seconds(0));
+    assert_eq!(metrics.duration, Duration::ZERO);
     assert!(metrics.end_time.is_none());
 }
 
 #[test]
 fn test_timing_metrics_with_duration() {
-    let start = Utc::now();
-    let end = start + ChronoDuration::seconds(120);
+    let start = SystemTime::now();
+    let end = start + Duration::from_secs(120);
     let metrics = TimingMetrics {
         start_time: start,
         end_time: Some(end),
-        duration: ChronoDuration::seconds(120),
+        duration: Duration::from_secs(120),
     };
 
-    assert_eq!(metrics.duration, ChronoDuration::seconds(120));
+    assert_eq!(metrics.duration, Duration::from_secs(120));
     assert!(metrics.end_time.is_some());
 }
 
 #[test]
 fn test_timing_metrics_long_running() {
-    let start = Utc::now();
+    let start = SystemTime::now();
     let metrics = TimingMetrics {
         start_time: start,
-        end_time: Some(start + ChronoDuration::hours(1)),
-        duration: ChronoDuration::hours(1),
+        end_time: Some(start + Duration::from_secs(3600)),
+        duration: Duration::from_secs(3600),
     };
 
-    assert!(metrics.duration >= ChronoDuration::hours(1));
+    assert!(metrics.duration >= Duration::from_secs(3600));
 }
 
 #[test]
 fn test_timing_metrics_clone() {
-    let start = Utc::now();
+    let start = SystemTime::now();
     let metrics = TimingMetrics {
         start_time: start,
-        end_time: Some(start + ChronoDuration::seconds(400)),
-        duration: ChronoDuration::seconds(400),
+        end_time: Some(start + Duration::from_secs(400)),
+        duration: Duration::from_secs(400),
     };
 
     let cloned = metrics.clone();
@@ -639,7 +639,7 @@ fn test_runtime_metrics_default() {
 
 #[test]
 fn test_runtime_metrics_complete() {
-    let start = Utc::now();
+    let start = SystemTime::now();
     let metrics = RuntimeMetrics {
         cpu: CpuMetrics {
             usage_percent: 50.0,
@@ -666,14 +666,14 @@ fn test_runtime_metrics_complete() {
         gpu: None,
         timing: TimingMetrics {
             start_time: start,
-            end_time: Some(start + ChronoDuration::seconds(120)),
-            duration: ChronoDuration::seconds(120),
+            end_time: Some(start + Duration::from_secs(120)),
+            duration: Duration::from_secs(120),
         },
     };
 
     assert_eq!(metrics.cpu.cores_used, 4.0);
     assert_eq!(metrics.memory.used_bytes, 2 * 1024 * 1024 * 1024);
-    assert_eq!(metrics.timing.duration, ChronoDuration::seconds(120));
+    assert_eq!(metrics.timing.duration, Duration::from_secs(120));
 }
 
 #[test]

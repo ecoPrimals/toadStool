@@ -3,9 +3,9 @@
 //! Sprint 21: BiomeOS Integration Tests
 //! Target: 0% → 70% coverage (~50 tests)
 
-use chrono::Utc;
 use serde_json::json;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool::os_layer::biome::{
     BiomeDeployment, BiomeDeploymentStatus, BiomeOSConfig, BiomeOSIntegration, BiomeOrchestrator,
 };
@@ -220,7 +220,7 @@ fn test_deployment_status_debug() {
 
 #[test]
 fn test_biome_deployment_creation() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let deployment = BiomeDeployment {
         deployment_id: "deploy-123".to_string(),
         team_id: "team-456".to_string(),
@@ -237,7 +237,7 @@ fn test_biome_deployment_creation() {
 
 #[test]
 fn test_biome_deployment_status_transition() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let mut deployment = BiomeDeployment {
         deployment_id: "deploy-123".to_string(),
         team_id: "team-456".to_string(),
@@ -264,7 +264,7 @@ fn test_biome_deployment_status_transition() {
 
 #[test]
 fn test_biome_deployment_manifest_complex() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let complex_manifest = json!({
         "name": "ml-pipeline",
         "version": "1.0.0",
@@ -295,7 +295,7 @@ fn test_biome_deployment_manifest_complex() {
 
 #[test]
 fn test_biome_deployment_serialization() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let deployment = BiomeDeployment {
         deployment_id: "deploy-123".to_string(),
         team_id: "team-456".to_string(),
@@ -314,7 +314,7 @@ fn test_biome_deployment_serialization() {
 
 #[test]
 fn test_biome_deployment_clone() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let deployment1 = BiomeDeployment {
         deployment_id: "deploy-123".to_string(),
         team_id: "team-456".to_string(),
@@ -331,7 +331,7 @@ fn test_biome_deployment_clone() {
 
 #[test]
 fn test_biome_deployment_debug() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let deployment = BiomeDeployment {
         deployment_id: "deploy-123".to_string(),
         team_id: "team-456".to_string(),
@@ -348,7 +348,7 @@ fn test_biome_deployment_debug() {
 
 #[test]
 fn test_biome_deployment_empty_manifest() {
-    let now = Utc::now();
+    let now = SystemTime::now();
     let deployment = BiomeDeployment {
         deployment_id: "deploy-empty".to_string(),
         team_id: "team-empty".to_string(),
@@ -392,7 +392,7 @@ async fn test_biome_orchestrator_execute_deployment() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: None,
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context: create_test_primal_context(),
     };
 
@@ -414,7 +414,7 @@ async fn test_biome_orchestrator_execute_deployment_returns_response() {
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: Some(std::time::Duration::from_secs(300)),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context: create_test_primal_context(),
     };
 
@@ -441,7 +441,7 @@ async fn test_biome_orchestrator_multiple_deployments() {
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: None,
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
             context: create_test_primal_context(),
         };
 
@@ -474,7 +474,7 @@ async fn test_biome_os_integration_execute_deployment() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: None,
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context: create_test_primal_context(),
     };
 
@@ -512,7 +512,7 @@ async fn test_biome_os_integration_multiple_jobs() {
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: None,
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
             context: create_test_primal_context(),
         };
 
@@ -536,7 +536,7 @@ async fn test_biome_os_integration_concurrent_deployments() {
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: None,
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
             context: create_test_primal_context(),
         };
 
@@ -565,7 +565,7 @@ async fn test_full_deployment_lifecycle() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(std::time::Duration::from_secs(600)),
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context: create_test_primal_context(),
     };
 
@@ -588,7 +588,7 @@ async fn test_deployment_with_complex_manifest() {
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: None,
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context: create_test_primal_context(),
     };
 
@@ -616,7 +616,7 @@ async fn test_orchestrator_initialization_sequence() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: None,
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
         context: create_test_primal_context(),
     };
 

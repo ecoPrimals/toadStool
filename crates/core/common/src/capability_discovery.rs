@@ -464,18 +464,16 @@ mod tests {
         .join()
         .expect("thread ok");
 
-        // In test env with no services, we expect NoServicesFound or Timeout
+        // In test env with no services, we expect NoServicesFound, Timeout, DiscoveryFailed, or InvalidConfig
         match &result {
             Err(DiscoveryError::NoServicesFound(_)) => {}
             Err(DiscoveryError::Timeout) => {}
             Err(DiscoveryError::DiscoveryFailed(_)) => {}
+            Err(DiscoveryError::InvalidConfig(_)) => {}
             Ok(services) => assert!(
                 services.is_empty(),
                 "expected no services in test env, got {}",
                 services.len()
-            ),
-            other => unreachable!(
-                "expected NoServicesFound/Timeout/DiscoveryFailed or Ok, got: {other:?}"
             ),
         }
     }

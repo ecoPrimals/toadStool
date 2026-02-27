@@ -1,5 +1,6 @@
 //! Comprehensive tests for BiomeOS agents integration types
 
+use std::time::SystemTime;
 use toadstool::biomeos_integration::{
     AgentDeploymentConfig, AgentInfo, AgentResourceUsage, AgentStatus, ModelInfo,
     ModelPerformanceMetrics, ModelResourceRequirements, ModelStatus,
@@ -133,8 +134,8 @@ fn test_agent_info_creation() {
             gpu_percent: Some(50.0),
             network_bytes_per_sec: 1_000_000,
         },
-        created_at: chrono::Utc::now(),
-        last_updated: chrono::Utc::now(),
+        created_at: SystemTime::now(),
+        last_updated: SystemTime::now(),
     };
 
     assert_eq!(agent.name, "test-agent");
@@ -157,8 +158,8 @@ fn test_agent_info_with_single_replica() {
             gpu_percent: None,
             network_bytes_per_sec: 500_000,
         },
-        created_at: chrono::Utc::now(),
-        last_updated: chrono::Utc::now(),
+        created_at: SystemTime::now(),
+        last_updated: SystemTime::now(),
     };
 
     assert_eq!(agent.replicas, 1);
@@ -179,8 +180,8 @@ fn test_agent_info_serialization() {
             gpu_percent: None,
             network_bytes_per_sec: 1_000_000,
         },
-        created_at: chrono::Utc::now(),
-        last_updated: chrono::Utc::now(),
+        created_at: SystemTime::now(),
+        last_updated: SystemTime::now(),
     };
 
     let json = serde_json::to_string(&agent).unwrap();
@@ -248,7 +249,7 @@ fn test_model_info_creation() {
             throughput_rps: 10.0,
             success_rate: 95.0,
         },
-        loaded_at: chrono::Utc::now(),
+        loaded_at: SystemTime::now(),
     };
 
     assert_eq!(model.name, "gpt-4");
@@ -275,7 +276,7 @@ fn test_model_info_with_small_model() {
             throughput_rps: 20.0,
             success_rate: 98.5,
         },
-        loaded_at: chrono::Utc::now(),
+        loaded_at: SystemTime::now(),
     };
 
     assert!(!model.resource_requirements.gpu_required);
@@ -300,7 +301,7 @@ fn test_model_info_serialization() {
             throughput_rps: 12.5,
             success_rate: 96.8,
         },
-        loaded_at: chrono::Utc::now(),
+        loaded_at: SystemTime::now(),
     };
 
     let json = serde_json::to_string(&model).unwrap();

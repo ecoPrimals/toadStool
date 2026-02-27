@@ -43,7 +43,7 @@ async fn test_scheduler_schedule_primal_job() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 
@@ -88,7 +88,7 @@ async fn test_scheduler_schedule_biome_os_job() {
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(60)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 
@@ -114,7 +114,7 @@ async fn test_scheduler_wasm_job_response_structure() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 
@@ -145,7 +145,7 @@ async fn test_scheduler_primal_job_no_provider_returns_error_response() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 
@@ -188,7 +188,7 @@ async fn test_scheduler_biome_os_job_no_provider_returns_error_response() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 
@@ -226,7 +226,7 @@ async fn test_scheduler_primal_provider_route_fails_returns_error_response() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 
@@ -253,7 +253,7 @@ async fn test_scheduler_native_nonexistent_executable_returns_error_response() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 

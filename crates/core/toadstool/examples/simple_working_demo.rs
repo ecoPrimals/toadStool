@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         priority: toadstool::universal::JobPriority::Normal,
         resources: toadstool::resources::ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: toadstool::universal::PrimalContext {
             user_id: "demo_user".to_string(),
             device_id: "demo_device".to_string(),

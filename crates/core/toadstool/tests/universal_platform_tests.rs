@@ -115,7 +115,7 @@ fn test_universal_job_creation() {
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: None,
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: PrimalContext {
             user_id: "test-user".to_string(),
             device_id: "test-device".to_string(),
@@ -147,7 +147,7 @@ fn test_universal_job_clone() {
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 
@@ -167,7 +167,7 @@ fn test_universal_job_debug() {
         priority: JobPriority::Low,
         resources: ResourceRequirements::default(),
         timeout: None,
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };
 

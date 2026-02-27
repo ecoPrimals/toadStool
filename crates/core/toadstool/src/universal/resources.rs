@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
@@ -35,9 +36,11 @@ pub struct ResourceAllocation {
     /// Allocated resources
     pub allocated_resources: ResourceRequirements,
     /// Allocation timestamp
-    pub allocated_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub allocated_at: SystemTime,
     /// Release timestamp
-    pub released_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub released_at: Option<SystemTime>,
 }
 
 /// Resource coordinator
@@ -84,7 +87,7 @@ impl ResourceCoordinator {
         let allocation = ResourceAllocation {
             job_id: Uuid::new_v4(),
             allocated_resources: requirements.clone(),
-            allocated_at: chrono::Utc::now(),
+            allocated_at: SystemTime::now(),
             released_at: None,
         };
 
@@ -106,7 +109,7 @@ impl ResourceCoordinator {
         &self,
         mut allocation: ResourceAllocation,
     ) -> ToadStoolResult<()> {
-        allocation.released_at = Some(chrono::Utc::now());
+        allocation.released_at = Some(SystemTime::now());
 
         // Add to history
         self.allocation_history.write().await.push(allocation);
@@ -145,7 +148,7 @@ mod tests {
         let allocation = ResourceAllocation {
             job_id: id,
             allocated_resources: ResourceRequirements::default(),
-            allocated_at: chrono::Utc::now(),
+            allocated_at: SystemTime::now(),
             released_at: None,
         };
         assert_eq!(allocation.job_id, id);

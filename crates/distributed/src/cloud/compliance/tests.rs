@@ -1,6 +1,7 @@
 //! Compliance module tests.
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use super::super::*;
     use crate::cloud::types::{

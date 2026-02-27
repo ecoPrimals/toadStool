@@ -30,8 +30,9 @@
 
 ## Current State (Session 68+ — February 26, 2026)
 
-**Still evolving.** Precision bottleneck resolved. Now transitioning from fp64 shaders to true math — springs will have many interactions to evolve as barracuda owns all precision.
+**Still evolving.** Precision bottleneck resolved. Standalone resilience hardened. Now transitioning from fp64 shaders to true math — springs will have many interactions to evolve as barracuda owns all precision.
 
+- **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery prevents test cascades. `RUST_TEST_THREADS=4` default.
 - **Dual-layer universal precision** — Layer 1: `op_preamble` (abstract ops for all 4 precisions). Layer 2: naga-guided `df64_rewrite` (compiler-level f64→DF64). `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
 - **700 WGSL shaders** — zero orphans, 21 DF64 files, **zero f32-only**. All f64 canonical.

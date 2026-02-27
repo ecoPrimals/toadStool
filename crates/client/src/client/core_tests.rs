@@ -11,8 +11,6 @@ fn create_test_config() -> ClientConfig {
         request_timeout: Duration::from_secs(10),
         retry_backoff: Duration::from_millis(100),
         max_retries: 3,
-        enable_websocket: false,
-        websocket_timeout: Duration::from_secs(30),
         auth: None,
         custom_headers: HashMap::new(),
     }
@@ -24,7 +22,6 @@ fn test_client_config_creation() {
     assert_eq!(config.base_url, "http://localhost:3000");
     assert_eq!(config.request_timeout, Duration::from_secs(10));
     assert_eq!(config.max_retries, 3);
-    assert!(!config.enable_websocket);
 }
 
 #[test]

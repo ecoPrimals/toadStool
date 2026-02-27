@@ -45,10 +45,6 @@ mod fhe_integration {
     }
 }
 
-/// Documentation: API Usage Patterns
-///
-/// This module documents the canonical patterns for FHE operations.
-/// These are the patterns validated by the integration tests above.
 #[allow(dead_code)]
 mod api_patterns {
     //! # FHE Operation Patterns

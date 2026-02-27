@@ -1,7 +1,7 @@
 //! Comprehensive tests for BiomeOS authentication types
 
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use toadstool::biomeos_integration::{
     AuthManagerConfig, AuthenticationToken, TokenPropagationRequest, TokenVerificationResponse,
     TokenVerificationStatus,
@@ -99,8 +99,8 @@ fn test_authentication_token_creation() {
         token_type: "Bearer".to_string(),
         token: "encrypted".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["read".to_string()],
@@ -117,8 +117,8 @@ fn test_authentication_token_multiple_audiences() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string(), "songbird".to_string()],
         scope: vec!["read".to_string(), "write".to_string()],
@@ -138,8 +138,8 @@ fn test_authentication_token_with_claims() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
         scope: vec!["full".to_string()],
@@ -156,15 +156,15 @@ fn test_authentication_token_expiry() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["read".to_string()],
         claims: HashMap::new(),
     };
 
-    assert!(token.expires_at > chrono::Utc::now());
+    assert!(token.expires_at > SystemTime::now());
 }
 
 #[test]
@@ -174,8 +174,8 @@ fn test_authentication_token_serialization() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["read".to_string()],
@@ -197,8 +197,8 @@ fn test_token_propagation_request_creation() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["read".to_string()],
@@ -209,7 +209,7 @@ fn test_token_propagation_request_creation() {
         token,
         source_primal: "toadstool".to_string(),
         target_primal: "nestgate".to_string(),
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
         signature: "sig".to_string(),
     };
 
@@ -223,8 +223,8 @@ fn test_token_propagation_request_different_targets() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
         scope: vec!["full".to_string()],
@@ -235,7 +235,7 @@ fn test_token_propagation_request_different_targets() {
         token,
         source_primal: "songbird".to_string(),
         target_primal: "squirrel".to_string(),
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
         signature: "sig".to_string(),
     };
 
@@ -249,8 +249,8 @@ fn test_token_propagation_request_with_signature() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
         scope: vec!["full".to_string()],
@@ -261,7 +261,7 @@ fn test_token_propagation_request_with_signature() {
         token,
         source_primal: "a".to_string(),
         target_primal: "b".to_string(),
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
         signature: "ed25519-signature-value".to_string(),
     };
 
@@ -275,15 +275,15 @@ fn test_token_propagation_request_timestamp() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
         scope: vec!["full".to_string()],
         claims: HashMap::new(),
     };
 
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
     let request = TokenPropagationRequest {
         token,
         source_primal: "a".to_string(),
@@ -292,7 +292,7 @@ fn test_token_propagation_request_timestamp() {
         signature: "sig".to_string(),
     };
 
-    assert!(request.timestamp <= chrono::Utc::now());
+    assert!(request.timestamp <= SystemTime::now());
 }
 
 #[test]
@@ -302,8 +302,8 @@ fn test_token_propagation_request_serialization() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
         scope: vec!["full".to_string()],
@@ -314,7 +314,7 @@ fn test_token_propagation_request_serialization() {
         token,
         source_primal: "source".to_string(),
         target_primal: "target".to_string(),
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
         signature: "sig".to_string(),
     };
 
@@ -367,7 +367,7 @@ fn test_token_verification_status_error() {
 fn test_token_verification_response_valid() {
     let response = TokenVerificationResponse {
         status: TokenVerificationStatus::Valid,
-        expires_at: Some(chrono::Utc::now() + chrono::Duration::hours(1)),
+        expires_at: Some(SystemTime::now() + Duration::from_secs(3600)),
         details: None,
     };
 
@@ -389,7 +389,7 @@ fn test_token_verification_response_invalid() {
 fn test_token_verification_response_serialization() {
     let response = TokenVerificationResponse {
         status: TokenVerificationStatus::Valid,
-        expires_at: Some(chrono::Utc::now() + chrono::Duration::hours(1)),
+        expires_at: Some(SystemTime::now() + Duration::from_secs(3600)),
         details: None,
     };
 

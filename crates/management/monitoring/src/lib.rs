@@ -12,9 +12,7 @@ use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Instant;
-
-use chrono::Utc;
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::RwLock;
 use tokio::time;
 use tracing::{debug, error, info, warn};
@@ -255,12 +253,9 @@ impl SystemResourceMonitor {
         let mut platform_metrics = Self::get_platform_metrics(pid, config).await?;
 
         // Update timing information
-        platform_metrics.timing.start_time =
-            Utc::now() - chrono::Duration::seconds(elapsed_secs as i64);
+        platform_metrics.timing.start_time = SystemTime::now() - Duration::from_secs(elapsed_secs);
         platform_metrics.timing.end_time = None;
-        platform_metrics.timing.duration =
-            chrono::Duration::from_std(std::time::Duration::from_secs(elapsed_secs))
-                .unwrap_or_default();
+        platform_metrics.timing.duration = Duration::from_secs(elapsed_secs);
 
         // Update CPU usage
         platform_metrics.cpu.usage_percent = *last_cpu_time as f64 / 100.0;

@@ -31,7 +31,7 @@ use crate::error::{ToadStoolError, ToadStoolResult};
 use crate::self_identity::Capability;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 /// A service discovered at runtime
@@ -50,9 +50,9 @@ pub struct DiscoveredService {
     /// Supported protocols
     pub protocols: Vec<String>,
     /// When discovered
-    pub discovered_at: chrono::DateTime<chrono::Utc>,
+    pub discovered_at: SystemTime,
     /// Last seen (for timeout detection)
-    pub last_seen: chrono::DateTime<chrono::Utc>,
+    pub last_seen: SystemTime,
     /// Additional metadata
     pub metadata: HashMap<String, String>,
 }
@@ -156,8 +156,8 @@ mod tests {
             }],
             endpoint: "localhost:8080".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: HashMap::new(),
         };
 
@@ -180,8 +180,8 @@ mod tests {
             }],
             endpoint: "localhost:8080".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: HashMap::new(),
         };
 
@@ -211,8 +211,8 @@ mod tests {
             capabilities: vec![],
             endpoint: "127.0.0.1:8080".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: HashMap::new(),
         };
 
@@ -230,8 +230,8 @@ mod tests {
             capabilities: vec![],
             endpoint: "not-a-valid-address".to_string(),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: HashMap::new(),
         };
 

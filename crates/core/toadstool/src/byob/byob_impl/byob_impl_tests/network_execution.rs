@@ -2,8 +2,8 @@
 
 use super::super::*;
 use super::common::*;
-use chrono::Utc;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 // ─── create_deployment_network tests ─────────────────────────────────────
@@ -40,7 +40,7 @@ fn test_create_deployment_network_structure() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     let network = executor.create_deployment_network(&request);
@@ -92,7 +92,7 @@ fn test_create_deployment_network_multiple_services() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     let network = executor.create_deployment_network(&request);

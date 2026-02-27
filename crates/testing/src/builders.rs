@@ -493,9 +493,9 @@ impl RuntimeMetricsBuilder {
             }),
             gpu: None,
             timing: self.timing.unwrap_or(TimingMetrics {
-                start_time: chrono::Utc::now(),
-                end_time: Some(chrono::Utc::now()),
-                duration: chrono::Duration::seconds(5),
+                start_time: std::time::SystemTime::now(),
+                end_time: Some(std::time::SystemTime::now()),
+                duration: std::time::Duration::from_secs(5),
             }),
         }
     }

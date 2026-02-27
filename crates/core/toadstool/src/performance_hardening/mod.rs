@@ -193,9 +193,9 @@ mod tests {
             network: NetworkMetrics::default(),
             gpu: None,
             timing: crate::resources::TimingMetrics {
-                start_time: chrono::Utc::now(),
+                start_time: std::time::SystemTime::now(),
                 end_time: None,
-                duration: chrono::Duration::zero(),
+                duration: std::time::Duration::ZERO,
             },
         }
     }

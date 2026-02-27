@@ -95,7 +95,7 @@ async fn main() -> anyhow::Result<()> {
         priority: toadstool::JobPriority::Normal,
         resources: toadstool::ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: std::time::SystemTime::now(),
         context,
     };
 
@@ -142,7 +142,7 @@ async fn main() -> anyhow::Result<()> {
             metadata: HashMap::new(),
         },
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
     };
 
     let response = platform.route_primal_request(primal_request).await?;

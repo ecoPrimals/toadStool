@@ -1,5 +1,5 @@
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Plugin manager - loading, registration, and lifecycle.
 
@@ -100,7 +100,7 @@ impl PluginManager {
 
         // For now, simulate successful load
         plugin.state = PluginState::Active;
-        plugin.loaded_at = Some(chrono::Utc::now());
+        plugin.loaded_at = Some(std::time::SystemTime::now());
 
         info!("✅ Loaded plugin: {}", name);
 

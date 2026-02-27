@@ -25,7 +25,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::Semaphore;
 use uuid::Uuid;
 
@@ -139,7 +139,7 @@ async fn benchmark_native_execution(
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: Some(config.timeout),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context,
         };
 
@@ -209,7 +209,7 @@ async fn benchmark_concurrent_jobs(
                 priority: JobPriority::Normal,
                 resources: ResourceRequirements::default(),
                 timeout: Some(timeout),
-                created_at: chrono::Utc::now(),
+                created_at: SystemTime::now(),
                 context,
             };
 
@@ -357,7 +357,7 @@ async fn benchmark_resource_allocation(
             priority: JobPriority::Normal,
             resources,
             timeout: Some(config.timeout),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context,
         };
 
@@ -428,7 +428,7 @@ async fn benchmark_security_overhead(
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: Some(config.timeout),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context,
         };
 
@@ -496,7 +496,7 @@ async fn benchmark_job_types(
                 priority: JobPriority::Normal,
                 resources: ResourceRequirements::default(),
                 timeout: Some(config.timeout),
-                created_at: chrono::Utc::now(),
+                created_at: SystemTime::now(),
                 context,
             },
             1 => UniversalJob {
@@ -509,7 +509,7 @@ async fn benchmark_job_types(
                 priority: JobPriority::Normal,
                 resources: ResourceRequirements::default(),
                 timeout: Some(config.timeout),
-                created_at: chrono::Utc::now(),
+                created_at: SystemTime::now(),
                 context,
             },
             2 => UniversalJob {
@@ -522,7 +522,7 @@ async fn benchmark_job_types(
                 priority: JobPriority::Normal,
                 resources: ResourceRequirements::default(),
                 timeout: Some(config.timeout),
-                created_at: chrono::Utc::now(),
+                created_at: SystemTime::now(),
                 context,
             },
             3 => UniversalJob {
@@ -534,7 +534,7 @@ async fn benchmark_job_types(
                 priority: JobPriority::Normal,
                 resources: ResourceRequirements::default(),
                 timeout: Some(config.timeout),
-                created_at: chrono::Utc::now(),
+                created_at: SystemTime::now(),
                 context,
             },
             _ => unreachable!(),
@@ -606,7 +606,7 @@ async fn benchmark_memory_usage(
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: Some(config.timeout),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context,
         };
 

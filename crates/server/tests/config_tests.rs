@@ -16,7 +16,6 @@ fn test_server_config_default() {
     let config = ServerConfig::default();
 
     assert!(config.enable_api);
-    assert!(!config.enable_websocket); // Disabled by default for security
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
     assert_eq!(config.default_timeout, Duration::from_secs(300));
@@ -38,13 +37,6 @@ fn test_server_config_enable_api() {
 }
 
 #[test]
-fn test_server_config_enable_websocket() {
-    let config = ServerConfig::default().enable_websocket(false);
-
-    assert!(!config.enable_websocket);
-}
-
-#[test]
 fn test_server_config_max_concurrent_executions() {
     let config = ServerConfig::default().max_concurrent_executions(250);
 
@@ -63,13 +55,11 @@ fn test_server_config_chained_builders() {
     let config = ServerConfig::default()
         .bind_address("0.0.0.0:8080")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(50)
         .default_timeout(Duration::from_secs(120));
 
     assert_eq!(config.bind_address, "0.0.0.0:8080");
     assert!(config.enable_api);
-    assert!(config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 50);
     assert_eq!(config.default_timeout, Duration::from_secs(120));
 }
@@ -111,11 +101,9 @@ fn test_server_config_with_rate_limiting() {
 fn test_server_config_minimal() {
     let config = ServerConfig::default()
         .enable_api(false)
-        .enable_websocket(false)
         .max_concurrent_executions(1);
 
     assert!(!config.enable_api);
-    assert!(!config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 1);
 }
 
@@ -123,12 +111,10 @@ fn test_server_config_minimal() {
 fn test_server_config_maximal() {
     let config = ServerConfig::default()
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(1000)
         .default_timeout(Duration::from_secs(3600));
 
     assert!(config.enable_api);
-    assert!(config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 1000);
     assert_eq!(config.default_timeout, Duration::from_secs(3600));
 }
@@ -527,7 +513,6 @@ fn test_full_server_config_production() {
     let config = ServerConfig::default()
         .bind_address("0.0.0.0:443")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(500)
         .default_timeout(Duration::from_secs(600))
         .auth(auth)
@@ -535,7 +520,6 @@ fn test_full_server_config_production() {
 
     assert_eq!(config.bind_address, "0.0.0.0:443");
     assert!(config.enable_api);
-    assert!(config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 500);
     assert!(config.auth.is_some());
     assert!(config.rate_limiting.is_some());
@@ -546,7 +530,6 @@ fn test_full_server_config_development() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:8080")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(10)
         .default_timeout(Duration::from_secs(60));
 

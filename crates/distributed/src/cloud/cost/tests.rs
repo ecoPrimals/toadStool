@@ -1,6 +1,7 @@
 //! Cost module tests
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use super::super::optimizer::CloudCostOptimizer;
     use super::super::pricing::{infer_pricing_tier, CloudCostModel, PricingTier};

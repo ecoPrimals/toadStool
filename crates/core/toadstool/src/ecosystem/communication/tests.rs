@@ -91,7 +91,7 @@ async fn test_channel_operations_with_direct_insert() {
         service_name: "Test Service".to_string(),
         endpoint: "http://localhost:1234".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Connected,
     };
 
@@ -133,7 +133,7 @@ async fn test_multiple_channels() {
         service_name: name.to_string(),
         endpoint: "http://localhost:1234".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Connected,
     };
 
@@ -228,7 +228,7 @@ async fn test_send_message_degraded_mode_returns_fallback() {
         service_name: "Test".to_string(),
         endpoint: "http://localhost:1234".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Connected,
     };
 
@@ -256,7 +256,7 @@ async fn test_check_health_degraded_mode_succeeds() {
         service_name: "Test".to_string(),
         endpoint: "http://localhost:1234".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Connected,
     };
 
@@ -273,7 +273,7 @@ async fn test_send_heartbeat_succeeds_and_updates_timestamp() {
         service_name: "Heartbeat Service".to_string(),
         endpoint: "http://localhost:1234".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now() - chrono::Duration::minutes(5),
+        last_heartbeat: std::time::SystemTime::now() - std::time::Duration::from_secs(300),
         status: ServiceStatus::Connected,
     };
 
@@ -301,7 +301,7 @@ async fn test_remove_channel_existing_logs_info() {
         service_name: "ToRemove".to_string(),
         endpoint: "http://localhost:1".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Disconnected,
     };
 
@@ -323,7 +323,7 @@ async fn test_update_channel_status_existing_channel() {
         service_name: "Status Svc".to_string(),
         endpoint: "http://localhost:1".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Discovered,
     };
 
@@ -461,7 +461,7 @@ fn test_service_channel_debug_clone() {
         service_name: "Name".to_string(),
         endpoint: "http://x".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Connected,
     };
     let ch2 = ch.clone();
@@ -719,7 +719,7 @@ async fn test_check_health_degraded_mode_when_disabled() {
             service_name: "Degraded".to_string(),
             endpoint: "http://x:1".to_string(),
             client: ServiceClient::Disabled,
-            last_heartbeat: chrono::Utc::now(),
+            last_heartbeat: std::time::SystemTime::now(),
             status: ServiceStatus::Connected,
         };
         let result = manager.check_health(&channel).await;
@@ -804,7 +804,7 @@ fn test_service_channel_debug_impl() {
         service_name: "Debug Svc".to_string(),
         endpoint: "unix:///tmp/debug.sock".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: chrono::Utc::now(),
+        last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Discovered,
     };
     let debug_str = format!("{:?}", ch);

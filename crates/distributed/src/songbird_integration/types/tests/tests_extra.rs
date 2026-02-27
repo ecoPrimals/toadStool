@@ -3,7 +3,7 @@
 use super::super::protocols;
 use super::super::*;
 use super::make_test_job;
-use crate::{DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJobType};
+use crate::ResourceRequirements;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;

@@ -171,7 +171,7 @@ mod primal_status_tests {
 
 // Test primal instance
 mod primal_instance_tests {
-    use chrono::Utc;
+    use std::time::SystemTime;
 
     #[test]
     fn test_primal_instance_creation() {
@@ -222,8 +222,8 @@ mod primal_instance_tests {
     #[test]
     fn test_primal_instance_timestamp() {
         // Test timestamp handling
-        let now = Utc::now();
-        let timestamp = now.timestamp();
+        let now = SystemTime::now();
+        let timestamp = now.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
 
         assert!(timestamp > 0);
         // Verify timestamp is recent (after 2020)
@@ -245,7 +245,7 @@ mod primal_instance_tests {
 
 // Test ecosystem message types
 mod ecosystem_message_tests {
-    use chrono::Utc;
+    use std::time::SystemTime;
     use uuid::Uuid;
 
     #[test]
@@ -254,12 +254,18 @@ mod ecosystem_message_tests {
         let id = Uuid::new_v4();
         let from = "toadstool".to_string();
         let to = "songbird".to_string();
-        let timestamp = Utc::now();
+        let timestamp = SystemTime::now();
 
         assert_ne!(id, Uuid::nil());
         assert!(!from.is_empty());
         assert!(!to.is_empty());
-        assert!(timestamp.timestamp() > 0);
+        assert!(
+            timestamp
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                > 0
+        );
     }
 
     #[test]

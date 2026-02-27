@@ -1,11 +1,11 @@
 //! Comprehensive test coverage for BYOB executor
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use toadstool::byob::{
@@ -133,7 +133,7 @@ fn create_test_deployment_request() -> ByobDeploymentRequest {
             }),
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: SystemTime::now(),
     }
 }
 

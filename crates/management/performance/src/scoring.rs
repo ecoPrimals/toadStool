@@ -139,9 +139,9 @@ mod tests {
             network: toadstool::resources::NetworkMetrics::default(),
             gpu: None,
             timing: toadstool::resources::TimingMetrics {
-                start_time: chrono::Utc::now(),
+                start_time: std::time::SystemTime::now(),
                 end_time: None,
-                duration: chrono::Duration::zero(),
+                duration: Duration::ZERO,
             },
         }
     }

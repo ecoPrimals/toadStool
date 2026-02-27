@@ -139,9 +139,7 @@ pub fn default_federation_address() -> std::net::SocketAddr {
 )]
 #[must_use]
 pub fn get_songbird_port() -> u16 {
-    #[allow(deprecated)]
-    let fallback = crate::ports::fallback::SONGBIRD;
-    crate::ports::get_primal_port("SONGBIRD", fallback)
+    crate::config_utils::ConfigUtils::get_primal_default_port("SONGBIRD")
 }
 
 /// Get `BearDog` port from environment or default
@@ -157,10 +155,7 @@ pub fn get_songbird_port() -> u16 {
 )]
 #[must_use]
 pub fn get_beardog_port() -> u16 {
-    std::env::var("BEARDOG_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8081)
+    crate::config_utils::ConfigUtils::get_primal_default_port("BEARDOG")
 }
 
 /// Get `NestGate` port from environment or default
@@ -178,10 +173,7 @@ pub fn get_beardog_port() -> u16 {
 )]
 #[must_use]
 pub fn get_nestgate_port() -> u16 {
-    std::env::var("NESTGATE_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8082)
+    crate::config_utils::ConfigUtils::get_primal_default_port("NESTGATE")
 }
 
 /// Get Squirrel MCP port from environment or default
@@ -193,10 +185,7 @@ pub fn get_nestgate_port() -> u16 {
 )]
 #[must_use]
 pub fn get_squirrel_port() -> u16 {
-    std::env::var("TOADSTOOL_SQUIRREL_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8083)
+    crate::config_utils::ConfigUtils::get_primal_default_port("SQUIRREL")
 }
 
 /// Get `ToadStool` API port from environment or default

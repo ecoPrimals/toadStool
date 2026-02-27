@@ -1,6 +1,5 @@
 //! Manual JSON-RPC tests (consolidated from mod and handlers)
 
-#![allow(deprecated)]
 use toadstool_common::interned_strings::primals;
 
 use super::*;
@@ -70,7 +69,7 @@ async fn test_handle_health_response_format() {
     let obj = response.as_object().expect("object");
     assert!(obj.contains_key("result"));
     let result = &obj["result"];
-    assert!(result["healthy"].as_bool().expect("healthy") == true);
+    assert!(result["healthy"].as_bool().expect("healthy"));
     assert!(result["version"].as_str().is_some());
     assert!(result["error_count"].as_u64().is_some());
     assert!(result["uptime_secs"].as_u64().is_some());

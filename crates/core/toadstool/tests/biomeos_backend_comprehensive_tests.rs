@@ -6,6 +6,7 @@
 #![allow(deprecated)]
 
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 use toadstool::biomeos_integration::agent_backend::*;
 use toadstool::biomeos_integration::auth_backend::*;
 use toadstool::biomeos_integration::storage_backend::*;
@@ -58,8 +59,8 @@ fn test_auth_backend_trait_validate_token_valid() {
         token_type: "Bearer".to_string(),
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
@@ -78,8 +79,8 @@ fn test_auth_backend_trait_validate_token_expired() {
         token_type: "Bearer".to_string(),
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: chrono::Utc::now() - chrono::Duration::hours(1), // Expired
-        issued_at: chrono::Utc::now() - chrono::Duration::hours(2),
+        expires_at: SystemTime::now() - Duration::from_secs(3600), // Expired
+        issued_at: SystemTime::now() - Duration::from_secs(7200),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
@@ -100,8 +101,8 @@ fn test_auth_backend_trait_validate_token_invalid_issuer() {
         token_type: "Bearer".to_string(),
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "malicious-issuer".to_string(), // Invalid issuer
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
@@ -122,8 +123,8 @@ fn test_auth_backend_trait_validate_token_invalid_type() {
         token_type: "InvalidType".to_string(), // Invalid token type
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
@@ -144,8 +145,8 @@ fn test_auth_backend_trait_validate_token_bearer_type() {
         token_type: "Bearer".to_string(), // Valid Bearer type
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
@@ -164,8 +165,8 @@ fn test_auth_backend_trait_validate_token_ed25519_type() {
         token_type: "Ed25519".to_string(), // Valid Ed25519 type
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
@@ -204,7 +205,7 @@ async fn test_inmemory_auth_backend_token_request_fields() {
         requesting_primal: "toadstool".to_string(),
         scope: vec!["cross-primal".to_string(), "read".to_string()],
         audience: vec!["songbird".to_string(), "nestgate".to_string()],
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let token = backend.request_token(&request).await.unwrap();
@@ -214,7 +215,7 @@ async fn test_inmemory_auth_backend_token_request_fields() {
     assert_eq!(token.token_type, "Bearer");
     assert!(token.token.contains("toadstool"));
     assert_eq!(token.public_key, "test-public-key");
-    assert!(token.expires_at > chrono::Utc::now());
+    assert!(token.expires_at > SystemTime::now());
     assert_eq!(token.issuer, "beardog");
     assert!(
         token.audience.contains(&"toadstool".to_string())
@@ -228,7 +229,7 @@ async fn test_inmemory_auth_backend_refresh_token_fields() {
     let backend = InMemoryAuthBackend::new();
     let request = TokenRefreshRequest {
         requesting_primal: "toadstool".to_string(),
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     let token = backend.refresh_token(&request).await.unwrap();
@@ -239,7 +240,7 @@ async fn test_inmemory_auth_backend_refresh_token_fields() {
     assert_eq!(token.token_type, "Bearer");
     assert!(token.token.contains("refreshed"));
     assert_eq!(token.issuer, "beardog");
-    assert!(token.expires_at > chrono::Utc::now());
+    assert!(token.expires_at > SystemTime::now());
 }
 
 // ============================================================================

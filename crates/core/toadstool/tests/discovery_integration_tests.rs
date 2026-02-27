@@ -10,7 +10,7 @@
 //! - Multi-service discovery scenarios
 //! - Error handling and edge cases
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use toadstool::discovery::{DiscoveredService, MdnsDiscoveryService};
 use toadstool::self_identity::{Capability, SelfIdentity};
 
@@ -121,8 +121,8 @@ async fn test_discovered_service_has_capability() {
         ],
         endpoint: "localhost:8084".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: SystemTime::now(),
+        last_seen: SystemTime::now(),
         metadata: std::collections::HashMap::new(),
     };
 
@@ -245,8 +245,8 @@ fn test_discovered_service_clone() {
         capabilities: vec![],
         endpoint: "localhost:8084".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: SystemTime::now(),
+        last_seen: SystemTime::now(),
         metadata: std::collections::HashMap::new(),
     };
 
@@ -272,8 +272,8 @@ async fn test_capability_based_filtering() {
             }],
             endpoint: "node1:8084".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: std::collections::HashMap::new(),
         },
         DiscoveredService {
@@ -288,8 +288,8 @@ async fn test_capability_based_filtering() {
             }],
             endpoint: "node2:8084".to_string(),
             protocols: vec!["http".to_string()],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
             metadata: std::collections::HashMap::new(),
         },
     ];

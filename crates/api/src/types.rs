@@ -576,8 +576,6 @@ pub struct ApiConfig {
     pub bind_address: String,
     /// Enable REST API endpoints
     pub enable_rest: bool,
-    /// Ignored; real-time events use JSON-RPC 2.0 polling via biomeOS/songbird coordination
-    pub enable_websocket: bool,
     /// Enable CORS support
     pub cors_enabled: bool,
     /// Request timeout in seconds
@@ -610,7 +608,6 @@ impl Default for ApiConfig {
                 config.network.bind_address, config.network.songbird_port
             ),
             enable_rest: true,
-            enable_websocket: false, // Deprecated; use JSON-RPC 2.0 polling
             cors_enabled: true,
             request_timeout_secs: DEFAULT_REQUEST_TIMEOUT.as_secs(),
             enable_openapi: true,

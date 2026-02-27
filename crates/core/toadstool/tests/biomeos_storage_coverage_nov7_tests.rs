@@ -5,6 +5,7 @@
 //!
 //! Strategy: Test configuration variations and manager patterns
 
+use std::time::SystemTime;
 use toadstool::biomeos_integration::*;
 
 // ============================================================================
@@ -365,7 +366,7 @@ fn test_volume_info_creation() {
         size: "20Gi".to_string(),
         storage_class: "standard".to_string(),
         status: "Available".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     assert_eq!(info.name, "volume-1");
@@ -384,7 +385,7 @@ fn test_volume_info_different_statuses() {
             size: "5Gi".to_string(),
             storage_class: "standard".to_string(),
             status: status.to_string(),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         assert_eq!(info.status, status);
@@ -399,7 +400,7 @@ fn test_volume_info_clone() {
         size: "30Gi".to_string(),
         storage_class: "fast".to_string(),
         status: "Bound".to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
     };
 
     let cloned = info.clone();
@@ -449,7 +450,7 @@ fn test_volume_info_large_sizes() {
             size: size.to_string(),
             storage_class: "premium".to_string(),
             status: "Available".to_string(),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         assert_eq!(info.size, size);

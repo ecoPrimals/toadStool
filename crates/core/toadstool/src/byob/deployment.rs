@@ -102,8 +102,6 @@ impl ActiveDeployment {
 
     /// Get deployment response
     pub fn to_response(&self) -> ByobDeploymentResponse {
-        use chrono::Utc;
-
         // Convert service executions to service statuses
         let service_statuses: HashMap<String, _> = self
             .request
@@ -116,7 +114,7 @@ impl ActiveDeployment {
                     running_replicas: spec.replicas,
                     desired_replicas: spec.replicas,
                     health: "healthy".to_string(),
-                    updated_at: Utc::now(),
+                    updated_at: std::time::SystemTime::now(),
                 };
                 (name.clone(), status)
             })
@@ -129,7 +127,7 @@ impl ActiveDeployment {
             resource_usage: self.resource_usage.clone(),
             network_info: self.network_info.clone(),
             created_at: self.request.created_at,
-            updated_at: Utc::now(),
+            updated_at: std::time::SystemTime::now(),
         }
     }
 }
@@ -137,7 +135,7 @@ impl ActiveDeployment {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
+    use std::time::SystemTime;
 
     fn create_test_request() -> ByobDeploymentRequest {
         ByobDeploymentRequest {
@@ -164,7 +162,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         }
     }
 

@@ -1,10 +1,9 @@
 //! Connection handling tests — message framing, error responses, serialization.
 //! No running services: tests pure logic, types, and serialization.
-#![allow(deprecated)]
 
 use super::super::{
-    JsonRpcError, JsonRpcErrorResponse, JsonRpcRequest, ManualJsonRpcServer, INVALID_PARAMS,
-    INVALID_REQUEST, JSONRPC_VERSION, METHOD_NOT_FOUND, PARSE_ERROR,
+    JsonRpcError, JsonRpcErrorResponse, JsonRpcRequest, ManualJsonRpcServer, INVALID_REQUEST,
+    JSONRPC_VERSION, METHOD_NOT_FOUND, PARSE_ERROR,
 };
 use crate::tarpc_server::StandaloneExecutor;
 use std::sync::Arc;

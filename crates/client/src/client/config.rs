@@ -14,10 +14,8 @@ use toadstool_config::defaults;
 /// The following environment variables can be used to override defaults:
 /// - `TOADSTOOL_SERVER_URL`: Base URL of the ToadStool server
 /// - `TOADSTOOL_REQUEST_TIMEOUT_MS`: HTTP request timeout in milliseconds
-/// - `TOADSTOOL_WEBSOCKET_TIMEOUT_MS`: WebSocket connection timeout in milliseconds
 /// - `TOADSTOOL_MAX_RETRIES`: Maximum retry attempts
 /// - `TOADSTOOL_RETRY_BACKOFF_MS`: Retry backoff duration in milliseconds
-/// - `TOADSTOOL_ENABLE_WEBSOCKET`: Enable WebSocket real-time events (true/false)
 ///
 /// # Example
 ///
@@ -44,13 +42,6 @@ pub struct ClientConfig {
     /// creating a more complete client config struct that uses TimeoutConfig base pattern.
     pub request_timeout: Duration,
 
-    /// WebSocket connection timeout
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    pub websocket_timeout: Duration,
-
     /// Maximum retry attempts
     ///
     /// Note: For full retry configuration (backoff, jitter), consider using
@@ -66,19 +57,11 @@ pub struct ClientConfig {
     /// Authentication configuration
     pub auth: Option<AuthConfig>,
 
-    /// Enable WebSocket real-time events
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    pub enable_websocket: bool,
-
     /// Custom HTTP headers
     pub custom_headers: HashMap<String, String>,
 }
 
 impl Default for ClientConfig {
-    #[allow(deprecated)]
     fn default() -> Self {
         Self {
             base_url: std::env::var("TOADSTOOL_SERVER_URL").unwrap_or_else(|_| {
@@ -94,12 +77,6 @@ impl Default for ClientConfig {
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(defaults::timeouts::REQUEST_MS),
             ),
-            websocket_timeout: Duration::from_millis(
-                std::env::var("TOADSTOOL_WEBSOCKET_TIMEOUT_MS")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(defaults::timeouts::CONNECTION_MS),
-            ),
             max_retries: std::env::var("TOADSTOOL_MAX_RETRIES")
                 .ok()
                 .and_then(|v| v.parse().ok())
@@ -111,10 +88,6 @@ impl Default for ClientConfig {
                     .unwrap_or(defaults::retries::BACKOFF_MS),
             ),
             auth: None,
-            enable_websocket: std::env::var("TOADSTOOL_ENABLE_WEBSOCKET")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(false),
             custom_headers: HashMap::new(),
         }
     }

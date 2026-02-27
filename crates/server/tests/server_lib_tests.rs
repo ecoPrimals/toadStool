@@ -16,7 +16,6 @@ fn test_server_config_default() {
     // Default bind address comes from env config
     assert!(config.bind_address.contains(':'));
     assert!(config.enable_api);
-    assert!(!config.enable_websocket); // Disabled by default for security
     assert!(config.enable_cors);
 }
 
@@ -29,12 +28,9 @@ fn test_server_config_custom_bind_address() {
 
 #[test]
 fn test_server_config_enable_flags() {
-    let config = ServerConfig::default()
-        .enable_api(false)
-        .enable_websocket(false);
+    let config = ServerConfig::default().enable_api(false);
 
     assert!(!config.enable_api);
-    assert!(!config.enable_websocket);
     assert!(config.enable_cors); // Default is true
 }
 
@@ -43,12 +39,10 @@ fn test_server_config_builder_pattern() {
     let config = ServerConfig::default()
         .bind_address("localhost:8888")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(50);
 
     assert_eq!(config.bind_address, "localhost:8888");
     assert!(config.enable_api);
-    assert!(config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 50);
 }
 
@@ -145,8 +139,7 @@ async fn test_server_creation_with_default_config() {
 async fn test_server_creation_with_custom_config() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:9999")
-        .enable_api(true)
-        .enable_websocket(false);
+        .enable_api(true);
 
     let result = ToadStoolServer::new(config).await;
     assert!(result.is_ok());
@@ -154,19 +147,7 @@ async fn test_server_creation_with_custom_config() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_creation_api_only() {
-    let config = ServerConfig::default()
-        .enable_api(true)
-        .enable_websocket(false);
-
-    let result = ToadStoolServer::new(config).await;
-    assert!(result.is_ok());
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_server_creation_websocket_only() {
-    let config = ServerConfig::default()
-        .enable_api(false)
-        .enable_websocket(true);
+    let config = ServerConfig::default().enable_api(true);
 
     let result = ToadStoolServer::new(config).await;
     assert!(result.is_ok());
@@ -280,7 +261,6 @@ async fn test_server_builder_pattern_complete() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:19090")
         .enable_api(true)
-        .enable_websocket(true)
         .default_timeout(Duration::from_secs(600));
 
     let mut server = ToadStoolServer::new(config).await.unwrap();
@@ -361,9 +341,7 @@ async fn test_server_ipv6_address() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_all_features_disabled() {
-    let config = ServerConfig::default()
-        .enable_api(false)
-        .enable_websocket(false);
+    let config = ServerConfig::default().enable_api(false);
 
     let result = ToadStoolServer::new(config).await;
     assert!(result.is_ok());
@@ -375,7 +353,6 @@ async fn test_server_all_features_enabled() {
 
     let config = ServerConfig::default()
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(1000)
         .default_timeout(Duration::from_secs(1200));
 

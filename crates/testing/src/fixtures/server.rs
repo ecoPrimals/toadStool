@@ -11,7 +11,6 @@ use std::net::SocketAddr;
 pub struct TestServerConfigBuilder {
     host: String,
     port: u16,
-    enable_websocket: bool,
     enable_metrics: bool,
     log_level: String,
 }
@@ -21,7 +20,6 @@ impl TestServerConfigBuilder {
         Self {
             host: "127.0.0.1".to_string(),
             port: 0, // OS will assign a free port
-            enable_websocket: true,
             enable_metrics: true,
             log_level: "debug".to_string(),
         }
@@ -34,11 +32,6 @@ impl TestServerConfigBuilder {
 
     pub fn with_port(mut self, port: u16) -> Self {
         self.port = port;
-        self
-    }
-
-    pub fn with_websocket(mut self, enabled: bool) -> Self {
-        self.enable_websocket = enabled;
         self
     }
 
@@ -57,7 +50,6 @@ impl TestServerConfigBuilder {
             "server": {
                 "host": self.host,
                 "port": self.port,
-                "enable_websocket": self.enable_websocket,
                 "enable_metrics": self.enable_metrics,
             },
             "logging": {

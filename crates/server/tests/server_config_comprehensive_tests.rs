@@ -16,7 +16,6 @@ fn test_server_config_default() {
 
     assert!(!config.bind_address.is_empty());
     assert!(config.enable_api);
-    assert!(!config.enable_websocket); // Disabled by default for security
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
     assert_eq!(config.default_timeout, Duration::from_secs(300));
@@ -36,13 +35,6 @@ fn test_server_config_enable_api() {
     let config = ServerConfig::default().enable_api(false);
 
     assert!(!config.enable_api);
-}
-
-#[test]
-fn test_server_config_enable_websocket() {
-    let config = ServerConfig::default().enable_websocket(false);
-
-    assert!(!config.enable_websocket);
 }
 
 #[test]
@@ -97,7 +89,6 @@ fn test_server_config_builder_pattern() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:8080")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(150)
         .default_timeout(Duration::from_secs(180));
 
@@ -780,12 +771,9 @@ fn test_health_check_config_100_percent_thresholds() {
 
 #[test]
 fn test_server_config_all_features_disabled() {
-    let config = ServerConfig::default()
-        .enable_api(false)
-        .enable_websocket(false);
+    let config = ServerConfig::default().enable_api(false);
 
     assert!(!config.enable_api);
-    assert!(!config.enable_websocket);
 }
 
 #[test]
@@ -873,7 +861,6 @@ fn test_complete_server_config_with_all_options() {
     let config = ServerConfig::default()
         .bind_address("0.0.0.0:9000")
         .enable_api(true)
-        .enable_websocket(true)
         .max_concurrent_executions(200)
         .default_timeout(Duration::from_secs(600))
         .auth(auth)
@@ -890,11 +877,9 @@ fn test_minimal_server_config() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:8080")
         .enable_api(false)
-        .enable_websocket(false)
         .max_concurrent_executions(10);
 
     assert!(!config.enable_api);
-    assert!(!config.enable_websocket);
     assert_eq!(config.max_concurrent_executions, 10);
 }
 

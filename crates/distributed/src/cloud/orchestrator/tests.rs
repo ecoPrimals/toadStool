@@ -1,6 +1,7 @@
 //! Cloud orchestrator tests
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::cloud::types::AvailabilityInfo;
     use crate::cloud::{

@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tokio::sync::Mutex;
 
 use super::types::{AgentConfig, ModelConfig};
@@ -30,9 +31,11 @@ pub struct AgentInfo {
     /// Resource usage
     pub resources: AgentResourceUsage,
     /// Creation time
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
     /// Last update time
-    pub last_updated: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub last_updated: SystemTime,
 }
 
 /// Model information
@@ -53,7 +56,8 @@ pub struct ModelInfo {
     /// Performance metrics
     pub performance: ModelPerformanceMetrics,
     /// Load time
-    pub loaded_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub loaded_at: SystemTime,
 }
 
 /// Agent status
@@ -476,8 +480,8 @@ impl AgentBackend for InMemoryAgentBackend {
                 gpu_percent: None,
                 network_bytes_per_sec: 0,
             },
-            created_at: chrono::Utc::now(),
-            last_updated: chrono::Utc::now(),
+            created_at: SystemTime::now(),
+            last_updated: SystemTime::now(),
         };
 
         let mut agents = self.agents.lock().await;
@@ -505,7 +509,7 @@ impl AgentBackend for InMemoryAgentBackend {
                 throughput_rps: 10.0,
                 success_rate: 99.9,
             },
-            loaded_at: chrono::Utc::now(),
+            loaded_at: SystemTime::now(),
         };
 
         let mut models = self.models.lock().await;
@@ -519,7 +523,7 @@ impl AgentBackend for InMemoryAgentBackend {
         let mut agents = self.agents.lock().await;
         if let Some(agent) = agents.get_mut(agent_name) {
             agent.replicas = replicas;
-            agent.last_updated = chrono::Utc::now();
+            agent.last_updated = SystemTime::now();
             tracing::debug!("Scaled test agent {} to {} replicas", agent_name, replicas);
             Ok(())
         } else {
@@ -534,7 +538,7 @@ impl AgentBackend for InMemoryAgentBackend {
         let mut agents = self.agents.lock().await;
         if let Some(agent) = agents.get_mut(agent_name) {
             agent.status = AgentStatus::Stopped;
-            agent.last_updated = chrono::Utc::now();
+            agent.last_updated = SystemTime::now();
             tracing::debug!("Stopped test agent {}", agent_name);
             Ok(())
         } else {

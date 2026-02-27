@@ -94,7 +94,7 @@ pub fn example_mlp_inference() -> Result<()> {
         .enumerate()
         .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .map(|(idx, _)| idx)
-        .unwrap();
+        .expect("probs must be non-empty to predict class");
 
     println!(
         "\n✅ Predicted class: {} (confidence: {:.1}%)",

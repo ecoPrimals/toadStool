@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
 use toadstool_common::constants::ecosystem::well_known;
 use toadstool_common::constants::primal_identity::audience;
@@ -41,8 +42,8 @@ fn test_config_with_signing_key() -> AuthManagerConfig {
 }
 
 fn sample_token() -> AuthenticationToken {
-    let now = chrono::Utc::now();
-    let expires = now + chrono::Duration::hours(1);
+    let now = SystemTime::now();
+    let expires = now + Duration::from_secs(3600);
     AuthenticationToken {
         id: "token-123".to_string(),
         token_type: "Bearer".to_string(),
@@ -192,7 +193,7 @@ fn test_get_public_key_invalid_base64_returns_none() {
 #[test]
 fn test_get_public_key_wrong_length_returns_none() {
     use base64::{engine::general_purpose, Engine as _};
-    let short = general_purpose::STANDARD.encode(&[1u8; 16]);
+    let short = general_purpose::STANDARD.encode([1u8; 16]);
     let config = AuthManagerConfig {
         beardog_endpoint: String::new(),
         token_refresh_interval: TOKEN_REFRESH_INTERVAL,
@@ -228,7 +229,7 @@ async fn test_sign_payload_invalid_base64_returns_error() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_sign_payload_wrong_key_length_returns_error() {
     use base64::{engine::general_purpose, Engine as _};
-    let bad_len = general_purpose::STANDARD.encode(&[0u8; 64]);
+    let bad_len = general_purpose::STANDARD.encode([0u8; 64]);
     let config = AuthManagerConfig {
         beardog_endpoint: String::new(),
         token_refresh_interval: TOKEN_REFRESH_INTERVAL,
@@ -283,7 +284,7 @@ fn test_verification_result_construction() {
         total_primals: 2,
         valid_tokens: 1,
         results: HashMap::new(),
-        verification_time: chrono::Utc::now(),
+        verification_time: SystemTime::now(),
     };
     assert_eq!(result.total_primals, 2);
     assert_eq!(result.valid_tokens, 1);
@@ -296,7 +297,7 @@ fn test_propagation_result_construction() {
         successful_propagations: 2,
         results: HashMap::new(),
         token_id: "tok-1".to_string(),
-        propagation_time: chrono::Utc::now(),
+        propagation_time: SystemTime::now(),
     };
     assert_eq!(result.total_primals, 3);
     assert_eq!(result.successful_propagations, 2);

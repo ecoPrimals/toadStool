@@ -119,7 +119,9 @@ fn find_root_of_unity(degree: u32, modulus: u64) -> Option<u64> {
 
 /// Helper to read tensor back as u64 polynomial
 async fn read_poly_from_tensor(tensor: &Tensor) -> Vec<u64> {
-    let u32_data = tensor.to_vec_u32().unwrap();
+    let u32_data = tensor
+        .to_vec_u32()
+        .expect("tensor conversion to u32 vec failed");
     u32_pairs_to_poly(&u32_data)
 }
 

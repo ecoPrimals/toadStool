@@ -11,7 +11,7 @@
 //! - PropagationResult struct
 
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use toadstool::biomeos_integration::auth::*;
 
 // ============================================================================
@@ -257,7 +257,7 @@ fn test_auth_manager_config_serialization() {
 
 #[test]
 fn test_authentication_token_creation() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
     let mut claims = HashMap::new();
     claims.insert("user_id".to_string(), serde_json::json!("123"));
 
@@ -266,7 +266,7 @@ fn test_authentication_token_creation() {
         token_type: "Bearer".to_string(),
         token: "encrypted-token-data".to_string(),
         public_key: "public-key-data".to_string(),
-        expires_at: now + chrono::Duration::hours(1),
+        expires_at: now + Duration::from_secs(3600),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string(), "songbird".to_string()],
@@ -283,14 +283,14 @@ fn test_authentication_token_creation() {
 
 #[test]
 fn test_authentication_token_ed25519() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let token = AuthenticationToken {
         id: "token-456".to_string(),
         token_type: "Ed25519".to_string(),
         token: "ed25519-signature".to_string(),
         public_key: "ed25519-public-key".to_string(),
-        expires_at: now + chrono::Duration::days(1),
+        expires_at: now + Duration::from_secs(86400),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["nestgate".to_string()],
@@ -304,14 +304,14 @@ fn test_authentication_token_ed25519() {
 
 #[test]
 fn test_authentication_token_clone() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let token1 = AuthenticationToken {
         id: "token-789".to_string(),
         token_type: "Bearer".to_string(),
         token: "token-data".to_string(),
         public_key: "public-key".to_string(),
-        expires_at: now + chrono::Duration::hours(1),
+        expires_at: now + Duration::from_secs(3600),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -326,14 +326,14 @@ fn test_authentication_token_clone() {
 
 #[test]
 fn test_authentication_token_serialization() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let token = AuthenticationToken {
         id: "token-serialize".to_string(),
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + chrono::Duration::hours(1),
+        expires_at: now + Duration::from_secs(3600),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -351,14 +351,14 @@ fn test_authentication_token_serialization() {
 
 #[test]
 fn test_token_propagation_request_creation() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let token = AuthenticationToken {
         id: "token-123".to_string(),
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + chrono::Duration::hours(1),
+        expires_at: now + Duration::from_secs(3600),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["songbird".to_string()],
@@ -380,14 +380,14 @@ fn test_token_propagation_request_creation() {
 
 #[test]
 fn test_token_propagation_request_clone() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let token = AuthenticationToken {
         id: "token-123".to_string(),
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + chrono::Duration::hours(1),
+        expires_at: now + Duration::from_secs(3600),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec![],
@@ -409,14 +409,14 @@ fn test_token_propagation_request_clone() {
 
 #[test]
 fn test_token_propagation_request_serialization() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let token = AuthenticationToken {
         id: "token-123".to_string(),
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + chrono::Duration::hours(1),
+        expires_at: now + Duration::from_secs(3600),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec![],
@@ -442,7 +442,7 @@ fn test_token_propagation_request_serialization() {
 
 #[test]
 fn test_token_verification_request_creation() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let request = TokenVerificationRequest {
         primal_name: "toadstool".to_string(),
@@ -455,7 +455,7 @@ fn test_token_verification_request_creation() {
 
 #[test]
 fn test_token_verification_request_clone() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let request1 = TokenVerificationRequest {
         primal_name: "songbird".to_string(),
@@ -469,7 +469,7 @@ fn test_token_verification_request_clone() {
 
 #[test]
 fn test_token_verification_request_serialization() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let request = TokenVerificationRequest {
         primal_name: "nestgate".to_string(),
@@ -487,11 +487,11 @@ fn test_token_verification_request_serialization() {
 
 #[test]
 fn test_token_verification_response_valid() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let response = TokenVerificationResponse {
         status: TokenVerificationStatus::Valid,
-        expires_at: Some(now + chrono::Duration::hours(1)),
+        expires_at: Some(now + Duration::from_secs(3600)),
         details: Some("Token is valid and active".to_string()),
     };
 
@@ -514,7 +514,7 @@ fn test_token_verification_response_expired() {
 
 #[test]
 fn test_token_verification_response_clone() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let response1 = TokenVerificationResponse {
         status: TokenVerificationStatus::Valid,
@@ -544,7 +544,7 @@ fn test_token_verification_response_serialization() {
 
 #[test]
 fn test_propagation_result_creation() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
     let mut results = HashMap::new();
     results.insert("songbird".to_string(), TokenPropagationStatus::Success);
     results.insert("nestgate".to_string(), TokenPropagationStatus::Success);
@@ -564,7 +564,7 @@ fn test_propagation_result_creation() {
 
 #[test]
 fn test_propagation_result_partial_success() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
     let mut results = HashMap::new();
     results.insert("songbird".to_string(), TokenPropagationStatus::Success);
     results.insert(
@@ -586,7 +586,7 @@ fn test_propagation_result_partial_success() {
 
 #[test]
 fn test_propagation_result_clone() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
     let mut results = HashMap::new();
     results.insert("songbird".to_string(), TokenPropagationStatus::Success);
 
@@ -605,7 +605,7 @@ fn test_propagation_result_clone() {
 
 #[test]
 fn test_propagation_result_serialization() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
     let mut results = HashMap::new();
     results.insert("songbird".to_string(), TokenPropagationStatus::Success);
 

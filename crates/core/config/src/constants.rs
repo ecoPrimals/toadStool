@@ -10,55 +10,37 @@
 
 /// # ⚠️ DEPRECATED: Default network ports for ecosystem primals
 ///
-/// **Use `RuntimeDiscovery` instead** for primal-agnostic, runtime-discovered services.
+/// **Consolidated in `toadstool_config::ports::discovery_fallback`**.
+/// Use `ports::discovery_fallback::DEFAULT_*_DISCOVERY_PORT` for discovery fallback ports.
 ///
-/// These hardcoded ports assume:
-/// - Primals run on specific ports (brittle)
-/// - Single-instance deployments (not scalable)
-/// - Fixed port assignments (conflicts in multi-instance)
-///
-/// # Modern Alternative
-///
-/// ```rust,ignore
-/// use toadstool_common::{RuntimeDiscovery, Capability};
-///
-/// // OLD (hardcoded):
-/// // let songbird_port = constants::ports::SONGBIRD; // 8080
-///
-/// // NEW (discovered):
-/// let discovery = RuntimeDiscovery::new(client);
-/// let coordinators = discovery
-///     .discover_capability(&Capability::Coordination)
-///     .await?;
-/// let coordinator_endpoint = &coordinators[0].endpoint;
-/// ```
-///
-/// See: `toadstool-common::RuntimeDiscovery` for capability-based discovery
+/// **Production**: Use `RuntimeDiscovery::discover_capability()` for capability-based discovery.
 #[deprecated(
     since = "0.3.0",
-    note = "Use RuntimeDiscovery::discover_capability() for primal-agnostic service discovery. \
-            Hardcoded ports are being eliminated. See module docs for migration examples."
+    note = "Use toadstool_config::ports::discovery_fallback for discovery ports. \
+            Use RuntimeDiscovery::discover_capability() for production."
 )]
 pub mod ports {
+    use crate::ports::discovery_fallback;
+
     /// Default Songbird service mesh port
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find coordinator at runtime
-    pub const SONGBIRD: u16 = 8080;
+    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT")]
+    pub const SONGBIRD: u16 = discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT;
 
     /// Default BearDog security service port
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find security service at runtime
-    pub const BEARDOG: u16 = 8081;
+    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT")]
+    pub const BEARDOG: u16 = discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT;
 
     /// Default NestGate storage service port
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find storage service at runtime
-    pub const NESTGATE: u16 = 9000;
+    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT")]
+    pub const NESTGATE: u16 = discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT;
 
-    /// Default ToadStool compute service port
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find compute service at runtime
-    pub const TOADSTOOL: u16 = 7000;
+    /// Default ToadStool compute service port (port 0 = OS-assigned)
+    #[deprecated(note = "Use defaults::network::API_PORT for ToadStool self-config")]
+    pub const TOADSTOOL: u16 = 0;
 
     /// Default Squirrel MCP platform port
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find MCP platform at runtime
-    pub const SQUIRREL: u16 = 6000;
+    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT")]
+    pub const SQUIRREL: u16 = discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT;
 }
 
 /// # ⚠️ DEPRECATED: Ecosystem primal service names
@@ -168,7 +150,7 @@ mod tests {
     fn test_port_constants() {
         assert_eq!(ports::SONGBIRD, 8080);
         assert_eq!(ports::BEARDOG, 8081);
-        assert_eq!(ports::NESTGATE, 9000);
+        assert_eq!(ports::NESTGATE, 8082); // Consolidated with ports::discovery_fallback
     }
 
     #[test]

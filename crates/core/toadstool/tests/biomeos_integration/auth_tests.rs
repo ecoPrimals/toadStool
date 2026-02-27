@@ -1,7 +1,8 @@
 //! Comprehensive tests for BiomeOS authentication integration types
 
+use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 use toadstool::biomeos_integration::*;
-use std::time::Duration;
 
 // ============================================================================
 // AuthManagerConfig Tests
@@ -14,7 +15,7 @@ fn test_auth_manager_config_creation() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
-        replay_protection: true,,
+        replay_protection: true,
         ..Default::default()
     };
     
@@ -32,7 +33,7 @@ fn test_auth_manager_config_clone() {
         token_refresh_interval: Duration::from_secs(600),
         signature_validation: false,
         timestamp_window: Duration::from_secs(120),
-        replay_protection: false,,
+        replay_protection: false,
         ..Default::default()
     };
     
@@ -49,7 +50,7 @@ fn test_auth_manager_config_serialization() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
-        replay_protection: true,,
+        replay_protection: true,
         ..Default::default()
     };
     
@@ -163,8 +164,8 @@ fn test_authentication_token_creation() {
         token_type: "Bearer".to_string(),
         token: "encrypted_token_value".to_string(),
         public_key: "ed25519_public_key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string(), "nestgate".to_string()],
         scope: vec!["read".to_string(), "write".to_string()],
@@ -185,8 +186,8 @@ fn test_authentication_token_clone() {
         token_type: "Bearer".to_string(),
         token: "encrypted_token".to_string(),
         public_key: "public_key".to_string(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-        issued_at: chrono::Utc::now(),
+        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["squirrel".to_string()],
         scope: vec!["read".to_string()],
@@ -215,7 +216,7 @@ fn test_propagation_result_creation() {
         successful_propagations: 2,
         results,
         token_id: "token-789".to_string(),
-        propagation_time: chrono::Utc::now(),
+        propagation_time: SystemTime::now(),
     };
     
     assert_eq!(propagation.total_primals, 3);
@@ -237,7 +238,7 @@ fn test_propagation_result_all_success() {
         successful_propagations: 5,
         results,
         token_id: "token-all-success".to_string(),
-        propagation_time: chrono::Utc::now(),
+        propagation_time: SystemTime::now(),
     };
     
     assert_eq!(propagation.total_primals, 5);
@@ -259,7 +260,7 @@ fn test_verification_result_creation() {
         total_primals: 3,
         valid_tokens: 2,
         results,
-        verification_time: chrono::Utc::now(),
+        verification_time: SystemTime::now(),
     };
     
     assert_eq!(verification.total_primals, 3);
@@ -278,7 +279,7 @@ fn test_verification_result_all_valid() {
         total_primals: 3,
         valid_tokens: 3,
         results,
-        verification_time: chrono::Utc::now(),
+        verification_time: SystemTime::now(),
     };
     
     assert_eq!(verification.total_primals, 3);
@@ -296,11 +297,11 @@ fn test_authentication_manager_creation() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
-        replay_protection: true,,
+        replay_protection: true,
         ..Default::default()
     };
     
-    let _manager = AuthenticationManager::new(config);
+    let _manager = AuthenticationManager::with_inmemory(config);
     // Creation should succeed
 }
 
@@ -311,11 +312,11 @@ fn test_authentication_manager_without_validation() {
         token_refresh_interval: Duration::from_secs(600),
         signature_validation: false,
         timestamp_window: Duration::from_secs(120),
-        replay_protection: false,,
+        replay_protection: false,
         ..Default::default()
     };
     
-    let _manager = AuthenticationManager::new(config);
+    let _manager = AuthenticationManager::with_inmemory(config);
     // Creation should succeed
 }
 
@@ -330,7 +331,7 @@ fn test_auth_config_short_refresh_interval() {
         token_refresh_interval: Duration::from_secs(60),
         signature_validation: true,
         timestamp_window: Duration::from_secs(30),
-        replay_protection: true,,
+        replay_protection: true,
         ..Default::default()
     };
     
@@ -344,7 +345,7 @@ fn test_auth_config_long_refresh_interval() {
         token_refresh_interval: Duration::from_secs(3600),
         signature_validation: true,
         timestamp_window: Duration::from_secs(300),
-        replay_protection: true,,
+        replay_protection: true,
         ..Default::default()
     };
     
@@ -358,7 +359,7 @@ fn test_auth_config_wide_timestamp_window() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(300),
-        replay_protection: true,,
+        replay_protection: true,
         ..Default::default()
     };
     
@@ -372,7 +373,7 @@ fn test_auth_config_narrow_timestamp_window() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(10),
-        replay_protection: true,,
+        replay_protection: true,
         ..Default::default()
     };
     

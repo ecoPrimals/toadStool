@@ -3,7 +3,6 @@
 //! Coverage Target: Further increase byob.rs from 36% → 55%+
 //! Focus: Async trait methods, deployment lifecycle, error handling
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -183,7 +182,7 @@ fn create_minimal_deployment_request() -> ByobDeploymentRequest {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     }
 }
 
@@ -287,7 +286,7 @@ fn create_complex_deployment_request() -> ByobDeploymentRequest {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     }
 }
 
@@ -573,11 +572,11 @@ fn test_deployment_with_zero_gpu_quota() {
 #[test]
 fn test_deployment_timestamp_validity() {
     let request = create_minimal_deployment_request();
-    let now = Utc::now();
+    let now = std::time::SystemTime::now();
 
     // Timestamp should be recent (within last second)
-    let diff = now.signed_duration_since(request.created_at);
-    assert!(diff.num_seconds() < 1);
+    let diff = now.duration_since(request.created_at).unwrap_or_default();
+    assert!(diff.as_secs() < 1);
 }
 
 #[test]

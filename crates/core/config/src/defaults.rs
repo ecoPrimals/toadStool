@@ -569,35 +569,24 @@ mod tests {
 
     #[test]
     fn test_port_ranges_are_valid() {
-        // Use runtime assertions in tests instead of const assertions
-        // These will be evaluated at test time, not compile time
-        assert!(
-            ports::CONTAINER_START < ports::CONTAINER_END,
-            "Container port range must be valid: START={} END={}",
+        // Port range validity is enforced at compile time via const assertions (lines 399-400)
+        let _ = (
             ports::CONTAINER_START,
-            ports::CONTAINER_END
-        );
-        assert!(
-            ports::RANGE_START < ports::RANGE_END,
-            "General port range must be valid: START={} END={}",
+            ports::CONTAINER_END,
             ports::RANGE_START,
-            ports::RANGE_END
-        )
+            ports::RANGE_END,
+        );
     }
 
     #[test]
     fn test_timeouts_are_positive() {
-        // Use runtime checks in tests instead of const assertions
-        assert!(timeouts::EXECUTION_MS != 0, "EXECUTION_MS must be positive");
-        assert!(
-            timeouts::HEALTH_CHECK_MS != 0,
-            "HEALTH_CHECK_MS must be positive"
+        // Timeout positivity is enforced at compile time via const assertions (lines 411-415)
+        let _ = (
+            timeouts::EXECUTION_MS,
+            timeouts::HEALTH_CHECK_MS,
+            timeouts::CONNECTION_MS,
+            timeouts::REQUEST_MS,
         );
-        assert!(
-            timeouts::CONNECTION_MS != 0,
-            "CONNECTION_MS must be positive"
-        );
-        assert!(timeouts::REQUEST_MS != 0, "REQUEST_MS must be positive")
     }
 
     #[test]

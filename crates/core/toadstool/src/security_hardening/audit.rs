@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
@@ -28,7 +29,8 @@ pub struct SecurityAuditEvent {
     /// Event type
     pub event_type: SecurityEventType,
     /// Timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
     /// Client ID
     pub client_id: Option<String>,
     /// IP address

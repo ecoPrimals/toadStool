@@ -33,7 +33,7 @@ pub use rate_limiter::RateLimiter;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use crate::security::SecurityContext;
@@ -89,7 +89,7 @@ impl SecurityHardeningManager {
                 .log_event(SecurityAuditEvent {
                     id: Uuid::new_v4(),
                     event_type: SecurityEventType::IntrusionAttempt,
-                    timestamp: chrono::Utc::now(),
+                    timestamp: SystemTime::now(),
                     client_id: Some(client_id.to_string()),
                     ip_address: None,
                     user_agent: None,
@@ -109,7 +109,7 @@ impl SecurityHardeningManager {
                 .log_event(SecurityAuditEvent {
                     id: Uuid::new_v4(),
                     event_type: SecurityEventType::RateLimitExceeded,
-                    timestamp: chrono::Utc::now(),
+                    timestamp: SystemTime::now(),
                     client_id: Some(client_id.to_string()),
                     ip_address: None,
                     user_agent: None,
@@ -173,7 +173,7 @@ impl SecurityHardeningManager {
                 .log_event(SecurityAuditEvent {
                     id: Uuid::new_v4(),
                     event_type: failure_type,
-                    timestamp: chrono::Utc::now(),
+                    timestamp: SystemTime::now(),
                     client_id: Some(client_id.to_string()),
                     ip_address: None,
                     user_agent: None,
@@ -297,7 +297,7 @@ mod tests {
         let event = SecurityAuditEvent {
             id: Uuid::new_v4(),
             event_type: SecurityEventType::InputValidationFailure,
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
             client_id: Some("client-1".to_string()),
             ip_address: Some("192.168.1.1".to_string()),
             user_agent: Some("Mozilla/5.0".to_string()),
@@ -413,7 +413,7 @@ mod tests {
         let event = SecurityAuditEvent {
             id: Uuid::new_v4(),
             event_type: SecurityEventType::AuthenticationAttempt,
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
             client_id: Some("client-1".to_string()),
             ip_address: None,
             user_agent: None,

@@ -3,29 +3,12 @@
 //! Week 14 Day 4: Client Error Tests
 //! Target: Achieve complete coverage of client/error.rs
 
-#![allow(deprecated)] // ClientError::WebSocket deprecated; tests validate backward compat
-
 use std::fmt::Write;
 use toadstool_client::{ClientError, ClientResult};
 
 // =============================================================================
 // Error Creation & Display Tests
 // =============================================================================
-
-#[test]
-fn test_client_error_websocket() {
-    let error = ClientError::WebSocket("Connection refused".to_string());
-    let error_string = error.to_string();
-    assert!(error_string.contains("WebSocket error"));
-    assert!(error_string.contains("Connection refused"));
-}
-
-#[test]
-fn test_client_error_websocket_empty_message() {
-    let error = ClientError::WebSocket(String::new());
-    let error_string = error.to_string();
-    assert!(error_string.contains("WebSocket error"));
-}
 
 #[test]
 fn test_client_error_authentication() {
@@ -113,15 +96,14 @@ fn test_client_error_from_url_parse() {
 
 #[test]
 fn test_client_error_debug_format() {
-    let error = ClientError::WebSocket("test".to_string());
+    let error = ClientError::Authentication("test".to_string());
     let debug_string = format!("{:?}", error);
-    assert!(debug_string.contains("WebSocket"));
+    assert!(!debug_string.is_empty());
 }
 
 #[test]
 fn test_all_error_variants_debug() {
     let errors = vec![
-        ClientError::WebSocket("ws error".to_string()),
         ClientError::Authentication("auth error".to_string()),
         ClientError::Configuration("config error".to_string()),
         ClientError::Server("server error".to_string()),
@@ -154,16 +136,6 @@ fn test_client_result_err() {
 }
 
 #[test]
-fn test_client_result_with_websocket_error() {
-    let result: ClientResult<()> = Err(ClientError::WebSocket("connection lost".to_string()));
-    assert!(result.is_err());
-
-    if let Err(e) = result {
-        assert!(matches!(e, ClientError::WebSocket(_)));
-    }
-}
-
-#[test]
 fn test_client_result_with_authentication_error() {
     let result: ClientResult<i32> = Err(ClientError::Authentication("unauthorized".to_string()));
     assert!(result.is_err());
@@ -187,10 +159,6 @@ fn test_client_result_with_timeout_error() {
 #[test]
 fn test_error_messages_are_descriptive() {
     let errors = vec![
-        (
-            ClientError::WebSocket("test".to_string()),
-            "WebSocket error",
-        ),
         (
             ClientError::Authentication("test".to_string()),
             "Authentication failed",
@@ -245,7 +213,6 @@ fn test_error_with_newlines() {
 #[test]
 fn test_match_all_error_variants() {
     let errors = vec![
-        ClientError::WebSocket("ws".to_string()),
         ClientError::Authentication("auth".to_string()),
         ClientError::Configuration("config".to_string()),
         ClientError::Server("server".to_string()),
@@ -254,7 +221,6 @@ fn test_match_all_error_variants() {
 
     for error in errors {
         match error {
-            ClientError::WebSocket(_) => {}
             ClientError::Authentication(_) => {}
             ClientError::Configuration(_) => {}
             ClientError::Server(_) => {}

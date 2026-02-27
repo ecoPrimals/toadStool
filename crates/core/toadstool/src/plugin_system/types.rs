@@ -1,5 +1,5 @@
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Plugin system type definitions.
 
@@ -73,7 +73,7 @@ pub struct PluginManifest {
 }
 
 /// Plugin information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginInfo {
     /// Plugin manifest
     pub manifest: PluginManifest,
@@ -82,14 +82,15 @@ pub struct PluginInfo {
     pub state: PluginState,
 
     /// Load time
-    pub loaded_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub loaded_at: Option<std::time::SystemTime>,
 
     /// Error information (if failed)
     pub error: Option<String>,
 }
 
 /// Plugin state
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PluginState {
     /// Not yet loaded
     Registered,

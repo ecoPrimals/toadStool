@@ -4,7 +4,7 @@ mod permissions;
 mod tokens;
 
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use serde::{Deserialize, Serialize};
 
@@ -175,7 +175,7 @@ impl AuthenticationManager {
 
     pub async fn get_current_token(&self) -> ToadStoolResult<AuthenticationToken> {
         if let Some(token) = &self.current_token {
-            if token.expires_at > chrono::Utc::now() + chrono::Duration::seconds(30) {
+            if token.expires_at > SystemTime::now() + Duration::from_secs(30) {
                 return Ok(token.clone());
             }
         }
@@ -189,7 +189,7 @@ impl AuthenticationManager {
             scope: vec!["cross-primal".to_string(), "propagation".to_string()],
             // Audience sourced from config (env TOADSTOOL_AUTH_AUDIENCE or defaults).
             audience: self.config.token_audience.clone(),
-            timestamp: chrono::Utc::now(),
+            timestamp: SystemTime::now(),
         };
         self.backend.request_token(&token_request).await
     }
@@ -206,7 +206,10 @@ impl AuthenticationManager {
             "{}:{}:{}",
             token.id,
             target_primal,
-            chrono::Utc::now().timestamp()
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0)
         );
         self.sign_payload(&payload).await
     }
@@ -215,7 +218,14 @@ impl AuthenticationManager {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
-        let payload = format!("verify:{}:{}", primal_name, chrono::Utc::now().timestamp());
+        let payload = format!(
+            "verify:{}:{}",
+            primal_name,
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0)
+        );
         self.sign_payload(&payload).await
     }
 
@@ -296,7 +306,7 @@ impl AuthenticationManager {
                 tracing::debug!("Refreshing authentication token");
                 let refresh_request = TokenRefreshRequest {
                     requesting_primal: PRIMAL_NAME.to_string(),
-                    timestamp: chrono::Utc::now(),
+                    timestamp: SystemTime::now(),
                 };
                 match backend.refresh_token(&refresh_request).await {
                     Ok(_) => tracing::info!("Authentication token refreshed successfully"),

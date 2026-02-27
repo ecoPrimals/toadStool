@@ -59,8 +59,8 @@ async fn test_max_services_limit() {
             capabilities: vec![],
             endpoint: format!("localhost:808{}", i),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery
@@ -77,8 +77,8 @@ async fn test_max_services_limit() {
         capabilities: vec![],
         endpoint: "localhost:8083".to_string(),
         protocols: vec![],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     let result = discovery.register_service(service3).await;
@@ -119,8 +119,8 @@ async fn test_find_by_capability_multiple() {
             }],
             endpoint: format!("localhost:900{}", i),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery.register_service(service).await.unwrap();
@@ -157,8 +157,8 @@ async fn test_find_by_requirement() {
         }],
         endpoint: "localhost:8082".to_string(),
         protocols: vec!["http".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     discovery.register_service(service).await.unwrap();
@@ -204,8 +204,8 @@ async fn test_discovery_stats_tracking() {
         capabilities: vec![],
         endpoint: "localhost:8080".to_string(),
         protocols: vec![],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     discovery.register_service(service.clone()).await.unwrap();
@@ -250,8 +250,8 @@ async fn test_get_all_services_multiple() {
             capabilities: vec![],
             endpoint: format!("localhost:{}", 8000 + i),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery.register_service(service).await.unwrap();
@@ -277,8 +277,8 @@ async fn test_concurrent_discovery_operations() {
             capabilities: vec![],
             endpoint: format!("localhost:{}", 8000 + i),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery
@@ -331,8 +331,8 @@ async fn test_mixed_capability_discovery() {
         }],
         endpoint: "localhost:8001".to_string(),
         protocols: vec![],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     let service2 = DiscoveredService {
@@ -347,8 +347,8 @@ async fn test_mixed_capability_discovery() {
         }],
         endpoint: "localhost:8002".to_string(),
         protocols: vec![],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     discovery.register_service(service1).await.unwrap();
@@ -398,8 +398,8 @@ async fn test_register_immediate_query() {
         }],
         endpoint: "example.com:9000".to_string(),
         protocols: vec!["grpc".to_string()],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     discovery.register_service(service.clone()).await.unwrap();
@@ -440,8 +440,8 @@ async fn test_requirement_partial_feature_match() {
         }],
         endpoint: "localhost:8082".to_string(),
         protocols: vec![],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     discovery.register_service(service).await.unwrap();
@@ -470,8 +470,8 @@ async fn test_stats_after_operations() {
             capabilities: vec![],
             endpoint: format!("localhost:{}", 8000 + i),
             protocols: vec![],
-            discovered_at: chrono::Utc::now(),
-            last_seen: chrono::Utc::now(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
         };
 
         discovery.register_service(service).await.unwrap();
@@ -515,8 +515,8 @@ async fn test_service_multiple_capabilities() {
         ],
         endpoint: "localhost:8080".to_string(),
         protocols: vec![],
-        discovered_at: chrono::Utc::now(),
-        last_seen: chrono::Utc::now(),
+        discovered_at: std::time::SystemTime::now(),
+        last_seen: std::time::SystemTime::now(),
     };
 
     discovery.register_service(service).await.unwrap();

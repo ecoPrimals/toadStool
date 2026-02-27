@@ -9,6 +9,7 @@
 //! - AgentDeploymentConfig struct
 
 use std::sync::Arc;
+use std::time::SystemTime;
 use toadstool::biomeos_integration::agent_backend::InMemoryAgentBackend;
 use toadstool::biomeos_integration::agents::*;
 
@@ -532,7 +533,7 @@ async fn test_agent_deployment_manager_health_check() {
 
 #[test]
 fn test_agent_info_creation() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let agent_info = AgentInfo {
         name: "test-agent".to_string(),
@@ -559,7 +560,7 @@ fn test_agent_info_creation() {
 
 #[test]
 fn test_agent_info_clone() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let agent_info1 = AgentInfo {
         name: "agent".to_string(),
@@ -584,7 +585,7 @@ fn test_agent_info_clone() {
 
 #[test]
 fn test_agent_info_serialization() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let agent_info = AgentInfo {
         name: "agent".to_string(),
@@ -613,7 +614,7 @@ fn test_agent_info_serialization() {
 
 #[test]
 fn test_model_info_creation() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let model_info = ModelInfo {
         name: "llama-2-7b".to_string(),
@@ -642,7 +643,7 @@ fn test_model_info_creation() {
 
 #[test]
 fn test_model_info_clone() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let model_info1 = ModelInfo {
         name: "model".to_string(),
@@ -670,7 +671,7 @@ fn test_model_info_clone() {
 
 #[test]
 fn test_model_info_serialization() {
-    let now = chrono::Utc::now();
+    let now = SystemTime::now();
 
     let model_info = ModelInfo {
         name: "model".to_string(),

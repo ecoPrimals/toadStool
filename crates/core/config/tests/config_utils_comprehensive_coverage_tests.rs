@@ -11,31 +11,31 @@ use toadstool_config::config_utils::ConfigUtils;
 #[test]
 fn test_get_toadstool_port() {
     let port = ConfigUtils::get_toadstool_port();
-    assert!(port == 0 || port > 0); // 0 = OS-assigned
+    let _ = port; // 0 = OS-assigned; u16 is always valid
 }
 
 #[test]
 fn test_get_federation_port() {
     let port = ConfigUtils::get_federation_port();
-    assert!(port == 0 || port > 0);
+    let _ = port; // 0 = OS-assigned; u16 is always valid
 }
 
 #[test]
 fn test_get_metrics_port() {
     let port = ConfigUtils::get_metrics_port();
-    assert!(port == 0 || port > 0);
+    let _ = port; // 0 = OS-assigned; u16 is always valid
 }
 
 #[test]
 fn test_get_health_port() {
     let port = ConfigUtils::get_health_port();
-    assert!(port == 0 || port > 0);
+    let _ = port; // 0 = OS-assigned; u16 is always valid
 }
 
 #[test]
 fn test_get_events_port() {
     let port = ConfigUtils::get_events_port();
-    assert!(port == 0 || port > 0);
+    let _ = port; // 0 = OS-assigned; u16 is always valid
 }
 
 // ==================== Endpoint Tests ====================

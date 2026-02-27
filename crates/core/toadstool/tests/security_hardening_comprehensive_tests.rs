@@ -553,7 +553,7 @@ async fn test_security_audit_logger_log_event() {
     let event = SecurityAuditEvent {
         id: uuid::Uuid::new_v4(),
         event_type: SecurityEventType::AuthenticationAttempt,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         client_id: Some("client-1".to_string()),
         ip_address: Some("127.0.0.1".to_string()),
         user_agent: Some("test-agent".to_string()),
@@ -576,7 +576,7 @@ async fn test_security_audit_logger_multiple_events() {
         let event = SecurityAuditEvent {
             id: uuid::Uuid::new_v4(),
             event_type: SecurityEventType::RateLimitExceeded,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             client_id: Some(format!("client-{}", i)),
             ip_address: Some(format!("192.168.1.{}", i)),
             user_agent: Some("test-agent".to_string()),

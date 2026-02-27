@@ -246,7 +246,7 @@ fn test_get_database_cache_message_broker_urls() {
 
 #[test]
 fn test_get_distributed_storage_monitoring_urls() {
-    let storage = ConfigUtils::get_distributed_storage_url();
+    let _storage = ConfigUtils::get_distributed_storage_url();
     let monitoring = ConfigUtils::get_monitoring_endpoint();
     // Storage may be empty (capability discovery); monitoring has URL format
     assert!(monitoring.starts_with("http://") || !monitoring.is_empty());
@@ -312,8 +312,8 @@ fn test_get_squirrel_port_default() {
     env::remove_var("SQUIRREL_PORT");
     let port = ConfigUtils::get_squirrel_port();
     assert_eq!(
-        port, 0,
-        "port 0 = discovered at runtime (capability resolution)"
+        port, 8083,
+        "DEFAULT_SQUIRREL_DISCOVERY_PORT = 8083 for cold-start bootstrap"
     );
     if let Some(v) = original {
         env::set_var("SQUIRREL_PORT", v);

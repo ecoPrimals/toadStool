@@ -41,13 +41,11 @@ fn test_api_config_custom_bind_address() {
 fn test_api_config_enable_features() {
     let config = ApiConfig {
         enable_rest: true,
-        enable_websocket: true,
         enable_openapi: true,
         ..Default::default()
     };
 
     assert!(config.enable_rest);
-    assert!(config.enable_websocket);
     assert!(config.enable_openapi);
 }
 
@@ -117,15 +115,12 @@ fn test_api_state_initialization() {
 fn test_api_config_with_all_features_enabled() {
     let config = ApiConfig {
         enable_rest: true,
-        enable_websocket: true,
         enable_openapi: true,
         cors_enabled: true,
         ..Default::default()
     };
 
-    // Test passes if construction succeeds with all features
     assert!(config.enable_rest);
-    assert!(config.enable_websocket);
     assert!(config.enable_openapi);
     assert!(config.cors_enabled);
 }

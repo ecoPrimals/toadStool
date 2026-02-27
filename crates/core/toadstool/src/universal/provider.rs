@@ -115,7 +115,7 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
                 "request_type": request.request_type
             }),
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         })
     }
 

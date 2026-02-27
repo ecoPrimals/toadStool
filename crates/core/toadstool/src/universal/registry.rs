@@ -239,7 +239,7 @@ mod tests {
             payload: serde_json::json!({}),
             context: make_test_context(),
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let response = registry.route_request(request).await;
         assert!(response.is_ok());
@@ -256,7 +256,7 @@ mod tests {
             payload: serde_json::json!({}),
             context: make_test_context(),
             metadata: HashMap::new(),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         };
         let response = registry.route_request(request).await;
         assert!(response.is_err());

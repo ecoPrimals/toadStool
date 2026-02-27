@@ -1,8 +1,8 @@
 //! BYOB (Bring Your Own Biome) type definitions
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 /// BYOB deployment request from Songbird
@@ -23,7 +23,8 @@ pub struct ByobDeploymentRequest {
     /// Network configuration
     pub network_config: TeamNetworkConfig,
     /// Created timestamp
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
 }
 
 /// Service specification within a team deployment
@@ -178,9 +179,11 @@ pub struct ByobDeploymentResponse {
     /// Network information
     pub network_info: NetworkInfo,
     /// Created timestamp
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
     /// Updated timestamp
-    pub updated_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub updated_at: SystemTime,
 }
 
 /// Deployment status
@@ -212,7 +215,8 @@ pub struct ServiceStatus {
     /// Health status
     pub health: String,
     /// Last updated timestamp
-    pub updated_at: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub updated_at: SystemTime,
 }
 
 /// Resource usage information
@@ -337,7 +341,7 @@ mod tests {
                 dns_config: None,
                 load_balancer: None,
             },
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
         };
         let json = serde_json::to_string(&req).expect("serialize");
         let parsed: ByobDeploymentRequest = serde_json::from_str(&json).expect("deserialize");

@@ -263,6 +263,7 @@ impl AgentDeploymentManager {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use std::time::SystemTime;
 
     fn test_config() -> AgentDeploymentConfig {
         AgentDeploymentConfig {
@@ -275,7 +276,7 @@ mod tests {
     }
 
     fn sample_agent_info() -> AgentInfo {
-        let now = chrono::Utc::now();
+        let now = SystemTime::now();
         AgentInfo {
             name: "test-agent".to_string(),
             agent_id: "test-agent-abc123".to_string(),
@@ -386,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_model_info_construction() {
-        let now = chrono::Utc::now();
+        let now = SystemTime::now();
         let info = ModelInfo {
             name: "gpt-4".to_string(),
             model_id: "model-xyz".to_string(),
@@ -413,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_model_info_serialization_roundtrip() {
-        let now = chrono::Utc::now();
+        let now = SystemTime::now();
         let info = ModelInfo {
             name: "model-a".to_string(),
             model_id: "id-1".to_string(),

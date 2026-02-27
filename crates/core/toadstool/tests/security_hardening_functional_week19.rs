@@ -284,7 +284,7 @@ async fn test_audit_logger_logs_event() {
     let event = SecurityAuditEvent {
         id: uuid::Uuid::new_v4(),
         event_type: SecurityEventType::AuthenticationAttempt,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         client_id: Some("client1".to_string()),
         ip_address: Some("192.168.1.1".to_string()),
         user_agent: None,
@@ -305,7 +305,7 @@ async fn test_audit_logger_retrieves_events() {
         let event = SecurityAuditEvent {
             id: uuid::Uuid::new_v4(),
             event_type: SecurityEventType::AuthenticationAttempt,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             client_id: Some(format!("client{}", i)),
             ip_address: None,
             user_agent: None,
@@ -333,7 +333,7 @@ async fn test_audit_logger_different_severities() {
         let event = SecurityAuditEvent {
             id: uuid::Uuid::new_v4(),
             event_type: SecurityEventType::SuspiciousActivity,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             client_id: None,
             ip_address: None,
             user_agent: None,
@@ -361,7 +361,7 @@ async fn test_audit_logger_different_event_types() {
         let event = SecurityAuditEvent {
             id: uuid::Uuid::new_v4(),
             event_type,
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
             client_id: Some("client1".to_string()),
             ip_address: None,
             user_agent: None,
@@ -413,7 +413,7 @@ async fn test_manager_logs_event() {
     let event = SecurityAuditEvent {
         id: uuid::Uuid::new_v4(),
         event_type: SecurityEventType::PolicyViolation,
-        timestamp: chrono::Utc::now(),
+        timestamp: std::time::SystemTime::now(),
         client_id: Some("test".to_string()),
         ip_address: None,
         user_agent: None,

@@ -16,7 +16,7 @@ use tokio::time::timeout;
 
 /// Wait for TCP port to become ready (event-driven, no fixed sleep)
 async fn wait_for_port(port: u16, timeout_duration: Duration) -> bool {
-    let addr: SocketAddr = format!("127.0.0.1:{}", port).parse().expect("valid addr");
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let result = timeout(timeout_duration, async {
         loop {
             if TcpStream::connect(addr).await.is_ok() {

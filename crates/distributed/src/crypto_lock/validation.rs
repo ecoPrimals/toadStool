@@ -399,7 +399,7 @@ mod tests {
     fn test_crypto_validator_new_and_default() {
         let v = CryptoValidator::new();
         let _ = v;
-        let d = CryptoValidator::default();
+        let d = CryptoValidator;
         let _ = d;
     }
 
@@ -407,7 +407,7 @@ mod tests {
     fn test_delegation_validator_new_and_default() {
         let v = DelegationValidator::new();
         let _ = v;
-        let d = DelegationValidator::default();
+        let d = DelegationValidator;
         let _ = d;
     }
 
@@ -415,7 +415,7 @@ mod tests {
     fn test_permission_revocation_list_new_and_default() {
         let v = PermissionRevocationList::new();
         let _ = v;
-        let d = PermissionRevocationList::default();
+        let d = PermissionRevocationList;
         let _ = d;
     }
 

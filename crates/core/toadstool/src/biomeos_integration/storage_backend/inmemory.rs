@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tokio::sync::Mutex;
 
 use super::super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
@@ -51,7 +52,7 @@ impl StorageBackend for InMemoryBackend {
                 size: config_size,
                 storage_class: config_storage_class.unwrap_or(storage_tier),
                 status: "Available".to_string(),
-                created_at: chrono::Utc::now(),
+                created_at: SystemTime::now(),
             };
 
             let mut vols = volumes.lock().await;
@@ -78,7 +79,7 @@ impl StorageBackend for InMemoryBackend {
                 size: config_capacity,
                 storage_class: config_storage_class,
                 status: "Available".to_string(),
-                created_at: chrono::Utc::now(),
+                created_at: SystemTime::now(),
             };
 
             let mut vols = volumes.lock().await;

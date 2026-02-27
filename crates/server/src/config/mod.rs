@@ -15,13 +15,6 @@ pub struct ServerConfig {
     /// Enable REST API endpoints
     pub enable_api: bool,
 
-    /// Enable WebSocket for real-time events
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    pub enable_websocket: bool,
-
     /// Enable CORS for API access
     pub enable_cors: bool,
 
@@ -51,7 +44,7 @@ pub struct ServerConfig {
 }
 
 impl Default for ServerConfig {
-    #[allow(deprecated)] // Using deprecated field during migration to capability-based discovery
+    #[allow(deprecated)]
     fn default() -> Self {
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         Self {
@@ -60,7 +53,6 @@ impl Default for ServerConfig {
                 config.network.bind_address, config.network.songbird_port
             ),
             enable_api: true,
-            enable_websocket: false, // Disabled by default for security - opt-in required
             enable_cors: true,
             max_concurrent_executions: 100,
             default_timeout: WORKLOAD_EXECUTION_TIMEOUT,
@@ -85,18 +77,6 @@ impl ServerConfig {
     #[must_use]
     pub fn enable_api(mut self, enabled: bool) -> Self {
         self.enable_api = enabled;
-        self
-    }
-
-    /// Enable or disable WebSocket
-    #[must_use]
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    #[allow(deprecated)]
-    pub fn enable_websocket(mut self, enabled: bool) -> Self {
-        self.enable_websocket = enabled;
         self
     }
 
@@ -311,18 +291,15 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn test_server_config_builder_chain() {
         let config = ServerConfig::default()
             .bind_address("127.0.0.1:0".to_string())
             .enable_api(false)
-            .enable_websocket(true)
             .max_concurrent_executions(50)
             .default_timeout(Duration::from_secs(120));
 
         assert_eq!(config.bind_address, "127.0.0.1:0");
         assert!(!config.enable_api);
-        assert!(config.enable_websocket);
         assert_eq!(config.max_concurrent_executions, 50);
         assert_eq!(config.default_timeout, Duration::from_secs(120));
     }

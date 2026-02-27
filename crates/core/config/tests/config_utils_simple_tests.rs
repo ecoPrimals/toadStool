@@ -12,56 +12,56 @@ use toadstool_config::config_utils::ConfigUtils;
 fn test_get_songbird_port() {
     let port = ConfigUtils::get_songbird_port();
     // 0 = discovered at runtime (capability resolution); or from env
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_beardog_port() {
     let port = ConfigUtils::get_beardog_port();
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_nestgate_port() {
     let port = ConfigUtils::get_nestgate_port();
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_squirrel_port() {
     let port = ConfigUtils::get_squirrel_port();
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_toadstool_port() {
     let port = ConfigUtils::get_toadstool_port();
     // 0 = OS-assigned; or explicit from env
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_federation_port() {
     let port = ConfigUtils::get_federation_port();
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_metrics_port() {
     let port = ConfigUtils::get_metrics_port();
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_health_port() {
     let port = ConfigUtils::get_health_port();
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 #[test]
 fn test_get_events_port() {
     let port = ConfigUtils::get_events_port();
-    assert!(port == 0 || port > 0);
+    let _ = port;
 }
 
 // ==================== Address and Hostname Tests ====================
@@ -309,7 +309,7 @@ fn test_get_service_ports() {
     let ports = ConfigUtils::get_service_ports();
     assert!(!ports.is_empty());
     // Verify all ports are valid (0 = OS-assigned)
-    for (name, _port) in &ports {
+    for name in ports.keys() {
         assert!(!name.is_empty());
     }
 }
@@ -422,7 +422,7 @@ fn test_all_service_ports_are_unique() {
 
     // Port 0 (OS-assigned) may be shared; or explicit ports may differ
     let unique_ports: std::collections::HashSet<_> = port_values.iter().collect();
-    assert!(unique_ports.len() >= 1);
+    assert!(!unique_ports.is_empty());
 }
 
 #[test]

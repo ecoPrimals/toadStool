@@ -1,6 +1,7 @@
 //! Access control tests
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use super::super::*;
     use crate::crypto_lock::permissions::{
@@ -258,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_access_policies_default() {
-        let policies = AccessPolicies::default();
+        let policies = AccessPolicies;
         let _ = policies;
     }
 
@@ -902,7 +903,7 @@ mod tests {
 
     #[test]
     fn test_access_policies_unit_struct() {
-        let p = AccessPolicies::default();
+        let p = AccessPolicies;
         let _ = p;
     }
 

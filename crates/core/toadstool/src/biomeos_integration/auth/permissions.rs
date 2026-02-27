@@ -1,6 +1,7 @@
 //! Permission and propagation types
 
 use std::collections::HashMap;
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +16,8 @@ pub struct TokenPropagationRequest {
     pub token: AuthenticationToken,
     pub source_primal: String,
     pub target_primal: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
     pub signature: String,
 }
 
@@ -35,7 +37,8 @@ pub struct PropagationResult {
     pub successful_propagations: usize,
     pub results: HashMap<String, TokenPropagationStatus>,
     pub token_id: String,
-    pub propagation_time: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub propagation_time: SystemTime,
 }
 
 /// Result of token verification across Primals
@@ -44,7 +47,8 @@ pub struct VerificationResult {
     pub total_primals: usize,
     pub valid_tokens: usize,
     pub results: HashMap<String, TokenVerificationStatus>,
-    pub verification_time: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub verification_time: SystemTime,
 }
 
 /// Primal type configuration enum

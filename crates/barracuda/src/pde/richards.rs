@@ -380,14 +380,13 @@ fn thomas_solve(a: &[f64], b: &[f64], c: &[f64], d: &[f64]) -> Vec<f64> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_named_soil_constants() {
+    const _: () = {
         assert!(SoilParams::SAND.n > SoilParams::CLAY.n);
         assert!(SoilParams::SAND.k_sat > SoilParams::CLAY.k_sat);
         assert!(SoilParams::SANDY_LOAM.alpha > SoilParams::SILT_LOAM.alpha);
         assert!(SoilParams::LOAMY_SAND.n > 2.0);
         assert!(SoilParams::SILTY_CLAY_LOAM.n < 1.5);
-    }
+    };
 
     #[test]
     fn test_van_genuchten_saturation() {

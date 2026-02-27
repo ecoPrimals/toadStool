@@ -220,8 +220,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection_auth_api_key() {
-        let mut creds = AuthCredentials::default();
-        creds.api_key = Some("secret-key".to_string());
+        let creds = AuthCredentials {
+            api_key: Some("secret-key".to_string()),
+            ..Default::default()
+        };
         let config = SongbirdConnectionConfig {
             endpoints: vec!["http://localhost:8080".to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
@@ -238,8 +240,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection_auth_bearer() {
-        let mut creds = AuthCredentials::default();
-        creds.token = Some("bearer-token-123".to_string());
+        let creds = AuthCredentials {
+            token: Some("bearer-token-123".to_string()),
+            ..Default::default()
+        };
         let config = SongbirdConnectionConfig {
             endpoints: vec!["http://localhost:8080".to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
@@ -256,8 +260,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection_auth_oauth2() {
-        let mut creds = AuthCredentials::default();
-        creds.token = Some("oauth2-access-token".to_string());
+        let creds = AuthCredentials {
+            token: Some("oauth2-access-token".to_string()),
+            ..Default::default()
+        };
         let config = SongbirdConnectionConfig {
             endpoints: vec!["http://localhost:8080".to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),

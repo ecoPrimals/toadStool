@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use crate::resources::ResourceRequirements;
@@ -69,7 +70,8 @@ pub struct UniversalJob {
     /// Execution timeout
     pub timeout: Option<Duration>,
     /// Creation timestamp
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub created_at: SystemTime,
     /// Context
     pub context: PrimalContext,
 }
@@ -224,7 +226,7 @@ mod tests {
             priority: JobPriority::High,
             resources: ResourceRequirements::default(),
             timeout: Some(Duration::from_secs(60)),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context: sample_primal_context(),
         };
         assert_eq!(job.priority, JobPriority::High);
@@ -244,7 +246,7 @@ mod tests {
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: None,
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context: sample_primal_context(),
         };
         assert!(job.timeout.is_none());

@@ -21,20 +21,9 @@ fn test_client_config_default() {
         Duration::from_millis(toadstool_config::defaults::timeouts::REQUEST_MS)
     );
     assert_eq!(
-        config.websocket_timeout,
-        Duration::from_millis(toadstool_config::defaults::timeouts::CONNECTION_MS)
-    );
-    assert_eq!(
         config.max_retries,
         toadstool_config::defaults::retries::MAX_ATTEMPTS
     );
-    #[allow(deprecated)]
-    {
-        assert!(
-            !config.enable_websocket,
-            "WebSocket disabled by default since deprecation"
-        );
-    }
 }
 
 #[test]
@@ -45,17 +34,14 @@ fn test_client_config_custom() {
     let config = ClientConfig {
         base_url: "http://custom:9000".to_string(),
         request_timeout: Duration::from_secs(60),
-        websocket_timeout: Duration::from_secs(20),
         max_retries: 5,
         retry_backoff: Duration::from_millis(500),
         auth: None,
-        enable_websocket: false,
         custom_headers: headers.clone(),
     };
 
     assert_eq!(config.base_url, "http://custom:9000");
     assert_eq!(config.max_retries, 5);
-    assert!(!config.enable_websocket);
     assert_eq!(config.custom_headers.len(), 1);
 }
 
@@ -63,12 +49,10 @@ fn test_client_config_custom() {
 fn test_client_config_timeouts() {
     let config = ClientConfig {
         request_timeout: Duration::from_secs(120),
-        websocket_timeout: Duration::from_secs(30),
         ..ClientConfig::default()
     };
 
     assert_eq!(config.request_timeout, Duration::from_secs(120));
-    assert_eq!(config.websocket_timeout, Duration::from_secs(30));
 }
 
 #[test]

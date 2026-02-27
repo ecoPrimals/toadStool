@@ -1,10 +1,6 @@
 //! Connection flow tests: Unix raw JSON, HTTP, TCP, mock-based integration.
-#![allow(deprecated)]
 
-use super::super::{
-    JsonRpcError, JsonRpcErrorResponse, JsonRpcRequest, ManualJsonRpcServer, INVALID_PARAMS,
-    INVALID_REQUEST, JSONRPC_VERSION, METHOD_NOT_FOUND, PARSE_ERROR,
-};
+use super::super::{ManualJsonRpcServer, INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND};
 use crate::tarpc_server::StandaloneExecutor;
 use std::sync::Arc;
 
@@ -121,13 +117,11 @@ async fn test_handle_tcp_connection_raw_json() {
 #[cfg(unix)]
 #[tokio::test]
 async fn test_unix_socket_temp_path_connect_client() {
-    use std::path::PathBuf;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::UnixStream;
 
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let socket_path = temp_dir.path().join("jsonrpc.sock");
-    let socket_path = PathBuf::from(socket_path);
 
     let server = test_server();
     let path_for_server = socket_path.clone();
@@ -404,7 +398,7 @@ async fn test_handle_tcp_connection_first_line_http_prefix() {
 
     let mut buf = String::new();
     stream.read_to_string(&mut buf).await.unwrap();
-    assert!(buf.len() > 0);
+    assert!(!buf.is_empty());
 }
 
 #[tokio::test]

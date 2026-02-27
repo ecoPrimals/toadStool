@@ -591,30 +591,36 @@ mod tests {
 
     #[test]
     fn test_print_summary_with_cache() {
-        let mut config = ToadStoolConfig::default();
-        config.cache = Some(crate::BackendCacheConfig::default());
+        let config = ToadStoolConfig {
+            cache: Some(crate::BackendCacheConfig::default()),
+            ..Default::default()
+        };
         config.print_summary();
     }
 
     #[test]
     fn test_print_summary_with_metrics() {
-        let mut config = ToadStoolConfig::default();
-        config.metrics = Some(crate::MetricsConfig::default());
+        let config = ToadStoolConfig {
+            metrics: Some(crate::MetricsConfig::default()),
+            ..Default::default()
+        };
         config.print_summary();
     }
 
     #[test]
     fn test_print_summary_with_database() {
-        let mut config = ToadStoolConfig::default();
-        config.database = Some(crate::DatabaseConfig {
-            url: "sqlite::memory:".to_string(),
-            database_type: "sqlite".to_string(),
-            max_connections: 10,
-            connection_timeout: std::time::Duration::from_secs(30),
-            query_timeout: std::time::Duration::from_secs(60),
-            enable_migrations: false,
-            migration_dir: "migrations".to_string(),
-        });
+        let config = ToadStoolConfig {
+            database: Some(crate::DatabaseConfig {
+                url: "sqlite::memory:".to_string(),
+                database_type: "sqlite".to_string(),
+                max_connections: 10,
+                connection_timeout: std::time::Duration::from_secs(30),
+                query_timeout: std::time::Duration::from_secs(60),
+                enable_migrations: false,
+                migration_dir: "migrations".to_string(),
+            }),
+            ..Default::default()
+        };
         config.print_summary();
     }
 

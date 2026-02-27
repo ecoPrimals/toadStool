@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -565,9 +565,9 @@ impl RuntimeEngine for UniversalGpuEngine {
                     temperature_celsius: None,
                 }),
                 timing: toadstool::resources::TimingMetrics {
-                    start_time: chrono::Utc::now(),
-                    end_time: Some(chrono::Utc::now()),
-                    duration: chrono::Duration::zero(),
+                    start_time: SystemTime::now(),
+                    end_time: Some(SystemTime::now()),
+                    duration: Duration::ZERO,
                 },
             })
         })
@@ -661,10 +661,9 @@ impl UniversalGpuEngine {
                 temperature_celsius: None,
             }),
             timing: toadstool::resources::TimingMetrics {
-                start_time: chrono::Utc::now(),
-                end_time: Some(chrono::Utc::now()),
-                duration: chrono::Duration::from_std(result.total_execution_time)
-                    .unwrap_or_default(),
+                start_time: SystemTime::now(),
+                end_time: Some(SystemTime::now()),
+                duration: result.total_execution_time,
             },
         }
     }

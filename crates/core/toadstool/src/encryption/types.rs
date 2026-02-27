@@ -69,6 +69,13 @@ pub struct EncryptionMetadata {
     pub encrypted_at: i64,
 }
 
+fn unix_timestamp_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
 impl Default for EncryptionMetadata {
     fn default() -> Self {
         Self {
@@ -76,7 +83,7 @@ impl Default for EncryptionMetadata {
             nonce: Vec::new(),
             aad: None,
             kdf_info: None,
-            encrypted_at: chrono::Utc::now().timestamp(),
+            encrypted_at: unix_timestamp_now(),
         }
     }
 }
@@ -138,7 +145,7 @@ impl Default for EncryptionKey {
             key_material: Vec::new(),
             security_level: SecurityLevel::Standard,
             algorithm: "chacha20poly1305".to_string(),
-            created_at: chrono::Utc::now().timestamp(),
+            created_at: unix_timestamp_now(),
             expires_at: None,
         }
     }
@@ -157,7 +164,7 @@ impl EncryptionKey {
             key_material,
             security_level,
             algorithm,
-            created_at: chrono::Utc::now().timestamp(),
+            created_at: unix_timestamp_now(),
             expires_at: None,
         }
     }
@@ -172,7 +179,7 @@ impl EncryptionKey {
     /// Check if key is expired
     pub fn is_expired(&self) -> bool {
         self.expires_at
-            .is_some_and(|expires_at| chrono::Utc::now().timestamp() > expires_at)
+            .is_some_and(|expires_at| unix_timestamp_now() > expires_at)
     }
 
     /// Check if key is valid
@@ -279,7 +286,7 @@ mod tests {
         assert!(key.is_valid());
 
         // Set expiration to past
-        key.expires_at = Some(chrono::Utc::now().timestamp() - 1000);
+        key.expires_at = Some(unix_timestamp_now() - 1000);
         assert!(key.is_expired());
         assert!(!key.is_valid());
     }
@@ -394,7 +401,7 @@ mod tests {
             "test".to_string(),
             SecurityLevel::Standard,
         )
-        .with_expiration(chrono::Utc::now().timestamp() + 3600);
+        .with_expiration(unix_timestamp_now() + 3600);
         assert!(key.expires_at.is_some());
         assert!(!key.is_expired());
     }

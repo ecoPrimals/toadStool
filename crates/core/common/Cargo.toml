@@ -31,7 +31,6 @@ mutex_atomic = "warn"
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
-chrono = { workspace = true, features = ["serde"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 sysinfo = { workspace = true }

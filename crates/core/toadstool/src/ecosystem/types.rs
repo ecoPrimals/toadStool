@@ -5,8 +5,8 @@
 #[cfg(feature = "networking")]
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use toadstool_common::constants::timeouts;
@@ -169,7 +169,7 @@ pub struct ServiceChannel {
     /// Client type
     pub client: ServiceClient,
     /// Last successful heartbeat
-    pub last_heartbeat: DateTime<Utc>,
+    pub last_heartbeat: SystemTime,
     /// Current status
     pub status: ServiceStatus,
 }
@@ -232,7 +232,8 @@ pub struct EcosystemMessage {
     /// Message payload (JSON)
     pub payload: serde_json::Value,
     /// Message timestamp
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: SystemTime,
 }
 
 impl EcosystemMessage {
@@ -249,7 +250,7 @@ impl EcosystemMessage {
             to,
             message_type,
             payload,
-            timestamp: Utc::now(),
+            timestamp: SystemTime::now(),
         }
     }
 

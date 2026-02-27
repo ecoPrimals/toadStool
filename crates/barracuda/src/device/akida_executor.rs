@@ -420,13 +420,16 @@ impl NeuromorphicComparison {
 
     /// Print comparison report
     pub fn print(&self) {
-        println!("\n═══════════════════════════════════════════════════════════════");
-        println!("⚡ NEUROMORPHIC COMPARISON: {}", self.operation);
-        println!("═══════════════════════════════════════════════════════════════");
-        println!("\n📊 Execution Time:");
-        println!("  GPU (RTX 3090):  {:.2} ms", self.gpu_time_ms);
-        println!("  Akida NPU:       {:.2} ms", self.akida_time_ms);
-        println!(
+        tracing::info!("═══════════════════════════════════════════════════════════════");
+        tracing::info!("⚡ NEUROMORPHIC COMPARISON: {}", self.operation);
+        tracing::info!("═══════════════════════════════════════════════════════════════");
+        tracing::info!("📊 Execution Time:");
+        tracing::info!(
+            "  GPU (RTX 3090):  {:.2} ms, Akida NPU: {:.2} ms",
+            self.gpu_time_ms,
+            self.akida_time_ms
+        );
+        tracing::info!(
             "  Speedup:         {:.1}x {}",
             self.speedup,
             if self.speedup > 1.0 {
@@ -436,34 +439,40 @@ impl NeuromorphicComparison {
             }
         );
 
-        println!("\n⚡ Power Consumption:");
-        println!("  GPU (RTX 3090):  {:.0}W", self.gpu_power_w);
-        println!("  Akida NPU:       {:.1}W", self.akida_power_w);
-        println!(
+        tracing::info!("⚡ Power Consumption:");
+        tracing::info!(
+            "  GPU (RTX 3090):  {:.0}W, Akida NPU: {:.1}W",
+            self.gpu_power_w,
+            self.akida_power_w
+        );
+        tracing::info!(
             "  Reduction:       {:.0}x 🌱 GREENER",
             self.gpu_power_w / self.akida_power_w
         );
 
-        println!("\n🔋 Energy Efficiency:");
         let gpu_energy = self.gpu_time_ms / 1000.0 * self.gpu_power_w;
         let akida_energy = self.akida_time_ms / 1000.0 * self.akida_power_w;
-        println!("  GPU Energy:      {:.2} J", gpu_energy);
-        println!("  Akida Energy:    {:.4} J", akida_energy);
-        println!(
+        tracing::info!("🔋 Energy Efficiency:");
+        tracing::info!(
+            "  GPU Energy:      {:.2} J, Akida Energy: {:.4} J",
+            gpu_energy,
+            akida_energy
+        );
+        tracing::info!(
             "  Efficiency:      {:.0}x ⚡ BETTER",
             self.energy_efficiency
         );
 
-        println!("\n💡 Architectural Insight:");
+        tracing::info!("💡 Architectural Insight:");
         if self.energy_efficiency > 100.0 {
-            println!("  🧠 Neuromorphic chip is VASTLY more efficient!");
-            println!("  Event-driven compute beats continuous simulation.");
+            tracing::info!("  🧠 Neuromorphic chip is VASTLY more efficient!");
+            tracing::info!("  Event-driven compute beats continuous simulation.");
         } else if self.energy_efficiency > 10.0 {
-            println!("  ✅ Significant efficiency advantage for neuromorphic hardware.");
+            tracing::info!("  ✅ Significant efficiency advantage for neuromorphic hardware.");
         } else {
-            println!("  ⚖️  Both architectures have merit for different use cases.");
+            tracing::info!("  ⚖️  Both architectures have merit for different use cases.");
         }
-        println!("═══════════════════════════════════════════════════════════════\n");
+        tracing::info!("═══════════════════════════════════════════════════════════════");
     }
 }
 

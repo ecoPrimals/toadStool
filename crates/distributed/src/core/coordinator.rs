@@ -320,7 +320,7 @@ mod tests {
     async fn test_standalone_executor_clone() {
         let config = DistributedConfig::default();
         let coordinator = DistributedCoordinator::new(config).await.unwrap();
-        let _executor = coordinator.standalone_executor.clone();
+        let _executor = std::sync::Arc::clone(&coordinator.standalone_executor);
         assert!(Arc::strong_count(&coordinator.standalone_executor) >= 2);
     }
 

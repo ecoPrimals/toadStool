@@ -1,8 +1,8 @@
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 #[cfg(test)]
-mod tests {
+mod plugin_system_tests {
     use super::super::*;
 
     fn create_test_manifest(name: &str) -> PluginManifest {
@@ -757,7 +757,7 @@ mod tests {
         let mut registry: TypedPluginRegistry<bool> = TypedPluginRegistry::new();
         registry.register(String::from("dynamic"), true);
         assert!(registry.has("dynamic"));
-        assert_eq!(*registry.get("dynamic").expect("dynamic exists"), true);
+        assert!(*registry.get("dynamic").expect("dynamic exists"));
     }
 
     #[test]

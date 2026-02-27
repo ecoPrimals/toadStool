@@ -204,7 +204,7 @@ async fn test_ecosystem_integrate_services_multiple_one_has_endpoint() {
     let result = coordinator.integrate_services(vec![good, bad]).await;
     assert!(result.is_ok());
     let statuses = coordinator.get_service_statuses().await;
-    assert!(statuses.len() >= 1);
+    assert!(!statuses.is_empty());
     let healthy = coordinator.healthy_count().await;
     let total = coordinator.service_count().await;
     assert!(total >= 1);
@@ -301,9 +301,8 @@ async fn test_ecosystem_find_service_by_capability_uncommon_capability() {
     let coordinator = EcosystemCoordinator::new().await.unwrap();
     let cap = Capability::Storage(StorageCapability::ObjectStorage);
     let result = coordinator.find_service_by_capability(cap).await;
-    match &result {
-        Ok(svc) => assert!(!svc.id.is_empty()),
-        Err(_) => {}
+    if let Ok(svc) = &result {
+        assert!(!svc.id.is_empty());
     }
 }
 

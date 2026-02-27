@@ -3,13 +3,9 @@
 mod tests_core;
 mod tests_extra;
 
-use super::protocols;
 use super::*;
 use crate::{DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJobType};
 use chrono::Utc;
-use std::collections::HashMap;
-use std::time::Duration;
-use tokio::sync::mpsc;
 use uuid::Uuid;
 
 pub(super) fn make_test_job(resource_requirements: ResourceRequirements) -> crate::UniversalJob {

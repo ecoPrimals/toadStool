@@ -1,4 +1,5 @@
 #![deny(unsafe_code)]
+#![cfg_attr(test, allow(deprecated))]
 
 //! # `ToadStool` Server Library
 //!
@@ -27,8 +28,7 @@
 //!     // Create server configuration
 //!     let config = ServerConfig::default()
 //!         .bind_address(format!("0.0.0.0:{}", toadstool_config::ports::server_port()))
-//!         .enable_api(true)
-//!         .enable_websocket(true);
+//!         .enable_api(true);
 //!     
 //!     // Create server instance
 //!     let mut server = ToadStoolServer::new(config).await?;
@@ -498,7 +498,6 @@ mod tests {
     // ========================================================================
 
     #[test]
-    #[allow(deprecated)] // Testing config with deprecated fields during migration
     fn test_server_config_default() {
         let config = ServerConfig::default();
         // The default bind address is now environment-aware
@@ -511,7 +510,6 @@ mod tests {
             )
         );
         assert!(config.enable_api);
-        assert!(!config.enable_websocket); // Disabled by default for security
         assert_eq!(config.max_concurrent_executions, 100);
     }
 
@@ -526,14 +524,6 @@ mod tests {
         assert_eq!(config.bind_address, format!("0.0.0.0:{}", server_port));
         assert!(!config.enable_api);
         assert_eq!(config.max_concurrent_executions, 50);
-    }
-
-    #[test]
-    fn test_server_config_builder_enable_websocket() {
-        let config = ServerConfig::default()
-            .bind_address("127.0.0.1:0".to_string())
-            .enable_websocket(true);
-        assert!(config.enable_websocket);
     }
 
     #[test]

@@ -26,7 +26,7 @@
 //! ```
 
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 use toadstool::universal::{
@@ -149,7 +149,7 @@ async fn demo_native_execution(platform: &UniversalComputePlatform) -> ToadStool
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 
@@ -187,7 +187,7 @@ async fn demo_wasm_execution(platform: &UniversalComputePlatform) -> ToadStoolRe
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 
@@ -226,7 +226,7 @@ async fn demo_primal_routing(platform: &UniversalComputePlatform) -> ToadStoolRe
         }),
         context: context.clone(),
         metadata: HashMap::new(),
-        timestamp: chrono::Utc::now(),
+        timestamp: SystemTime::now(),
     };
 
     println!("🚀 Routing primal request: {}", request.id);
@@ -250,7 +250,7 @@ async fn demo_primal_routing(platform: &UniversalComputePlatform) -> ToadStoolRe
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 
@@ -297,7 +297,7 @@ async fn demo_biomeos_integration(platform: &UniversalComputePlatform) -> ToadSt
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(60)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 
@@ -344,7 +344,7 @@ async fn demo_resource_management(platform: &UniversalComputePlatform) -> ToadSt
         priority: JobPriority::Normal,
         resources,
         timeout: Some(Duration::from_secs(30)),
-        created_at: chrono::Utc::now(),
+        created_at: SystemTime::now(),
         context,
     };
 
@@ -394,7 +394,7 @@ async fn demo_security_levels(platform: &UniversalComputePlatform) -> ToadStoolR
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: Some(Duration::from_secs(30)),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context,
         };
 
@@ -445,7 +445,7 @@ async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> Toad
             priority: JobPriority::Normal,
             resources: ResourceRequirements::default(),
             timeout: Some(Duration::from_secs(30)),
-            created_at: chrono::Utc::now(),
+            created_at: SystemTime::now(),
             context,
         };
 

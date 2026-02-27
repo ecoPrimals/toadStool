@@ -1,6 +1,7 @@
 //! Resource type definitions for ToadStool
 
 use serde::{Deserialize, Serialize};
+use std::time::{Duration, SystemTime};
 
 use crate::ToadStoolResult;
 
@@ -245,19 +246,22 @@ impl Default for GpuMetrics {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimingMetrics {
     /// Execution start time
-    pub start_time: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub start_time: SystemTime,
     /// Execution end time
-    pub end_time: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(with = "toadstool_common::system_time_serde::opt")]
+    pub end_time: Option<SystemTime>,
     /// Total execution duration
-    pub duration: chrono::Duration,
+    #[serde(with = "humantime_serde")]
+    pub duration: Duration,
 }
 
 impl Default for TimingMetrics {
     fn default() -> Self {
         Self {
-            start_time: chrono::Utc::now(),
+            start_time: SystemTime::now(),
             end_time: None,
-            duration: chrono::Duration::seconds(0),
+            duration: Duration::ZERO,
         }
     }
 }
@@ -274,7 +278,8 @@ pub struct ResourceLimits {
     /// Network limits
     pub network_limits: NetworkLimits,
     /// Execution timeout
-    pub execution_timeout: Option<chrono::Duration>,
+    #[serde(with = "humantime_serde::option")]
+    pub execution_timeout: Option<Duration>,
 }
 
 impl Default for ResourceLimits {
@@ -284,7 +289,7 @@ impl Default for ResourceLimits {
             memory_limits: MemoryLimits::default(),
             storage_limits: StorageLimits::default(),
             network_limits: NetworkLimits::default(),
-            execution_timeout: Some(chrono::Duration::seconds(300)),
+            execution_timeout: Some(Duration::from_secs(300)),
         }
     }
 }

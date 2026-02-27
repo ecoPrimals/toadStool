@@ -60,7 +60,7 @@ impl CommunicationManager {
             service_name: service.name.clone(),
             endpoint,
             client,
-            last_heartbeat: chrono::Utc::now(),
+            last_heartbeat: std::time::SystemTime::now(),
             status: ServiceStatus::Discovered,
         };
 
@@ -159,7 +159,7 @@ impl CommunicationManager {
         drop(channels);
         let mut channels = self.channels.write().await;
         if let Some(channel) = channels.get_mut(service_id) {
-            channel.last_heartbeat = chrono::Utc::now();
+            channel.last_heartbeat = std::time::SystemTime::now();
         }
 
         Ok(())
@@ -288,7 +288,7 @@ impl CommunicationManager {
                 "mode": "degraded",
                 "original_message_id": original.id.to_string()
             }),
-            timestamp: chrono::Utc::now(),
+            timestamp: std::time::SystemTime::now(),
         }
     }
 }

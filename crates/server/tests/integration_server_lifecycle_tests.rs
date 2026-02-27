@@ -8,13 +8,11 @@ use toadstool_testing::fixtures::server::*;
 async fn test_server_config_builder_creates_valid_config() {
     let config = TestServerConfigBuilder::new()
         .with_port(8888)
-        .with_websocket(true)
         .with_metrics(true)
         .with_log_level("info")
         .build();
 
     assert_eq!(config["server"]["port"], 8888);
-    assert_eq!(config["server"]["enable_websocket"], true);
     assert_eq!(config["server"]["enable_metrics"], true);
     assert_eq!(config["logging"]["level"], "info");
 }
@@ -91,12 +89,8 @@ async fn test_server_config_with_custom_host() {
 
 #[tokio::test]
 async fn test_server_config_disables_features() {
-    let config = TestServerConfigBuilder::new()
-        .with_websocket(false)
-        .with_metrics(false)
-        .build();
+    let config = TestServerConfigBuilder::new().with_metrics(false).build();
 
-    assert_eq!(config["server"]["enable_websocket"], false);
     assert_eq!(config["server"]["enable_metrics"], false);
 }
 

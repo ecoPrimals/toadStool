@@ -18,6 +18,7 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 use tracing::{debug, info};
 use wasmi::{Config, Engine};
 
@@ -281,9 +282,9 @@ impl RuntimeEngine for WasmRuntimeEngine {
                 network: toadstool::resources::NetworkMetrics::default(),
                 gpu: None,
                 timing: TimingMetrics {
-                    start_time: chrono::Utc::now(),
+                    start_time: SystemTime::now(),
                     end_time: None,
-                    duration: chrono::TimeDelta::milliseconds((avg_time_us as i64) / 1000),
+                    duration: Duration::from_millis(avg_time_us / 1000),
                 },
             })
         })

@@ -63,10 +63,11 @@ fn test_service_endpoint_grpc() {
 }
 
 #[test]
-fn test_service_endpoint_websocket() {
-    let endpoint = ServiceEndpoint::websocket("ws.example.com", 8081);
-    assert_eq!(endpoint.protocol, "ws");
-    assert_eq!(endpoint.url(), "ws://ws.example.com:8081");
+fn test_service_endpoint_jsonrpc_polling() {
+    // JSON-RPC 2.0 polling (replacement for deprecated WebSocket)
+    let endpoint = ServiceEndpoint::http("api.example.com", 8081).with_path("/jsonrpc");
+    assert_eq!(endpoint.protocol, "http");
+    assert_eq!(endpoint.url(), "http://api.example.com:8081/jsonrpc");
 }
 
 #[test]

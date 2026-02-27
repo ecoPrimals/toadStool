@@ -108,7 +108,7 @@ impl UniversalScheduler {
                     metadata: HashMap::new(),
                 },
                 metadata: HashMap::new(),
-                timestamp: chrono::Utc::now(),
+                timestamp: std::time::SystemTime::now(),
             };
 
             let response = provider.handle_primal_request(request).await?;
@@ -371,7 +371,7 @@ impl UniversalScheduler {
                     metadata: HashMap::new(),
                 },
                 metadata: HashMap::new(),
-                timestamp: chrono::Utc::now(),
+                timestamp: std::time::SystemTime::now(),
             };
 
             match self.primal_registry().route_request(request).await {
@@ -511,7 +511,7 @@ impl UniversalScheduler {
                     metadata: HashMap::new(),
                 },
                 metadata: HashMap::new(),
-                timestamp: chrono::Utc::now(),
+                timestamp: std::time::SystemTime::now(),
             };
 
             match self.primal_registry().route_request(request).await {

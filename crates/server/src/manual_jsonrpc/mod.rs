@@ -15,6 +15,7 @@ mod handlers_exec;
 mod handlers_health;
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests;
 
 use serde::{Deserialize, Serialize};

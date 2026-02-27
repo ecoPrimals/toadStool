@@ -107,9 +107,9 @@ async fn test_resource_coordinator_allocation_timestamps() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let requirements = ResourceRequirements::default();
 
-    let before = chrono::Utc::now();
+    let before = std::time::SystemTime::now();
     let allocation = coordinator.allocate_resources(&requirements).await.unwrap();
-    let after = chrono::Utc::now();
+    let after = std::time::SystemTime::now();
 
     assert!(allocation.allocated_at >= before);
     assert!(allocation.allocated_at <= after);

@@ -192,7 +192,7 @@ mod tests {
     use crate::byob::byob_types::{
         ByobDeploymentRequest, ServiceResourceRequirements, ServiceSpec,
     };
-    use chrono::Utc;
+    use std::time::SystemTime;
 
     fn create_test_deployment_with_health_check(
         healthy: bool,
@@ -268,7 +268,7 @@ mod tests {
                 volume_policies: vec![],
                 resource_policies: vec![],
             },
-            created_at: Utc::now(),
+            created_at: SystemTime::now(),
         };
 
         let network_info = crate::byob::byob_types::NetworkInfo {

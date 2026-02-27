@@ -30,6 +30,32 @@ pub mod toadstool {
     pub const METRICS: u16 = 0;
 }
 
+/// Discovery fallback ports for initial connection before runtime discovery
+///
+/// **Purpose**: DEFAULT/FALLBACK ports for cold-start bootstrap only.
+/// Used when capability-based discovery (Songbird, mDNS) is not yet available.
+///
+/// **Production**: Use `RuntimeDiscovery::discover_capability()` instead.
+/// These exist only for initial connection to bootstrap discovery.
+///
+/// **Naming**: `DEFAULT_*_DISCOVERY_PORT` = fallback for `{PRIMAL}_PORT` env var.
+pub mod discovery_fallback {
+    /// Songbird coordination - default port for SONGBIRD_PORT env fallback
+    pub const DEFAULT_SONGBIRD_DISCOVERY_PORT: u16 = 8080;
+
+    /// BearDog security - default port for BEARDOG_PORT env fallback
+    pub const DEFAULT_BEARDOG_DISCOVERY_PORT: u16 = 8081;
+
+    /// NestGate storage - default port for NESTGATE_PORT env fallback
+    pub const DEFAULT_NESTGATE_DISCOVERY_PORT: u16 = 8082;
+
+    /// Squirrel MCP - default port for SQUIRREL_PORT env fallback
+    pub const DEFAULT_SQUIRREL_DISCOVERY_PORT: u16 = 8083;
+
+    /// BiomeOS integration - default port for BIOMEOS_PORT env fallback
+    pub const DEFAULT_BIOMEOS_DISCOVERY_PORT: u16 = 8088;
+}
+
 /// Default ports for other primals (for fallback only)
 ///
 /// **Design Philosophy**: These are FALLBACK values only.
@@ -38,34 +64,32 @@ pub mod toadstool {
 /// **Self-Knowledge Violation**: Having these at all violates self-knowledge.
 /// They exist temporarily to support transition period.
 ///
-/// ⚠️ **DEPRECATED**: Use capability-based runtime discovery instead.
-/// These will be removed in Phase 4 after mDNS/DNS-SD implementation.
+/// ⚠️ **DEPRECATED**: Use `discovery_fallback::DEFAULT_*_DISCOVERY_PORT` instead.
 #[deprecated(
     since = "0.1.0",
-    note = "Use runtime capability discovery via Songbird or mDNS. \
-            These hardcoded ports violate the self-knowledge principle. \
+    note = "Use discovery_fallback::DEFAULT_*_DISCOVERY_PORT or runtime capability discovery. \
             See `toadstool_common::runtime_discovery` for proper usage."
 )]
 pub mod fallback {
     /// Songbird coordination service (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use runtime discovery")]
-    pub const SONGBIRD: u16 = 8080;
+    #[deprecated(note = "Use discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT")]
+    pub const SONGBIRD: u16 = super::discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT;
 
     /// Squirrel MCP platform (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use runtime discovery")]
-    pub const SQUIRREL: u16 = 8083;
+    #[deprecated(note = "Use discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT")]
+    pub const SQUIRREL: u16 = super::discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT;
 
     /// BearDog security service (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use runtime discovery")]
-    pub const BEARDOG: u16 = 8081;
+    #[deprecated(note = "Use discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT")]
+    pub const BEARDOG: u16 = super::discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT;
 
     /// NestGate storage service (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use runtime discovery")]
-    pub const NESTGATE: u16 = 8082;
+    #[deprecated(note = "Use discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT")]
+    pub const NESTGATE: u16 = super::discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT;
 
     /// BiomeOS integration (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use runtime discovery")]
-    pub const BIOMEOS: u16 = 8088;
+    #[deprecated(note = "Use discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT")]
+    pub const BIOMEOS: u16 = super::discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT;
 }
 
 /// Port registry for runtime configuration

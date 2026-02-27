@@ -5,7 +5,6 @@
 //! Coverage Target: Increase byob.rs from 36% → 70%
 //! Focus: ByobExecutor trait methods and deployment lifecycle
 
-use chrono::Utc;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -205,7 +204,7 @@ fn create_test_deployment_request() -> ByobDeploymentRequest {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     }
 }
 
@@ -489,7 +488,7 @@ fn test_deployment_request_with_no_services() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(request.services.len(), 0);
@@ -521,7 +520,7 @@ fn test_deployment_request_with_max_resources() {
             dns_config: None,
             load_balancer: None,
         },
-        created_at: Utc::now(),
+        created_at: std::time::SystemTime::now(),
     };
 
     assert_eq!(request.resource_quotas.max_cpu_cores, 128.0);

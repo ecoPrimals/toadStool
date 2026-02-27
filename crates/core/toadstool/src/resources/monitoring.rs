@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
 use sysinfo::System;
 use tokio::sync::RwLock;
@@ -225,9 +226,9 @@ impl SystemResourceMonitor {
             },
             gpu: None,
             timing: TimingMetrics {
-                start_time: chrono::Utc::now(),
+                start_time: SystemTime::now(),
                 end_time: None,
-                duration: chrono::Duration::zero(),
+                duration: Duration::ZERO,
             },
         };
 
@@ -250,9 +251,9 @@ impl ResourceMonitor for SystemResourceMonitor {
             network: NetworkMetrics::default(),
             gpu: None,
             timing: TimingMetrics {
-                start_time: chrono::Utc::now(),
+                start_time: SystemTime::now(),
                 end_time: None,
-                duration: chrono::Duration::zero(),
+                duration: Duration::ZERO,
             },
         };
 
@@ -277,10 +278,11 @@ impl ResourceMonitor for SystemResourceMonitor {
             async move {
                 let mut metrics_map = workload_metrics.write().await;
                 if let Some(metrics) = metrics_map.get_mut(&workload_id) {
-                    metrics.timing.end_time = Some(chrono::Utc::now());
-                    if let Some(end_time) = metrics.timing.end_time {
-                        metrics.timing.duration = end_time - metrics.timing.start_time;
-                    }
+                    let end_time = SystemTime::now();
+                    metrics.timing.end_time = Some(end_time);
+                    metrics.timing.duration = end_time
+                        .duration_since(metrics.timing.start_time)
+                        .unwrap_or_default();
                 }
             }
         });

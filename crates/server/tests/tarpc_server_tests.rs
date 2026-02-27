@@ -49,7 +49,7 @@ fn sample_submission(workload_id: &str) -> WorkloadSubmission {
 #[tokio::test]
 async fn test_server_creation() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let health = server
         .health_check(Context::current())
@@ -63,18 +63,14 @@ async fn test_server_creation() {
 async fn test_server_creation_with_error_count() {
     let error_count = Arc::new(AtomicU64::new(0));
     let executor = Arc::new(StandaloneExecutor::new());
-    let _server = ToadStoolTarpcServer::new(
-        "0.2.0".to_string(),
-        executor,
-        Some(Arc::clone(&error_count)),
-    );
+    let _server = ToadStoolTarpcServer::new("0.2.0", executor, Some(Arc::clone(&error_count)));
     assert_eq!(error_count.load(Ordering::Relaxed), 0);
 }
 
 #[tokio::test]
 async fn test_health_check() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let health = server
         .health_check(Context::current())
@@ -89,7 +85,7 @@ async fn test_health_check() {
 #[tokio::test]
 async fn test_submit_workload_success() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let submission = sample_submission("work-001");
 
     let result = server
@@ -106,7 +102,7 @@ async fn test_submit_workload_success() {
 async fn test_submit_workload_executor_error() {
     let error_count = Arc::new(AtomicU64::new(0));
     let server = ToadStoolTarpcServer::new(
-        "0.1.0".to_string(),
+        "0.1.0",
         Arc::new(FailingExecutor),
         Some(Arc::clone(&error_count)),
     );
@@ -122,7 +118,7 @@ async fn test_submit_workload_executor_error() {
 #[tokio::test]
 async fn test_query_status_found() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let submission = sample_submission("work-query");
     server
         .clone()
@@ -142,11 +138,7 @@ async fn test_query_status_found() {
 async fn test_query_status_not_found() {
     let executor = Arc::new(StandaloneExecutor::new());
     let error_count = Arc::new(AtomicU64::new(0));
-    let server = ToadStoolTarpcServer::new(
-        "0.1.0".to_string(),
-        executor,
-        Some(Arc::clone(&error_count)),
-    );
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, Some(Arc::clone(&error_count)));
 
     let result = server
         .query_status(Context::current(), "nonexistent-work".to_string())
@@ -160,7 +152,7 @@ async fn test_query_status_not_found() {
 #[tokio::test]
 async fn test_cancel_workload() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let submission = sample_submission("work-cancel");
     server
         .clone()
@@ -185,7 +177,7 @@ async fn test_cancel_workload() {
 async fn test_cancel_workload_executor_error() {
     let error_count = Arc::new(AtomicU64::new(0));
     let server = ToadStoolTarpcServer::new(
-        "0.1.0".to_string(),
+        "0.1.0",
         Arc::new(FailingExecutor),
         Some(Arc::clone(&error_count)),
     );
@@ -202,7 +194,7 @@ async fn test_cancel_workload_executor_error() {
 #[tokio::test]
 async fn test_list_workloads() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     server
         .clone()
         .submit_workload(Context::current(), sample_submission("a"))
@@ -225,7 +217,7 @@ async fn test_list_workloads() {
 async fn test_query_capabilities_executor_error() {
     let error_count = Arc::new(AtomicU64::new(0));
     let server = ToadStoolTarpcServer::new(
-        "0.1.0".to_string(),
+        "0.1.0",
         Arc::new(FailingExecutor),
         Some(Arc::clone(&error_count)),
     );
@@ -255,7 +247,7 @@ async fn test_standalone_executor() {
 #[tokio::test]
 async fn test_query_capabilities() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let caps = server
         .query_capabilities(Context::current())
@@ -269,7 +261,7 @@ async fn test_query_capabilities() {
 #[tokio::test]
 async fn test_server_clone() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let cloned = server.clone();
 
     let health1 = server
@@ -286,7 +278,7 @@ async fn test_server_clone() {
 #[tokio::test]
 async fn test_list_workloads_with_filter() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     server
         .clone()
         .submit_workload(Context::current(), sample_submission("f1"))
@@ -305,7 +297,7 @@ async fn test_list_workloads_with_filter() {
 #[tokio::test]
 async fn test_health_check_resource_utilization() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let health = server
         .health_check(Context::current())
@@ -365,7 +357,7 @@ impl WorkloadExecutor for QueuedExecutor {
 #[tokio::test]
 async fn test_health_check_with_queued_workloads() {
     let executor = Arc::new(QueuedExecutor);
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     server
         .clone()
         .submit_workload(Context::current(), sample_submission("queued-1"))
@@ -386,7 +378,7 @@ async fn test_health_check_with_queued_workloads() {
 #[allow(deprecated)]
 async fn test_serve_tcp_debug_returns_error() {
     let executor = Arc::new(StandaloneExecutor::new());
-    let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
+    let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let result = server.serve_tcp_debug("127.0.0.1:0".parse().unwrap()).await;
 
