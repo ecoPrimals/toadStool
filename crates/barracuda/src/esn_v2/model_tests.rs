@@ -298,11 +298,11 @@ async fn test_esn_train_ridge_regression_linear() {
 
     let n_samples = 10;
     let mut states = vec![0.0; 4 * n_samples];
-    let mut targets = vec![0.0; 1 * n_samples];
+    let mut targets = vec![0.0; n_samples];
     for k in 0..n_samples {
         let x = k as f64 * 0.5;
         states[k] = 1.0;
-        states[1 * n_samples + k] = x;
+        states[n_samples + k] = x;
         states[2 * n_samples + k] = x * x;
         states[3 * n_samples + k] = x * x * x;
         targets[k] = 2.0 + 3.0 * x;

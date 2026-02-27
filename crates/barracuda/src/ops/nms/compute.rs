@@ -176,7 +176,7 @@ impl NMS {
             compute_pass.dispatch_workgroups(workgroups_x.max(1), workgroups_y.max(1), 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // ====================================================================
         // Pass 2: Sort indices by score (CPU - acceptable for small sets)
@@ -341,7 +341,7 @@ impl NMS {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder2.finish()));
+        device.submit_and_poll(Some(encoder2.finish()));
 
         // ====================================================================
         // Pass 4: Compact Results on GPU
@@ -507,7 +507,7 @@ impl NMS {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder3.finish()));
+        device.submit_and_poll(Some(encoder3.finish()));
 
         // ====================================================================
         // Read Results (read_buffer_u32 will handle GPU synchronization)

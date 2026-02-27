@@ -18,11 +18,9 @@
 //! - Reasonable performance (<10x slowdown)
 //! - Correct results (spot checks)
 
-use barracuda::device::WgpuDevice;
 use barracuda::ops::complex::*;
 use barracuda::ops::fft::*;
 use barracuda::tensor::Tensor;
-use std::sync::Arc;
 use std::time::Instant;
 
 // ═══════════════════════════════════════════════════════════════
@@ -31,7 +29,7 @@ use std::time::Instant;
 
 #[tokio::test]
 async fn chaos_complex_large_scale() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: 1M complex numbers
     let size = 1_000_000;
@@ -51,7 +49,7 @@ async fn chaos_complex_large_scale() {
 
 #[tokio::test]
 async fn chaos_fft_large_scale() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: FFT with 65536 points (2^16)
     let degree = 65536;
@@ -73,7 +71,7 @@ async fn chaos_fft_large_scale() {
 
 #[tokio::test]
 async fn chaos_fft_3d_medium_scale() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: 3D FFT with 64x64x64 = 262K points
     let nx = 64;
@@ -111,7 +109,7 @@ async fn chaos_fft_3d_medium_scale() {
 
 #[tokio::test]
 async fn chaos_precision_extremes_complex() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: Mix of tiny and huge values
     let data = vec![
@@ -133,7 +131,7 @@ async fn chaos_precision_extremes_complex() {
 
 #[tokio::test]
 async fn chaos_precision_fft_extremes() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: FFT with extreme magnitudes
     let data = vec![1e20f32, 0.0, 1e-20, 0.0, 1e20, 1e-20, 0.0, 1e20];
@@ -153,7 +151,7 @@ async fn chaos_precision_fft_extremes() {
 
 #[tokio::test]
 async fn chaos_concurrent_complex_ops() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: 50 concurrent complex operations
     let num_ops = 50;
@@ -184,7 +182,7 @@ async fn chaos_concurrent_complex_ops() {
 
 #[tokio::test]
 async fn chaos_concurrent_fft_ops() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: 20 concurrent FFT operations
     let num_ops = 20;
@@ -224,7 +222,7 @@ async fn chaos_concurrent_fft_ops() {
 
 #[tokio::test]
 async fn chaos_repeated_operations() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: 1000 repeated operations (memory leak test)
     let iterations = 1000;
@@ -253,7 +251,7 @@ async fn chaos_repeated_operations() {
 
 #[tokio::test]
 async fn chaos_mixed_workload() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Chaos: Mix of complex ops and FFTs simultaneously
     let data_complex = vec![1.0f32, 2.0, 3.0, 4.0];

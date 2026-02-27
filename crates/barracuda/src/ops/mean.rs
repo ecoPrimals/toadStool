@@ -12,13 +12,6 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
-/// f64 canonical source for simple mean reduction.
-const WGSL_MEAN_SIMPLE_F64: &str = include_str!("../shaders/misc/mean_simple_f64.wgsl");
-#[allow(dead_code)]
-static WGSL_MEAN_SIMPLE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    crate::shaders::precision::downcast_f64_to_f32(WGSL_MEAN_SIMPLE_F64)
-});
-
 /// Workgroup-parallel mean reduction shader (global mean via shared-memory tree).
 pub const WGSL_MEAN_REDUCE: &str = include_str!("../shaders/reduce/mean_reduce.wgsl");
 
@@ -26,9 +19,8 @@ pub const WGSL_MEAN_REDUCE: &str = include_str!("../shaders/reduce/mean_reduce.w
 pub const WGSL_MEAN_DIM_F64: &str = include_str!("../shaders/reduce/mean_dim_f64.wgsl");
 
 /// f32 derived from f64 canonical source.
-static WGSL_MEAN_DIM_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    crate::shaders::precision::downcast_f64_to_f32(WGSL_MEAN_DIM_F64)
-});
+static WGSL_MEAN_DIM_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_MEAN_DIM_F64));
 
 /// f64 mean reduction (tree reduction, partial sums).
 pub const WGSL_MEAN_REDUCE_F64: &str = include_str!("../shaders/reduce/mean_reduce_f64.wgsl");
@@ -200,7 +192,7 @@ impl Mean {
                     compute_pass.dispatch_workgroups(1, 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 let result = device.read_buffer_f32(&output_buffer, 1)?;
                 Ok(Tensor::new(result, vec![], device.clone()))
@@ -359,7 +351,7 @@ impl Mean {
                     compute_pass.dispatch_workgroups(workgroups.max(1), 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back results
                 let output_data = device.read_buffer_f32(&output_buffer, output_size)?;

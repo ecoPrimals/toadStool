@@ -163,8 +163,10 @@ pub fn should_use_npu_matmul(a: &[f32], b: &[f32], priority: crate::workload::Pr
     let avg_sparsity = (sparsity_a + sparsity_b) / 2.0;
 
     match priority {
-        Priority::Energy => true,                   // NPU always for energy
-        Priority::Latency if a.len() < crate::npu_executor::npu_defaults::NPU_LATENCY_THRESHOLD => true,
+        Priority::Energy => true, // NPU always for energy
+        Priority::Latency if a.len() < crate::npu_executor::npu_defaults::NPU_LATENCY_THRESHOLD => {
+            true
+        }
         _ => avg_sparsity > crate::workload::NPU_SPARSITY_THRESHOLD,
     }
 }

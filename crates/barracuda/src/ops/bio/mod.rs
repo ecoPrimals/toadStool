@@ -67,9 +67,9 @@ pub mod wright_fisher;
 
 pub use ani::AniBatchF64;
 pub use batch_fitness::BatchFitnessGpu;
-pub use batched_multinomial::{BatchedMultinomialGpu, multinomial_sample_cpu};
+pub use batched_multinomial::{multinomial_sample_cpu, BatchedMultinomialGpu};
 pub use dada2::Dada2EStepGpu;
-pub use diversity_fusion::{DiversityFusionGpu, DiversityResult, diversity_fusion_cpu};
+pub use diversity_fusion::{diversity_fusion_cpu, DiversityFusionGpu, DiversityResult};
 pub use dnds::DnDsBatchF64;
 pub use felsenstein::{FelsensteinGpu, FelsensteinResult, PhyloTree};
 pub use flat_tree::FlatTree;

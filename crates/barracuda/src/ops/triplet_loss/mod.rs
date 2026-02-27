@@ -134,8 +134,11 @@ impl TripletLoss {
 
     /// WGSL shader source
     pub(super) fn shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../../shaders/loss/triplet_loss_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../../shaders/loss/triplet_loss_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 

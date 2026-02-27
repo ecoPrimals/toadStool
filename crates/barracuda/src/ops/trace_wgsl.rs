@@ -165,7 +165,7 @@ impl Trace {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // If multiple workgroups, reduce partial results in a second pass using reduce shader
         let final_buffer = if workgroups > 1 {
@@ -305,7 +305,7 @@ impl Trace {
                 pass_2.dispatch_workgroups(workgroups_2.max(1), 1, 1);
             }
 
-            device.queue.submit(Some(encoder_2.finish()));
+            device.submit_and_poll(Some(encoder_2.finish()));
             final_output_buffer
         } else {
             output_buffer

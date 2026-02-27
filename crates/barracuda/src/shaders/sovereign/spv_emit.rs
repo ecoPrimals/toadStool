@@ -24,13 +24,12 @@ pub fn emit_spirv(module: &naga::Module, info: &ModuleInfo) -> Result<Vec<u32>, 
     };
 
     let mut words = Vec::new();
-    let mut writer = spv::Writer::new(&options).map_err(|e| {
-        SovereignError::SpirvEmit(format!("failed to create SPIR-V writer: {e}"))
-    })?;
+    let mut writer = spv::Writer::new(&options)
+        .map_err(|e| SovereignError::SpirvEmit(format!("failed to create SPIR-V writer: {e}")))?;
 
-    writer.write(module, info, None, &None, &mut words).map_err(|e| {
-        SovereignError::SpirvEmit(format!("SPIR-V write failed: {e}"))
-    })?;
+    writer
+        .write(module, info, None, &None, &mut words)
+        .map_err(|e| SovereignError::SpirvEmit(format!("SPIR-V write failed: {e}")))?;
 
     Ok(words)
 }

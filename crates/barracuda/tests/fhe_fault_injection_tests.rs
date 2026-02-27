@@ -18,7 +18,6 @@
 //! - Recovery strategies
 //! - Comprehensive logging
 
-use barracuda::device::WgpuDevice;
 use barracuda::ops::fhe_ntt::FheNtt;
 use barracuda::ops::fhe_poly_add::create_fhe_poly_tensor;
 use barracuda::tensor::Tensor;
@@ -33,7 +32,7 @@ use tokio::task::JoinSet;
 async fn fault_ntt_non_power_of_two_degree() {
     // Inject fault: Invalid degree (not power of 2)
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let modulus = 12289u64;
     let root = 11u64;
     let invalid_degrees = vec![0u32, 1, 3, 5, 6, 7, 9, 10, 15, 17, 100, 1000];
@@ -62,7 +61,7 @@ async fn fault_ntt_non_power_of_two_degree() {
 async fn fault_ntt_mismatched_input_length() {
     // Inject fault: Input length doesn't match degree
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let degree = 16u32;
     let modulus = 12289u64;
     let root = 11u64;
@@ -94,7 +93,7 @@ async fn fault_ntt_mismatched_input_length() {
 async fn fault_ntt_coefficient_exceeds_modulus() {
     // Inject fault: Coefficient >= modulus
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let degree = 8u32;
     let modulus = 12289u64;
     let root = 11u64;
@@ -133,7 +132,7 @@ async fn fault_ntt_coefficient_exceeds_modulus() {
 async fn fault_ntt_zero_modulus() {
     // Inject fault: Modulus = 0 (would cause division by zero)
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let degree = 4u32;
     let input = vec![1u64; degree as usize];
     let root = 4u64;
@@ -174,7 +173,7 @@ async fn fault_gpu_unavailable() {
 async fn fault_out_of_gpu_memory() {
     // Inject fault: GPU memory exhausted
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let mut tensors = Vec::new();
 
     // Allocate until failure
@@ -278,7 +277,7 @@ async fn fault_twiddle_factor_precision() {
 async fn fault_concurrent_tensor_access() {
     // Inject fault: Multiple threads accessing same tensor
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let data: Vec<u32> = vec![1; 1024];
     let tensor = Arc::new(Tensor::from_data_pod(&data, vec![1024], device.clone()).unwrap());
 
@@ -291,7 +290,7 @@ async fn fault_concurrent_tensor_access() {
         set.spawn(async move {
             // Read tensor data
             let _data = t.to_vec_u32();
-            Ok::<_, anyhow::Error>(i)
+            Ok::<_, barracuda::error::BarracudaError>(i)
         });
     }
 
@@ -316,7 +315,7 @@ async fn fault_concurrent_tensor_access() {
 async fn fault_ntt_failure_recovery() {
     // Verify system recovers from NTT failure
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let modulus = 12289u64;
     let root = 11u64;
 
@@ -346,7 +345,7 @@ async fn fault_ntt_failure_recovery() {
 async fn fault_multiple_failures_in_sequence() {
     // Multiple failures in a row should not corrupt state
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let modulus = 12289u64;
     let root = 11u64;
 
@@ -382,7 +381,7 @@ async fn fault_multiple_failures_in_sequence() {
 async fn fault_error_messages_are_actionable() {
     // Verify error messages tell user how to fix
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let modulus = 12289u64;
     let root = 11u64;
 

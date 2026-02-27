@@ -66,12 +66,3 @@ pub use wasi_context::{create_wasi_context, WasiConfig};
 
 // EVOLVED: Component model always exported, capability detected at runtime
 pub use component_model::*;
-
-// Helper function for error conversion
-use toadstool::error::ToadStoolError;
-
-/// Helper function to convert wasmi errors to `ToadStoolError`
-#[allow(dead_code)]
-pub(crate) fn wasmi_error(err: wasmi::Error) -> ToadStoolError {
-    ToadStoolError::runtime(err.to_string())
-}

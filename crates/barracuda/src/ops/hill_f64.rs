@@ -161,7 +161,7 @@ impl HillFunctionF64 {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups((n_elements as u32).div_ceil(256), 1, 1);
         }
-        dev.queue.submit(Some(encoder.finish()));
+        dev.submit_and_poll(Some(encoder.finish()));
 
         crate::utils::read_buffer_f64(dev, &output_buf, n_elements)
     }

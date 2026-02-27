@@ -12,8 +12,8 @@
 //      doubling arithmetic intensity vs one element per thread.
 //   4. 4× k-loop unroll — four independent FMA chains fill the latency
 //      window for llvmpipe's software scheduler (→ fmuladd IR).
-//   5. fma() intrinsic — WGSL fma() lowers to LLVM fmuladd, which the
-//      x86 backend can map to vfmadd instructions.
+//   5. a*b+c multiply-add — WGSL fma() is not defined for f64; the
+//      Sovereign Compiler fuses a*b+c to SPIR-V OpFMulAdd / LLVM fmuladd.
 //
 // C = A × B,  A:[M,K], B:[K,N], C:[M,N]
 
@@ -136,20 +136,20 @@ fn main(
             let b2_c1 = tileB_curr[(k + 2u) * TILE + lcol * 2u + 1u];
             let b3_c1 = tileB_curr[(k + 3u) * TILE + lcol * 2u + 1u];
 
-            acc00 = fma(a0_r0, b0_c0, fma(a1_r0, b1_c0, fma(a2_r0, b2_c0, fma(a3_r0, b3_c0, acc00))));
-            acc01 = fma(a0_r0, b0_c1, fma(a1_r0, b1_c1, fma(a2_r0, b2_c1, fma(a3_r0, b3_c1, acc01))));
-            acc10 = fma(a0_r1, b0_c0, fma(a1_r1, b1_c0, fma(a2_r1, b2_c0, fma(a3_r1, b3_c0, acc10))));
-            acc11 = fma(a0_r1, b0_c1, fma(a1_r1, b1_c1, fma(a2_r1, b2_c1, fma(a3_r1, b3_c1, acc11))));
+            acc00 = a0_r0 * b0_c0 + (a1_r0 * b1_c0 + (a2_r0 * b2_c0 + (a3_r0 * b3_c0 + acc00)));
+            acc01 = a0_r0 * b0_c1 + (a1_r0 * b1_c1 + (a2_r0 * b2_c1 + (a3_r0 * b3_c1 + acc01)));
+            acc10 = a0_r1 * b0_c0 + (a1_r1 * b1_c0 + (a2_r1 * b2_c0 + (a3_r1 * b3_c0 + acc10)));
+            acc11 = a0_r1 * b0_c1 + (a1_r1 * b1_c1 + (a2_r1 * b2_c1 + (a3_r1 * b3_c1 + acc11)));
         }
         for (; k < k_limit; k = k + 1u) {
             let a_r0 = tileA_curr[lrow * 2u        * TILE + k];
             let a_r1 = tileA_curr[(lrow * 2u + 1u) * TILE + k];
             let b_c0 = tileB_curr[k * TILE + lcol * 2u];
             let b_c1 = tileB_curr[k * TILE + lcol * 2u + 1u];
-            acc00 = fma(a_r0, b_c0, acc00);
-            acc01 = fma(a_r0, b_c1, acc01);
-            acc10 = fma(a_r1, b_c0, acc10);
-            acc11 = fma(a_r1, b_c1, acc11);
+            acc00 = a_r0 * b_c0 + acc00;
+            acc01 = a_r0 * b_c1 + acc01;
+            acc10 = a_r1 * b_c0 + acc10;
+            acc11 = a_r1 * b_c1 + acc11;
         }
 
         workgroupBarrier();

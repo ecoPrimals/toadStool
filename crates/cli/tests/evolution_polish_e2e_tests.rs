@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Barrier;
 
-use toadstool_cli::executor::BiomeExecutor;
+use toadstool_cli::executor::{BiomeExecutor, RunBiomeOptions};
 use toadstool_cli::CliContext;
 
 // ============================================================================
@@ -78,18 +78,16 @@ async fn test_e2e_executor_full_lifecycle_standalone() {
     // 2. Try to create a biome (may fail at startup, but not due to registry)
     let manifest_path = create_test_manifest("e2e-test-1").await.unwrap();
 
-    let run_result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            Some("e2e-standalone".to_string()),
-            vec![],
-            false,
-            Some(0.5),
-            Some("256M".to_string()),
-            "basic".to_string(),
-        )
-        .await;
+    let opts = RunBiomeOptions {
+        manifest_path: manifest_path.clone(),
+        name: Some("e2e-standalone".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: Some(0.5),
+        memory_limit: Some("256M".to_string()),
+        security: "basic".to_string(),
+    };
+    let run_result = executor.run_biome(&ctx, opts).await;
 
     // May fail at startup, but error should not mention hardcoded clients
     if let Err(e) = run_result {
@@ -150,18 +148,16 @@ async fn test_e2e_concurrent_biome_operations_standalone() {
                 .unwrap();
 
             // Try to run biome
-            let result = exec
-                .run_biome(
-                    &ctx_clone,
-                    manifest_path.clone(),
-                    Some(format!("concurrent-biome-{}", i)),
-                    vec![],
-                    false,
-                    Some(0.5),
-                    Some("128M".to_string()),
-                    "basic".to_string(),
-                )
-                .await;
+            let opts = RunBiomeOptions {
+                manifest_path: manifest_path.clone(),
+                name: Some(format!("concurrent-biome-{}", i)),
+                env: vec![],
+                debug: false,
+                cpu_limit: Some(0.5),
+                memory_limit: Some("128M".to_string()),
+                security: "basic".to_string(),
+            };
+            let result = exec.run_biome(&ctx_clone, opts).await;
 
             cleanup_manifest(&manifest_path).await;
 
@@ -358,18 +354,16 @@ async fn test_e2e_resource_limits_without_registry() {
     ];
 
     for (cpu, mem) in resource_configs {
-        let result = executor
-            .run_biome(
-                &ctx,
-                manifest_path.clone(),
-                Some("resource-test".to_string()),
-                vec![],
-                false,
-                cpu,
-                mem,
-                "basic".to_string(),
-            )
-            .await;
+        let opts = RunBiomeOptions {
+            manifest_path: manifest_path.clone(),
+            name: Some("resource-test".to_string()),
+            env: vec![],
+            debug: false,
+            cpu_limit: cpu,
+            memory_limit: mem,
+            security: "basic".to_string(),
+        };
+        let result = executor.run_biome(&ctx, opts).await;
 
         // May fail at startup, but error should not mention registry
         if let Err(e) = result {

@@ -21,7 +21,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use tokio::sync::Barrier;
 
-use toadstool_cli::executor::BiomeExecutor;
+use toadstool_cli::executor::{BiomeExecutor, RunBiomeOptions, UpBiomeOptions};
 use toadstool_cli::{
     BiomeManifest, BiomeMetadata, BiomeNetworking, BiomeResources, BiomeSecurity, BiomeStorage,
     CliContext,
@@ -136,18 +136,16 @@ async fn test_manifest_with_all_fields() {
     let ctx = create_test_context();
 
     // Should accept fully specified manifest
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            None,
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = RunBiomeOptions {
+        manifest_path: manifest_path.clone(),
+        name: None,
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "basic".to_string(),
+    };
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_file(&manifest_path).await.ok();
 
@@ -179,18 +177,16 @@ async fn test_manifest_with_minimal_fields() {
     let executor = create_test_executor().await.unwrap();
     let ctx = create_test_context();
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            None,
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = RunBiomeOptions {
+        manifest_path: manifest_path.clone(),
+        name: None,
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "basic".to_string(),
+    };
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_file(&manifest_path).await.ok();
 
@@ -227,18 +223,16 @@ async fn test_biome_name_from_manifest() {
     let ctx = create_test_context();
 
     // No name override - should use manifest name
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            None, // No name override
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = RunBiomeOptions {
+        manifest_path: manifest_path.clone(),
+        name: None,
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "basic".to_string(),
+    };
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_file(&manifest_path).await.ok();
 
@@ -264,18 +258,16 @@ async fn test_biome_name_override() {
     let ctx = create_test_context();
 
     // Override manifest name
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            Some("overridden-name".to_string()),
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = RunBiomeOptions {
+        manifest_path: manifest_path.clone(),
+        name: Some("overridden-name".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "basic".to_string(),
+    };
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_file(&manifest_path).await.ok();
 
@@ -399,18 +391,16 @@ async fn test_resource_limit_combinations() {
                     create_manifest_file(&format!("res-{}", i), manifest_content).await?;
 
                 let ctx = create_test_context();
-                let result = exec
-                    .run_biome(
-                        &ctx,
-                        manifest_path.clone(),
-                        Some(format!("biome-res-{}", i)),
-                        vec![],
-                        false,
-                        cpu,
-                        mem,
-                        "basic".to_string(),
-                    )
-                    .await;
+                let opts = RunBiomeOptions {
+                    manifest_path: manifest_path.clone(),
+                    name: Some(format!("biome-res-{}", i)),
+                    env: vec![],
+                    debug: false,
+                    cpu_limit: cpu,
+                    memory_limit: mem,
+                    security: "basic".to_string(),
+                };
+                let result = exec.run_biome(&ctx, opts).await;
 
                 cleanup_file(&manifest_path).await.ok();
                 result
@@ -582,17 +572,15 @@ async fn test_up_biome_detach_mode_variations() {
                     create_manifest_file(&format!("detach-{}", detach), manifest_content).await?;
 
                 let ctx = create_test_context();
-                let result = exec
-                    .up_biome(
-                        &ctx,
-                        manifest_path.clone(),
-                        detach,
-                        Some(format!("biome-detach-{}", detach)),
-                        vec![],
-                        false,
-                        30,
-                    )
-                    .await;
+                let opts = UpBiomeOptions {
+                    manifest_path: manifest_path.clone(),
+                    detach,
+                    name: Some(format!("biome-detach-{}", detach)),
+                    env: vec![],
+                    restart: false,
+                    health_interval: 30,
+                };
+                let result = exec.up_biome(&ctx, opts).await;
 
                 cleanup_file(&manifest_path).await.ok();
                 result
@@ -632,17 +620,15 @@ async fn test_up_biome_different_health_intervals() {
                     create_manifest_file(&format!("health-{}", interval), manifest_content).await?;
 
                 let ctx = create_test_context();
-                let result = exec
-                    .up_biome(
-                        &ctx,
-                        manifest_path.clone(),
-                        false,
-                        Some(format!("health-{}", interval)),
-                        vec![],
-                        false,
-                        interval,
-                    )
-                    .await;
+                let opts = UpBiomeOptions {
+                    manifest_path: manifest_path.clone(),
+                    detach: false,
+                    name: Some(format!("health-{}", interval)),
+                    env: vec![],
+                    restart: false,
+                    health_interval: interval,
+                };
+                let result = exec.up_biome(&ctx, opts).await;
 
                 cleanup_file(&manifest_path).await.ok();
                 result
@@ -754,18 +740,16 @@ async fn test_environment_variables_with_special_characters() {
         "JSON={\"key\":\"value\"}".to_string(),
     ];
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            None,
-            env_vars,
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = RunBiomeOptions {
+        manifest_path: manifest_path.clone(),
+        name: None,
+        env: env_vars,
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "basic".to_string(),
+    };
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_file(&manifest_path).await.ok();
 

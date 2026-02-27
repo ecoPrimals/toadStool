@@ -14,7 +14,6 @@
 mod dispatch;
 mod storage;
 
-use async_trait::async_trait;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use crate::unified_hardware::{
@@ -22,6 +21,7 @@ use crate::unified_hardware::{
     ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
 use crate::unified_math::{MathOp, TensorDescriptor};
+use async_trait::async_trait;
 use std::sync::Arc;
 
 pub(crate) use storage::GpuTensorStorage;
@@ -327,24 +327,29 @@ mod tests {
     #[tokio::test]
     async fn test_gpu_executor_creation() {
         // May fail if no GPU available (that's okay)
-        if let Ok(gpu) = GpuExecutor::new().await {
-            assert_eq!(gpu.hardware_type(), HardwareType::GPU);
-            assert!(!gpu.name().is_empty());
-            tracing::debug!("GPU: {}", gpu.name());
-        } else {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
             tracing::debug!("No GPU available (okay for testing)");
-        }
+            return;
+        };
+        let gpu = GpuExecutor::from_device_arc(device);
+        assert_eq!(gpu.hardware_type(), HardwareType::GPU);
+        assert!(!gpu.name().is_empty());
+        tracing::debug!("GPU: {}", gpu.name());
     }
 
     #[tokio::test]
     async fn test_gpu_capabilities() {
-        if let Ok(gpu) = GpuExecutor::new().await {
-            let caps = gpu.capabilities();
-            assert!(caps.operations.matmul);
-            assert!(caps.operations.convolution);
-            assert!(caps.precision.fp32);
-            assert!(caps.parallelism.max_parallel_units > 100);
-        }
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+        let gpu = GpuExecutor::from_device_arc(device);
+        let caps = gpu.capabilities();
+        assert!(caps.operations.matmul);
+        assert!(caps.operations.convolution);
+        assert!(caps.precision.fp32);
+        assert!(caps.parallelism.max_parallel_units > 100);
     }
 
     #[tokio::test]

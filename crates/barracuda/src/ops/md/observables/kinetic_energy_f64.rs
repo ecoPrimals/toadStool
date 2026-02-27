@@ -149,22 +149,7 @@ impl KineticEnergyF64 {
         enc.copy_buffer_to_buffer(&ke_buf, 0, &rb, 0, out_size);
         q.submit(Some(enc.finish()));
 
-        let slice = rb.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| {
-            tx.send(r).ok();
-        });
-        d.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|_| crate::error::BarracudaError::Gpu("KE readback".into()))?
-            .map_err(|e| crate::error::BarracudaError::Gpu(format!("KE map: {e}")))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        rb.unmap();
-
-        Ok(result)
+        self.device.map_staging_buffer::<f64>(&rb, n)
     }
 
     /// Compute total kinetic energy (GPU per-particle, host reduce).

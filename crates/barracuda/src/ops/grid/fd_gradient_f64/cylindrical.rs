@@ -2,9 +2,7 @@
 //!
 //! Used for nuclear physics (deformed nuclei), fluid dynamics, etc.
 
-use super::super::fd_common::{
-    read_staging_f64 as read_staging, FdPipelineBuilder, FD_WORKGROUP_SIZE,
-};
+use super::super::fd_common::{FdPipelineBuilder, FD_WORKGROUP_SIZE};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -184,8 +182,8 @@ impl CylindricalGradient {
         encoder.copy_buffer_to_buffer(&grad_z_buffer, 0, &staging_z, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        let grad_rho = read_staging(self.device.device(), &staging_rho, total).await?;
-        let grad_z = read_staging(self.device.device(), &staging_z, total).await?;
+        let grad_rho = self.device.map_staging_buffer::<f64>(&staging_rho, total)?;
+        let grad_z = self.device.map_staging_buffer::<f64>(&staging_z, total)?;
 
         Ok((grad_rho, grad_z))
     }
@@ -363,6 +361,6 @@ impl CylindricalLaplacian {
         encoder.copy_buffer_to_buffer(&laplacian_buffer, 0, &staging, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        read_staging(self.device.device(), &staging, total).await
+        self.device.map_staging_buffer::<f64>(&staging, total)
     }
 }

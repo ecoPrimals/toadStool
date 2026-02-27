@@ -1,9 +1,9 @@
 //! CPU tensor storage implementation
 
-use async_trait::async_trait;
 use crate::error::Result;
 use crate::unified_hardware::{HardwareType, TensorStorage};
 use crate::unified_math::TensorDescriptor;
+use async_trait::async_trait;
 
 /// CPU tensor storage implementation
 pub(super) struct CpuTensorStorage {

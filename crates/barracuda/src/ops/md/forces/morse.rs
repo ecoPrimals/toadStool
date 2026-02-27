@@ -95,7 +95,7 @@ impl MorseForce {
                 label: Some("Morse Clear Encoder"),
             });
         encoder.clear_buffer(&atomic_buffer, 0, None);
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -290,25 +290,12 @@ impl MorseForce {
         });
 
         encoder.copy_buffer_to_buffer(&atomic_buffer, 0, &staging_buffer, 0, atomic_buffer_size);
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back and convert i32 -> f32
-        let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) =
-            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).ok();
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|_| BarracudaError::Gpu("Buffer map async wait canceled".into()))?
-            .map_err(|e| BarracudaError::Gpu(format!("Buffer mapping failed: {}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let i32_data: &[i32] = bytemuck::cast_slice(&data);
+        let n_force_elements = n_particles * 3;
+        let i32_data: Vec<i32> = device.map_staging_buffer(&staging_buffer, n_force_elements)?;
         let f32_data: Vec<f32> = i32_data.iter().map(|&x| x as f32 / 1000.0).collect();
-        drop(data);
-        staging_buffer.unmap();
 
         // Create final output tensor
         Tensor::from_data(&f32_data, vec![n_particles, 3], device.clone())

@@ -90,11 +90,7 @@ pub fn mbe(observed: &[f64], simulated: &[f64]) -> f64 {
     if n == 0 {
         return 0.0;
     }
-    let sum_bias: f64 = observed
-        .iter()
-        .zip(simulated)
-        .map(|(o, s)| s - o)
-        .sum();
+    let sum_bias: f64 = observed.iter().zip(simulated).map(|(o, s)| s - o).sum();
     sum_bias / n as f64
 }
 

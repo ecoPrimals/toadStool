@@ -16,8 +16,7 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 
 /// f64 canonical source for dimension-wise variance.
-const WGSL_VARIANCE_DIM_F64: &str =
-    include_str!("../../shaders/reduce/variance_dim_f64.wgsl");
+const WGSL_VARIANCE_DIM_F64: &str = include_str!("../../shaders/reduce/variance_dim_f64.wgsl");
 
 /// f32 derived from f64 canonical source.
 static WGSL_VARIANCE_DIM_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {

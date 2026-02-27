@@ -116,7 +116,11 @@ impl<'a> ComputeDispatch<'a> {
     }
 
     /// Build everything and submit the compute pass to the device queue.
+    ///
+    /// Holds a dispatch permit for the full compile→bind→submit lifecycle,
+    /// respecting the device's hardware-aware concurrency budget.
     pub fn submit(self) {
+        let _permit = self.device.acquire_dispatch();
         let source = self
             .shader_source
             .expect("ComputeDispatch: shader source required");
@@ -216,7 +220,7 @@ impl<'a> ComputeDispatch<'a> {
             pass.dispatch_workgroups(self.workgroups.0, self.workgroups.1, self.workgroups.2);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll_inner(Some(encoder.finish()));
     }
 }
 

@@ -284,12 +284,13 @@ toadStool/
 
 ## Evolution
 
+**We are still evolving.** The transition from fp64 shaders to true math is underway — the springs (hotSpring, neuralSpring, airSpring, groundSpring) will have many interactions to evolve now that barracuda owns the math at all precisions. Every spring absorption inherits dual-layer universal precision automatically.
+
 ### Active / Next
+- **Spring math evolution** -- springs migrate from local math to barracuda universal dispatch (fp64 → true math). Many interactions to evolve per spring.
 - **Deep debt: Large file refactoring** -- smart structural refactoring (not just splitting), extract modules by concern
 - **Deep debt: External dependencies** -- analyze remaining external deps, evolve to pure Rust where possible
 - **Deep debt: Unsafe evolution** -- evolve unsafe blocks to safe Rust (fast AND safe)
-- **Deep debt: Hardcoding → capability-based** -- primal code has self-knowledge only, discovers others at runtime
-- **P2: Architecture-specific polynomials** -- different Horner/Estrin evaluation strategies per silicon family (deferred until profiling data)
 - **ComputeDispatch migration** -- Builder pattern created; migrating existing ops to reduce boilerplate
 - **Conv2D/Pool stride/padding/channels** -- WGSL exists, single-channel wired; full parametric support pending (D-S46-001)
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
@@ -375,7 +376,6 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 | Document | Purpose |
 |----------|---------|
-| [PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md) | **Evolution gate** -- RESOLVED. Dual-layer universal precision operational |
 | [STATUS.md](STATUS.md) | Detailed technical status, session-by-session |
 | [DEBT.md](DEBT.md) | Active debt register, workarounds, evolution paths |
 | [NEXT_STEPS.md](NEXT_STEPS.md) | Roadmap and upcoming work |
@@ -387,4 +387,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 26, 2026 -- Session 68: Dual-layer universal precision COMPLETE (op_preamble + naga-guided df64_rewrite). Precision bottleneck RESOLVED — zero f32-only shaders, all f64 canonical. F16/DF64 downcasts hardened (sentinel protection, NaN-safe bridge functions, ghost mappings cleaned). 122 shader tests (unit/e2e/chaos/fault). 700 WGSL shaders. 2,546+ barracuda tests. 0 clippy warnings.
+**Last Updated**: February 26, 2026 -- Session 68+: Dual-layer universal precision COMPLETE. Precision bottleneck RESOLVED. **Now evolving**: springs transition from fp64 shaders to true math — barracuda owns all precision, every spring absorption inherits universal dispatch. 700 WGSL shaders. 2,546+ barracuda tests. 0 clippy warnings. Root docs cleaned, stale scripts archived to ecoPrimals/fossil.

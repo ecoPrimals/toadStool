@@ -121,8 +121,11 @@ impl TverskyLoss {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/loss/tversky_loss_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/loss/tversky_loss_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 
@@ -286,7 +289,7 @@ impl TverskyLoss {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let output_data = crate::utils::read_buffer(device, &output_buffer, batch_size)?;
         Ok(Tensor::new(output_data, vec![batch_size], device.clone()))

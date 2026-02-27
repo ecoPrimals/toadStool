@@ -257,8 +257,7 @@ impl TreeInferenceGpu {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(total_threads.div_ceil(256), 1, 1);
         }
-        dev.queue.submit(Some(encoder.finish()));
-        dev.device.poll(wgpu::Maintain::Wait);
+        dev.submit_and_poll(Some(encoder.finish()));
 
         dev.read_buffer_u32(&output_buf, n_samples * n_trees)
     }

@@ -161,7 +161,7 @@ impl ComplexAbs {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Output shape is [batch..., 1] (real magnitudes)
         let mut output_shape = self.input.shape().to_vec();

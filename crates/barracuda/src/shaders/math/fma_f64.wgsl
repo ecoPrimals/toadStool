@@ -19,6 +19,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     // D = A * B + C
-    // WGSL has fma() intrinsic for hardware FMA where available
-    output[idx] = fma(a[idx], b[idx], c[idx]);
+    // WGSL fma() is not defined for f64; Sovereign Compiler fuses a*b+c to SPIR-V FMA
+    output[idx] = a[idx] * b[idx] + c[idx];
 }

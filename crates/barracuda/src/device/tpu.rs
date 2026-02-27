@@ -71,7 +71,7 @@ pub enum TpuGeneration {
 /// availability). `Mock` is isolated behind the `mock-tpu` feature flag and
 /// never compiled into production builds.
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Variants used when hardware features are enabled
+#[allow(dead_code)] // Variants used when hardware features (cloud-tpu, coral-edge) are enabled
 enum TpuBackend {
     /// Google Cloud TPU (via libtpu FFI — enabled by `cloud-tpu` feature)
     CloudTpu {

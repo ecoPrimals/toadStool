@@ -358,10 +358,7 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
         ],
     });
 
-    let shader = device.compile_shader(
-        &SHADER_F32,
-        Some("Expand"),
-    );
+    let shader = device.compile_shader(&SHADER_F32, Some("Expand"));
     let pipeline_layout = device
         .device
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -403,7 +400,7 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
-    device.queue.submit(Some(encoder.finish()));
+    device.submit_and_poll(Some(encoder.finish()));
 
     Ok(Tensor::from_buffer(
         output_buffer,

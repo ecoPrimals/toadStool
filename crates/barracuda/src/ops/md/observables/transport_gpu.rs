@@ -160,7 +160,7 @@ impl VacfBatchGpu {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(n_particles.div_ceil(WG), 1, 1);
         }
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
     }
 }
 
@@ -270,7 +270,7 @@ impl StressVirialGpu {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(n_particles.div_ceil(WG), 1, 1);
         }
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
     }
 }
 

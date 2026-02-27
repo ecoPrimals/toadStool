@@ -161,21 +161,8 @@ impl MsdGpu {
             enc.copy_buffer_to_buffer(&out_buf, 0, &rb, 0, out_size.max(8));
             q.submit(Some(enc.finish()));
 
-            let slice = rb.slice(..);
-            let (tx, rx) = std::sync::mpsc::channel();
-            slice.map_async(wgpu::MapMode::Read, move |r| {
-                tx.send(r).ok();
-            });
-            d.poll(wgpu::Maintain::Wait);
-            rx.recv()
-                .map_err(|_| crate::error::BarracudaError::Gpu("MSD readback".into()))?
-                .map_err(|e| crate::error::BarracudaError::Gpu(format!("MSD map: {e}")))?;
-
-            let data = slice.get_mapped_range();
-            let vals: &[f64] = bytemuck::cast_slice(&data);
+            let vals = self.device.map_staging_buffer::<f64>(&rb, total)?;
             let msd: f64 = vals.iter().sum::<f64>() / total as f64;
-            drop(data);
-            rb.unmap();
 
             t_values.push(lag as f64 * dt);
             msd_values.push(msd);

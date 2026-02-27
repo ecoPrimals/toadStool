@@ -403,7 +403,7 @@ impl Attention {
         }
 
         // Submit all passes
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

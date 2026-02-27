@@ -327,7 +327,7 @@ impl Ifft1D {
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 
-        device.queue.submit(std::iter::once(encoder.finish()));
+        device.submit_and_poll(std::iter::once(encoder.finish()));
 
         // Pass 2-N: Butterfly stages
         let num_stages = (self.degree as f32).log2() as u32;
@@ -395,7 +395,7 @@ impl Ifft1D {
                 compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
             }
 
-            device.queue.submit(std::iter::once(stage_encoder.finish()));
+            device.submit_and_poll(std::iter::once(stage_encoder.finish()));
             std::mem::swap(&mut current_input, &mut current_output);
         }
 

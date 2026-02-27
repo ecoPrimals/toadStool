@@ -7,11 +7,11 @@
 //! `Tensor` via `Tensor::from_arc_buffer` — eliminating the GPU→CPU→GPU
 //! round-trip when wrapping an executed output back into TensorStorage.
 
-use async_trait::async_trait;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use crate::unified_hardware::{HardwareType, TensorStorage};
 use crate::unified_math::{DType, TensorDescriptor};
+use async_trait::async_trait;
 use std::sync::Arc;
 
 /// GPU tensor storage for the `ComputeExecutor` scheduler interface.
@@ -77,7 +77,7 @@ impl GpuTensorStorage {
                         label: Some("GpuTensorStorage copy"),
                     });
             enc.copy_buffer_to_buffer(tensor.buffer(), 0, &new.buffer, 0, byte_size);
-            new.device.queue.submit(Some(enc.finish()));
+            new.device.submit_and_poll(Some(enc.finish()));
             new
         }
     }
@@ -120,7 +120,7 @@ impl TensorStorage for GpuTensorStorage {
                     label: Some("GpuTensorStorage read"),
                 });
         encoder.copy_buffer_to_buffer(&self.buffer, 0, &staging, 0, byte_size);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();

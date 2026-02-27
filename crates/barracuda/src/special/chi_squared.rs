@@ -32,7 +32,8 @@ use crate::special::gamma::{ln_gamma, regularized_gamma_p, regularized_gamma_q};
 /// WGSL kernel for chi-squared distribution evaluation (f64).
 pub const WGSL_CHI_SQUARED_F64: &str = include_str!("../shaders/special/chi_squared_f64.wgsl");
 /// WGSL kernel for decomposed chi-squared test statistic (f64).
-pub const WGSL_CHI2_DECOMPOSED_F64: &str = include_str!("../shaders/special/chi2_decomposed_f64.wgsl");
+pub const WGSL_CHI2_DECOMPOSED_F64: &str =
+    include_str!("../shaders/special/chi2_decomposed_f64.wgsl");
 
 /// Chi-squared probability density function
 ///

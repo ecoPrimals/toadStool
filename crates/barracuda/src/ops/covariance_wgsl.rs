@@ -92,6 +92,7 @@ impl Covariance {
 
     /// CPU reference implementation
     #[cfg(test)]
+    #[allow(dead_code)]
     fn covariance_cpu(&self, x: &[f32], y: &[f32], ddof: u32) -> f32 {
         let n = x.len() as f32;
         let mean_x: f32 = x.iter().sum::<f32>() / n;
@@ -269,7 +270,7 @@ impl Covariance {
             pass.dispatch_workgroups(1, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         // Read back result
         let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -286,18 +287,10 @@ impl Covariance {
                     label: Some("Copy Encoder"),
                 });
         encoder2.copy_buffer_to_buffer(&output_buf, 0, &staging, 0, 4);
-        self.device.queue.submit(Some(encoder2.finish()));
+        self.device.submit_and_poll(Some(encoder2.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let result: f32 = bytemuck::cast_slice(&data)[0];
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
+        let result_vec: Vec<f32> = self.device.map_staging_buffer(&staging, 1)?;
+        Ok(result_vec[0])
     }
 }
 

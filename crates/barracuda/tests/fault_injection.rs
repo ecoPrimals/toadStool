@@ -14,9 +14,8 @@
 //! 3. Releases resources properly on failure
 //! 4. Provides meaningful recovery paths
 
-use barracuda::device::{Device, KernelRouter, WgpuDevice};
+use barracuda::device::{Device, KernelRouter};
 use barracuda::tensor::Tensor;
-use std::sync::Arc;
 
 // ============================================================================
 // Invalid Input Tests
@@ -26,13 +25,7 @@ use std::sync::Arc;
 async fn test_shape_mismatch_matmul() {
     println!("\n=== Shape Mismatch Error Handling ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Create incompatible matrices (3x4 * 5x6 - inner dimensions don't match)
     let a_data: Vec<f32> = vec![1.0; 12]; // 3x4
@@ -71,13 +64,7 @@ async fn test_shape_mismatch_matmul() {
 async fn test_data_shape_mismatch() {
     println!("\n=== Data/Shape Mismatch Handling ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Data has 10 elements but shape says 12
     let data: Vec<f32> = vec![1.0; 10];
@@ -100,13 +87,7 @@ async fn test_data_shape_mismatch() {
 async fn test_nan_input_handling() {
     println!("\n=== NaN Input Handling ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Create tensor with NaN values
     let data_with_nan = vec![1.0, 2.0, f32::NAN, 4.0];
@@ -128,13 +109,7 @@ async fn test_nan_input_handling() {
 async fn test_inf_input_handling() {
     println!("\n=== Inf Input Handling ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Create tensor with Inf values
     let data_with_inf = vec![1.0, f32::INFINITY, f32::NEG_INFINITY, 4.0];
@@ -160,13 +135,7 @@ async fn test_inf_input_handling() {
 async fn test_cholesky_non_positive_definite() {
     println!("\n=== Cholesky Non-Positive-Definite Matrix ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Non-positive-definite matrix (negative eigenvalue)
     let non_spd = vec![-4.0, 2.0, 2.0, -3.0];
@@ -198,13 +167,7 @@ async fn test_cholesky_non_positive_definite() {
 async fn test_cholesky_non_square_matrix() {
     println!("\n=== Cholesky Non-Square Matrix ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Non-square matrix (3x2)
     let non_square = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
@@ -273,13 +236,7 @@ fn test_kernel_router_invalid_model_fallback() {
 async fn test_resource_cleanup_on_error() {
     println!("\n=== Resource Cleanup on Error ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Track operations that might leak resources
     let iterations = 50;
@@ -326,13 +283,7 @@ async fn test_resource_cleanup_on_error() {
 async fn test_operation_timeout_handling() {
     println!("\n=== Operation Timeout Handling ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Create a reasonably large tensor operation
     let size = 512;
@@ -414,13 +365,7 @@ fn test_device_unavailability_handling() {
 async fn test_error_messages_are_informative() {
     println!("\n=== Error Message Quality ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Collection of error-inducing scenarios
     let test_cases = vec![
@@ -461,20 +406,13 @@ async fn test_error_messages_are_informative() {
 async fn test_concurrent_error_handling() {
     println!("\n=== Concurrent Error Handling ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     let num_tasks = 10;
-    let device_arc = Arc::new(device);
     let mut handles = Vec::new();
 
     for i in 0..num_tasks {
-        let device_clone = Arc::clone(&device_arc);
+        let device_clone = device.clone();
 
         let handle = tokio::spawn(async move {
             // Some tasks have errors, some don't
@@ -482,16 +420,14 @@ async fn test_concurrent_error_handling() {
                 // Error case - mismatched data/shape
                 let data: Vec<f32> = vec![1.0; 5];
                 let shape = vec![2, 3]; // Expects 6 elements
-                Tensor::from_vec_on(data, shape, (*device_clone).clone())
+                Tensor::from_vec_on(data, shape, device_clone)
                     .await
                     .is_err()
             } else {
                 // Success case
                 let data: Vec<f32> = vec![1.0; 6];
                 let shape = vec![2, 3];
-                Tensor::from_vec_on(data, shape, (*device_clone).clone())
-                    .await
-                    .is_ok()
+                Tensor::from_vec_on(data, shape, device_clone).await.is_ok()
             }
         });
 

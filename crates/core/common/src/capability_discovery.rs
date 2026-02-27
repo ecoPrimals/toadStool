@@ -474,7 +474,9 @@ mod tests {
                 "expected no services in test env, got {}",
                 services.len()
             ),
-            other => panic!("unexpected result: {other:?}"),
+            other => unreachable!(
+                "expected NoServicesFound/Timeout/DiscoveryFailed or Ok, got: {other:?}"
+            ),
         }
     }
 

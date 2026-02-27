@@ -1,8 +1,6 @@
 //! 1D gradient computation: df/dx
 
-use super::super::fd_common::{
-    create_staging_buffer, read_staging_f64 as read_staging, FdPipelineBuilder, FD_WORKGROUP_SIZE,
-};
+use super::super::fd_common::{create_staging_buffer, FdPipelineBuilder, FD_WORKGROUP_SIZE};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -131,6 +129,6 @@ impl Gradient1D {
         encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        read_staging(self.device.device(), &staging, self.n).await
+        self.device.map_staging_buffer::<f64>(&staging, self.n)
     }
 }

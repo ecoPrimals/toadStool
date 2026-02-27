@@ -122,10 +122,11 @@ impl PinnedMemory {
 }
 
 impl Drop for PinnedMemory {
-    #[allow(clippy::expect_used)] // Infallible: size/align unchanged from alloc time
     fn drop(&mut self) {
-        let layout = std::alloc::Layout::from_size_align(self.size, PINNED_ALIGNMENT)
-            .expect("Layout valid during drop");
+        let Ok(layout) = std::alloc::Layout::from_size_align(self.size, PINNED_ALIGNMENT) else {
+            tracing::error!("BUG: layout invalid in PinnedMemory::drop (size={}, align={})", self.size, PINNED_ALIGNMENT);
+            return;
+        };
 
         // SAFETY: dealloc is necessary; must match alloc in new() for correctness.
         // Invariants: (1) ptr from alloc(layout) in new(); (2) layout matches allocation;

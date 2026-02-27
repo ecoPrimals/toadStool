@@ -31,11 +31,9 @@
 //! transparently. Storage stays `array<f64>`, variables stay `f64`, the
 //! type system is untouched. Only the arithmetic is redirected.
 
-use naga::{
-    Arena, BinaryOperator, Expression, Handle, TypeInner, UnaryOperator,
-};
 use naga::proc::TypeResolution;
 use naga::valid::FunctionInfo;
+use naga::{Arena, BinaryOperator, Expression, Handle, TypeInner, UnaryOperator};
 use std::collections::HashSet;
 
 /// Bridge functions that accept f64, compute in Df64, return f64.
@@ -70,8 +68,8 @@ struct Replacement {
 ///
 /// Returns `Err` if the source fails to parse or validate as f64 WGSL.
 pub fn rewrite_f64_infix_to_df64(f64_source: &str) -> Result<String, String> {
-    let module = naga::front::wgsl::parse_str(f64_source)
-        .map_err(|e| format!("naga parse: {e}"))?;
+    let module =
+        naga::front::wgsl::parse_str(f64_source).map_err(|e| format!("naga parse: {e}"))?;
 
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
@@ -85,22 +83,12 @@ pub fn rewrite_f64_infix_to_df64(f64_source: &str) -> Result<String, String> {
 
     for (ep_idx, ep) in module.entry_points.iter().enumerate() {
         let fi = info.get_entry_point(ep_idx);
-        collect_f64_infix_ops(
-            &ep.function.expressions,
-            fi,
-            &module,
-            &mut replacements,
-        );
+        collect_f64_infix_ops(&ep.function.expressions, fi, &module, &mut replacements);
     }
 
     for (fh, func) in module.functions.iter() {
         let fi = &info[fh];
-        collect_f64_infix_ops(
-            &func.expressions,
-            fi,
-            &module,
-            &mut replacements,
-        );
+        collect_f64_infix_ops(&func.expressions, fi, &module, &mut replacements);
     }
 
     if replacements.is_empty() {
@@ -160,8 +148,8 @@ fn dedup_overlapping(replacements: &mut Vec<Replacement>) {
 
 /// Count how many f64 infix operations exist in a shader (for audit/reporting).
 pub fn count_f64_infix_ops(f64_source: &str) -> Result<usize, String> {
-    let module = naga::front::wgsl::parse_str(f64_source)
-        .map_err(|e| format!("naga parse: {e}"))?;
+    let module =
+        naga::front::wgsl::parse_str(f64_source).map_err(|e| format!("naga parse: {e}"))?;
 
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
@@ -199,7 +187,9 @@ fn count_f64_ops_in(
     let mut count = 0;
     for (_handle, expr) in expressions.iter() {
         match *expr {
-            Expression::Binary { op, left, .. } if is_rewritable_op(op) && is_f64_expr(left, fi, module) => {
+            Expression::Binary { op, left, .. }
+                if is_rewritable_op(op) && is_f64_expr(left, fi, module) =>
+            {
                 count += 1;
             }
             Expression::Unary {
@@ -264,8 +254,7 @@ fn collect_f64_infix_ops(
 
         if is_f64_op {
             if let Some(span_range) = expressions.get_span(handle).to_range() {
-                let text =
-                    build_bridge_text(handle, expressions, fi, module, &consumed_by_f64_op);
+                let text = build_bridge_text(handle, expressions, fi, module, &consumed_by_f64_op);
                 out.push(Replacement {
                     span_start: span_range.start,
                     span_end: span_range.end,
@@ -296,9 +285,9 @@ fn collect_f64_infix_ops(
         if is_f64_op {
             if let Some(span_range) = expressions.get_span(handle).to_range() {
                 // Check if this span overlaps with any existing replacement
-                let overlaps = out.iter().any(|r| {
-                    span_range.start < r.span_end && span_range.end > r.span_start
-                });
+                let overlaps = out
+                    .iter()
+                    .any(|r| span_range.start < r.span_end && span_range.end > r.span_start);
                 if !overlaps {
                     let text =
                         build_bridge_text(handle, expressions, fi, module, &consumed_by_f64_op);
@@ -399,11 +388,7 @@ fn is_rewritable_op(op: BinaryOperator) -> bool {
 }
 
 /// Check if an expression resolves to f64 type.
-fn is_f64_expr(
-    handle: Handle<Expression>,
-    fi: &FunctionInfo,
-    module: &naga::Module,
-) -> bool {
+fn is_f64_expr(handle: Handle<Expression>, fi: &FunctionInfo, module: &naga::Module) -> bool {
     let ei = &fi[handle];
     match &ei.ty {
         TypeResolution::Value(TypeInner::Scalar(scalar)) => {
@@ -465,8 +450,8 @@ mod tests {
 
     fn rewrite_and_resolve(wgsl: &str) -> String {
         let rewritten = rewrite_f64_infix_to_df64(wgsl).expect("should parse");
-        let resolved = resolve_spans(&rewritten, wgsl);
-        resolved
+
+        resolve_spans(&rewritten, wgsl)
     }
 
     #[test]
@@ -683,9 +668,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let result = rewrite_f64_infix_to_df64("");
         // If naga accepts it, the result is the source unchanged.
         // If naga rejects it, we get an Err. Both are acceptable.
-        match result {
-            Ok(s) => assert_eq!(s, "", "empty in, empty out"),
-            Err(_) => {} // parse/validation failure is fine
+        if let Ok(s) = result {
+            assert_eq!(s, "", "empty in, empty out");
         }
     }
 
@@ -706,7 +690,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 "#;
         let count = count_f64_infix_ops(wgsl).expect("should parse");
-        assert!(count >= 1, "should count f64 add but not u32 ops, got {count}");
+        assert!(
+            count >= 1,
+            "should count f64 add but not u32 ops, got {count}"
+        );
     }
 
     #[test]
@@ -775,7 +762,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let rewritten = "__SPAN__0__999";
         let result = resolve_spans(rewritten, original);
         // Should not panic, marker stays as-is
-        assert!(result.contains("__SPAN__"), "out of bounds should leave marker");
+        assert!(
+            result.contains("__SPAN__"),
+            "out of bounds should leave marker"
+        );
     }
 
     #[test]
@@ -783,7 +773,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let original = "hello world";
         let rewritten = "__SPAN__5__0";
         let result = resolve_spans(rewritten, original);
-        assert!(result.contains("__SPAN__"), "inverted range should leave marker");
+        assert!(
+            result.contains("__SPAN__"),
+            "inverted range should leave marker"
+        );
     }
 
     #[test]
@@ -818,9 +811,21 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     #[test]
     fn test_fault_dedup_preserves_non_overlapping() {
         let mut replacements = vec![
-            Replacement { span_start: 100, span_end: 110, text: "A".into() },
-            Replacement { span_start: 50, span_end: 60, text: "B".into() },
-            Replacement { span_start: 10, span_end: 20, text: "C".into() },
+            Replacement {
+                span_start: 100,
+                span_end: 110,
+                text: "A".into(),
+            },
+            Replacement {
+                span_start: 50,
+                span_end: 60,
+                text: "B".into(),
+            },
+            Replacement {
+                span_start: 10,
+                span_end: 20,
+                text: "C".into(),
+            },
         ];
         dedup_overlapping(&mut replacements);
         assert_eq!(replacements.len(), 3, "non-overlapping should all survive");
@@ -829,8 +834,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     #[test]
     fn test_fault_dedup_removes_nested() {
         let mut replacements = vec![
-            Replacement { span_start: 15, span_end: 25, text: "inner".into() },
-            Replacement { span_start: 10, span_end: 30, text: "outer".into() },
+            Replacement {
+                span_start: 15,
+                span_end: 25,
+                text: "inner".into(),
+            },
+            Replacement {
+                span_start: 10,
+                span_end: 30,
+                text: "outer".into(),
+            },
         ];
         // sorted by span_start descending
         replacements.sort_by(|a, b| b.span_start.cmp(&a.span_start));

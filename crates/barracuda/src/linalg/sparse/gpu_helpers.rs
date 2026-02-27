@@ -216,7 +216,7 @@ impl SparseBuffers {
                 label: Some("Buffer copy"),
             });
         encoder.copy_buffer_to_buffer(src, 0, dst, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
     }
 }
 

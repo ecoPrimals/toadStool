@@ -38,7 +38,6 @@ impl Default for ProfilingConfig {
 /// All measurements done at runtime - no assumptions!
 pub struct RuntimeProfiler {
     fingerprint: GpuFingerprint,
-    #[allow(dead_code)]
     // BLOCKED(real-gpu-executor): config drives warmup/measurement runs once real benchmarks replace the model
     config: ProfilingConfig,
 }
@@ -135,14 +134,17 @@ impl RuntimeProfiler {
     ///
     /// Returns estimated execution time in microseconds.
     /// BLOCKED(real-gpu-executor): Replace with actual wgpu executor micro-benchmarks
-    /// once RuntimeProfiler holds an executor reference. Current implementation returns
-    /// conservative model-based estimates without sleeping.
+    /// once `RuntimeProfiler` holds an executor reference. Current implementation returns
+    /// conservative model-based estimates without sleeping. The `Result` return and `&self`
+    /// receiver preserve the API surface for the real-gpu-executor evolution.
+    #[allow(clippy::unnecessary_wraps)]
     fn benchmark_workgroup(
         &self,
         op_type: OpType,
         size: usize,
         workgroup_size: usize,
     ) -> Result<f64> {
+        let _ = &self.config;
         #[allow(clippy::cast_precision_loss)]
         let estimated_us = Self::simulate_gpu_time(op_type, size, workgroup_size) as f64;
         Ok(estimated_us)

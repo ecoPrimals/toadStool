@@ -141,10 +141,11 @@ pub fn detect_akida_boards() -> Result<AkidaCapabilities> {
 
 /// PCIe device info
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Fields used for future expansion
 struct PcieDevice {
     address: String,
+    #[allow(dead_code)] // Fields used for future expansion
     vendor_id: u16,
+    #[allow(dead_code)] // Fields used for future expansion
     device_id: u16,
 }
 

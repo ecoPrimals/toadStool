@@ -156,7 +156,7 @@ impl QrGpu {
                     pass.set_bind_group(0, bg, &[]);
                     pass.dispatch_workgroups(wg.0, wg.1, wg.2);
                 }
-                device.queue.submit(Some(enc.finish()));
+                device.submit_and_poll(Some(enc.finish()));
             };
 
         for k in 0..k_max {
@@ -354,7 +354,7 @@ impl QrGpu {
                     pass.set_bind_group(0, bg, &[]);
                     pass.dispatch_workgroups(wg.0, wg.1, wg.2);
                 }
-                device.queue.submit(Some(enc.finish()));
+                device.submit_and_poll(Some(enc.finish()));
             };
 
         let make_bg = |layout: &wgpu::BindGroupLayout, entries: &[&wgpu::Buffer]| {

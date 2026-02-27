@@ -133,7 +133,7 @@ impl Split {
             let workgroups = (total_size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Determine output shapes (split along last dimension for simplicity)
         let mut shape1 = shape.to_vec();

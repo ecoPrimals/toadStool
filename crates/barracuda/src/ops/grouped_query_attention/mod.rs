@@ -32,8 +32,9 @@ static SHADER_F32: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
 const SHADER_SOFTMAX_F64: &str = include_str!("../../shaders/activation/gqa_softmax_f64.wgsl");
-static SHADER_SOFTMAX_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SOFTMAX_F64));
+static SHADER_SOFTMAX_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SOFTMAX_F64)
+});
 
 #[cfg(test)]
 mod tests;
@@ -144,8 +145,11 @@ impl GroupedQueryAttention {
 
     /// Get WGSL shader for GQA attention matrix multiplication (Pass 1)
     pub(super) fn wgsl_shader_matmul() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../../shaders/math/gqa_matmul_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../../shaders/math/gqa_matmul_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 

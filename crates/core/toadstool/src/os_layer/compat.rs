@@ -258,7 +258,8 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
                 return Err(SystemError::NotSupported {
                     feature: "linux_compat_layer".into(),
                     reason: "LinuxCompatibilityLayer requires target_os = linux".into(),
-                }.into());
+                }
+                .into());
             }
             Ok(ExecutionResponse::default())
         })
@@ -295,7 +296,8 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
                 return Err(SystemError::NotSupported {
                     feature: "windows_compat_layer".into(),
                     reason: "WindowsCompatibilityLayer requires target_os = windows".into(),
-                }.into());
+                }
+                .into());
             }
             Ok(ExecutionResponse::default())
         })
@@ -332,7 +334,8 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
                 return Err(SystemError::NotSupported {
                     feature: "macos_compat_layer".into(),
                     reason: "MacOSCompatibilityLayer requires target_os = macos".into(),
-                }.into());
+                }
+                .into());
             }
             Ok(ExecutionResponse::default())
         })

@@ -33,15 +33,14 @@
 //! let dense_vec = vec![100, -50];     // int8 input
 //!
 //! let result = sparse_matmul_quantized(
-//!     device.device(),
-//!     device.queue(),
+//!     &device,
 //!     &values,
 //!     &rows,
 //!     &cols,
 //!     &dense_vec,
 //!     3, // output size
 //!     127.0, // scale factor
-//! ).await?;
+//! )?;
 //! # Ok(())
 //! # }
 //! ```
@@ -49,14 +48,14 @@
 use std::borrow::Cow;
 use wgpu::util::DeviceExt;
 
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result as BarracudaResult};
 
 /// Sparse matrix multiply with quantized int8 values
 ///
 /// # Arguments
 ///
-/// * `device` - The `wgpu` device
-/// * `queue` - The `wgpu` queue  
+/// * `device` - The `WgpuDevice` (provides device, queue, and readback)
 /// * `sparse_values` - Non-zero values (int8)
 /// * `sparse_rows` - Row indices
 /// * `sparse_cols` - Column indices
@@ -67,9 +66,8 @@ use crate::error::{BarracudaError, Result as BarracudaResult};
 /// # Returns
 ///
 /// Dense output vector (fp32, dequantized)
-pub async fn sparse_matmul_quantized(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
+pub fn sparse_matmul_quantized(
+    device: &WgpuDevice,
     sparse_values: &[i8],
     sparse_rows: &[u32],
     sparse_cols: &[u32],
@@ -90,8 +88,10 @@ pub async fn sparse_matmul_quantized(
     }
 
     let nnz = sparse_values.len() as u32;
+    let d = device.device();
+    let q = device.queue();
 
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+    let shader = d.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Sparse MatMul Quantized Shader"),
         source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
             "sparse_matmul_quantized.wgsl"
@@ -102,31 +102,31 @@ pub async fn sparse_matmul_quantized(
     let values_i32: Vec<i32> = sparse_values.iter().map(|&x| x as i32).collect();
     let dense_i32: Vec<i32> = dense_vector.iter().map(|&x| x as i32).collect();
 
-    let values_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let values_buffer = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Sparse Values"),
         contents: bytemuck::cast_slice(&values_i32),
         usage: wgpu::BufferUsages::STORAGE,
     });
 
-    let rows_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let rows_buffer = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Sparse Rows"),
         contents: bytemuck::cast_slice(sparse_rows),
         usage: wgpu::BufferUsages::STORAGE,
     });
 
-    let cols_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let cols_buffer = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Sparse Cols"),
         contents: bytemuck::cast_slice(sparse_cols),
         usage: wgpu::BufferUsages::STORAGE,
     });
 
-    let dense_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let dense_buffer = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Dense Vector"),
         contents: bytemuck::cast_slice(&dense_i32),
         usage: wgpu::BufferUsages::STORAGE,
     });
 
-    let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    let output_buffer = d.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Output"),
         size: (output_size * std::mem::size_of::<f32>() as u32) as u64,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
@@ -149,13 +149,13 @@ pub async fn sparse_matmul_quantized(
         _padding: 0,
     };
 
-    let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let params_buffer = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Params"),
         contents: bytemuck::bytes_of(&params),
         usage: wgpu::BufferUsages::UNIFORM,
     });
 
-    let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+    let bind_group_layout = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("Sparse MatMul Layout"),
         entries: &[
             wgpu::BindGroupLayoutEntry {
@@ -221,7 +221,7 @@ pub async fn sparse_matmul_quantized(
         ],
     });
 
-    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+    let bind_group = d.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("Sparse MatMul Bind Group"),
         layout: &bind_group_layout,
         entries: &[
@@ -252,13 +252,13 @@ pub async fn sparse_matmul_quantized(
         ],
     });
 
-    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+    let pipeline_layout = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Sparse MatMul Pipeline Layout"),
         bind_group_layouts: &[&bind_group_layout],
         push_constant_ranges: &[],
     });
 
-    let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+    let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("Sparse MatMul Pipeline"),
         layout: Some(&pipeline_layout),
         module: &shader,
@@ -267,7 +267,7 @@ pub async fn sparse_matmul_quantized(
         compilation_options: Default::default(),
     });
 
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+    let mut encoder = d.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("Sparse MatMul Encoder"),
     });
 
@@ -280,7 +280,7 @@ pub async fn sparse_matmul_quantized(
         cpass.set_bind_group(0, &bind_group, &[]);
         // Deep Debt Evolution: Capability-based dispatch
         // Note: This function uses raw wgpu::Device, so we use device limits for capability awareness
-        let limits = device.limits();
+        let limits = d.limits();
         let max_invocations = limits.max_compute_invocations_per_workgroup;
         // Use capability-aware workgroup size, respecting device limits
         // Choose optimal size based on device capabilities: prefer 256 for discrete GPUs,
@@ -296,7 +296,7 @@ pub async fn sparse_matmul_quantized(
         cpass.dispatch_workgroups(workgroups.max(1), 1, 1);
     }
 
-    let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    let staging_buffer = d.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Staging"),
         size: (output_size * std::mem::size_of::<f32>() as u32) as u64,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
@@ -310,29 +310,9 @@ pub async fn sparse_matmul_quantized(
         0,
         (output_size * std::mem::size_of::<f32>() as u32) as u64,
     );
-    queue.submit(Some(encoder.finish()));
+    q.submit(Some(encoder.finish()));
 
-    let buffer_slice = staging_buffer.slice(..);
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-        let _ = sender.send(result);
-    });
-    device.poll(wgpu::Maintain::Wait);
-    receiver
-        .await
-        .map_err(|_| BarracudaError::ExecutionError {
-            message: "Failed to receive buffer".to_string(),
-        })?
-        .map_err(|e| BarracudaError::ExecutionError {
-            message: format!("Buffer mapping failed: {:?}", e),
-        })?;
-
-    let data = buffer_slice.get_mapped_range();
-    let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
-    drop(data);
-    staging_buffer.unmap();
-
-    Ok(result)
+    device.map_staging_buffer::<f32>(&staging_buffer, output_size as usize)
 }
 
 #[cfg(test)]
@@ -349,18 +329,9 @@ mod tests {
         let rows = vec![0, 1, 2];
         let cols = vec![0, 0, 1];
         let dense = vec![10, 20];
-        let result = sparse_matmul_quantized(
-            &device.device,
-            &device.queue,
-            &values,
-            &rows,
-            &cols,
-            &dense,
-            3,
-            1.0,
-        )
-        .await
-        .unwrap();
+        let result =
+            sparse_matmul_quantized(device.as_ref(), &values, &rows, &cols, &dense, 3, 1.0)
+                .unwrap();
         assert_eq!(result.len(), 3);
         assert!((result[0] - 1270.0).abs() < 1.0);
         assert!((result[1] - -640.0).abs() < 1.0);
@@ -377,18 +348,9 @@ mod tests {
         let rows = vec![0];
         let cols = vec![0];
         let dense = vec![100];
-        let result = sparse_matmul_quantized(
-            &device.device,
-            &device.queue,
-            &values,
-            &rows,
-            &cols,
-            &dense,
-            1,
-            1.0,
-        )
-        .await
-        .unwrap();
+        let result =
+            sparse_matmul_quantized(device.as_ref(), &values, &rows, &cols, &dense, 1, 1.0)
+                .unwrap();
         assert!(result[0].abs() < 0.1);
     }
 
@@ -400,8 +362,7 @@ mod tests {
         };
         let empty: Vec<i8> = vec![];
         assert!(sparse_matmul_quantized(
-            &device.device,
-            &device.queue,
+            device.as_ref(),
             &empty,
             &vec![],
             &vec![],
@@ -409,7 +370,6 @@ mod tests {
             1,
             1.0
         )
-        .await
         .is_err());
     }
 
@@ -423,18 +383,9 @@ mod tests {
         let rows: Vec<u32> = (0..1000).map(|i| i % 100).collect();
         let cols: Vec<u32> = (0..1000).map(|i| i % 50).collect();
         let dense: Vec<i8> = (0..50).map(|i| (i % 10) as i8).collect();
-        let result = sparse_matmul_quantized(
-            &device.device,
-            &device.queue,
-            &values,
-            &rows,
-            &cols,
-            &dense,
-            100,
-            1.0,
-        )
-        .await
-        .unwrap();
+        let result =
+            sparse_matmul_quantized(device.as_ref(), &values, &rows, &cols, &dense, 100, 1.0)
+                .unwrap();
         assert_eq!(result.len(), 100);
         assert!(result.iter().all(|&x| x.is_finite()));
     }
@@ -449,18 +400,9 @@ mod tests {
         let rows = vec![0, 0];
         let cols = vec![0, 1];
         let dense = vec![1, 1];
-        let result = sparse_matmul_quantized(
-            &device.device,
-            &device.queue,
-            &values,
-            &rows,
-            &cols,
-            &dense,
-            1,
-            1.0,
-        )
-        .await
-        .unwrap();
+        let result =
+            sparse_matmul_quantized(device.as_ref(), &values, &rows, &cols, &dense, 1, 1.0)
+                .unwrap();
         assert!((result[0] - 254.0).abs() < 1.0);
     }
 }

@@ -275,7 +275,7 @@ impl GemmF64 {
                 pass.set_bind_group(0, &bg, &[]);
                 pass.dispatch_workgroups(wg_x, wg_y, wg_z);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         // Read back results
@@ -506,7 +506,7 @@ impl GemmCachedF64 {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(wg_x, wg_y, wg_z);
         }
-        dev.queue.submit(Some(encoder.finish()));
+        dev.submit_and_poll(Some(encoder.finish()));
 
         Ok(c_buf)
     }

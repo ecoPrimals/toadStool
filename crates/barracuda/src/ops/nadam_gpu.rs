@@ -325,8 +325,7 @@ impl NAdam {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return updated tensors
         let params_shape = self.params.shape().to_vec();

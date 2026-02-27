@@ -255,7 +255,7 @@ impl Put {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back via device (ensures GPU writes are visible)
         let output_data = device.read_buffer_f32(&work_buffer, output_size)?;

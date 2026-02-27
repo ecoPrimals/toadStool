@@ -2,8 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn test_filter_gt_basic() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     // [1.0, 5.0, 3.0, 7.0] > 4.0 → keep [5.0, 7.0], count=2
@@ -21,8 +20,7 @@ async fn test_filter_gt_basic() {
 
 #[tokio::test]
 async fn test_filter_all_pass() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let input = Tensor::from_data(&[1.0f32, 2.0, 3.0], vec![3], device).unwrap();
@@ -32,8 +30,7 @@ async fn test_filter_all_pass() {
 
 #[tokio::test]
 async fn test_filter_none_pass() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let input = Tensor::from_data(&[1.0f32, 2.0, 3.0], vec![3], device).unwrap();
@@ -43,8 +40,7 @@ async fn test_filter_none_pass() {
 
 #[tokio::test]
 async fn test_filter_ge() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     // [1, 5, 5, 7] >= 5 → [5, 5, 7], count=3
@@ -55,8 +51,7 @@ async fn test_filter_ge() {
 
 #[tokio::test]
 async fn test_filter_large() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     // 1024 elements alternating positive/negative — keep positive (> 0)

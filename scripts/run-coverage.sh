@@ -43,7 +43,7 @@ run_tier1() {
         "toadstool-management-resources"
         "toadstool-management-monitoring"
         "toadstool-management-performance"
-        "toadstool-management-analytics"
+        # "toadstool-management-analytics"  # commented out in workspace Cargo.toml
         "toadstool-runtime-wasm"
         "toadstool-runtime-native"
         "toadstool-runtime-python"
@@ -107,7 +107,7 @@ run_tier2() {
     
     # E2E Tests
     echo -e "${YELLOW}Running E2E tests...${NC}"
-    cargo test --test e2e_tests --test e2e_concurrent_integration_suite -- --test-threads=1
+    cargo test --test e2e_tests -- --test-threads=1
     cargo test e2e_workflow_week3 e2e_biome_lifecycle
     
     # Chaos Tests

@@ -235,27 +235,10 @@ impl Quantize {
             0,
             (size * std::mem::size_of::<i32>()) as u64,
         );
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
-        // Read i32 data from staging buffer
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) =
-            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-
-        receiver
-            .recv()
-            .map_err(|e| BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
-            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let i32_data: &[i32] = bytemuck::cast_slice(&data);
+        let i32_data: Vec<i32> = device.map_staging_buffer(&staging_buffer, size)?;
         let f32_data: Vec<f32> = i32_data.iter().map(|&x| x as f32).collect();
-        drop(data);
-        staging_buffer.unmap();
 
         // Create tensor from f32 data (values represent quantized integers)
         Tensor::from_data(&f32_data, self.input.shape().to_vec(), device.clone())

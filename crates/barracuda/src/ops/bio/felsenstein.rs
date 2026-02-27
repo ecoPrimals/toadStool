@@ -301,8 +301,7 @@ impl FelsensteinGpu {
             pass.dispatch_workgroups(total.div_ceil(256), 1, 1);
         }
 
-        dev.queue.submit(Some(encoder.finish()));
-        dev.device.poll(wgpu::Maintain::Wait);
+        dev.submit_and_poll(Some(encoder.finish()));
 
         let likelihoods = dev.read_buffer_f64(&lik_buf, n_nodes * n_sites * n_states)?;
 

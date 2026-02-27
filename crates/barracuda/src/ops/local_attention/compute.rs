@@ -396,8 +396,7 @@ impl LocalAttention {
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return output tensor
         Ok(Tensor::from_buffer(

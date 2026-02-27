@@ -15,18 +15,8 @@ async fn test_run_biome_with_nonexistent_manifest_fails() {
 
     let nonexistent = std::path::PathBuf::from("/nonexistent/manifest.toml");
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            nonexistent,
-            None,
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = run_biome_opts(nonexistent, None, vec![], false, None, None, "basic".to_string());
+    let result = executor.run_biome(&ctx, opts).await;
 
     assert!(result.is_err(), "Should fail with nonexistent manifest");
 }
@@ -43,18 +33,16 @@ async fn test_run_biome_with_invalid_manifest_fails() {
         .await
         .unwrap();
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            None,
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = run_biome_opts(
+        manifest_path.clone(),
+        None,
+        vec![],
+        false,
+        None,
+        None,
+        "basic".to_string(),
+    );
+    let result = executor.run_biome(&ctx, opts).await;
 
     // Cleanup
     let _ = tokio::fs::remove_file(&manifest_path).await;
@@ -69,17 +57,8 @@ async fn test_up_biome_with_nonexistent_manifest_fails() {
 
     let nonexistent = std::path::PathBuf::from("/nonexistent/manifest.toml");
 
-    let result = executor
-        .up_biome(
-            &ctx,
-            nonexistent,
-            false,  // detach
-            None,   // name
-            vec![], // env
-            false,  // restart
-            30,     // health_interval
-        )
-        .await;
+    let opts = up_biome_opts(nonexistent, false, None, vec![], false, 30);
+    let result = executor.up_biome(&ctx, opts).await;
 
     assert!(
         result.is_err(),
@@ -100,9 +79,8 @@ async fn test_manifest_path_validation() {
     ];
 
     for path in invalid_paths {
-        let result = executor
-            .run_biome(&ctx, path, None, vec![], false, None, None, "basic".to_string())
-            .await;
+        let opts = run_biome_opts(path, None, vec![], false, None, None, "basic".to_string());
+        let result = executor.run_biome(&ctx, opts).await;
 
         // Should handle gracefully (either error or proceed based on implementation)
         // We're testing that it doesn't panic
@@ -118,18 +96,16 @@ async fn test_manifest_content_types() {
     // Test with minimal manifest
     let manifest_path = create_test_manifest_file("minimal").await.unwrap();
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            None,
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = run_biome_opts(
+        manifest_path.clone(),
+        None,
+        vec![],
+        false,
+        None,
+        None,
+        "basic".to_string(),
+    );
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_test_manifest(&manifest_path).await.ok();
 
@@ -151,9 +127,8 @@ async fn test_concurrent_manifest_access() {
                 b.wait().await;
                 let executor = create_test_executor().await.unwrap();
                 let ctx = create_test_context();
-                executor
-                    .run_biome(&ctx, path, None, vec![], false, None, None, "basic".to_string())
-                    .await
+                let opts = run_biome_opts(path, None, vec![], false, None, None, "basic".to_string());
+                executor.run_biome(&ctx, opts).await
             })
         })
         .collect();

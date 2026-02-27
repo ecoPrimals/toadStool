@@ -224,8 +224,6 @@ fn op_unpack(v: f16) -> f16 { return v; }
 /// with f64 polyfill calls (`exp_f64`, `sin_f64`, etc.) need
 /// `downcast_f64_to_f32_with_transcendentals` instead.
 pub fn downcast_f64_to_f32(f64_source: &str) -> String {
-    // Protect _f64( function-name suffixes from the f64( cast replacement.
-    // WGSL uses f64(...) for type casts, but _f64( appears in polyfill names.
     let result = f64_source
         .replace("_f64(", "\x00_F64_CALL\x00")
         .replace("array<f64>", "array<f32>")

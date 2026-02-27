@@ -17,7 +17,6 @@ mod defaults {
     pub const SCORE_CPU_DEFAULT: f64 = 0.5;
 }
 
-use async_trait::async_trait;
 use super::storage::CpuTensorStorage;
 use crate::error::Result;
 use crate::unified_hardware::{
@@ -25,6 +24,7 @@ use crate::unified_hardware::{
     ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
 use crate::unified_math::{MathOp, TensorDescriptor};
+use async_trait::async_trait;
 use rayon::prelude::*;
 use std::sync::Arc;
 

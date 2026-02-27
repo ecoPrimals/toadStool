@@ -19,8 +19,9 @@
 
 /// f64 is the canonical source — math is universal, precision is silicon.
 const SHADER_F64: &str = include_str!("../shaders/activation/glu_f64.wgsl");
-pub(crate) static SHADER_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+pub(crate) static SHADER_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64)
+});
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
@@ -161,7 +162,7 @@ impl GLU {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Output shape is half the input size
         let mut output_shape = self.input.shape().to_vec();

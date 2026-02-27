@@ -72,7 +72,7 @@ mod implementation {
         _runtime_metrics: Arc<RwLock<HashMap<RuntimeType, PerformanceMetrics>>>,
         _baseline_measurements: Arc<RwLock<HashMap<String, BaselineMetrics>>>,
         _runtime_selector: Arc<RwLock<RuntimeSelector>>,
-        #[allow(dead_code)]
+        #[allow(dead_code)] // For future ML-based runtime selection
         prediction_models: Arc<RwLock<HashMap<String, PredictionModel>>>,
         selection_strategy: RuntimeSelectionStrategy,
     }

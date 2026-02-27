@@ -167,22 +167,7 @@ impl RdfHistogramF64 {
         enc.copy_buffer_to_buffer(&hist_buf, 0, &readback, 0, (n_bins * 4) as u64);
         q.submit(Some(enc.finish()));
 
-        let slice = readback.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| {
-            tx.send(r).ok();
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|_| crate::error::BarracudaError::Gpu("RDF readback channel closed".into()))?
-            .map_err(|e| crate::error::BarracudaError::Gpu(format!("RDF map: {e}")))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        readback.unmap();
-
-        Ok(result)
+        self.device.map_staging_buffer::<u32>(&readback, n_bins)
     }
 
     /// Compute normalized g(r) on GPU.

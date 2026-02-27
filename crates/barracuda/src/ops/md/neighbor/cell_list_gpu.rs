@@ -424,7 +424,7 @@ impl CellListGpu {
             1,
         );
 
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
         Ok(())
     }
 

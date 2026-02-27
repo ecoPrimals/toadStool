@@ -302,7 +302,7 @@ impl GpuCgSolver {
             .device
             .create_command_encoder(&Default::default());
         enc.copy_buffer_to_buffer(src, 0, dst, 0, size);
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
     }
 
     fn complex_dot_re(
@@ -368,7 +368,7 @@ impl GpuCgSolver {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(self.n_pairs.div_ceil(CG_WG), 1, 1);
         }
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
 
         self.reducer.sum_f64(out)
     }
@@ -426,7 +426,7 @@ impl GpuCgSolver {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(self.n_f64.div_ceil(CG_WG), 1, 1);
         }
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
         Ok(())
     }
 
@@ -483,7 +483,7 @@ impl GpuCgSolver {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(self.n_f64.div_ceil(CG_WG), 1, 1);
         }
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
         Ok(())
     }
 

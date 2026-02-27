@@ -227,4 +227,4 @@ This architecture is not theory:
 - [`HYBRID_FP64_CORE_STREAMING.md`](./HYBRID_FP64_CORE_STREAMING.md) — DF64 core streaming spec
 - [`FP64_GPU_EVOLUTION.md`](./FP64_GPU_EVOLUTION.md) — f64 polyfill library and evolution
 - [`SOVEREIGN_COMPUTE_EVOLUTION.md`](./SOVEREIGN_COMPUTE_EVOLUTION.md) — naga-IR optimizer and SPIR-V passthrough
-- [`../PRECISION_BOTTLENECK.md`](../PRECISION_BOTTLENECK.md) — Evolution bottleneck tracker
+- Precision bottleneck — RESOLVED, archived to `ecoPrimals/fossil/`

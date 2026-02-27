@@ -295,7 +295,7 @@ impl BiCgStabGpu {
                 pass.set_bind_group(0, &spmv_p_bg, &[]);
                 pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
 
             // α = ρ / (r̂ᵀv)
             let v_data = device.read_f64_buffer(&v_buffer, n)?;
@@ -386,7 +386,7 @@ impl BiCgStabGpu {
                 pass.set_bind_group(0, &spmv_s_bg, &[]);
                 pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
 
             // ω = (tᵀs) / (tᵀt)
             let t_data = device.read_f64_buffer(&t_buffer, n)?;

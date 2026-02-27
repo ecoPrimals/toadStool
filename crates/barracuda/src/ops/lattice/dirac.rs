@@ -182,7 +182,7 @@ impl StaggeredDirac {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(self.volume.div_ceil(DIRAC_WG), 1, 1);
         }
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
         Ok(())
     }
 }

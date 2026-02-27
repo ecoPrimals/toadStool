@@ -10,7 +10,8 @@
 //
 //   abs(f64)    min(f64,f64)  max(f64,f64)  clamp(f64,f64,f64)
 //   sqrt(f64)   floor(f64)    ceil(f64)     round(f64)
-//   sign(f64)   fract(f64)    fma(f64,f64,f64)
+//   sign(f64)   fract(f64)
+//   NOTE: fma() is NOT a valid f64 builtin in WGSL — use a*b+c instead.
 //
 // These software implementations are FOSSILS: retained as reference /
 // emergency fallback for future edge-case GPU profiling. New shader code

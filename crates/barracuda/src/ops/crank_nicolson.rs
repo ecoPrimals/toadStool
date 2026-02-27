@@ -211,6 +211,7 @@ impl CrankNicolson {
 
     /// CPU reference implementation (Thomas algorithm)
     #[cfg(test)]
+    #[allow(dead_code)]
     fn solve_cpu(
         &self,
         u0: &[f32],
@@ -434,7 +435,7 @@ impl CrankNicolson {
                 pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
             }
 
-            self.device.queue.submit(Some(encoder.finish()));
+            self.device.submit_and_poll(Some(encoder.finish()));
 
             // Read back RHS
             let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -451,16 +452,9 @@ impl CrankNicolson {
                         label: Some("Copy Encoder"),
                     });
             encoder2.copy_buffer_to_buffer(&rhs_buf, 0, &staging, 0, (n * 4) as u64);
-            self.device.queue.submit(Some(encoder2.finish()));
+            self.device.submit_and_poll(Some(encoder2.finish()));
 
-            let slice = staging.slice(..);
-            slice.map_async(wgpu::MapMode::Read, |_| {});
-            self.device.device.poll(wgpu::Maintain::Wait);
-
-            let data = slice.get_mapped_range();
-            let rhs: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
-            drop(data);
-            staging.unmap();
+            let rhs: Vec<f32> = self.device.map_staging_buffer(&staging, n)?;
 
             // CPU Thomas solve for constant-coefficient tridiagonal system
             // O(n) with excellent cache behavior - optimal for typical PDE grid sizes

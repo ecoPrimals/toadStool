@@ -249,7 +249,7 @@ impl LennardJonesF64 {
             pass.dispatch_workgroups((n as u32).div_ceil(WORKGROUP_SIZE_1D), 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         crate::utils::read_buffer_f64(&device, &forces_buffer, n * 3)
     }

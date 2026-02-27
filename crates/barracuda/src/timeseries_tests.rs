@@ -2,8 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn test_analyzer_creation() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let analyzer = TimeSeriesAnalyzer::new(&device)
@@ -19,8 +18,7 @@ async fn test_analyzer_creation() {
 
 #[tokio::test]
 async fn test_moving_average_forecast() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let mut analyzer = TimeSeriesAnalyzer::new(&device)
@@ -43,8 +41,7 @@ async fn test_moving_average_forecast() {
 
 #[tokio::test]
 async fn test_exponential_smoothing_forecast() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let mut analyzer = TimeSeriesAnalyzer::new(&device)
@@ -63,8 +60,7 @@ async fn test_exponential_smoothing_forecast() {
 
 #[tokio::test]
 async fn test_anomaly_detection() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let mut analyzer = TimeSeriesAnalyzer::new(&device)
@@ -89,8 +85,7 @@ async fn test_anomaly_detection() {
 
 #[tokio::test]
 async fn test_decomposition() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let analyzer = TimeSeriesAnalyzer::new(&device)
@@ -113,8 +108,7 @@ async fn test_decomposition() {
 
 #[tokio::test]
 async fn test_esn_forecast() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let mut analyzer = TimeSeriesAnalyzer::new(&device)
@@ -141,8 +135,7 @@ async fn test_esn_forecast() {
 
 #[tokio::test]
 async fn test_weighted_moving_average() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;
     };
     let mut analyzer = TimeSeriesAnalyzer::new(&device)

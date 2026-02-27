@@ -15,7 +15,7 @@
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
@@ -76,11 +76,13 @@ impl LegendreF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn legendre_cpu(&self, x: &[f64], n: u32) -> Vec<f64> {
         x.iter().map(|&xi| Self::legendre_scalar(n, xi)).collect()
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn assoc_legendre_cpu(&self, x: &[f64], n: u32, m: u32) -> Vec<f64> {
         x.iter()
             .map(|&xi| Self::assoc_legendre_scalar(n, m, xi))
@@ -88,6 +90,7 @@ impl LegendreF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn legendre_scalar(n: u32, x: f64) -> f64 {
         if n == 0 {
             return 1.0;
@@ -110,6 +113,7 @@ impl LegendreF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn double_factorial(m: u32) -> f64 {
         if m == 0 {
             return 1.0;
@@ -122,6 +126,7 @@ impl LegendreF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn assoc_legendre_scalar(n: u32, m: u32, x: f64) -> f64 {
         if m > n {
             return 0.0;
@@ -332,25 +337,9 @@ impl LegendreF64 {
             std::mem::size_of_val(x) as u64,
         );
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let buffer_slice = staging_buf.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result)
-                .expect("map_async callback: receiver must be waiting");
-        });
-
-        self.device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|e| BarracudaError::Device(format!("Channel error: {}", e)))?
-            .map_err(|e| BarracudaError::Device(format!("Buffer map error: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buf.unmap();
-
+        let result: Vec<f64> = self.device.map_staging_buffer(&staging_buf, size)?;
         Ok(result)
     }
 }

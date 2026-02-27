@@ -199,7 +199,7 @@ impl SumReduceF64 {
                 pass.set_bind_group(0, &bg, &[]);
                 pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         if n_workgroups <= 1 {
@@ -259,7 +259,7 @@ impl SumReduceF64 {
                 pass.set_bind_group(0, &bg2, &[]);
                 pass.dispatch_workgroups(n_workgroups2 as u32, 1, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         // For very large inputs, may need a third pass — but for nuclear EOS

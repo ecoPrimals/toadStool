@@ -1,6 +1,6 @@
 //! Multi-GPU module tests.
 
-use super::strategy::{DeviceLease, GpuPool, MultiDevicePool};
+use super::strategy::{GpuPool, MultiDevicePool};
 use super::topology::{GpuDriver, GpuVendor};
 use super::types::{DeviceInfo, DeviceRequirements};
 use crate::resource_quota::ResourceQuota;

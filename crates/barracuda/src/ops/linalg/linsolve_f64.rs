@@ -163,7 +163,7 @@ impl LinSolveF64 {
             pass.dispatch_workgroups(1, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let full = self.device.read_buffer_f64(&output_buf, output_size)?;
         Ok(full[n * n..].to_vec())

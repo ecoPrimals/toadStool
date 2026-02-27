@@ -406,7 +406,7 @@ impl CgGpu {
                 });
                 cg_dispatch_pass(&mut pass, &pl.reduce, &reduce_rz_bg, 1, 1, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         // Main CG iteration loop
@@ -519,7 +519,7 @@ impl CgGpu {
                 );
             }
 
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
 
             // Check convergence only every check_interval iterations
             if (iter + 1) % check_interval == 0 || iter == max_iter - 1 {

@@ -5,7 +5,7 @@
 
 use super::{NonZero, NonZeroParams};
 use crate::device::{DeviceCapabilities, WorkloadType};
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use crate::tensor::Tensor;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
@@ -186,7 +186,7 @@ impl NonZero {
             pass.dispatch_workgroups(1, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Total = scan_out[N-1] + flags_in[N-1] (exclusive scan + last flag)
         let scan_last = Self::read_buffer_u32_last(device, &prefix_sum_buffer, size)?;
@@ -326,7 +326,7 @@ impl NonZero {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(())
     }
@@ -461,7 +461,7 @@ impl NonZero {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(())
     }
@@ -495,26 +495,9 @@ impl NonZero {
             0,
             std::mem::size_of::<u32>() as u64,
         );
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) =
-            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::gpu("Buffer map channel disconnected".to_string()))?
-            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result_data: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buffer.unmap();
-
+        let result_data: Vec<u32> = device.map_staging_buffer(&staging_buffer, 1)?;
         Ok(result_data[0])
     }
 
@@ -674,7 +657,7 @@ impl NonZero {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Step 5: Convert u32 indices to f32 on GPU (for Tensor compatibility)
         let indices_f32_buffer = device.create_buffer_f32(output_size)?;

@@ -71,7 +71,9 @@ fn exit_code_for_error(error: &anyhow::Error) -> i32 {
 }
 
 use toadstool_cli::{
-    ecosystem::EcosystemIntegrator, executor::BiomeExecutor, universal::UniversalComputeManager,
+    ecosystem::EcosystemIntegrator,
+    executor::{BiomeExecutor, RunBiomeOptions, UpBiomeOptions},
+    universal::UniversalComputeManager,
     Cli, CliContext, Commands, EcosystemCommands, UniversalCommands,
 };
 
@@ -231,18 +233,16 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         } => {
             info!("🚀 Starting biome in foreground mode");
             let executor = BiomeExecutor::new().await?;
-            executor
-                .run_biome(
-                    ctx,
-                    manifest.clone(),
-                    name.clone(),
-                    env.clone(),
-                    *debug,
-                    *cpu_limit,
-                    memory_limit.clone(),
-                    security.clone(),
-                )
-                .await?;
+            let opts = RunBiomeOptions {
+                manifest_path: manifest.clone(),
+                name: name.clone(),
+                env: env.clone(),
+                debug: *debug,
+                cpu_limit: *cpu_limit,
+                memory_limit: memory_limit.clone(),
+                security: security.clone(),
+            };
+            executor.run_biome(ctx, opts).await?;
         }
 
         Commands::Up {
@@ -255,17 +255,15 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         } => {
             info!("🚀 Starting biome in background mode");
             let executor = BiomeExecutor::new().await?;
-            executor
-                .up_biome(
-                    ctx,
-                    manifest.clone(),
-                    *detach,
-                    name.clone(),
-                    env.clone(),
-                    *restart,
-                    *health_interval,
-                )
-                .await?;
+            let opts = UpBiomeOptions {
+                manifest_path: manifest.clone(),
+                detach: *detach,
+                name: name.clone(),
+                env: env.clone(),
+                restart: *restart,
+                health_interval: *health_interval,
+            };
+            executor.up_biome(ctx, opts).await?;
         }
 
         Commands::Down {

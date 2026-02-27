@@ -264,7 +264,7 @@ impl VarianceReduceF64 {
                 pass.set_bind_group(0, &bg, &[]);
                 pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         // Read back partial states and merge on CPU

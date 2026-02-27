@@ -42,7 +42,7 @@ pub struct WebGpuBackend {
     device: Arc<wgpu::Device>,
 
     /// wgpu queue (for future sync operations)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Future: sync operations and buffer mapping
     queue: Arc<wgpu::Queue>,
 
     /// Backend capabilities

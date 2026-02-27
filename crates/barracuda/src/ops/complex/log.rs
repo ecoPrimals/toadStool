@@ -138,7 +138,7 @@ impl ComplexLog {
                 ((n / 2) as u32).div_ceil(caps.optimal_workgroup_size(WorkloadType::ElementWise));
             pass.dispatch_workgroups(wg, 1, 1);
         }
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
         Ok(Tensor::from_buffer(
             output_buffer,
             self.input.shape().to_vec(),

@@ -39,10 +39,10 @@ pub struct SystemResourceMonitor {
 }
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 struct ProcessInfo {
     pid: u32,
     name: String,
+    #[allow(dead_code)] // Used when computing RuntimeMetrics in monitoring loop
     cpu_usage: f64,
     last_cpu_time: u64,
     memory_usage: u64,
@@ -50,7 +50,7 @@ struct ProcessInfo {
 }
 
 #[derive(Default, Clone, Debug)]
-#[allow(dead_code)]
+#[allow(dead_code)] // Reserved for future network monitoring aggregation
 struct NetworkStats {
     bytes_received: u64,
     bytes_transmitted: u64,

@@ -9,9 +9,7 @@
 //! 3. FheIntt (Inverse NTT)
 //! 4. FheFastPolyMul (Complete pipeline wrapper)
 
-use barracuda::device::WgpuDevice;
 use barracuda::tensor::Tensor;
-use std::sync::Arc;
 
 #[tokio::test]
 async fn test_fhe_operations_exist() {
@@ -29,7 +27,7 @@ async fn test_fhe_operations_exist() {
 #[tokio::test]
 async fn test_tensor_creation() -> Result<(), Box<dyn std::error::Error>> {
     // Test that we can create tensors on GPU
-    let device = Arc::new(WgpuDevice::new().await?);
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Create a simple tensor
     let data: Vec<u32> = vec![1, 0, 2, 0, 3, 0, 4, 0]; // 4 coefficients as u32 pairs
@@ -44,7 +42,7 @@ async fn test_tensor_creation() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn test_polynomial_representation() -> Result<(), Box<dyn std::error::Error>> {
     // Test FHE polynomial representation (u64 as pairs of u32)
-    let device = Arc::new(WgpuDevice::new().await?);
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Polynomial: [1, 2, 3, 4] (4 coefficients, each u64)
     // Representation: [(1_low, 1_high), (2_low, 2_high), (3_low, 3_high), (4_low, 4_high)]

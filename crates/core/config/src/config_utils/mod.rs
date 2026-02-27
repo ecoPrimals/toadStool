@@ -532,7 +532,7 @@ impl ConfigUtils {
     pub fn get_cache_url() -> String {
         let loader = EnvConfigLoader::new();
         loader.get_string(
-            "CACHE_URL",
+            "REDIS_URL",
             &format!("redis://localhost:{}", crate::defaults::storage::REDIS_PORT),
         )
     }
@@ -541,7 +541,7 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_message_broker_url() -> String {
         let loader = EnvConfigLoader::new();
-        loader.get_string("MESSAGE_BROKER_URL", "amqp://localhost:5672")
+        loader.get_string("AMQP_URL", "amqp://localhost:5672")
     }
 
     /// Get distributed storage URL from environment or default
@@ -564,7 +564,7 @@ impl ConfigUtils {
     pub fn get_monitoring_endpoint() -> String {
         let loader = EnvConfigLoader::new();
         loader.get_string(
-            "MONITORING_ENDPOINT",
+            "METRICS_URL",
             &format!(
                 "http://localhost:{}",
                 crate::defaults::network::METRICS_PORT

@@ -193,7 +193,7 @@ impl MultiHeadAttention {
             compute::execute_projection(&self, device, &self.value, &self.w_v, &mut encoder)?;
 
         // Submit projection passes
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // ═══════════════════════════════════════════════════════════════
         // PASS 4: Apply scaled dot-product attention
@@ -235,7 +235,7 @@ impl MultiHeadAttention {
         )?;
 
         // Submit output projection pass
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return output tensor
         Ok(Tensor::from_buffer(

@@ -148,7 +148,7 @@ impl HeatCurrentGpu {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(n.div_ceil(WG), 1, 1);
         }
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
         Ok(())
     }
 }

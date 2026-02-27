@@ -197,7 +197,7 @@ impl BatchedEighGpu {
             pass.set_bind_group(0, &bind_group, &[]);
             pass.dispatch_workgroups((batch_size as u32).div_ceil(wave_size), 1, 1);
         }
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let eigenvalues = device.read_f64_buffer(&eig_buffer, batch_size * n)?;
         let eigenvectors = device.read_f64_buffer(&v_buffer, batch_size * n * n)?;
@@ -355,7 +355,7 @@ impl BatchedEighGpu {
             pass.set_bind_group(0, &bind_group, &[]);
             pass.dispatch_workgroups((batch_size as u32).div_ceil(wave_size), 1, 1);
         }
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(())
     }

@@ -18,11 +18,9 @@
 //! - Recovery strategies
 //! - Comprehensive validation
 
-use barracuda::device::WgpuDevice;
 use barracuda::ops::complex::*;
 use barracuda::ops::fft::*;
 use barracuda::tensor::Tensor;
-use std::sync::Arc;
 
 // ═══════════════════════════════════════════════════════════════
 // Complex Operations - Invalid Input Faults
@@ -30,7 +28,7 @@ use std::sync::Arc;
 
 #[tokio::test]
 async fn fault_complex_wrong_dimension() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Last dimension != 2 (not complex)
     let invalid_shapes = vec![
@@ -53,7 +51,7 @@ async fn fault_complex_wrong_dimension() {
 
 #[tokio::test]
 async fn fault_complex_shape_mismatch() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Mismatched tensor shapes
     let data_a = vec![1.0f32, 2.0, 3.0, 4.0];
@@ -70,7 +68,7 @@ async fn fault_complex_shape_mismatch() {
 
 #[tokio::test]
 async fn fault_complex_empty_tensor() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Empty tensor
     let data: Vec<f32> = vec![];
@@ -84,7 +82,7 @@ async fn fault_complex_empty_tensor() {
 
 #[tokio::test]
 async fn fault_complex_nan_input() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: NaN values
     let data = vec![f32::NAN, 0.0, 1.0, f32::NAN];
@@ -102,7 +100,7 @@ async fn fault_complex_nan_input() {
 
 #[tokio::test]
 async fn fault_complex_infinity_input() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Infinity values
     let data = vec![f32::INFINITY, 0.0, -f32::INFINITY, 1.0];
@@ -120,7 +118,7 @@ async fn fault_complex_infinity_input() {
 
 #[tokio::test]
 async fn fault_fft_non_power_of_two_degree() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Invalid FFT degree (not power of 2)
     let invalid_degrees = vec![0, 1, 3, 5, 6, 7, 9, 10, 15, 17, 100, 1000];
@@ -138,7 +136,7 @@ async fn fault_fft_non_power_of_two_degree() {
 
 #[tokio::test]
 async fn fault_fft_degree_zero() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: degree = 0
     let data: Vec<f32> = vec![];
@@ -151,7 +149,7 @@ async fn fault_fft_degree_zero() {
 
 #[tokio::test]
 async fn fault_fft_degree_mismatch() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Tensor size doesn't match degree
     let data = vec![1.0f32; 16]; // 8 complex numbers
@@ -165,7 +163,7 @@ async fn fault_fft_degree_mismatch() {
 
 #[tokio::test]
 async fn fault_fft_excessive_degree() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Excessively large degree (would OOM)
     let degree = 1 << 30; // 1 billion points = ~8GB minimum
@@ -181,7 +179,7 @@ async fn fault_fft_excessive_degree() {
 
 #[tokio::test]
 async fn fault_fft_wrong_input_dimension() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Input not complex (last dim != 2)
     let data = vec![1.0f32; 16];
@@ -198,7 +196,7 @@ async fn fault_fft_wrong_input_dimension() {
 
 #[tokio::test]
 async fn fault_fft_large_magnitude() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Very large magnitude (near f32::MAX)
     let large_val = 1e38f32;
@@ -219,7 +217,7 @@ async fn fault_fft_large_magnitude() {
 
 #[tokio::test]
 async fn fault_fft_tiny_magnitude() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: Very small magnitude (near 0, potential underflow)
     let tiny_val = 1e-38f32;
@@ -238,7 +236,7 @@ async fn fault_fft_tiny_magnitude() {
 
 #[tokio::test]
 async fn fault_fft_2d_non_square() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // 2D FFT with non-square dimensions (valid, but test it)
     let data = vec![1.0f32; 16]; // 4x2 complex
@@ -252,7 +250,7 @@ async fn fault_fft_2d_non_square() {
 
 #[tokio::test]
 async fn fault_fft_3d_wrong_shape() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Inject fault: 3D tensor shape doesn't match claimed dimensions
     let data = vec![1.0f32; 32]; // 16 complex numbers

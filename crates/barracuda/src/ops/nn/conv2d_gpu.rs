@@ -174,8 +174,7 @@ impl Conv2dGpu {
             pass.set_bind_group(0, &bind_group, &[]);
             pass.dispatch_workgroups((output_size as u32).div_ceil(256), 1, 1);
         }
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

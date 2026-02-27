@@ -170,7 +170,7 @@ impl BatchToleranceSearchF64 {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(s.div_ceil(16), r.div_ceil(16), 1);
         }
-        dev.queue.submit(Some(encoder.finish()));
+        dev.submit_and_poll(Some(encoder.finish()));
 
         crate::utils::read_buffer(dev, &out_buf, out_n)
     }

@@ -30,8 +30,11 @@ impl Bucketize {
     }
 
     fn wgsl_shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/bucketize_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/misc/bucketize_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 
@@ -166,7 +169,7 @@ impl Bucketize {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read u32 buffer and convert to f32 for Tensor compatibility
         let u32_data = crate::utils::read_buffer_u32(device, &output_buffer, input_size)?;

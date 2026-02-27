@@ -186,7 +186,7 @@ impl Roll {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back results
         let output_data = crate::utils::read_buffer(device, &output_buffer, size)?;

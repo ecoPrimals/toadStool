@@ -10,11 +10,9 @@
 //! These tests validate the hotSpring Feb 16 2026 evolution targets.
 
 use barracuda::device::tensor_context::{BufferDescriptor, TensorContext};
-use barracuda::device::WgpuDevice;
 use barracuda::ops::linalg::GridQuadratureGemm;
 use barracuda::ops::MaxAbsDiffF64;
 use barracuda::optimize::BatchedBisectionGpu;
-use std::sync::Arc;
 
 // ============================================================================
 // MaxAbsDiffF64 Tests
@@ -96,8 +94,7 @@ async fn test_max_abs_diff_stress_large() {
 
 #[tokio::test]
 async fn test_solver_buffers_hfb_pattern() {
-    let wgpu_device = WgpuDevice::new().await.expect("failed to create device");
-    let device = Arc::new(wgpu_device);
+    let device = barracuda::device::test_pool::get_test_device().await;
     let ctx = TensorContext::new(device);
 
     // Simulate HFB solver buffer allocation
@@ -134,8 +131,7 @@ async fn test_solver_buffers_hfb_pattern() {
 
 #[tokio::test]
 async fn test_solver_buffers_multiple_solvers() {
-    let wgpu_device = WgpuDevice::new().await.expect("failed to create device");
-    let device = Arc::new(wgpu_device);
+    let device = barracuda::device::test_pool::get_test_device().await;
     let pool = barracuda::device::tensor_context::BufferPool::new(device.device_arc());
 
     // Pin buffers for two different solvers

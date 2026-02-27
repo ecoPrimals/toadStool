@@ -14,8 +14,11 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 
 /// Soft NMS shader (soft non-maximum suppression). f64 canonical, downcast to f32 at use.
-pub static WGSL_SOFT_NMS: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/detection/soft_nms_f64.wgsl")));
+pub static WGSL_SOFT_NMS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/detection/soft_nms_f64.wgsl"
+    ))
+});
 
 /// SoftNMS operation
 pub struct SoftNMS {

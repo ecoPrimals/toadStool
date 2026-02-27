@@ -145,7 +145,7 @@ impl BatchedEighGpu {
                 let wg_xy = nu.div_ceil(16);
                 pass.dispatch_workgroups(wg_xy, wg_xy, batch_u);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         // Step 2: Jacobi sweeps
@@ -229,7 +229,7 @@ impl BatchedEighGpu {
                 pass.set_bind_group(0, &init_bg, &[]);
                 pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), batch_u, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         let eigenvalues = device.read_f64_buffer(&eig_buffer, batch_size * n)?;
@@ -314,7 +314,7 @@ impl BatchedEighGpu {
                 let wg_xy = nu.div_ceil(16);
                 pass.dispatch_workgroups(wg_xy, wg_xy, batch_u);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         for _sweep in 0..max_sweeps {
@@ -396,7 +396,7 @@ impl BatchedEighGpu {
                 pass.set_bind_group(0, &init_bg, &[]);
                 pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), batch_u, 1);
             }
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
         }
 
         Ok(())

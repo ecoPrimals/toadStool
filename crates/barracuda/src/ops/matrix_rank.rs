@@ -258,7 +258,7 @@ impl MatrixRank {
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read rank result
         let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -281,26 +281,9 @@ impl MatrixRank {
             0,
             std::mem::size_of::<u32>() as u64,
         );
-        device.queue.submit(Some(read_encoder.finish()));
+        device.submit_and_poll(Some(read_encoder.finish()));
 
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) =
-            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-
-        receiver
-            .recv()
-            .map_err(|e| BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
-            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let rank_data: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buffer.unmap();
-
+        let rank_data: Vec<u32> = device.map_staging_buffer(&staging_buffer, 1)?;
         Ok(rank_data[0] as usize)
     }
 }

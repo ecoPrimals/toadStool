@@ -260,7 +260,7 @@ impl Fft3DF64 {
             self.encode_axis(&mut encoder, &buf_a, &buf_b, buffer_bytes, axis, inverse);
         }
 
-        dev.queue.submit(std::iter::once(encoder.finish()));
+        dev.submit_and_poll(std::iter::once(encoder.finish()));
 
         dev.read_f64_buffer(&buf_a, expected_len)
     }

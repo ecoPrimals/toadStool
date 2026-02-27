@@ -200,7 +200,7 @@ impl BrayCurtisF64 {
             pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         // Read results
         self.read_results(&output_buffer, n_pairs)
@@ -222,27 +222,15 @@ impl BrayCurtisF64 {
                     label: Some("BC Copy Encoder"),
                 });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let results: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|b| {
-                f64::from_le_bytes(b.try_into().expect("chunks_exact(8) yields 8-byte chunks"))
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
+        let results: Vec<f64> = self.device.map_staging_buffer(&staging, count)?;
         Ok(results)
     }
 
     /// CPU fallback for small inputs
     #[cfg(test)]
+    #[allow(dead_code)]
     fn condensed_distance_matrix_cpu(
         &self,
         samples: &[f64],

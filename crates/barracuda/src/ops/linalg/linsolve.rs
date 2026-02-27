@@ -227,7 +227,7 @@ impl LinSolve {
             pass.dispatch_workgroups(1, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read solution from output buffer (last n elements)
         let full_data = utils::read_buffer(device, &output_buffer, output_size)?;

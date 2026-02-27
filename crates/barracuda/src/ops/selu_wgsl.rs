@@ -11,10 +11,13 @@
 /// f64 is the canonical source — math is universal, precision is silicon.
 const SHADER_F64: &str = include_str!("../shaders/activation/selu_f64.wgsl");
 const SHADER_SELU_SIMPLE_F64: &str = include_str!("../shaders/activation/selu_simple_f64.wgsl");
-pub(crate) static SHADER_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+pub(crate) static SHADER_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64)
+});
 pub(crate) static SHADER_SELU_SIMPLE_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SELU_SIMPLE_F64));
+    std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SELU_SIMPLE_F64)
+    });
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
@@ -176,7 +179,7 @@ impl SELU {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return tensor without reading back (zero-copy)
         Ok(Tensor::from_buffer(

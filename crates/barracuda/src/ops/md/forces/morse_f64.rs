@@ -169,7 +169,7 @@ fn reduce_bond_forces(
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     enc_clear.clear_buffer(&particle_forces_buf, 0, None);
-    dev.queue.submit(Some(enc_clear.finish()));
+    dev.submit_and_poll(Some(enc_clear.finish()));
 
     #[repr(C)]
     #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -246,16 +246,16 @@ fn reduce_bond_forces(
             bind_group_layouts: &[&r_bgl],
             push_constant_ranges: &[],
         });
-    let reduce_pipeline =
-        dev.device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("reduce_bond_forces_f64"),
-                layout: Some(&r_pl),
-                module: shader,
-                entry_point: "reduce_bond_forces_f64",
-                cache: None,
-                compilation_options: Default::default(),
-            });
+    let reduce_pipeline = dev
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("reduce_bond_forces_f64"),
+            layout: Some(&r_pl),
+            module: shader,
+            entry_point: "reduce_bond_forces_f64",
+            cache: None,
+            compilation_options: Default::default(),
+        });
 
     let r_bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
@@ -290,7 +290,7 @@ fn reduce_bond_forces(
         p.set_bind_group(0, &r_bg, &[]);
         p.dispatch_workgroups(wg, 1, 1);
     }
-    dev.queue.submit(Some(enc.finish()));
+    dev.submit_and_poll(Some(enc.finish()));
 
     dev.read_f64_buffer(&particle_forces_buf, n_particles * 3)
 }
@@ -434,7 +434,7 @@ impl MorseForceF64 {
             p.set_bind_group(0, &bg, &[]);
             p.dispatch_workgroups(wg, 1, 1);
         }
-        dev.queue.submit(Some(enc.finish()));
+        dev.submit_and_poll(Some(enc.finish()));
 
         let energies = dev.read_f64_buffer(&bond_energy_buf, n_bonds)?;
 
@@ -537,7 +537,7 @@ impl MorseForceF64 {
             p.set_bind_group(0, &bg, &[]);
             p.dispatch_workgroups(wg, 1, 1);
         }
-        dev.queue.submit(Some(enc.finish()));
+        dev.submit_and_poll(Some(enc.finish()));
 
         reduce_bond_forces(
             dev,
@@ -548,7 +548,6 @@ impl MorseForceF64 {
             n_bonds,
         )
     }
-
 }
 
 #[cfg(test)]

@@ -33,7 +33,7 @@ impl Default for EngineConfig {
 /// Main inference engine
 pub struct InferenceEngine {
     device: BurnDevice,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Stored for future batch/precision/fusion overrides
     config: EngineConfig,
 }
 

@@ -144,8 +144,8 @@ impl DiscoveryConfig {
 
         let mut fallbacks = HashMap::new();
         for (env_var, port, keys) in specs {
-            let url = std::env::var(env_var)
-                .unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
+            let url =
+                std::env::var(env_var).unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
             for key in *keys {
                 fallbacks.insert((*key).to_string(), url.clone());
             }

@@ -49,11 +49,13 @@ impl std::fmt::Debug for NativeRuntimeEngine {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 struct ProcessHandle {
     child: Option<Child>,
+    #[allow(dead_code)] // For future process lifetime tracking
     start_time: Instant,
+    #[allow(dead_code)] // For workload correlation
     workload_id: String,
+    #[allow(dead_code)] // For debugging and audit
     executable_path: PathBuf,
 }
 

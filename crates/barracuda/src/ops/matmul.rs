@@ -81,18 +81,27 @@ impl<'a> MatMul<'a> {
     fn shader_for_tier(tier: MatMulTier) -> &'static str {
         match tier {
             MatMulTier::Tiled16 => {
-                static S_TILED: std::sync::LazyLock<String> =
-                    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_tiled_f64.wgsl")));
+                static S_TILED: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(
+                        include_str!("../shaders/math/matmul_tiled_f64.wgsl"),
+                    )
+                });
                 &S_TILED
             }
             MatMulTier::CpuTiled32 => {
-                static S_CPU: std::sync::LazyLock<String> =
-                    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_cpu_tiled_f64.wgsl")));
+                static S_CPU: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(
+                        include_str!("../shaders/math/matmul_cpu_tiled_f64.wgsl"),
+                    )
+                });
                 &S_CPU
             }
             MatMulTier::GpuEvolved32 => {
-                static S_GPU: std::sync::LazyLock<String> =
-                    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_gpu_evolved_f64.wgsl")));
+                static S_GPU: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(
+                        include_str!("../shaders/math/matmul_gpu_evolved_f64.wgsl"),
+                    )
+                });
                 &S_GPU
             }
         }

@@ -37,16 +37,13 @@ async fn execute_pipeline(data: Vec<f32>, shape: Vec<usize>, op: &str) -> Result
     let selection = select_best_device(HardwareWorkload::TensorOps)
         .map_err(|e| format!("Selection failed: {}", e))?;
 
-    // 3. Create Barracuda device from selection (with fallback to auto)
-    let device = match WgpuDevice::from_selection(selection).await {
-        Ok(d) => d,
-        Err(_) => WgpuDevice::new()
-            .await
-            .map_err(|e| format!("Device creation failed: {}", e))?,
+    // 3. Create Barracuda device from selection (with fallback to shared test pool)
+    let device_arc = match WgpuDevice::from_selection(selection).await {
+        Ok(d) => Arc::new(d),
+        Err(_) => barracuda::device::test_pool::get_test_device().await,
     };
 
     // 4. Create tensor and execute operation
-    let device_arc = Arc::new(device);
     let tensor = Tensor::from_vec_on(data, shape.clone(), device_arc.clone())
         .await
         .map_err(|e| format!("Tensor creation failed: {}", e))?;
@@ -80,13 +77,11 @@ async fn execute_matmul_pipeline(
     let selection = select_best_device(HardwareWorkload::TensorOps)
         .map_err(|e| format!("Selection failed: {}", e))?;
 
-    // Create device with fallback to auto
-    let device = Arc::new(match WgpuDevice::from_selection(selection).await {
-        Ok(d) => d,
-        Err(_) => WgpuDevice::new()
-            .await
-            .map_err(|e| format!("Device creation failed: {}", e))?,
-    });
+    // Create device with fallback to shared test pool
+    let device = match WgpuDevice::from_selection(selection).await {
+        Ok(d) => Arc::new(d),
+        Err(_) => barracuda::device::test_pool::get_test_device().await,
+    };
 
     let tensor_a = Tensor::from_vec_on(a, a_shape, device.clone())
         .await
@@ -263,13 +258,13 @@ async fn test_e2e_complete_pipeline_with_router() {
         KernelTarget::Wgsl { device, .. } => match device {
             DeviceSelection::Gpu => WgpuDevice::new_gpu().await.ok().map(Arc::new),
             DeviceSelection::Cpu => WgpuDevice::new_cpu().await.ok().map(Arc::new),
-            _ => WgpuDevice::new().await.ok().map(Arc::new),
+            _ => Some(barracuda::device::test_pool::get_test_device().await),
         },
         KernelTarget::Npu { .. } => {
             // Fallback to WGSL for now (NPU would use different path)
-            WgpuDevice::new().await.ok().map(Arc::new)
+            Some(barracuda::device::test_pool::get_test_device().await)
         }
-        KernelTarget::Hybrid { .. } => WgpuDevice::new().await.ok().map(Arc::new),
+        KernelTarget::Hybrid { .. } => Some(barracuda::device::test_pool::get_test_device().await),
     };
 
     let device = match device {
@@ -453,13 +448,7 @@ async fn test_e2e_scientific_pipeline_cholesky() {
 async fn test_e2e_f32_precision() {
     println!("\n=== E2E f32 Precision Test ===\n");
 
-    let device = match WgpuDevice::new().await {
-        Ok(d) => Arc::new(d),
-        Err(_) => {
-            println!("SKIP: No device available");
-            return;
-        }
-    };
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     // Test precision with known values
     let test_cases = vec![

@@ -2,8 +2,7 @@ use super::*;
 
 #[test]
 fn test_hmc_trajectory_creation() {
-    let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
-    else {
+    let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync() else {
         return;
     };
     let config = GpuHmcConfig {

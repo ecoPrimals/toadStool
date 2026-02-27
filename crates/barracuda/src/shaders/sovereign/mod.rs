@@ -70,9 +70,8 @@ impl SovereignCompiler {
         let mut stats = CompileStats::default();
 
         // Step 1: Parse WGSL → naga::Module.
-        let mut module = naga::front::wgsl::parse_str(wgsl).map_err(|e| {
-            SovereignError::Parse(format!("{e}"))
-        })?;
+        let mut module = naga::front::wgsl::parse_str(wgsl)
+            .map_err(|e| SovereignError::Parse(format!("{e}")))?;
 
         // Step 2: FMA fusion — Mul(a,b) + Add/Sub(_, c) → Fma(a, b, c).
         for (_handle, func) in module.functions.iter_mut() {
@@ -101,9 +100,9 @@ impl SovereignCompiler {
                 naga::valid::ValidationFlags::all(),
                 naga::valid::Capabilities::all(),
             );
-            validator.validate(&module).map_err(|e| {
-                SovereignError::Validation(format!("{e}"))
-            })?
+            validator
+                .validate(&module)
+                .map_err(|e| SovereignError::Validation(format!("{e}")))?
         };
 
         // Step 5: Emit SPIR-V.
@@ -193,7 +192,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 "#;
         let compiler = SovereignCompiler::new(test_profile());
         let (output, stats) = compiler.compile(wgsl).expect("should compile with FMA");
-        assert!(stats.fma_fusions >= 1, "expected FMA fusion, got {}", stats.fma_fusions);
+        assert!(
+            stats.fma_fusions >= 1,
+            "expected FMA fusion, got {}",
+            stats.fma_fusions
+        );
         match output {
             SovereignOutput::Spirv(words) => {
                 assert!(!words.is_empty());
@@ -228,7 +231,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 "#;
         let compiler = SovereignCompiler::new(test_profile());
-        let (output, _stats) = compiler.compile(wgsl).expect("complex shader should compile");
+        let (output, _stats) = compiler
+            .compile(wgsl)
+            .expect("complex shader should compile");
         match output {
             SovereignOutput::Spirv(words) => {
                 assert!(words.len() > 10, "SPIR-V should have substantial content");

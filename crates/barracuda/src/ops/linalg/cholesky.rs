@@ -213,7 +213,7 @@ impl Cholesky {
             pass.dispatch_workgroups(1, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return lower triangular matrix L
         Ok(Tensor::from_buffer(
@@ -380,7 +380,7 @@ impl CholeskyF64 {
             pass.dispatch_workgroups(1, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back f64 results
         crate::utils::read_buffer_f64(&device, &output_buffer, n * n)
@@ -520,7 +520,7 @@ impl CholeskyF64 {
             pass.dispatch_workgroups(batch_size as u32, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         crate::utils::read_buffer_f64(&device, &output_buffer, batch_size * mat_size)
     }

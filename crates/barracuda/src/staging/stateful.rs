@@ -213,7 +213,7 @@ impl StatefulPipeline {
             scalar_bytes,
         );
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
         self.read_staging_scalars()
     }
 

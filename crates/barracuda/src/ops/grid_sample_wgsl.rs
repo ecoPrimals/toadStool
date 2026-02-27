@@ -32,8 +32,11 @@ impl GridSample {
     }
 
     fn wgsl_shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/grid_sample_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/misc/grid_sample_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 
@@ -201,7 +204,7 @@ impl GridSample {
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
         Ok(Tensor::new(

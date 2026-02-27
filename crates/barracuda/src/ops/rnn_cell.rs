@@ -368,7 +368,7 @@ impl RNNCell {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Output shape: [batch_size, hidden_size]
         let output_shape = vec![self.batch_size, self.hidden_size];

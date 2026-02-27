@@ -188,27 +188,9 @@ impl<'a> TranseScoreF64<'a> {
         });
         encoder.copy_buffer_to_buffer(&scores_buf, 0, &staging, 0, (n_triples * 8) as u64);
 
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
-        let slice = staging.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|e| BarracudaError::gpu(format!("transe readback: {e}")))?
-            .map_err(|e| BarracudaError::gpu(format!("transe map: {e}")))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("8-byte f64 chunk")))
-            .collect();
-        drop(data);
-        staging.unmap();
-
+        let result: Vec<f64> = device.map_staging_buffer(&staging, n_triples)?;
         Ok(result)
     }
 

@@ -7,18 +7,18 @@
 use barracuda::ops::{
     fhe_ntt::FheNtt, fhe_intt::FheIntt, fhe_modulus_switch::FheModulusSwitch,
 };
-use barracuda::{Tensor, WgpuDevice};
+use barracuda::Tensor;
 use rand::Rng;
 use std::sync::Arc;
 use tokio::task;
 
 /// Helper to create test device
-async fn test_device() -> Arc<WgpuDevice> {
-    Arc::new(WgpuDevice::new().await.expect("Failed to create device"))
+async fn test_device() -> Arc<barracuda::device::WgpuDevice> {
+    barracuda::device::test_pool::get_test_device().await
 }
 
 /// Helper to create random polynomial tensor
-async fn random_tensor_u64(device: &WgpuDevice, degree: usize) -> Tensor {
+async fn random_tensor_u64(device: &barracuda::device::WgpuDevice, degree: usize) -> Tensor {
     let mut rng = rand::thread_rng();
     let data: Vec<u32> = (0..degree * 2).map(|_| rng.gen::<u32>() % 1000).collect();
     Tensor::from_u32(&data, vec![degree * 2], device.clone())

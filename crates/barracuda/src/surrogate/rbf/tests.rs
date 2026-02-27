@@ -1,4 +1,3 @@
-#![cfg(test)]
 use super::*;
 use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
 use crate::device::WgpuDevice;

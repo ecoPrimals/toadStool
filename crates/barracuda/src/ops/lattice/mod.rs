@@ -101,6 +101,18 @@ pub enum NeighborMode {
     PrecomputedBuffer(Arc<wgpu::Buffer>),
 }
 
+/// SU(3) Wilson gauge action density from average plaquette.
+///
+/// For SU(3) in 4 dimensions there are 6 plaquette orientations per site.
+/// The per-site Wilson action density (without β factor) is:
+///   `a_d = 6 × (1 − ⟨P⟩)`
+/// where ⟨P⟩ = (1/3) Re Tr U_p averaged over all orientations and sites.
+/// A cold (identity) configuration gives ⟨P⟩ = 1 → a_d = 0.
+#[inline]
+pub fn action_density(avg_plaquette: f64) -> f64 {
+    6.0 * (1.0 - avg_plaquette)
+}
+
 impl NeighborMode {
     /// Build a precomputed neighbor table for a 4D periodic lattice.
     ///
@@ -135,13 +147,37 @@ impl NeighborMode {
         }
 
         use wgpu::util::DeviceExt;
-        let buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Neighbor Table"),
-            contents: bytemuck::cast_slice(&table),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Neighbor Table"),
+                contents: bytemuck::cast_slice(&table),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         Self::PrecomputedBuffer(Arc::new(buffer))
+    }
+}
+
+#[cfg(test)]
+mod action_density_tests {
+    use super::action_density;
+
+    #[test]
+    fn cold_start_zero() {
+        assert!((action_density(1.0)).abs() < 1e-15);
+    }
+
+    #[test]
+    fn strong_coupling() {
+        let ad = action_density(0.0);
+        assert!((ad - 6.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn typical_value() {
+        let ad = action_density(0.55);
+        assert!((ad - 2.7).abs() < 1e-14);
     }
 }
 
@@ -179,9 +215,8 @@ mod neighbor_tests {
     #[test]
     fn neighbor_periodic_boundary() {
         let [nx, ny, nz, _nt] = [4u32, 4, 4, 4];
-        let idx = |x: u32, y: u32, z: u32, t: u32| -> u32 {
-            t * nz * ny * nx + z * ny * nx + y * nx + x
-        };
+        let idx =
+            |x: u32, y: u32, z: u32, t: u32| -> u32 { t * nz * ny * nx + z * ny * nx + y * nx + x };
         // Site (0,0,0,0): +x neighbor should be (1,0,0,0), -x should wrap to (3,0,0,0)
         let site_000 = idx(0, 0, 0, 0);
         assert_eq!(site_000, 0);

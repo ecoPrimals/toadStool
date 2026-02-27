@@ -175,8 +175,8 @@ impl VelocityVerletF64 {
         enc.copy_buffer_to_buffer(&vel_out, 0, &rb_vel, 0, out_size);
         q.submit(Some(enc.finish()));
 
-        let new_pos = map_read_f64(d, &rb_pos)?;
-        let new_vel = map_read_f64(d, &rb_vel)?;
+        let new_pos = self.device.map_staging_buffer::<f64>(&rb_pos, n3)?;
+        let new_vel = self.device.map_staging_buffer::<f64>(&rb_vel, n3)?;
 
         Ok((new_pos, new_vel))
     }
@@ -265,7 +265,7 @@ impl VelocityVerletF64 {
         enc.copy_buffer_to_buffer(&vel_out, 0, &rb, 0, out_size);
         q.submit(Some(enc.finish()));
 
-        map_read_f64(d, &rb)
+        self.device.map_staging_buffer::<f64>(&rb, n3)
     }
 
     /// Position update on GPU using velocities.
@@ -353,7 +353,7 @@ impl VelocityVerletF64 {
         enc.copy_buffer_to_buffer(&pos_out, 0, &rb, 0, out_size);
         q.submit(Some(enc.finish()));
 
-        map_read_f64(d, &rb)
+        self.device.map_staging_buffer::<f64>(&rb, n3)
     }
 }
 
@@ -410,23 +410,6 @@ fn readback_buf(d: &wgpu::Device, size: u64) -> wgpu::Buffer {
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     })
-}
-
-fn map_read_f64(d: &wgpu::Device, buf: &wgpu::Buffer) -> Result<Vec<f64>> {
-    let slice = buf.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        tx.send(r).ok();
-    });
-    d.poll(wgpu::Maintain::Wait);
-    rx.recv()
-        .map_err(|_| crate::error::BarracudaError::Gpu("VV readback channel".into()))?
-        .map_err(|e| crate::error::BarracudaError::Gpu(format!("VV map: {e}")))?;
-    let data = slice.get_mapped_range();
-    let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-    drop(data);
-    buf.unmap();
-    Ok(result)
 }
 
 #[cfg(test)]

@@ -187,7 +187,7 @@ impl AdaBound {
         };
 
         // Submit buffer copies
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let adabound_params_buffer =
             device
@@ -327,7 +327,7 @@ impl AdaBound {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let updated_params =
             Tensor::from_buffer(params_buffer, self.params.shape().to_vec(), device.clone());

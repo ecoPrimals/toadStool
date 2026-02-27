@@ -170,7 +170,11 @@ impl ValidationHarness {
             let icon = if check.passed { "PASS" } else { "FAIL" };
             tracing::info!(
                 "[{icon}] {}: observed={:.10e}, expected={:.10e}, tol={:.2e} ({})",
-                check.label, check.observed, check.expected, check.tolerance, check.mode
+                check.label,
+                check.observed,
+                check.expected,
+                check.tolerance,
+                check.mode
             );
         }
 

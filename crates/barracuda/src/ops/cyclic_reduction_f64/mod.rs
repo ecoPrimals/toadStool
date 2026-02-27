@@ -323,25 +323,9 @@ impl CyclicReductionF64 {
         });
 
         encoder.copy_buffer_to_buffer(&d_buf, 0, &staging, 0, (n * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        // Wait and read results
-        let (tx, rx) = std::sync::mpsc::channel();
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).ok();
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        rx.recv()
-            .map_err(|e| BarracudaError::Gpu(format!("Failed to receive map result: {}", e)))?
-            .map_err(|e| BarracudaError::Gpu(format!("Buffer mapping failed: {:?}", e)))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging.unmap();
-
+        let result: Vec<f64> = self.device.map_staging_buffer(&staging, n)?;
         Ok(result)
     }
 
@@ -573,7 +557,7 @@ impl CyclicReductionF64 {
                 pass.dispatch_workgroups(n_workgroups.max(1) as u32, 1, 1);
             }
 
-            self.device.queue.submit(Some(encoder.finish()));
+            self.device.submit_and_poll(Some(encoder.finish()));
         }
 
         // Substitution phase: O(log n) passes in reverse
@@ -644,7 +628,7 @@ impl CyclicReductionF64 {
                 pass.dispatch_workgroups(n_workgroups.max(1) as u32, 1, 1);
             }
 
-            self.device.queue.submit(Some(encoder.finish()));
+            self.device.submit_and_poll(Some(encoder.finish()));
         }
 
         // Read back solution (stored in d_buf)
@@ -662,17 +646,9 @@ impl CyclicReductionF64 {
                     label: Some("Copy Encoder"),
                 });
         encoder.copy_buffer_to_buffer(&d_buf, 0, &staging, 0, (n * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging.unmap();
-
+        let result: Vec<f64> = self.device.map_staging_buffer(&staging, n)?;
         Ok(result)
     }
 }

@@ -32,9 +32,8 @@
 //   NAK Deficiency 4 — Missing FMA fusion
 //     NAK emits DMUL + DADD for a*b + c patterns.  Proprietary backend fuses
 //     to a single DFMA (halves instruction count, avoids one rounding).
-//     WGSL workaround: explicit fma(a, b, c) built-in wherever a multiply-add
-//     appears — guarantees a single DFMA on any driver that honours the SPIR-V
-//     OpFMulAdd / WGSL fma semantics.
+//     WGSL workaround: a*b+c patterns — Sovereign Compiler fuses to SPIR-V
+//     OpFMulAdd.  (WGSL fma() is not defined for f64.)
 //
 //   NAK Deficiency 5 — No branchless patterns (shared-memory bank conflicts)
 //     Proprietary driver converts simple sign-select and max-compare branches to
@@ -117,15 +116,13 @@ fn batched_eigh_single_dispatch(
 
                 // ── Rotation angle ──────────────────────────────────────────
                 // NAK deficiency 5: select() replaces two if/else branches.
-                // NAK deficiency 4: fma(t, t, 1.0) fuses t²+1 in c computation.
                 var t: f64;
                 if (abs(diff) < 1e-14) {
-                    // Degenerate: |a_pp - a_qq| ~ 0 → θ = ±45°
                     t = select(-1.0, 1.0, apq >= 0.0);          // deficiency 5
                 } else {
-                    let phi     = diff / (apq + apq);             // (aqq-app)/(2apq)
+                    let phi     = diff / (apq + apq);
                     let abs_phi = abs(phi);
-                    let denom   = sqrt(fma(phi, phi, 1.0));       // deficiency 4
+                    let denom   = sqrt(phi * phi + 1.0);         // deficiency 4
                     let sign    = select(-1.0, 1.0, phi >= 0.0); // deficiency 5
                     t = sign / (abs_phi + denom);
                 }
@@ -133,7 +130,7 @@ fn batched_eigh_single_dispatch(
                 // ── Hoisted scalars (NAK deficiency 2) ─────────────────────
                 // Computed ONCE per (p,q) pair, reused n times inside the loop.
                 // Named `let` bindings prevent NAK from spilling to local memory.
-                let c     = 1.0 / sqrt(fma(t, t, 1.0));          // deficiency 4
+                let c     = 1.0 / sqrt(t * t + 1.0);             // deficiency 4
                 let s     = t * c;
                 let neg_s = -s;
                 let cc    = c * c;
@@ -141,9 +138,8 @@ fn batched_eigh_single_dispatch(
                 let cs    = c * s;
                 let two_cs = cs + cs;   // 2cs — split to expose FMA opportunity
 
-                // Chained FMA for diagonal update (deficiency 4)
-                let app_new = fma(cc, app,  fma(-two_cs, apq, ss * aqq));
-                let aqq_new = fma(ss, app,  fma( two_cs, apq, cc * aqq));
+                let app_new = cc * app + (-two_cs * apq + ss * aqq);
+                let aqq_new = ss * app + ( two_cs * apq + cc * aqq);
 
                 // ── 4× unrolled k-loop (NAK deficiency 1 + 3) ─────────────
                 //
@@ -189,27 +185,26 @@ fn batched_eigh_single_dispatch(
                     let vkp3 = V_batch[base + idx2d(k3, p, n)];
                     let vkq3 = V_batch[base + idx2d(k3, q, n)];
 
-                    // ── All FMAs (explicit — deficiency 4) ────────────────
-                    // fma(c, akp, neg_s * akq) = c*akp - s*akq
-                    let nap0 = fma(c, akp0, neg_s * akq0);
-                    let naq0 = fma(s, akp0, c     * akq0);
-                    let nvp0 = fma(c, vkp0, neg_s * vkq0);
-                    let nvq0 = fma(s, vkp0, c     * vkq0);
+                    // Rotation: a*b+c patterns fused to FMA by Sovereign Compiler
+                    let nap0 = c * akp0 + neg_s * akq0;
+                    let naq0 = s * akp0 + c     * akq0;
+                    let nvp0 = c * vkp0 + neg_s * vkq0;
+                    let nvq0 = s * vkp0 + c     * vkq0;
 
-                    let nap1 = fma(c, akp1, neg_s * akq1);
-                    let naq1 = fma(s, akp1, c     * akq1);
-                    let nvp1 = fma(c, vkp1, neg_s * vkq1);
-                    let nvq1 = fma(s, vkp1, c     * vkq1);
+                    let nap1 = c * akp1 + neg_s * akq1;
+                    let naq1 = s * akp1 + c     * akq1;
+                    let nvp1 = c * vkp1 + neg_s * vkq1;
+                    let nvq1 = s * vkp1 + c     * vkq1;
 
-                    let nap2 = fma(c, akp2, neg_s * akq2);
-                    let naq2 = fma(s, akp2, c     * akq2);
-                    let nvp2 = fma(c, vkp2, neg_s * vkq2);
-                    let nvq2 = fma(s, vkp2, c     * vkq2);
+                    let nap2 = c * akp2 + neg_s * akq2;
+                    let naq2 = s * akp2 + c     * akq2;
+                    let nvp2 = c * vkp2 + neg_s * vkq2;
+                    let nvq2 = s * vkp2 + c     * vkq2;
 
-                    let nap3 = fma(c, akp3, neg_s * akq3);
-                    let naq3 = fma(s, akp3, c     * akq3);
-                    let nvp3 = fma(c, vkp3, neg_s * vkq3);
-                    let nvq3 = fma(s, vkp3, c     * vkq3);
+                    let nap3 = c * akp3 + neg_s * akq3;
+                    let naq3 = s * akp3 + c     * akq3;
+                    let nvp3 = c * vkp3 + neg_s * vkq3;
+                    let nvq3 = s * vkp3 + c     * vkq3;
 
                     // ── Write back (guarded by k != p, k != q) ────────────
                     if (k0 != p && k0 != q) {

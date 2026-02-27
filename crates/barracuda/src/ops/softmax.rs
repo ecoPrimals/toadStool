@@ -12,14 +12,20 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
 /// f64 canonical — simple softmax (single workgroup).
-const SHADER_SOFTMAX_SIMPLE_F64: &str = include_str!("../shaders/activation/softmax_simple_f64.wgsl");
+const SHADER_SOFTMAX_SIMPLE_F64: &str =
+    include_str!("../shaders/activation/softmax_simple_f64.wgsl");
 pub(crate) static SHADER_SOFTMAX_SIMPLE_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SOFTMAX_SIMPLE_F64));
+    std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(
+            SHADER_SOFTMAX_SIMPLE_F64,
+        )
+    });
 
 /// f64 canonical — basic softmax (multi-pass).
 const WGSL_SOFTMAX_BASIC_F64: &str = include_str!("../shaders/activation/softmax_f64.wgsl");
-pub static WGSL_SOFTMAX_BASIC: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_SOFTMAX_BASIC_F64));
+pub static WGSL_SOFTMAX_BASIC: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_SOFTMAX_BASIC_F64)
+});
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]

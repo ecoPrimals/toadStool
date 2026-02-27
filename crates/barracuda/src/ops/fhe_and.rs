@@ -214,7 +214,7 @@ impl FheAnd {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             result_buffer,
@@ -276,23 +276,9 @@ mod tests {
             0,
             (size * std::mem::size_of::<u32>()) as u64,
         );
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
-        let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) =
-            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .expect("poll(Wait) ensures map completion")
-            .expect("Buffer map error");
-
-        let data = buffer_slice.get_mapped_range();
-        let result_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buffer.unmap();
+        let result_u32: Vec<u32> = device.map_staging_buffer(&staging_buffer, size).unwrap();
 
         assert_eq!(result_u32.len(), 8);
         assert!(result_u32.iter().all(|&x| x == 1), "1 AND 1 should equal 1");

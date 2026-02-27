@@ -27,7 +27,7 @@ fn batch_ipr(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var i: u32 = 0u; i < params.dim; i = i + 1u) {
         let val = eigenvectors[offset + i];
         let p2 = val * val;
-        sum_p4 = fma(p2, p2, sum_p4);
+        sum_p4 = p2 * p2 + sum_p4;
     }
 
     ipr_out[vec_idx] = sum_p4;

@@ -76,8 +76,11 @@ impl DiceLoss {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/loss/dice_loss_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/loss/dice_loss_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 
@@ -241,8 +244,7 @@ impl DiceLoss {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return output tensor [batch_size]
         Ok(Tensor::from_buffer(

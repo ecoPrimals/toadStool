@@ -38,16 +38,13 @@ pub fn wgsl_layernorm_fused_v2() -> &'static str {
 pub const WGSL_LAYERNORM_OPTIMIZED: &str = include_str!("../shaders/norm/layernorm_optimized.wgsl");
 
 /// f64 canonical — f32 derived via downcast when needed.
-const WGSL_LAYERNORM_MEANVAR_F64: &str =
-    include_str!("../shaders/norm/layernorm_meanvar_f64.wgsl");
-const WGSL_LAYERNORM_STATS_F64: &str =
-    include_str!("../shaders/norm/layernorm_stats_f64.wgsl");
+const WGSL_LAYERNORM_MEANVAR_F64: &str = include_str!("../shaders/norm/layernorm_meanvar_f64.wgsl");
+const WGSL_LAYERNORM_STATS_F64: &str = include_str!("../shaders/norm/layernorm_stats_f64.wgsl");
 
 /// LayerNorm mean/variance pass.
-pub static WGSL_LAYERNORM_MEANVAR: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| {
-        crate::shaders::precision::downcast_f64_to_f32(WGSL_LAYERNORM_MEANVAR_F64)
-    });
+pub static WGSL_LAYERNORM_MEANVAR: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32(WGSL_LAYERNORM_MEANVAR_F64)
+});
 
 /// LayerNorm normalize pass.
 pub fn wgsl_layernorm_normalize() -> &'static str {
@@ -60,10 +57,9 @@ pub fn wgsl_layernorm_normalize() -> &'static str {
 }
 
 /// LayerNorm stats pass.
-pub static WGSL_LAYERNORM_STATS: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| {
-        crate::shaders::precision::downcast_f64_to_f32(WGSL_LAYERNORM_STATS_F64)
-    });
+pub static WGSL_LAYERNORM_STATS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32(WGSL_LAYERNORM_STATS_F64)
+});
 
 /// LayerNorm optimized variant.
 pub fn wgsl_layernorm_opt() -> &'static str {

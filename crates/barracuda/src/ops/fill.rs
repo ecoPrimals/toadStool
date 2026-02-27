@@ -132,7 +132,7 @@ impl Fill {
             let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

@@ -12,7 +12,7 @@ use toadstool_config::defaults;
 /// # Environment Variables
 ///
 /// The following environment variables can be used to override defaults:
-/// - `TOADSTOOL_API_URL`: Base URL of the ToadStool server
+/// - `TOADSTOOL_SERVER_URL`: Base URL of the ToadStool server
 /// - `TOADSTOOL_REQUEST_TIMEOUT_MS`: HTTP request timeout in milliseconds
 /// - `TOADSTOOL_WEBSOCKET_TIMEOUT_MS`: WebSocket connection timeout in milliseconds
 /// - `TOADSTOOL_MAX_RETRIES`: Maximum retry attempts
@@ -81,7 +81,7 @@ impl Default for ClientConfig {
     #[allow(deprecated)]
     fn default() -> Self {
         Self {
-            base_url: std::env::var("TOADSTOOL_API_URL").unwrap_or_else(|_| {
+            base_url: std::env::var("TOADSTOOL_SERVER_URL").unwrap_or_else(|_| {
                 format!(
                     "http://{}:{}",
                     defaults::network::LOCALHOST,

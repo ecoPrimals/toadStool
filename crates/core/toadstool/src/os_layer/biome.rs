@@ -28,10 +28,10 @@ impl BiomeOSIntegration {
 /// `BiomeOS` orchestrator for team-isolated deployments
 pub struct BiomeOrchestrator {
     /// biomeOS integration config
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Stored for future reconfiguration
     config: BiomeOSConfig,
     /// Active biome deployments
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Reserved for future deployment management
     active_deployments: Arc<RwLock<HashMap<String, BiomeDeployment>>>,
 }
 

@@ -220,9 +220,7 @@ pub fn multinomial_sample_cpu(
     let mut counts = vec![0u32; n_taxa];
     for _ in 0..depth {
         let u = rng();
-        let taxon = cumulative_probs
-            .partition_point(|&c| c < u)
-            .min(n_taxa - 1);
+        let taxon = cumulative_probs.partition_point(|&c| c < u).min(n_taxa - 1);
         counts[taxon] += 1;
     }
     counts

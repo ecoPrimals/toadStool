@@ -62,7 +62,7 @@ pub struct StorageClient {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     config: NestGateConfig,
     /// Discovered service name (for diagnostics)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Stored for diagnostics and logging
     service_name: String,
 }
 

@@ -334,8 +334,8 @@ async fn test_performance_comparison() {
             d.push((format!("CPU ({})", c.name()), c));
         }
         if d.is_empty() {
-            // Fall back to auto
-            let auto = Arc::new(WgpuDevice::new().await.unwrap());
+            // Fall back to shared test pool
+            let auto = barracuda::device::test_pool::get_test_device().await;
             d.push((format!("Auto ({})", auto.name()), auto));
         }
         d

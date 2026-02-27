@@ -34,7 +34,6 @@ impl WebGpuFramework {
     /// Initialize WebGPU instance and adapter
     ///
     /// Note: Only used when `webgpu` feature is enabled
-    #[allow(dead_code)]
     async fn initialize_webgpu(&self) -> ToadStoolResult<WebGPUAdapter> {
         #[cfg(feature = "webgpu")]
         {

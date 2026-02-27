@@ -10,18 +10,21 @@ use crate::tensor::Tensor;
 
 /// f64 canonical — BatchNorm with running mean/var (training mode, CNN).
 const WGSL_BATCHNORM_TRAINING_F64: &str = include_str!("../shaders/norm/batchnorm_f64.wgsl");
-pub static WGSL_BATCHNORM_TRAINING: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_BATCHNORM_TRAINING_F64));
+pub static WGSL_BATCHNORM_TRAINING: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_BATCHNORM_TRAINING_F64)
+});
 
 /// f64 canonical — 2D batch normalization (NCHW format, per-channel stats).
 const WGSL_BATCH_NORM_2D_F64: &str = include_str!("../shaders/norm/batch_norm2d_f64.wgsl");
-pub static WGSL_BATCH_NORM_2D: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_BATCH_NORM_2D_F64));
+pub static WGSL_BATCH_NORM_2D: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_BATCH_NORM_2D_F64)
+});
 
 /// f64 canonical — per-tensor batch norm (simplified).
 const SHADER_BATCH_NORM_F64: &str = include_str!("../shaders/norm/batch_norm_f64.wgsl");
-static SHADER_BATCH_NORM_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_BATCH_NORM_F64));
+static SHADER_BATCH_NORM_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_BATCH_NORM_F64)
+});
 
 /// GPU shader for group normalization (groups within channels).
 pub fn wgsl_groupnorm() -> &'static str {
@@ -184,7 +187,7 @@ impl BatchNorm {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

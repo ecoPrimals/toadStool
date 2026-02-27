@@ -8,8 +8,8 @@
 //! - ✅ Mathematical validation (NTT properties)
 //! - ✅ Performance measurement (56x speedup goal)
 
-use anyhow::Result;
 use barracuda::device::WgpuDevice;
+use barracuda::error::BarracudaError;
 use barracuda::ops::fhe_intt::{compute_inverse_root, FheIntt};
 use barracuda::ops::fhe_ntt::FheNtt;
 use barracuda::tensor::Tensor;
@@ -44,7 +44,7 @@ fn naive_poly_multiply_cpu(a: &[u64], b: &[u64], modulus: u64) -> Vec<u64> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), BarracudaError> {
     println!("╔══════════════════════════════════════════════════════════════╗");
     println!("║                                                              ║");
     println!("║          FHE NTT Validation - Real GPU Testing              ║");

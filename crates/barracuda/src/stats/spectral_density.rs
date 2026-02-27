@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn esd_single_value() {
-        let (centers, counts) = empirical_spectral_density(&[5.0; 20], 4);
+        let (_centers, counts) = empirical_spectral_density(&[5.0; 20], 4);
         assert_eq!(counts.len(), 4);
         let total: f64 = counts.iter().sum();
         assert!((total - 1.0).abs() < 1e-10);

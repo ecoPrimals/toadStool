@@ -14,9 +14,9 @@ use crate::coordination_integration::{
 
 /// Main distributed computing coordinator - uses capability-based coordination discovery
 pub struct DistributedCoordinator {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Stored for future reconfiguration and capability queries
     config: DistributedConfig,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Stored for future capability-based routing
     capabilities: Arc<RwLock<ToadStoolCapabilities>>,
     coordination_client: Option<Arc<CoordinationClient>>,
     standalone_executor: Arc<StandaloneExecutor>,
@@ -29,7 +29,7 @@ pub struct StandaloneExecutor {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
+#[allow(dead_code)] // Fields used for execution tracking; full usage in Phase 5+
 struct ExecutionSession {
     pub execution_id: Uuid,
     pub request: ExecutionRequest,

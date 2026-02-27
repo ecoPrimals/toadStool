@@ -5,6 +5,7 @@
 
 /// CPU reference for Coulomb forces (test/validation only).
 #[cfg(test)]
+#[allow(dead_code)]
 pub fn compute_cpu(positions: &[f64], charges: &[f64], k: f64, cutoff: f64, eps: f64) -> Vec<f64> {
     let n = charges.len();
     let cutoff_sq = cutoff * cutoff;
@@ -51,6 +52,7 @@ pub fn compute_cpu(positions: &[f64], charges: &[f64], k: f64, cutoff: f64, eps:
 
 /// CPU reference for Coulomb forces with potential energy (test/validation only).
 #[cfg(test)]
+#[allow(dead_code)]
 pub fn compute_cpu_with_energy(
     positions: &[f64],
     charges: &[f64],

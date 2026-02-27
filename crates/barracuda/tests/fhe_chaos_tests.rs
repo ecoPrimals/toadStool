@@ -18,11 +18,9 @@
 //! - Clear failure modes
 //! - Resource cleanup guaranteed
 
-use barracuda::device::WgpuDevice;
 use barracuda::ops::fhe_ntt::FheNtt;
 use barracuda::ops::fhe_poly_add::create_fhe_poly_tensor;
 use barracuda::tensor::Tensor;
-use std::sync::Arc;
 use tokio::task::JoinSet;
 
 /// Find a primitive root of unity for given degree and modulus
@@ -85,7 +83,7 @@ async fn chaos_random_polynomials_1000_cases() {
             .collect();
 
         // Execute NTT (should never panic)
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = barracuda::device::test_pool::get_test_device().await;
         let input_tensor = match create_fhe_poly_tensor(&input, device.clone()).await {
             Ok(t) => t,
             Err(_) => {
@@ -132,7 +130,7 @@ async fn chaos_random_coefficients_near_modulus() {
             .map(|i| modulus - 1 - ((i + offset) % 10))
             .collect();
 
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = barracuda::device::test_pool::get_test_device().await;
         let root = find_root_of_unity(degree as u32, modulus).unwrap_or(11u64);
         let input_tensor = create_fhe_poly_tensor(&input, device.clone())
             .await
@@ -183,7 +181,7 @@ async fn chaos_concurrent_ntt_operations() {
                 .map(|j| hasher_builder.hash_one(i * 1000 + j) % modulus)
                 .collect();
 
-            let device = Arc::new(WgpuDevice::new().await.unwrap());
+            let device = barracuda::device::test_pool::get_test_device().await;
             let root = find_root_of_unity(degree as u32, modulus).unwrap_or(11u64);
 
             // Execute NTT
@@ -203,7 +201,7 @@ async fn chaos_concurrent_ntt_operations() {
                 }
             }
 
-            Ok::<_, anyhow::Error>(i)
+            Ok::<_, barracuda::error::BarracudaError>(i)
         });
     }
 
@@ -226,7 +224,7 @@ async fn chaos_rapid_alloc_dealloc() {
     // Tests GPU memory management under stress
 
     for iteration in 0..100 {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = barracuda::device::test_pool::get_test_device().await;
 
         // Allocate
         let tensors: Vec<Tensor> = (0..10)
@@ -261,7 +259,7 @@ async fn chaos_interleaved_operations() {
             .map(|i| (i * 2) as u64 % modulus)
             .collect::<Vec<_>>();
 
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = barracuda::device::test_pool::get_test_device().await;
         let root = find_root_of_unity(degree as u32, modulus).unwrap_or(11u64);
 
         // Interleave: NTT, add, NTT, multiply, INTT, etc.
@@ -302,7 +300,7 @@ async fn chaos_large_polynomial_degrees() {
     let modulus = 12289;
     let input = vec![1u64; max_degree];
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let root = find_root_of_unity(max_degree as u32, modulus).unwrap_or(11u64);
     let input_tensor = create_fhe_poly_tensor(&input, device.clone())
         .await
@@ -328,7 +326,7 @@ async fn chaos_memory_limit() {
     // Allocate tensors until we hit a reasonable limit
     // Should fail gracefully, not crash
 
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
     let mut tensors = Vec::new();
     let mut total_mb = 0;
 

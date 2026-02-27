@@ -40,7 +40,6 @@ pub fn wgsl_reservoir_update() -> &'static str {
 /// GPU shader for readout: output[i] = W_out[i,:] · state (matrix-vector product).
 pub const WGSL_READOUT: &str = include_str!("../shaders/ml/esn_readout.wgsl");
 
-
 /// GPU shader for readout (alias).
 pub const WGSL_ESN_READOUT: &str = include_str!("../shaders/ml/esn_readout.wgsl");
 

@@ -51,8 +51,11 @@ impl PerceptualLoss {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/loss/perceptual_loss_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/loss/perceptual_loss_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 
@@ -277,7 +280,7 @@ impl PerceptualLoss {
             compute_pass.dispatch_workgroups(1, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let output_data = crate::utils::read_buffer(device, &output_buffer, 1)?;
         Ok(Tensor::new(output_data, vec![1], device.clone()))

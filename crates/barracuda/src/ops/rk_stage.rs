@@ -56,7 +56,7 @@ const DP_B4: [f64; 6] = [
 /// Step-size control constants (Dormand-Prince adaptive stepping)
 const STEP_SAFETY: f64 = 0.9;
 const STEP_MAX_GROWTH: f64 = 2.0;
-const STEP_GROW_EXPONENT: f64 = 0.2;   // 1/p for RK5 (p=5)
+const STEP_GROW_EXPONENT: f64 = 0.2; // 1/p for RK5 (p=5)
 const STEP_SHRINK_EXPONENT: f64 = 0.25; // 1/p for RK4 (p=4)
 
 /// CPU-orchestrated RK45 integrator with GPU state update path.

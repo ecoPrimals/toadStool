@@ -105,8 +105,14 @@ pub fn simpson(counts: &[f64]) -> f64 {
 pub fn chao1(counts: &[f64]) -> f64 {
     const HALFWIDTH: f64 = 0.5;
     let s_obs = observed_features(counts);
-    let f1 = counts.iter().filter(|&&c| (c - 1.0).abs() < HALFWIDTH).count() as f64;
-    let f2 = counts.iter().filter(|&&c| (c - 2.0).abs() < HALFWIDTH).count() as f64;
+    let f1 = counts
+        .iter()
+        .filter(|&&c| (c - 1.0).abs() < HALFWIDTH)
+        .count() as f64;
+    let f2 = counts
+        .iter()
+        .filter(|&&c| (c - 2.0).abs() < HALFWIDTH)
+        .count() as f64;
 
     if f2 > 0.0 {
         s_obs + (f1 * (f1 - 1.0)) / (2.0 * (f2 + 1.0))
@@ -169,7 +175,11 @@ pub fn bray_curtis(a: &[f64], b: &[f64]) -> f64 {
         num += (ai - bi).abs();
         den += ai + bi;
     }
-    if den == 0.0 { 0.0 } else { num / den }
+    if den == 0.0 {
+        0.0
+    } else {
+        num / den
+    }
 }
 
 /// Condensed Bray-Curtis distance matrix (lower triangle, row-major).
@@ -405,10 +415,7 @@ mod tests {
 
     #[test]
     fn condensed_vs_full_matrix() {
-        let samples = vec![
-            vec![10.0, 20.0],
-            vec![15.0, 25.0],
-        ];
+        let samples = vec![vec![10.0, 20.0], vec![15.0, 25.0]];
         let dm = bray_curtis_matrix(&samples);
         assert!(dm[0].abs() < f64::EPSILON);
         assert!(dm[3].abs() < f64::EPSILON);

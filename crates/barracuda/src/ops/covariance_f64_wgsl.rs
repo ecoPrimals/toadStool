@@ -12,7 +12,7 @@
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
@@ -229,28 +229,14 @@ impl CovarianceF64 {
 
         encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, output_size as u64);
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let buffer_slice = staging_buf.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result)
-                .expect("map_async callback: receiver must be waiting");
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|e| BarracudaError::Gpu(format!("Covariance readback: {}", e)))?
-            .map_err(|e| BarracudaError::Gpu(format!("Covariance map: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buf.unmap();
-
+        let result: Vec<f64> = self.device.map_staging_buffer(&staging_buf, 1)?;
         Ok(result[0])
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn covariance_cpu(x: &[f64], y: &[f64], ddof: usize) -> f64 {
         let n = x.len();
         if n <= ddof {

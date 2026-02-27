@@ -9,6 +9,22 @@ use std::sync::Arc;
 pub const ADAPTER_ENV_VAR: &str = "BARRACUDA_GPU_ADAPTER";
 
 impl WgpuDevice {
+    /// Install error handler that flags device-lost and re-panics.
+    /// Must be called before wrapping device in Arc.
+    fn install_error_handler(
+        device: &wgpu::Device,
+        lost_flag: &Arc<std::sync::atomic::AtomicBool>,
+    ) {
+        let flag = Arc::clone(lost_flag);
+        device.on_uncaptured_error(Box::new(move |error| {
+            let msg = error.to_string();
+            if msg.contains("lost") || msg.contains("Lost") {
+                flag.store(true, std::sync::atomic::Ordering::Release);
+            }
+            panic!("wgpu uncaptured error: {msg}");
+        }));
+    }
+
     #[allow(unsafe_code)]
     fn make_pipeline_cache(device: &wgpu::Device) -> Option<Arc<wgpu::PipelineCache>> {
         if !device.features().contains(wgpu::Features::PIPELINE_CACHE) {
@@ -121,13 +137,20 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create CPU device: {e}")))?;
 
+        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        Self::install_error_handler(&device, &lost);
+
         let pipeline_cache = Self::make_pipeline_cache(&device);
+        let budget = super::concurrency_budget(adapter_info.device_type);
         let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info,
             calibration: None,
             pipeline_cache,
+            lost,
+            gpu_lock: Arc::new(std::sync::Mutex::new(())),
+            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -195,13 +218,20 @@ impl WgpuDevice {
             actual_limits.max_buffer_size / (1 << 20),
         );
 
+        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        Self::install_error_handler(&device, &lost);
+
         let pipeline_cache = Self::make_pipeline_cache(&device);
+        let budget = super::concurrency_budget(info.device_type);
         let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info: info,
             calibration: None,
             pipeline_cache,
+            lost,
+            gpu_lock: Arc::new(std::sync::Mutex::new(())),
+            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -434,13 +464,20 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
+        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        Self::install_error_handler(&device, &lost);
+
         let pipeline_cache = Self::make_pipeline_cache(&device);
+        let budget = super::concurrency_budget(info.device_type);
         let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info: info,
             calibration: None,
             pipeline_cache,
+            lost,
+            gpu_lock: Arc::new(std::sync::Mutex::new(())),
+            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -513,7 +550,11 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
+        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        Self::install_error_handler(&device, &lost);
+
         let pipeline_cache = Self::make_pipeline_cache(&device);
+        let budget = super::concurrency_budget(adapter_info.device_type);
 
         let wgpu_device = Self {
             device: Arc::new(device),
@@ -521,6 +562,9 @@ impl WgpuDevice {
             adapter_info,
             calibration: None,
             pipeline_cache,
+            lost,
+            gpu_lock: Arc::new(std::sync::Mutex::new(())),
+            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -533,12 +577,16 @@ impl WgpuDevice {
         adapter_info: wgpu::AdapterInfo,
     ) -> Self {
         let pipeline_cache = Self::make_pipeline_cache(&device);
+        let budget = super::concurrency_budget(adapter_info.device_type);
         let wgpu_device = Self {
             device,
             queue,
             adapter_info,
             calibration: None,
             pipeline_cache,
+            lost: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            gpu_lock: Arc::new(std::sync::Mutex::new(())),
+            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         wgpu_device
@@ -558,6 +606,8 @@ impl WgpuDevice {
     )]
     pub fn from_existing_simple(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Self {
         let pipeline_cache = Self::make_pipeline_cache(&device);
+        let device_type = wgpu::DeviceType::Other;
+        let budget = super::concurrency_budget(device_type);
         let wgpu_device = Self {
             device,
             queue,
@@ -565,13 +615,16 @@ impl WgpuDevice {
                 name: "External Device".to_string(),
                 vendor: 0,
                 device: 0,
-                device_type: wgpu::DeviceType::Other,
+                device_type,
                 driver: "external".to_string(),
                 driver_info: "wrapped from existing wgpu resources".to_string(),
                 backend: wgpu::Backend::Vulkan,
             },
             calibration: None,
             pipeline_cache,
+            lost: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            gpu_lock: Arc::new(std::sync::Mutex::new(())),
+            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         wgpu_device

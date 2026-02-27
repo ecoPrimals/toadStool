@@ -450,8 +450,14 @@ mod tests {
     fn test_rawr_mean_basic() {
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
         let ci = rawr_mean(&data, 2000, 0.95, 42).unwrap();
-        assert!((ci.estimate - 5.5).abs() < 1e-10, "point estimate should be arithmetic mean");
-        assert!(ci.lower < 5.5 && ci.upper > 5.5, "CI should bracket true mean");
+        assert!(
+            (ci.estimate - 5.5).abs() < 1e-10,
+            "point estimate should be arithmetic mean"
+        );
+        assert!(
+            ci.lower < 5.5 && ci.upper > 5.5,
+            "CI should bracket true mean"
+        );
         assert!(ci.std_error > 0.0);
     }
 

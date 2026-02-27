@@ -117,7 +117,7 @@ impl SGDW {
         };
 
         // Submit buffer copies
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Create output buffer
         let output_buffer = device.create_buffer_f32(size)?;
@@ -291,7 +291,7 @@ impl SGDW {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let updated_params = Tensor::from_buffer(
             output_buffer,

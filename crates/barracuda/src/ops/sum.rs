@@ -13,19 +13,12 @@ use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 /// Simple sum reduction variant (scalar path). f64 canonical, f32 derived.
-const WGSL_SUM_SIMPLE_F64: &str = include_str!("../shaders/misc/sum_simple_f64.wgsl");
-#[allow(dead_code)]
-static WGSL_SUM_SIMPLE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    crate::shaders::precision::downcast_f64_to_f32(WGSL_SUM_SIMPLE_F64)
-});
-
 /// f64 canonical source for dimension-wise sum.
 const WGSL_SUM_DIM_F64: &str = include_str!("../shaders/reduce/sum_dim_f64.wgsl");
 
 /// f32 derived from f64 canonical source.
-static WGSL_SUM_DIM_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    crate::shaders::precision::downcast_f64_to_f32(WGSL_SUM_DIM_F64)
-});
+static WGSL_SUM_DIM_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_SUM_DIM_F64));
 
 /// Sum reduction operation
 pub struct Sum {
@@ -52,12 +45,6 @@ impl Sum {
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
         &WGSL_SUM_DIM_F32
-    }
-
-    /// f64 dimension-wise sum reduction.
-    #[allow(dead_code)]
-    fn wgsl_shader_dim_f64() -> &'static str {
-        WGSL_SUM_DIM_F64
     }
 
     /// Execute the sum operation
@@ -207,7 +194,7 @@ impl Sum {
                     compute_pass.dispatch_workgroups(num_workgroups.max(1), 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back partial results and reduce them on CPU
                 // For now, we'll do a simple CPU reduction of partial results
@@ -373,7 +360,7 @@ impl Sum {
                     compute_pass.dispatch_workgroups(workgroups.max(1), 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back results
                 let output_data = device.read_buffer_f32(&output_buffer, output_size)?;

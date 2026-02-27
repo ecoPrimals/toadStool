@@ -595,7 +595,7 @@ mod tests {
     #[test]
     fn test_tridiagonal_small() {
         // Skip if no GPU
-        if WgpuDevice::new().is_err() {
+        if crate::device::test_pool::get_test_device_if_gpu_available_sync().is_none() {
             return;
         }
         
@@ -616,7 +616,7 @@ mod tests {
     
     #[test]
     fn test_tridiagonal_heat_equation() {
-        if WgpuDevice::new().is_err() {
+        if crate::device::test_pool::get_test_device_if_gpu_available_sync().is_none() {
             return;
         }
         
@@ -633,7 +633,7 @@ mod tests {
     
     #[test]
     fn test_tridiagonal_identity() {
-        if WgpuDevice::new().is_err() {
+        if crate::device::test_pool::get_test_device_if_gpu_available_sync().is_none() {
             return;
         }
         

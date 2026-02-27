@@ -47,7 +47,7 @@
 //!     // Instead of hardcoding "http://localhost:8080", use service discovery:
 //!     //
 //!     // Option 1: Environment-based (development/testing)
-//!     let endpoint = std::env::var("TOADSTOOL_ENDPOINT")
+//!     let endpoint = std::env::var("TOADSTOOL_SERVER_URL")
 //!         .unwrap_or_else(|_| "http://localhost:8080".to_string());
 //!     
 //!     // Option 2: Production with discovery (see ClientConfig::with_discovery)

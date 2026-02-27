@@ -269,8 +269,7 @@ impl SmithWatermanGpu {
             pass.dispatch_workgroups(wg, 1, 1);
         }
 
-        dev.queue.submit(Some(encoder.finish()));
-        dev.device.poll(wgpu::Maintain::Wait);
+        dev.submit_and_poll(Some(encoder.finish()));
 
         // ── Read back H matrix and find best score on CPU ─────────────────────
         let h_data = dev.read_buffer_f64(&h_buf, rows_cols)?;

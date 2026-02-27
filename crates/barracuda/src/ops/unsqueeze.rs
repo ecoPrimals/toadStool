@@ -114,7 +114,7 @@ impl Unsqueeze {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Compute new shape by inserting dimension of size 1 at axis
         let mut new_shape = self.input.shape().to_vec();

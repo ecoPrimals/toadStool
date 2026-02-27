@@ -277,7 +277,7 @@ impl FhePointwiseMul {
         }
 
         // Submit command buffer
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return tensor (data stays on GPU)
         Ok(Tensor::from_buffer(

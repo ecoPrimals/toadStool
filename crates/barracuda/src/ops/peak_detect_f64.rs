@@ -8,7 +8,7 @@ use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 use crate::device::WgpuDevice;
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 
 /// A detected peak with its properties.
 #[derive(Debug, Clone)]
@@ -253,39 +253,10 @@ impl<'a> PeakDetectF64<'a> {
         encoder.copy_buffer_to_buffer(&is_peak_buf, 0, &is_peak_staging, 0, (n * 4) as u64);
         encoder.copy_buffer_to_buffer(&prominence_buf, 0, &prominence_staging, 0, (n * 8) as u64);
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
-        // Map and read is_peak
-        let is_peak_slice = is_peak_staging.slice(..);
-        let (tx1, rx1) = std::sync::mpsc::channel();
-        is_peak_slice.map_async(wgpu::MapMode::Read, move |r| {
-            tx1.send(r).ok();
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        rx1.recv()
-            .map_err(|e| BarracudaError::Gpu(format!("is_peak map recv: {e}")))?
-            .map_err(|e| BarracudaError::Gpu(format!("is_peak map: {e}")))?;
-        let is_peak_data: Vec<u32> = {
-            let view = is_peak_slice.get_mapped_range();
-            bytemuck::cast_slice(&view).to_vec()
-        };
-        is_peak_staging.unmap();
-
-        // Map and read prominence
-        let prom_slice = prominence_staging.slice(..);
-        let (tx2, rx2) = std::sync::mpsc::channel();
-        prom_slice.map_async(wgpu::MapMode::Read, move |r| {
-            tx2.send(r).ok();
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        rx2.recv()
-            .map_err(|e| BarracudaError::Gpu(format!("prominence map recv: {e}")))?
-            .map_err(|e| BarracudaError::Gpu(format!("prominence map: {e}")))?;
-        let prominence_data: Vec<f64> = {
-            let view = prom_slice.get_mapped_range();
-            bytemuck::cast_slice(&view).to_vec()
-        };
-        prominence_staging.unmap();
+        let is_peak_data: Vec<u32> = device.map_staging_buffer(&is_peak_staging, n)?;
+        let prominence_data: Vec<f64> = device.map_staging_buffer(&prominence_staging, n)?;
 
         Ok((is_peak_data, prominence_data))
     }

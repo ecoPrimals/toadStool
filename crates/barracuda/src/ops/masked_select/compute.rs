@@ -184,7 +184,7 @@ pub(super) fn compute_prefix_sum_gpu(
         pass.dispatch_workgroups(1, 1, 1);
     }
 
-    device.queue.submit(Some(encoder.finish()));
+    device.submit_and_poll(Some(encoder.finish()));
 
     // Total = scan_out[N-1] + flags_in[N-1] (exclusive scan + last flag)
     let scan_last = read_buffer_u32_last(device, &prefix_sum_buffer, size)?;
@@ -322,7 +322,7 @@ pub(super) fn convert_mask_gpu(
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
-    device.queue.submit(Some(encoder.finish()));
+    device.submit_and_poll(Some(encoder.finish()));
 
     Ok(())
 }
@@ -355,26 +355,9 @@ pub(super) fn read_buffer_u32_last(
         0,
         std::mem::size_of::<u32>() as u64,
     );
-    device.queue.submit(Some(encoder.finish()));
+    device.submit_and_poll(Some(encoder.finish()));
 
-    let buffer_slice = staging_buffer.slice(..);
-    let (sender, receiver) =
-        std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-        let _ = sender.send(result);
-    });
-    device.device.poll(wgpu::Maintain::Wait);
-
-    receiver
-        .recv()
-        .map_err(|e| crate::error::BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
-        .map_err(|e| crate::error::BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-    let data = buffer_slice.get_mapped_range();
-    let result_data: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-    drop(data);
-    staging_buffer.unmap();
-
+    let result_data: Vec<u32> = device.map_staging_buffer(&staging_buffer, 1)?;
     Ok(result_data[0])
 }
 
@@ -561,7 +544,7 @@ pub(super) fn execute_masked_select(op: MaskedSelect) -> Result<Tensor> {
         compute_pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
-    device.queue.submit(Some(encoder.finish()));
+    device.submit_and_poll(Some(encoder.finish()));
 
     let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
     Ok(Tensor::new(output_data, vec![output_size], device.clone()))

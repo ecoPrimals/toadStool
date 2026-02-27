@@ -1,34 +1,52 @@
-//! Test device pool — resilient shared device with automatic recovery
+//! Test device pool — dual-backend with automatic recovery
 //!
-//! **Problem**: Creating 2435 wgpu devices exhausts GPU resources.
-//! **Problem**: A single NVVM/driver shader compilation failure marks the
-//!   wgpu device as "lost", cascading to ALL subsequent tests.
-//! **Problem**: Multi-GPU systems (e.g. RTX 3090 + RX 6950 XT) can silently
-//!   select different adapters across recreations, causing cross-device
-//!   contamination via `TensorContext` (keyed by adapter fingerprint).
+//! **Architecture**: Math is the contract, hardware is the target.
+//! - **CPU pool** (default): validates shader math via llvmpipe/software.
+//!   Fast, fully parallel, zero GPU contention. No device loss possible.
+//! - **GPU pool** (opt-in): validates the hardware pipeline, streaming,
+//!   and driver integration. Used for perf tests and hardware CI.
 //!
-//! **Solution**: Shared device behind `RwLock` with health-check + recreation.
-//!   ALL accessors funnel through ONE device. Adapter selection is pinned via
-//!   `BARRACUDA_GPU_ADAPTER` / `HOTSPRING_GPU_ADAPTER` env vars, or auto-
-//!   detected as the first discrete GPU with `SHADER_F64`.
+//! Set `BARRACUDA_TEST_BACKEND=gpu` to run all tests on GPU (workload testing).
+//! Set `BARRACUDA_GPU_ADAPTER=<name|index>` to pin the GPU adapter.
 //!
-//! Absorbed from hotSpring adapter selection (Feb 2026).
+//! The test suite IS a workload test of toadstool — test failures reveal
+//! runtime flaws that would appear in production under sustained load.
 
 use crate::device::WgpuDevice;
 use std::sync::{Arc, RwLock};
 
-static DEVICE_POOL: std::sync::LazyLock<RwLock<Option<Arc<WgpuDevice>>>> =
+// ============================================================================
+// Pool storage
+// ============================================================================
+
+static CPU_POOL: std::sync::LazyLock<RwLock<Option<Arc<WgpuDevice>>>> =
+    std::sync::LazyLock::new(|| RwLock::new(None));
+
+static GPU_POOL: std::sync::LazyLock<RwLock<Option<Arc<WgpuDevice>>>> =
     std::sync::LazyLock::new(|| RwLock::new(None));
 
 /// Cached adapter capabilities (survive device recreation).
-static IS_REAL_GPU: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-static HAS_F64: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+static GPU_IS_REAL: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+static GPU_HAS_F64: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+static CPU_AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
 
-/// Pinned adapter selector — determined once, reused on every recreation so
-/// the test pool always returns the same physical GPU.
-static ADAPTER_SELECTOR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+/// Whether tests default to GPU backend.
+fn prefer_gpu() -> bool {
+    static CACHED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *CACHED.get_or_init(|| {
+        std::env::var("BARRACUDA_TEST_BACKEND")
+            .map(|v| v.eq_ignore_ascii_case("gpu"))
+            .unwrap_or(false)
+    })
+}
 
-fn resolve_adapter_selector() -> String {
+// ============================================================================
+// GPU adapter pinning
+// ============================================================================
+
+static GPU_ADAPTER_SELECTOR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+fn resolve_gpu_adapter_selector() -> String {
     if let Ok(v) = std::env::var("BARRACUDA_GPU_ADAPTER") {
         if !v.is_empty() {
             return v;
@@ -39,7 +57,6 @@ fn resolve_adapter_selector() -> String {
             return v.split(',').next().unwrap_or("auto").to_string();
         }
     }
-    // Auto-detect: find the first discrete GPU with SHADER_F64 and pin to its name.
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         ..Default::default()
@@ -49,96 +66,146 @@ fn resolve_adapter_selector() -> String {
         if info.device_type == wgpu::DeviceType::DiscreteGpu
             && adapter.features().contains(wgpu::Features::SHADER_F64)
         {
-            tracing::info!("test_pool: auto-pinned to '{}' (discrete, f64)", info.name);
             return info.name.clone();
         }
     }
     "auto".to_string()
 }
 
-async fn create_device() -> Arc<WgpuDevice> {
-    let selector = ADAPTER_SELECTOR.get_or_init(resolve_adapter_selector);
+// ============================================================================
+// Device creation
+// ============================================================================
+
+async fn create_gpu_device() -> Arc<WgpuDevice> {
+    let selector = GPU_ADAPTER_SELECTOR.get_or_init(resolve_gpu_adapter_selector);
     let device = tokio::time::timeout(
         std::time::Duration::from_secs(10),
         WgpuDevice::with_adapter_selector(selector),
     )
     .await
     .expect("GPU device creation timed out after 10s -- check driver")
-    .expect("Failed to create test device");
+    .expect("Failed to create GPU test device");
     tracing::info!(
-        "test_pool: device '{}' ({:?})",
+        "test_pool[gpu]: '{}' ({:?})",
         device.adapter_info().name,
         device.adapter_info().device_type,
     );
     Arc::new(device)
 }
 
-fn is_device_healthy(device: &WgpuDevice) -> bool {
-    // A lost device panics in the uncaptured error handler on any GPU operation.
-    // catch_unwind detects this without crashing the test runner.
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let buf = device.device().create_buffer(&wgpu::BufferDescriptor {
-            label: Some("health-probe"),
-            size: 4,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        device
-            .queue()
-            .submit(std::iter::empty::<wgpu::CommandBuffer>());
-        device.device().poll(wgpu::Maintain::Wait);
-        drop(buf);
-    }))
-    .is_ok()
+async fn create_cpu_device() -> Option<Arc<WgpuDevice>> {
+    match WgpuDevice::new_cpu_relaxed().await {
+        Ok(device) => {
+            tracing::info!(
+                "test_pool[cpu]: '{}' ({:?})",
+                device.adapter_info().name,
+                device.adapter_info().device_type,
+            );
+            Some(Arc::new(device))
+        }
+        Err(e) => {
+            tracing::warn!("CPU backend unavailable: {e}");
+            None
+        }
+    }
 }
 
-/// Get or create the shared test device, recreating if the previous one was lost.
-pub async fn get_test_device() -> Arc<WgpuDevice> {
-    // Fast path: device exists and is healthy.
+fn is_device_healthy(device: &WgpuDevice) -> bool {
+    !device.is_lost()
+}
+
+/// Get or create from a specific pool, with health-check and recreation.
+fn get_or_create_pool(
+    pool: &RwLock<Option<Arc<WgpuDevice>>>,
+    creator: impl FnOnce() -> Option<Arc<WgpuDevice>>,
+) -> Option<Arc<WgpuDevice>> {
+    // Fast path
     {
-        let guard = DEVICE_POOL.read().unwrap_or_else(|e| e.into_inner());
+        let guard = pool.read().unwrap_or_else(|e| e.into_inner());
         if let Some(ref dev) = *guard {
             if is_device_healthy(dev) {
-                return Arc::clone(dev);
+                return Some(Arc::clone(dev));
             }
         }
     }
-
-    // Slow path: create or recreate.
-    let mut guard = DEVICE_POOL.write().unwrap_or_else(|e| e.into_inner());
-    // Double-check: another thread may have recreated while we waited for the write lock.
+    // Slow path: create or recreate
+    let mut guard = pool.write().unwrap_or_else(|e| e.into_inner());
     if let Some(ref dev) = *guard {
         if is_device_healthy(dev) {
-            return Arc::clone(dev);
+            return Some(Arc::clone(dev));
         }
-        tracing::warn!("Shared test device lost — recreating");
+        tracing::warn!("test_pool: device lost — recreating");
         crate::device::tensor_context::clear_global_contexts();
         crate::device::pipeline_cache::clear_global_cache();
     }
-
-    let new_device = pollster::block_on(create_device());
-
-    IS_REAL_GPU.get_or_init(|| new_device.adapter_info().device_type != wgpu::DeviceType::Cpu);
-    HAS_F64.get_or_init(|| new_device.has_f64_shaders());
-
+    let new_device = creator()?;
     *guard = Some(Arc::clone(&new_device));
-    new_device
+    Some(new_device)
 }
 
-/// Get the shared device if it's a real GPU (not software/CPU adapter).
+// ============================================================================
+// Public API
+// ============================================================================
+
+/// Get the default test device.
+///
+/// Returns CPU device for math validation (fast, parallel, no GPU contention).
+/// Set `BARRACUDA_TEST_BACKEND=gpu` to use GPU instead (workload testing).
+/// Falls back to GPU if CPU backend is unavailable.
+pub async fn get_test_device() -> Arc<WgpuDevice> {
+    if prefer_gpu() {
+        return get_test_gpu_device()
+            .await
+            .expect("BARRACUDA_TEST_BACKEND=gpu but no GPU available");
+    }
+
+    // Try CPU first
+    if let Some(dev) = get_test_cpu_device() {
+        return dev;
+    }
+
+    // Fall back to GPU if no CPU backend
+    get_test_gpu_device()
+        .await
+        .expect("No test device available (neither CPU nor GPU)")
+}
+
+/// Get the CPU test device (llvmpipe/software).
+/// Returns None if no CPU backend is available.
+pub fn get_test_cpu_device() -> Option<Arc<WgpuDevice>> {
+    let available = *CPU_AVAILABLE
+        .get_or_init(|| pollster::block_on(async { create_cpu_device().await.is_some() }));
+    if !available {
+        return None;
+    }
+
+    get_or_create_pool(&CPU_POOL, || pollster::block_on(create_cpu_device()))
+}
+
+/// Get the GPU test device. Returns None if no real GPU is available.
+pub async fn get_test_gpu_device() -> Option<Arc<WgpuDevice>> {
+    get_or_create_pool(&GPU_POOL, || {
+        let dev = pollster::block_on(create_gpu_device());
+        GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
+        GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
+        Some(dev)
+    })
+}
+
+/// Get a GPU device only if it's real hardware (not software fallback).
 pub async fn get_test_device_if_gpu_available() -> Option<Arc<WgpuDevice>> {
-    let device = get_test_device().await;
-    if *IS_REAL_GPU.get_or_init(|| device.adapter_info().device_type != wgpu::DeviceType::Cpu) {
+    let device = get_test_gpu_device().await?;
+    if *GPU_IS_REAL.get_or_init(|| device.adapter_info().device_type != wgpu::DeviceType::Cpu) {
         Some(device)
     } else {
         None
     }
 }
 
-/// Get the shared device if it supports f64 shader operations.
+/// Get a device only if it supports f64 shader operations.
 pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
-    let device = get_test_device().await;
-    if *HAS_F64.get_or_init(|| device.has_f64_shaders()) {
+    let device = get_test_gpu_device().await?;
+    if *GPU_HAS_F64.get_or_init(|| device.has_f64_shaders()) {
         Some(device)
     } else {
         None
@@ -150,20 +217,29 @@ pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
 // ============================================================================
 
 fn get_test_device_sync_inner() -> Arc<WgpuDevice> {
-    // Try fast path without creating a runtime.
-    {
-        let guard = DEVICE_POOL.read().unwrap_or_else(|e| e.into_inner());
-        if let Some(ref dev) = *guard {
-            if is_device_healthy(dev) {
-                return Arc::clone(dev);
-            }
-        }
+    if prefer_gpu() {
+        return get_or_create_pool(&GPU_POOL, || {
+            let dev = pollster::block_on(create_gpu_device());
+            GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
+            GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
+            Some(dev)
+        })
+        .expect("BARRACUDA_TEST_BACKEND=gpu but no GPU available");
     }
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to create Tokio runtime for sync device access")
-        .block_on(get_test_device())
+
+    // Try CPU first
+    if let Some(dev) = get_test_cpu_device() {
+        return dev;
+    }
+
+    // Fall back to GPU
+    get_or_create_pool(&GPU_POOL, || {
+        let dev = pollster::block_on(create_gpu_device());
+        GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
+        GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
+        Some(dev)
+    })
+    .expect("No test device available")
 }
 
 /// Run a closure with the shared test device.
@@ -181,8 +257,13 @@ pub fn get_test_device_sync() -> Arc<WgpuDevice> {
 
 /// Sync wrapper for `get_test_device_if_gpu_available`.
 pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    let device = get_test_device_sync();
-    if *IS_REAL_GPU.get_or_init(|| device.adapter_info().device_type != wgpu::DeviceType::Cpu) {
+    let device = get_or_create_pool(&GPU_POOL, || {
+        let dev = pollster::block_on(create_gpu_device());
+        GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
+        GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
+        Some(dev)
+    })?;
+    if *GPU_IS_REAL.get_or_init(|| device.adapter_info().device_type != wgpu::DeviceType::Cpu) {
         Some(device)
     } else {
         None
@@ -191,8 +272,13 @@ pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
 
 /// Sync wrapper for `get_test_device_if_f64_gpu_available`.
 pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    let device = get_test_device_sync();
-    if *HAS_F64.get_or_init(|| device.has_f64_shaders()) {
+    let device = get_or_create_pool(&GPU_POOL, || {
+        let dev = pollster::block_on(create_gpu_device());
+        GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
+        GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
+        Some(dev)
+    })?;
+    if *GPU_HAS_F64.get_or_init(|| device.has_f64_shaders()) {
         Some(device)
     } else {
         None
@@ -214,8 +300,8 @@ pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
 ///     #[tokio::test]
 ///     async fn test_my_op() {
 ///         let device = test_device().await;
-///         let tensor = test_tensor(&[1.0, 2.0, 3.0], &[3], &device).await;
-///         // ... test logic
+///         // runs on CPU by default (fast, parallel)
+///         // set BARRACUDA_TEST_BACKEND=gpu for GPU workload testing
 ///     }
 /// }
 /// ```
@@ -223,7 +309,10 @@ pub mod test_prelude {
     use super::*;
     use crate::tensor::Tensor;
 
-    /// Get shared test device (async version - preferred)
+    /// Get shared test device (async). CPU by default, GPU with env var.
+    ///
+    /// The device self-throttles via its internal dispatch semaphore —
+    /// no manual thread count management needed.
     pub async fn test_device() -> Arc<WgpuDevice> {
         get_test_device().await
     }
@@ -233,12 +322,13 @@ pub mod test_prelude {
         get_test_device_sync()
     }
 
-    /// Get GPU-only test device, or skip test if unavailable
+    /// Get GPU-only test device, or None if unavailable.
+    /// Use for tests that specifically validate GPU pipeline behavior.
     pub async fn test_gpu_device() -> Option<Arc<WgpuDevice>> {
         get_test_device_if_gpu_available().await
     }
 
-    /// Get f64-capable test device, or skip test if unavailable
+    /// Get f64-capable test device, or None if unavailable
     pub async fn test_f64_device() -> Option<Arc<WgpuDevice>> {
         get_test_device_if_f64_gpu_available().await
     }
@@ -262,9 +352,7 @@ pub mod test_prelude {
             .expect("Failed to create zeros tensor")
     }
 
-    /// Create randn tensor on shared device
-    ///
-    /// Uses Box-Muller transform on CPU, then uploads to shared device.
+    /// Create randn tensor on shared device (Box-Muller on CPU, then upload).
     pub async fn test_randn(shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
         use rand::Rng;
         let size: usize = shape.iter().product();
@@ -334,6 +422,14 @@ mod tests {
                 first_ptr,
                 "Concurrent accesses should get same device"
             );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cpu_device_available() {
+        // On systems with llvmpipe, CPU device should work
+        if let Some(dev) = get_test_cpu_device() {
+            assert!(dev.is_cpu(), "CPU device should report as CPU");
         }
     }
 }

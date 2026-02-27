@@ -394,7 +394,7 @@ impl Fft1DF64 {
             }
         }
 
-        device.queue.submit(std::iter::once(encoder.finish()));
+        device.submit_and_poll(std::iter::once(encoder.finish()));
 
         // Create output tensor
         Ok(Tensor::from_buffer(

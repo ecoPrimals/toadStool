@@ -115,7 +115,7 @@ impl Squeeze {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Compute new shape by removing dimensions of size 1
         let new_shape: Vec<usize> = self

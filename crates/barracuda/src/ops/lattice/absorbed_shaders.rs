@@ -49,21 +49,18 @@ pub const WGSL_STAGGERED_FERMION_FORCE_F64: &str =
 /// Fixes naga composition bug in the original `su3_f64.wgsl` by separating
 /// math functions from storage/uniform declarations. Prepend to any shader
 /// that needs SU(3) algebra.
-pub const WGSL_SU3_MATH_F64: &str =
-    include_str!("../../shaders/lattice/su3_math_f64.wgsl");
+pub const WGSL_SU3_MATH_F64: &str = include_str!("../../shaders/lattice/su3_math_f64.wgsl");
 
 /// Base SU(3) lattice matrix operations (includes storage bindings).
 ///
 /// For composition-safe math-only version, use [`WGSL_SU3_MATH_F64`].
-pub const WGSL_SU3_LATTICE_F64: &str =
-    include_str!("../../shaders/lattice/su3_f64.wgsl");
+pub const WGSL_SU3_LATTICE_F64: &str = include_str!("../../shaders/lattice/su3_f64.wgsl");
 
 /// PCG hash PRNG library: `pcg_hash → uniform_f64`.
 ///
 /// Shared PRNG for all lattice kernels that need random number generation.
 /// Stateless (hash-based), suitable for GPU-parallel use.
-pub const WGSL_PRNG_PCG_F64: &str =
-    include_str!("../../shaders/lattice/prng_pcg_f64.wgsl");
+pub const WGSL_PRNG_PCG_F64: &str = include_str!("../../shaders/lattice/prng_pcg_f64.wgsl");
 
 /// DF64 SU(3) gauge force (9.9× throughput via f32-pair arithmetic).
 ///
@@ -80,8 +77,7 @@ pub const WGSL_SU3_KINETIC_ENERGY_DF64: &str =
 ///
 /// Standalone version of the inline [`super::cg::WGSL_AXPY_F64`] for
 /// multi-shader composition via file concatenation.
-pub const WGSL_AXPY_FILE_F64: &str =
-    include_str!("../../shaders/lattice/axpy_f64.wgsl");
+pub const WGSL_AXPY_FILE_F64: &str = include_str!("../../shaders/lattice/axpy_f64.wgsl");
 
 /// File-based complex dot product Re(<a|b>) (f64).
 ///
@@ -92,5 +88,4 @@ pub const WGSL_COMPLEX_DOT_RE_FILE_F64: &str =
 /// File-based BLAS xpay: p[i] = x[i] + β × p[i] (f64).
 ///
 /// Standalone version of the inline [`super::cg::WGSL_XPAY_F64`].
-pub const WGSL_XPAY_FILE_F64: &str =
-    include_str!("../../shaders/lattice/xpay_f64.wgsl");
+pub const WGSL_XPAY_FILE_F64: &str = include_str!("../../shaders/lattice/xpay_f64.wgsl");

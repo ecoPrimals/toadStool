@@ -1,6 +1,6 @@
 //! 2D Laplacian computation: ∇²f = ∂²f/∂x² + ∂²f/∂y²
 
-use super::super::fd_common::{read_staging_f64 as read_staging, FdPipelineBuilder};
+use super::super::fd_common::FdPipelineBuilder;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -172,6 +172,6 @@ impl Laplacian2D {
         encoder.copy_buffer_to_buffer(&laplacian_buffer, 0, &staging, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        read_staging(self.device.device(), &staging, total).await
+        self.device.map_staging_buffer::<f64>(&staging, total)
     }
 }

@@ -279,7 +279,7 @@ impl MelScale {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Output shape: [n_frames, n_mels]
         let output_shape = vec![self.n_frames, self.n_mels];

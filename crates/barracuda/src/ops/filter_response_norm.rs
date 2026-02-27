@@ -12,8 +12,9 @@ use wgpu::util::DeviceExt;
 
 /// f64 is the canonical source — math is universal, precision is silicon.
 const SHADER_F64: &str = include_str!("../shaders/norm/filter_response_norm_f64.wgsl");
-static SHADER_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+static SHADER_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64)
+});
 
 /// Filter Response Normalization operation
 pub struct FilterResponseNorm {
@@ -290,7 +291,7 @@ impl FilterResponseNorm {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let output_shape = self.input.shape().to_vec();
         let output_data = crate::utils::read_buffer(device, &output_buffer, total_elements)?;

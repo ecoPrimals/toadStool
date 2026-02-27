@@ -227,13 +227,14 @@ impl BornMayerForceF64 {
             p.set_bind_group(0, &bg, &[]);
             p.dispatch_workgroups(wg, 1, 1);
         }
-        dev.queue.submit(Some(enc.finish()));
+        dev.submit_and_poll(Some(enc.finish()));
 
         dev.read_f64_buffer(&forces_buf, n * 3)
     }
 
     /// CPU reference (test/validation only).
     #[cfg(test)]
+    #[allow(dead_code)]
     fn compute_cpu(
         &self,
         positions: &[f64],
@@ -287,6 +288,7 @@ impl BornMayerForceF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn compute_cpu_with_energy(
         &self,
         positions: &[f64],

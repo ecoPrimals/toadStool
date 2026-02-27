@@ -15,18 +15,16 @@ async fn test_cpu_limit_override() {
     let ctx = create_test_context();
     let manifest_path = create_test_manifest_file("cpu_limit").await.unwrap();
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            Some("test-cpu".to_string()),
-            vec![],
-            false,
-            Some(2.0), // Override CPU
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = run_biome_opts(
+        manifest_path.clone(),
+        Some("test-cpu".to_string()),
+        vec![],
+        false,
+        Some(2.0),
+        None,
+        "basic".to_string(),
+    );
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_test_manifest(&manifest_path).await.ok();
 
@@ -47,18 +45,16 @@ async fn test_memory_limit_override() {
     let ctx = create_test_context();
     let manifest_path = create_test_manifest_file("memory_limit").await.unwrap();
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            Some("test-memory".to_string()),
-            vec![],
-            false,
-            None,
-            Some("1G".to_string()), // Override memory
-            "basic".to_string(),
-        )
-        .await;
+    let opts = run_biome_opts(
+        manifest_path.clone(),
+        Some("test-memory".to_string()),
+        vec![],
+        false,
+        None,
+        Some("1G".to_string()),
+        "basic".to_string(),
+    );
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_test_manifest(&manifest_path).await.ok();
 
@@ -79,18 +75,16 @@ async fn test_resource_limits_both_overrides() {
     let ctx = create_test_context();
     let manifest_path = create_test_manifest_file("both_limits").await.unwrap();
 
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            Some("test-both".to_string()),
-            vec![],
-            false,
-            Some(4.0),                 // CPU override
-            Some("2G".to_string()),     // Memory override
-            "basic".to_string(),
-        )
-        .await;
+    let opts = run_biome_opts(
+        manifest_path.clone(),
+        Some("test-both".to_string()),
+        vec![],
+        false,
+        Some(4.0),
+        Some("2G".to_string()),
+        "basic".to_string(),
+    );
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_test_manifest(&manifest_path).await.ok();
 
@@ -112,18 +106,16 @@ async fn test_resource_limits_validation() {
     let manifest_path = create_test_manifest_file("validation").await.unwrap();
 
     // Test that the resource validation logic works
-    let result = executor
-        .run_biome(
-            &ctx,
-            manifest_path.clone(),
-            None,
-            vec![],
-            false,
-            None,
-            None,
-            "basic".to_string(),
-        )
-        .await;
+    let opts = run_biome_opts(
+        manifest_path.clone(),
+        None,
+        vec![],
+        false,
+        None,
+        None,
+        "basic".to_string(),
+    );
+    let result = executor.run_biome(&ctx, opts).await;
 
     cleanup_test_manifest(&manifest_path).await.ok();
 
@@ -147,18 +139,16 @@ async fn test_concurrent_resource_operations() {
                     .await
                     .unwrap();
 
-                let result = executor
-                    .run_biome(
-                        &ctx,
-                        manifest_path.clone(),
-                        Some(format!("test-{}", i)),
-                        vec![],
-                        false,
-                        Some(1.0 + i as f64 * 0.5),
-                        Some(format!("{}M", 512 + i * 128)),
-                        "basic".to_string(),
-                    )
-                    .await;
+                let opts = run_biome_opts(
+                    manifest_path.clone(),
+                    Some(format!("test-{}", i)),
+                    vec![],
+                    false,
+                    Some(1.0 + i as f64 * 0.5),
+                    Some(format!("{}M", 512 + i * 128)),
+                    "basic".to_string(),
+                );
+                let result = executor.run_biome(&ctx, opts).await;
 
                 cleanup_test_manifest(&manifest_path).await.ok();
                 result
@@ -187,18 +177,16 @@ async fn test_resource_limit_edge_cases() {
 
     for (cpu, memory) in test_cases {
         let manifest_path = create_test_manifest_file("edge_case").await.unwrap();
-        let result = executor
-            .run_biome(
-                &ctx,
-                manifest_path.clone(),
-                None,
-                vec![],
-                false,
-                cpu,
-                memory,
-                "basic".to_string(),
-            )
-            .await;
+        let opts = run_biome_opts(
+            manifest_path.clone(),
+            None,
+            vec![],
+            false,
+            cpu,
+            memory,
+            "basic".to_string(),
+        );
+        let result = executor.run_biome(&ctx, opts).await;
         cleanup_test_manifest(&manifest_path).await.ok();
 
         // Should handle gracefully

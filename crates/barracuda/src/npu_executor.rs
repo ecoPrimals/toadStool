@@ -24,7 +24,7 @@ pub(crate) mod npu_defaults {
 
 /// NPU operation efficiency factors for scheduler scoring.
 /// Values represent relative efficiency vs GPU for each op class on neuromorphic hardware.
-#[allow(dead_code)]
+#[allow(dead_code)] // Op-specific efficiency used when scheduler does per-op scoring
 mod npu_efficiency {
     /// Nominal equivalence value for NPU in TFLOPS terms. NPUs use spike counts, not TFLOPS;
     /// this constant provides a nominal value for the unified scheduler interface.
@@ -39,7 +39,6 @@ mod npu_efficiency {
     pub(super) const REDUCE_EFFICIENCY: f64 = 0.75;
 }
 
-use async_trait::async_trait;
 use crate::device::akida_executor::AkidaExecutor;
 use crate::error::Result;
 use crate::unified_hardware::{
@@ -47,6 +46,7 @@ use crate::unified_hardware::{
     ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
 use crate::unified_math::{MathOp, TensorDescriptor};
+use async_trait::async_trait;
 use std::sync::Arc;
 
 /// NPU executor wrapping AkidaExecutor
@@ -100,8 +100,8 @@ impl NpuExecutor {
                 total_bytes: board_count as u64 * npu_defaults::SRAM_PER_BOARD_BYTES,
                 available_bytes: board_count as u64 * npu_defaults::AVAILABLE_PER_BOARD_BYTES,
                 bandwidth_bytes_per_sec: npu_defaults::ON_CHIP_BANDWIDTH_BYTES_SEC,
-                unified_memory: true,                             // On-chip is unified
-                zero_copy: true,                                  // Event-driven, no copies
+                unified_memory: true, // On-chip is unified
+                zero_copy: true,      // Event-driven, no copies
             },
 
             precision: PrecisionCapabilities {

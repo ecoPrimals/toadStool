@@ -215,7 +215,7 @@ impl Reduce {
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back partial results (like scatter_wgsl - ensures GPU writes visible)
         let partial_data =

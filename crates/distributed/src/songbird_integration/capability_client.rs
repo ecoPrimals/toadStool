@@ -29,7 +29,7 @@ pub struct CapabilityClient {
     required_capabilities: Vec<String>,
 
     /// Timeout for operations
-    #[allow(dead_code)]
+    #[allow(dead_code)] // For future request timeout configuration
     timeout: Duration,
 
     /// Preferred protocol

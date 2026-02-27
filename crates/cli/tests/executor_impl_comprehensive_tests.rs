@@ -7,6 +7,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use toadstool_cli::executor::{RunBiomeOptions, UpBiomeOptions};
+
 // Mock types for testing (since we can't import the actual types easily)
 #[derive(Clone)]
 #[allow(dead_code)]
@@ -52,18 +54,16 @@ async fn test_run_biome_basic() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Test basic parameters
-    let result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        None,
-        None,
-        "normal".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "normal".to_string(),
+    };
+    let result = simulate_run_biome(&executor, &ctx, opts).await;
 
     // Should succeed with valid inputs
     assert!(result.is_ok());
@@ -76,18 +76,16 @@ async fn test_run_biome_with_resource_limits() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Test with CPU and memory limits
-    let result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        Some(2.0),               // CPU limit
-        Some("1GB".to_string()), // Memory limit
-        "normal".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: Some(2.0),
+        memory_limit: Some("1GB".to_string()),
+        security: "normal".to_string(),
+    };
+    let result = simulate_run_biome(&executor, &ctx, opts).await;
 
     assert!(result.is_ok());
 }
@@ -97,22 +95,16 @@ async fn test_run_biome_with_env_vars() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
     let manifest_path = PathBuf::from("test_manifest.toml");
-
-    // Test with environment variables
-    let env_vars = vec!["KEY1=value1".to_string(), "KEY2=value2".to_string()];
-
-    let result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        env_vars,
-        false,
-        None,
-        None,
-        "normal".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec!["KEY1=value1".to_string(), "KEY2=value2".to_string()],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "normal".to_string(),
+    };
+    let result = simulate_run_biome(&executor, &ctx, opts).await;
 
     assert!(result.is_ok());
 }
@@ -124,18 +116,16 @@ async fn test_run_biome_debug_mode() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Test debug mode
-    let result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        vec![],
-        true, // debug enabled
-        None,
-        None,
-        "normal".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: true,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "normal".to_string(),
+    };
+    let result = simulate_run_biome(&executor, &ctx, opts).await;
 
     assert!(result.is_ok());
 }
@@ -161,18 +151,16 @@ async fn test_run_biome_already_running() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Should fail because biome is already running
-    let _result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        None,
-        None,
-        "normal".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "normal".to_string(),
+    };
+    let _result = simulate_run_biome(&executor, &ctx, opts).await;
 
     // In a real implementation, this should error
     // assert!(result.is_err());
@@ -186,19 +174,15 @@ async fn test_up_biome_detached() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Test detached mode
-    let result = simulate_up_biome(
-        &executor,
-        &ctx,
+    let opts = UpBiomeOptions {
         manifest_path,
-        true, // detached
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        None,
-        None,
-        "normal".to_string(),
-    )
-    .await;
+        detach: true,
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        restart: false,
+        health_interval: 30,
+    };
+    let result = simulate_up_biome(&executor, &ctx, opts).await;
 
     assert!(result.is_ok());
 }
@@ -210,19 +194,15 @@ async fn test_up_biome_foreground() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Test foreground mode
-    let result = simulate_up_biome(
-        &executor,
-        &ctx,
+    let opts = UpBiomeOptions {
         manifest_path,
-        false, // not detached
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        None,
-        None,
-        "normal".to_string(),
-    )
-    .await;
+        detach: false,
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        restart: false,
+        health_interval: 30,
+    };
+    let result = simulate_up_biome(&executor, &ctx, opts).await;
 
     assert!(result.is_ok());
 }
@@ -508,18 +488,16 @@ async fn test_security_level_strict() {
     let ctx = MockCliContext {};
     let manifest_path = PathBuf::from("test_manifest.toml");
 
-    let result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        None,
-        None,
-        "strict".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "strict".to_string(),
+    };
+    let result = simulate_run_biome(&executor, &ctx, opts).await;
 
     assert!(result.is_ok());
 }
@@ -530,18 +508,16 @@ async fn test_security_level_relaxed() {
     let ctx = MockCliContext {};
     let manifest_path = PathBuf::from("test_manifest.toml");
 
-    let result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        None,
-        None,
-        "relaxed".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "relaxed".to_string(),
+    };
+    let result = simulate_run_biome(&executor, &ctx, opts).await;
 
     assert!(result.is_ok());
 }
@@ -587,18 +563,16 @@ async fn test_invalid_manifest_path() {
     let ctx = MockCliContext {};
     let invalid_path = PathBuf::from("/nonexistent/path/manifest.toml");
 
-    let _result = simulate_run_biome(
-        &executor,
-        &ctx,
-        invalid_path,
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        None,
-        None,
-        "normal".to_string(),
-    )
-    .await;
+    let opts = RunBiomeOptions {
+        manifest_path: invalid_path,
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: None,
+        memory_limit: None,
+        security: "normal".to_string(),
+    };
+    let _result = simulate_run_biome(&executor, &ctx, opts).await;
 
     // Should handle error gracefully
     // In real implementation, this would return an error
@@ -611,18 +585,16 @@ async fn test_invalid_resource_limits() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Test with invalid memory format
-    let _result = simulate_run_biome(
-        &executor,
-        &ctx,
+    let opts = RunBiomeOptions {
         manifest_path,
-        Some("test-biome".to_string()),
-        vec![],
-        false,
-        Some(-1.0),                  // Invalid CPU limit
-        Some("invalid".to_string()), // Invalid memory format
-        "normal".to_string(),
-    )
-    .await;
+        name: Some("test-biome".to_string()),
+        env: vec![],
+        debug: false,
+        cpu_limit: Some(-1.0),
+        memory_limit: Some("invalid".to_string()),
+        security: "normal".to_string(),
+    };
+    let _result = simulate_run_biome(&executor, &ctx, opts).await;
 
     // Should handle validation error
 }
@@ -635,34 +607,19 @@ async fn create_mock_executor() -> Result<MockBiomeExecutor> {
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn simulate_run_biome(
     _executor: &MockBiomeExecutor,
     _ctx: &MockCliContext,
-    _manifest_path: PathBuf,
-    _name: Option<String>,
-    _env: Vec<String>,
-    _debug: bool,
-    _cpu_limit: Option<f64>,
-    _memory_limit: Option<String>,
-    _security: String,
+    _opts: RunBiomeOptions,
 ) -> Result<()> {
     // Mock implementation
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn simulate_up_biome(
     _executor: &MockBiomeExecutor,
     _ctx: &MockCliContext,
-    _manifest_path: PathBuf,
-    _detach: bool,
-    _name: Option<String>,
-    _env: Vec<String>,
-    _debug: bool,
-    _cpu_limit: Option<f64>,
-    _memory_limit: Option<String>,
-    _security: String,
+    _opts: UpBiomeOptions,
 ) -> Result<()> {
     // Mock implementation
     Ok(())

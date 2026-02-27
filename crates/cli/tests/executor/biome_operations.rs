@@ -15,17 +15,8 @@ async fn test_up_biome_with_nonexistent_manifest_fails() {
 
     let nonexistent = std::path::PathBuf::from("/nonexistent/manifest.toml");
 
-    let result = executor
-        .up_biome(
-            &ctx,
-            nonexistent,
-            false,  // detach
-            None,   // name
-            vec![], // env
-            false,  // restart
-            30,     // health_interval
-        )
-        .await;
+    let opts = up_biome_opts(nonexistent, false, None, vec![], false, 30);
+    let result = executor.up_biome(&ctx, opts).await;
 
     assert!(
         result.is_err(),
@@ -86,17 +77,15 @@ async fn test_concurrent_up_biome_calls_with_different_names() {
                 let ctx = create_test_context();
                 let manifest_path = create_test_manifest_file(&manifest_name).await?;
 
-                let result = exec
-                    .up_biome(
-                        &ctx,
-                        manifest_path.clone(),
-                        true, // detach
-                        Some(format!("biome-{}", i)),
-                        vec![],
-                        false,
-                        30,
-                    )
-                    .await;
+                let opts = up_biome_opts(
+                    manifest_path.clone(),
+                    true,
+                    Some(format!("biome-{}", i)),
+                    vec![],
+                    false,
+                    30,
+                );
+                let result = exec.up_biome(&ctx, opts).await;
 
                 cleanup_test_manifest(&manifest_path).await.ok();
                 result

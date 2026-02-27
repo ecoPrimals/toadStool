@@ -174,7 +174,7 @@ impl WilsonPlaquette {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(self.volume.div_ceil(PLAQ_WG), 1, 1);
         }
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
         Ok(())
     }
 
@@ -298,16 +298,9 @@ mod tests {
         });
         let mut enc = device.device.create_command_encoder(&Default::default());
         enc.copy_buffer_to_buffer(&plaq_buf, 0, &staging, 0, plaq_bytes as u64);
-        device.queue.submit(Some(enc.finish()));
+        device.submit_and_poll(Some(enc.finish()));
 
-        let slice = staging.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| tx.send(r).unwrap());
-        device.device.poll(wgpu::Maintain::Wait);
-        rx.recv().unwrap().unwrap();
-
-        let mapped = slice.get_mapped_range();
-        let plaq_out: &[f64] = bytemuck::cast_slice(&mapped);
+        let plaq_out: Vec<f64> = device.map_staging_buffer(&staging, plaq_len).unwrap();
 
         for (i, &v) in plaq_out.iter().enumerate() {
             assert!(

@@ -22,10 +22,12 @@ pub struct LogSumExp {
 }
 
 /// f64 is the canonical source — math is universal, precision is silicon.
-static WGSL_LOGSUMEXP_REDUCE_F64: &str = include_str!("../shaders/reduce/logsumexp_reduce_f64.wgsl");
+static WGSL_LOGSUMEXP_REDUCE_F64: &str =
+    include_str!("../shaders/reduce/logsumexp_reduce_f64.wgsl");
 /// Batched logsumexp over rows [batch × width] (neuralSpring).
-pub static WGSL_LOGSUMEXP_REDUCE: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_LOGSUMEXP_REDUCE_F64));
+pub static WGSL_LOGSUMEXP_REDUCE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_LOGSUMEXP_REDUCE_F64)
+});
 
 impl LogSumExp {
     /// Create a new logsumexp operation
@@ -176,8 +178,7 @@ impl LogSumExp {
             compute_pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return tensor without reading back (zero-copy)
         Ok(Tensor::from_buffer(output_buffer, vec![1], device.clone()))

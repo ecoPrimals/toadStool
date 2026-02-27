@@ -152,18 +152,16 @@ async fn test_concurrent_manifest_operations() {
                     .await
                     .unwrap();
 
-                let result = executor
-                    .run_biome(
-                        &ctx,
-                        manifest.clone(),
-                        Some(format!("test-{}", i)),
-                        vec![],
-                        false,
-                        None,
-                        None,
-                        "basic".to_string(),
-                    )
-                    .await;
+                let opts = run_biome_opts(
+                    manifest.clone(),
+                    Some(format!("test-{}", i)),
+                    vec![],
+                    false,
+                    None,
+                    None,
+                    "basic".to_string(),
+                );
+                let result = executor.run_biome(&ctx, opts).await;
 
                 cleanup_test_manifest(&manifest).await.ok();
                 result

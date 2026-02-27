@@ -6,7 +6,7 @@
 - **`../README.md`** — Project overview, architecture, key achievements
 - **`../STATUS.md`** — Detailed status with quality gates
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
-- **`../PRECISION_BOTTLENECK.md`** — Evolution gate — RESOLVED. Dual-layer universal precision operational.
+- Precision bottleneck gate — RESOLVED. Archived to `ecoPrimals/fossil/`.
 
 **Key Numbers:**
 - **2,546+ barracuda tests** (122 shader-specific: unit/e2e/chaos/fault) + 21,599 workspace tests
@@ -54,7 +54,7 @@
 |----------|---------|---------|--------|
 | **[UNIVERSAL_PRECISION_ARCHITECTURE.md](./UNIVERSAL_PRECISION_ARCHITECTURE.md)** | Math is universal, precision is silicon — compilation pipeline design | **Feb 24** | 🔄 Active |
 
-**Tracker**: [`../PRECISION_BOTTLENECK.md`](../PRECISION_BOTTLENECK.md) — evolution gate (solve all precision debt before spring absorptions)
+**Tracker**: Precision bottleneck RESOLVED — gate open. Archived to `ecoPrimals/fossil/`.
 
 ### Sovereign Compute
 

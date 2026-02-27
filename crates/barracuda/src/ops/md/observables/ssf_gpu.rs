@@ -233,7 +233,7 @@ impl SsfGpu {
             let workgroups = (n_k_vectors as u32).div_ceil(64);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back results
         device.read_f64_buffer(&output_buffer, n_k_vectors)

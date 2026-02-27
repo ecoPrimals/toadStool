@@ -199,7 +199,7 @@ impl Cdist {
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,
@@ -243,8 +243,7 @@ pub fn compute_distances_f64_gpu(
     }
 
     let module = device.compile_shader_f64(Cdist::wgsl_shader_f64(), Some("cdist_f64"));
-    let d = &device.device;
-    let q = &device.queue;
+    let d = device.device();
 
     let a_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("cdist:a"),
@@ -342,23 +341,9 @@ pub fn compute_distances_f64_gpu(
         mapped_at_creation: false,
     });
     enc.copy_buffer_to_buffer(&out_buf, 0, &readback, 0, out_size);
-    q.submit(Some(enc.finish()));
+    device.submit_and_poll(Some(enc.finish()));
 
-    let slice = readback.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        tx.send(r).ok();
-    });
-    d.poll(wgpu::Maintain::Wait);
-    rx.recv()
-        .map_err(|_| crate::error::BarracudaError::Gpu("cdist readback channel".into()))?
-        .map_err(|e| crate::error::BarracudaError::Gpu(format!("cdist map: {e}")))?;
-
-    let data = slice.get_mapped_range();
-    let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-    drop(data);
-    readback.unmap();
-
+    let result: Vec<f64> = device.map_staging_buffer(&readback, n1 * n2)?;
     Ok(result)
 }
 

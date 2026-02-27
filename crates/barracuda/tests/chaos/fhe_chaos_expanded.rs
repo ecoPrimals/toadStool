@@ -9,16 +9,16 @@ use barracuda::ops::{
     fhe_poly_add::FhePolyAdd, fhe_poly_sub::FhePolySub, fhe_poly_mul::FhePolyMul,
     fhe_xor::FheXor, fhe_and::FheAnd, fhe_or::FheOr,
 };
-use barracuda::{Tensor, WgpuDevice};
+use barracuda::Tensor;
 use rand::Rng;
 use std::sync::Arc;
 use tokio::task;
 
-async fn test_device() -> Arc<WgpuDevice> {
-    Arc::new(WgpuDevice::new().await.expect("Failed to create device"))
+async fn test_device() -> Arc<barracuda::device::WgpuDevice> {
+    barracuda::device::test_pool::get_test_device().await
 }
 
-async fn random_tensor_u64(device: &WgpuDevice, degree: usize) -> Tensor {
+async fn random_tensor_u64(device: &barracuda::device::WgpuDevice, degree: usize) -> Tensor {
     let mut rng = rand::thread_rng();
     let data: Vec<u32> = (0..degree * 2).map(|_| rng.gen::<u32>() % 1000).collect();
     Tensor::from_u32(&data, vec![degree * 2], device.clone())

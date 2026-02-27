@@ -505,7 +505,7 @@ impl BatchedBisectionGpu {
                 pass.set_bind_group(0, &bg, &[]);
                 pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
             }
-            self.device.queue.submit(Some(encoder.finish()));
+            self.device.submit_and_poll(Some(encoder.finish()));
         }
 
         // Read back results
@@ -530,7 +530,7 @@ impl BatchedBisectionGpu {
                     label: Some("BatchedBisection u32 readback"),
                 });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 4) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();

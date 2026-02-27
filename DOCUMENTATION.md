@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 26, 2026 -- Session 68
+**Last Updated**: February 26, 2026 -- Session 68+
 
 ---
 
@@ -9,7 +9,6 @@
 | I Want To... | Document |
 |--------------|----------|
 | Get started | [README.md](README.md) |
-| See precision evolution gate | [PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md) |
 | See current status | [STATUS.md](STATUS.md) |
 | Commands and API reference | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | See active debt and evolution paths | [DEBT.md](DEBT.md) |
@@ -29,20 +28,17 @@
 
 ---
 
-## Current State (Session 68 — February 26, 2026)
+## Current State (Session 68+ — February 26, 2026)
 
-- **Dual-layer universal precision** — Layer 1: `op_preamble` (abstract `op_add`/`op_mul`/`Scalar` for all 4 precisions). Layer 2: naga-guided `df64_rewrite` (compiler identifies f64 infix ops, replaces with DF64 bridge functions). `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
-- **Sovereign Compiler** — naga-IR optimizer: FMA fusion, dead expression elimination, df64 infix rewrite, SPIR-V passthrough. End-to-end Rust GPU compilation pipeline.
-- **700 WGSL shaders** — zero orphans, 21 DF64 files, **zero f32-only**. All shaders f64 canonical; f32 generated via LazyLock downcast. 296 f32 WGSL files deleted.
-- **Precision pipeline hardened** — F16 sentinel protection + literal clamping. DF64 ghost mappings cleaned. NaN-safe bridge functions (IEEE 754 compliant). Span bounds validation.
-- **122 shader tests** — unit (downcasts, preambles), e2e (real shaders at all precisions via naga), chaos (15: adversarial patterns), fault (13: idempotency, degradation).
-- **Deep debt systematically resolved** — 15 files smart-refactored (20-44% reductions). 3 `#[allow(dead_code)]` remain (feature-gated/Phase 5+).
-- **FMA-optimized DF64** — `two_prod` 17→2 ops. DF64 transcendentals at FP32 core speed.
-- **f64 polyfill library** — 28 functions, no vendor math library dependency (no libdevice/ocml)
+**Still evolving.** Precision bottleneck resolved. Now transitioning from fp64 shaders to true math — springs will have many interactions to evolve as barracuda owns all precision.
+
+- **Dual-layer universal precision** — Layer 1: `op_preamble` (abstract ops for all 4 precisions). Layer 2: naga-guided `df64_rewrite` (compiler-level f64→DF64). `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
+- **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
+- **700 WGSL shaders** — zero orphans, 21 DF64 files, **zero f32-only**. All f64 canonical.
+- **122 shader tests** — unit, e2e, chaos (15), fault (13).
 - **2,546+ barracuda tests** + 21,599 workspace tests | all quality gates green
-- **Zero clippy warnings** | zero fmt diffs | zero TODO/FIXME/HACK | all files under 1000 lines
-- **Linalg GPU-dispatched** — solve, cholesky (with SPD validation), QR, SVD, LU
-- **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory orchestration
+- **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU
+- **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory
 - **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields + DF64 variants
 - **36 JSON-RPC methods** across 8 domains
 
@@ -51,8 +47,6 @@
 ## Core Documentation
 
 **[README.md](README.md)** -- Project overview, architecture, quality gates, evolution roadmap.
-
-**[PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md)** -- **Evolution gate**: RESOLVED. Zero f32-only shaders, all f64 canonical. Dual-layer universal precision operational.
 
 **[STATUS.md](STATUS.md)** -- Detailed technical status: quality gates, session-by-session evolution.
 
@@ -116,7 +110,6 @@
 
 ```
 README.md                  -- Project overview, honest status
-PRECISION_BOTTLENECK.md    -- Evolution gate tracker (solve before absorbing)
 STATUS.md                  -- Detailed technical status
 DEBT.md                    -- Active debt register, evolution paths
 NEXT_STEPS.md              -- Roadmap and upcoming work

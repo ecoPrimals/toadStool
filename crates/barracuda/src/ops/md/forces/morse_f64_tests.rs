@@ -1,5 +1,7 @@
 use super::*;
 
+#[cfg(test)]
+#[allow(dead_code)]
 impl MorseForceF64 {
     fn compute_cpu(&self, positions: &[f64], bonds: &[MorseBond]) -> Vec<f64> {
         let n_particles = positions.len() / 3;
@@ -74,10 +76,17 @@ impl MorseForceF64 {
         let force_over_r = force_magnitude / r;
         let energy = bond.dissociation_energy * one_minus_exp * one_minus_exp;
 
-        (force_over_r * dx, force_over_r * dy, force_over_r * dz, energy)
+        (
+            force_over_r * dx,
+            force_over_r * dy,
+            force_over_r * dz,
+            energy,
+        )
     }
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
 fn bond_geometry(positions: &[f64], bond: &MorseBond) -> (f64, f64, f64, f64) {
     let dx = positions[bond.j as usize * 3] - positions[bond.i as usize * 3];
     let dy = positions[bond.j as usize * 3 + 1] - positions[bond.i as usize * 3 + 1];
@@ -102,43 +111,72 @@ fn test_bond(r0: f64) -> MorseBond {
 
 #[test]
 fn test_morse_equilibrium() {
-    let Some(device) = get_test_device() else { return };
+    let Some(device) = get_test_device() else {
+        return;
+    };
     let op = MorseForceF64::new(device).unwrap();
     let positions = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
     let bonds = vec![test_bond(1.0)];
     let forces = op.compute_forces(&positions, &bonds).unwrap();
-    assert!(forces[0].abs() < 1e-10, "Force at equilibrium should be zero");
-    assert!(forces[3].abs() < 1e-10, "Force at equilibrium should be zero");
+    assert!(
+        forces[0].abs() < 1e-10,
+        "Force at equilibrium should be zero"
+    );
+    assert!(
+        forces[3].abs() < 1e-10,
+        "Force at equilibrium should be zero"
+    );
 }
 
 #[test]
 fn test_morse_stretched() {
-    let Some(device) = get_test_device() else { return };
+    let Some(device) = get_test_device() else {
+        return;
+    };
     let op = MorseForceF64::new(device).unwrap();
     let positions = vec![0.0, 0.0, 0.0, 1.5, 0.0, 0.0];
     let bonds = vec![test_bond(1.0)];
     let forces = op.compute_forces(&positions, &bonds).unwrap();
-    assert!(forces[0] > 0.0, "Particle 0 should be pulled toward particle 1");
-    assert!(forces[3] < 0.0, "Particle 1 should be pulled toward particle 0");
+    assert!(
+        forces[0] > 0.0,
+        "Particle 0 should be pulled toward particle 1"
+    );
+    assert!(
+        forces[3] < 0.0,
+        "Particle 1 should be pulled toward particle 0"
+    );
 }
 
 #[test]
 fn test_morse_compressed() {
-    let Some(device) = get_test_device() else { return };
+    let Some(device) = get_test_device() else {
+        return;
+    };
     let op = MorseForceF64::new(device).unwrap();
     let positions = vec![0.0, 0.0, 0.0, 0.5, 0.0, 0.0];
     let bonds = vec![test_bond(1.0)];
     let forces = op.compute_forces(&positions, &bonds).unwrap();
-    assert!(forces[0] < 0.0, "Particle 0 should be pushed away from particle 1");
-    assert!(forces[3] > 0.0, "Particle 1 should be pushed away from particle 0");
+    assert!(
+        forces[0] < 0.0,
+        "Particle 0 should be pushed away from particle 1"
+    );
+    assert!(
+        forces[3] > 0.0,
+        "Particle 1 should be pushed away from particle 0"
+    );
 }
 
 #[test]
 fn test_morse_energy_minimum() {
-    let Some(device) = get_test_device() else { return };
+    let Some(device) = get_test_device() else {
+        return;
+    };
     let op = MorseForceF64::new(device).unwrap();
     let positions = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
     let bonds = vec![test_bond(1.0)];
     let (_, energies) = op.compute_forces_and_energy(&positions, &bonds).unwrap();
-    assert!(energies[0].abs() < 1e-10, "Energy at equilibrium should be zero");
+    assert!(
+        energies[0].abs() < 1e-10,
+        "Energy at equilibrium should be zero"
+    );
 }

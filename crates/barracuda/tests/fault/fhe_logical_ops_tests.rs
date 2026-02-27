@@ -8,13 +8,14 @@ use barracuda::ops::{
     fhe_and::FheAnd,
     fhe_or::FheOr,
 };
-use barracuda::{Tensor, WgpuDevice};
+use barracuda::Tensor;
+use std::sync::Arc;
 
-async fn test_device() -> WgpuDevice {
-    WgpuDevice::new().await.expect("Failed to create device")
+async fn test_device() -> Arc<barracuda::device::WgpuDevice> {
+    barracuda::device::test_pool::get_test_device().await
 }
 
-async fn test_tensor_u64(device: &WgpuDevice, degree: usize) -> Tensor {
+async fn test_tensor_u64(device: &Arc<barracuda::device::WgpuDevice>, degree: usize) -> Tensor {
     let data = vec![0u32; degree * 2];
     Tensor::from_u32(&data, vec![degree * 2], device.clone())
         .await

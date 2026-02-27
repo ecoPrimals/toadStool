@@ -142,7 +142,7 @@ impl LuGpu {
             p.set_bind_group(0, bg, &[]);
             p.dispatch_workgroups(wg.0, wg.1, wg.2);
         }
-        dev.queue.submit(Some(enc.finish()));
+        dev.submit_and_poll(Some(enc.finish()));
     }
 
     /// Execute LU decomposition (f32 via Tensor API)

@@ -259,7 +259,7 @@ impl YukawaForceF64 {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let forces = Tensor::from_buffer(forces_buffer, vec![n, 3], device.clone());
         let pe = Tensor::from_buffer(pe_buffer, vec![n], device.clone());

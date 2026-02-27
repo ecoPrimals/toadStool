@@ -155,9 +155,7 @@ pub struct Filter {
 
 impl Filter {
     fn filter_shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/filter_f64.wgsl")));
-        &SHADER
+        include_str!("../shaders/misc/filter.wgsl")
     }
 
     fn scan_shader() -> &'static str {
@@ -592,7 +590,7 @@ impl Filter {
             pass.dispatch_workgroups(filter_workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back the count (one u32 — cheap).
         let count_vec = crate::utils::read_buffer_u32(device, &total_buf, 1)?;

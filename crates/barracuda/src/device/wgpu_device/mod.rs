@@ -17,9 +17,78 @@ mod creation;
 
 use super::autotune::{GpuCalibration, GLOBAL_TUNER};
 use crate::error::Result;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+/// Sync counting semaphore — gates concurrent dispatch volume.
+///
+/// The device knows its own concurrency budget: CPU/software backends
+/// get 2 permits (llvmpipe is effectively single-threaded), discrete
+/// GPUs get 8, integrated GPUs get 4. This prevents driver overload
+/// without requiring callers to manage thread counts.
+#[derive(Debug)]
+struct DispatchSemaphore {
+    state: std::sync::Mutex<usize>,
+    available: std::sync::Condvar,
+    max_permits: usize,
+}
+
+impl DispatchSemaphore {
+    fn new(max_permits: usize) -> Self {
+        Self {
+            state: std::sync::Mutex::new(max_permits),
+            available: std::sync::Condvar::new(),
+            max_permits,
+        }
+    }
+
+    fn acquire(&self) -> DispatchPermit<'_> {
+        let mut count = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        while *count == 0 {
+            count = self
+                .available
+                .wait(count)
+                .unwrap_or_else(|e| e.into_inner());
+        }
+        *count -= 1;
+        DispatchPermit(self)
+    }
+}
+
+impl Clone for DispatchSemaphore {
+    fn clone(&self) -> Self {
+        Self::new(self.max_permits)
+    }
+}
+
+/// RAII guard — holds one dispatch permit. Released on drop.
+pub struct DispatchPermit<'a>(&'a DispatchSemaphore);
+
+impl Drop for DispatchPermit<'_> {
+    fn drop(&mut self) {
+        let mut count = self.0.state.lock().unwrap_or_else(|e| e.into_inner());
+        *count += 1;
+        self.0.available.notify_one();
+    }
+}
+
+/// Determine concurrency budget from adapter type.
+fn concurrency_budget(device_type: wgpu::DeviceType) -> usize {
+    match device_type {
+        wgpu::DeviceType::Cpu => 2,
+        wgpu::DeviceType::IntegratedGpu => 4,
+        wgpu::DeviceType::DiscreteGpu => 8,
+        wgpu::DeviceType::VirtualGpu => 4,
+        _ => 4,
+    }
+}
+
 /// WebGPU device - executes WGSL on any hardware
+///
+/// Concurrency is self-managed: `dispatch_semaphore` limits how many
+/// operations can be in-flight simultaneously based on device type.
+/// `gpu_lock` serializes the actual submit+poll to prevent wgpu state
+/// corruption. Together they prevent both driver overload and data races.
 #[derive(Debug, Clone)]
 pub struct WgpuDevice {
     pub(crate) device: Arc<wgpu::Device>,
@@ -27,8 +96,13 @@ pub struct WgpuDevice {
     pub(crate) adapter_info: wgpu::AdapterInfo,
     calibration: Option<GpuCalibration>,
     /// Vulkan pipeline cache — avoids re-compiling identical SPIR-V to machine code.
-    /// Shared across all pipeline creations on this device.
     pipeline_cache: Option<Arc<wgpu::PipelineCache>>,
+    /// Set when the GPU reports a device-lost error.
+    pub(crate) lost: Arc<AtomicBool>,
+    /// Serializes GPU operations (submit, poll, map) across threads.
+    gpu_lock: Arc<std::sync::Mutex<()>>,
+    /// Limits concurrent dispatches based on device capability.
+    dispatch_semaphore: Arc<DispatchSemaphore>,
 }
 
 impl WgpuDevice {
@@ -45,6 +119,11 @@ impl WgpuDevice {
     /// Check if running on CPU fallback
     pub fn is_cpu(&self) -> bool {
         self.adapter_info.device_type == wgpu::DeviceType::Cpu
+    }
+
+    /// Check if the GPU driver has reported this device as lost.
+    pub fn is_lost(&self) -> bool {
+        self.lost.load(Ordering::Acquire)
     }
 
     /// Check if f64 shaders are enabled for this device.
@@ -211,14 +290,13 @@ impl WgpuDevice {
         let combined = format!("{DF64_CORE}\n{DF64_TRANSCENDENTALS}\n{source}");
 
         let profile = crate::device::driver_profile::GpuDriverProfile::from_device(self);
-        let optimized =
-            if combined.contains("@ilp_region") || combined.contains("@unroll_hint") {
-                use crate::shaders::optimizer::WgslOptimizer;
-                let optimizer = WgslOptimizer::new(profile.latency_model());
-                optimizer.optimize(&combined)
-            } else {
-                combined
-            };
+        let optimized = if combined.contains("@ilp_region") || combined.contains("@unroll_hint") {
+            use crate::shaders::optimizer::WgslOptimizer;
+            let optimizer = WgslOptimizer::new(profile.latency_model());
+            optimizer.optimize(&combined)
+        } else {
+            combined
+        };
 
         if self.has_spirv_passthrough() {
             use crate::shaders::sovereign::{SovereignCompiler, SovereignOutput};
@@ -292,8 +370,9 @@ impl WgpuDevice {
                 //
                 // Naga is tried first. If it fails (e.g., source uses polyfill
                 // functions naga can't validate), fall back to text-only downcast.
-                let df64_source = crate::shaders::sovereign::df64_rewrite::rewrite_f64_infix_full(source)
-                    .unwrap_or_else(|_| downcast_f64_to_df64(source));
+                let df64_source =
+                    crate::shaders::sovereign::df64_rewrite::rewrite_f64_infix_full(source)
+                        .unwrap_or_else(|_| downcast_f64_to_df64(source));
                 self.compile_shader_df64(&df64_source, label)
             }
             Precision::F16 => {
@@ -349,13 +428,64 @@ impl WgpuDevice {
         }
     }
 
+    /// Acquire the GPU operation lock. All code that touches `queue.submit`,
+    /// `device.poll`, or `map_async` + `get_mapped_range` must hold this lock.
+    /// Returns an RAII guard that releases on drop.
+    pub fn lock(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.gpu_lock.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Acquire a dispatch permit from the device's concurrency budget.
+    ///
+    /// Hold this for the entire compile→bind→submit lifecycle of an
+    /// operation. The device automatically sizes the budget to what the
+    /// hardware can handle (2 for CPU/llvmpipe, 8 for discrete GPU, etc.).
+    pub fn acquire_dispatch(&self) -> DispatchPermit<'_> {
+        self.dispatch_semaphore.acquire()
+    }
+
+    /// Submit commands and poll, respecting the device's concurrency budget.
+    ///
+    /// Acquires a dispatch permit (blocks if budget exhausted), then the
+    /// GPU lock. Together they prevent both driver overload (semaphore) and
+    /// state corruption (mutex).
+    pub fn submit_and_poll(&self, commands: impl IntoIterator<Item = wgpu::CommandBuffer>) {
+        let _permit = self.dispatch_semaphore.acquire();
+        self.submit_and_poll_inner(commands);
+    }
+
+    /// Submit without acquiring a dispatch permit.
+    /// Use when the caller already holds a `DispatchPermit`.
+    pub(crate) fn submit_and_poll_inner(
+        &self,
+        commands: impl IntoIterator<Item = wgpu::CommandBuffer>,
+    ) {
+        let _guard = self.lock();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.queue.submit(commands);
+            self.device.poll(wgpu::Maintain::Wait);
+        }));
+        if let Err(payload) = result {
+            self.lost.store(true, Ordering::Release);
+            std::panic::resume_unwind(payload);
+        }
+    }
+
+    /// The device's concurrency budget (max simultaneous dispatches).
+    pub fn max_concurrent_dispatches(&self) -> usize {
+        self.dispatch_semaphore.max_permits
+    }
+
     /// Execute WGSL compute shader
+    ///
+    /// Acquires a dispatch permit for the full compile→submit lifecycle.
     pub fn execute_compute(
         &self,
         shader_source: &str,
         bind_groups: &[&wgpu::BindGroup],
         workgroups: (u32, u32, u32),
     ) -> Result<()> {
+        let _permit = self.acquire_dispatch();
         let shader = self.compile_shader(shader_source, Some("barraCuda Operation"));
         let pipeline = self
             .device
@@ -386,7 +516,7 @@ impl WgpuDevice {
             pass.dispatch_workgroups(workgroups.0, workgroups.1, workgroups.2);
         }
 
-        self.queue.submit(Some(encoder.finish()));
+        self.submit_and_poll_inner(Some(encoder.finish()));
         Ok(())
     }
 

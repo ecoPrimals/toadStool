@@ -10,8 +10,13 @@ use std::sync::Arc;
 use super::config::{expect_size, validate_config, ESNConfig};
 use super::npu::{quantize_affine_i8_f64, NpuReadoutWeights};
 
-/// Result of [`ESN::export_weights`]: `(w_in, w_res, w_out)` as flat f32 vectors.
-pub type ExportedWeights = (Vec<f32>, Vec<f32>, Option<Vec<f32>>);
+/// Serializable ESN weight snapshot for cross-run / cross-device deployment.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ExportedWeights {
+    pub w_in: Vec<f32>,
+    pub w_res: Vec<f32>,
+    pub w_out: Option<Vec<f32>>,
+}
 
 /// Hardware-Agnostic Echo State Network
 ///
@@ -438,7 +443,11 @@ impl ESN {
             Some(w) => Some(w.to_vec()?),
             None => None,
         };
-        Ok((w_in_data, w_res_data, w_out_data))
+        Ok(ExportedWeights {
+            w_in: w_in_data,
+            w_res: w_res_data,
+            w_out: w_out_data,
+        })
     }
 
     /// Import pre-trained weights

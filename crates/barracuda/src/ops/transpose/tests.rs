@@ -1,13 +1,12 @@
 //! Tests for Transpose operation
 
+use crate::device::test_pool;
 use crate::tensor::Tensor;
 
 #[tokio::test]
 async fn test_transpose_basic() {
-    let device = crate::device::Auto::new().await.unwrap();
-    // device is already Arc from Auto::new()
+    let device = test_pool::get_test_device().await;
 
-    // Test data: 2x3 matrix [[1,2,3], [4,5,6]]
     let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3], device)
         .await
         .unwrap();
@@ -15,7 +14,6 @@ async fn test_transpose_basic() {
     let output = input.transpose().unwrap();
     let result = output.to_vec().unwrap();
 
-    // Expected: 3x2 matrix [[1,4], [2,5], [3,6]]
     let expected = vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0];
     assert_eq!(output.shape(), &[3, 2]);
     for (i, (&r, &e)) in result.iter().zip(expected.iter()).enumerate() {
@@ -31,10 +29,12 @@ async fn test_transpose_basic() {
 
 #[tokio::test]
 async fn test_transpose_nd() {
-    let device = crate::device::Auto::new().await.unwrap();
-    // device is already Arc from Auto::new()
+    // ND transpose uses 7+ storage buffers — exceeds CPU downlevel limit of 4.
+    let Some(device) = test_pool::get_test_device_if_gpu_available().await else {
+        eprintln!("Skipping test_transpose_nd: requires GPU (>4 storage buffers per stage)");
+        return;
+    };
 
-    // Test 3D transpose: [B, C, H] -> [B, H, C]
     let input = Tensor::from_vec_on(
         (0..24).map(|i| i as f32).collect(),
         vec![2, 3, 4],

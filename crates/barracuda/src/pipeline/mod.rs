@@ -387,7 +387,7 @@ impl ComputePipeline {
             pass.dispatch_workgroups(stage.workgroups.0, stage.workgroups.1, stage.workgroups.2);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
         Ok(())
     }
 
@@ -415,7 +415,7 @@ impl ComputePipeline {
                     label: Some("Pipeline Read"),
                 });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, size as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -465,7 +465,7 @@ impl ComputePipeline {
                     label: Some("Pipeline Read"),
                 });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, size as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();

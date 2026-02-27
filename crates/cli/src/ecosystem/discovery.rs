@@ -133,7 +133,7 @@ pub fn discover_from_config(capability_category: &str) -> Option<String> {
 ///
 /// **Status**: Currently unused but part of capability-based architecture.
 /// Will be used when full capability routing is implemented.
-#[allow(dead_code)]
+#[allow(dead_code)] // Future: full capability routing
 #[allow(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compat
 pub async fn discover_service_by_capability(
     capability_category: &str,

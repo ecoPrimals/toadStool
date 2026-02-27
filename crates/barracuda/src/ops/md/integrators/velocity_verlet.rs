@@ -303,7 +303,7 @@ impl VelocityVerlet {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let positions_new =
             Tensor::from_buffer(positions_new_buffer, vec![n_particles, 3], device.clone());

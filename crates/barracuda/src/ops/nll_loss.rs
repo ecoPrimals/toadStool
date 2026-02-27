@@ -62,8 +62,11 @@ impl NLLLoss {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/loss/nll_loss_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/loss/nll_loss_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 
@@ -254,7 +257,7 @@ impl NLLLoss {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Create output tensor
         let output_shape = if self.reduction == 0 {

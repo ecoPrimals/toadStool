@@ -25,7 +25,7 @@ use std::time::Duration;
 use anyhow::Result;
 use tokio::sync::Barrier;
 
-use toadstool_cli::executor::BiomeExecutor;
+use toadstool_cli::executor::{BiomeExecutor, RunBiomeOptions, UpBiomeOptions};
 use toadstool_cli::CliContext;
 
 // Re-export common dependencies for submodules
@@ -42,6 +42,46 @@ pub use toadstool_cli;
 pub async fn create_test_executor() -> Result<BiomeExecutor> {
     // Each test gets its own isolated executor
     BiomeExecutor::new().await
+}
+
+/// Create default run_biome options for testing
+pub fn run_biome_opts(
+    manifest_path: std::path::PathBuf,
+    name: Option<String>,
+    env: Vec<String>,
+    debug: bool,
+    cpu_limit: Option<f64>,
+    memory_limit: Option<String>,
+    security: String,
+) -> RunBiomeOptions {
+    RunBiomeOptions {
+        manifest_path,
+        name,
+        env,
+        debug,
+        cpu_limit,
+        memory_limit,
+        security,
+    }
+}
+
+/// Create default up_biome options for testing
+pub fn up_biome_opts(
+    manifest_path: std::path::PathBuf,
+    detach: bool,
+    name: Option<String>,
+    env: Vec<String>,
+    restart: bool,
+    health_interval: u64,
+) -> UpBiomeOptions {
+    UpBiomeOptions {
+        manifest_path,
+        detach,
+        name,
+        env,
+        restart,
+        health_interval,
+    }
 }
 
 /// Create test CLI context (isolated per test)

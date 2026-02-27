@@ -7,7 +7,7 @@
 //! and staging readback.
 
 use crate::device::WgpuDevice;
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use std::sync::Arc;
 
 /// Common shader source for all FD operations
@@ -87,36 +87,6 @@ pub fn create_empty_f64_buffer(
         usage,
         mapped_at_creation: false,
     })
-}
-
-/// Read f64 data from a staging buffer (async)
-///
-/// This is the standard pattern for reading GPU results back to CPU.
-pub async fn read_staging_f64(
-    device: &wgpu::Device,
-    staging: &wgpu::Buffer,
-    count: usize,
-) -> Result<Vec<f64>> {
-    let (sender, receiver) = std::sync::mpsc::channel();
-    staging
-        .slice(..)
-        .map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-    device.poll(wgpu::Maintain::Wait);
-    receiver
-        .recv()
-        .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-        .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-    let data = staging.slice(..).get_mapped_range();
-    let result: Vec<f64> = data
-        .chunks_exact(8)
-        .take(count)
-        .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("8-byte chunks")))
-        .collect();
-
-    Ok(result)
 }
 
 /// Create a staging buffer for readback
@@ -243,7 +213,7 @@ impl<'a> FdComputeRunner<'a> {
     }
 
     /// Execute the compute pass and read back a single output buffer
-    pub async fn execute_single(
+    pub fn execute_single(
         self,
         output_buffer: &wgpu::Buffer,
         output_count: usize,
@@ -269,11 +239,12 @@ impl<'a> FdComputeRunner<'a> {
         encoder.copy_buffer_to_buffer(output_buffer, 0, &staging, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        read_staging_f64(self.device.device(), &staging, output_count).await
+        self.device
+            .map_staging_buffer::<f64>(&staging, output_count)
     }
 
     /// Execute the compute pass and read back two output buffers
-    pub async fn execute_dual(
+    pub fn execute_dual(
         self,
         output_buffer_a: &wgpu::Buffer,
         output_buffer_b: &wgpu::Buffer,
@@ -302,8 +273,12 @@ impl<'a> FdComputeRunner<'a> {
         encoder.copy_buffer_to_buffer(output_buffer_b, 0, &staging_b, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        let result_a = read_staging_f64(self.device.device(), &staging_a, output_count).await?;
-        let result_b = read_staging_f64(self.device.device(), &staging_b, output_count).await?;
+        let result_a = self
+            .device
+            .map_staging_buffer::<f64>(&staging_a, output_count)?;
+        let result_b = self
+            .device
+            .map_staging_buffer::<f64>(&staging_b, output_count)?;
 
         Ok((result_a, result_b))
     }

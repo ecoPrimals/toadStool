@@ -228,7 +228,7 @@ impl YukawaCellListF64 {
             pass.dispatch_workgroups(n_workgroups, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let forces = self.read_f64_buffer(&forces_buffer, n * 3)?;
         let energies = self.read_f64_buffer(&pe_buffer, n)?;
@@ -262,20 +262,9 @@ impl YukawaCellListF64 {
                     label: Some("YCL Copy"),
                 });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let results: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|b| f64::from_le_bytes(b.try_into().expect("8-byte chunk")))
-            .collect();
-        drop(data);
-        staging.unmap();
-
+        let results: Vec<f64> = self.device.map_staging_buffer(&staging, count)?;
         Ok(results)
     }
 
@@ -333,6 +322,7 @@ impl YukawaCellListF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn build_cell_list(
         &self,
         positions: &[f64],
@@ -372,6 +362,7 @@ impl YukawaCellListF64 {
 
     /// CPU reference (test/validation only — production always dispatches shader).
     #[cfg(test)]
+    #[allow(dead_code)]
     fn compute_cpu(
         &self,
         positions: &[f64],
@@ -448,11 +439,13 @@ impl YukawaCellListF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn pbc_delta(&self, delta: f64, box_size: f64) -> f64 {
         delta - box_size * (delta / box_size).round()
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn get_neighbor_cells(&self, cell_idx: usize, params: &CellListParams) -> Vec<usize> {
         let nx = params.n_cells[0];
         let ny = params.n_cells[1];

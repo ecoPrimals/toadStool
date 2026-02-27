@@ -253,7 +253,7 @@ impl SSIM {
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read back results and compute mean SSIM
         let window_ssim_data = crate::utils::read_buffer(device, &window_ssim_buffer, num_windows)?;

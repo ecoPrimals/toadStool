@@ -212,7 +212,7 @@ impl HiggsU1HmcForce {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(self.volume.div_ceil(HIGGS_WG), 1, 1);
         }
-        self.device.queue.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
         Ok(())
     }
 
@@ -334,14 +334,9 @@ mod tests {
             });
             let mut enc = device.device.create_command_encoder(&Default::default());
             enc.copy_buffer_to_buffer(src, 0, &staging, 0, buf_bytes as u64);
-            device.queue.submit(Some(enc.finish()));
-            let slice = staging.slice(..);
-            let (tx, rx) = std::sync::mpsc::channel();
-            slice.map_async(wgpu::MapMode::Read, move |r| tx.send(r).unwrap());
-            device.device.poll(wgpu::Maintain::Wait);
-            rx.recv().unwrap().unwrap();
-            let mapped = slice.get_mapped_range();
-            bytemuck::cast_slice::<u8, f64>(&mapped).to_vec()
+            device.submit_and_poll(Some(enc.finish()));
+            let n_f64 = buf_bytes / std::mem::size_of::<f64>();
+            device.map_staging_buffer(&staging, n_f64).unwrap()
         };
 
         for (i, v) in readback(&pi_link_buf).iter().enumerate() {

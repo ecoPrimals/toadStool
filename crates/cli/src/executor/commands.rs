@@ -59,23 +59,12 @@ impl BiomeExecutor {
     /// - Biome is already running with the same name
     /// - Biome startup fails
     /// - User interruption handling fails
-    #[allow(clippy::too_many_arguments)]
     #[must_use = "Result of run_biome should be checked"]
-    pub async fn run_biome(
-        &self,
-        _ctx: &CliContext,
-        manifest_path: PathBuf,
-        name: Option<String>,
-        env: Vec<String>,
-        debug: bool,
-        cpu_limit: Option<f64>,
-        memory_limit: Option<String>,
-        security: String,
-    ) -> Result<()> {
+    pub async fn run_biome(&self, _ctx: &CliContext, opts: super::RunBiomeOptions) -> Result<()> {
         info!("🚀 Starting biome in foreground mode");
 
         // Load and validate manifest
-        let manifest = load_biome_manifest(&manifest_path).await?;
+        let manifest = load_biome_manifest(&opts.manifest_path).await?;
         let warnings = validate_manifest(&manifest)?;
 
         for warning in warnings {
@@ -83,7 +72,7 @@ impl BiomeExecutor {
         }
 
         // Determine biome name
-        let biome_name = name.unwrap_or_else(|| manifest.metadata.name.clone());
+        let biome_name = opts.name.unwrap_or_else(|| manifest.metadata.name.clone());
 
         info!("📋 Biome: {} v{}", biome_name, manifest.metadata.version);
 
@@ -97,10 +86,10 @@ impl BiomeExecutor {
 
         // ✅ OPTIMIZED: Apply resource overrides in-place (avoid clone)
         let mut effective_manifest = manifest;
-        if let Some(cpu) = cpu_limit {
+        if let Some(cpu) = opts.cpu_limit {
             effective_manifest.resources.cpu_limit = Some(cpu);
         }
-        if let Some(memory) = memory_limit {
+        if let Some(memory) = opts.memory_limit.clone() {
             effective_manifest.resources.memory_limit = Some(memory);
         }
 
@@ -109,10 +98,10 @@ impl BiomeExecutor {
             .start_biome_internal(
                 &biome_name,
                 effective_manifest,
-                env,
+                opts.env,
                 false, // not detached (foreground)
-                debug,
-                &security,
+                opts.debug,
+                &opts.security,
             )
             .await?;
 
@@ -141,24 +130,14 @@ impl BiomeExecutor {
     /// - Manifest loading or validation fails
     /// - Biome is already running with the same name
     /// - Biome startup fails
-    #[allow(clippy::too_many_arguments)]
     #[must_use = "Result of up_biome should be checked"]
-    pub async fn up_biome(
-        &self,
-        _ctx: &CliContext,
-        manifest_path: PathBuf,
-        detach: bool,
-        name: Option<String>,
-        env: Vec<String>,
-        restart: bool,
-        _health_interval: u64,
-    ) -> Result<()> {
+    pub async fn up_biome(&self, _ctx: &CliContext, opts: super::UpBiomeOptions) -> Result<()> {
         info!("🚀 Starting biome in background mode (detached)");
-        let _detach = detach; // For future use
-        let _restart = restart; // For future use
+        let _restart = opts.restart; // For future use
+        let _health_interval = opts.health_interval; // For future use
 
         // Load and validate manifest
-        let manifest = load_biome_manifest(&manifest_path).await?;
+        let manifest = load_biome_manifest(&opts.manifest_path).await?;
         let warnings = validate_manifest(&manifest)?;
 
         for warning in warnings {
@@ -166,7 +145,7 @@ impl BiomeExecutor {
         }
 
         // Determine biome name
-        let biome_name = name.unwrap_or_else(|| manifest.metadata.name.clone());
+        let biome_name = opts.name.unwrap_or_else(|| manifest.metadata.name.clone());
 
         info!("📋 Biome: {} v{}", biome_name, manifest.metadata.version);
 
@@ -183,8 +162,8 @@ impl BiomeExecutor {
             .start_biome_internal(
                 &biome_name,
                 manifest,
-                env,
-                detach,
+                opts.env,
+                opts.detach,
                 false,      // debug
                 "standard", // security level
             )

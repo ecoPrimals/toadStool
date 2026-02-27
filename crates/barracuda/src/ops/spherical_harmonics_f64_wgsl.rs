@@ -10,7 +10,7 @@
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
@@ -50,6 +50,7 @@ impl SphericalHarmonicsF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn ylm_cpu(&self, theta_phi: &[f64], l: u32, m: i32) -> Vec<f64> {
         let size = theta_phi.len() / 2;
         let _abs_m = m.unsigned_abs(); // Used in GPU path
@@ -64,6 +65,7 @@ impl SphericalHarmonicsF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn factorial(n: u32) -> f64 {
         match n {
             0 | 1 => 1.0,
@@ -72,6 +74,7 @@ impl SphericalHarmonicsF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn double_factorial(m: u32) -> f64 {
         if m == 0 {
             return 1.0;
@@ -80,6 +83,7 @@ impl SphericalHarmonicsF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn assoc_legendre(l: u32, m: u32, x: f64) -> f64 {
         if m > l {
             return 0.0;
@@ -124,6 +128,7 @@ impl SphericalHarmonicsF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn ylm_scalar(l: u32, m: i32, theta: f64, phi: f64) -> f64 {
         let abs_m = m.unsigned_abs();
         if abs_m > l {
@@ -313,23 +318,9 @@ impl SphericalHarmonicsF64 {
             0,
             (size * std::mem::size_of::<f64>()) as u64,
         );
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let buffer_slice = staging_buf.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result)
-                .expect("map_async callback: receiver must be waiting");
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|e| BarracudaError::Device(format!("Channel error: {}", e)))?
-            .map_err(|e| BarracudaError::Device(format!("Buffer map error: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buf.unmap();
+        let result: Vec<f64> = self.device.map_staging_buffer(&staging_buf, size)?;
         Ok(result)
     }
 }

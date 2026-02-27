@@ -96,7 +96,7 @@ impl Stack {
             );
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Create output buffer
         let output_buffer = device.create_buffer_f32(output_size)?;
@@ -234,7 +234,7 @@ impl Stack {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

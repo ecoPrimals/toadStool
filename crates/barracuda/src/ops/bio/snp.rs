@@ -184,5 +184,5 @@ pub(super) fn submit(
         pass.set_bind_group(0, bg, &[]);
         pass.dispatch_workgroups(wg_x, 1, 1);
     }
-    device.queue.submit(Some(enc.finish()));
+    device.submit_and_poll(Some(enc.finish()));
 }

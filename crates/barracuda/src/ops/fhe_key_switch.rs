@@ -345,7 +345,7 @@ impl FheKeySwitch {
             accumulate_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 
-        device.queue.submit(std::iter::once(encoder.finish()));
+        device.submit_and_poll(std::iter::once(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

@@ -2,7 +2,6 @@
 //!
 //! LinearMixer, BroydenMixer, Gradient1D, Gradient2D, Laplacian2D, Cylindrical.
 
-use barracuda::device::WgpuDevice;
 use barracuda::ops::grid::{
     CylindricalGradient, CylindricalLaplacian, Gradient1D, Gradient2D, Laplacian2D,
 };
@@ -10,14 +9,10 @@ use barracuda::ops::mixing::{BroydenMixer, LinearMixer, MixingParams};
 
 mod mixing_unit {
     use super::*;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_linear_mixer_alpha_half() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.5,
             ..Default::default()
@@ -38,10 +33,7 @@ mod mixing_unit {
 
     #[tokio::test]
     async fn test_linear_mixer_alpha_conservative() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.3,
             ..Default::default()
@@ -62,10 +54,7 @@ mod mixing_unit {
 
     #[tokio::test]
     async fn test_linear_mixer_alpha_one() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 1.0,
             ..Default::default()
@@ -86,10 +75,7 @@ mod mixing_unit {
 
     #[tokio::test]
     async fn test_linear_mixer_alpha_zero() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.0,
             ..Default::default()
@@ -110,10 +96,7 @@ mod mixing_unit {
 
     #[tokio::test]
     async fn test_linear_mixer_varying_values() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.4,
             ..Default::default()
@@ -137,10 +120,7 @@ mod mixing_unit {
 
     #[tokio::test]
     async fn test_broyden_mixer_creation() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.4,
             n_warmup: 3,
@@ -152,10 +132,7 @@ mod mixing_unit {
 
     #[tokio::test]
     async fn test_broyden_mixer_warmup() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.5,
             n_warmup: 5,
@@ -174,10 +151,7 @@ mod mixing_unit {
 
     #[tokio::test]
     async fn test_broyden_mixer_reset() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams::default();
         let mut mixer = BroydenMixer::new(device, 50, 3, params).unwrap();
         let x_old = vec![1.0; 50];
@@ -195,14 +169,10 @@ mod mixing_unit {
 
 mod grid_unit {
     use super::*;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_gradient_1d_linear() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let n = 100;
         let dx = 0.1;
         let grad = Gradient1D::new(device, n, dx).unwrap();
@@ -218,10 +188,7 @@ mod grid_unit {
 
     #[tokio::test]
     async fn test_gradient_1d_quadratic() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let n = 100;
         let dx = 0.1;
         let grad = Gradient1D::new(device, n, dx).unwrap();
@@ -240,10 +207,7 @@ mod grid_unit {
 
     #[tokio::test]
     async fn test_gradient_1d_cubic() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let n = 200;
         let dx = 0.05;
         let grad = Gradient1D::new(device, n, dx).unwrap();
@@ -263,10 +227,7 @@ mod grid_unit {
 
     #[tokio::test]
     async fn test_gradient_1d_sine() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let n = 200;
         let dx = 0.05;
         let grad = Gradient1D::new(device, n, dx).unwrap();
@@ -282,10 +243,7 @@ mod grid_unit {
 
     #[tokio::test]
     async fn test_gradient_2d_creation() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let grad = Gradient2D::new(device, 64, 64, 0.1, 0.1);
         assert!(grad.is_ok());
         assert_eq!(grad.unwrap().shape(), (64, 64));
@@ -293,10 +251,7 @@ mod grid_unit {
 
     #[tokio::test]
     async fn test_laplacian_2d_creation() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let lap = Laplacian2D::new(device, 100, 100, 0.05, 0.05);
         assert!(lap.is_ok());
         assert_eq!(lap.unwrap().shape(), (100, 100));
@@ -304,10 +259,7 @@ mod grid_unit {
 
     #[tokio::test]
     async fn test_cylindrical_gradient_creation() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let cyl = CylindricalGradient::new(device, 50, 100, 0.1, 0.1, -5.0);
         assert!(cyl.is_ok());
         assert_eq!(cyl.unwrap().shape(), (50, 100));
@@ -315,10 +267,7 @@ mod grid_unit {
 
     #[tokio::test]
     async fn test_cylindrical_laplacian_creation() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let cyl = CylindricalLaplacian::new(device, 50, 100, 0.1, 0.1, -5.0);
         assert!(cyl.is_ok());
         assert_eq!(cyl.unwrap().shape(), (50, 100));

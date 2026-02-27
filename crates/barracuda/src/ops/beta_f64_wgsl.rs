@@ -13,7 +13,7 @@
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
@@ -205,28 +205,14 @@ impl BetaF64 {
 
         encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, output_size as u64);
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let buffer_slice = staging_buf.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result)
-                .expect("map_async callback: receiver must be waiting");
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|e| BarracudaError::Gpu(format!("Beta readback: {}", e)))?
-            .map_err(|e| BarracudaError::Gpu(format!("Beta map: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buf.unmap();
-
+        let result: Vec<f64> = self.device.map_staging_buffer(&staging_buf, num_pairs)?;
         Ok(result)
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn beta_cpu(&self, pairs: &[f64]) -> Vec<f64> {
         pairs
             .chunks(2)
@@ -235,6 +221,7 @@ impl BetaF64 {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn beta_scalar(a: f64, b: f64) -> f64 {
         if a <= 0.0 || b <= 0.0 {
             return f64::NAN;

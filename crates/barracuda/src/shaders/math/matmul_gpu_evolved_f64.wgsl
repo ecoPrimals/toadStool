@@ -120,20 +120,20 @@ fn main(
             let b21 = tileB_curr[(k + 2u) * TILE + lcol * 2u + 1u];
             let b31 = tileB_curr[(k + 3u) * TILE + lcol * 2u + 1u];
 
-            acc00 = fma(a00, b00, fma(a01, b10, fma(a02, b20, fma(a03, b30, acc00))));
-            acc01 = fma(a00, b01, fma(a01, b11, fma(a02, b21, fma(a03, b31, acc01))));
-            acc10 = fma(a10, b00, fma(a11, b10, fma(a12, b20, fma(a13, b30, acc10))));
-            acc11 = fma(a10, b01, fma(a11, b11, fma(a12, b21, fma(a13, b31, acc11))));
+            acc00 = a00 * b00 + (a01 * b10 + (a02 * b20 + (a03 * b30 + acc00)));
+            acc01 = a00 * b01 + (a01 * b11 + (a02 * b21 + (a03 * b31 + acc01)));
+            acc10 = a10 * b00 + (a11 * b10 + (a12 * b20 + (a13 * b30 + acc10)));
+            acc11 = a10 * b01 + (a11 * b11 + (a12 * b21 + (a13 * b31 + acc11)));
         }
         for (; k < k_limit; k = k + 1u) {
             let a_r0 = tileA_curr[lrow * 2u        * TILE + k];
             let a_r1 = tileA_curr[(lrow * 2u + 1u) * TILE + k];
             let b_c0 = tileB_curr[k * TILE + lcol * 2u];
             let b_c1 = tileB_curr[k * TILE + lcol * 2u + 1u];
-            acc00 = fma(a_r0, b_c0, acc00);
-            acc01 = fma(a_r0, b_c1, acc01);
-            acc10 = fma(a_r1, b_c0, acc10);
-            acc11 = fma(a_r1, b_c1, acc11);
+            acc00 = a_r0 * b_c0 + acc00;
+            acc01 = a_r0 * b_c1 + acc01;
+            acc10 = a_r1 * b_c0 + acc10;
+            acc11 = a_r1 * b_c1 + acc11;
         }
 
         workgroupBarrier();

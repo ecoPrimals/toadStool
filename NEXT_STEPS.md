@@ -1,7 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 26, 2026 -- Session 68
-**Status**: Production-grade | 700 WGSL shaders (21 DF64, 0 f32-only, all f64 canonical) | 2,546+ barracuda tests (122 shader-specific) | Dual-layer universal precision (op_preamble + naga df64_rewrite) | Precision gate OPEN | All quality gates green
+**Updated**: February 26, 2026 -- Session 68+
+**Status**: Production-grade | 700 WGSL shaders (21 DF64, 0 f32-only, all f64 canonical) | 2,546+ barracuda tests (122 shader-specific) | Dual-layer universal precision | Precision gate OPEN | All quality gates green
+**Evolving**: Springs transition from fp64 shaders → true math. Many interactions to evolve per spring.
 
 ---
 

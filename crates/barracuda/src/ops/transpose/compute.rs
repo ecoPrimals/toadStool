@@ -169,7 +169,7 @@ fn execute_2d(
         pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
     }
 
-    device.queue.submit(Some(encoder.finish()));
+    device.submit_and_poll(Some(encoder.finish()));
 
     // Create output tensor with transposed shape
     let new_shape = vec![shape[1], shape[0]];
@@ -460,7 +460,7 @@ fn execute_nd(
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
-    device.queue.submit(Some(encoder.finish()));
+    device.submit_and_poll(Some(encoder.finish()));
 
     // Create output tensor with transposed shape
     Ok(Tensor::from_buffer(

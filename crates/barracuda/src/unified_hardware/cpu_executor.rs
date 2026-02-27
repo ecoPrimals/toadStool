@@ -4,9 +4,9 @@
 //! Memory/bandwidth are conservative estimates; higher-level code (e.g. toadstool)
 //! with sysinfo can override via capability overrides.
 
-use async_trait::async_trait;
 use crate::error::Result;
 use crate::unified_math::{MathOp, TensorDescriptor};
+use async_trait::async_trait;
 use std::sync::Arc;
 
 use super::traits::{ComputeExecutor, TensorStorage};

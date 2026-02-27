@@ -305,7 +305,7 @@ impl Fft1D {
         }
 
         // Submit bit-reversal pass
-        device.queue.submit(std::iter::once(encoder.finish()));
+        device.submit_and_poll(std::iter::once(encoder.finish()));
 
         // ============================================================
         // Pass 2-N: Butterfly stages (log₂(N) stages)
@@ -379,7 +379,7 @@ impl Fft1D {
             }
 
             // Submit THIS stage before moving to next
-            device.queue.submit(std::iter::once(stage_encoder.finish()));
+            device.submit_and_poll(std::iter::once(stage_encoder.finish()));
 
             // Ping-pong buffers for next stage
             std::mem::swap(&mut current_input, &mut current_output);

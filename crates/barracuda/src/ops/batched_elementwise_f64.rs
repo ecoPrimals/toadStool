@@ -292,7 +292,7 @@ impl BatchedElementwiseF64 {
             pass.dispatch_workgroups(batch_size as u32, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         // Read results
         self.read_results(&output_buffer, batch_size)
@@ -300,39 +300,12 @@ impl BatchedElementwiseF64 {
 
     /// Read results from GPU buffer
     fn read_results(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
-        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("BatchedEW Staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("BatchedEW Copy Encoder"),
-                });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let results: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|b| f64::from_le_bytes(b.try_into().expect("chunks_exact(8) guarantees 8 bytes")))
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(results)
+        self.device.read_buffer::<f64>(buffer, count)
     }
 
     /// CPU fallback for small batches
     #[cfg(test)]
+    #[allow(dead_code)]
     fn execute_cpu(
         &self,
         data: &[f64],

@@ -182,27 +182,9 @@ impl<'a> SparseGemmF64<'a> {
             (output_size * std::mem::size_of::<f64>()) as u64,
         );
 
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
-        let slice = staging.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|e| BarracudaError::gpu(format!("spmm readback: {e}")))?
-            .map_err(|e| BarracudaError::gpu(format!("spmm map: {e}")))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("8-byte f64 chunk")))
-            .collect();
-        drop(data);
-        staging.unmap();
-
+        let result: Vec<f64> = device.map_staging_buffer(&staging, output_size)?;
         Ok(result)
     }
 

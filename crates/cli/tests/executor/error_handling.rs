@@ -80,9 +80,8 @@ async fn test_graceful_degradation() {
     ];
 
     for path in invalid_cases {
-        let result = executor
-            .run_biome(&ctx, path, None, vec![], false, None, None, "basic".to_string())
-            .await;
+        let opts = run_biome_opts(path, None, vec![], false, None, None, "basic".to_string());
+        let result = executor.run_biome(&ctx, opts).await;
 
         // Should fail gracefully, not panic
         let _ = result;

@@ -18,11 +18,9 @@
 //! - Performance within expected bounds
 //! - Round-trip validation (A → B → A)
 
-use barracuda::device::WgpuDevice;
 use barracuda::ops::complex::*;
 use barracuda::ops::fft::*;
 use barracuda::tensor::Tensor;
-use std::sync::Arc;
 use std::time::Instant;
 
 // ═══════════════════════════════════════════════════════════════
@@ -31,7 +29,7 @@ use std::time::Instant;
 
 #[tokio::test]
 async fn e2e_signal_processing_pipeline() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     println!("\n🔬 E2E: Signal Processing Pipeline");
     println!("   Step 1: Generate sine wave signal");
@@ -92,7 +90,7 @@ async fn e2e_signal_processing_pipeline() {
 
 #[tokio::test]
 async fn e2e_complex_arithmetic_chain() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     println!("\n🔬 E2E: Complex Arithmetic Chain");
     println!("   z1 = 3+4i, z2 = 1+2i");
@@ -135,7 +133,7 @@ async fn e2e_complex_arithmetic_chain() {
 
 #[tokio::test]
 async fn e2e_fft_1d_2d_workflow() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     println!("\n🔬 E2E: 1D vs 2D FFT Workflow");
     println!("   Generate 8x8 2D data");
@@ -176,7 +174,7 @@ async fn e2e_fft_1d_2d_workflow() {
 
 #[tokio::test]
 async fn e2e_fft_3d_workflow() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     println!("\n🔬 E2E: 3D FFT Workflow (PPPM simulation)");
     println!("   Generate 8x8x8 3D grid");
@@ -239,7 +237,7 @@ async fn e2e_fft_3d_workflow() {
 
 #[tokio::test]
 async fn e2e_complex_exp_to_fft() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     println!("\n🔬 E2E: Complex Exp → FFT Workflow");
     println!("   Generate exponential chirp: exp(i * k * t²)");
@@ -280,7 +278,7 @@ async fn e2e_complex_exp_to_fft() {
 
 #[tokio::test]
 async fn e2e_full_molecular_dynamics_simulation() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let device = barracuda::device::test_pool::get_test_device().await;
 
     println!("\n🔬 E2E: Molecular Dynamics Workflow (PPPM-style)");
     println!("   Step 1: Particle positions → charge grid");

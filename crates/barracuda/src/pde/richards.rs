@@ -45,35 +45,67 @@ pub struct SoilParams {
 impl SoilParams {
     /// Sandy loam (Carsel & Parrish 1988, Table 3).
     pub const SANDY_LOAM: Self = Self {
-        theta_s: 0.41, theta_r: 0.065, alpha: 0.075, n: 1.89, k_sat: 1.228e-3,
+        theta_s: 0.41,
+        theta_r: 0.065,
+        alpha: 0.075,
+        n: 1.89,
+        k_sat: 1.228e-3,
     };
     /// Silt loam (Carsel & Parrish 1988, Table 3).
     pub const SILT_LOAM: Self = Self {
-        theta_s: 0.45, theta_r: 0.067, alpha: 0.020, n: 1.41, k_sat: 1.25e-4,
+        theta_s: 0.45,
+        theta_r: 0.067,
+        alpha: 0.020,
+        n: 1.41,
+        k_sat: 1.25e-4,
     };
     /// Clay loam (Carsel & Parrish 1988, Table 3).
     pub const CLAY_LOAM: Self = Self {
-        theta_s: 0.41, theta_r: 0.095, alpha: 0.019, n: 1.31, k_sat: 7.22e-5,
+        theta_s: 0.41,
+        theta_r: 0.095,
+        alpha: 0.019,
+        n: 1.31,
+        k_sat: 7.22e-5,
     };
     /// Sand (Carsel & Parrish 1988, Table 3).
     pub const SAND: Self = Self {
-        theta_s: 0.43, theta_r: 0.045, alpha: 0.145, n: 2.68, k_sat: 8.25e-3,
+        theta_s: 0.43,
+        theta_r: 0.045,
+        alpha: 0.145,
+        n: 2.68,
+        k_sat: 8.25e-3,
     };
     /// Clay (Carsel & Parrish 1988, Table 3).
     pub const CLAY: Self = Self {
-        theta_s: 0.38, theta_r: 0.068, alpha: 0.008, n: 1.09, k_sat: 5.56e-5,
+        theta_s: 0.38,
+        theta_r: 0.068,
+        alpha: 0.008,
+        n: 1.09,
+        k_sat: 5.56e-5,
     };
     /// Loam (Carsel & Parrish 1988, Table 3).
     pub const LOAM: Self = Self {
-        theta_s: 0.43, theta_r: 0.078, alpha: 0.036, n: 1.56, k_sat: 2.89e-4,
+        theta_s: 0.43,
+        theta_r: 0.078,
+        alpha: 0.036,
+        n: 1.56,
+        k_sat: 2.89e-4,
     };
     /// Silty clay loam (Carsel & Parrish 1988, Table 3).
     pub const SILTY_CLAY_LOAM: Self = Self {
-        theta_s: 0.43, theta_r: 0.089, alpha: 0.010, n: 1.23, k_sat: 1.94e-5,
+        theta_s: 0.43,
+        theta_r: 0.089,
+        alpha: 0.010,
+        n: 1.23,
+        k_sat: 1.94e-5,
     };
     /// Loamy sand (Carsel & Parrish 1988, Table 3).
     pub const LOAMY_SAND: Self = Self {
-        theta_s: 0.41, theta_r: 0.057, alpha: 0.124, n: 2.28, k_sat: 4.05e-3,
+        theta_s: 0.41,
+        theta_r: 0.057,
+        alpha: 0.124,
+        n: 2.28,
+        k_sat: 4.05e-3,
     };
 
     /// Van Genuchten m parameter: m = 1 - 1/n
@@ -233,8 +265,8 @@ pub fn solve_richards(
             }
 
             for i in 0..n - 1 {
-                k_half[i] = 2.0 * k_buf[i] * k_buf[i + 1]
-                    / (k_buf[i] + k_buf[i + 1] + HARMONIC_MEAN_GUARD);
+                k_half[i] =
+                    2.0 * k_buf[i] * k_buf[i + 1] / (k_buf[i] + k_buf[i + 1] + HARMONIC_MEAN_GUARD);
             }
 
             // Zero the tridiagonal vectors for this iteration

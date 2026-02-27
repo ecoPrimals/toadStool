@@ -231,7 +231,7 @@ impl SliceAssign {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let output_data = crate::utils::read_buffer(device, input_buffer, input_size)?;
         Ok(Tensor::new(

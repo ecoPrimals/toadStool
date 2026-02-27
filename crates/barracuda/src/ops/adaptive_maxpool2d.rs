@@ -212,7 +212,7 @@ impl AdaptiveMaxPool2D {
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         let output_elem_count = output_shape.iter().product::<usize>();
         let output_data = crate::utils::read_buffer(device, &output_buffer, output_elem_count)?;

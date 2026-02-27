@@ -13,19 +13,12 @@ use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 /// f64 canonical source for simple prod reduction.
-const WGSL_PROD_SIMPLE_F64: &str = include_str!("../shaders/misc/prod_simple_f64.wgsl");
-#[allow(dead_code)]
-static WGSL_PROD_SIMPLE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    crate::shaders::precision::downcast_f64_to_f32(WGSL_PROD_SIMPLE_F64)
-});
-
 /// f64 canonical source for dimension-wise product.
 pub const WGSL_PROD_DIM_F64: &str = include_str!("../shaders/reduce/prod_dim_f64.wgsl");
 
 /// f32 derived from f64 canonical source.
-static WGSL_PROD_DIM_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    crate::shaders::precision::downcast_f64_to_f32(WGSL_PROD_DIM_F64)
-});
+static WGSL_PROD_DIM_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_PROD_DIM_F64));
 
 /// Product reduction operation
 pub struct Prod {
@@ -201,7 +194,7 @@ impl Prod {
                     compute_pass.dispatch_workgroups(num_workgroups.max(1), 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back partial results and reduce them on CPU
                 // For now, we'll do a simple CPU reduction of partial results
@@ -367,7 +360,7 @@ impl Prod {
                     compute_pass.dispatch_workgroups(workgroups.max(1), 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back results
                 let output_data = device.read_buffer_f32(&output_buffer, output_size)?;

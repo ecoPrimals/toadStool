@@ -1,20 +1,15 @@
 //! hotSpring Evolution: Fault (error handling) and Special functions (Hermite, Laguerre).
 
-use barracuda::device::WgpuDevice;
 use barracuda::error::BarracudaError;
 use barracuda::ops::grid::Gradient1D;
 use barracuda::ops::mixing::{LinearMixer, MixingParams};
-use std::sync::Arc;
 
 mod fault {
     use super::*;
 
     #[tokio::test]
     async fn test_mixer_dimension_mismatch_old() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams::default();
         let mixer = LinearMixer::new(device, 100, params).unwrap();
         let x_old = vec![1.0; 50];
@@ -31,10 +26,7 @@ mod fault {
 
     #[tokio::test]
     async fn test_mixer_dimension_mismatch_computed() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams::default();
         let mixer = LinearMixer::new(device, 100, params).unwrap();
         let x_old = vec![1.0; 100];
@@ -45,10 +37,7 @@ mod fault {
 
     #[tokio::test]
     async fn test_gradient_size_mismatch() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let grad = Gradient1D::new(device, 100, 0.1).unwrap();
         let input = vec![1.0; 50];
         let result = grad.compute(&input).await;
@@ -63,10 +52,7 @@ mod fault {
 
     #[tokio::test]
     async fn test_mixer_zero_dimension() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams::default();
         let mixer = LinearMixer::new(device, 0, params);
         if let Ok(m) = mixer {
@@ -79,10 +65,7 @@ mod fault {
 
     #[tokio::test]
     async fn test_gradient_empty_input() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let grad = Gradient1D::new(device, 0, 0.1);
         if let Ok(g) = grad {
             let result = g.compute(&[]).await;
@@ -94,10 +77,7 @@ mod fault {
 
     #[tokio::test]
     async fn test_mixer_nan_propagation() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.5,
             ..Default::default()
@@ -118,10 +98,7 @@ mod fault {
 
     #[tokio::test]
     async fn test_mixer_infinity() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let params = MixingParams {
             alpha: 0.5,
             ..Default::default()
@@ -138,10 +115,7 @@ mod fault {
 
     #[tokio::test]
     async fn test_gradient_nan_handling() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return,
-        };
+        let device = barracuda::device::test_pool::get_test_device().await;
         let grad = Gradient1D::new(device, 20, 0.1).unwrap();
         let mut input: Vec<f64> = (0..20).map(|i| i as f64).collect();
         input[10] = f64::NAN;

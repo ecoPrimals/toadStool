@@ -318,14 +318,19 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         for ep in &mut module.entry_points {
             total_fusions += fuse_multiply_add(&mut ep.function.expressions);
         }
-        assert!(total_fusions >= 1, "expected at least 1 FMA fusion, got {total_fusions}");
+        assert!(
+            total_fusions >= 1,
+            "expected at least 1 FMA fusion, got {total_fusions}"
+        );
 
         // Validate that the fused module is still valid
         let mut validator = naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
             naga::valid::Capabilities::all(),
         );
-        validator.validate(&module).expect("fused module should validate");
+        validator
+            .validate(&module)
+            .expect("fused module should validate");
     }
 
     #[test]
@@ -355,6 +360,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             total_fusions += fuse_multiply_add(&mut ep.function.expressions);
         }
         // product has 2 consumers, so no fusion should happen
-        assert_eq!(total_fusions, 0, "should not fuse when mul has multiple consumers");
+        assert_eq!(
+            total_fusions, 0,
+            "should not fuse when mul has multiple consumers"
+        );
     }
 }

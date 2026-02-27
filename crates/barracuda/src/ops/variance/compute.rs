@@ -151,7 +151,7 @@ impl Variance {
                     compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back partial sums and compute mean
                 let partial_sums =
@@ -231,7 +231,7 @@ impl Variance {
                     compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
                 }
 
-                device.queue.submit(Some(encoder2.finish()));
+                device.submit_and_poll(Some(encoder2.finish()));
 
                 // Read back partial variance results
                 let partial_variances =
@@ -396,7 +396,7 @@ impl Variance {
                     compute_pass.dispatch_workgroups(workgroups, 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back results
                 let output_data = device.read_buffer_f32(&output_buffer, output_size)?;

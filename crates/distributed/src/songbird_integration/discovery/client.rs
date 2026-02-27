@@ -69,7 +69,7 @@ impl DiscoveryClient {
         Ok(nodes)
     }
 
-    #[allow(dead_code)] // Was used by HTTP implementation, may be useful for debugging
+    #[allow(dead_code)] // Used by discovery client tests
     pub(crate) fn parse_node_data(
         &self,
         node_data: &serde_json::Value,

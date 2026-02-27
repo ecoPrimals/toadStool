@@ -1,6 +1,8 @@
 # ToadStool Documentation
 
-**Updated**: February 26, 2026 -- Session 68
+**Updated**: February 26, 2026 -- Session 68+
+
+Old integration guides (biomeOS, error codes, collaborative intelligence examples) archived to `ecoPrimals/fossil/toadStool-archives/docs-archive-session68/`.
 
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub.
 

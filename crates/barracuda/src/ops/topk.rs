@@ -239,8 +239,7 @@ impl TopK {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Read u32 indices back and convert to f32
         let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -262,26 +261,9 @@ impl TopK {
             0,
             (self.k * std::mem::size_of::<u32>()) as u64,
         );
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
-        // Map and read
-        let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) =
-            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).ok();
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        rx.recv()
-            .map_err(|_| BarracudaError::Gpu("Buffer map async wait canceled".into()))?
-            .map_err(|e| BarracudaError::Gpu(format!("Buffer mapping failed: {}", e)))?;
-
-        // Convert u32 to f32
-        let data = buffer_slice.get_mapped_range();
-        let indices_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buffer.unmap();
-
+        let indices_u32: Vec<u32> = device.map_staging_buffer(&staging_buffer, self.k)?;
         let indices_f32: Vec<f32> = indices_u32.iter().map(|&x| x as f32).collect();
 
         // Create output tensor [k] as f32

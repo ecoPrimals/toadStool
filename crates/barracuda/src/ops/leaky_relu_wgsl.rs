@@ -28,8 +28,9 @@ const WGSL_LEAKY_RELU_SIMPLE_F64: &str =
     include_str!("../shaders/activation/leaky_relu_simple_f64.wgsl");
 
 /// Simple LeakyReLU variant (single-pass, no vectorization).
-pub static WGSL_LEAKY_RELU_SIMPLE: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_LEAKY_RELU_SIMPLE_F64));
+pub static WGSL_LEAKY_RELU_SIMPLE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32(WGSL_LEAKY_RELU_SIMPLE_F64)
+});
 
 /// Default negative slope for LeakyReLU (matches common framework defaults).
 pub const LEAKY_RELU_DEFAULT_SLOPE: f32 = 0.01;

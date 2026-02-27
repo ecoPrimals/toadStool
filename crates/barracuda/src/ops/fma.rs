@@ -157,7 +157,7 @@ impl Fma {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Create output tensor with pooled buffer
         Ok(Tensor::from_pooled_buffer(

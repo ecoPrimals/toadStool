@@ -17,7 +17,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 struct TouchPoint {
     /// Tracking ID assigned by kernel (for debugging)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Kernel ID for debugging; internal touch_id used for tracking
     tracking_id: i32,
     /// Our internal touch ID (stable across updates)
     touch_id: u32,

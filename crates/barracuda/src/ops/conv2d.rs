@@ -27,8 +27,9 @@ impl Conv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64)
+        });
         SHADER.as_str()
     }
 
@@ -175,7 +176,7 @@ impl Conv2D {
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

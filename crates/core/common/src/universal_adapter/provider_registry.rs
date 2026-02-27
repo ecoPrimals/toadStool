@@ -15,7 +15,7 @@ pub struct ProviderRegistry {
     providers: HashMap<String, RegisteredProvider>,
 
     /// Provider health check interval (for future use)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Future: periodic health checks
     health_check_interval: Duration,
 }
 

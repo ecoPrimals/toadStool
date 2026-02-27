@@ -6,19 +6,37 @@
 //! `encode_binary_op` / `encode_ternary_op` / `encode_scale_op` used to recreate
 //! both `BindGroupLayout` and `ComputePipeline` on every `run()` invocation.
 
-pub(super) static MATMUL_NAIVE_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_f64.wgsl")));
-pub(super) static MATMUL_TILED_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_tiled_f64.wgsl")));
-pub(super) static MATMUL_CPU_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_cpu_tiled_f64.wgsl")));
-pub(super) static MATMUL_GPU_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_gpu_evolved_f64.wgsl")));
+pub(super) static MATMUL_NAIVE_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/math/matmul_f64.wgsl"
+    ))
+});
+pub(super) static MATMUL_TILED_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/math/matmul_tiled_f64.wgsl"
+    ))
+});
+pub(super) static MATMUL_CPU_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/math/matmul_cpu_tiled_f64.wgsl"
+    ))
+});
+pub(super) static MATMUL_GPU_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/math/matmul_gpu_evolved_f64.wgsl"
+    ))
+});
 
-pub(crate) static HEAD_SPLIT_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/tensor/head_split_f64.wgsl")));
-pub(crate) static HEAD_CONCAT_F32: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/tensor/head_concat_f64.wgsl")));
+pub(crate) static HEAD_SPLIT_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/tensor/head_split_f64.wgsl"
+    ))
+});
+pub(crate) static HEAD_CONCAT_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/tensor/head_concat_f64.wgsl"
+    ))
+});
 
 /// All compute pipelines for a `TensorSession`.
 ///
@@ -122,14 +140,8 @@ impl SessionPipelines {
             mul_pl: auto_pipeline(&mul_src, "Session Mul"),
             fma_pl: auto_pipeline(&fma_src, "Session FMA"),
             scale_pl: auto_pipeline(&scale_src, "Session Scale"),
-            relu_pl: auto_pipeline(
-                &crate::ops::relu::SHADER_F32,
-                "Session ReLU",
-            ),
-            gelu_pl: auto_pipeline(
-                &crate::ops::gelu_wgsl::SHADER_F32,
-                "Session GELU",
-            ),
+            relu_pl: auto_pipeline(&crate::ops::relu::SHADER_F32, "Session ReLU"),
+            gelu_pl: auto_pipeline(&crate::ops::gelu_wgsl::SHADER_F32, "Session GELU"),
             sfmx_pl: auto_pipeline(
                 &crate::ops::softmax::SHADER_SOFTMAX_SIMPLE_F32,
                 "Session Softmax",

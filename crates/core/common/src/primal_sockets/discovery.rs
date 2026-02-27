@@ -81,17 +81,21 @@ pub async fn discover_coordination_socket() -> Result<PathBuf, SocketDiscoveryEr
     .await
 }
 
-/// Helper: Map capability to biomeOS standard socket path (fallback during transition)
+/// Map a capability to a biomeOS-standard socket path via environment-based fallback.
+///
+/// **Sovereignty**: No hardcoded primal names. The mapping is driven by environment
+/// variables (`BIOMEOS_CRYPTO_SOCKET`, `BIOMEOS_STORAGE_SOCKET`, etc.) and falls back
+/// to the well-known capability category names (not primal identities).
 pub(crate) fn capability_to_biomeos_fallback(
     capability: &crate::primal_identity::Capability,
 ) -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::Capability;
 
-    let service_name = match capability {
-        Capability::Crypto(_) => "beardog",
-        Capability::Storage(_) => "nestgate",
-        Capability::Coordination(_) => "songbird",
-        Capability::Compute(_) => "toadstool",
+    let (env_var, category_name) = match capability {
+        Capability::Crypto(_) => ("BIOMEOS_CRYPTO_SOCKET", "crypto"),
+        Capability::Storage(_) => ("BIOMEOS_STORAGE_SOCKET", "storage"),
+        Capability::Coordination(_) => ("BIOMEOS_COORDINATION_SOCKET", "coordination"),
+        Capability::Compute(_) => ("BIOMEOS_COMPUTE_SOCKET", "compute"),
         _ => {
             return Err(SocketDiscoveryError::NoSocketFound(format!(
                 "No fallback path for capability: {capability:?}"
@@ -99,9 +103,13 @@ pub(crate) fn capability_to_biomeos_fallback(
         }
     };
 
+    if let Ok(explicit_path) = std::env::var(env_var) {
+        return Ok(PathBuf::from(explicit_path));
+    }
+
     let env = SocketPathEnv::from_env();
     Ok(paths::resolve_socket_path_for_service(
-        service_name,
+        category_name,
         &env,
         None,
     ))
@@ -147,41 +155,41 @@ mod tests {
         assert!(err.source().is_none());
     }
 
-    /// Test capability_to_biomeos fallback mapping via paths - Crypto -> beardog
+    /// Test capability fallback uses capability category names (not primal names)
     #[test]
     fn test_capability_fallback_path_crypto() {
         use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
-        let path = resolve_socket_path_for_service("beardog", &env_snapshot, None);
-        assert!(path.to_string_lossy().contains("beardog"));
-        assert!(path.to_string_lossy().ends_with("beardog.sock"));
+        let path = resolve_socket_path_for_service("crypto", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("crypto"));
+        assert!(path.to_string_lossy().ends_with("crypto.sock"));
     }
 
-    /// Test capability_to_biomeos fallback mapping - Storage -> nestgate
+    /// Test capability fallback - Storage category
     #[test]
     fn test_capability_fallback_path_storage() {
         use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
-        let path = resolve_socket_path_for_service("nestgate", &env_snapshot, None);
-        assert!(path.to_string_lossy().contains("nestgate"));
+        let path = resolve_socket_path_for_service("storage", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("storage"));
     }
 
-    /// Test capability_to_biomeos fallback mapping - Coordination -> songbird
+    /// Test capability fallback - Coordination category
     #[test]
     fn test_capability_fallback_path_coordination() {
         use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
-        let path = resolve_socket_path_for_service("songbird", &env_snapshot, None);
-        assert!(path.to_string_lossy().contains("songbird"));
+        let path = resolve_socket_path_for_service("coordination", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("coordination"));
     }
 
-    /// Test capability_to_biomeos fallback mapping - Compute -> toadstool
+    /// Test capability fallback - Compute category
     #[test]
     fn test_capability_fallback_path_compute() {
         use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
-        let path = resolve_socket_path_for_service("toadstool", &env_snapshot, None);
-        assert!(path.to_string_lossy().contains("toadstool"));
+        let path = resolve_socket_path_for_service("compute", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("compute"));
     }
 
     #[test]
@@ -191,7 +199,7 @@ mod tests {
             capability_to_biomeos_fallback(&Capability::Crypto(CryptoCapability::Encryption));
         assert!(path.is_ok());
         let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("beardog"));
+        assert!(path.to_string_lossy().contains("crypto"));
     }
 
     #[test]
@@ -201,7 +209,7 @@ mod tests {
             capability_to_biomeos_fallback(&Capability::Storage(StorageCapability::ObjectStorage));
         assert!(path.is_ok());
         let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("nestgate"));
+        assert!(path.to_string_lossy().contains("storage"));
     }
 
     #[test]
@@ -223,7 +231,7 @@ mod tests {
         ));
         assert!(path.is_ok());
         let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("toadstool"));
+        assert!(path.to_string_lossy().contains("compute"));
     }
 
     #[test]
@@ -234,6 +242,6 @@ mod tests {
         ));
         assert!(path.is_ok());
         let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("songbird"));
+        assert!(path.to_string_lossy().contains("coordination"));
     }
 }

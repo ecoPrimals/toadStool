@@ -60,8 +60,9 @@ pub static WGSL_LHS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
 static WGSL_METROPOLIS_F64: &str = include_str!("../shaders/sample/metropolis_f64.wgsl");
 /// WGSL shader: parallel Metropolis-Hastings MCMC
 /// WGSL kernel for Metropolis-Hastings sampling.
-pub static WGSL_METROPOLIS: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_METROPOLIS_F64));
+pub static WGSL_METROPOLIS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_METROPOLIS_F64)
+});
 
 pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};
 pub use lhs::{latin_hypercube, random_uniform};

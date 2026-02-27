@@ -60,6 +60,42 @@ use crate::{
     ResourceUsage, ServiceInfo, WorkloadSource,
 };
 
+/// Options for running a biome in foreground mode
+#[derive(Debug, Clone)]
+pub struct RunBiomeOptions {
+    /// Path to biome.yaml manifest file
+    pub manifest_path: PathBuf,
+    /// Override biome name (default: from manifest)
+    pub name: Option<String>,
+    /// Environment variables to set
+    pub env: Vec<String>,
+    /// Enable debug mode
+    pub debug: bool,
+    /// CPU limit override
+    pub cpu_limit: Option<f64>,
+    /// Memory limit override
+    pub memory_limit: Option<String>,
+    /// Security level (low, medium, high, maximum)
+    pub security: String,
+}
+
+/// Options for starting a biome in background (detached) mode
+#[derive(Debug, Clone)]
+pub struct UpBiomeOptions {
+    /// Path to biome.yaml manifest file
+    pub manifest_path: PathBuf,
+    /// Run in detached mode (background)
+    pub detach: bool,
+    /// Override biome name (default: from manifest)
+    pub name: Option<String>,
+    /// Environment variables to set
+    pub env: Vec<String>,
+    /// Auto-restart on failure
+    pub restart: bool,
+    /// Health check interval in seconds
+    pub health_interval: u64,
+}
+
 /// Biome execution engine
 pub struct BiomeExecutor {
     /// Distributed coordinator for ecosystem integration

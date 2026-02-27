@@ -18,6 +18,9 @@ impl WgpuDevice {
             return Ok(Vec::new());
         }
         let byte_size = (count * std::mem::size_of::<T>()) as u64;
+
+        let _permit = self.acquire_dispatch();
+
         let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("readback staging"),
             size: byte_size,
@@ -25,20 +28,47 @@ impl WgpuDevice {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, byte_size);
-        self.queue.submit(Some(encoder.finish()));
+        {
+            let _guard = self.lock();
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("readback"),
+                });
+            encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, byte_size);
+            self.queue.submit(Some(encoder.finish()));
+        }
 
+        self.map_staging_buffer(&staging, count)
+    }
+
+    /// Map a staging buffer and extract typed data.
+    ///
+    /// Use after you've already submitted a copy to the staging buffer
+    /// and polled (e.g., via `submit_and_poll`). This handles the
+    /// `map_async` → `poll` → `get_mapped_range` → `unmap` dance that
+    /// was previously duplicated across ~40 ops.
+    ///
+    /// Holds the GPU lock for the poll to prevent concurrent device access.
+    pub fn map_staging_buffer<T: bytemuck::Pod>(
+        &self,
+        staging: &wgpu::Buffer,
+        count: usize,
+    ) -> Result<Vec<T>> {
+        if count == 0 {
+            return Ok(Vec::new());
+        }
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
-        self.device.poll(wgpu::Maintain::Wait);
+
+        {
+            let _guard = self.lock();
+            self.device.poll(wgpu::Maintain::Wait);
+        }
+
         receiver
             .recv()
             .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?
@@ -139,6 +169,37 @@ impl WgpuDevice {
                     | wgpu::BufferUsages::COPY_DST
                     | wgpu::BufferUsages::COPY_SRC,
             }))
+    }
+
+    /// Create storage buffer initialized with f32 data.
+    pub fn create_buffer_f32_init(&self, label: &str, data: &[f32]) -> wgpu::Buffer {
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            })
+    }
+
+    /// Write data to buffer (f64)
+    pub fn write_buffer_f64(&self, buffer: &wgpu::Buffer, data: &[f64]) -> Result<()> {
+        self.queue
+            .write_buffer(buffer, 0, bytemuck::cast_slice(data));
+        Ok(())
+    }
+
+    /// Create storage buffer initialized with f64 data.
+    pub fn create_buffer_f64_init(&self, label: &str, data: &[f64]) -> wgpu::Buffer {
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            })
     }
 
     /// Allocate buffer for f64 data

@@ -385,10 +385,16 @@ fn process(val: f64) -> f64 {
 }
 "#;
     let df64 = downcast_f64_to_df64(f64_source);
-    assert!(df64.contains("array<vec2<f32>>"), "storage should be vec2<f32>");
+    assert!(
+        df64.contains("array<vec2<f32>>"),
+        "storage should be vec2<f32>"
+    );
     assert!(df64.contains("val: Df64"), "param type should be Df64");
     assert!(df64.contains("-> Df64"), "return type should be Df64");
-    assert!(!df64.contains("array<f64>"), "no raw f64 should remain in storage");
+    assert!(
+        !df64.contains("array<f64>"),
+        "no raw f64 should remain in storage"
+    );
 }
 
 #[test]
@@ -399,10 +405,22 @@ let one: f64 = f64(1.0);
 let half: f64 = f64(0.5);
 "#;
     let df64 = downcast_f64_to_df64(f64_source);
-    assert!(df64.contains("df64_from_f32(0.0)"), "f64(0.0) → df64_from_f32(0.0)");
-    assert!(df64.contains("df64_from_f32(1.0)"), "f64(1.0) → df64_from_f32(1.0)");
-    assert!(df64.contains("df64_from_f32(0.5)"), "f64(0.5) → df64_from_f32(0.5)");
-    assert!(!df64.contains("f64("), "no raw f64 constructors should remain");
+    assert!(
+        df64.contains("df64_from_f32(0.0)"),
+        "f64(0.0) → df64_from_f32(0.0)"
+    );
+    assert!(
+        df64.contains("df64_from_f32(1.0)"),
+        "f64(1.0) → df64_from_f32(1.0)"
+    );
+    assert!(
+        df64.contains("df64_from_f32(0.5)"),
+        "f64(0.5) → df64_from_f32(0.5)"
+    );
+    assert!(
+        !df64.contains("f64("),
+        "no raw f64 constructors should remain"
+    );
 }
 
 #[test]
@@ -445,10 +463,22 @@ fn test_op_preamble_f32_has_all_ops() {
 #[test]
 fn test_op_preamble_df64_routes_to_library() {
     let p = Precision::Df64.op_preamble();
-    assert!(p.contains("df64_add(a, b)"), "op_add should route to df64_add");
-    assert!(p.contains("df64_mul(a, b)"), "op_mul should route to df64_mul");
-    assert!(p.contains("df64_div(a, b)"), "op_div should route to df64_div");
-    assert!(p.contains("df64_sub(a, b)"), "op_sub should route to df64_sub");
+    assert!(
+        p.contains("df64_add(a, b)"),
+        "op_add should route to df64_add"
+    );
+    assert!(
+        p.contains("df64_mul(a, b)"),
+        "op_mul should route to df64_mul"
+    );
+    assert!(
+        p.contains("df64_div(a, b)"),
+        "op_div should route to df64_div"
+    );
+    assert!(
+        p.contains("df64_sub(a, b)"),
+        "op_sub should route to df64_sub"
+    );
     assert!(p.contains("df64_neg(a)"), "op_neg should route to df64_neg");
     assert!(p.contains("fn op_pack("), "DF64 needs pack for storage");
     assert!(p.contains("fn op_unpack("), "DF64 needs unpack for storage");
@@ -458,12 +488,21 @@ fn test_op_preamble_df64_routes_to_library() {
 
 #[test]
 fn test_op_preamble_all_precisions_consistent() {
-    for prec in [Precision::F16, Precision::F32, Precision::F64, Precision::Df64] {
+    for prec in [
+        Precision::F16,
+        Precision::F32,
+        Precision::F64,
+        Precision::Df64,
+    ] {
         let p = prec.op_preamble();
         assert!(p.contains("fn op_add("), "{:?} missing op_add", prec);
         assert!(p.contains("fn op_mul("), "{:?} missing op_mul", prec);
         assert!(p.contains("fn op_zero("), "{:?} missing op_zero", prec);
-        assert!(p.contains("alias Scalar"), "{:?} missing Scalar alias", prec);
+        assert!(
+            p.contains("alias Scalar"),
+            "{:?} missing Scalar alias",
+            prec
+        );
     }
 }
 
@@ -504,13 +543,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 fn test_universal_shader_validates_f32() {
     let preamble = Precision::F32.op_preamble();
     let source = format!("{preamble}\n{UNIVERSAL_ELEMENTWISE_ADD}");
-    let module = naga::front::wgsl::parse_str(&source)
-        .expect("f32 universal shader should parse");
+    let module = naga::front::wgsl::parse_str(&source).expect("f32 universal shader should parse");
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
         naga::valid::Capabilities::all(),
     );
-    validator.validate(&module).expect("f32 universal shader should validate");
+    validator
+        .validate(&module)
+        .expect("f32 universal shader should validate");
 }
 
 /// Prove the universal shader is valid WGSL at f64 precision via naga parse.
@@ -519,13 +559,14 @@ fn test_universal_shader_validates_f32() {
 fn test_universal_shader_validates_f64() {
     let preamble = Precision::F64.op_preamble();
     let source = format!("{preamble}\n{UNIVERSAL_ELEMENTWISE_ADD}");
-    let module = naga::front::wgsl::parse_str(&source)
-        .expect("f64 universal shader should parse");
+    let module = naga::front::wgsl::parse_str(&source).expect("f64 universal shader should parse");
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
         naga::valid::Capabilities::all(),
     );
-    validator.validate(&module).expect("f64 universal shader should validate");
+    validator
+        .validate(&module)
+        .expect("f64 universal shader should validate");
 }
 
 /// Prove the universal shader is valid WGSL at DF64 precision via naga parse.
@@ -536,14 +577,16 @@ fn test_universal_shader_validates_df64() {
     const DF64_CORE: &str = include_str!("../../shaders/math/df64_core.wgsl");
     const DF64_TRANSCENDENTALS: &str = include_str!("../../shaders/math/df64_transcendentals.wgsl");
     let preamble = Precision::Df64.op_preamble();
-    let source = format!("{DF64_CORE}\n{DF64_TRANSCENDENTALS}\n{preamble}\n{UNIVERSAL_ELEMENTWISE_ADD}");
-    let module = naga::front::wgsl::parse_str(&source)
-        .expect("DF64 universal shader should parse");
+    let source =
+        format!("{DF64_CORE}\n{DF64_TRANSCENDENTALS}\n{preamble}\n{UNIVERSAL_ELEMENTWISE_ADD}");
+    let module = naga::front::wgsl::parse_str(&source).expect("DF64 universal shader should parse");
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
         naga::valid::Capabilities::all(),
     );
-    validator.validate(&module).expect("DF64 universal shader should validate");
+    validator
+        .validate(&module)
+        .expect("DF64 universal shader should validate");
 }
 
 /// Universal shader with more complex math — reduction with op_add.
@@ -620,17 +663,26 @@ fn test_universal_reduce_validates_all_precisions() {
 fn test_downcast_f64_to_f16_sentinel_protection() {
     let source = "let x = exp_f64(input[i]);\nlet y: f64 = f64(1.0);";
     let result = downcast_f64_to_f16(source);
-    assert!(result.contains("exp_f64("), "polyfill name must survive sentinel");
+    assert!(
+        result.contains("exp_f64("),
+        "polyfill name must survive sentinel"
+    );
     assert!(result.contains(": f16"), "type should downcast to f16");
     assert!(result.contains("f16(1.0)"), "constructor should downcast");
-    assert!(!result.contains("exp_f16("), "exp_f64 must NOT become exp_f16");
+    assert!(
+        !result.contains("exp_f16("),
+        "exp_f64 must NOT become exp_f16"
+    );
 }
 
 #[test]
 fn test_downcast_f64_to_f16_clamps_f64_range_literals() {
     let source = "let x: f64 = f64(-1e308);";
     let result = downcast_f64_to_f16(source);
-    assert!(result.contains("-65504.0"), "f64 sentinel should clamp to f16 max");
+    assert!(
+        result.contains("-65504.0"),
+        "f64 sentinel should clamp to f16 max"
+    );
     assert!(!result.contains("1e308"), "f64-range literal must be gone");
 }
 
@@ -638,12 +690,20 @@ fn test_downcast_f64_to_f16_clamps_f64_range_literals() {
 fn test_downcast_f64_to_f16_clamps_f32_range_to_f16() {
     let source = "let x = 3.4028235e+38;";
     let result = downcast_f64_to_f16(source);
-    assert!(result.contains("65504.0"), "f32-range literal should clamp to f16");
+    assert!(
+        result.contains("65504.0"),
+        "f32-range literal should clamp to f16"
+    );
 }
 
 #[test]
 fn test_op_preamble_pack_unpack_all_precisions() {
-    for prec in [Precision::F16, Precision::F32, Precision::F64, Precision::Df64] {
+    for prec in [
+        Precision::F16,
+        Precision::F32,
+        Precision::F64,
+        Precision::Df64,
+    ] {
         let p = prec.op_preamble();
         assert!(p.contains("fn op_pack("), "{:?} missing op_pack", prec);
         assert!(p.contains("fn op_unpack("), "{:?} missing op_unpack", prec);
@@ -657,7 +717,10 @@ fn test_downcast_df64_only_maps_existing_transcendentals() {
     assert!(result.contains("exp_df64("), "exp should map");
     assert!(result.contains("sqrt_df64("), "sqrt should map");
     // tan_f64 should NOT be mapped since tan_df64 doesn't exist
-    assert!(result.contains("tan_f64("), "tan_f64 should stay unmapped (no df64 impl)");
+    assert!(
+        result.contains("tan_f64("),
+        "tan_f64 should stay unmapped (no df64 impl)"
+    );
 }
 
 #[test]
@@ -681,7 +744,10 @@ fn test_clamp_f64_range_handles_all_patterns() {
     ];
     for (input, expected) in &patterns {
         let result = downcast_f64_to_f32(input);
-        assert!(result.contains(expected), "pattern {input} should become {expected}, got {result}");
+        assert!(
+            result.contains(expected),
+            "pattern {input} should become {expected}, got {result}"
+        );
     }
 }
 
@@ -839,7 +905,10 @@ fn test_chaos_no_f64_in_source() {
 fn test_chaos_nested_f64_patterns() {
     let source = "let x: f64 = f64(f64(1.0));";
     let result = downcast_f64_to_f32(source);
-    assert!(result.contains("f32(f32(1.0))"), "nested constructors downcast: {result}");
+    assert!(
+        result.contains("f32(f32(1.0))"),
+        "nested constructors downcast: {result}"
+    );
     assert!(!result.contains("f64"), "no f64 in result");
 }
 
@@ -882,7 +951,11 @@ fn test_chaos_consecutive_sentinels() {
     let result = downcast_f64_to_f32(source);
     assert!(!result.contains("e308"), "all e308 clamped");
     assert!(!result.contains("e300"), "all e300 clamped");
-    assert_eq!(result.matches("3.4028235e+38").count(), 4, "four clamped values");
+    assert_eq!(
+        result.matches("3.4028235e+38").count(),
+        4,
+        "four clamped values"
+    );
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -891,7 +964,12 @@ fn test_chaos_consecutive_sentinels() {
 
 #[test]
 fn test_fault_preamble_consistency_under_concatenation() {
-    for prec in [Precision::F16, Precision::F32, Precision::F64, Precision::Df64] {
+    for prec in [
+        Precision::F16,
+        Precision::F32,
+        Precision::F64,
+        Precision::Df64,
+    ] {
         let p = prec.op_preamble();
         // Every preamble must have matching open/close braces
         let opens = p.matches('{').count();

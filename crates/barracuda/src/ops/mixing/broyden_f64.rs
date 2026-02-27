@@ -263,31 +263,8 @@ impl LinearMixer {
         );
         self.device.queue().submit(Some(encoder.finish()));
 
-        let (sender, receiver) = std::sync::mpsc::channel();
-        staging_buffer
-            .slice(..)
-            .map_async(wgpu::MapMode::Read, move |result| {
-                let _ = sender.send(result);
-            });
-        self.device.device().poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = staging_buffer.slice(..).get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-
-        Ok(result)
+        self.device
+            .map_staging_buffer::<f64>(&staging_buffer, self.vec_dim)
     }
 }
 

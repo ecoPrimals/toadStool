@@ -287,8 +287,7 @@ impl GillespieGpu {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(wg, 1, 1);
         }
-        dev.queue.submit(Some(encoder.finish()));
-        dev.device.poll(wgpu::Maintain::Wait);
+        dev.submit_and_poll(Some(encoder.finish()));
 
         // ── Read back results ─────────────────────────────────────────────────
         let states = dev.read_buffer_f64(&states_buf, n_t * n_s)?;

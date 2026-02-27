@@ -256,24 +256,11 @@ impl MovingWindowStats {
 
         q.submit(Some(encoder.finish()));
 
-        let read_buf = |buf: &wgpu::Buffer| -> Result<Vec<f32>> {
-            let slice = buf.slice(..);
-            let (tx, rx) = std::sync::mpsc::channel();
-            slice.map_async(wgpu::MapMode::Read, move |r| {
-                let _ = tx.send(r);
-            });
-            self.device.device().poll(wgpu::Maintain::Wait);
-            rx.recv()
-                .map_err(|e| BarracudaError::Device(format!("Buffer readback channel: {}", e)))?
-                .map_err(|e| BarracudaError::Device(format!("Buffer map: {:?}", e)))?;
-            let data = slice.get_mapped_range();
-            Ok(bytemuck::cast_slice(&data).to_vec())
-        };
-
-        let mean = read_buf(&s_mean)?;
-        let variance = read_buf(&s_var)?;
-        let min_vals = read_buf(&s_min)?;
-        let max_vals = read_buf(&s_max)?;
+        let n_out = n_out as usize;
+        let mean = self.device.map_staging_buffer::<f32>(&s_mean, n_out)?;
+        let variance = self.device.map_staging_buffer::<f32>(&s_var, n_out)?;
+        let min_vals = self.device.map_staging_buffer::<f32>(&s_min, n_out)?;
+        let max_vals = self.device.map_staging_buffer::<f32>(&s_max, n_out)?;
 
         Ok(MovingWindowResult {
             mean,

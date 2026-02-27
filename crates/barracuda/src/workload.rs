@@ -113,7 +113,10 @@ impl SparsityAnalyzer {
     /// **Deep Debt**: Runtime analysis, no assumptions
     pub fn analyze_data(data: &[f32]) -> SparsityProfile {
         let zeros = data.iter().filter(|&&x| x == 0.0).count();
-        let near_zeros = data.iter().filter(|&&x| x.abs() < thresholds::NEAR_ZERO).count();
+        let near_zeros = data
+            .iter()
+            .filter(|&&x| x.abs() < thresholds::NEAR_ZERO)
+            .count();
         let total = data.len();
 
         if total == 0 {

@@ -173,7 +173,7 @@ impl Chunk {
                 pass.dispatch_workgroups(workgroups, 1, 1);
             }
             
-            device.queue.submit(Some(encoder.finish()));
+            device.submit_and_poll(Some(encoder.finish()));
             
             let chunk_shape = vec![chunk_size];
             chunks.push(Tensor::from_buffer(

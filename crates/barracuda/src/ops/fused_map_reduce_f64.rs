@@ -322,18 +322,18 @@ impl FusedMapReduceF64 {
                 pass.dispatch_workgroups(1, 1, 1);
             }
 
-            self.device.queue.submit(Some(encoder.finish()));
+            self.device.submit_and_poll(Some(encoder.finish()));
             return self.read_result(&final_buffer);
         }
 
         if n_workgroups > FMR_MAX_SINGLE_PASS_WORKGROUPS {
             // Submit pass 1, then fall back to CPU-side reduction of partials
-            self.device.queue.submit(Some(encoder.finish()));
+            self.device.submit_and_poll(Some(encoder.finish()));
             return self.reduce_partials_recursive(&output_buffer, n_workgroups, reduce_op);
         }
 
         // Single workgroup — just submit and read
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
         self.read_result(&output_buffer)
     }
 
@@ -360,19 +360,9 @@ impl FusedMapReduceF64 {
                     label: Some("FMR Copy Encoder"),
                 });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (n_partials * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let partials: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|b| f64::from_le_bytes(b.try_into().expect("chunks_exact(8) guarantees 8 bytes")))
-            .collect();
-        drop(data);
-        staging.unmap();
+        let partials: Vec<f64> = self.device.map_staging_buffer(&staging, n_partials)?;
 
         // Finish on CPU
         let result = match reduce_op {
@@ -401,22 +391,15 @@ impl FusedMapReduceF64 {
                     label: Some("FMR Result Encoder"),
                 });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, 8);
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let result = f64::from_le_bytes(data[..8].try_into().expect("scalar buffer is 8 bytes"));
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
+        let result_vec: Vec<f64> = self.device.map_staging_buffer(&staging, 1)?;
+        Ok(result_vec[0])
     }
 
     /// CPU fallback for small arrays (faster due to no dispatch overhead)
     #[cfg(test)]
+    #[allow(dead_code)]
     fn execute_cpu(
         &self,
         data: &[f64],

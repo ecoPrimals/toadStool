@@ -100,6 +100,7 @@ impl Correlation {
 
     /// CPU reference implementation
     #[cfg(test)]
+    #[allow(dead_code)]
     fn correlate_cpu(&self, x: &[f32], y: &[f32]) -> f32 {
         let n = x.len() as f32;
         let mean_x: f32 = x.iter().sum::<f32>() / n;
@@ -298,7 +299,7 @@ impl Correlation {
             pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         // Read back results
         let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -315,17 +316,9 @@ impl Correlation {
                     label: Some("Copy Encoder"),
                 });
         encoder2.copy_buffer_to_buffer(&output_buf, 0, &staging, 0, (num_pairs * 4) as u64);
-        self.device.queue.submit(Some(encoder2.finish()));
+        self.device.submit_and_poll(Some(encoder2.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let results: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging.unmap();
-
+        let results: Vec<f32> = self.device.map_staging_buffer(&staging, num_pairs)?;
         Ok(results)
     }
 }

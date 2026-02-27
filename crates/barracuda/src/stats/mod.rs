@@ -49,7 +49,8 @@
 
 /// WGSL kernel for GPU-parallel bootstrap mean estimation (f64).
 #[cfg(feature = "gpu")]
-pub const WGSL_BOOTSTRAP_MEAN_F64: &str = include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
+pub const WGSL_BOOTSTRAP_MEAN_F64: &str =
+    include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
 
 /// WGSL kernel for parallel histogram via atomic binning.
 #[cfg(feature = "gpu")]
@@ -77,19 +78,19 @@ pub use chi2::{chi2_decomposed, chi2_decomposed_weighted, Chi2Decomposed};
 pub use correlation::{
     correlation_matrix, covariance, covariance_matrix, pearson_correlation, spearman_correlation,
 };
-pub use metrics::{
-    dot, hill, hit_rate, index_of_agreement, l2_norm, mae, mbe, mean, monod, nash_sutcliffe,
-    percentile, r_squared, rmse,
-};
-pub use normal::{norm_cdf, norm_cdf_batch, norm_pdf, norm_pdf_batch, norm_ppf};
 pub use diversity::{
     alpha_diversity, bray_curtis, bray_curtis_condensed, bray_curtis_matrix, chao1,
     condensed_index, observed_features, pielou_evenness, rarefaction_curve, shannon,
     shannon_from_frequencies, simpson, AlphaDiversity,
 };
-pub use spectral_density::{empirical_spectral_density, marchenko_pastur_bounds};
-pub use regression::{fit_all, fit_exponential, fit_linear, fit_logarithmic, fit_quadratic, FitResult};
-pub use hydrology::{
-    crop_coefficient, hargreaves_et0, hargreaves_et0_batch, soil_water_balance,
+pub use hydrology::{crop_coefficient, hargreaves_et0, hargreaves_et0_batch, soil_water_balance};
+pub use metrics::{
+    dot, hill, hit_rate, index_of_agreement, l2_norm, mae, mbe, mean, monod, nash_sutcliffe,
+    percentile, r_squared, rmse,
 };
 pub use moving_window_f64::{moving_window_stats_f64, MovingWindowResultF64};
+pub use normal::{norm_cdf, norm_cdf_batch, norm_pdf, norm_pdf_batch, norm_ppf};
+pub use regression::{
+    fit_all, fit_exponential, fit_linear, fit_logarithmic, fit_quadratic, FitResult,
+};
+pub use spectral_density::{empirical_spectral_density, marchenko_pastur_bounds};

@@ -31,15 +31,21 @@ impl Argmin {
 
     /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        static SHADER_REDUCE: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/argmin_reduce_f64.wgsl")));
+        static SHADER_REDUCE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/math/argmin_reduce_f64.wgsl"
+            ))
+        });
         &SHADER_REDUCE
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        static SHADER_DIM: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/argmin_f64.wgsl")));
+        static SHADER_DIM: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/math/argmin_f64.wgsl"
+            ))
+        });
         &SHADER_DIM
     }
 
@@ -190,7 +196,7 @@ impl Argmin {
                     compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back partial results and find the global argmin on CPU
                 // We need to compare values at the partial indices to find the true global argmin
@@ -373,7 +379,7 @@ impl Argmin {
                     compute_pass.dispatch_workgroups(workgroups, 1, 1);
                 }
 
-                device.queue.submit(Some(encoder.finish()));
+                device.submit_and_poll(Some(encoder.finish()));
 
                 // Read back results
                 let output_data =

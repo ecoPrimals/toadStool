@@ -16,8 +16,9 @@ use wgpu::util::DeviceExt;
 const WGSL_CLAMP_SIMPLE_F64: &str = include_str!("../shaders/math/clamp_simple_f64.wgsl");
 
 /// Simple clamp variant (f32 derived from f64).
-pub static WGSL_CLAMP_SIMPLE: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_CLAMP_SIMPLE_F64));
+pub static WGSL_CLAMP_SIMPLE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32(WGSL_CLAMP_SIMPLE_F64)
+});
 
 /// f64 is the canonical source — math is universal, precision is silicon.
 const SHADER_F64: &str = include_str!("../shaders/math/clamp_f64.wgsl");
@@ -188,7 +189,7 @@ impl Clamp {
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return tensor without reading back (zero-copy)
         Ok(Tensor::from_buffer(

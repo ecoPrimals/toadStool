@@ -8,16 +8,13 @@ use super::capability_types::{
 };
 
 /// Builder for capability requests
-pub struct CapabilityRequestBuilder {
-    #[allow(dead_code)]
-    capability: Option<CapabilityType>,
-}
+pub struct CapabilityRequestBuilder;
 
 impl CapabilityRequestBuilder {
     /// Create a new request builder
     #[must_use]
     pub const fn new() -> Self {
-        Self { capability: None }
+        Self
     }
 
     /// Request security capability
@@ -59,7 +56,7 @@ impl CapabilityRequestBuilder {
 
 impl Default for CapabilityRequestBuilder {
     fn default() -> Self {
-        Self::new()
+        Self
     }
 }
 

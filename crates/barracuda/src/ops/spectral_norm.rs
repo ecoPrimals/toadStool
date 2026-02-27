@@ -224,7 +224,7 @@ impl SpectralNorm {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Return normalized weight (modified in-place)
         Ok(self.weight)

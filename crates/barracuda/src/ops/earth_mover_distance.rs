@@ -46,8 +46,11 @@ impl EarthMoverDistance {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        static SHADER: std::sync::LazyLock<String> =
-            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/loss/earth_mover_distance_f64.wgsl")));
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/loss/earth_mover_distance_f64.wgsl"
+            ))
+        });
         &SHADER
     }
 
@@ -202,7 +205,7 @@ impl EarthMoverDistance {
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        device.queue.submit(Some(encoder.finish()));
+        device.submit_and_poll(Some(encoder.finish()));
 
         // Create output tensor (scalar)
         Ok(Tensor::from_buffer(output_buffer, vec![1], device.clone()))

@@ -224,7 +224,7 @@ pub struct UnidirectionalPipeline {
     /// Input throttler (for simulation)
     input_throttler: Option<BandwidthThrottler>,
     /// Output throttler for bandwidth simulation (Phase 5+ parity with input_throttler).
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Phase 5+: parity with input_throttler for bandwidth simulation
     output_throttler: Option<BandwidthThrottler>,
     /// Pipeline start time (for throughput calculation)
     start_time: Instant,

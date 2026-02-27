@@ -297,7 +297,7 @@ impl WeightedDotF64 {
             pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         // Read back partial sums and sum on CPU
         let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -314,18 +314,10 @@ impl WeightedDotF64 {
                     label: Some("Copy Encoder"),
                 });
         encoder2.copy_buffer_to_buffer(&result_buf, 0, &staging, 0, (n_workgroups * 8) as u64);
-        self.device.queue.submit(Some(encoder2.finish()));
+        self.device.submit_and_poll(Some(encoder2.finish()));
 
-        let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        let data = slice.get_mapped_range();
-        let partial_sums: &[f64] = bytemuck::cast_slice(&data);
+        let partial_sums: Vec<f64> = self.device.map_staging_buffer(&staging, n_workgroups)?;
         let result: f64 = partial_sums.iter().sum();
-        drop(data);
-        staging.unmap();
-
         Ok(result)
     }
 }

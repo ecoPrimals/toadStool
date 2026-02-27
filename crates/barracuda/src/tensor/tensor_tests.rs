@@ -76,8 +76,7 @@ async fn test_randn_shape() {
 
     let data = tensor.to_vec().unwrap();
     let mean: f32 = data.iter().sum::<f32>() / data.len() as f32;
-    let variance: f32 =
-        data.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / data.len() as f32;
+    let variance: f32 = data.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / data.len() as f32;
 
     assert!(mean.abs() < 0.3, "Mean {} too far from 0", mean);
     assert!(
