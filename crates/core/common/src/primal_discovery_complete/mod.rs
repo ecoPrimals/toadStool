@@ -160,10 +160,10 @@ impl PrimalDiscoveryEngine {
     /// # Errors
     ///
     /// Returns error if mDNS client is required but unavailable
-    pub async fn new(
+    pub fn new(
         mdns_client: Option<Arc<dyn DiscoveryClient + Send + Sync>>,
     ) -> ToadStoolResult<Self> {
-        Self::with_config(mdns_client, DiscoveryConfig::default()).await
+        Self::with_config(mdns_client, DiscoveryConfig::default())
     }
 
     /// Create with custom configuration
@@ -171,7 +171,7 @@ impl PrimalDiscoveryEngine {
     /// # Errors
     ///
     /// Returns error if configuration is invalid or mDNS client is required but missing
-    pub async fn with_config(
+    pub fn with_config(
         mdns_client: Option<Arc<dyn DiscoveryClient + Send + Sync>>,
         config: DiscoveryConfig,
     ) -> ToadStoolResult<Self> {
@@ -213,11 +213,11 @@ impl PrimalDiscoveryEngine {
     ///
     /// # Examples
     ///
-    /// ```rust,no_run
+    /// ```rust,ignore
     /// # use toadstool_common::primal_discovery_complete::PrimalDiscoveryEngine;
     /// # use toadstool_common::primal_identity::Capability;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let engine = PrimalDiscoveryEngine::new(None).await?;
+    /// let engine = PrimalDiscoveryEngine::new(None)?;
     ///
     /// // Find orchestration service (discovers Songbird if available)
     /// let services = engine.discover_by_capability(&Capability::Coordination(

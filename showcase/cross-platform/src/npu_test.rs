@@ -37,17 +37,17 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
                         println!("  First 5: {:?}", &output[..output.len().min(5)]);
                     }
                 }
-                Err(e) => println!("  Inference error: {}", e),
+                Err(e) => println!("  Inference error: {e}"),
             }
 
             // Power measurement
             match backend.measure_power() {
-                Ok(power) => println!("  Power: {:.2} W", power),
-                Err(e) => println!("  Power measurement: {}", e),
+                Ok(power) => println!("  Power: {power:.2} W"),
+                Err(e) => println!("  Power measurement: {e}"),
             }
         }
         Err(e) => {
-            println!("  ✗ Failed to initialize: {}", e);
+            println!("  ✗ Failed to initialize: {e}");
         }
     }
 
@@ -67,11 +67,11 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
                 Ok(output) => {
                     println!("  Inference output: {} values", output.len());
                 }
-                Err(e) => println!("  Inference error: {}", e),
+                Err(e) => println!("  Inference error: {e}"),
             }
         }
         Err(e) => {
-            println!("  ✗ Failed to initialize: {}", e);
+            println!("  ✗ Failed to initialize: {e}");
         }
     }
 

@@ -14,7 +14,7 @@ impl Sum {
         if axis >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Sum",
-                format!("Axis {} out of bounds for shape {:?}", axis, shape),
+                format!("Axis {axis} out of bounds for shape {shape:?}"),
             ));
         }
 
@@ -89,7 +89,7 @@ impl Max {
         if axis >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Max",
-                format!("Axis {} out of bounds", axis),
+                format!("Axis {axis} out of bounds"),
             ));
         }
 
@@ -117,7 +117,7 @@ impl Min {
         if axis >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Min",
-                format!("Axis {} out of bounds", axis),
+                format!("Axis {axis} out of bounds"),
             ));
         }
 
@@ -200,7 +200,7 @@ impl Prod {
         if axis >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Prod",
-                format!("Axis {} out of bounds", axis),
+                format!("Axis {axis} out of bounds"),
             ));
         }
 

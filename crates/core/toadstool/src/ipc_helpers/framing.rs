@@ -15,7 +15,7 @@ pub(crate) async fn write_json_rpc(
     use tokio::io::AsyncWriteExt;
 
     let json_str = serde_json::to_string(message)
-        .map_err(|e| ToadStoolError::integration(format!("Failed to serialize JSON-RPC: {}", e)))?;
+        .map_err(|e| ToadStoolError::integration(format!("Failed to serialize JSON-RPC: {e}")))?;
 
     // Write with newline delimiter (zero-copy: avoid format! allocation)
     let mut data = String::with_capacity(json_str.len() + 1);
@@ -25,12 +25,12 @@ pub(crate) async fn write_json_rpc(
     stream
         .write_all(data.as_bytes())
         .await
-        .map_err(|e| ToadStoolError::integration(format!("Failed to write to stream: {}", e)))?;
+        .map_err(|e| ToadStoolError::integration(format!("Failed to write to stream: {e}")))?;
 
     stream
         .flush()
         .await
-        .map_err(|e| ToadStoolError::integration(format!("Failed to flush stream: {}", e)))?;
+        .map_err(|e| ToadStoolError::integration(format!("Failed to flush stream: {e}")))?;
 
     Ok(())
 }
@@ -45,14 +45,14 @@ pub(crate) async fn read_json_rpc(stream: &mut UnixStream) -> ToadStoolResult<Va
     reader
         .read_line(&mut line)
         .await
-        .map_err(|e| ToadStoolError::integration(format!("Failed to read from stream: {}", e)))?;
+        .map_err(|e| ToadStoolError::integration(format!("Failed to read from stream: {e}")))?;
 
     if line.is_empty() {
         return Err(ToadStoolError::integration("Connection closed by peer"));
     }
 
     serde_json::from_slice(line.as_bytes())
-        .map_err(|e| ToadStoolError::integration(format!("Failed to parse JSON-RPC: {}", e)))
+        .map_err(|e| ToadStoolError::integration(format!("Failed to parse JSON-RPC: {e}")))
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

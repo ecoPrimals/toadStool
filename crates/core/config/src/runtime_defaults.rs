@@ -214,11 +214,7 @@ impl ToadStoolConfig {
 #[allow(deprecated)]
 mod tests {
     use super::*;
-    use std::env;
     use tempfile::NamedTempFile;
-
-    // ✅ MODERN: Use shared lock from env_config to prevent test races
-    use crate::env_config::tests::get_env_lock;
 
     #[test]
     fn test_development_config() {
@@ -251,59 +247,26 @@ mod tests {
     #[test]
     #[allow(deprecated)] // Testing legacy endpoint configuration
     fn test_env_overrides() {
-        let _guard = get_env_lock()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner); // ✅ MODERN: Concurrent-safe + poison recovery
-                                                                 // Save original environment state
-        let original_env = env::var("TOADSTOOL_ENV").ok();
-        let original_debug = env::var("TOADSTOOL_DEBUG").ok();
-        let original_log_level = env::var("TOADSTOOL_LOG_LEVEL").ok();
-        let original_threads = env::var("TOADSTOOL_WORKER_THREADS").ok();
-        let original_endpoint = env::var("TOADSTOOL_SONGBIRD_ENDPOINT").ok();
-        let original_bind_address = env::var("TOADSTOOL_BIND_ADDRESS").ok();
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENV", Some("test")),
+                ("TOADSTOOL_DEBUG", Some("true")),
+                ("TOADSTOOL_LOG_LEVEL", Some("debug")),
+                ("TOADSTOOL_WORKER_THREADS", Some("8")),
+                ("TOADSTOOL_SONGBIRD_ENDPOINT", Some("http://localhost:8080")),
+                ("TOADSTOOL_BIND_ADDRESS", Some("127.0.0.1:3000")),
+            ],
+            || {
+                let mut config = ToadStoolConfig::default();
+                config.apply_env_overrides().unwrap();
 
-        // ✅ MODERN: Set test values (use BIND_ADDRESS with port, not BIND_HOST)
-        env::set_var("TOADSTOOL_ENV", "test");
-        env::set_var("TOADSTOOL_DEBUG", "true");
-        env::set_var("TOADSTOOL_LOG_LEVEL", "debug");
-        env::set_var("TOADSTOOL_WORKER_THREADS", "8");
-        env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://localhost:8080");
-        env::set_var("TOADSTOOL_BIND_ADDRESS", "127.0.0.1:3000"); // Fixed: full socket address
-
-        let mut config = ToadStoolConfig::default();
-        config.apply_env_overrides().unwrap();
-
-        assert_eq!(config.app.environment, "test");
-        assert!(config.features.enable_debug);
-        assert_eq!(config.logging.level, "debug");
-        assert_eq!(config.app.worker_threads, 8);
-        assert_eq!(config.network.endpoints.songbird, "http://localhost:8080");
-
-        // ✅ MODERN: Restore original environment state
-        match original_env {
-            Some(val) => env::set_var("TOADSTOOL_ENV", val),
-            None => env::remove_var("TOADSTOOL_ENV"),
-        }
-        match original_debug {
-            Some(val) => env::set_var("TOADSTOOL_DEBUG", val),
-            None => env::remove_var("TOADSTOOL_DEBUG"),
-        }
-        match original_log_level {
-            Some(val) => env::set_var("TOADSTOOL_LOG_LEVEL", val),
-            None => env::remove_var("TOADSTOOL_LOG_LEVEL"),
-        }
-        match original_threads {
-            Some(val) => env::set_var("TOADSTOOL_WORKER_THREADS", val),
-            None => env::remove_var("TOADSTOOL_WORKER_THREADS"),
-        }
-        match original_endpoint {
-            Some(val) => env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", val),
-            None => env::remove_var("TOADSTOOL_SONGBIRD_ENDPOINT"),
-        }
-        match original_bind_address {
-            Some(val) => env::set_var("TOADSTOOL_BIND_ADDRESS", val),
-            None => env::remove_var("TOADSTOOL_BIND_ADDRESS"),
-        }
+                assert_eq!(config.app.environment, "test");
+                assert!(config.features.enable_debug);
+                assert_eq!(config.logging.level, "debug");
+                assert_eq!(config.app.worker_threads, 8);
+                assert_eq!(config.network.endpoints.songbird, "http://localhost:8080");
+            },
+        );
     }
 
     #[test]
@@ -357,51 +320,31 @@ mod tests {
 
     #[test]
     fn test_current_environment_detection() {
-        let _guard = get_env_lock()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner); // ✅ MODERN: Concurrent-safe + poison recovery
-                                                                 // Save original environment state
-        let original_toadstool_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
-        let original_env = env::var("ENVIRONMENT").ok();
-        let original_toadstool_env_short = env::var("TOADSTOOL_ENV").ok();
-        let original_env_short = env::var("ENV").ok();
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENVIRONMENT", Some("production")),
+                ("TOADSTOOL_ENV", Some("production")),
+                ("ENVIRONMENT", Some("production")),
+                ("ENV", Some("production")),
+            ],
+            || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "production");
+            },
+        );
 
-        // Set all environment variables to ensure consistent state
-        // Must set all variants to same value to prevent apply_env_overrides from changing it
-        env::set_var("TOADSTOOL_ENVIRONMENT", "production");
-        env::set_var("TOADSTOOL_ENV", "production");
-        env::set_var("ENVIRONMENT", "production");
-        env::set_var("ENV", "production");
-
-        let config = ToadStoolConfig::for_current_environment();
-        assert_eq!(config.app.environment, "production");
-
-        // Test with different env var - set all to same value
-        env::set_var("TOADSTOOL_ENVIRONMENT", "staging");
-        env::set_var("TOADSTOOL_ENV", "staging");
-        env::set_var("ENVIRONMENT", "staging");
-        env::set_var("ENV", "staging");
-
-        let config = ToadStoolConfig::for_current_environment();
-        assert_eq!(config.app.environment, "staging");
-
-        // Restore original environment state
-        match original_toadstool_env {
-            Some(val) => env::set_var("TOADSTOOL_ENVIRONMENT", val),
-            None => env::remove_var("TOADSTOOL_ENVIRONMENT"),
-        }
-        match original_env {
-            Some(val) => env::set_var("ENVIRONMENT", val),
-            None => env::remove_var("ENVIRONMENT"),
-        }
-        match original_toadstool_env_short {
-            Some(val) => env::set_var("TOADSTOOL_ENV", val),
-            None => env::remove_var("TOADSTOOL_ENV"),
-        }
-        match original_env_short {
-            Some(val) => env::set_var("ENV", val),
-            None => env::remove_var("ENV"),
-        }
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENVIRONMENT", Some("staging")),
+                ("TOADSTOOL_ENV", Some("staging")),
+                ("ENVIRONMENT", Some("staging")),
+                ("ENV", Some("staging")),
+            ],
+            || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "staging");
+            },
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -410,72 +353,40 @@ mod tests {
 
     #[test]
     fn test_for_current_environment_env_var_priority_toadstool_environment() {
-        let _guard = get_env_lock()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let orig_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
-        let orig_env_short = env::var("TOADSTOOL_ENV").ok();
-        let orig_generic = env::var("ENVIRONMENT").ok();
-        let orig_env_generic = env::var("ENV").ok();
-
         // TOADSTOOL_ENVIRONMENT has highest priority for initial env detection.
         // Must unset TOADSTOOL_ENV so apply_env_overrides doesn't overwrite.
-        env::set_var("TOADSTOOL_ENVIRONMENT", "prod");
-        env::remove_var("TOADSTOOL_ENV");
-        env::set_var("ENVIRONMENT", "test");
-        env::set_var("ENV", "dev");
-
-        let config = ToadStoolConfig::for_current_environment();
-        assert_eq!(config.app.environment, "prod");
-
-        if let Some(v) = orig_env {
-            env::set_var("TOADSTOOL_ENVIRONMENT", v);
-        } else {
-            env::remove_var("TOADSTOOL_ENVIRONMENT");
-        }
-        if let Some(v) = orig_env_short {
-            env::set_var("TOADSTOOL_ENV", v);
-        } else {
-            env::remove_var("TOADSTOOL_ENV");
-        }
-        if let Some(v) = orig_generic {
-            env::set_var("ENVIRONMENT", v);
-        } else {
-            env::remove_var("ENVIRONMENT");
-        }
-        if let Some(v) = orig_env_generic {
-            env::set_var("ENV", v);
-        } else {
-            env::remove_var("ENV");
-        }
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENVIRONMENT", Some("prod")),
+                ("TOADSTOOL_ENV", None),
+                ("ENVIRONMENT", Some("test")),
+                ("ENV", Some("dev")),
+            ],
+            || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "prod");
+            },
+        );
     }
 
     #[test]
     fn test_for_current_environment_env_var_priority_toadstool_env_fallback() {
-        let _guard = get_env_lock()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        let orig = env::var("TOADSTOOL_ENV").ok();
-        env::set_var("TOADSTOOL_ENV", "staging");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-
-        let config = ToadStoolConfig::for_current_environment();
-        assert_eq!(config.app.environment, "staging");
-
-        if let Some(v) = orig {
-            env::set_var("TOADSTOOL_ENV", v);
-        } else {
-            env::remove_var("TOADSTOOL_ENV");
-        }
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENVIRONMENT", None),
+                ("TOADSTOOL_ENV", Some("staging")),
+                ("ENVIRONMENT", None),
+                ("ENV", None),
+            ],
+            || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "staging");
+            },
+        );
     }
 
     #[test]
     fn test_load_with_overrides_success() {
-        let _guard = crate::env_config::tests::get_env_lock()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
         temp_env::with_vars_unset(
             [
                 "TOADSTOOL_ENVIRONMENT",
@@ -515,20 +426,10 @@ mod tests {
 
     #[test]
     fn test_load_from_env_only_success() {
-        let _guard = get_env_lock()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let orig_env = env::var("TOADSTOOL_ENV").ok();
-        env::set_var("TOADSTOOL_ENV", "test");
-
-        let result = ToadStoolConfig::load_from_env_only();
-        assert!(result.is_ok());
-
-        if let Some(v) = orig_env {
-            env::set_var("TOADSTOOL_ENV", v);
-        } else {
-            env::remove_var("TOADSTOOL_ENV");
-        }
+        temp_env::with_var("TOADSTOOL_ENV", Some("test"), || {
+            let result = ToadStoolConfig::load_from_env_only();
+            assert!(result.is_ok());
+        });
     }
 
     #[test]
@@ -626,16 +527,18 @@ mod tests {
 
     #[test]
     fn test_for_current_environment_defaults_to_development_when_unset() {
-        let _guard = get_env_lock()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-
-        let config = ToadStoolConfig::for_current_environment();
-        assert_eq!(config.app.environment, "development");
+        temp_env::with_vars_unset(
+            [
+                "TOADSTOOL_ENVIRONMENT",
+                "TOADSTOOL_ENV",
+                "ENVIRONMENT",
+                "ENV",
+            ],
+            || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "development");
+            },
+        );
     }
 
     #[test]

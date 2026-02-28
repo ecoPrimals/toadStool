@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 27, 2026 (Sessions 43-68+++ — Universal Precision + Sovereign Compiler + Deep Debt Sweep)
+## [Unreleased] - February 28, 2026 (Sessions 43-70 — Universal Precision + Sovereign Compiler + Deep Debt + Test Concurrency)
+
+### Session 70 (Feb 28, 2026) — Deep Debt + Test Concurrency Evolution
+
+- **15 production stubs evolved**: Primals client (real JSON-RPC over Unix sockets), orchestrator deploy (validates + sends `biome.deploy`), coordinator cancel (CancellationToken-based), deprecated HTTP caller (returns proper error), registration token (`None`), ESP32 download (feature-gated HTTP), Raspberry Pi/industrial/microcontroller (return `PlatformNotAvailable`), OS compat layer (real `uname` on Linux).
+- **Test concurrency evolution**: All `std::env::set_var` in tests → `temp_env` (8 files). All sleeps removed from non-chaos tests (monitoring → polling, tarpc → yield, resilience → reduced). Default timeouts reduced: `DEFAULT_TEST_TIMEOUT` 30s→5s, `UNIT_TEST_TIMEOUT` 5s→2s, `INTEGRATION_TEST_TIMEOUT` 120s→30s, `LONG_TIMEOUT` 30s→10s, `CHAOS_TIMEOUT` 60s→20s. Storage benchmark race condition fixed (nanos-based unique temp files). Nested runtime panics eliminated (MockTask drop uses AtomicUsize).
+- **All doctests fixed**: `primal_discovery.rs`, `primal_discovery_complete/mod.rs`, `launcher.rs`, `input/mod.rs`, `ipc/health.rs`, `window/mod.rs`, `helpers/sync.rs`.
+- **ChaosEngine fix**: `recovery_count` now synced between `SystemState` and `ChaosMetrics` in `inject_service_crash` and `inject_network_partition`.
+- **Error code fix**: `job_queue_error` returns `WORKLOAD_NOT_FOUND` (-32000) instead of `METHOD_NOT_FOUND` for missing jobs.
+- **+150 new tests**: lifecycle_ops, dispatch, api/jsonrpc, monitoring/lib, pure_jsonrpc/handler, unibin/mod, tarpc_server, nestgate/client, display/ipc/server, daemon/jsonrpc_server, daemon/http_server, service_discovery (real mDNS parser), distributed/adapter, config/builder, config/validation.
+- **Barracuda**: Crate-level `#![allow(clippy::unused_async)]` with documented justification (GPU dispatch async for future await).
+- **Real mDNS parser**: Replaced placeholder `Ok(None)` in zero_config service discovery with DNS header/record parsing.
+- **Killed zombie processes**: 2 barracuda test processes running since Feb 26 at 100% CPU.
+- **Root docs updated**: README, STATUS, NEXT_STEPS, DEBT, QUICK_REFERENCE, DOCUMENTATION, CHANGELOG. Removed stale `COVERAGE_PRIORITY_ANALYSIS.md`.
+- **Full workspace**: 6m30s, 0 failures, 0 warnings, 8 threads, 0 clippy warnings.
 
 ### Session 68+++ (Feb 27, 2026) — Deep Debt Sweep
 

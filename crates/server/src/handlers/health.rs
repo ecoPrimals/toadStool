@@ -37,17 +37,21 @@ pub async fn health_check_handler(State(state): State<ServerState>) -> impl Into
 
     let total_memory = sys.total_memory();
     let used_memory = total_memory.saturating_sub(sys.available_memory());
+    #[allow(clippy::cast_precision_loss)]
     let memory_usage_percent = if total_memory > 0 {
         ((used_memory as f64 / total_memory as f64) * 100.0).clamp(0.0, 100.0)
     } else {
         45.0
     };
 
+    #[allow(clippy::cast_precision_loss)]
     let cpu_usage_percent = sys.global_cpu_info().cpu_usage() as f64;
     let cpu_usage_percent = if cpu_usage_percent > 0.0 {
         cpu_usage_percent.clamp(0.0, 100.0)
     } else {
+        #[allow(clippy::cast_precision_loss)]
         let total_cores = sys.cpus().len() as f64;
+        #[allow(clippy::cast_precision_loss)]
         let available_cores = system_resources.available_cpu_cores as f64;
         if total_cores > 0.0 && available_cores <= total_cores {
             ((1.0 - (available_cores / total_cores)) * 100.0).clamp(0.0, 100.0)
@@ -131,6 +135,7 @@ pub async fn metrics_handler(State(state): State<ServerState>) -> impl IntoRespo
 }
 
 /// Dashboard HTML handler
+#[allow(clippy::unused_async)] // Axum handler signature requires async; returns static HTML
 pub async fn dashboard_handler() -> Html<&'static str> {
     Html(DASHBOARD_HTML)
 }

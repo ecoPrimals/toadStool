@@ -161,21 +161,28 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     async fn run_storage_benchmark(&self) -> Result<BenchmarkTest> {
-        // Storage I/O test
+        // Storage I/O test - nanos-based unique temp file to avoid race conditions
         let start = Instant::now();
 
-        // Use platform-agnostic temp directory
-        let test_file = std::env::temp_dir().join("toadstool_storage_test");
+        let test_file = std::env::temp_dir().join(format!(
+            "toadstool_storage_test_{:x}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
         let data = vec![0u8; 1024 * 1024]; // 1MB
 
         // Write test
-        fs::write(&test_file, &data).await?;
+        if let Err(e) = fs::write(&test_file, &data).await {
+            let _ = fs::remove_file(&test_file).await;
+            return Err(crate::CliError::Other(format!("Storage write failed: {e}")));
+        }
 
         // Read test
-        let _read_data = fs::read(&test_file).await?;
-
-        // Cleanup
+        let read_result = fs::read(&test_file).await;
         let _ = fs::remove_file(&test_file).await;
+        let _read_data = read_result?;
 
         let duration = start.elapsed();
         let score = (data.len() * 2) as f64 / duration.as_secs_f64() / 1024.0 / 1024.0; // MB/s
@@ -202,7 +209,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         let _ = std::hint::black_box(result);
 
         let duration = start.elapsed();
-        let score = 1000.0 / duration.as_millis() as f64; // Latency score
+        let score = 1000.0 / duration.as_millis().max(1) as f64; // Latency score
 
         Ok(BenchmarkTest {
             name: "Network Latency".to_string(),
@@ -225,7 +232,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         let _ = std::hint::black_box(result);
 
         let duration = start.elapsed();
-        let score = 1000.0 / duration.as_millis() as f64;
+        let score = 1000.0 / duration.as_millis().max(1) as f64;
 
         Ok(BenchmarkTest {
             name: "WASM Execution".to_string(),
@@ -238,17 +245,23 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     async fn run_container_benchmark(&self) -> Result<BenchmarkTest> {
-        // Detect container runtime (Docker or Podman)
         let runtime = detect_container_runtime().await;
         let (runtime_name, runtime_cmd) = match runtime {
             Some((name, cmd)) => (name, cmd),
             None => {
-                return Err(crate::CliError::Other(
-                    "Container runtime not supported: neither Docker nor Podman is available. \
-                     Install Docker (https://docs.docker.com/get-docker/) or Podman \
-                     (https://podman.io/) to run container benchmarks."
-                        .to_string(),
-                ));
+                let mut details = HashMap::new();
+                details.insert(
+                    "skipped".to_string(),
+                    serde_json::Value::String("no container runtime available".to_string()),
+                );
+                return Ok(BenchmarkTest {
+                    name: "Container Startup".to_string(),
+                    test_type: BenchmarkType::ContainerStartup,
+                    duration: std::time::Duration::ZERO,
+                    score: 0.0,
+                    unit: "score".to_string(),
+                    details,
+                });
             }
         };
 
@@ -262,9 +275,8 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
             .await
             .map_err(|e| {
                 crate::CliError::Other(format!(
-                    "Container runtime '{}' failed: {}. \
-                     Ensure the daemon is running (e.g. systemctl start docker).",
-                    runtime_name, e
+                    "Container runtime '{runtime_name}' failed: {e}. \
+                     Ensure the daemon is running (e.g. systemctl start docker)."
                 ))
             })?;
 

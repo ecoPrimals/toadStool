@@ -59,8 +59,8 @@ fn validate_sqrt() {
         }
     }
 
-    println!("    Max absolute error: {:.2e}", max_error);
-    println!("    Max relative error: {:.2e}", max_rel_error);
+    println!("    Max absolute error: {max_error:.2e}");
+    println!("    Max relative error: {max_rel_error:.2e}");
     println!(
         "    Status: {}",
         if max_rel_error < 1e-14 {
@@ -104,8 +104,8 @@ fn validate_cbrt() {
         max_rel_error = max_rel_error.max(rel_error);
     }
 
-    println!("    Max absolute error: {:.2e}", max_error);
-    println!("    Max relative error: {:.2e}", max_rel_error);
+    println!("    Max absolute error: {max_error:.2e}");
+    println!("    Max relative error: {max_rel_error:.2e}");
     println!(
         "    Status: {}",
         if max_rel_error < 1e-13 {
@@ -161,8 +161,8 @@ fn validate_exp() {
         max_rel_error = max_rel_error.max(rel_error);
     }
 
-    println!("    Max absolute error: {:.2e}", max_error);
-    println!("    Max relative error: {:.2e}", max_rel_error);
+    println!("    Max absolute error: {max_error:.2e}");
+    println!("    Max relative error: {max_rel_error:.2e}");
     println!(
         "    Status: {}",
         if max_rel_error < 1e-12 {
@@ -241,8 +241,8 @@ fn validate_log() {
         }
     }
 
-    println!("    Max absolute error: {:.2e}", max_error);
-    println!("    Max relative error: {:.2e}", max_rel_error);
+    println!("    Max absolute error: {max_error:.2e}");
+    println!("    Max relative error: {max_rel_error:.2e}");
     println!(
         "    Status: {}",
         if max_rel_error < 1e-12 {
@@ -317,8 +317,8 @@ fn validate_pow_nuclear() {
     }
 
     println!("    Test range: A = 1 to 250 (nuclear mass numbers)");
-    println!("    Max absolute error: {:.2e}", max_error);
-    println!("    Max relative error: {:.2e}", max_rel_error);
+    println!("    Max absolute error: {max_error:.2e}");
+    println!("    Max relative error: {max_rel_error:.2e}");
 
     // hotSpring reported 4e-4 relative error with exp(log()) chain
     // Our specialized cbrt*cbrt path should be better
@@ -349,7 +349,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     // Show that the preamble loads
     let preamble = ShaderTemplate::math_f64_preamble();
     let lines = preamble.lines().count();
-    println!("  math_f64.wgsl loaded: {} lines\n", lines);
+    println!("  math_f64.wgsl loaded: {lines} lines\n");
 
     println!("══════════════════════════════════════════════════════════════════════════════");
     println!("  CPU Reference Validation (mimics GPU algorithms)");

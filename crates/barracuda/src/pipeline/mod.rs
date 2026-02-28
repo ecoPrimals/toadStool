@@ -237,7 +237,7 @@ impl PipelineBuilder {
             let label = spec
                 .label
                 .clone()
-                .unwrap_or_else(|| format!("Pipeline:{}", name));
+                .unwrap_or_else(|| format!("Pipeline:{name}"));
             let buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(&label),
                 size: spec.size,
@@ -333,7 +333,7 @@ impl ComputePipeline {
             .buffers
             .get(name)
             .ok_or_else(|| BarracudaError::InvalidInput {
-                message: format!("Unknown buffer: {}", name),
+                message: format!("Unknown buffer: {name}"),
             })?;
 
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
@@ -347,7 +347,7 @@ impl ComputePipeline {
             .buffers
             .get(name)
             .ok_or_else(|| BarracudaError::InvalidInput {
-                message: format!("Unknown buffer: {}", name),
+                message: format!("Unknown buffer: {name}"),
             })?;
 
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
@@ -361,7 +361,7 @@ impl ComputePipeline {
             .buffers
             .get(name)
             .ok_or_else(|| BarracudaError::InvalidInput {
-                message: format!("Unknown buffer: {}", name),
+                message: format!("Unknown buffer: {name}"),
             })?;
 
         self.device.queue.write_buffer(buffer, 0, data);
@@ -397,7 +397,7 @@ impl ComputePipeline {
             .buffers
             .get(name)
             .ok_or_else(|| BarracudaError::InvalidInput {
-                message: format!("Unknown buffer: {}", name),
+                message: format!("Unknown buffer: {name}"),
             })?;
 
         let size = buffer.size() as usize;
@@ -447,7 +447,7 @@ impl ComputePipeline {
             .buffers
             .get(name)
             .ok_or_else(|| BarracudaError::InvalidInput {
-                message: format!("Unknown buffer: {}", name),
+                message: format!("Unknown buffer: {name}"),
             })?;
 
         let size = buffer.size() as usize;

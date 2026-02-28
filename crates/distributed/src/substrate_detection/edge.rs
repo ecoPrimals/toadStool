@@ -14,6 +14,7 @@ const MCU_TOOLS: &[(&str, &str)] = &[
 ];
 
 /// Detect edge computing platforms.
+#[allow(clippy::unused_async)] // Sync probe; async for API consistency with SubstrateDetector
 pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let mut platforms = Vec::new();
     let arch = std::env::consts::ARCH.to_string();

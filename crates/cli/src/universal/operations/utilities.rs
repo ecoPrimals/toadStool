@@ -60,28 +60,28 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
             PlatformType::GPU { vendor, framework } => {
                 format!("gpu_{}_{}", vendor.to_lowercase(), framework.to_lowercase())
             }
-            PlatformType::Other { os, architecture } => format!("other_{}_{}", os, architecture),
+            PlatformType::Other { os, architecture } => format!("other_{os}_{architecture}"),
             PlatformType::EdgeDevice {
                 device_type,
                 architecture,
             } => {
-                format!("edge_{}_{}", device_type, architecture)
+                format!("edge_{device_type}_{architecture}")
             }
-            PlatformType::MCUDevelopment { platform, tool } => format!("mcu_{}_{}", platform, tool),
+            PlatformType::MCUDevelopment { platform, tool } => format!("mcu_{platform}_{tool}"),
             PlatformType::BiologicalComputing {
                 platform,
                 simulation,
             } => {
-                format!("bio_{}_{}", platform, simulation)
+                format!("bio_{platform}_{simulation}")
             }
             PlatformType::Quantum {
                 framework,
                 simulator,
             } => {
-                format!("quantum_{}_{}", framework, simulator)
+                format!("quantum_{framework}_{simulator}")
             }
             PlatformType::NeuromorphicComputing { platform, hardware } => {
-                format!("neuro_{}_{}", platform, hardware)
+                format!("neuro_{platform}_{hardware}")
             }
         }
     }

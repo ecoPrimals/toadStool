@@ -182,7 +182,10 @@ impl ResourceEstimator {
             .requirements
             .cpu
             .as_ref()
-            .map(|r| u32::try_from(r.min_cores.round() as i64).unwrap_or(self.default_cpu_cores))
+            .map(|r| {
+                #[allow(clippy::cast_possible_truncation)]
+                u32::try_from(r.min_cores.round() as i64).unwrap_or(self.default_cpu_cores)
+            })
             .unwrap_or(self.default_cpu_cores);
 
         let memory_bytes = node

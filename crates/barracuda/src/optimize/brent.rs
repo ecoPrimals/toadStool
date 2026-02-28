@@ -80,8 +80,7 @@ where
         return Err(BarracudaError::InvalidInput {
             message: format!(
                 "Brent's method requires f(a) and f(b) to have opposite signs: \
-                f({}) = {}, f({}) = {}",
-                a, fa, b, fb
+                f({a}) = {fa}, f({b}) = {fb}"
             ),
         });
     }
@@ -240,7 +239,7 @@ pub fn brent_minimize<F>(
 where
     F: Fn(f64) -> f64,
 {
-    const GOLDEN: f64 = 0.381966011250105; // (3 - √5) / 2
+    const GOLDEN: f64 = 0.381_966_011_250_105; // (3 - √5) / 2
 
     // Ensure a < c
     if a > c {

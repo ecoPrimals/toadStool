@@ -38,8 +38,7 @@ impl SpectralNorm1D {
         if weight_size != expected_size {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "Weight dimensions mismatch: expected {}, got {}",
-                    expected_size, weight_size
+                    "Weight dimensions mismatch: expected {expected_size}, got {weight_size}"
                 ),
             });
         }

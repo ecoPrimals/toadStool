@@ -118,13 +118,13 @@ impl fmt::Display for DeploymentLayer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::BareMetalOS => write!(f, "BareMetalOS"),
-            Self::MiddlewareLayer { host_os, .. } => write!(f, "Middleware on {}", host_os),
+            Self::MiddlewareLayer { host_os, .. } => write!(f, "Middleware on {host_os}"),
             Self::ServiceLayer { guest_os } => {
                 write!(f, "ServiceLayer (serving: {})", guest_os.join(", "))
             }
-            Self::ContainerLayer { runtime, .. } => write!(f, "Container ({:?})", runtime),
-            Self::VMLayer { hypervisor, .. } => write!(f, "VM ({})", hypervisor),
-            Self::CloudLayer { provider, .. } => write!(f, "Cloud ({:?})", provider),
+            Self::ContainerLayer { runtime, .. } => write!(f, "Container ({runtime:?})"),
+            Self::VMLayer { hypervisor, .. } => write!(f, "VM ({hypervisor})"),
+            Self::CloudLayer { provider, .. } => write!(f, "Cloud ({provider:?})"),
         }
     }
 }

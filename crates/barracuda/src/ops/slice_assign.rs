@@ -70,10 +70,7 @@ impl SliceAssign {
         if values_size != slice_size {
             return Err(BarracudaError::invalid_op(
                 "SliceAssign",
-                format!(
-                    "Values size {} doesn't match slice size {}",
-                    values_size, slice_size
-                ),
+                format!("Values size {values_size} doesn't match slice size {slice_size}"),
             ));
         }
 

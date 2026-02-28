@@ -285,7 +285,7 @@ mod tests {
         };
 
         // Test with larger input
-        let n = 10000;
+        let n = 10_000;
         let input: Vec<f64> = (1..=n).map(|x| x as f64).collect();
         let result = CumsumF64::execute_1d(&device, &input).await.unwrap();
 

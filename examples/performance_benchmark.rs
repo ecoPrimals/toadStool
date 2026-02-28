@@ -127,7 +127,7 @@ async fn benchmark_native_execution(
     let mut total_exec_time = Duration::new(0, 0);
 
     for i in 0..config.iterations {
-        let context = create_benchmark_context(&format!("native_{}", i), SecurityLevel::Standard);
+        let context = create_benchmark_context(&format!("native_{i}"), SecurityLevel::Standard);
 
         let job = UniversalJob {
             id: Uuid::new_v4(),
@@ -197,7 +197,7 @@ async fn benchmark_concurrent_jobs(
             let _permit = semaphore.acquire().await.unwrap();
 
             let context =
-                create_benchmark_context(&format!("concurrent_{}", i), SecurityLevel::Standard);
+                create_benchmark_context(&format!("concurrent_{i}"), SecurityLevel::Standard);
 
             let job = UniversalJob {
                 id: Uuid::new_v4(),
@@ -335,7 +335,7 @@ async fn benchmark_resource_allocation(
     let mut total_allocation_time = Duration::new(0, 0);
 
     for i in 0..config.iterations {
-        let context = create_benchmark_context(&format!("resource_{}", i), SecurityLevel::Standard);
+        let context = create_benchmark_context(&format!("resource_{i}"), SecurityLevel::Standard);
 
         let mut resources = ResourceRequirements::default();
         resources.cpu = toadstool::CpuRequirements {
@@ -416,7 +416,7 @@ async fn benchmark_security_overhead(
 
     for i in 0..config.iterations {
         let level = &security_levels[i % security_levels.len()];
-        let context = create_benchmark_context(&format!("security_{}", i), *level);
+        let context = create_benchmark_context(&format!("security_{i}"), *level);
 
         let job = UniversalJob {
             id: Uuid::new_v4(),
@@ -437,7 +437,7 @@ async fn benchmark_security_overhead(
             successful += 1;
             let level_duration = level_start.elapsed();
             *level_times
-                .entry(format!("{:?}", level))
+                .entry(format!("{level:?}"))
                 .or_insert(Duration::new(0, 0)) += level_duration;
         }
 
@@ -454,7 +454,7 @@ async fn benchmark_security_overhead(
     let mut metrics = HashMap::new();
     for (level, duration) in level_times {
         metrics.insert(
-            format!("{}_avg_ms", level),
+            format!("{level}_avg_ms"),
             duration.as_millis() as f64 / (config.iterations / 4) as f64,
         );
     }
@@ -483,7 +483,7 @@ async fn benchmark_job_types(
     let mut type_counts = HashMap::new();
 
     for i in 0..config.iterations {
-        let context = create_benchmark_context(&format!("jobtype_{}", i), SecurityLevel::Standard);
+        let context = create_benchmark_context(&format!("jobtype_{i}"), SecurityLevel::Standard);
 
         let job = match i % 4 {
             0 => UniversalJob {
@@ -565,7 +565,7 @@ async fn benchmark_job_types(
     let mut metrics = HashMap::new();
     for (job_type, count) in type_counts {
         metrics.insert(
-            format!("{}_success_rate", job_type),
+            format!("{job_type}_success_rate"),
             count as f64 / (config.iterations / 4) as f64,
         );
     }
@@ -594,7 +594,7 @@ async fn benchmark_memory_usage(
 
     // Simplified memory benchmark - in production you'd use proper memory profiling
     for i in 0..config.iterations {
-        let context = create_benchmark_context(&format!("memory_{}", i), SecurityLevel::Standard);
+        let context = create_benchmark_context(&format!("memory_{i}"), SecurityLevel::Standard);
 
         let job = UniversalJob {
             id: Uuid::new_v4(),
@@ -651,13 +651,13 @@ fn display_benchmark_results(results: &[BenchmarkResults]) {
         println!("  • Success Rate: {:.2}%", result.success_rate * 100.0);
 
         if let Some(memory) = result.memory_usage {
-            println!("  • Memory Usage: {} bytes", memory);
+            println!("  • Memory Usage: {memory} bytes");
         }
 
         if !result.metrics.is_empty() {
             println!("  • Additional Metrics:");
             for (key, value) in &result.metrics {
-                println!("    - {}: {:.2}", key, value);
+                println!("    - {key}: {value:.2}");
             }
         }
     }
@@ -669,7 +669,7 @@ fn display_benchmark_results(results: &[BenchmarkResults]) {
     let avg_success_rate: f64 =
         results.iter().map(|r| r.success_rate).sum::<f64>() / results.len() as f64;
 
-    println!("  • Total Operations/Second: {:.2}", total_ops);
+    println!("  • Total Operations/Second: {total_ops:.2}");
     println!("  • Average Success Rate: {:.2}%", avg_success_rate * 100.0);
     println!("  • Benchmark Categories: {}", results.len());
 
@@ -679,7 +679,7 @@ fn display_benchmark_results(results: &[BenchmarkResults]) {
 /// Create a benchmark context
 fn create_benchmark_context(name: &str, security_level: SecurityLevel) -> PrimalContext {
     PrimalContext {
-        user_id: format!("benchmark-{}", name),
+        user_id: format!("benchmark-{name}"),
         device_id: "benchmark-device".to_string(),
         session_id: Uuid::new_v4().to_string(),
         network_location: NetworkLocation {

@@ -41,10 +41,7 @@ impl RandomRotation {
         if rot_shape.len() != 2 || rot_shape[1] != 4 {
             return Err(BarracudaError::invalid_op(
                 "RandomRotation",
-                format!(
-                    "rotation_matrices must be 2D [batch_size, 4], got shape {:?}",
-                    rot_shape
-                ),
+                format!("rotation_matrices must be 2D [batch_size, 4], got shape {rot_shape:?}"),
             ));
         }
 
@@ -72,8 +69,7 @@ impl RandomRotation {
             return Err(BarracudaError::invalid_op(
                 "RandomRotation",
                 format!(
-                    "input must be 4D [batch, channels, height, width], got shape {:?}",
-                    input_shape
+                    "input must be 4D [batch, channels, height, width], got shape {input_shape:?}"
                 ),
             ));
         }

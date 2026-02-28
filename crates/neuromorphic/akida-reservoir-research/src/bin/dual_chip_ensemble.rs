@@ -128,7 +128,7 @@ async fn main() -> Result<()> {
             println!("   - Combined state: {} dimensions", ensemble_state.len());
         }
         Err(e) => {
-            println!("   ❌ Failed to create ensemble: {}", e);
+            println!("   ❌ Failed to create ensemble: {e}");
             println!("\n   Possible causes:");
             println!("      - Less than 2 Akida devices available");
             println!("      - Device permission issues");

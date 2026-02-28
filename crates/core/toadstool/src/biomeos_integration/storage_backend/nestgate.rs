@@ -37,8 +37,7 @@ impl NestGateBackend {
             .await
             .map_err(|e| {
                 ToadStoolError::configuration(format!(
-                    "No storage service discovered: {}. Ensure a storage provider is running.",
-                    e
+                    "No storage service discovered: {e}. Ensure a storage provider is running."
                 ))
             })?;
 
@@ -132,8 +131,7 @@ impl StorageBackend for NestGateBackend {
                 .await
                 .map_err(|e| {
                     ToadStoolError::runtime(format!(
-                        "Failed to provision volume {}: {}",
-                        config_name, e
+                        "Failed to provision volume {config_name}: {e}"
                     ))
                 })?;
 
@@ -179,8 +177,7 @@ impl StorageBackend for NestGateBackend {
                 .await
                 .map_err(|e| {
                     ToadStoolError::runtime(format!(
-                        "Failed to provision persistent volume {}: {}",
-                        config_name, e
+                        "Failed to provision persistent volume {config_name}: {e}"
                     ))
                 })?;
 

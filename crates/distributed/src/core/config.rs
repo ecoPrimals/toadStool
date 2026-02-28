@@ -79,6 +79,44 @@ impl Default for DistributedConfig {
     }
 }
 
+impl ToadStoolCapabilities {
+    pub async fn detect_current() -> toadstool::ToadStoolResult<Self> {
+        use toadstool::RuntimeType;
+
+        let execution_environments = vec![
+            ExecutionEnvironment::Native {
+                isolation: toadstool::IsolationLevel::Standard,
+            },
+            ExecutionEnvironment::Container {
+                runtime: "docker".to_string(),
+            },
+            ExecutionEnvironment::Wasm {
+                runtime: "wasmtime".to_string(),
+            },
+        ];
+
+        let supported_runtimes = vec![
+            RuntimeType::Native,
+            RuntimeType::Container,
+            RuntimeType::Wasm,
+        ];
+
+        let platform_capabilities = PlatformCapabilities {
+            os: std::env::consts::OS.to_string(),
+            architecture: std::env::consts::ARCH.to_string(),
+            cpu_cores: std::thread::available_parallelism()
+                .map(|p| u32::try_from(p.get()).unwrap_or(4))
+                .unwrap_or(4),
+        };
+
+        Ok(Self {
+            execution_environments,
+            supported_runtimes,
+            platform_capabilities,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,43 +191,5 @@ mod tests {
         assert!(!caps.platform_capabilities.os.is_empty());
         assert!(!caps.platform_capabilities.architecture.is_empty());
         assert!(caps.platform_capabilities.cpu_cores > 0);
-    }
-}
-
-impl ToadStoolCapabilities {
-    pub async fn detect_current() -> toadstool::ToadStoolResult<Self> {
-        use toadstool::RuntimeType;
-
-        let execution_environments = vec![
-            ExecutionEnvironment::Native {
-                isolation: toadstool::IsolationLevel::Standard,
-            },
-            ExecutionEnvironment::Container {
-                runtime: "docker".to_string(),
-            },
-            ExecutionEnvironment::Wasm {
-                runtime: "wasmtime".to_string(),
-            },
-        ];
-
-        let supported_runtimes = vec![
-            RuntimeType::Native,
-            RuntimeType::Container,
-            RuntimeType::Wasm,
-        ];
-
-        let platform_capabilities = PlatformCapabilities {
-            os: std::env::consts::OS.to_string(),
-            architecture: std::env::consts::ARCH.to_string(),
-            cpu_cores: std::thread::available_parallelism()
-                .map(|p| u32::try_from(p.get()).unwrap_or(4))
-                .unwrap_or(4),
-        };
-
-        Ok(Self {
-            execution_environments,
-            supported_runtimes,
-            platform_capabilities,
-        })
     }
 }

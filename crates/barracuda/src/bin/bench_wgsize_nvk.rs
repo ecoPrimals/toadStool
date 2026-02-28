@@ -146,10 +146,7 @@ async fn main() {
         let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(RUNS);
         let config_str = format!("n={n} s={sweeps}");
 
-        println!(
-            "{:<14} {:>6} {:>8} {:>12.2}   {}",
-            config_str, batch, sweeps, elapsed_ms, label
-        );
+        println!("{config_str:<14} {batch:>6} {sweeps:>8} {elapsed_ms:>12.2}   {label}");
     }
 
     println!("──────────────────────────────────────────────────────────");

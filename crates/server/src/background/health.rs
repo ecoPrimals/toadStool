@@ -105,7 +105,9 @@ pub(crate) async fn perform_health_check(state: &ServerState) -> bool {
 
     // Check for too many active executions
     let active_executions = state.active_executions.read().await.len();
+    #[allow(clippy::cast_possible_truncation)]
     if active_executions > state.config.max_concurrent_executions as usize {
+        // fits: config limit < usize::MAX
         return false;
     }
 

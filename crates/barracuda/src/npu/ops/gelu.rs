@@ -177,7 +177,7 @@ fn erf_approx(x: f32) -> f32 {
     const A3: f32 = 1.421_413_8;
     const A4: f32 = -1.453_152_1;
     const A5: f32 = 1.061_405_4;
-    const P: f32 = 0.3275911;
+    const P: f32 = 0.327_591_1;
 
     let t = 1.0 / (1.0 + P * x);
     let t2 = t * t;

@@ -246,7 +246,7 @@ impl Variance {
                 // Dimension-wise variance reduction
                 if dim >= shape.len() {
                     return Err(BarracudaError::InvalidInput {
-                        message: format!("Dimension {} out of range for shape {:?}", dim, shape),
+                        message: format!("Dimension {dim} out of range for shape {shape:?}"),
                     });
                 }
 

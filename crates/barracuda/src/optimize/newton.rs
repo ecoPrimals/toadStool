@@ -85,8 +85,7 @@ where
         if dfx.abs() < 1e-14 {
             return Err(BarracudaError::Numerical {
                 message: format!(
-                    "Newton-Raphson: derivative is near zero at x = {}, f'(x) = {}",
-                    x, dfx
+                    "Newton-Raphson: derivative is near zero at x = {x}, f'(x) = {dfx}"
                 ),
             });
         }
@@ -166,8 +165,7 @@ where
         if dfx.abs() < 1e-14 {
             return Err(BarracudaError::Numerical {
                 message: format!(
-                    "Newton-Raphson: numerical derivative is near zero at x = {}, f'(x) ≈ {}",
-                    x, dfx
+                    "Newton-Raphson: numerical derivative is near zero at x = {x}, f'(x) ≈ {dfx}"
                 ),
             });
         }
@@ -244,8 +242,7 @@ where
             return Err(BarracudaError::Numerical {
                 message: format!(
                     "Secant method: f(x0) ≈ f(x1), cannot compute approximation. \
-                    x0 = {}, x1 = {}, f0 = {}, f1 = {}",
-                    x0, x1, f0, f1
+                    x0 = {x0}, x1 = {x1}, f0 = {f0}, f1 = {f1}"
                 ),
             });
         }

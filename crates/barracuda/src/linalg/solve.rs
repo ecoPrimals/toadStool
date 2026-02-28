@@ -127,10 +127,7 @@ pub fn solve_f64_cpu(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
         // Check for singularity
         if max_val < 1e-14 {
             return Err(BarracudaError::ExecutionError {
-                message: format!(
-                    "Singular matrix: pivot at column {} is near-zero ({:e})",
-                    k, max_val
-                ),
+                message: format!("Singular matrix: pivot at column {k} is near-zero ({max_val:e})"),
             });
         }
 

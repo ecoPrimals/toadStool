@@ -65,7 +65,7 @@ impl CyclicalLr {
         if base_lr > max_lr {
             return Err(BarracudaError::invalid_op(
                 "cyclical_lr",
-                format!("base_lr {} must be <= max_lr {}", base_lr, max_lr),
+                format!("base_lr {base_lr} must be <= max_lr {max_lr}"),
             ));
         }
 

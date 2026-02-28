@@ -30,8 +30,8 @@ async fn main() -> Result<()> {
     let amd_gpu = GpuSelector::find_amd(&gpus).context("AMD GPU not found")?;
 
     println!("📊 Hardware Configuration:");
-    println!("  NVIDIA: {}", nvidia_gpu);
-    println!("  AMD:    {}", amd_gpu);
+    println!("  NVIDIA: {nvidia_gpu}");
+    println!("  AMD:    {amd_gpu}");
     println!();
 
     // Load dataset
@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
 
     for &size in &sizes {
         println!("─────────────────────────────────────────────────────────");
-        println!("  Test Size: {} images", size);
+        println!("  Test Size: {size} images");
         println!("─────────────────────────────────────────────────────────");
 
         // CPU Baseline
@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
         // Comparison
         let nvidia_vs_amd = nvidia_result.throughput / amd_result.throughput;
         if nvidia_vs_amd > 1.0 {
-            println!("  📊 NVIDIA is {:.2}x faster than AMD", nvidia_vs_amd);
+            println!("  📊 NVIDIA is {nvidia_vs_amd:.2}x faster than AMD");
         } else {
             println!("  📊 AMD is {:.2}x faster than NVIDIA", 1.0 / nvidia_vs_amd);
         }

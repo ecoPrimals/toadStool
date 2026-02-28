@@ -64,6 +64,10 @@ use toadstool_common::ToadStoolResult;
 ///     "http://localhost:50001"
 /// ).await?;
 /// ```
+///
+/// # Errors
+///
+/// This function does not fail; it always returns the discovered endpoint or fallback.
 pub async fn discover_or_fallback(
     discovery: &RuntimeDiscovery,
     capability: &Capability,
@@ -124,6 +128,10 @@ pub async fn discover_or_fallback(
 /// # Returns
 ///
 /// Vector of service information for all matching services
+///
+/// # Errors
+///
+/// Returns [`ToadStoolError`] if discovery fails.
 pub async fn discover_all_by_capability(
     discovery: &RuntimeDiscovery,
     capability: &Capability,
@@ -146,6 +154,10 @@ pub async fn discover_all_by_capability(
 /// # Returns
 ///
 /// The selected endpoint URL
+///
+/// # Errors
+///
+/// This function does not fail; it always returns the discovered endpoint or fallback.
 pub async fn discover_with_load_balancing(
     discovery: &RuntimeDiscovery,
     capability: &Capability,
@@ -154,11 +166,12 @@ pub async fn discover_with_load_balancing(
     match discovery.discover_capability(capability).await {
         Ok(services) if !services.is_empty() => {
             // Simple round-robin: use hash of timestamp to select
+            #[allow(clippy::cast_possible_truncation)]
             let index = (std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs()
-                % services.len() as u64) as usize;
+                % services.len() as u64) as usize; // fits: index < services.len()
 
             if let Some(endpoint) = services[index].endpoints.first() {
                 let url = format!(
@@ -218,6 +231,10 @@ pub async fn discover_with_load_balancing(
 /// let discovery = create_discovery()?;
 /// // Discovers services on localhost via socket probing
 /// ```
+///
+/// # Errors
+///
+/// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
 pub fn create_discovery() -> ToadStoolResult<RuntimeDiscovery> {
     let client = Arc::new(toadstool_common::runtime_discovery::LocalhostDiscoveryClient::new());
     Ok(RuntimeDiscovery::new(client))

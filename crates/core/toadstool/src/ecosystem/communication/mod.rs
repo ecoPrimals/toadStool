@@ -1,6 +1,17 @@
 //! # Service Communication
 //!
 //! Manages communication channels and messaging with ecosystem services.
+//!
+//! ## WateringHole Sovereignty: Discover by Capability, Address by Name
+//!
+//! This module receives **already-discovered** services. The caller must discover
+//! by capability (e.g., `discover_capability("crypto.encrypt")`), not by hardcoded
+//! primal name. Once discovered, we use `service.name` for:
+//! - **IPC addressing** (socket paths, endpoint resolution) — correct use of name
+//! - **Logging and error messages** — informational only
+//!
+//! **Evolution path**: Callers should use `RuntimeDiscovery::discover_capability()`
+//! to obtain services; never pass services selected by `if name == "beardog"`.
 
 mod tests;
 
@@ -14,6 +25,8 @@ use tracing::{debug, info};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::timeouts;
 use toadstool_common::constants::PRIMAL_NAME;
+#[cfg(feature = "networking")]
+use toadstool_common::interned_strings::protocols;
 use toadstool_common::service_discovery::DiscoveredService;
 
 use super::types::{EcosystemMessage, ServiceChannel, ServiceClient, ServiceStatus};
@@ -73,6 +86,7 @@ impl CommunicationManager {
         Ok(channel)
     }
 
+    #[allow(clippy::unused_async)] // Conditional async: has await when networking enabled
     pub async fn send_message(
         &self,
         channel: &ServiceChannel,
@@ -108,6 +122,7 @@ impl CommunicationManager {
         }
     }
 
+    #[allow(clippy::unused_async)] // Conditional async: has await when networking enabled
     pub async fn check_health(&self, channel: &ServiceChannel) -> ToadStoolResult<()> {
         debug!("🔍 Checking health of service: {}", channel.service_name);
 
@@ -195,23 +210,24 @@ impl CommunicationManager {
         service: &DiscoveredService,
     ) -> ToadStoolResult<ServiceClient> {
         for endpoint in &service.endpoints {
-            if endpoint.protocol == "jsonrpc"
-                || endpoint.protocol == "json-rpc"
-                || endpoint.protocol == "unix-socket"
-                || endpoint.protocol == "unix"
-            {
+            let is_jsonrpc =
+                endpoint.protocol == protocols::JSONRPC || endpoint.protocol == "json-rpc"; // backward-compat alias
+            let is_unix =
+                endpoint.protocol == protocols::UNIX || endpoint.protocol == "unix-socket"; // backward-compat alias
+            if is_jsonrpc || is_unix {
                 let socket_path = Self::extract_socket_path(endpoint, &service.name);
                 return Ok(ServiceClient::UnixSocket(
                     toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
                 ));
             }
-            if endpoint.protocol == "tarpc" {
+            if endpoint.protocol == protocols::TARPC {
                 let socket_path = Self::extract_socket_path(endpoint, &service.name);
                 let fallback =
                     toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+                // Evolution path: direct tarpc binary transport should replace this fallback in Phase 3.
                 info!(
-                    "tarpc endpoint for {} — using JSON-RPC fallback until binary transport wired",
-                    service.name
+                    service_name = %service.name,
+                    "tarpc endpoint using JSON-RPC fallback transport — operators: tarpc is speaking JSON-RPC underneath until Phase 3 binary transport"
                 );
                 return Ok(ServiceClient::Tarpc(Arc::new(tokio::sync::Mutex::new(
                     Some(super::types::TarpcClientWrapper::with_fallback(fallback)),

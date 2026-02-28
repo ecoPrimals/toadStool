@@ -35,19 +35,30 @@ pub trait CompatibilityLayer: Send + Sync {
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 }
 
-/// Linux compatibility layer
+/// Linux compatibility layer.
+///
+/// On Linux, uses `uname`-based detection during initialization to verify
+/// the platform. On other platforms, returns `PlatformNotAvailable`.
 #[derive(Debug)]
 pub struct LinuxCompatibilityLayer {
     config: LinuxCompatConfig,
+    /// Detected uname output (set during initialize on Linux)
+    uname_info: Option<String>,
 }
 
-/// Windows compatibility layer
+/// Windows compatibility layer.
+///
+/// On Windows, initializes successfully. On other platforms, returns
+/// `PlatformNotAvailable` from initialize.
 #[derive(Debug)]
 pub struct WindowsCompatibilityLayer {
     config: WindowsCompatConfig,
 }
 
-/// macOS compatibility layer
+/// macOS compatibility layer.
+///
+/// On macOS, initializes successfully. On other platforms, returns
+/// `PlatformNotAvailable` from initialize.
 #[derive(Debug)]
 pub struct MacOSCompatibilityLayer {
     config: MacOSCompatConfig,
@@ -167,12 +178,48 @@ impl LinuxCompatibilityLayer {
     pub fn new() -> Self {
         Self {
             config: LinuxCompatConfig::default(),
+            uname_info: None,
         }
     }
 
     #[must_use]
     pub fn get_config(&self) -> &LinuxCompatConfig {
         &self.config
+    }
+
+    /// Get detected uname info (available after initialize on Linux).
+    #[must_use]
+    pub fn uname_info(&self) -> Option<&str> {
+        self.uname_info.as_deref()
+    }
+
+    /// Run uname-based platform detection (Linux only).
+    fn detect_platform() -> String {
+        #[cfg(target_os = "linux")]
+        {
+            std::process::Command::new("uname")
+                .args(["-a"])
+                .output()
+                .ok()
+                .and_then(|o| {
+                    if o.status.success() {
+                        String::from_utf8(o.stdout).ok()
+                    } else {
+                        None
+                    }
+                })
+                .map(|s| s.trim().to_string())
+                .unwrap_or_else(|| {
+                    std::fs::read_to_string("/proc/version")
+                        .ok()
+                        .map(|s| s.trim().to_string())
+                        .unwrap_or_else(|| "unknown".to_string())
+                })
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            "not_linux".to_string()
+        }
     }
 }
 
@@ -266,6 +313,26 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
     }
 
     fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let uname_info = Self::detect_platform();
+        if !cfg!(target_os = "linux") {
+            return Box::pin(async move {
+                Err(SystemError::NotSupported {
+                    feature: "linux_compat_layer".into(),
+                    reason: "LinuxCompatibilityLayer requires target_os = linux. Current platform is not Linux.".into(),
+                }
+                .into())
+            });
+        }
+        if uname_info == "not_linux" {
+            return Box::pin(async move {
+                Err(SystemError::NotSupported {
+                    feature: "linux_compat_layer".into(),
+                    reason: "Platform detection failed: not running on Linux.".into(),
+                }
+                .into())
+            });
+        }
+        self.uname_info = Some(uname_info);
         Box::pin(async move { Ok(()) })
     }
 
@@ -304,6 +371,15 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
     }
 
     fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        if !cfg!(target_os = "windows") {
+            return Box::pin(async move {
+                Err(SystemError::NotSupported {
+                    feature: "windows_compat_layer".into(),
+                    reason: "WindowsCompatibilityLayer requires target_os = windows. Current platform is not Windows.".into(),
+                }
+                .into())
+            });
+        }
         Box::pin(async move { Ok(()) })
     }
 
@@ -342,6 +418,15 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
     }
 
     fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        if !cfg!(target_os = "macos") {
+            return Box::pin(async move {
+                Err(SystemError::NotSupported {
+                    feature: "macos_compat_layer".into(),
+                    reason: "MacOSCompatibilityLayer requires target_os = macos. Current platform is not macOS.".into(),
+                }
+                .into())
+            });
+        }
         Box::pin(async move { Ok(()) })
     }
 
@@ -602,7 +687,16 @@ mod tests {
         let mut layer = LinuxCompatibilityLayer::new();
         let result = layer.initialize().await;
 
-        assert!(result.is_ok());
+        if cfg!(target_os = "linux") {
+            assert!(result.is_ok());
+            assert!(layer.uname_info().is_some());
+            let uname = layer.uname_info().unwrap();
+            assert!(!uname.is_empty());
+            assert!(!uname.contains("not_linux"));
+        } else {
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("linux"));
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -610,7 +704,12 @@ mod tests {
         let mut layer = WindowsCompatibilityLayer::new();
         let result = layer.initialize().await;
 
-        assert!(result.is_ok());
+        if cfg!(target_os = "windows") {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("windows"));
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -618,7 +717,12 @@ mod tests {
         let mut layer = MacOSCompatibilityLayer::new();
         let result = layer.initialize().await;
 
-        assert!(result.is_ok());
+        if cfg!(target_os = "macos") {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("macos"));
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

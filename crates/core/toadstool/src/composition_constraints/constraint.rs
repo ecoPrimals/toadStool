@@ -131,22 +131,22 @@ impl fmt::Display for Constraint {
         match self {
             Self::RequiresGPU => write!(f, "RequiresGPU [HARD]"),
             Self::PrefersGPU => write!(f, "PrefersGPU [SOFT]"),
-            Self::MinMemoryGB(gb) => write!(f, "MinMemory: {}GB [HARD]", gb),
-            Self::MinCPUCores(cores) => write!(f, "MinCPU: {} cores [HARD]", cores),
-            Self::MaxLatencyMs(ms) => write!(f, "MaxLatency: {}ms [HARD]", ms),
-            Self::PreferredLatencyMs(ms) => write!(f, "PreferredLatency: {}ms [SOFT]", ms),
-            Self::MinBandwidthGbps(gbps) => write!(f, "MinBandwidth: {}Gbps [HARD]", gbps),
+            Self::MinMemoryGB(gb) => write!(f, "MinMemory: {gb}GB [HARD]"),
+            Self::MinCPUCores(cores) => write!(f, "MinCPU: {cores} cores [HARD]"),
+            Self::MaxLatencyMs(ms) => write!(f, "MaxLatency: {ms}ms [HARD]"),
+            Self::PreferredLatencyMs(ms) => write!(f, "PreferredLatency: {ms}ms [SOFT]"),
+            Self::MinBandwidthGbps(gbps) => write!(f, "MinBandwidth: {gbps}Gbps [HARD]"),
             Self::PreferredBandwidthGbps(gbps) => {
-                write!(f, "PreferredBandwidth: {}Gbps [SOFT]", gbps)
+                write!(f, "PreferredBandwidth: {gbps}Gbps [SOFT]")
             }
-            Self::RequiresCapability(cap) => write!(f, "RequiresCap: {} [HARD]", cap),
-            Self::PrefersCapability(cap) => write!(f, "PrefersCap: {} [SOFT]", cap),
+            Self::RequiresCapability(cap) => write!(f, "RequiresCap: {cap} [HARD]"),
+            Self::PrefersCapability(cap) => write!(f, "PrefersCap: {cap} [SOFT]"),
             Self::MustBeLocal => write!(f, "MustBeLocal [HARD]"),
             Self::PreferLocal => write!(f, "PreferLocal [SOFT]"),
-            Self::RequiresLayer(layer) => write!(f, "RequiresLayer: {} [HARD]", layer),
-            Self::PrefersLayer(layer) => write!(f, "PrefersLayer: {} [SOFT]", layer),
+            Self::RequiresLayer(layer) => write!(f, "RequiresLayer: {layer} [HARD]"),
+            Self::PrefersLayer(layer) => write!(f, "PrefersLayer: {layer} [SOFT]"),
             Self::RequiresPersistentStorage => write!(f, "RequiresPersistentStorage [HARD]"),
-            Self::MaxCostPerHour(cost) => write!(f, "MaxCost: ${}/hr [HARD]", cost),
+            Self::MaxCostPerHour(cost) => write!(f, "MaxCost: ${cost}/hr [HARD]"),
             Self::MinimizeCost => write!(f, "MinimizeCost [SOFT]"),
             Self::Custom { name, hard, value } => {
                 write!(

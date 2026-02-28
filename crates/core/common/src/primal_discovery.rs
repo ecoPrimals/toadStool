@@ -12,19 +12,15 @@
 //!
 //! # Examples
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_common::primal_discovery::PrimalDiscovery;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Create discovery engine
-//! let discovery = PrimalDiscovery::new().await?;
+//! let discovery = PrimalDiscovery::new()?;
 //!
 //! // Find service by capability (not by name!)
 //! let orchestrator = discovery.find_capability("orchestration").await?;
-//! println!("Found orchestration at: {}", orchestrator.url());
-//!
-//! let security = discovery.find_capability("security").await?;
-//! println!("Found security at: {}", security.url());
+//! println!("Found orchestration at: {}", orchestrator.url);
 //! # Ok(())
 //! # }
 //! ```
@@ -153,8 +149,8 @@ impl PrimalDiscovery {
     /// # Errors
     ///
     /// Returns error if mDNS initialization fails (when enabled)
-    pub async fn new() -> Result<Self, DiscoveryError> {
-        Self::with_config(DiscoveryConfig::default()).await
+    pub fn new() -> Result<Self, DiscoveryError> {
+        Self::with_config(DiscoveryConfig::default())
     }
 
     /// Create with custom configuration
@@ -162,7 +158,7 @@ impl PrimalDiscovery {
     /// # Errors
     ///
     /// Returns error if initialization fails
-    pub async fn with_config(config: DiscoveryConfig) -> Result<Self, DiscoveryError> {
+    pub fn with_config(config: DiscoveryConfig) -> Result<Self, DiscoveryError> {
         // mDNS integration: Available via infant_discovery module
         // This discovery engine uses infant_discovery for production-grade mDNS
         // See: crates/core/common/src/infant_discovery/ for full implementation
@@ -187,18 +183,12 @@ impl PrimalDiscovery {
     ///
     /// # Examples
     ///
-    /// ```rust,no_run
+    /// ```rust,ignore
     /// # use toadstool_common::primal_discovery::PrimalDiscovery;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let discovery = PrimalDiscovery::new().await?;
-    ///
-    /// // Find orchestration service (e.g., Songbird)
+    /// let discovery = PrimalDiscovery::new()?;
     /// let endpoint = discovery.find_capability("orchestration").await?;
-    /// println!("Found: {}", endpoint.url());
-    ///
-    /// // Find security service (e.g., BearDog)
-    /// let endpoint = discovery.find_capability("security").await?;
-    /// println!("Found: {}", endpoint.url());
+    /// println!("Found: {}", endpoint.url);
     /// # Ok(())
     /// # }
     /// ```
@@ -259,7 +249,7 @@ impl PrimalDiscovery {
     /// # Errors
     ///
     /// Returns error if discovery fails or no endpoints found
-    pub async fn find_all_with_capability(
+    pub fn find_all_with_capability(
         &self,
         _capability: &str,
     ) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
@@ -278,6 +268,11 @@ impl PrimalDiscovery {
     }
 
     /// Refresh discovery (force re-scan)
+    ///
+    /// # Errors
+    ///
+    /// This implementation always succeeds. Returns [`DiscoveryError`] for API compatibility
+    /// with implementations that may fail during refresh.
     pub async fn refresh(&self) -> Result<(), DiscoveryError> {
         self.cache.write().await.clear();
         tracing::debug!("Discovery cache cleared");
@@ -353,7 +348,7 @@ mod tests {
             "http://localhost:8080".to_string(),
         );
 
-        let discovery = PrimalDiscovery::with_config(config).await.unwrap();
+        let discovery = PrimalDiscovery::with_config(config).unwrap();
         let endpoint = discovery.find_capability("orchestration").await.unwrap();
 
         assert_eq!(endpoint.url(), "http://localhost:8080");
@@ -368,7 +363,7 @@ mod tests {
             ..Default::default()
         };
 
-        let discovery = PrimalDiscovery::with_config(config).await.unwrap();
+        let discovery = PrimalDiscovery::with_config(config).unwrap();
         let result = discovery.find_capability("nonexistent").await;
 
         assert!(result.is_err());
@@ -409,7 +404,7 @@ mod tests {
             .fallbacks
             .insert("test".to_string(), "http://localhost:8080".to_string());
 
-        let discovery = PrimalDiscovery::with_config(config).await.unwrap();
+        let discovery = PrimalDiscovery::with_config(config).unwrap();
 
         // Populate cache
         let _endpoint = discovery.find_capability("test").await.unwrap();

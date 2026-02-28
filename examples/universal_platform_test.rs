@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test platform status
     let status = get_platform_status().await;
-    println!("📊 Platform status: {:?}", status);
+    println!("📊 Platform status: {status:?}");
 
     // Test job creation
     let job = UniversalJob {

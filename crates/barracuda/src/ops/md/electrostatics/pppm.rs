@@ -157,8 +157,7 @@ impl Pppm {
 
         if !kx.is_power_of_two() || !ky.is_power_of_two() || !kz.is_power_of_two() {
             return Err(PppmError::FftError(format!(
-                "Mesh dimensions must be powers of 2 for GPU FFT, got ({}, {}, {})",
-                kx, ky, kz
+                "Mesh dimensions must be powers of 2 for GPU FFT, got ({kx}, {ky}, {kz})"
             )));
         }
 
@@ -185,8 +184,7 @@ impl Pppm {
 
         if !kx.is_power_of_two() || !ky.is_power_of_two() || !kz.is_power_of_two() {
             return Err(PppmError::FftError(format!(
-                "Mesh dimensions must be powers of 2 for GPU FFT, got ({}, {}, {})",
-                kx, ky, kz
+                "Mesh dimensions must be powers of 2 for GPU FFT, got ({kx}, {ky}, {kz})"
             )));
         }
 
@@ -366,11 +364,10 @@ impl std::fmt::Display for PppmError {
             PppmError::SizeMismatch { positions, charges } => {
                 write!(
                     f,
-                    "Position count ({}) doesn't match charge count ({})",
-                    positions, charges
+                    "Position count ({positions}) doesn't match charge count ({charges})"
                 )
             }
-            PppmError::FftError(msg) => write!(f, "FFT error: {}", msg),
+            PppmError::FftError(msg) => write!(f, "FFT error: {msg}"),
         }
     }
 }

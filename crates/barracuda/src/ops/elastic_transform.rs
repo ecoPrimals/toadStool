@@ -45,7 +45,7 @@ impl ElasticTransform {
         if shape.len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "elastic_transform",
-                format!("input must be 4D [B, C, H, W], got shape {:?}", shape),
+                format!("input must be 4D [B, C, H, W], got shape {shape:?}"),
             ));
         }
 
@@ -78,14 +78,14 @@ impl ElasticTransform {
         if alpha < 0.0 {
             return Err(BarracudaError::invalid_op(
                 "elastic_transform",
-                format!("alpha must be non-negative, got {}", alpha),
+                format!("alpha must be non-negative, got {alpha}"),
             ));
         }
 
         if sigma <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "elastic_transform",
-                format!("sigma must be positive, got {}", sigma),
+                format!("sigma must be positive, got {sigma}"),
             ));
         }
 

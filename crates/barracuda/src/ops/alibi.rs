@@ -89,10 +89,7 @@ impl AlibiPosition {
         if seq_len_1 != seq_len_2 {
             return Err(BarracudaError::invalid_op(
                 "AlibiPosition",
-                format!(
-                    "Attention matrix must be square, got [{}, {}]",
-                    seq_len_1, seq_len_2
-                ),
+                format!("Attention matrix must be square, got [{seq_len_1}, {seq_len_2}]"),
             ));
         }
 

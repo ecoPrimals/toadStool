@@ -121,12 +121,13 @@ impl MultiWorkloadCompositor {
             });
         }
 
-        // Step 1: Sort requests by priority (highest first)
-        let mut sorted_requests = self.requests.clone();
-        sorted_requests.sort_by(|a, b| b.priority.cmp(&a.priority));
+        // Step 1: Sort by priority using indices (avoids cloning entire requests vec)
+        let mut indices: Vec<usize> = (0..self.requests.len()).collect();
+        indices.sort_by(|&a, &b| self.requests[b].priority.cmp(&self.requests[a].priority));
 
         debug!("📋 Sorted by priority:");
-        for req in &sorted_requests {
+        for &idx in &indices {
+            let req = &self.requests[idx];
             debug!("  - {} (priority: {})", req.name, req.priority);
         }
 
@@ -134,7 +135,8 @@ impl MultiWorkloadCompositor {
         let mut placements = Vec::new();
         let mut conflicts = Vec::new();
 
-        for request in &sorted_requests {
+        for &idx in &indices {
+            let request = &self.requests[idx];
             let evaluation = self.engine.evaluate(request).await?;
 
             let placement = WorkloadPlacement {
@@ -149,7 +151,7 @@ impl MultiWorkloadCompositor {
 
             // Check for conflicts with higher-priority workloads
             if !evaluation.is_feasible {
-                let conflict = self.detect_conflict(request, &placements).await;
+                let conflict = self.detect_conflict(request, &placements);
                 if let Some(c) = conflict {
                     conflicts.push(c);
                 }
@@ -205,7 +207,7 @@ impl MultiWorkloadCompositor {
     }
 
     /// Detect conflict between a failing request and existing placements
-    async fn detect_conflict(
+    fn detect_conflict(
         &self,
         failing_request: &CompositionRequest,
         placements: &[WorkloadPlacement],
@@ -353,7 +355,10 @@ impl CompositionPlan {
             return 0.0;
         }
         let total: f64 = self.placements.iter().map(|p| p.score).sum();
-        total / self.placements.len() as f64
+        let len = self.placements.len();
+        #[allow(clippy::cast_precision_loss)]
+        let result = total / len as f64;
+        result
     }
 }
 
@@ -477,7 +482,11 @@ impl ResourceUtilization {
         if self.cpu_cores_total == 0 {
             0.0
         } else {
-            (self.cpu_cores_used as f64 / self.cpu_cores_total as f64) * 100.0
+            let used = self.cpu_cores_used;
+            let total = self.cpu_cores_total;
+            #[allow(clippy::cast_precision_loss)]
+            let pct = (used as f64 / total as f64) * 100.0;
+            pct
         }
     }
 }

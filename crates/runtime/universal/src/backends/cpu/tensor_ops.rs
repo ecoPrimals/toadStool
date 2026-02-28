@@ -23,8 +23,7 @@ pub(super) fn execute_matmul(workload: Workload) -> Result<WorkloadData, Compute
             // Validate dimensions: A is (m x k), B is (k x n), result is (m x n)
             if a_cols != b_rows {
                 return Err(ComputeError::ExecutionFailed(format!(
-                    "Matrix dimension mismatch: A cols ({}) != B rows ({})",
-                    a_cols, b_rows
+                    "Matrix dimension mismatch: A cols ({a_cols}) != B rows ({b_rows})"
                 )));
             }
 

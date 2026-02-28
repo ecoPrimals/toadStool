@@ -48,8 +48,7 @@ where
     if fa * fb > 0.0 {
         return Err(BarracudaError::InvalidInput {
             message: format!(
-                "f(a) and f(b) must have opposite signs: f({}) = {}, f({}) = {}",
-                a, fa, b, fb
+                "f(a) and f(b) must have opposite signs: f({a}) = {fa}, f({b}) = {fb}"
             ),
         });
     }
@@ -78,8 +77,7 @@ where
         if iter == max_iter - 1 {
             return Err(BarracudaError::ExecutionError {
                 message: format!(
-                    "Bisection failed to converge in {} iterations, interval [{}, {}]",
-                    max_iter, a, b
+                    "Bisection failed to converge in {max_iter} iterations, interval [{a}, {b}]"
                 ),
             });
         }

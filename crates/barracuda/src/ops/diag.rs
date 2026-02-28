@@ -67,7 +67,7 @@ impl Diag {
                 if rows != cols {
                     return Err(BarracudaError::invalid_op(
                         "diag",
-                        format!("Extract mode requires square matrix, got {}x{}", rows, cols),
+                        format!("Extract mode requires square matrix, got {rows}x{cols}"),
                     ));
                 }
             }

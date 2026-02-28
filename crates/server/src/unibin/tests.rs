@@ -132,44 +132,28 @@ fn ensure_biomeos_directory_permissions() {
 fn write_tcp_discovery_file_creates_file() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let temp_path = temp_dir.path().to_string_lossy().to_string();
-    let old_val = std::env::var("XDG_RUNTIME_DIR").ok();
-    std::env::set_var("XDG_RUNTIME_DIR", &temp_path);
-
-    let addr: std::net::SocketAddr = "127.0.0.1:8080".parse().expect("valid addr");
-    let result = write_tcp_discovery_file("test-discovery.txt", &addr);
-
-    if let Some(val) = old_val {
-        std::env::set_var("XDG_RUNTIME_DIR", val);
-    } else {
-        std::env::remove_var("XDG_RUNTIME_DIR");
-    }
-
-    assert!(result.is_ok());
-    let file_path = temp_dir.path().join("test-discovery.txt");
-    let content = std::fs::read_to_string(&file_path).expect("file read");
-    assert_eq!(content, "tcp:127.0.0.1:8080");
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(temp_path.as_str()), || {
+        let addr: std::net::SocketAddr = "127.0.0.1:8080".parse().expect("valid addr");
+        let result = write_tcp_discovery_file("test-discovery.txt", &addr);
+        assert!(result.is_ok());
+        let file_path = temp_dir.path().join("test-discovery.txt");
+        let content = std::fs::read_to_string(&file_path).expect("file read");
+        assert_eq!(content, "tcp:127.0.0.1:8080");
+    });
 }
 
 #[test]
 fn write_tcp_discovery_file_ipv6() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let temp_path = temp_dir.path().to_string_lossy().to_string();
-    let old_val = std::env::var("XDG_RUNTIME_DIR").ok();
-    std::env::set_var("XDG_RUNTIME_DIR", &temp_path);
-
-    let addr: std::net::SocketAddr = "[::1]:9000".parse().expect("valid addr");
-    let result = write_tcp_discovery_file("ipv6-discovery.txt", &addr);
-
-    if let Some(val) = old_val {
-        std::env::set_var("XDG_RUNTIME_DIR", val);
-    } else {
-        std::env::remove_var("XDG_RUNTIME_DIR");
-    }
-
-    assert!(result.is_ok());
-    let file_path = temp_dir.path().join("ipv6-discovery.txt");
-    let content = std::fs::read_to_string(&file_path).expect("file read");
-    assert_eq!(content, "tcp:[::1]:9000");
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(temp_path.as_str()), || {
+        let addr: std::net::SocketAddr = "[::1]:9000".parse().expect("valid addr");
+        let result = write_tcp_discovery_file("ipv6-discovery.txt", &addr);
+        assert!(result.is_ok());
+        let file_path = temp_dir.path().join("ipv6-discovery.txt");
+        let content = std::fs::read_to_string(&file_path).expect("file read");
+        assert_eq!(content, "tcp:[::1]:9000");
+    });
 }
 
 // ── resolve_family_id / resolve_node_id ─────────────────────────────────────
@@ -182,118 +166,71 @@ fn resolve_family_id_override_takes_precedence() {
 
 #[test]
 fn resolve_family_id_default_when_none() {
-    let old_fid = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    let old_fam = std::env::var("TOADSTOOL_FAMILY").ok();
-    let old_biome = std::env::var("BIOMEOS_FAMILY_ID").ok();
-    std::env::remove_var("TOADSTOOL_FAMILY_ID");
-    std::env::remove_var("TOADSTOOL_FAMILY");
-    std::env::remove_var("BIOMEOS_FAMILY_ID");
-
-    let result = resolve_family_id(None);
-    assert_eq!(result, "default");
-
-    if let Some(v) = old_fid {
-        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
-    }
-    if let Some(v) = old_fam {
-        std::env::set_var("TOADSTOOL_FAMILY", v);
-    }
-    if let Some(v) = old_biome {
-        std::env::set_var("BIOMEOS_FAMILY_ID", v);
-    }
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_FAMILY_ID", None::<&str>),
+            ("TOADSTOOL_FAMILY", None::<&str>),
+            ("BIOMEOS_FAMILY_ID", None::<&str>),
+        ],
+        || {
+            let result = resolve_family_id(None);
+            assert_eq!(result, "default");
+        },
+    );
 }
 
 #[test]
 fn resolve_family_id_from_toadstool_family_id_env() {
-    let old = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    std::env::set_var("TOADSTOOL_FAMILY_ID", "env-nat0");
-
-    let result = resolve_family_id(None);
-    assert_eq!(result, "env-nat0");
-
-    if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
-    } else {
-        std::env::remove_var("TOADSTOOL_FAMILY_ID");
-    }
+    temp_env::with_var("TOADSTOOL_FAMILY_ID", Some("env-nat0"), || {
+        let result = resolve_family_id(None);
+        assert_eq!(result, "env-nat0");
+    });
 }
 
 #[test]
 fn resolve_family_id_from_toadstool_family_env() {
-    let old_fid = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    std::env::remove_var("TOADSTOOL_FAMILY_ID");
-    let old_fam = std::env::var("TOADSTOOL_FAMILY").ok();
-    std::env::set_var("TOADSTOOL_FAMILY", "toad-family");
-    let old_biome = std::env::var("BIOMEOS_FAMILY_ID").ok();
-    std::env::remove_var("BIOMEOS_FAMILY_ID");
-
-    let result = resolve_family_id(None);
-    assert_eq!(result, "toad-family");
-
-    if let Some(v) = old_fid {
-        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
-    }
-    if let Some(v) = old_fam {
-        std::env::set_var("TOADSTOOL_FAMILY", v);
-    } else {
-        std::env::remove_var("TOADSTOOL_FAMILY");
-    }
-    if let Some(v) = old_biome {
-        std::env::set_var("BIOMEOS_FAMILY_ID", v);
-    }
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_FAMILY_ID", None::<&str>),
+            ("TOADSTOOL_FAMILY", Some("toad-family")),
+            ("BIOMEOS_FAMILY_ID", None::<&str>),
+        ],
+        || {
+            let result = resolve_family_id(None);
+            assert_eq!(result, "toad-family");
+        },
+    );
 }
 
 #[test]
 fn resolve_family_id_from_biomeos_family_id_env() {
-    let old_fid = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    let old_fam = std::env::var("TOADSTOOL_FAMILY").ok();
-    std::env::remove_var("TOADSTOOL_FAMILY_ID");
-    std::env::remove_var("TOADSTOOL_FAMILY");
-    let old_biome = std::env::var("BIOMEOS_FAMILY_ID").ok();
-    std::env::set_var("BIOMEOS_FAMILY_ID", "biomeos-nat1");
-
-    let result = resolve_family_id(None);
-    assert_eq!(result, "biomeos-nat1");
-
-    if let Some(v) = old_fid {
-        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
-    }
-    if let Some(v) = old_fam {
-        std::env::set_var("TOADSTOOL_FAMILY", v);
-    }
-    if let Some(v) = old_biome {
-        std::env::set_var("BIOMEOS_FAMILY_ID", v);
-    } else {
-        std::env::remove_var("BIOMEOS_FAMILY_ID");
-    }
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_FAMILY_ID", None::<&str>),
+            ("TOADSTOOL_FAMILY", None::<&str>),
+            ("BIOMEOS_FAMILY_ID", Some("biomeos-nat1")),
+        ],
+        || {
+            let result = resolve_family_id(None);
+            assert_eq!(result, "biomeos-nat1");
+        },
+    );
 }
 
 #[test]
 fn resolve_node_id_default_when_unset() {
-    let old = std::env::var("TOADSTOOL_NODE_ID").ok();
-    std::env::remove_var("TOADSTOOL_NODE_ID");
-
-    let result = resolve_node_id();
-    assert_eq!(result, "default");
-
-    if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_NODE_ID", v);
-    }
+    temp_env::with_var("TOADSTOOL_NODE_ID", None::<&str>, || {
+        let result = resolve_node_id();
+        assert_eq!(result, "default");
+    });
 }
 
 #[test]
 fn resolve_node_id_from_env() {
-    let old = std::env::var("TOADSTOOL_NODE_ID").ok();
-    std::env::set_var("TOADSTOOL_NODE_ID", "node-42");
-
-    let result = resolve_node_id();
-    assert_eq!(result, "node-42");
-
-    if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_NODE_ID", v);
-    } else {
-        std::env::remove_var("TOADSTOOL_NODE_ID");
-    }
+    temp_env::with_var("TOADSTOOL_NODE_ID", Some("node-42"), || {
+        let result = resolve_node_id();
+        assert_eq!(result, "node-42");
+    });
 }
 
 #[test]
@@ -331,6 +268,34 @@ fn shutdown_signal_variants_differ() {
     assert_ne!(ShutdownSignal::Sigterm, ShutdownSignal::Error("x"));
 }
 
+// ── run_server_main early exit on config error ────────────────────────────
+
+#[test]
+fn run_server_main_fails_when_socket_path_unavailable() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let file_path = temp_dir.path().join("not_a_dir");
+    std::fs::File::create(&file_path).expect("create file");
+    let path_str = file_path.to_string_lossy().to_string();
+
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SOCKET", None::<&str>),
+            ("PRIMAL_SOCKET", None::<&str>),
+            ("BIOMEOS_SOCKET_PATH", None::<&str>),
+            ("XDG_RUNTIME_DIR", Some(path_str.as_str())),
+            ("TOADSTOOL_STANDALONE", Some("1")),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().expect("runtime");
+            let result = rt.block_on(super::run_server_main(None));
+            assert!(
+                result.is_err(),
+                "run_server_main should fail when socket path unavailable"
+            );
+        },
+    );
+}
+
 // ── get_socket_path (format) ──────────────────────────────────────────────
 
 #[test]
@@ -338,75 +303,48 @@ fn get_socket_path_from_toadstool_socket() {
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let socket_path = temp_dir.path().join("custom.sock");
     let path_str = socket_path.to_string_lossy().to_string();
-    let old = std::env::var("TOADSTOOL_SOCKET").ok();
-    std::env::set_var("TOADSTOOL_SOCKET", &path_str);
-
-    let result = get_socket_path("family1", "node1");
-    if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_SOCKET", v);
-    } else {
-        std::env::remove_var("TOADSTOOL_SOCKET");
-    }
-
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), socket_path);
+    temp_env::with_var("TOADSTOOL_SOCKET", Some(path_str.as_str()), || {
+        let result = get_socket_path("family1", "node1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), socket_path);
+    });
 }
 
 #[test]
 fn get_socket_path_from_primal_socket() {
-    let old = std::env::var("TOADSTOOL_SOCKET").ok();
-    std::env::remove_var("TOADSTOOL_SOCKET");
-    let primal_old = std::env::var("PRIMAL_SOCKET").ok();
-    std::env::set_var("PRIMAL_SOCKET", "/run/primal");
-    let biome_old = std::env::var("BIOMEOS_SOCKET_PATH").ok();
-    std::env::remove_var("BIOMEOS_SOCKET_PATH");
-
-    let result = get_socket_path("nat0", "node1");
-    if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_SOCKET", v);
-    }
-    if let Some(v) = primal_old {
-        std::env::set_var("PRIMAL_SOCKET", v);
-    } else {
-        std::env::remove_var("PRIMAL_SOCKET");
-    }
-    if let Some(v) = biome_old {
-        std::env::set_var("BIOMEOS_SOCKET_PATH", v);
-    }
-
-    assert!(result.is_ok());
-    assert_eq!(
-        result.unwrap(),
-        std::path::PathBuf::from("/run/primal-nat0")
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SOCKET", None::<&str>),
+            ("PRIMAL_SOCKET", Some("/run/primal")),
+            ("BIOMEOS_SOCKET_PATH", None::<&str>),
+        ],
+        || {
+            let result = get_socket_path("nat0", "node1");
+            assert!(result.is_ok());
+            assert_eq!(
+                result.unwrap(),
+                std::path::PathBuf::from("/run/primal-nat0")
+            );
+        },
     );
 }
 
 #[test]
 fn get_socket_path_from_biomeos_socket_path() {
-    let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
-    let old_primal = std::env::var("PRIMAL_SOCKET").ok();
-    std::env::remove_var("TOADSTOOL_SOCKET");
-    std::env::remove_var("PRIMAL_SOCKET");
-    let biome_old = std::env::var("BIOMEOS_SOCKET_PATH").ok();
-    std::env::set_var("BIOMEOS_SOCKET_PATH", "/run/biomeos/toadstool.sock");
-
-    let result = get_socket_path("default", "node1");
-    if let Some(v) = old_toad {
-        std::env::set_var("TOADSTOOL_SOCKET", v);
-    }
-    if let Some(v) = old_primal {
-        std::env::set_var("PRIMAL_SOCKET", v);
-    }
-    if let Some(v) = biome_old {
-        std::env::set_var("BIOMEOS_SOCKET_PATH", v);
-    } else {
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-    }
-
-    assert!(result.is_ok());
-    assert_eq!(
-        result.unwrap(),
-        std::path::PathBuf::from("/run/biomeos/toadstool.sock")
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SOCKET", None::<&str>),
+            ("PRIMAL_SOCKET", None::<&str>),
+            ("BIOMEOS_SOCKET_PATH", Some("/run/biomeos/toadstool.sock")),
+        ],
+        || {
+            let result = get_socket_path("default", "node1");
+            assert!(result.is_ok());
+            assert_eq!(
+                result.unwrap(),
+                std::path::PathBuf::from("/run/biomeos/toadstool.sock")
+            );
+        },
     );
 }
 
@@ -414,34 +352,20 @@ fn get_socket_path_from_biomeos_socket_path() {
 fn get_socket_path_xdg_runtime_dir_fallback() {
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let xdg_path = temp_dir.path().to_string_lossy().to_string();
-    let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
-    let old_primal = std::env::var("PRIMAL_SOCKET").ok();
-    let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
-    let old_xdg = std::env::var("XDG_RUNTIME_DIR").ok();
-    std::env::remove_var("TOADSTOOL_SOCKET");
-    std::env::remove_var("PRIMAL_SOCKET");
-    std::env::remove_var("BIOMEOS_SOCKET_PATH");
-    std::env::set_var("XDG_RUNTIME_DIR", &xdg_path);
-
-    let result = get_socket_path("default", "node1");
-    if let Some(v) = old_toad {
-        std::env::set_var("TOADSTOOL_SOCKET", v);
-    }
-    if let Some(v) = old_primal {
-        std::env::set_var("PRIMAL_SOCKET", v);
-    }
-    if let Some(v) = old_biome {
-        std::env::set_var("BIOMEOS_SOCKET_PATH", v);
-    }
-    if let Some(v) = old_xdg {
-        std::env::set_var("XDG_RUNTIME_DIR", v);
-    } else {
-        std::env::remove_var("XDG_RUNTIME_DIR");
-    }
-
-    assert!(result.is_ok());
-    let path = result.unwrap();
-    assert!(path.ends_with("biomeos/toadstool.sock"));
-    // biomeos dir is created by ensure_biomeos_directory; socket file doesn't exist until server binds
-    assert!(path.parent().unwrap().exists());
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SOCKET", None::<&str>),
+            ("PRIMAL_SOCKET", None::<&str>),
+            ("BIOMEOS_SOCKET_PATH", None::<&str>),
+            ("XDG_RUNTIME_DIR", Some(xdg_path.as_str())),
+        ],
+        || {
+            let result = get_socket_path("default", "node1");
+            assert!(result.is_ok());
+            let path = result.unwrap();
+            assert!(path.ends_with("biomeos/toadstool.sock"));
+            // biomeos dir is created by ensure_biomeos_directory; socket file doesn't exist until server binds
+            assert!(path.parent().unwrap().exists());
+        },
+    );
 }

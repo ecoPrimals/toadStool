@@ -116,6 +116,7 @@ where
     }
 
     /// Start batch processing task
+    #[allow(clippy::unused_async)] // Spawns background task; async for API consistency
     pub async fn start_batch_task(&self) {
         let pending = Arc::clone(&self.pending);
         let processor = Arc::clone(&self.processor);

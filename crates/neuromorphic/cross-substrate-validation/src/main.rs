@@ -35,14 +35,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stats = universal.stats();
 
     println!("   Universal Runtime:");
-    println!("{}", stats);
+    println!("{stats}");
 
     // Discover Akida devices
     let akida_manager = DeviceManager::discover()?;
     println!("   Akida devices: {}", akida_manager.device_count());
     if akida_manager.device_count() > 0 {
         for (i, info) in akida_manager.devices().iter().enumerate() {
-            println!("     Device {}: {:?}", i, info);
+            println!("     Device {i}: {info:?}");
         }
     }
     println!();
@@ -53,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let workload_sizes = vec![100, 1_000, 10_000, 100_000];
 
     for &size in &workload_sizes {
-        println!("   Testing with {} elements...\n", size);
+        println!("   Testing with {size} elements...\n");
 
         // Create test data (simple ReLU operation)
         let input: Vec<f32> = (0..size).map(|i| i as f32 - (size / 2) as f32).collect();
@@ -264,8 +264,8 @@ fn validate_output(expected: &[f32], actual: &[f32]) -> String {
     if max_diff < 1e-5 {
         "✅ Perfect".to_string()
     } else if max_diff < 1e-3 {
-        format!("✅ Good ({:.6})", max_diff)
+        format!("✅ Good ({max_diff:.6})")
     } else {
-        format!("⚠️  {:.6}", max_diff)
+        format!("⚠️  {max_diff:.6}")
     }
 }

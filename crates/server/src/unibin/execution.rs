@@ -262,6 +262,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_executor_standalone_mode() {
+        // Async tests: keep manual save/restore (temp_env + block_on incompatible with tokio::test)
         let old = std::env::var("TOADSTOOL_STANDALONE").ok();
         std::env::set_var("TOADSTOOL_STANDALONE", "1");
 
@@ -315,19 +316,11 @@ mod tests {
 
     #[test]
     fn write_tcp_discovery_file_fails_on_readonly_dir() {
-        let old = std::env::var("XDG_RUNTIME_DIR").ok();
-        std::env::set_var("XDG_RUNTIME_DIR", "/proc/self");
-
-        let addr: std::net::SocketAddr = "127.0.0.1:0".parse().expect("valid addr");
-        let result = write_tcp_discovery_file("toadstool-test-readonly", &addr);
-
-        if let Some(v) = old {
-            std::env::set_var("XDG_RUNTIME_DIR", v);
-        } else {
-            std::env::remove_var("XDG_RUNTIME_DIR");
-        }
-
-        assert!(result.is_err(), "writing to /proc/self should fail");
+        temp_env::with_var("XDG_RUNTIME_DIR", Some("/proc/self"), || {
+            let addr: std::net::SocketAddr = "127.0.0.1:0".parse().expect("valid addr");
+            let result = write_tcp_discovery_file("toadstool-test-readonly", &addr);
+            assert!(result.is_err(), "writing to /proc/self should fail");
+        });
     }
 
     #[tokio::test]
@@ -405,48 +398,36 @@ mod tests {
 
     #[test]
     fn write_tcp_discovery_file_xdg_runtime() {
-        let old = std::env::var("XDG_RUNTIME_DIR").ok();
-        std::env::set_var(
+        let temp_dir = std::env::temp_dir();
+        temp_env::with_var(
             "XDG_RUNTIME_DIR",
-            std::env::temp_dir().to_string_lossy().as_ref(),
+            Some(temp_dir.to_string_lossy().as_ref()),
+            || {
+                let addr: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
+                let result = write_tcp_discovery_file("test-toadstool-port", &addr);
+                assert!(result.is_ok());
+                let path = temp_dir.join("test-toadstool-port");
+                if path.exists() {
+                    let content = std::fs::read_to_string(&path).unwrap();
+                    assert_eq!(content, "tcp:127.0.0.1:12345");
+                    let _ = std::fs::remove_file(&path);
+                }
+            },
         );
-
-        let addr: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
-        let result = write_tcp_discovery_file("test-toadstool-port", &addr);
-
-        if let Some(v) = old {
-            std::env::set_var("XDG_RUNTIME_DIR", v);
-        } else {
-            std::env::remove_var("XDG_RUNTIME_DIR");
-        }
-
-        assert!(result.is_ok());
-        let path = std::env::temp_dir().join("test-toadstool-port");
-        if path.exists() {
-            let content = std::fs::read_to_string(&path).unwrap();
-            assert_eq!(content, "tcp:127.0.0.1:12345");
-            let _ = std::fs::remove_file(&path);
-        }
     }
 
     #[test]
     fn write_tcp_discovery_file_fallback_tmp() {
-        let old = std::env::var("XDG_RUNTIME_DIR").ok();
-        std::env::remove_var("XDG_RUNTIME_DIR");
-
-        let addr: std::net::SocketAddr = "127.0.0.1:0".parse().unwrap();
-        let result = write_tcp_discovery_file("toadstool-test-fallback", &addr);
-
-        if let Some(v) = old {
-            std::env::set_var("XDG_RUNTIME_DIR", v);
-        }
-
-        assert!(result.is_ok());
-        let path = std::path::PathBuf::from("/tmp").join("toadstool-test-fallback");
-        if path.exists() {
-            let content = std::fs::read_to_string(&path).unwrap();
-            assert!(content.starts_with("tcp:"));
-            let _ = std::fs::remove_file(&path);
-        }
+        temp_env::with_var("XDG_RUNTIME_DIR", None::<&str>, || {
+            let addr: std::net::SocketAddr = "127.0.0.1:0".parse().unwrap();
+            let result = write_tcp_discovery_file("toadstool-test-fallback", &addr);
+            assert!(result.is_ok());
+            let path = std::path::PathBuf::from("/tmp").join("toadstool-test-fallback");
+            if path.exists() {
+                let content = std::fs::read_to_string(&path).unwrap();
+                assert!(content.starts_with("tcp:"));
+                let _ = std::fs::remove_file(&path);
+            }
+        });
     }
 }

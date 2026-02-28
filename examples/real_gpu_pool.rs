@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             scheduler.register_resource(Arc::new(cpu_resource)).await;
         }
         Err(e) => {
-            eprintln!("❌ Failed to initialize CPU resource: {}", e);
+            eprintln!("❌ Failed to initialize CPU resource: {e}");
             return Err(e.into());
         }
     }
@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let resources = scheduler.list_resources().await;
     println!("📋 Resource Pool Summary:");
     for resource in &resources {
-        println!("   • {}", resource);
+        println!("   • {resource}");
     }
     println!();
 
@@ -152,19 +152,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!();
                         }
                         Err(e) => {
-                            println!("   ❌ Execution failed: {}", e);
+                            println!("   ❌ Execution failed: {e}");
                             println!();
                         }
                     }
                 }
                 Err(e) => {
-                    println!("   ❌ Context creation failed: {}", e);
+                    println!("   ❌ Context creation failed: {e}");
                     println!();
                 }
             }
         }
         Err(e) => {
-            println!("   ❌ No suitable resource: {}", e);
+            println!("   ❌ No suitable resource: {e}");
             println!();
         }
     }
@@ -227,19 +227,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!();
                         }
                         Err(e) => {
-                            println!("   ❌ Execution failed: {}", e);
+                            println!("   ❌ Execution failed: {e}");
                             println!();
                         }
                     }
                 }
                 Err(e) => {
-                    println!("   ❌ Context creation failed: {}", e);
+                    println!("   ❌ Context creation failed: {e}");
                     println!();
                 }
             }
         }
         Err(e) => {
-            println!("   ❌ No suitable resource: {}", e);
+            println!("   ❌ No suitable resource: {e}");
             println!();
         }
     }
@@ -302,19 +302,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!();
                         }
                         Err(e) => {
-                            println!("   ❌ Execution failed: {}", e);
+                            println!("   ❌ Execution failed: {e}");
                             println!();
                         }
                     }
                 }
                 Err(e) => {
-                    println!("   ❌ Context creation failed: {}", e);
+                    println!("   ❌ Context creation failed: {e}");
                     println!();
                 }
             }
         }
         Err(e) => {
-            println!("   ❌ No suitable resource: {}", e);
+            println!("   ❌ No suitable resource: {e}");
             println!();
         }
     }

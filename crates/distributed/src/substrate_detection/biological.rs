@@ -14,6 +14,7 @@ const BIO_TOOLS: &[(&str, &str)] = &[
 ];
 
 /// Detect biological computing platforms.
+#[allow(clippy::unused_async)] // Sync probe; async for API consistency with SubstrateDetector
 pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let mut platforms = Vec::new();
 

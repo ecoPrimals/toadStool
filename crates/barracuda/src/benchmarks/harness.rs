@@ -21,7 +21,7 @@ impl Harness {
         F: FnMut() -> Fut,
         Fut: std::future::Future<Output = Result<()>>,
     {
-        println!("Running: {}", name);
+        println!("Running: {name}");
 
         // Warmup
         for _ in 0..self.config.warmup_iterations {

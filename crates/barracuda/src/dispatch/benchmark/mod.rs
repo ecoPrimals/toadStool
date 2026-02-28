@@ -262,7 +262,7 @@ impl BenchmarkResult {
         );
 
         if let Some(gpu) = &self.gpu_name {
-            lines.push(format!("GPU: {}", gpu));
+            lines.push(format!("GPU: {gpu}"));
         } else {
             lines.push("GPU: Not available".to_string());
         }

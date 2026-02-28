@@ -116,5 +116,6 @@ gpu-discovery = ["wgpu"]
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = "3.8"
+temp-env = "0.3"
 toadstool-testing = { path = "../testing" }
 proptest = { workspace = true }

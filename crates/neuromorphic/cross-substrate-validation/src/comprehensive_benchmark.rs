@@ -325,7 +325,7 @@ pub fn print_results_summary(results: &[BenchmarkResult]) {
             continue;
         }
 
-        println!("\n━━━ {:?} Operations ━━━\n", category);
+        println!("\n━━━ {category:?} Operations ━━━\n");
         println!("   ┌────────────────────────────────┬──────────┬──────────┬──────────┬──────────┬────────────┬──────────┐");
         println!("   │ Workload                       │ CPU (µs) │ AMD (µs) │ NVIDIA   │ NPU (µs) │ Winner     │ Speedup  │");
         println!("   ├────────────────────────────────┼──────────┼──────────┼──────────┼──────────┼────────────┼──────────┤");
@@ -383,20 +383,20 @@ pub fn print_results_summary(results: &[BenchmarkResult]) {
     let max_speedup = results.iter().map(|r| r.speedup).fold(0.0f64, f64::max);
 
     println!("\n   Speedup Statistics:");
-    println!("     Average: {:.2}x", avg_speedup);
-    println!("     Maximum: {:.2}x", max_speedup);
+    println!("     Average: {avg_speedup:.2}x");
+    println!("     Maximum: {max_speedup:.2}x");
 }
 
 fn format_time(time: Option<f64>) -> String {
     match time {
-        Some(t) => format!("{:8.1}", t),
+        Some(t) => format!("{t:8.1}"),
         None => "    -   ".to_string(),
     }
 }
 
 fn truncate(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
-        format!("{:width$}", s, width = max_len)
+        format!("{s:max_len$}")
     } else {
         format!("{}...", &s[..max_len - 3])
     }

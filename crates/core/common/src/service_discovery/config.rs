@@ -36,6 +36,7 @@ pub struct ConfigFile {
 }
 
 /// Default version when not specified in config.
+#[must_use]
 pub fn default_version() -> String {
     "unknown".to_string()
 }

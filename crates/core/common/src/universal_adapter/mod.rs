@@ -95,6 +95,10 @@ impl UniversalAdapter {
     }
 
     /// Create adapter with custom discovery sources
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] if initial discovery scan fails.
     pub async fn with_sources(sources: Vec<Box<dyn DiscoverySource>>) -> ToadStoolResult<Self> {
         let discovery = Arc::new(DiscoveryEngine::new(sources)?);
         let registry = Arc::new(RwLock::new(ProviderRegistry::new()));
@@ -114,6 +118,10 @@ impl UniversalAdapter {
     /// Discover available capability providers
     ///
     /// Scans all discovery sources and registers found providers
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] if discovery fails or provider registration fails.
     pub async fn discover_providers(&self) -> ToadStoolResult<usize> {
         let providers = self.discovery.discover_all().await?;
 
@@ -147,6 +155,10 @@ impl UniversalAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] if no provider is found and graceful degradation fails.
     pub async fn request_capability(
         &self,
         capability: CapabilityType,
@@ -159,16 +171,24 @@ impl UniversalAdapter {
         }
 
         // No provider found - try graceful degradation
-        self.degradation.handle_missing_capability(capability).await
+        self.degradation.handle_missing_capability(capability)
     }
 
     /// Get all available capabilities (for introspection)
+    ///
+    /// # Errors
+    ///
+    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub async fn list_available_capabilities(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         let registry = self.registry.read().await;
         Ok(registry.list_capabilities())
     }
 
     /// Refresh discovery (re-scan for new providers)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] if discovery or registration fails (see [`discover_providers`]).
     pub async fn refresh(&self) -> ToadStoolResult<usize> {
         self.discover_providers().await
     }

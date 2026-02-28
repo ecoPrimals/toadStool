@@ -307,7 +307,7 @@ mod tests {
             .await
             .unwrap();
 
-        let mel_spec = MelScale::new(spectrogram, 100, 257, 80, 16000.0, 0.0, 8000.0)
+        let mel_spec = MelScale::new(spectrogram, 100, 257, 80, 16_000.0, 0.0, 8000.0)
             .unwrap()
             .execute()
             .unwrap();

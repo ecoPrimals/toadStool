@@ -38,8 +38,7 @@ impl BiomeExecutor {
 
             if &actual_checksum != expected {
                 return Err(crate::CliError::Other(format!(
-                    "WASM module checksum mismatch: expected {}, got {}",
-                    expected, actual_checksum
+                    "WASM module checksum mismatch: expected {expected}, got {actual_checksum}"
                 )));
             }
             info!("✅ WASM module checksum verified");
@@ -75,7 +74,7 @@ impl BiomeExecutor {
             let _output = executor
                 .load_and_execute(&source, entry_point, args)
                 .await
-                .map_err(|e| crate::CliError::Other(format!("WASM execution failed: {}", e)))?;
+                .map_err(|e| crate::CliError::Other(format!("WASM execution failed: {e}")))?;
 
             info!("✅ WASM module execution completed");
             Ok(())

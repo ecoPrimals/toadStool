@@ -48,6 +48,11 @@ impl ResourceOptimizer {
         }
     }
 
+    /// Analyze graph and suggest optimization opportunities.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OptimizationError`] if resource estimation fails or system capability query fails.
     pub async fn suggest_optimizations(
         &self,
         graph: &ExecutionGraph,
@@ -118,6 +123,7 @@ impl ResourceOptimizer {
     }
 
     #[cfg(feature = "gpu-discovery")]
+    #[allow(clippy::unused_async)] // Sync wgpu enumerate; async for API consistency with fallback
     async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -146,11 +152,13 @@ impl ResourceOptimizer {
                 gpu_types.push(info.name.clone());
             }
         }
-        let available_memory = (total_memory as f64 * 0.8) as u64;
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+        let available_memory = (total_memory as f64 * 0.8) as u64; // 80% of total, truncation acceptable
         (total_memory, available_memory, gpu_count, gpu_types)
     }
 
     #[cfg(not(feature = "gpu-discovery"))]
+    #[allow(clippy::unused_async)] // Matches gpu-discovery variant; sync fallback
     async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
         (0, 0, 0, Vec::new())
     }

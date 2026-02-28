@@ -153,7 +153,7 @@ impl FheOr {
 
         let params = [
             self.degree,
-            (self.modulus & 0xFFFFFFFF) as u32,
+            (self.modulus & 0xFFFF_FFFF) as u32,
             (self.modulus >> 32) as u32,
             0u32,
         ];

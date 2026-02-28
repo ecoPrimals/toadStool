@@ -37,7 +37,7 @@ impl MdnsDiscoveryService {
     /// Create with custom configuration
     pub fn with_config(config: DiscoveryConfig) -> ToadStoolResult<Self> {
         let daemon = ServiceDaemon::new()
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to create mDNS daemon: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to create mDNS daemon: {e}")))?;
 
         Ok(Self {
             daemon,
@@ -81,10 +81,10 @@ impl MdnsDiscoveryService {
             network.port.unwrap_or(0),
             Some(properties),
         )
-        .map_err(|e| ToadStoolError::runtime(format!("Failed to create service info: {}", e)))?;
+        .map_err(|e| ToadStoolError::runtime(format!("Failed to create service info: {e}")))?;
 
         self.daemon.register(service_info).map_err(|e| {
-            ToadStoolError::runtime(format!("Failed to register mDNS service: {}", e))
+            ToadStoolError::runtime(format!("Failed to register mDNS service: {e}"))
         })?;
 
         info!(
@@ -104,9 +104,10 @@ impl MdnsDiscoveryService {
 
     /// Discover all services
     pub async fn discover_all(&self, timeout: Duration) -> ToadStoolResult<Vec<DiscoveredService>> {
-        let receiver = self.daemon.browse(&self.service_type).map_err(|e| {
-            ToadStoolError::runtime(format!("Failed to browse mDNS services: {}", e))
-        })?;
+        let receiver = self
+            .daemon
+            .browse(&self.service_type)
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to browse mDNS services: {e}")))?;
 
         let mut discovered = Vec::new();
         let deadline = tokio::time::Instant::now() + timeout;
@@ -178,9 +179,10 @@ impl MdnsDiscoveryService {
     /// Shutdown the mDNS service
     pub fn shutdown(self) -> ToadStoolResult<()> {
         // mdns-sd 0.10 shutdown() returns Receiver, we just drop it
-        let _receiver = self.daemon.shutdown().map_err(|e| {
-            ToadStoolError::runtime(format!("Failed to shutdown mDNS daemon: {}", e))
-        })?;
+        let _receiver = self
+            .daemon
+            .shutdown()
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to shutdown mDNS daemon: {e}")))?;
         Ok(())
     }
 }

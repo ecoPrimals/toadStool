@@ -216,8 +216,19 @@ async fn test_node_heartbeat_monitoring() {
 
     match heartbeat_result {
         Ok(()) => {
-            // Wait for a few heartbeats
-            tokio::time::sleep(Duration::from_millis(500)).await;
+            // Wait for heartbeats via event-driven poll (no sleep)
+            let heartbeat_ok = tokio::time::timeout(Duration::from_secs(2), async {
+                loop {
+                    if let Ok(node) = coordinator.get_local_node_info().await {
+                        if node.status == NodeStatus::Active {
+                            break;
+                        }
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await;
+            assert!(heartbeat_ok.is_ok(), "Node should be active within timeout");
 
             // Check node is still active
             let local_node = coordinator.get_local_node_info().await.unwrap();
@@ -408,8 +419,8 @@ async fn test_distributed_state_consistency() {
     // Get cluster state
     let state1 = coordinator.get_cluster_state().await;
 
-    // Wait briefly
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Yield to allow any background updates
+    tokio::task::yield_now().await;
 
     // Get cluster state again
     let state2 = coordinator.get_cluster_state().await;

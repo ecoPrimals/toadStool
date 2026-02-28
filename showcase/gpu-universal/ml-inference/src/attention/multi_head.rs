@@ -68,9 +68,7 @@ impl MultiHeadAttention {
     ) -> Result<Self> {
         anyhow::ensure!(
             d_model.is_multiple_of(num_heads),
-            "d_model ({}) must be divisible by num_heads ({})",
-            d_model,
-            num_heads
+            "d_model ({d_model}) must be divisible by num_heads ({num_heads})"
         );
 
         let d_k = d_model / num_heads;

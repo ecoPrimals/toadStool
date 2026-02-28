@@ -65,6 +65,10 @@ pub enum ShutdownSignal {
 }
 
 /// Run ToadStool in server/daemon mode
+///
+/// # Errors
+///
+/// Returns [`ServerError`] if socket path resolution, executor creation, or server startup fails.
 pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), ServerError> {
     info!(
         "🍄 ToadStool Universal Compute Server v{}",
@@ -101,13 +105,15 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
 
     let error_count = Arc::new(AtomicU64::new(0));
 
+    // Pass &version to server (borrow), move version to handler
     let server = ToadStoolTarpcServer::new(
-        version.clone(),
+        version.as_str(),
         Arc::clone(&executor),
         Some(Arc::clone(&error_count)),
     );
 
     info!("🌍 Attempting registration with Songbird discovery service...");
+    #[allow(deprecated)]
     match toadstool::ipc_helpers::register_with_songbird().await {
         Ok(()) => {
             info!("✅ Successfully registered with Songbird!");
@@ -123,7 +129,7 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
     let jsonrpc_handler = Arc::new(JsonRpcHandler::new(
         Arc::clone(&executor),
-        version.clone(),
+        version,
         Some(Arc::clone(&error_count)),
     ));
 

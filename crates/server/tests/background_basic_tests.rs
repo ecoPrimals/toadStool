@@ -79,10 +79,10 @@ async fn test_multiple_background_tasks() {
 }
 
 /// Test 4: Task cancellation via abort
-#[tokio::test(start_paused = true)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_background_task() {
     let handle = tokio::spawn(async {
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        std::future::pending::<()>().await;
     });
     handle.abort();
     let result = handle.await;
@@ -90,12 +90,10 @@ async fn test_cancel_background_task() {
 }
 
 /// Test 5: Timeout on slow task
-#[tokio::test(start_paused = true)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_background_task_timeout() {
-    let result = tokio::time::timeout(Duration::from_millis(50), async {
-        tokio::time::sleep(Duration::from_secs(1)).await
-    })
-    .await;
+    let result =
+        tokio::time::timeout(Duration::from_millis(50), std::future::pending::<()>()).await;
     assert!(result.is_err());
 }
 

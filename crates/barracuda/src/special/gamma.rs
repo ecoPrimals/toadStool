@@ -36,15 +36,15 @@ use crate::error::{BarracudaError, Result};
 const LANCZOS_G: f64 = 7.0;
 #[allow(clippy::excessive_precision)]
 const LANCZOS_COEFFS: [f64; 9] = [
-    0.99999999999980993,
-    676.5203681218851,
-    -1259.1392167224028,
-    771.32342877765313,
-    -176.61502916214059,
-    12.507343278686905,
-    -0.13857109526572012,
-    9.9843695780195716e-6,
-    1.5056327351493116e-7,
+    0.999_999_999_999_809_93,
+    676.520_368_121_885_1,
+    -1_259.139_216_722_402_8,
+    771.323_428_777_653_13,
+    -176.615_029_162_140_59,
+    12.507_343_278_686_905,
+    -0.138_571_095_265_720_12,
+    9.984_369_578_019_571_6e-6,
+    1.505_632_735_149_311_6e-7,
 ];
 
 /// Natural logarithm of the gamma function: ln(Γ(x))
@@ -73,7 +73,7 @@ const LANCZOS_COEFFS: [f64; 9] = [
 pub fn ln_gamma(x: f64) -> Result<f64> {
     if x <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("ln_gamma requires x > 0, got {}", x),
+            message: format!("ln_gamma requires x > 0, got {x}"),
         });
     }
 
@@ -113,7 +113,7 @@ pub fn ln_gamma(x: f64) -> Result<f64> {
 pub fn gamma(x: f64) -> Result<f64> {
     if x <= 0.0 && x.fract() == 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("gamma is undefined for non-positive integers, got {}", x),
+            message: format!("gamma is undefined for non-positive integers, got {x}"),
         });
     }
 
@@ -146,12 +146,12 @@ pub const WGSL_INCOMPLETE_GAMMA_F64: &str =
 pub fn lower_incomplete_gamma(a: f64, x: f64) -> Result<(f64, f64)> {
     if a <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("lower_incomplete_gamma requires a > 0, got {}", a),
+            message: format!("lower_incomplete_gamma requires a > 0, got {a}"),
         });
     }
     if x < 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("lower_incomplete_gamma requires x >= 0, got {}", x),
+            message: format!("lower_incomplete_gamma requires x >= 0, got {x}"),
         });
     }
 
@@ -216,12 +216,12 @@ pub const WGSL_REGULARIZED_GAMMA_F64: &str =
 pub fn regularized_gamma_p(a: f64, x: f64) -> Result<f64> {
     if a <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("regularized_gamma_p requires a > 0, got {}", a),
+            message: format!("regularized_gamma_p requires a > 0, got {a}"),
         });
     }
     if x < 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("regularized_gamma_p requires x >= 0, got {}", x),
+            message: format!("regularized_gamma_p requires x >= 0, got {x}"),
         });
     }
 
@@ -350,7 +350,7 @@ fn gamma_cf(a: f64, x: f64, gln: f64) -> Result<f64> {
 pub fn digamma(x: f64) -> Result<f64> {
     if x <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("digamma requires x > 0, got {}", x),
+            message: format!("digamma requires x > 0, got {x}"),
         });
     }
 
@@ -419,7 +419,7 @@ pub fn digamma(x: f64) -> Result<f64> {
 pub fn beta(a: f64, b: f64) -> Result<f64> {
     if a <= 0.0 || b <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("beta requires a > 0 and b > 0, got a={}, b={}", a, b),
+            message: format!("beta requires a > 0 and b > 0, got a={a}, b={b}"),
         });
     }
 
@@ -451,7 +451,7 @@ pub const WGSL_LN_BETA_F64: &str = include_str!("../shaders/special/ln_beta_f64.
 pub fn ln_beta(a: f64, b: f64) -> Result<f64> {
     if a <= 0.0 || b <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("ln_beta requires a > 0 and b > 0, got a={}, b={}", a, b),
+            message: format!("ln_beta requires a > 0 and b > 0, got a={a}, b={b}"),
         });
     }
 

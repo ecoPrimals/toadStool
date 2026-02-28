@@ -138,6 +138,7 @@ impl DaemonServer {
     }
 
     /// Graceful shutdown
+    #[allow(clippy::unused_async)] // Shutdown hook; async for future extension
     async fn shutdown(&self) -> Result<()> {
         info!("🧹 Performing graceful shutdown...");
 

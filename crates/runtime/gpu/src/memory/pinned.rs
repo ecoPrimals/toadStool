@@ -69,10 +69,9 @@ impl PinnedMemory {
         let layout = std::alloc::Layout::from_size_align(size, PINNED_ALIGNMENT)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {}", e)))?;
 
-        // SAFETY: Raw alloc is necessary because Vec/Box don't support 64-byte DMA alignment.
-        // Preconditions: (1) layout valid (from_size_align succeeded, size>0, align=64 power-of-two);
-        // (2) alloc returns ptr valid for layout.size() bytes, or null on OOM.
-        // Postconditions: ptr is used for dealloc with same layout in Drop; size stored for slice bounds.
+        // SAFETY: Layout is valid (from_size_align succeeded, size>0, align=64 power-of-two).
+        // alloc returns a pointer valid for layout.size() bytes, or null on OOM. The pointer is
+        // used for dealloc with the same layout in Drop; size is stored for slice bounds.
         let raw = unsafe { std::alloc::alloc(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| {
             ToadStoolError::runtime(format!("Failed to allocate {size} bytes of pinned memory"))
@@ -96,10 +95,9 @@ impl PinnedMemory {
     /// non-zero by `new()` and unchanged for the lifetime of the allocation.
     pub fn as_slice(&self) -> &[u8] {
         debug_assert!(self.size > 0, "PinnedMemory size must be > 0 (guaranteed by new())");
-        // SAFETY: from_raw_parts is necessary; no safe ptr→slice for raw allocation.
-        // (1) ptr from alloc(layout) in new(), valid for layout.size() = self.size bytes;
-        // (2) u8 has align 1; (3) lifetime tied to &self; (4) no concurrent mutation
-        // (Rust borrow rules); (5) size validated non-zero in new(), unchanged since.
+        // SAFETY: ptr from alloc(layout) in new(), valid for self.size bytes. u8 has align 1.
+        // Lifetime tied to &self; no concurrent mutation (Rust borrow rules). Size validated
+        // non-zero in new(), unchanged since.
         unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.size) }
     }
 
@@ -113,10 +111,8 @@ impl PinnedMemory {
     /// non-zero by `new()` and unchanged for the lifetime of the allocation.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         debug_assert!(self.size > 0, "PinnedMemory size must be > 0 (guaranteed by new())");
-        // SAFETY: from_raw_parts_mut is necessary; no safe ptr→slice for raw allocation.
-        // (1) ptr from alloc(layout) in new(), valid for self.size bytes; (2) &mut self
-        // gives exclusive access, no aliasing; (3) size unchanged since allocation;
-        // (4) size validated non-zero in new().
+        // SAFETY: ptr from alloc(layout) in new(), valid for self.size bytes. &mut self gives
+        // exclusive access, no aliasing. Size unchanged since allocation; validated non-zero in new().
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.size) }
     }
 
@@ -149,10 +145,8 @@ impl Drop for PinnedMemory {
             return;
         };
 
-        // SAFETY: dealloc must match alloc in new() for correctness.
-        // (1) ptr from alloc(layout) in new(); (2) layout matches (same size, PINNED_ALIGNMENT);
-        // (3) Drop runs at most once; (4) no references exist (self is being dropped);
-        // (5) ptr/size unchanged since allocation.
+        // SAFETY: ptr from alloc(layout) in new(); layout matches (same size, PINNED_ALIGNMENT).
+        // Drop runs at most once; no references exist (self is being dropped). ptr/size unchanged.
         unsafe { std::alloc::dealloc(self.ptr.as_ptr(), layout) }
 
         tracing::debug!("Freed {} bytes of pinned memory", self.size);

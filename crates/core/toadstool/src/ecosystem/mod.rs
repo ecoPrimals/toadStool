@@ -151,7 +151,7 @@ impl EcosystemCoordinator {
 
         let services = self.discovery.discover_all_required(&self.config).await?;
 
-        // Register all discovered services
+        // Register all discovered services (must clone: we return services and register needs ownership)
         for service in &services {
             if let Err(e) = self.management.register_service(service.clone()).await {
                 error!("Failed to register service {}: {}", service.id, e);
@@ -186,38 +186,36 @@ impl EcosystemCoordinator {
         info!("🔗 Integrating with {} services", services.len());
 
         for service in services {
-            let service_id = service.id.clone();
-
-            // Register service
+            // Register service first (clone needed: we use original for create_channel)
             if let Err(e) = self.management.register_service(service.clone()).await {
-                error!("Failed to register service {}: {}", service_id, e);
+                error!("Failed to register service {}: {}", service.id, e);
                 continue;
             }
 
-            // Create communication channel
+            // Create communication channel (uses original service by ref)
             match self.communication.create_channel(&service).await {
                 Ok(channel) => {
-                    info!("✅ Created channel for service: {}", service_id);
+                    info!("✅ Created channel for service: {}", service.id);
 
                     // Test connection
                     match self.communication.check_health(&channel).await {
                         Ok(()) => {
-                            self.management.mark_connected(&service_id).await;
-                            info!("✅ Service connected: {}", service_id);
+                            self.management.mark_connected(&service.id).await;
+                            info!("✅ Service connected: {}", service.id);
                         }
                         Err(e) => {
                             self.management
-                                .mark_failed(&service_id, format!("Health check failed: {e}"))
+                                .mark_failed(&service.id, format!("Health check failed: {e}"))
                                 .await;
-                            error!("❌ Health check failed for {}: {}", service_id, e);
+                            error!("❌ Health check failed for {}: {}", service.id, e);
                         }
                     }
                 }
                 Err(e) => {
                     self.management
-                        .mark_failed(&service_id, format!("Channel creation failed: {e}"))
+                        .mark_failed(&service.id, format!("Channel creation failed: {e}"))
                         .await;
-                    error!("❌ Failed to create channel for {}: {}", service_id, e);
+                    error!("❌ Failed to create channel for {}: {}", service.id, e);
                 }
             }
         }
@@ -322,7 +320,7 @@ impl EcosystemCoordinator {
         Ok(service
             .capabilities
             .iter()
-            .map(|c| format!("{:?}", c))
+            .map(|c| format!("{c:?}"))
             .collect())
     }
 }

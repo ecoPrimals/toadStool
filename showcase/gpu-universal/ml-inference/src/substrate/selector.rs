@@ -66,7 +66,7 @@ impl SubstrateSelector {
     pub async fn select(&self, target: ProcessingSubstrate) -> Result<ProcessingSubstrate> {
         // Validate that target is available
         if !target.is_available().await {
-            anyhow::bail!("Selected substrate is not available: {}", target);
+            anyhow::bail!("Selected substrate is not available: {target}");
         }
 
         Ok(target)
@@ -87,7 +87,7 @@ impl SubstrateSelector {
             }
         }
 
-        anyhow::bail!("No {:?} GPU found", vendor)
+        anyhow::bail!("No {vendor:?} GPU found")
     }
 
     /// Select GPU by index

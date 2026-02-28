@@ -41,10 +41,7 @@ impl BiLSTM {
         if direction > 1 {
             return Err(BarracudaError::invalid_op(
                 "BiLSTM",
-                format!(
-                    "direction must be 0 (forward) or 1 (backward), got {}",
-                    direction
-                ),
+                format!("direction must be 0 (forward) or 1 (backward), got {direction}"),
             ));
         }
 
@@ -78,10 +75,7 @@ impl BiLSTM {
         if input_shape.len() != 3 {
             return Err(BarracudaError::invalid_op(
                 "BiLSTM",
-                format!(
-                    "input must be 3D [seq_len, batch, input_size], got shape {:?}",
-                    input_shape
-                ),
+                format!("input must be 3D [seq_len, batch, input_size], got shape {input_shape:?}"),
             ));
         }
 

@@ -16,7 +16,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::info;
 
 use toadstool::{
     execution::ExecutionInput, resources::ResourceRequirements, ExecutionRequest, RuntimeType,
@@ -114,6 +114,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
         })
     }
 
+    #[allow(clippy::unused_async)] // WorkloadExecutor trait; sync sysinfo query
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
         info!("Querying coordinator capabilities (self-knowledge only)");
 
@@ -140,6 +141,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
                 name: "Distributed Coordinator".to_string(),
                 cores: cpu_cores,
                 memory_bytes: total_memory,
+                #[allow(clippy::cast_precision_loss)]
                 tflops: Some((cpu_cores as f64) * 0.1),
                 utilization: 0.0,
             }],
@@ -173,21 +175,13 @@ impl WorkloadExecutor for CoordinatorExecutor {
             workload_id
         );
 
-        // **Implementation Strategy**:
-        // The distributed coordinator needs a workload cancellation API.
-        // This would involve:
-        // 1. Finding which node is executing the workload (via coordinator state)
-        // 2. Sending cancellation signal to that node (via tarpc/gRPC)
-        // 3. Handling graceful shutdown of workload resources
-        //
-        // **Current Status**: Basic cancellation signaling
-        // **Future**: Full distributed cancellation with resource cleanup
+        let execution_id = uuid::Uuid::parse_str(workload_id)
+            .map_err(|e| format!("Invalid workload ID (expected UUID): {workload_id} - {e}"))?;
 
-        warn!("Distributed cancellation requires coordinator API extension - workload marked for cancellation");
-
-        // Return success for now (graceful degradation)
-        // The workload will complete naturally if already running
-        Ok(())
+        self.coordinator
+            .cancel_execution(execution_id)
+            .await
+            .map_err(|e| format!("Failed to cancel workload: {e}"))
     }
 }
 

@@ -491,7 +491,7 @@ pub fn jacobi_solve(a: &CsrMatrix, b: &[f64], tol: f64, max_iter: usize) -> Resu
     for (i, d) in diag.iter().enumerate() {
         if d.abs() < 1e-14 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Zero diagonal at row {}", i),
+                message: format!("Zero diagonal at row {i}"),
             });
         }
     }

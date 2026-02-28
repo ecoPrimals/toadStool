@@ -49,7 +49,7 @@ impl ModuleExecutor {
             Self::execute_module_sync(&engine, &module, &entry_point, args, &config)
         })
         .await
-        .map_err(|e| ToadStoolError::runtime(format!("Task join error: {}", e)))??;
+        .map_err(|e| ToadStoolError::runtime(format!("Task join error: {e}")))??;
 
         let duration = start_time.elapsed();
 
@@ -87,7 +87,7 @@ impl ModuleExecutor {
         if let Some(fuel) = config.fuel_limit {
             store
                 .set_fuel(fuel)
-                .map_err(|e| ToadStoolError::configuration(format!("Failed to set fuel: {}", e)))?;
+                .map_err(|e| ToadStoolError::configuration(format!("Failed to set fuel: {e}")))?;
         }
 
         // Create linker and add WASI
@@ -95,14 +95,14 @@ impl ModuleExecutor {
 
         // Add WASI functions to linker
         wasmi_wasi::add_to_linker(&mut linker, |ctx| ctx)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to add WASI to linker: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to add WASI to linker: {e}")))?;
 
         // wasmi's Linker doesn't have instantiate(), so we use Instance::new() directly
         // For WASI support, we'd need to resolve imports from the linker
         // For now, instantiate without imports (simple modules work)
         debug!("Instantiating WASM module");
         let instance = Instance::new(&mut store, module, &[])
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to instantiate module: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to instantiate module: {e}")))?;
 
         // Get the entry point function
         debug!("Getting entry point function: {}", entry_point);
@@ -110,7 +110,7 @@ impl ModuleExecutor {
             .get_export(&store, entry_point)
             .and_then(|export: wasmi::Extern| export.into_func())
             .ok_or_else(|| {
-                ToadStoolError::not_found(format!("Entry point '{}' not found", entry_point))
+                ToadStoolError::not_found(format!("Entry point '{entry_point}' not found"))
             })?;
 
         // Call the function
@@ -118,7 +118,7 @@ impl ModuleExecutor {
         let mut results = Vec::new();
 
         func.call(&mut store, &[], &mut results)
-            .map_err(|e| ToadStoolError::runtime(format!("Execution failed: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Execution failed: {e}")))?;
 
         // Get fuel consumed (wasmi 1.0 uses get_fuel to check remaining fuel)
         let fuel_consumed = if let Some(fuel_limit) = config.fuel_limit {

@@ -57,14 +57,18 @@ impl<T> MemoryPool<T> {
         let mut stats = self.stats.write().await;
 
         let object = if let Some(obj) = available.pop() {
-            stats.hit_rate = (stats.hit_rate * stats.total_allocations as f64 + 1.0)
-                / (stats.total_allocations as f64 + 1.0);
+            let total = stats.total_allocations;
+            #[allow(clippy::cast_precision_loss)]
+            let rate = (stats.hit_rate * total as f64 + 1.0) / (total as f64 + 1.0);
+            stats.hit_rate = rate;
             obj
         } else {
             // No available objects, create new one
             let new_obj = (self.factory)();
-            stats.hit_rate = (stats.hit_rate * stats.total_allocations as f64)
-                / (stats.total_allocations as f64 + 1.0);
+            let total = stats.total_allocations;
+            #[allow(clippy::cast_precision_loss)]
+            let rate = (stats.hit_rate * total as f64) / (total as f64 + 1.0);
+            stats.hit_rate = rate;
             new_obj
         };
 

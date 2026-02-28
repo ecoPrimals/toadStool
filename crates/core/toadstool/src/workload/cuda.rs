@@ -32,9 +32,9 @@ pub enum CudaSource {
 impl fmt::Display for CudaSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::CudaCpp { entry_point, .. } => write!(f, "CUDA C++ ({})", entry_point),
-            Self::Ptx { entry_point, .. } => write!(f, "PTX ({})", entry_point),
-            Self::CuBin { entry_point, .. } => write!(f, "CuBin ({})", entry_point),
+            Self::CudaCpp { entry_point, .. } => write!(f, "CUDA C++ ({entry_point})"),
+            Self::Ptx { entry_point, .. } => write!(f, "PTX ({entry_point})"),
+            Self::CuBin { entry_point, .. } => write!(f, "CuBin ({entry_point})"),
             Self::File { path, entry_point } => {
                 write!(f, "File: {} ({})", path.display(), entry_point)
             }

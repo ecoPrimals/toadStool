@@ -75,7 +75,7 @@ impl HingeLoss {
         if margin <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "HingeLoss",
-                format!("margin must be positive, got {}", margin),
+                format!("margin must be positive, got {margin}"),
             ));
         }
 

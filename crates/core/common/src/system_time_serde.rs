@@ -18,8 +18,9 @@ pub fn format_rfc3339(t: SystemTime) -> String {
     let d = t.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
     let secs = d.as_secs();
 
-    const SECS_PER_DAY: u64 = 86400;
-    let days = (secs / SECS_PER_DAY) as u32;
+    const SECS_PER_DAY: u64 = 86_400;
+    #[allow(clippy::cast_possible_truncation)]
+    let days = (secs / SECS_PER_DAY) as u32; // fits: days since epoch < u32::MAX for realistic dates
     let time_of_day = secs % SECS_PER_DAY;
     let hour = (time_of_day / 3600) as u8;
     let minute = ((time_of_day % 3600) / 60) as u8;
@@ -27,10 +28,7 @@ pub fn format_rfc3339(t: SystemTime) -> String {
 
     let (year, month, day) = days_since_epoch_to_ymd(days);
 
-    format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-        year, month, day, hour, minute, second
-    )
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
 }
 
 /// Convert days since 1970-01-01 to (year, month, day) in UTC
@@ -45,18 +43,18 @@ fn days_since_epoch_to_ymd(days: u32) -> (u32, u8, u8) {
     (year, month, day)
 }
 
-#[allow(unused_assignments)]
+#[allow(unused_assignments, clippy::cast_possible_truncation)]
 fn rd_to_year_doy(rd: u32) -> (u32, u16) {
     let mut year = 0u32;
     let mut doy = rd;
 
-    // Approximate year
+    // Approximate year (doy is u32, results fit in u32 for calendar arithmetic)
     year = (doy as u64 * 400 / 146_097) as u32;
     doy -= (year as u64 * 146_097 / 400) as u32;
 
     // Refine
-    year += (doy / 36524) * 100;
-    doy %= 36524;
+    year += (doy / 36_524) * 100;
+    doy %= 36_524;
     year += (doy / 1461) * 4;
     doy %= 1461;
     year += doy / 365;
@@ -89,6 +87,10 @@ fn doy_to_month_day(year: u32, doy: u16) -> (u8, u8) {
 }
 
 /// Serialize SystemTime as Unix timestamp (seconds since epoch)
+///
+/// # Errors
+///
+/// Returns `S::Error` if the timestamp is before UNIX_EPOCH or serialization fails.
 pub fn serialize<S>(t: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -101,6 +103,10 @@ where
 }
 
 /// Deserialize SystemTime from Unix timestamp (seconds since epoch)
+///
+/// # Errors
+///
+/// Returns `D::Error` if deserialization fails.
 pub fn deserialize<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
 where
     D: Deserializer<'de>,
@@ -116,6 +122,9 @@ pub mod opt {
 
     use super::serialize as serialize_system_time;
 
+    /// # Errors
+    ///
+    /// Returns `S::Error` if the timestamp is before UNIX_EPOCH or serialization fails.
     pub fn serialize<S>(opt: &Option<SystemTime>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -126,6 +135,9 @@ pub mod opt {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns `D::Error` if deserialization fails.
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<SystemTime>, D::Error>
     where
         D: Deserializer<'de>,

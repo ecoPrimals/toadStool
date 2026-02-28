@@ -76,6 +76,7 @@ impl ResourceLeakDetector {
         leaked
     }
 
+    #[allow(clippy::unused_async)] // Spawns background task; async for API consistency
     pub async fn start_cleanup_task(&self) {
         let allocations = Arc::clone(&self.allocations);
         let leak_threshold = self.leak_threshold;

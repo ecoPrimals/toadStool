@@ -30,8 +30,7 @@ impl BatchedEighGpu {
         if n > MAX_N {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "Single-dispatch eigensolve limited to n≤{}, got n={}. Use execute_f64() for larger matrices.",
-                    MAX_N, n
+                    "Single-dispatch eigensolve limited to n≤{MAX_N}, got n={n}. Use execute_f64() for larger matrices."
                 ),
             });
         }
@@ -220,10 +219,7 @@ impl BatchedEighGpu {
 
         if n > MAX_N {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Single-dispatch eigensolve limited to n≤{}, got n={}",
-                    MAX_N, n
-                ),
+                message: format!("Single-dispatch eigensolve limited to n≤{MAX_N}, got n={n}"),
             });
         }
 

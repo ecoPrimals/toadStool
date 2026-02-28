@@ -72,16 +72,16 @@ impl RandomAffine {
         let width = shape[2];
 
         // Generate random parameters from seed (CPU-side, deterministic)
-        let angle = self.degrees * (((self.seed * 1103515245) % 2000) as f32 / 1000.0 - 1.0);
+        let angle = self.degrees * (((self.seed * 1_103_515_245) % 2000) as f32 / 1000.0 - 1.0);
         let tx = self.translate.0
             * width as f32
-            * (((self.seed * 22695477) % 2000) as f32 / 1000.0 - 1.0);
+            * (((self.seed * 22_695_477) % 2000) as f32 / 1000.0 - 1.0);
         let ty = self.translate.1
             * height as f32
-            * (((self.seed * 1664525) % 2000) as f32 / 1000.0 - 1.0);
+            * (((self.seed * 1_664_525) % 2000) as f32 / 1000.0 - 1.0);
         let sc = self.scale.0
-            + (self.scale.1 - self.scale.0) * ((self.seed * 48271) % 1000) as f32 / 1000.0;
-        let sh = self.shear * (((self.seed * 69621) % 2000) as f32 / 1000.0 - 1.0);
+            + (self.scale.1 - self.scale.0) * ((self.seed * 48_271) % 1000) as f32 / 1000.0;
+        let sh = self.shear * (((self.seed * 69_621) % 2000) as f32 / 1000.0 - 1.0);
 
         // Build affine matrix
         let angle_rad = angle * std::f32::consts::PI / 180.0;
@@ -306,7 +306,7 @@ mod tests {
             .await
             .unwrap();
         let transformed_tensor = tensor
-            .random_affine(15.0, (0.1, 0.1), (0.9, 1.1), 5.0, 42424)
+            .random_affine(15.0, (0.1, 0.1), (0.9, 1.1), 5.0, 42_424)
             .unwrap();
         let transformed = transformed_tensor.to_vec().unwrap();
         assert_eq!(transformed.len(), image_data.len());

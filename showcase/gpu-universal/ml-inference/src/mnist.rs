@@ -46,7 +46,7 @@ impl MnistDataset {
         // Read header
         let magic = reader.read_u32::<BigEndian>()?;
         if magic != 0x00000803 {
-            anyhow::bail!("Invalid MNIST image file magic: {:#x}", magic);
+            anyhow::bail!("Invalid MNIST image file magic: {magic:#x}");
         }
 
         let num_images = reader.read_u32::<BigEndian>()? as usize;
@@ -54,7 +54,7 @@ impl MnistDataset {
         let num_cols = reader.read_u32::<BigEndian>()? as usize;
 
         if num_rows != 28 || num_cols != 28 {
-            anyhow::bail!("Expected 28x28 images, got {}x{}", num_rows, num_cols);
+            anyhow::bail!("Expected 28x28 images, got {num_rows}x{num_cols}");
         }
 
         // Read pixel data
@@ -84,7 +84,7 @@ impl MnistDataset {
         // Read header
         let magic = reader.read_u32::<BigEndian>()?;
         if magic != 0x00000801 {
-            anyhow::bail!("Invalid MNIST label file magic: {:#x}", magic);
+            anyhow::bail!("Invalid MNIST label file magic: {magic:#x}");
         }
 
         let num_labels = reader.read_u32::<BigEndian>()? as usize;

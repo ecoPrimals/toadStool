@@ -15,7 +15,21 @@ use toadstool::{
 };
 use uuid::Uuid;
 
-// Helper function to create test PrimalContext
+fn create_biome_job(team_id: &str, manifest: serde_json::Value) -> UniversalJob {
+    UniversalJob {
+        id: Uuid::new_v4(),
+        job_type: UniversalJobType::BiomeOS {
+            team_id: team_id.to_string(),
+            biome_manifest: manifest,
+        },
+        priority: JobPriority::Normal,
+        resources: ResourceRequirements::default(),
+        timeout: None,
+        created_at: SystemTime::now(),
+        context: create_test_primal_context(),
+    }
+}
+
 fn create_test_primal_context() -> PrimalContext {
     PrimalContext {
         user_id: "test-user".to_string(),
@@ -381,8 +395,16 @@ async fn test_biome_orchestrator_initialize() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_orchestrator_execute_deployment() {
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
+    let job = create_biome_job("team-alpha", json!({"app": "test-service", "replicas": 1}));
+    let result = orchestrator.execute_deployment(job).await;
+    assert!(result.is_ok());
+}
 
-    let job = UniversalJob {
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_biome_orchestrator_rejects_non_biome_job_types() {
+    let orchestrator = BiomeOrchestrator::new().await.unwrap();
+
+    let native_job = UniversalJob {
         id: Uuid::new_v4(),
         job_type: UniversalJobType::Native {
             executable: "/usr/bin/echo".to_string(),
@@ -396,32 +418,24 @@ async fn test_biome_orchestrator_execute_deployment() {
         context: create_test_primal_context(),
     };
 
-    let result = orchestrator.execute_deployment(job).await;
-    assert!(result.is_ok());
+    let result = orchestrator.execute_deployment(native_job).await;
+    assert!(
+        result.is_err(),
+        "Native jobs should be rejected by BiomeOrchestrator"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_orchestrator_execute_deployment_returns_response() {
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
-
-    let job = UniversalJob {
-        id: Uuid::new_v4(),
-        job_type: UniversalJobType::Wasm {
-            module: vec![0, 1, 2, 3],
-            args: vec!["test".to_string()],
-            env: HashMap::new(),
-        },
-        priority: JobPriority::High,
-        resources: ResourceRequirements::default(),
-        timeout: Some(std::time::Duration::from_secs(300)),
-        created_at: SystemTime::now(),
-        context: create_test_primal_context(),
-    };
+    let mut job = create_biome_job(
+        "team-beta",
+        json!({"app": "response-test", "version": "1.0"}),
+    );
+    job.priority = JobPriority::High;
+    job.timeout = Some(std::time::Duration::from_secs(300));
 
     let response = orchestrator.execute_deployment(job).await.unwrap();
-
-    // Verify response structure (it's a default response from stub)
-    // The response should be an ExecutionResponse
     let _execution_response: ExecutionResponse = response;
 }
 
@@ -429,22 +443,11 @@ async fn test_biome_orchestrator_execute_deployment_returns_response() {
 async fn test_biome_orchestrator_multiple_deployments() {
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
 
-    // Execute multiple deployments
-    for _i in 0..3 {
-        let job = UniversalJob {
-            id: Uuid::new_v4(),
-            job_type: UniversalJobType::Native {
-                executable: "/usr/bin/echo".to_string(),
-                args: vec!["test".to_string()],
-                env: HashMap::new(),
-            },
-            priority: JobPriority::Normal,
-            resources: ResourceRequirements::default(),
-            timeout: None,
-            created_at: SystemTime::now(),
-            context: create_test_primal_context(),
-        };
-
+    for i in 0..3 {
+        let job = create_biome_job(
+            &format!("team-{i}"),
+            json!({"app": format!("service-{i}"), "replicas": i + 1}),
+        );
         let result = orchestrator.execute_deployment(job).await;
         assert!(result.is_ok());
     }
@@ -463,21 +466,7 @@ async fn test_biome_os_integration_new() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_os_integration_execute_deployment() {
     let integration = BiomeOSIntegration::new().await.unwrap();
-
-    let job = UniversalJob {
-        id: Uuid::new_v4(),
-        job_type: UniversalJobType::Native {
-            executable: "/usr/bin/echo".to_string(),
-            args: vec!["test".to_string()],
-            env: HashMap::new(),
-        },
-        priority: JobPriority::Normal,
-        resources: ResourceRequirements::default(),
-        timeout: None,
-        created_at: SystemTime::now(),
-        context: create_test_primal_context(),
-    };
-
+    let job = create_biome_job("team-deploy", json!({"app": "echo-service", "replicas": 1}));
     let result = integration.execute_deployment(job).await;
     assert!(result.is_ok());
 }
@@ -486,38 +475,16 @@ async fn test_biome_os_integration_execute_deployment() {
 async fn test_biome_os_integration_multiple_jobs() {
     let integration = BiomeOSIntegration::new().await.unwrap();
 
-    // Test with different job types
-    let job_types = vec![
-        UniversalJobType::Native {
-            executable: "/bin/sh".to_string(),
-            args: vec![],
-            env: std::collections::HashMap::new(),
-        },
-        UniversalJobType::Wasm {
-            module: vec![0, 1, 2, 3],
-            args: vec![],
-            env: std::collections::HashMap::new(),
-        },
-        UniversalJobType::Primal {
-            primal_type: "compute".to_string(),
-            endpoint: "http://primal-service:8080/compute".to_string(),
-            payload: serde_json::json!({"action": "compute"}),
-        },
+    let manifests = vec![
+        json!({"app": "compute-service", "replicas": 2}),
+        json!({"app": "storage-service", "replicas": 1}),
+        json!({"app": "api-gateway", "replicas": 3}),
     ];
 
-    for job_type in job_types {
-        let job = UniversalJob {
-            id: Uuid::new_v4(),
-            job_type,
-            priority: JobPriority::Normal,
-            resources: ResourceRequirements::default(),
-            timeout: None,
-            created_at: SystemTime::now(),
-            context: create_test_primal_context(),
-        };
-
+    for (i, manifest) in manifests.into_iter().enumerate() {
+        let job = create_biome_job(&format!("team-{i}"), manifest);
         let result = integration.execute_deployment(job).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "deployment {i} failed");
     }
 }
 
@@ -525,23 +492,13 @@ async fn test_biome_os_integration_multiple_jobs() {
 async fn test_biome_os_integration_concurrent_deployments() {
     let integration = BiomeOSIntegration::new().await.unwrap();
 
-    for _i in 0..5 {
-        let job = UniversalJob {
-            id: Uuid::new_v4(),
-            job_type: UniversalJobType::Native {
-                executable: "/usr/bin/deploy".to_string(),
-                args: vec![format!("deployment-{}", _i)],
-                env: HashMap::new(),
-            },
-            priority: JobPriority::Normal,
-            resources: ResourceRequirements::default(),
-            timeout: None,
-            created_at: SystemTime::now(),
-            context: create_test_primal_context(),
-        };
-
+    for i in 0..5 {
+        let job = create_biome_job(
+            &format!("team-concurrent-{i}"),
+            json!({"app": format!("deployment-{i}"), "replicas": 1}),
+        );
         let result = integration.execute_deployment(job).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "concurrent deployment {i} failed");
     }
 }
 
@@ -551,25 +508,13 @@ async fn test_biome_os_integration_concurrent_deployments() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_deployment_lifecycle() {
-    // Create integration
     let integration = BiomeOSIntegration::new().await.unwrap();
+    let mut job = create_biome_job(
+        "team-lifecycle",
+        json!({"app": "lifecycle-service", "config": "test.yaml"}),
+    );
+    job.timeout = Some(std::time::Duration::from_secs(600));
 
-    // Create a job
-    let job = UniversalJob {
-        id: Uuid::new_v4(),
-        job_type: UniversalJobType::Native {
-            executable: "/usr/bin/deploy".to_string(),
-            args: vec!["--config".to_string(), "test.yaml".to_string()],
-            env: HashMap::new(),
-        },
-        priority: JobPriority::Normal,
-        resources: ResourceRequirements::default(),
-        timeout: Some(std::time::Duration::from_secs(600)),
-        created_at: SystemTime::now(),
-        context: create_test_primal_context(),
-    };
-
-    // Execute deployment
     let response = integration.execute_deployment(job).await;
     assert!(response.is_ok());
 }
@@ -577,20 +522,16 @@ async fn test_full_deployment_lifecycle() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_with_complex_manifest() {
     let integration = BiomeOSIntegration::new().await.unwrap();
-
-    let job = UniversalJob {
-        id: Uuid::new_v4(),
-        job_type: UniversalJobType::Primal {
-            primal_type: "deployment".to_string(),
-            endpoint: "http://primal-service:8080/deploy".to_string(),
-            payload: serde_json::json!({"manifest": "deployment-config"}),
-        },
-        priority: JobPriority::High,
-        resources: ResourceRequirements::default(),
-        timeout: None,
-        created_at: SystemTime::now(),
-        context: create_test_primal_context(),
-    };
+    let mut job = create_biome_job(
+        "team-complex",
+        json!({
+            "app": "complex-service",
+            "replicas": 3,
+            "resources": {"cpu": "2", "memory": "4Gi"},
+            "env": {"RUST_LOG": "info"}
+        }),
+    );
+    job.priority = JobPriority::High;
 
     let result = integration.execute_deployment(job).await;
     assert!(result.is_ok());
@@ -598,28 +539,12 @@ async fn test_deployment_with_complex_manifest() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_initialization_sequence() {
-    // Create orchestrator
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
 
-    // Initialize
     let init_result = orchestrator.initialize().await;
     assert!(init_result.is_ok());
 
-    // Execute deployment after initialization
-    let job = UniversalJob {
-        id: Uuid::new_v4(),
-        job_type: UniversalJobType::Wasm {
-            module: vec![0, 1, 2, 3],
-            args: vec!["init".to_string()],
-            env: HashMap::new(),
-        },
-        priority: JobPriority::Normal,
-        resources: ResourceRequirements::default(),
-        timeout: None,
-        created_at: SystemTime::now(),
-        context: create_test_primal_context(),
-    };
-
+    let job = create_biome_job("team-init", json!({"app": "init-service", "replicas": 1}));
     let deploy_result = orchestrator.execute_deployment(job).await;
     assert!(deploy_result.is_ok());
 }

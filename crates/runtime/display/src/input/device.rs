@@ -364,7 +364,7 @@ impl Device {
 
         // Read directory entries
         for entry in std::fs::read_dir(input_dir)
-            .map_err(|e| DisplayError::InputError(format!("Failed to read /dev/input: {}", e)))?
+            .map_err(|e| DisplayError::InputError(format!("Failed to read /dev/input: {e}")))?
         {
             let entry = entry?;
             let path = entry.path();

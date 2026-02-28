@@ -145,8 +145,8 @@ pub fn analyze_npu_advantage(cpu: &BenchmarkResult, gpu: &BenchmarkResult, npu: 
     let power_savings_vs_gpu = npu.power_savings(gpu);
 
     println!("  Energy Efficiency:");
-    println!("    vs CPU: {:.1}x MORE EFFICIENT ⭐", efficiency_vs_cpu);
-    println!("    vs GPU: {:.1}x MORE EFFICIENT ⭐", efficiency_vs_gpu);
+    println!("    vs CPU: {efficiency_vs_cpu:.1}x MORE EFFICIENT ⭐");
+    println!("    vs GPU: {efficiency_vs_gpu:.1}x MORE EFFICIENT ⭐");
 
     println!("\n  Power Savings:");
     println!(
@@ -187,9 +187,9 @@ pub fn analyze_npu_advantage(cpu: &BenchmarkResult, gpu: &BenchmarkResult, npu: 
     let npu_kwh = npu.power_watts * hours_per_year / 1000.0;
 
     println!("\n  Annual Energy (24/7 operation):");
-    println!("    CPU: {:.0} kWh/year", cpu_kwh);
-    println!("    GPU: {:.0} kWh/year", gpu_kwh);
-    println!("    NPU: {:.0} kWh/year ⚡", npu_kwh);
+    println!("    CPU: {cpu_kwh:.0} kWh/year");
+    println!("    GPU: {gpu_kwh:.0} kWh/year");
+    println!("    NPU: {npu_kwh:.0} kWh/year ⚡");
     println!("    Savings vs CPU: {:.0} kWh/year", cpu_kwh - npu_kwh);
     println!("    Savings vs GPU: {:.0} kWh/year", gpu_kwh - npu_kwh);
 

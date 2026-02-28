@@ -1,10 +1,10 @@
 //! Protocol client implementation for service communication
 //!
 //! Domain modules:
-//! - [discovery] — Service discovery and registration
-//! - [health] — Health monitoring for registered services
-//! - [routing] — Service and endpoint selection
-//! - [handler] — Simple message handler implementation
+//! - `discovery` — Service discovery and registration
+//! - `health` — Health monitoring for registered services
+//! - `routing` — Service and endpoint selection
+//! - `handler` — Simple message handler implementation
 
 mod discovery;
 mod handler;
@@ -481,7 +481,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_select_service_healthy_preferred() {
         let config = create_test_config();
-        let client = ProtocolClient::new(config).await.unwrap();
+        let _client = ProtocolClient::new(config).await.unwrap();
 
         let services = vec![
             create_test_service("service-1", "test", HealthStatus::Degraded),
@@ -496,7 +496,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_select_service_no_healthy() {
         let config = create_test_config();
-        let client = ProtocolClient::new(config).await.unwrap();
+        let _client = ProtocolClient::new(config).await.unwrap();
 
         let services = vec![
             create_test_service("service-1", "test", HealthStatus::Degraded),

@@ -48,7 +48,7 @@ impl GridMask {
         if !(0.0..=1.0).contains(&ratio) {
             return Err(crate::error::BarracudaError::invalid_op(
                 "GridMask",
-                format!("Ratio must be in [0, 1], got {}", ratio),
+                format!("Ratio must be in [0, 1], got {ratio}"),
             ));
         }
 
@@ -76,8 +76,8 @@ impl GridMask {
         let width = shape[2];
 
         // Compute random offsets from seed (CPU-side, deterministic)
-        let offset_x = ((self.seed * 1103515245) % self.grid_size as u64) as usize;
-        let offset_y = ((self.seed * 22695477) % self.grid_size as u64) as usize;
+        let offset_x = ((self.seed * 1_103_515_245) % self.grid_size as u64) as usize;
+        let offset_y = ((self.seed * 22_695_477) % self.grid_size as u64) as usize;
 
         let mask_size = (self.grid_size as f32 * self.ratio) as usize;
         let angle_rad = self.rotate * std::f32::consts::PI / 180.0;
@@ -288,7 +288,7 @@ mod tests {
         let tensor = Tensor::from_vec_on(image_data.clone(), vec![3, 224, 224], device)
             .await
             .unwrap();
-        let masked_tensor = tensor.grid_mask(0.6, 15.0, 96, 11111).unwrap();
+        let masked_tensor = tensor.grid_mask(0.6, 15.0, 96, 11_111).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
         // Some pixels should be masked (set to 0)
@@ -306,7 +306,7 @@ mod tests {
         let tensor = Tensor::from_vec_on(image_data.clone(), vec![1, 32, 32], device.clone())
             .await
             .unwrap();
-        let masked_tensor = tensor.grid_mask(0.0, 0.0, 16, 12345).unwrap();
+        let masked_tensor = tensor.grid_mask(0.0, 0.0, 16, 12_345).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked, image_data); // No masking applied
 
@@ -315,7 +315,7 @@ mod tests {
         let tensor = Tensor::from_vec_on(small_image_data.clone(), vec![1, 8, 8], device)
             .await
             .unwrap();
-        let masked_tensor = tensor.grid_mask(0.5, 0.0, 4, 99999).unwrap();
+        let masked_tensor = tensor.grid_mask(0.5, 0.0, 4, 99_999).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), 64);
     }
@@ -330,7 +330,7 @@ mod tests {
         let tensor = Tensor::from_vec_on(image_data.clone(), vec![1, 64, 64], device.clone())
             .await
             .unwrap();
-        let masked_tensor = tensor.grid_mask(1.0, 0.0, 32, 77777).unwrap();
+        let masked_tensor = tensor.grid_mask(1.0, 0.0, 32, 77_777).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
         assert!(masked.contains(&0.0));
@@ -340,7 +340,7 @@ mod tests {
         let tensor = Tensor::from_vec_on(image_data.clone(), vec![1, 64, 64], device)
             .await
             .unwrap();
-        let masked_tensor = tensor.grid_mask(0.5, 45.0, 16, 55555).unwrap();
+        let masked_tensor = tensor.grid_mask(0.5, 45.0, 16, 55_555).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
     }
@@ -358,7 +358,7 @@ mod tests {
         let tensor = Tensor::from_vec_on(image_data.clone(), vec![channels, height, width], device)
             .await
             .unwrap();
-        let masked_tensor = tensor.grid_mask(0.6, 30.0, 48, 88888).unwrap();
+        let masked_tensor = tensor.grid_mask(0.6, 30.0, 48, 88_888).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
         assert!(masked.contains(&0.0));
@@ -375,13 +375,13 @@ mod tests {
         let tensor1 = Tensor::from_vec_on(image_data.clone(), vec![1, 32, 32], device.clone())
             .await
             .unwrap();
-        let masked_tensor1 = tensor1.grid_mask(0.5, 0.0, 16, 12345).unwrap();
+        let masked_tensor1 = tensor1.grid_mask(0.5, 0.0, 16, 12_345).unwrap();
         let masked1 = masked_tensor1.to_vec().unwrap();
 
         let tensor2 = Tensor::from_vec_on(image_data.clone(), vec![1, 32, 32], device.clone())
             .await
             .unwrap();
-        let masked_tensor2 = tensor2.grid_mask(0.5, 0.0, 16, 12345).unwrap();
+        let masked_tensor2 = tensor2.grid_mask(0.5, 0.0, 16, 12_345).unwrap();
         let masked2 = masked_tensor2.to_vec().unwrap();
 
         // Same seed should produce same mask
@@ -391,7 +391,7 @@ mod tests {
         let tensor3 = Tensor::from_vec_on(image_data.clone(), vec![1, 32, 32], device)
             .await
             .unwrap();
-        let masked_tensor3 = tensor3.grid_mask(0.5, 0.0, 16, 99999).unwrap();
+        let masked_tensor3 = tensor3.grid_mask(0.5, 0.0, 16, 99_999).unwrap();
         let masked3 = masked_tensor3.to_vec().unwrap();
         let different = masked1
             .iter()

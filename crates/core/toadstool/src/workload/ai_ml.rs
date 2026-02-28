@@ -245,6 +245,7 @@ impl AiMlWorkload {
         let model_memory = self.model_size.estimate_memory_bytes();
 
         // Estimate batch memory (rough approximation)
+        #[allow(clippy::cast_possible_truncation)]
         let batch_memory = match self.model_size {
             ModelSize::Small => self.batch_size as u64 * 1024 * 1024, // 1MB per sample
             ModelSize::Medium => self.batch_size as u64 * 10 * 1024 * 1024, // 10MB per sample

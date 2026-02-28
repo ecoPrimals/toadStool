@@ -151,7 +151,7 @@ pub fn format_resource_amount(amount: f64, unit: &str) -> String {
         format!("{}{}", amount as u64, unit)
     } else {
         // Decimal value - full precision
-        format!("{:.2}{}", amount, unit)
+        format!("{amount:.2}{unit}")
     }
 }
 

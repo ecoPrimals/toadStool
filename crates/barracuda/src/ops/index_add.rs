@@ -48,8 +48,7 @@ impl IndexAdd {
             return Err(BarracudaError::invalid_op(
                 "IndexAdd",
                 format!(
-                    "Values size {} doesn't match expected size {}",
-                    values_size, expected_values_size
+                    "Values size {values_size} doesn't match expected size {expected_values_size}"
                 ),
             ));
         }
@@ -59,10 +58,7 @@ impl IndexAdd {
             if idx as usize >= dim_size {
                 return Err(BarracudaError::invalid_op(
                     "IndexAdd",
-                    format!(
-                        "Index {} out of bounds for dimension size {}",
-                        idx, dim_size
-                    ),
+                    format!("Index {idx} out of bounds for dimension size {dim_size}"),
                 ));
             }
         }

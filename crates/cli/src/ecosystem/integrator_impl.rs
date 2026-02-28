@@ -70,15 +70,16 @@ impl EcosystemIntegrator {
             ]
         } else {
             // Map service types to capabilities
+            // TODO(sovereignty): Prefer capability names directly from config.
+            // When legacy config passes primal names, we map to capabilities for discovery.
+            // Ideal: config says "crypto" not "beardog"; no name→capability mapping needed.
             service_types.into_iter()
                 .map(|st| {
-                    // Try to interpret as capability, fallback to using as-is
-                    // Zero-copy: Use constants
                     use crate::ecosystem::constants::{capability_categories, service_names};
                     match st.as_str() {
                         service_names::SONGBIRD => capability_categories::NETWORK.to_string(),
-                        "beardog" => "crypto".to_string(),
-                        "nestgate" => "storage".to_string(),
+                        service_names::BEARDOG => capability_categories::CRYPTO.to_string(),
+                        service_names::NESTGATE => capability_categories::STORAGE.to_string(),
                         _ => st,
                     }
                 })
@@ -397,6 +398,7 @@ impl EcosystemIntegrator {
 
     // Internal helper methods
 
+    #[allow(clippy::unused_async)] // CLI display; async for API consistency
     async fn print_ecosystem_table(&self) -> Result<()> {
         if self.endpoints.is_empty() && self.connections.is_empty() {
             println!("No ecosystem services discovered or connected");

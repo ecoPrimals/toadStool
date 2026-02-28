@@ -9,6 +9,7 @@ use crate::resource_validator::SystemCapabilities;
 use super::types::{Bottleneck, BottleneckType, Opportunity, OpportunityType};
 
 /// Identify bottlenecks in the graph
+#[must_use]
 pub fn identify_bottlenecks(
     graph: &ExecutionGraph,
     estimate: &ResourceEstimate,
@@ -89,6 +90,7 @@ fn find_high_memory_nodes(estimate: &ResourceEstimate) -> Vec<String> {
 }
 
 /// Discover optimization opportunities
+#[must_use]
 pub fn discover_opportunities(
     graph: &ExecutionGraph,
     estimate: &ResourceEstimate,

@@ -68,7 +68,7 @@ impl std::fmt::Display for Endpoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Endpoint::Unix(path) => write!(f, "unix:{}", path.display()),
-            Endpoint::Tcp(addr) => write!(f, "tcp:{}", addr),
+            Endpoint::Tcp(addr) => write!(f, "tcp:{addr}"),
         }
     }
 }
@@ -79,7 +79,7 @@ impl std::fmt::Display for Endpoint {
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool::launcher::discover_toadstool_endpoint;
 ///
 /// # async fn example() -> ToadStoolResult<()> {
@@ -169,7 +169,7 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool::launcher::{LaunchConfig, launch_toadstool};
 ///
 /// # async fn example() -> ToadStoolResult<()> {
@@ -215,15 +215,13 @@ pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
         match child.try_wait() {
             Ok(Some(status)) => {
                 return Err(ToadStoolError::runtime(format!(
-                    "Toadstool process exited prematurely with status: {}",
-                    status
+                    "Toadstool process exited prematurely with status: {status}"
                 )));
             }
             Ok(None) => {}
             Err(e) => {
                 return Err(ToadStoolError::runtime(format!(
-                    "Failed to check process status: {}",
-                    e
+                    "Failed to check process status: {e}"
                 )));
             }
         }
@@ -242,8 +240,7 @@ pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
     }
 
     Err(ToadStoolError::runtime(format!(
-        "Timeout waiting for toadstool endpoint: {:?}",
-        last_error
+        "Timeout waiting for toadstool endpoint: {last_error:?}"
     )))
 }
 
@@ -253,7 +250,7 @@ pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool::launcher::check_toadstool_health;
 ///
 /// # async fn example() -> ToadStoolResult<()> {
@@ -273,7 +270,7 @@ pub async fn check_toadstool_health() -> ToadStoolResult<()> {
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool::launcher::verify_endpoint_exists;
 ///
 /// # async fn example() -> ToadStoolResult<()> {

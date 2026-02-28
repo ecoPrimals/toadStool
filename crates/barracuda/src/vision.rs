@@ -179,8 +179,7 @@ impl VisionPipeline {
                     if *size > curr_h || *size > curr_w {
                         return Err(BarracudaError::InvalidInput {
                             message: format!(
-                                "Crop size {} exceeds image dimensions {}×{}",
-                                size, curr_h, curr_w
+                                "Crop size {size} exceeds image dimensions {curr_h}×{curr_w}"
                             ),
                         });
                     }

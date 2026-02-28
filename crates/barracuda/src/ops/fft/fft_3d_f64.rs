@@ -68,10 +68,7 @@ impl Fft3DF64 {
     pub fn new(device: Arc<WgpuDevice>, nx: usize, ny: usize, nz: usize) -> Result<Self> {
         if !nx.is_power_of_two() || !ny.is_power_of_two() || !nz.is_power_of_two() {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "FFT 3D dimensions must be powers of 2, got ({}, {}, {})",
-                    nx, ny, nz
-                ),
+                message: format!("FFT 3D dimensions must be powers of 2, got ({nx}, {ny}, {nz})"),
             });
         }
 

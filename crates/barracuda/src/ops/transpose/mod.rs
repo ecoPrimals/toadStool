@@ -69,13 +69,13 @@ impl Transpose {
             if idx >= num_dims {
                 return Err(BarracudaError::invalid_op(
                     "Transpose",
-                    format!("Invalid permutation index {} for rank {}", idx, num_dims),
+                    format!("Invalid permutation index {idx} for rank {num_dims}"),
                 ));
             }
             if seen[idx] {
                 return Err(BarracudaError::invalid_op(
                     "Transpose",
-                    format!("Duplicate index {} in permutation", idx),
+                    format!("Duplicate index {idx} in permutation"),
                 ));
             }
             seen[idx] = true;

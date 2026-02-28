@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
     let num_samples = 100;
 
     for (backend, name) in backends {
-        println!("═══ Testing Backend: {} ═══", name);
+        println!("═══ Testing Backend: {name} ═══");
 
         // Create inference engine with this backend
         let inference = if let Some(backend) = backend {
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
         };
 
         println!("Selected backend: {}", inference.current_backend());
-        println!("Running inference on {} samples...", num_samples);
+        println!("Running inference on {num_samples} samples...");
 
         let start = Instant::now();
         let mut correct = 0;
@@ -79,13 +79,13 @@ async fn main() -> Result<()> {
 
         println!();
         println!("Results:");
-        println!("  Samples:     {}", num_samples);
-        println!("  Correct:     {}", correct);
+        println!("  Samples:     {num_samples}");
+        println!("  Correct:     {correct}");
         println!("  Accuracy:    {:.2}%", accuracy * 100.0);
-        println!("  Avg latency: {:.3}ms", avg_latency);
-        println!("  Min latency: {:.3}ms", min_latency);
-        println!("  Max latency: {:.3}ms", max_latency);
-        println!("  Throughput:  {:.0} inferences/sec", throughput);
+        println!("  Avg latency: {avg_latency:.3}ms");
+        println!("  Min latency: {min_latency:.3}ms");
+        println!("  Max latency: {max_latency:.3}ms");
+        println!("  Throughput:  {throughput:.0} inferences/sec");
         println!();
 
         // Save results
@@ -104,7 +104,7 @@ async fn main() -> Result<()> {
         let json = serde_json::to_string_pretty(&stats)?;
         let filename = format!("results/universal-{}.json", name.to_lowercase());
         std::fs::write(&filename, json)?;
-        println!("✓ Results saved to {}", filename);
+        println!("✓ Results saved to {filename}");
         println!();
     }
 

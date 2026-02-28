@@ -76,6 +76,9 @@
 #![allow(clippy::wrong_self_convention)]
 // Some if-blocks are structurally identical but semantically different (e.g., kldiv_loss)
 #![allow(clippy::if_same_then_else)]
+// GPU dispatch, benchmark harness, and trait impls use async fn for future await (e.g., async
+// queue submission). Most ops are sync compute today; removing async would break trait signatures.
+#![allow(clippy::unused_async)]
 
 // ── CPU-only modules (always available, no GPU dependency) ────────────────────
 pub mod error;

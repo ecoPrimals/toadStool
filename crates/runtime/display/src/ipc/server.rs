@@ -188,7 +188,7 @@ impl DisplayServer {
         tracing::info!("   Protocol: JSON-RPC 2.0 (same as Unix socket)");
 
         // Bind to localhost only (security: same as Unix socket)
-        let bind_addr = format!("{}:0", LOCALHOST_IPV4);
+        let bind_addr = format!("{LOCALHOST_IPV4}:0");
         let listener = TcpListener::bind(&bind_addr)
             .await
             .map_err(|e| DisplayError::IpcError(format!("Failed to bind TCP socket: {e}")))?;
@@ -522,10 +522,161 @@ mod tests {
         assert!(path.to_string_lossy().ends_with("display.sock"));
     }
 
+    #[test]
+    fn test_socket_path_has_toadstool_and_display_sock() {
+        let path = DisplayServer::discover_socket_path();
+        let path_str = path.to_string_lossy();
+        assert!(
+            path_str.contains("toadstool"),
+            "path should contain toadstool: {}",
+            path_str
+        );
+        assert!(
+            path_str.ends_with("display.sock"),
+            "path should end with display.sock: {}",
+            path_str
+        );
+    }
+
     #[tokio::test]
     async fn test_jsonrpc_parsing() {
         let request_str = r#"{"jsonrpc":"2.0","method":"display.get_capabilities","id":1}"#;
         let request: JsonRpcRequest = serde_json::from_str(request_str).unwrap();
         assert_eq!(request.method, "display.get_capabilities");
+    }
+
+    /// Create a manager for tests; skips (returns None) when DRM is unavailable.
+    async fn test_manager() -> Option<Arc<RwLock<WindowManager>>> {
+        WindowManager::new()
+            .await
+            .ok()
+            .map(RwLock::new)
+            .map(Arc::new)
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_parse_error() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let response = DisplayServer::handle_request("not valid json {{{", &manager).await;
+        assert!(
+            response.error.is_some(),
+            "parse error should return error response"
+        );
+        let err = response.error.unwrap();
+        assert_eq!(err.code, -32700, "parse error code");
+        assert!(err.message.to_lowercase().contains("parse"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_empty_string_parse_error() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let response = DisplayServer::handle_request("", &manager).await;
+        assert!(response.error.is_some());
+        assert_eq!(response.error.unwrap().code, -32700);
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_unknown_method() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let request_str = r#"{"jsonrpc":"2.0","method":"display.nonexistent","params":{},"id":1}"#;
+        let response = DisplayServer::handle_request(request_str, &manager).await;
+        assert!(
+            response.error.is_some(),
+            "unknown method should return error"
+        );
+        let err = response.error.unwrap();
+        assert_eq!(err.code, -32603, "internal error code for unknown method");
+        assert!(err.message.contains("Unknown method"));
+        assert!(err.message.contains("display.nonexistent"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_get_capabilities() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let request_str =
+            r#"{"jsonrpc":"2.0","method":"display.get_capabilities","params":{},"id":42}"#;
+        let response = DisplayServer::handle_request(request_str, &manager).await;
+        assert!(
+            response.error.is_none(),
+            "get_capabilities should succeed: {:?}",
+            response.error
+        );
+        let result = response.result.expect("success response has result");
+        assert_eq!(result["primal_id"], "toadstool-primary");
+        assert_eq!(result["max_windows"], 16);
+        assert_eq!(result["isomorphic"], true);
+        assert!(result["socket_path"]
+            .as_str()
+            .unwrap()
+            .contains("toadstool"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_destroy_window_missing_params() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let request_str =
+            r#"{"jsonrpc":"2.0","method":"display.destroy_window","params":{},"id":1}"#;
+        let response = DisplayServer::handle_request(request_str, &manager).await;
+        assert!(response.error.is_some());
+        assert!(response
+            .error
+            .unwrap()
+            .message
+            .contains("Missing window_id"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_resize_window_missing_params() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let request_str =
+            r#"{"jsonrpc":"2.0","method":"display.resize_window","params":{},"id":1}"#;
+        let response = DisplayServer::handle_request(request_str, &manager).await;
+        assert!(response.error.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_null_id_uses_null_in_response() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let request_str = r#"{"jsonrpc":"2.0","method":"display.get_capabilities","id":null}"#;
+        let response = DisplayServer::handle_request(request_str, &manager).await;
+        assert!(response.error.is_none());
+        assert!(response.result.is_some());
+    }
+
+    #[test]
+    fn test_ipc_transport_debug() {
+        let t = IpcTransport::UnixSocket;
+        let s = format!("{:?}", t);
+        assert!(s.contains("Unix"));
+    }
+
+    #[test]
+    fn test_ipc_transport_tcp_fallback() {
+        use std::net::SocketAddr;
+        let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let t = IpcTransport::TcpFallback(addr);
+        let s = format!("{:?}", t);
+        assert!(s.contains("TcpFallback") || s.contains("127"));
     }
 }

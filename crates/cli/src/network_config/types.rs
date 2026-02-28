@@ -232,29 +232,29 @@ impl ServiceDomainsConfig {
 
         Self {
             toadstool: std::env::var("TOADSTOOL_DOMAIN")
-                .unwrap_or_else(|_| format!("toadstool.{}", base_domain)),
+                .unwrap_or_else(|_| format!("toadstool.{base_domain}")),
             songbird: std::env::var("SONGBIRD_DOMAIN")
-                .unwrap_or_else(|_| format!("songbird.{}", base_domain)),
+                .unwrap_or_else(|_| format!("songbird.{base_domain}")),
             beardog: std::env::var("BEARDOG_DOMAIN")
-                .unwrap_or_else(|_| format!("beardog.{}", base_domain)),
+                .unwrap_or_else(|_| format!("beardog.{base_domain}")),
             nestgate: std::env::var("NESTGATE_DOMAIN")
-                .unwrap_or_else(|_| format!("nestgate.{}", base_domain)),
+                .unwrap_or_else(|_| format!("nestgate.{base_domain}")),
             squirrel: std::env::var("SQUIRREL_DOMAIN")
-                .unwrap_or_else(|_| format!("squirrel.{}", base_domain)),
+                .unwrap_or_else(|_| format!("squirrel.{base_domain}")),
             biomeos: std::env::var("BIOMEOS_DOMAIN")
-                .unwrap_or_else(|_| format!("biomeos.{}", base_domain)),
+                .unwrap_or_else(|_| format!("biomeos.{base_domain}")),
         }
     }
 
     /// Create with a custom base domain
     pub fn with_base_domain(base_domain: &str) -> Self {
         Self {
-            toadstool: format!("toadstool.{}", base_domain),
-            songbird: format!("songbird.{}", base_domain),
-            beardog: format!("beardog.{}", base_domain),
-            nestgate: format!("nestgate.{}", base_domain),
-            squirrel: format!("squirrel.{}", base_domain),
-            biomeos: format!("biomeos.{}", base_domain),
+            toadstool: format!("toadstool.{base_domain}"),
+            songbird: format!("songbird.{base_domain}"),
+            beardog: format!("beardog.{base_domain}"),
+            nestgate: format!("nestgate.{base_domain}"),
+            squirrel: format!("squirrel.{base_domain}"),
+            biomeos: format!("biomeos.{base_domain}"),
         }
     }
 }

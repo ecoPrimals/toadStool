@@ -19,6 +19,10 @@ pub enum SocketDiscoveryError {
 }
 
 /// Discover Unix socket path for a service providing the requested capability
+///
+/// # Errors
+///
+/// Returns [`SocketDiscoveryError`] if discovery fails or no Unix socket is found for the capability.
 pub async fn discover_socket_for_capability(
     capability: crate::primal_identity::Capability,
 ) -> Result<PathBuf, SocketDiscoveryError> {
@@ -61,18 +65,30 @@ pub async fn discover_socket_for_capability(
 }
 
 /// Convenience: Discover crypto service socket
+///
+/// # Errors
+///
+/// Returns [`SocketDiscoveryError`] if discovery fails or no socket is found.
 pub async fn discover_crypto_socket() -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::{Capability, CryptoCapability};
     discover_socket_for_capability(Capability::Crypto(CryptoCapability::Encryption)).await
 }
 
 /// Convenience: Discover storage service socket
+///
+/// # Errors
+///
+/// Returns [`SocketDiscoveryError`] if discovery fails or no socket is found.
 pub async fn discover_storage_socket() -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::{Capability, StorageCapability};
     discover_socket_for_capability(Capability::Storage(StorageCapability::ObjectStorage)).await
 }
 
 /// Convenience: Discover coordination service socket
+///
+/// # Errors
+///
+/// Returns [`SocketDiscoveryError`] if discovery fails or no socket is found.
 pub async fn discover_coordination_socket() -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::{Capability, CoordinationCapability};
     discover_socket_for_capability(Capability::Coordination(

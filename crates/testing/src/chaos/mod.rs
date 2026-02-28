@@ -55,6 +55,8 @@ pub struct ChaosScenario {
     pub validator: Option<StateValidator>,
     /// Maximum scenario duration
     pub timeout: Duration,
+    /// Delay after fault injection to allow system to stabilize (default: 200ms)
+    pub stabilization_delay: Duration,
 }
 
 /// Types of faults that can be injected
@@ -159,6 +161,7 @@ impl ChaosScenario {
             faults: Vec::new(),
             validator: None,
             timeout: Duration::from_secs(300), // 5 minutes default
+            stabilization_delay: Duration::from_millis(200),
         }
     }
 
@@ -197,6 +200,13 @@ impl ChaosScenario {
         self
     }
 
+    /// Set delay after fault injection for system stabilization.
+    /// Use longer values (e.g. 2s) for real distributed systems; 200ms default for fast tests.
+    pub fn with_stabilization_delay(mut self, delay: Duration) -> Self {
+        self.stabilization_delay = delay;
+        self
+    }
+
     /// Run the chaos scenario
     pub async fn run(self) -> Result<ScenarioResult, ChaosError> {
         info!("🔥 Starting chaos scenario: {}", self.name);
@@ -216,7 +226,7 @@ impl ChaosScenario {
                 fault
                     .description
                     .as_ref()
-                    .map(|d| format!(" ({})", d))
+                    .map(|d| format!(" ({d})"))
                     .unwrap_or_default()
             );
 
@@ -224,8 +234,8 @@ impl ChaosScenario {
             self.inject_fault(&fault.fault_type, &mut state).await?;
         }
 
-        // Wait for system to stabilize
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        // Wait for system to stabilize (configurable; use with_stabilization_delay for real clusters)
+        tokio::time::sleep(self.stabilization_delay).await;
 
         // Run validation if provided
         if let Some(validator) = &self.validator {
@@ -343,8 +353,8 @@ pub enum ChaosError {
 impl std::fmt::Display for ChaosError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChaosError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
-            ChaosError::InjectionFailed(msg) => write!(f, "Fault injection failed: {}", msg),
+            ChaosError::ValidationFailed(msg) => write!(f, "Validation failed: {msg}"),
+            ChaosError::InjectionFailed(msg) => write!(f, "Fault injection failed: {msg}"),
             ChaosError::Timeout => write!(f, "Scenario timeout"),
         }
     }

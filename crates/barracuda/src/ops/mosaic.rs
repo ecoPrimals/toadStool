@@ -34,7 +34,7 @@ impl Mosaic {
             if img.shape() != shape {
                 return Err(crate::error::BarracudaError::invalid_op(
                     "Mosaic",
-                    format!("All images must have same shape, image {} differs", i),
+                    format!("All images must have same shape, image {i} differs"),
                 ));
             }
         }
@@ -64,8 +64,8 @@ impl Mosaic {
         let width = shape[2];
 
         // Compute random split point from seed
-        let split_x = ((self.seed * 1103515245) % width as u64) as usize;
-        let split_y = ((self.seed * 22695477) % height as u64) as usize;
+        let split_x = ((self.seed * 1_103_515_245) % width as u64) as usize;
+        let split_y = ((self.seed * 22_695_477) % height as u64) as usize;
 
         let output_size = channels * height * width;
 
@@ -291,7 +291,7 @@ mod tests {
         let t4 = Tensor::from_vec_on(vec![0.4; 3 * 640 * 640], vec![3, 640, 640], device)
             .await
             .unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 77777)
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 77_777)
             .unwrap()
             .execute()
             .unwrap();
@@ -318,7 +318,7 @@ mod tests {
         let t4 = Tensor::from_vec_on(vec![4.0; 3 * 32 * 32], vec![3, 32, 32], device.clone())
             .await
             .unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 12345)
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 12_345)
             .unwrap()
             .execute()
             .unwrap();
@@ -338,7 +338,7 @@ mod tests {
         let t4 = Tensor::from_vec_on(vec![4.0; 64 * 64], vec![1, 64, 64], device)
             .await
             .unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 99999)
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 99_999)
             .unwrap()
             .execute()
             .unwrap();
@@ -434,7 +434,7 @@ mod tests {
         let t4 = Tensor::from_vec_on(vec![4.0; 3 * 100 * 100], vec![3, 100, 100], device)
             .await
             .unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 50505)
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 50_505)
             .unwrap()
             .execute()
             .unwrap();

@@ -53,7 +53,7 @@ impl Sqrt {
         if let Some(&neg) = data.iter().find(|&&x| x < 0.0) {
             return Err(BarracudaError::InvalidParameters {
                 operation: "Sqrt".to_string(),
-                reason: format!("Cannot take sqrt of negative value: {}", neg),
+                reason: format!("Cannot take sqrt of negative value: {neg}"),
             });
         }
 

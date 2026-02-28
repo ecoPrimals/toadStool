@@ -28,7 +28,7 @@ impl IndexSelect {
             if idx as usize >= input_size {
                 return Err(BarracudaError::invalid_op(
                     "IndexSelect",
-                    format!("Index {} out of bounds for input size {}", idx, input_size),
+                    format!("Index {idx} out of bounds for input size {input_size}"),
                 ));
             }
         }

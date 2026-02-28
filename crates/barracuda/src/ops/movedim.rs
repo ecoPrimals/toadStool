@@ -43,14 +43,14 @@ impl MoveDim {
         if source_dim >= num_dims {
             return Err(BarracudaError::invalid_op(
                 "movedim",
-                format!("source_dim {} exceeds tensor rank {}", source_dim, num_dims),
+                format!("source_dim {source_dim} exceeds tensor rank {num_dims}"),
             ));
         }
 
         if dest_dim >= num_dims {
             return Err(BarracudaError::invalid_op(
                 "movedim",
-                format!("dest_dim {} exceeds tensor rank {}", dest_dim, num_dims),
+                format!("dest_dim {dest_dim} exceeds tensor rank {num_dims}"),
             ));
         }
 

@@ -14,6 +14,7 @@ const RUNTIMES: &[(&str, &str)] = &[
 ];
 
 /// Detect language runtimes.
+#[allow(clippy::unused_async)] // Sync probe; async for API consistency with SubstrateDetector
 pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let mut platforms = Vec::new();
 

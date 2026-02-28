@@ -180,8 +180,8 @@ impl BiomeExecutor {
 
         // Print status hint
         println!("💡 Use 'toadstool ps' to view status");
-        println!("💡 Use 'toadstool logs {}' to view logs", biome_name);
-        println!("💡 Use 'toadstool down {}' to stop", biome_name);
+        println!("💡 Use 'toadstool logs {biome_name}' to view logs");
+        println!("💡 Use 'toadstool down {biome_name}' to stop");
 
         Ok(())
     }
@@ -210,8 +210,7 @@ impl BiomeExecutor {
             let biomes = self.biomes.read().await;
             if !biomes.contains_key(&biome_name) {
                 return Err(crate::CliError::Other(format!(
-                    "Biome '{}' is not running",
-                    biome_name
+                    "Biome '{biome_name}' is not running"
                 )));
             }
         }
@@ -287,7 +286,7 @@ impl BiomeExecutor {
         // Get biome
         let biomes = self.biomes.read().await;
         let biome = biomes.get(&biome_name).ok_or_else(|| {
-            crate::CliError::Other(format!("Biome '{}' is not running", biome_name))
+            crate::CliError::Other(format!("Biome '{biome_name}' is not running"))
         })?;
 
         // Determine log file (clone to release borrow)
@@ -295,7 +294,7 @@ impl BiomeExecutor {
             biome
                 .log_files
                 .get(service)
-                .ok_or_else(|| crate::CliError::Other(format!("Service '{}' not found", service)))?
+                .ok_or_else(|| crate::CliError::Other(format!("Service '{service}' not found")))?
                 .clone()
         } else {
             // Show all logs (default to first service or biome log)

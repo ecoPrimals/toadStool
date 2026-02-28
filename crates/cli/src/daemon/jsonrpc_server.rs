@@ -182,7 +182,7 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> crate::Res
                 result: None,
                 error: Some(JsonRpcError {
                     code: error_codes::PARSE_ERROR,
-                    message: format!("Parse error: {}", e),
+                    message: format!("Parse error: {e}"),
                     data: None,
                 }),
                 id: None,
@@ -297,7 +297,7 @@ async fn handle_submit_workload(params: Value, state: &ServerState) -> Result<Va
     let request: SubmitWorkloadRequest =
         serde_json::from_value(params).map_err(|e| JsonRpcError {
             code: error_codes::INVALID_PARAMS,
-            message: format!("Invalid params: {}", e),
+            message: format!("Invalid params: {e}"),
             data: None,
         })?;
 
@@ -309,7 +309,7 @@ async fn handle_submit_workload(params: Value, state: &ServerState) -> Result<Va
         }),
         Err(e) => Err(JsonRpcError {
             code: error_codes::WORKLOAD_SUBMIT_FAILED,
-            message: format!("Workload submission failed: {}", e),
+            message: format!("Workload submission failed: {e}"),
             data: None,
         }),
     }
@@ -335,7 +335,7 @@ async fn handle_get_workload(params: Value, state: &ServerState) -> Result<Value
         }),
         None => Err(JsonRpcError {
             code: error_codes::WORKLOAD_NOT_FOUND,
-            message: format!("Workload not found: {}", workload_id),
+            message: format!("Workload not found: {workload_id}"),
             data: None,
         }),
     }
@@ -353,7 +353,7 @@ async fn handle_delete_workload(params: Value, state: &ServerState) -> Result<Va
         Ok(()) => Ok(json!({"success": true, "workload_id": workload_id})),
         Err(e) => Err(JsonRpcError {
             code: error_codes::WORKLOAD_DELETE_FAILED,
-            message: format!("Workload deletion failed: {}", e),
+            message: format!("Workload deletion failed: {e}"),
             data: None,
         }),
     }
@@ -379,6 +379,56 @@ async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcErro
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::net::UnixStream;
+    use tokio::time::timeout;
+
+    fn jsonrpc_request(method: &str, params: Value, id: Value) -> String {
+        serde_json::to_string(&json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": id
+        }))
+        .expect("serialize request")
+    }
+
+    async fn connect_and_send(socket_path: &std::path::Path, request: &str) -> String {
+        let stream = timeout(std::time::Duration::from_secs(2), async {
+            for _ in 0..50 {
+                match UnixStream::connect(socket_path).await {
+                    Ok(s) => return Ok(s),
+                    Err(_) => tokio::task::yield_now().await,
+                }
+            }
+            Err(std::io::Error::new(
+                std::io::ErrorKind::ConnectionRefused,
+                "could not connect",
+            ))
+        })
+        .await
+        .expect("connect timeout")
+        .expect("connect");
+
+        let (reader, mut writer) = stream.into_split();
+        writer
+            .write_all(request.as_bytes())
+            .await
+            .expect("write request");
+        writer.write_all(b"\n").await.expect("write newline");
+        writer.flush().await.expect("flush");
+
+        let mut reader = BufReader::new(reader);
+        let mut line = String::new();
+        timeout(
+            std::time::Duration::from_secs(2),
+            reader.read_line(&mut line),
+        )
+        .await
+        .expect("read timeout")
+        .expect("read");
+        line
+    }
 
     #[test]
     fn test_jsonrpc_request_parsing() {
@@ -399,5 +449,456 @@ mod tests {
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("2.0"));
         assert!(json.contains("result"));
+    }
+
+    #[tokio::test]
+    async fn test_server_construct_and_health() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let req = jsonrpc_request("daemon.health", json!({}), json!(1));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert_eq!(parsed["result"]["status"], "ok");
+        assert!(parsed["result"]["uptime_secs"].as_u64().is_some());
+        assert_eq!(parsed["id"], 1);
+    }
+
+    #[tokio::test]
+    async fn test_method_routing_metrics() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_metrics.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let req = jsonrpc_request("daemon.metrics", json!({}), json!(2));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["result"]["workloads"].is_object());
+        assert!(parsed["result"]["uptime_secs"].as_u64().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_method_routing_list_workloads() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_list.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let req = jsonrpc_request("daemon.list_workloads", json!({}), json!(3));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["result"]["workloads"].is_array());
+        assert!(parsed["result"]["count"].as_u64().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_submit_workload_request_response() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_submit.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let params = json!({
+            "biome_yaml": "version: 1.0",
+            "requester": "test-client",
+            "environment": {},
+            "timeout_secs": 60,
+            "persistent": false
+        });
+        let req = jsonrpc_request("daemon.submit_workload", params, json!(4));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        if let Some(err) = parsed.get("error") {
+            panic!("submit_workload failed: {}", err);
+        }
+        // JSON-RPC handler returns workload_id string directly from WorkloadManager
+        let workload_id = parsed["result"]
+            .as_str()
+            .or_else(|| parsed["result"]["workload_id"].as_str());
+        assert!(
+            workload_id.is_some_and(|id| !id.is_empty()),
+            "expected workload_id in result: {}",
+            parsed
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_workload_not_found() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_get.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let params = json!({"id": "nonexistent-uuid"});
+        let req = jsonrpc_request("daemon.get_workload", params, json!(5));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["error"].is_object());
+        assert_eq!(parsed["error"]["code"], error_codes::WORKLOAD_NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_parse_error_invalid_json() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_parse.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let resp = connect_and_send(&socket_path, "not valid json\n").await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["error"].is_object());
+        assert_eq!(parsed["error"]["code"], error_codes::PARSE_ERROR);
+    }
+
+    #[tokio::test]
+    async fn test_invalid_jsonrpc_version() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_version.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let req = jsonrpc_request("daemon.health", json!({}), json!(1));
+        let bad_req = req.replace("\"2.0\"", "\"1.0\"");
+        let resp = connect_and_send(&socket_path, &bad_req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["error"].is_object());
+        assert_eq!(parsed["error"]["code"], error_codes::INVALID_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_method_not_found() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_method.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let req = jsonrpc_request("daemon.nonexistent", json!({}), json!(6));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["error"].is_object());
+        assert_eq!(parsed["error"]["code"], error_codes::METHOD_NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_invalid_params_submit_workload() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_invalid_submit.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let params = json!({"invalid": "params"});
+        let req = jsonrpc_request("daemon.submit_workload", params, json!(7));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["error"].is_object());
+        assert_eq!(parsed["error"]["code"], error_codes::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_invalid_params_get_workload_missing_id() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = dir.path().join("test_get_missing.sock");
+
+        let workload_manager = Arc::new(
+            WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        let state = ServerState {
+            start_time: Instant::now(),
+            workload_manager,
+        };
+
+        if socket_path.exists() {
+            std::fs::remove_file(&socket_path).expect("remove existing");
+        }
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create parent");
+        }
+        let listener = UnixListener::bind(&socket_path).expect("bind");
+
+        tokio::spawn(async move {
+            loop {
+                if let Ok((stream, _)) = listener.accept().await {
+                    let state_clone = state.clone();
+                    tokio::spawn(async move {
+                        let _ = super::handle_connection(stream, state_clone).await;
+                    });
+                }
+            }
+        });
+
+        tokio::task::yield_now().await;
+
+        let params = json!({});
+        let req = jsonrpc_request("daemon.get_workload", params, json!(8));
+        let resp = connect_and_send(&socket_path, &req).await;
+        let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
+        assert!(parsed["error"].is_object());
+        assert_eq!(parsed["error"]["code"], error_codes::INVALID_PARAMS);
     }
 }

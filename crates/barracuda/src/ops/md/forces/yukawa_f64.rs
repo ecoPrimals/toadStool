@@ -145,7 +145,7 @@ impl YukawaForceF64 {
         };
 
         let workgroups = (n as u32).div_ceil(64);
-        ComputeDispatch::new(&**device, "Yukawa F64")
+        ComputeDispatch::new(device, "Yukawa F64")
             .shader(&shader_src, "main")
             .f64()
             .storage_read(0, self.positions.buffer())

@@ -21,6 +21,17 @@ use toadstool_common::constants::ecosystem::well_known;
 
 use super::*;
 
+/// Parse env vars from "KEY=VALUE" strings. Used by start_biome_internal.
+fn parse_env_vars(env_vars: &[String]) -> HashMap<String, String> {
+    let mut environment = HashMap::with_capacity(env_vars.len());
+    for env_var in env_vars {
+        if let Some((key, value)) = env_var.split_once('=') {
+            environment.insert(key.to_string(), value.to_string());
+        }
+    }
+    environment
+}
+
 /// Internal lifecycle operation implementations
 impl BiomeExecutor {
     pub(super) async fn start_biome_internal(
@@ -44,13 +55,7 @@ impl BiomeExecutor {
         fs::create_dir_all(&log_dir).await?;
 
         // Parse environment variables
-        // ✅ ZERO-COPY: Pre-allocate with known capacity
-        let mut environment = HashMap::with_capacity(env_vars.len());
-        for env_var in env_vars {
-            if let Some((key, value)) = env_var.split_once('=') {
-                environment.insert(key.to_string(), value.to_string());
-            }
-        }
+        let environment = parse_env_vars(&env_vars);
 
         // Start primals first (in dependency order)
         let mut processes = Vec::new();
@@ -77,7 +82,7 @@ impl BiomeExecutor {
                 processes.push(process);
                 log_files.insert(
                     primal_name.to_string(),
-                    log_dir.join(format!("{}.log", primal_name)),
+                    log_dir.join(format!("{primal_name}.log")),
                 );
             }
         }
@@ -205,7 +210,7 @@ impl BiomeExecutor {
             name: name.to_string(),
             process_type: ProcessType::Primal(name.to_string()),
             execution_id,
-            pid: Some(1000 + (execution_id.as_u128() % 30000) as u32),
+            pid: Some(1000 + (execution_id.as_u128() % 30_000) as u32),
             _started_at: std::time::SystemTime::now(),
         })
     }
@@ -246,7 +251,7 @@ impl BiomeExecutor {
             name: name.to_string(),
             process_type: ProcessType::Service(name.to_string()),
             execution_id,
-            pid: Some(2000 + (execution_id.as_u128() % 30000) as u32),
+            pid: Some(2000 + (execution_id.as_u128() % 30_000) as u32),
             _started_at: std::time::SystemTime::now(),
         })
     }
@@ -459,5 +464,41 @@ impl BiomeExecutor {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_env_vars() {
+        let env_vars = vec![
+            "KEY1=value1".to_string(),
+            "KEY2=value2".to_string(),
+            "EMPTY=".to_string(),
+            "NO_EQUALS".to_string(), // skipped
+        ];
+        let env = parse_env_vars(&env_vars);
+        assert_eq!(env.get("KEY1"), Some(&"value1".to_string()));
+        assert_eq!(env.get("KEY2"), Some(&"value2".to_string()));
+        assert_eq!(env.get("EMPTY"), Some(&"".to_string()));
+        assert!(!env.contains_key("NO_EQUALS"));
+    }
+
+    #[test]
+    fn test_parse_env_vars_empty() {
+        let env = parse_env_vars(&[]);
+        assert!(env.is_empty());
+    }
+
+    #[test]
+    fn test_parse_env_vars_multiple_equals() {
+        let env_vars = vec!["PATH=/usr/bin:/usr/local/bin".to_string()];
+        let env = parse_env_vars(&env_vars);
+        assert_eq!(
+            env.get("PATH"),
+            Some(&"/usr/bin:/usr/local/bin".to_string())
+        );
     }
 }

@@ -83,7 +83,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     let cpu_threads = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1);
-    println!("✓ CPU Threads: {}", cpu_threads);
+    println!("✓ CPU Threads: {cpu_threads}");
     println!();
 
     // ════════════════════════════════════════════════════════════════════════
@@ -159,7 +159,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
 
             tx.send(TierResult {
                 tier: "GPU",
-                device: format!("{} ({})", device_name, vendor_str),
+                device: format!("{device_name} ({vendor_str})"),
                 latency_ms: latency.as_secs_f64() * 1000.0,
                 output_sum,
             })
@@ -370,17 +370,14 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     println!("═══ Ensemble Summary ═══");
     println!();
     println!("Hardware Utilized:");
-    println!(
-        "  • {} GPUs (NVIDIA + AMD via same WGSL shaders)",
-        gpu_count
-    );
-    println!("  • {} NPUs (Akida AKD1000 via pure Rust VFIO)", npu_count);
+    println!("  • {gpu_count} GPUs (NVIDIA + AMD via same WGSL shaders)");
+    println!("  • {npu_count} NPUs (Akida AKD1000 via pure Rust VFIO)");
     println!("  • 1 CPU tier (sparse linear algebra)");
     println!();
     println!("Aggregate Output:");
-    println!("  • GPU tier:  {:.6e}", total_gpu_output);
-    println!("  • NPU tier:  {:.6e}", total_npu_output);
-    println!("  • CPU tier:  {:.6e}", total_cpu_output);
+    println!("  • GPU tier:  {total_gpu_output:.6e}");
+    println!("  • NPU tier:  {total_npu_output:.6e}");
+    println!("  • CPU tier:  {total_cpu_output:.6e}");
     println!(
         "  • Combined:  {:.6e}",
         total_gpu_output + total_npu_output + total_cpu_output
@@ -395,8 +392,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     // Power estimate
     let estimated_power = (gpu_count as f64 * 350.0) + (npu_count as f64 * 1.5) + 200.0; // rough TDP
     println!(
-        "Estimated peak power: ~{:.0}W ({} GPU × 350W + {} NPU × 1.5W + CPU)",
-        estimated_power, gpu_count, npu_count
+        "Estimated peak power: ~{estimated_power:.0}W ({gpu_count} GPU × 350W + {npu_count} NPU × 1.5W + CPU)"
     );
 
     println!();
@@ -409,7 +405,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
 
 fn truncate(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
-        format!("{:width$}", s, width = max_len)
+        format!("{s:max_len$}")
     } else {
         format!("{}...", &s[..max_len - 3])
     }

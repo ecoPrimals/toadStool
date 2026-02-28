@@ -125,7 +125,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                     health_check_integration: true,
                 },
                 inter_service: InterServiceConfig {
-                    default_protocol: "grpc".to_string(),
+                    default_protocol: "jsonrpc".to_string(),
                     connection_pooling: ConnectionPoolConfig {
                         enabled: true,
                         max_connections_per_host: 100,

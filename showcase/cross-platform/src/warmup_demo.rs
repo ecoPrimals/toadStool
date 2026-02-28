@@ -22,7 +22,7 @@ async fn benchmark_cold_vs_warm(
     let b = Tensor::from_data(&data, vec![size], device.clone())?;
 
     println!("\n  ═══════════════════════════════════════════════════════════════");
-    println!("  {} - Cold vs Warm Comparison", name);
+    println!("  {name} - Cold vs Warm Comparison");
     println!("  ═══════════════════════════════════════════════════════════════\n");
 
     // Clear cache to simulate cold start
@@ -43,7 +43,7 @@ async fn benchmark_cold_vs_warm(
     let warm_avg = warm_times.iter().sum::<f64>() / warm_times.len() as f64;
 
     println!("  Cold (first call):     {:>8.0} μs", cold_time.as_micros());
-    println!("  Warm (cached, avg):    {:>8.0} μs", warm_avg);
+    println!("  Warm (cached, avg):    {warm_avg:>8.0} μs");
     println!(
         "  Speedup:               {:>8.1}x",
         cold_time.as_micros() as f64 / warm_avg

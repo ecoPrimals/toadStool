@@ -94,19 +94,19 @@ impl TverskyLoss {
         if !(0.0..=1.0).contains(&alpha) {
             return Err(BarracudaError::invalid_op(
                 "TverskyLoss",
-                format!("alpha must be in [0, 1], got {}", alpha),
+                format!("alpha must be in [0, 1], got {alpha}"),
             ));
         }
         if !(0.0..=1.0).contains(&beta) {
             return Err(BarracudaError::invalid_op(
                 "TverskyLoss",
-                format!("beta must be in [0, 1], got {}", beta),
+                format!("beta must be in [0, 1], got {beta}"),
             ));
         }
         if smoothing < 0.0 {
             return Err(BarracudaError::invalid_op(
                 "TverskyLoss",
-                format!("smoothing must be non-negative, got {}", smoothing),
+                format!("smoothing must be non-negative, got {smoothing}"),
             ));
         }
 

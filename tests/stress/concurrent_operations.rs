@@ -240,9 +240,9 @@ async fn stress_timeout_handling() {
         
         tasks.push(tokio::spawn(async move {
             let result = timeout(Duration::from_millis(50), async {
-                // Half will timeout, half will succeed
+                // Half will timeout (never complete), half will succeed immediately
                 if i % 2 == 0 {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    std::future::pending::<()>().await;
                 }
                 Ok::<_, std::io::Error>(())
             }).await;
@@ -382,6 +382,8 @@ async fn stress_sustained_load() {
         let running = running.clone();
         
         tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_millis(1000 / TASKS_PER_SECOND as u64));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Burst);
             while running.load(Ordering::Relaxed) {
                 let counter = counter.clone();
                 
@@ -390,19 +392,21 @@ async fn stress_sustained_load() {
                     counter.fetch_add(1, Ordering::Relaxed);
                 });
                 
-                tokio::time::sleep(Duration::from_millis(1000 / TASKS_PER_SECOND as u64)).await;
+                interval.tick().await;
             }
         })
     };
     
-    // Run for specified duration
-    tokio::time::sleep(Duration::from_secs(DURATION_SECS)).await;
+    // Run for specified duration - timeout as guard (no sleep)
+    let _ = timeout(Duration::from_secs(DURATION_SECS), std::future::pending::<()>()).await;
     running.store(false, Ordering::Relaxed);
     
     spawner.await.unwrap();
     
-    // Allow tasks to complete
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Allow tasks to complete - yield to let them finish
+    for _ in 0..20 {
+        tokio::task::yield_now().await;
+    }
     
     let total_tasks = counter.load(Ordering::Relaxed);
     let elapsed = start.elapsed().as_secs_f64();

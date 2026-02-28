@@ -332,7 +332,10 @@ async fn test_compute_result_job_not_found() {
 
     assert!(response.result.is_none());
     let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::METHOD_NOT_FOUND);
+    assert_eq!(
+        err.code,
+        toadstool_common::constants::jsonrpc::error_codes::WORKLOAD_NOT_FOUND
+    );
 }
 
 #[tokio::test]

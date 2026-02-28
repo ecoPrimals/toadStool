@@ -126,7 +126,11 @@ struct SlowProperty {
 
 impl Property<i32> for SlowProperty {
     fn test(&self, _value: &i32) -> toadstool::ToadStoolResult<()> {
-        std::thread::sleep(Duration::from_millis(self.delay_ms));
+        // Spin until delay elapsed (no sleep - event-driven test philosophy)
+        let start = std::time::Instant::now();
+        while start.elapsed() < Duration::from_millis(self.delay_ms) {
+            std::hint::spin_loop();
+        }
         Ok(())
     }
 

@@ -85,7 +85,7 @@ impl NpuMlBackend {
     pub fn with_threshold(threshold: f32) -> Result<Self> {
         // Runtime device discovery
         let manager = akida_driver::DeviceManager::discover().map_err(|e| {
-            crate::error::BarracudaError::device_not_found(format!("No NPU devices found: {}", e))
+            crate::error::BarracudaError::device_not_found(format!("No NPU devices found: {e}"))
         })?;
 
         if manager.device_count() == 0 {
@@ -97,17 +97,13 @@ impl NpuMlBackend {
         // Open first device
         let device = manager.open(0).map_err(|e| {
             crate::error::BarracudaError::device_not_found(format!(
-                "Failed to open NPU device: {}",
-                e
+                "Failed to open NPU device: {e}"
             ))
         })?;
 
         // Query capabilities at runtime
         let info = manager.device(0).map_err(|e| {
-            crate::error::BarracudaError::device_not_found(format!(
-                "Failed to query NPU info: {}",
-                e
-            ))
+            crate::error::BarracudaError::device_not_found(format!("Failed to query NPU info: {e}"))
         })?;
 
         let capabilities = NpuCapabilities {
@@ -175,7 +171,7 @@ impl NpuMlBackend {
 
         // 3. ACTUAL NPU EXECUTION (no mocks!)
         let result = executor.infer(&events, &mut self.device).map_err(|e| {
-            crate::error::BarracudaError::execution_failed(format!("NPU inference failed: {}", e))
+            crate::error::BarracudaError::execution_failed(format!("NPU inference failed: {e}"))
         })?;
 
         // 4. Convert sparse events back to dense

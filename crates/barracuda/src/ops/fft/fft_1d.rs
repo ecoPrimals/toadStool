@@ -44,8 +44,7 @@ impl Fft1D {
         // Validate degree is power of 2
         if degree & (degree - 1) != 0 {
             return Err(BarracudaError::Device(format!(
-                "FFT degree {} must be power of 2",
-                degree
+                "FFT degree {degree} must be power of 2"
             )));
         }
 
@@ -321,7 +320,7 @@ impl Fft1D {
                 device
                     .device
                     .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some(&format!("FFT Stage {} Encoder", stage)),
+                        label: Some(&format!("FFT Stage {stage} Encoder")),
                     });
 
             let stage_params = FftParams {
@@ -333,13 +332,13 @@ impl Fft1D {
                 device
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some(&format!("FFT Params (Stage {})", stage)),
+                        label: Some(&format!("FFT Params (Stage {stage})")),
                         contents: bytemuck::bytes_of(&stage_params),
                         usage: wgpu::BufferUsages::UNIFORM,
                     });
 
             let stage_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("FFT Butterfly Bind Group (Stage {})", stage)),
+                label: Some(&format!("FFT Butterfly Bind Group (Stage {stage})")),
                 layout: &self.bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
@@ -364,7 +363,7 @@ impl Fft1D {
             {
                 let mut compute_pass =
                     stage_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some(&format!("FFT Butterfly Pass (Stage {})", stage)),
+                        label: Some(&format!("FFT Butterfly Pass (Stage {stage})")),
                         timestamp_writes: None,
                     });
 

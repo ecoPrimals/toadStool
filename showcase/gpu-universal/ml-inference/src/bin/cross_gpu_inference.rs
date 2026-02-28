@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
 
     for &size in &test_sizes {
         println!("─────────────────────────────────────────────────────────");
-        println!("  Test Size: {} images", size);
+        println!("  Test Size: {size} images");
         println!("─────────────────────────────────────────────────────────");
         println!();
 
@@ -247,8 +247,8 @@ fn print_comparison(single: &BenchmarkStats, cross: &BenchmarkStats) {
         ((single.total_time_ms - cross.total_time_ms) / single.total_time_ms) * 100.0;
 
     println!("  ═══ Cross-GPU Performance ═══");
-    println!("    Speedup:         {:.2}x faster", speedup);
-    println!("    Time Reduction:  {:.1}% less time", time_reduction);
+    println!("    Speedup:         {speedup:.2}x faster");
+    println!("    Time Reduction:  {time_reduction:.1}% less time");
 
     if speedup >= 1.8 {
         println!("    Assessment:      ✅ Excellent parallelism (near 2x)");

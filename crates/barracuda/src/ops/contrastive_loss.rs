@@ -75,10 +75,7 @@ impl ContrastiveLoss {
         if !batch_total.is_multiple_of(2) {
             return Err(BarracudaError::invalid_op(
                 "ContrastiveLoss",
-                format!(
-                    "first dimension must be even (batch*2), got {}",
-                    batch_total
-                ),
+                format!("first dimension must be even (batch*2), got {batch_total}"),
             ));
         }
 
@@ -86,7 +83,7 @@ impl ContrastiveLoss {
         if temperature <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "ContrastiveLoss",
-                format!("temperature must be positive, got {}", temperature),
+                format!("temperature must be positive, got {temperature}"),
             ));
         }
 

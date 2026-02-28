@@ -23,7 +23,7 @@ fn get_runtime_dir() -> String {
         .or_else(|_| std::env::var("BIOMEOS_RUNTIME_DIR"))
         .unwrap_or_else(|_| {
             if let Ok(uid) = uid_detector::get_user_id() {
-                format!("/run/user/{}", uid)
+                format!("/run/user/{uid}")
             } else {
                 std::env::temp_dir()
                     .join("biomeos-runtime")
@@ -52,15 +52,14 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
         .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
         .map_err(|e| {
             ToadStoolError::integration(format!(
-                "Failed to connect to Songbird at {}: {}. Is Songbird running?",
-                socket_path, e
+                "Failed to connect to Songbird at {socket_path}: {e}. Is Songbird running?"
             ))
         })?;
 
     let socket_endpoint = std::env::var("TOADSTOOL_SOCKET").unwrap_or_else(|_| {
         // XDG-compliant biomeOS standard path: $XDG_RUNTIME_DIR/biomeos/toadstool.sock
         let runtime_dir = get_runtime_dir();
-        format!("{}/biomeos/{}.sock", runtime_dir, PRIMAL_NAME)
+        format!("{runtime_dir}/biomeos/{PRIMAL_NAME}.sock")
     });
 
     let request = json!({
@@ -86,8 +85,7 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 
     if let Some(error) = response.get("error") {
         return Err(ToadStoolError::integration(format!(
-            "Songbird registration failed: {}",
-            error
+            "Songbird registration failed: {error}"
         )));
     }
 
@@ -109,8 +107,7 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
         .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
         .map_err(|e| {
             ToadStoolError::integration(format!(
-                "Failed to connect to Songbird: {}. Is Songbird running?",
-                e
+                "Failed to connect to Songbird: {e}. Is Songbird running?"
             ))
         })?;
 
@@ -128,8 +125,7 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
 
     if let Some(error) = response.get("error") {
         return Err(ToadStoolError::integration(format!(
-            "Failed to resolve {}: {}",
-            primal_name, error
+            "Failed to resolve {primal_name}: {error}"
         )));
     }
 
@@ -139,8 +135,7 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
         .and_then(|e| e.as_str())
         .ok_or_else(|| {
             ToadStoolError::integration(format!(
-                "Invalid response from Songbird: missing endpoint for {}",
-                primal_name
+                "Invalid response from Songbird: missing endpoint for {primal_name}"
             ))
         })?
         .to_string();
@@ -160,14 +155,12 @@ pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream>
         .await
         .map_err(|_| {
             ToadStoolError::integration(format!(
-                "Timeout connecting to {} at {}",
-                primal_name, endpoint
+                "Timeout connecting to {primal_name} at {endpoint}"
             ))
         })?
         .map_err(|e| {
             ToadStoolError::integration(format!(
-                "Failed to connect to {} at {}: {}",
-                primal_name, endpoint, e
+                "Failed to connect to {primal_name} at {endpoint}: {e}"
             ))
         })?;
 
@@ -186,9 +179,7 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
     let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
         .await
         .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
-        .map_err(|e| {
-            ToadStoolError::integration(format!("Failed to connect to Songbird: {}", e))
-        })?;
+        .map_err(|e| ToadStoolError::integration(format!("Failed to connect to Songbird: {e}")))?;
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
@@ -204,8 +195,7 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
 
     if let Some(error) = response.get("error") {
         return Err(ToadStoolError::integration(format!(
-            "Failed to find capability {}: {}",
-            capability, error
+            "Failed to find capability {capability}: {error}"
         )));
     }
 
@@ -249,14 +239,19 @@ mod tests {
 
     #[test]
     fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
-        std::env::remove_var("BIOMEOS_RUNTIME_DIR");
-        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/xdg-socket-test");
-        let socket = get_default_songbird_socket();
-        std::env::remove_var("XDG_RUNTIME_DIR");
-        assert!(
-            socket.starts_with("/tmp/xdg-socket-test"),
-            "expected socket to start with XDG path, got: {}",
-            socket
+        temp_env::with_vars(
+            [
+                ("BIOMEOS_RUNTIME_DIR", None),
+                ("XDG_RUNTIME_DIR", Some("/tmp/xdg-socket-test")),
+            ],
+            || {
+                let socket = get_default_songbird_socket();
+                assert!(
+                    socket.starts_with("/tmp/xdg-socket-test"),
+                    "expected socket to start with XDG path, got: {}",
+                    socket
+                );
+            },
         );
     }
 }

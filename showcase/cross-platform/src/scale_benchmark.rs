@@ -130,7 +130,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
             .unwrap_or(500.0);
 
         println!("══════════════════════════════════════════════════════════════════════════════");
-        println!("  {} (Theoretical: {:.0} GB/s)", name, theoretical_bw);
+        println!("  {name} (Theoretical: {theoretical_bw:.0} GB/s)");
         println!(
             "══════════════════════════════════════════════════════════════════════════════\n"
         );
@@ -173,12 +173,11 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
                     scale_results.push((*size, time_per_op, bandwidth, pct_theoretical));
 
                     println!(
-                        "  │ {:>14} │ {:>7.0} μs │ {:>7.2} GOP/s│ {:>7.1} GB/s│ {:>7.1}%   │",
-                        label, time_per_op, gops, bandwidth, pct_theoretical
+                        "  │ {label:>14} │ {time_per_op:>7.0} μs │ {gops:>7.2} GOP/s│ {bandwidth:>7.1} GB/s│ {pct_theoretical:>7.1}%   │"
                     );
                 }
                 Err(e) => {
-                    println!("  │ {:>14} │ Error: {} │", label, e);
+                    println!("  │ {label:>14} │ Error: {e} │");
                 }
             }
         }
@@ -203,8 +202,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
                 sizes[scale_results.len() - 1].1
             );
             println!(
-                "    Time increased:     {:>8.1}x ({:.0}μs → {:.0}μs)",
-                time_ratio, small_time, large_time
+                "    Time increased:     {time_ratio:>8.1}x ({small_time:.0}μs → {large_time:.0}μs)"
             );
 
             if time_ratio < size_ratio * 0.5 {
@@ -247,7 +245,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
                 );
             }
             Err(e) => {
-                println!("  │ Error: {} │", e);
+                println!("  │ Error: {e} │");
                 continue;
             }
         }
@@ -263,12 +261,11 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
                     let speedup = (base_time * 1000.0) / time_per_op;
 
                     println!(
-                        "  │ {:>14} │ {:>7.2} ms │ {:>7.0} μs │ {:>7.1} GB/s│ {:>7.1}x   │",
-                        batch_size, time_per_batch, time_per_op, bandwidth, speedup
+                        "  │ {batch_size:>14} │ {time_per_batch:>7.2} ms │ {time_per_op:>7.0} μs │ {bandwidth:>7.1} GB/s│ {speedup:>7.1}x   │"
                     );
                 }
                 Err(e) => {
-                    println!("  │ {:>14} │ Error: {} │", batch_size, e);
+                    println!("  │ {batch_size:>14} │ Error: {e} │");
                 }
             }
         }
@@ -309,9 +306,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let bandwidth = (size * 3 * 4) as f64 * ops as f64 / elapsed.as_secs_f64() / 1e9;
 
         println!("    Duration:       {:.2}s", elapsed.as_secs_f64());
-        println!("    Operations:     {}", ops);
-        println!("    Ops/second:     {:.0}", ops_per_sec);
-        println!("    Elements/sec:   {:.2e}", elements_per_sec);
+        println!("    Operations:     {ops}");
+        println!("    Ops/second:     {ops_per_sec:.0}");
+        println!("    Elements/sec:   {elements_per_sec:.2e}");
         println!(
             "    Bandwidth:      {:.1} GB/s ({:.1}% of theoretical)",
             bandwidth,

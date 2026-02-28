@@ -464,6 +464,7 @@ impl ByobComputeExecutor {
         };
 
         // Generate a semi-random last octet based on service name
+        #[allow(clippy::cast_possible_truncation)]
         let last_octet = service_spec.name.chars().map(|c| c as u32).sum::<u32>() % 200 + 50; // Range 50-249
 
         let external_ip = format!("{base_ip}.{last_octet}");
@@ -477,7 +478,7 @@ impl ByobComputeExecutor {
     }
 
     /// Stop a specific service execution
-    async fn stop_service_execution(
+    fn stop_service_execution(
         &self,
         service_name: String,
         execution_id: Uuid,
@@ -519,6 +520,7 @@ impl ByobExecutor for ByobComputeExecutor {
         // Check concurrent deployment limit
         {
             let deployments = self.active_deployments.read().await;
+            #[allow(clippy::cast_possible_truncation)]
             if deployments.len() >= self.config.max_concurrent_deployments as usize {
                 return Err(ToadStoolError::resource(
                     "Maximum concurrent deployments reached".to_string(),
@@ -590,10 +592,7 @@ impl ByobExecutor for ByobComputeExecutor {
                     );
 
                     // Delegate to stop_service_execution() which simulates runtime engine coordination
-                    match self
-                        .stop_service_execution(service_name.clone(), *execution_id)
-                        .await
-                    {
+                    match self.stop_service_execution(service_name.clone(), *execution_id) {
                         Ok(()) => {
                             stopped_services.push(service_name.clone());
                             deployment.remove_service_execution(&service_name);

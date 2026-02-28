@@ -71,7 +71,7 @@ impl KineticEnergyF64 {
         });
 
         let wg_count = (n as u32).div_ceil(WG);
-        ComputeDispatch::new(&*self.device, "kinetic_energy_f64")
+        ComputeDispatch::new(&self.device, "kinetic_energy_f64")
             .shader(SHADER, "main")
             .f64()
             .storage_read(0, &vel_buf)

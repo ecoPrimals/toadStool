@@ -171,7 +171,7 @@ impl VarianceReduceF64 {
         };
         let params_buffer = device.create_uniform_buffer("VarianceReduce params", &params);
 
-        ComputeDispatch::new(&*device, "variance_reduce_f64")
+        ComputeDispatch::new(&device, "variance_reduce_f64")
             .shader(Self::wgsl_shader(), "variance_reduce_f64")
             .f64()
             .storage_read(0, &input_buffer)

@@ -337,8 +337,7 @@ impl CryptoAdapter {
                 .and_then(|v| v.as_str())
                 .unwrap_or("Unknown validation error");
             return Err(crate::CliError::Other(format!(
-                "Permission validation failed: {}",
-                reason
+                "Permission validation failed: {reason}"
             )));
         }
 

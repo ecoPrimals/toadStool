@@ -152,7 +152,7 @@ impl fmt::Display for ComputeUnitType {
             Self::GpuWgpu => write!(f, "GPU (wgpu)"),
             Self::GpuVulkan => write!(f, "GPU (Vulkan)"),
             Self::Neuromorphic => write!(f, "Neuromorphic"),
-            Self::Custom(id) => write!(f, "Custom({})", id),
+            Self::Custom(id) => write!(f, "Custom({id})"),
         }
     }
 }

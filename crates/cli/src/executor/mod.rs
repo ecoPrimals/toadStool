@@ -368,4 +368,24 @@ mod tests {
         assert_eq!(process.name, "pending-service");
         assert!(process.pid.is_none());
     }
+
+    #[tokio::test]
+    async fn test_down_biome_nonexistent_returns_error() {
+        let executor = BiomeExecutor::new().await.expect("executor should create");
+        let result = executor
+            .down_biome("nonexistent-biome-12345".to_string(), false, 30, false)
+            .await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("not running"));
+    }
+
+    #[tokio::test]
+    async fn test_list_biomes_empty() {
+        let executor = BiomeExecutor::new().await.expect("executor should create");
+        let result = executor
+            .list_biomes(false, "table".to_string(), false, None)
+            .await;
+        assert!(result.is_ok());
+    }
 }

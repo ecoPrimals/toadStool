@@ -29,7 +29,7 @@ fn main() -> Result<()> {
 
     // Validate on subset
     let num_samples = 100;
-    println!("Validating {} samples...", num_samples);
+    println!("Validating {num_samples} samples...");
 
     let mut matches = 0;
     let tolerance = 1e-5_f32;
@@ -47,7 +47,7 @@ fn main() -> Result<()> {
         if cpu_result.matches(&cpu_result2, tolerance) {
             matches += 1;
         } else {
-            println!("  ⚠ Mismatch at sample {}", i);
+            println!("  ⚠ Mismatch at sample {i}");
             println!(
                 "    CPU1: class={}, conf={:.4}",
                 cpu_result.predicted_class, cpu_result.confidence
@@ -61,8 +61,8 @@ fn main() -> Result<()> {
 
     println!();
     println!("═══ Validation Results ═══");
-    println!("  Samples validated: {}", num_samples);
-    println!("  Matches: {}", matches);
+    println!("  Samples validated: {num_samples}");
+    println!("  Matches: {matches}");
     println!(
         "  Match rate: {:.2}%",
         (matches as f32 / num_samples as f32) * 100.0

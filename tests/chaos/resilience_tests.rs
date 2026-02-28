@@ -78,10 +78,10 @@ async fn test_timeout_and_retry_logic() {
         let result = tokio::time::timeout(timeout, async {
             // First 2 attempts timeout, 3rd succeeds
             if retry < 2 {
-                tokio::time::sleep(Duration::from_millis(200)).await;
+                tokio::time::sleep(Duration::from_millis(150)).await; // > timeout to trigger
                 Err("Timeout")
             } else {
-                tokio::time::sleep(Duration::from_millis(50)).await;
+                tokio::time::sleep(Duration::from_millis(5)).await;
                 Ok("Success")
             }
         }).await;
@@ -94,7 +94,7 @@ async fn test_timeout_and_retry_logic() {
         
         // Exponential backoff
         if retry < max_retries {
-            let backoff = Duration::from_millis(10 * 2_u64.pow(retry as u32));
+            let backoff = Duration::from_millis(2 * 2_u64.pow(retry as u32)); // 2, 4, 8ms
             tokio::time::sleep(backoff).await;
         }
     }
@@ -174,7 +174,7 @@ async fn test_rate_limiting_under_attack() {
             match sem.try_acquire() {
                 Ok(_permit) => {
                     *acc.write().await += 1;
-                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    tokio::time::sleep(Duration::from_millis(10)).await;
                     Ok(())
                 }
                 Err(_) => {
@@ -236,7 +236,7 @@ async fn test_resource_pool_exhaustion() {
                 }
             }
             
-            tokio::time::sleep(Duration::from_millis(50)).await;
+            tokio::time::sleep(Duration::from_millis(10)).await;
             
             {
                 let mut a = active_clone.write().await;
@@ -336,18 +336,18 @@ async fn test_deadlock_detection() {
     // Task 1: A then B
     let task1 = tokio::spawn(async move {
         let _a = lock_a_clone.write().await;
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::time::sleep(Duration::from_millis(5)).await;
         let _b = lock_b_clone.write().await;
         "Task 1 complete"
     });
     
     // Small delay to ensure task1 starts first
-    tokio::time::sleep(Duration::from_millis(5)).await;
+    tokio::time::sleep(Duration::from_millis(2)).await;
     
     // Task 2: B then A (potential deadlock if not async)
     let task2 = tokio::spawn(async move {
         let _b = lock_b.write().await;
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::time::sleep(Duration::from_millis(5)).await;
         let _a = lock_a.write().await;
         "Task 2 complete"
     });
@@ -430,7 +430,7 @@ async fn test_slow_consumer_backpressure() {
                 Ok(_) => sent += 1,
                 Err(_) => {
                     // Backpressure applied
-                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    tokio::time::sleep(Duration::from_millis(5)).await;
                 }
             }
         }
@@ -442,7 +442,7 @@ async fn test_slow_consumer_backpressure() {
         let mut received = 0;
         while let Some(_msg) = rx.recv().await {
             received += 1;
-            tokio::time::sleep(Duration::from_millis(20)).await; // Slow processing
+            tokio::time::sleep(Duration::from_millis(10)).await; // Slow processing
             
             if received >= 10 {
                 break; // Consumer stops
@@ -481,7 +481,7 @@ async fn test_bulkhead_pattern() {
         tokio::spawn(async move {
             if let Ok(_permit) = pool.try_acquire() {
                 *count.write().await += 1;
-                tokio::time::sleep(Duration::from_millis(50)).await;
+                tokio::time::sleep(Duration::from_millis(10)).await;
             }
         });
     }
@@ -494,11 +494,17 @@ async fn test_bulkhead_pattern() {
         tokio::spawn(async move {
             let _permit = pool.acquire().await.unwrap();
             *count.write().await += 1;
-            tokio::time::sleep(Duration::from_millis(50)).await;
+            tokio::time::sleep(Duration::from_millis(10)).await;
         });
     }
     
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // Poll until critical tasks complete (max 100ms)
+    for _ in 0..20 {
+        if *critical_processed.read().await == 5 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
     
     // Critical requests should all succeed
     assert_eq!(*critical_processed.read().await, 5, "All critical requests processed");
@@ -534,7 +540,7 @@ async fn test_graceful_shutdown() {
             *active_clone.write().await += 1;
             
             tokio::select! {
-                _ = tokio::time::sleep(Duration::from_millis(100 * (i + 1))) => {
+                _ = tokio::time::sleep(Duration::from_millis(20 * (i + 1))) => {
                     *completed_clone.write().await += 1;
                 }
                 _ = token_clone.cancelled() => {
@@ -549,7 +555,7 @@ async fn test_graceful_shutdown() {
     }
     
     // Let some tasks run
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::time::sleep(Duration::from_millis(10)).await;
     
     // Initiate shutdown
     token.cancel();

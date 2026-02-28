@@ -326,7 +326,7 @@ async fn handle_execution_status(state: &ApiState, params: &Value) -> JsonRpcRes
         ),
         None => JsonRpcResponse::error(
             error_codes::EXECUTION_NOT_FOUND,
-            format!("Execution not found: {}", execution_id),
+            format!("Execution not found: {execution_id}"),
             None,
         ),
     }
@@ -385,7 +385,7 @@ async fn handle_execution_cancel(state: &ApiState, params: &Value) -> JsonRpcRes
         }
         None => JsonRpcResponse::error(
             error_codes::EXECUTION_NOT_FOUND,
-            format!("Execution not found: {}", execution_id),
+            format!("Execution not found: {execution_id}"),
             None,
         ),
     }
@@ -428,7 +428,7 @@ async fn handle_execution_logs(state: &ApiState, params: &Value) -> JsonRpcRespo
         }
         None => JsonRpcResponse::error(
             error_codes::EXECUTION_NOT_FOUND,
-            format!("Execution not found: {}", execution_id),
+            format!("Execution not found: {execution_id}"),
             None,
         ),
     }
@@ -480,7 +480,7 @@ async fn handle_execution_metrics(state: &ApiState, params: &Value) -> JsonRpcRe
         }
         None => JsonRpcResponse::error(
             error_codes::EXECUTION_NOT_FOUND,
-            format!("Execution not found: {}", execution_id),
+            format!("Execution not found: {execution_id}"),
             None,
         ),
     }
@@ -532,7 +532,40 @@ async fn handle_workload_execute(state: &ApiState, params: &Value) -> JsonRpcRes
 
 #[cfg(test)]
 mod tests {
+    use axum::extract::State;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::{broadcast, RwLock};
+
     use super::*;
+    use crate::{ApiMetrics, ApiState};
+
+    fn test_api_state() -> ApiState {
+        ApiState {
+            executions: Arc::new(RwLock::new(HashMap::new())),
+            metrics: Arc::new(RwLock::new(ApiMetrics::default())),
+            event_broadcaster: broadcast::channel(16).0,
+            capability_provider: None,
+        }
+    }
+
+    #[test]
+    fn test_jsonrpc_request_deserialize() {
+        let json = r#"{"jsonrpc":"2.0","method":"api.health","params":{},"id":1}"#;
+        let req: JsonRpcRequest = serde_json::from_str(json).expect("parse");
+        assert_eq!(req.jsonrpc, "2.0");
+        assert_eq!(req.method, "api.health");
+        assert_eq!(req.id, Some(json!(1)));
+    }
+
+    #[test]
+    fn test_jsonrpc_request_with_params() {
+        let json =
+            r#"{"jsonrpc":"2.0","method":"api.execution.submit","params":{"workload":"x"},"id":2}"#;
+        let req: JsonRpcRequest = serde_json::from_str(json).expect("parse");
+        assert_eq!(req.method, "api.execution.submit");
+        assert!(req.params.get("workload").is_some());
+    }
 
     #[test]
     fn test_jsonrpc_response_success() {
@@ -551,11 +584,170 @@ mod tests {
     }
 
     #[test]
+    fn test_jsonrpc_response_error_with_data() {
+        let response = JsonRpcResponse::error_with_data(
+            error_codes::EXECUTION_NOT_FOUND,
+            "Not found",
+            json!({"execution_id": "abc"}),
+            Some(json!(1)),
+        );
+        assert!(response.result.is_none());
+        assert!(response.error.is_some());
+        let err = response.error.unwrap();
+        assert_eq!(err.code, error_codes::EXECUTION_NOT_FOUND);
+        assert!(err.data.is_some());
+    }
+
+    #[test]
     fn test_error_codes() {
         assert_eq!(error_codes::PARSE_ERROR, -32700);
         assert_eq!(error_codes::INVALID_REQUEST, -32600);
         assert_eq!(error_codes::METHOD_NOT_FOUND, -32601);
         assert_eq!(error_codes::INVALID_PARAMS, -32602);
         assert_eq!(error_codes::INTERNAL_ERROR, -32603);
+        assert_eq!(error_codes::EXECUTION_NOT_FOUND, -32001);
+        assert_eq!(error_codes::EXECUTION_FAILED, -32002);
+    }
+
+    #[test]
+    fn test_jsonrpc_error_serialization() {
+        let err = JsonRpcError {
+            code: -32601,
+            message: "Method not found".to_string(),
+            data: Some(json!("extra")),
+        };
+        let json = serde_json::to_string(&err).expect("serialize");
+        assert!(json.contains("Method not found"));
+        assert!(json.contains("-32601"));
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_health() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "api.health".to_string(),
+            params: json!({}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_none());
+        let result = response.result.expect("result");
+        assert_eq!(result["status"], "healthy");
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_invalid_version() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "1.0".to_string(),
+            method: "api.health".to_string(),
+            params: json!({}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_some());
+        assert_eq!(response.error.unwrap().code, error_codes::INVALID_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_method_not_found() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "api.unknown.method".to_string(),
+            params: json!({}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_some());
+        assert_eq!(response.error.unwrap().code, error_codes::METHOD_NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_execution_submit() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "api.execution.submit".to_string(),
+            params: json!({"workload": "test", "runtime": "native"}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_none());
+        let result = response.result.expect("result");
+        assert!(result.get("execution_id").is_some());
+        assert_eq!(result["status"], "submitted");
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_execution_list() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "api.execution.list".to_string(),
+            params: json!({}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_none());
+        let result = response.result.expect("result");
+        assert!(result.get("executions").is_some());
+        assert!(result.get("count").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_api_metrics() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "api.metrics".to_string(),
+            params: json!({}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_none());
+        let result = response.result.expect("result");
+        assert!(result.get("total_requests").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_cluster_status() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "api.cluster.status".to_string(),
+            params: json!({}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_none());
+        let result = response.result.expect("result");
+        assert_eq!(result["status"], "healthy");
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_handler_execution_status_not_found() {
+        let state = test_api_state();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "api.execution.status".to_string(),
+            params: json!({"execution_id": "00000000-0000-0000-0000-000000000000"}),
+            id: Some(json!(1)),
+        };
+        let (status, Json(response)) = jsonrpc_handler(State(state), Json(request)).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(response.error.is_some());
+        assert_eq!(
+            response.error.unwrap().code,
+            error_codes::EXECUTION_NOT_FOUND
+        );
     }
 }

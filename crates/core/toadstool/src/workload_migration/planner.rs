@@ -136,7 +136,7 @@ impl MigrationCoordinator {
                 } else {
                     Ok(MigrationRecommendation {
                         should_migrate: false,
-                        reason: format!("Cloud ({}) is working well", provider),
+                        reason: format!("Cloud ({provider}) is working well"),
                         target: None,
                         cost_impact: None,
                         confidence: 0.7,

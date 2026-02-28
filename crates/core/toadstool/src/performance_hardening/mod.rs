@@ -87,6 +87,7 @@ impl PerformanceHardeningManager {
     }
 
     /// Start monitoring task
+    #[allow(clippy::unused_async)] // Spawns background task; async for API consistency
     async fn start_monitoring_task(&self) {
         let resource_monitor = Arc::clone(&self.resource_monitor);
         let base_interval = self.config.monitoring_config.base_sampling_interval;
@@ -186,7 +187,9 @@ mod tests {
             },
             memory: MemoryMetrics {
                 usage_percent: memory_percent,
+                #[allow(clippy::cast_possible_truncation)]
                 used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
+                #[allow(clippy::cast_possible_truncation)]
                 peak_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
             },
             storage: StorageMetrics::default(),

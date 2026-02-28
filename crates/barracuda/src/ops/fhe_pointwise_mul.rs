@@ -64,15 +64,13 @@ impl FhePointwiseMul {
         // Validate inputs
         if !degree.is_power_of_two() {
             return Err(BarracudaError::Device(format!(
-                "Degree must be power of 2, got {}",
-                degree
+                "Degree must be power of 2, got {degree}"
             )));
         }
 
-        if !(4..=65536).contains(&degree) {
+        if !(4..=65_536).contains(&degree) {
             return Err(BarracudaError::Device(format!(
-                "Degree must be in range [4, 65536], got {}",
-                degree
+                "Degree must be in range [4, 65_536], got {degree}"
             )));
         }
 
@@ -215,9 +213,9 @@ impl FhePointwiseMul {
         // Create parameter buffer
         let params = PointwiseMulParams {
             degree: self.degree,
-            modulus_low: (self.modulus & 0xFFFFFFFF) as u32,
+            modulus_low: (self.modulus & 0xFFFF_FFFF) as u32,
             modulus_high: (self.modulus >> 32) as u32,
-            barrett_mu_low: (self.barrett_mu & 0xFFFFFFFF) as u32,
+            barrett_mu_low: (self.barrett_mu & 0xFFFF_FFFF) as u32,
             barrett_mu_high: (self.barrett_mu >> 32) as u32,
             _padding: [0; 3],
         };

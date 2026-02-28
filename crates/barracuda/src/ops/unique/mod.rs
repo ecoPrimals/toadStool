@@ -51,7 +51,7 @@ impl Unique {
     /// WGSL shader source for unique marking and compaction.
     ///
     /// Uses a dedicated f32 shader because the hash function is structurally
-    /// different: f32 bitcasts to u32 (4 bytes), f64 bitcasts to vec2<u32>
+    /// different: f32 bitcasts to u32 (4 bytes), f64 bitcasts to `vec2<u32>`
     /// (8 bytes). Simple text downcast cannot bridge this.
     pub(super) fn wgsl_shader() -> &'static str {
         include_str!("../../shaders/misc/unique_f32.wgsl")

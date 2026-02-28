@@ -55,6 +55,10 @@ use std::io;
 ///     Err(e) => eprintln!("Failed: {}", e),
 /// }
 /// ```
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] if `/proc/self/status` and `/etc/passwd` lookup both fail.
 pub fn get_user_id() -> io::Result<u32> {
     // Strategy 1: Linux /proc/self/status (fast & pure Rust!)
     if let Ok(uid) = get_uid_from_proc() {
@@ -172,6 +176,10 @@ fn get_uid_from_passwd() -> io::Result<u32> {
 ///
 /// let runtime_dir = format!("/run/user/{}", get_uid_string()?);
 /// ```
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] if UID cannot be determined (see [`get_user_id`]).
 pub fn get_uid_string() -> io::Result<String> {
     get_user_id().map(|uid| uid.to_string())
 }

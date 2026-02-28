@@ -1,130 +1,95 @@
 //! Tests for the environment configuration subsystem.
 
-use std::env;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use super::*;
-
-static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
-
-pub fn get_env_lock() -> &'static Mutex<()> {
-    ENV_LOCK.get_or_init(|| Mutex::new(()))
-}
 
 #[test]
 fn test_env_config_loader() {
     let loader = EnvConfigLoader::new();
 
-    env::set_var("TOADSTOOL_TEST_STRING", "test_value");
-    assert_eq!(loader.get_string("TEST_STRING", "default"), "test_value");
-
-    env::set_var("TOADSTOOL_TEST_BOOL", "true");
-    assert!(loader.get_bool("TEST_BOOL", false));
-
-    env::set_var("TOADSTOOL_TEST_NUMBER", "42");
-    assert_eq!(loader.get_u32("TEST_NUMBER", 0), 42);
-
-    env::remove_var("TOADSTOOL_TEST_STRING");
-    env::remove_var("TOADSTOOL_TEST_BOOL");
-    env::remove_var("TOADSTOOL_TEST_NUMBER");
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_TEST_STRING", Some("test_value")),
+            ("TOADSTOOL_TEST_BOOL", Some("true")),
+            ("TOADSTOOL_TEST_NUMBER", Some("42")),
+        ],
+        || {
+            assert_eq!(loader.get_string("TEST_STRING", "default"), "test_value");
+            assert!(loader.get_bool("TEST_BOOL", false));
+            assert_eq!(loader.get_u32("TEST_NUMBER", 0), 42);
+        },
+    );
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_network_env_config() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-    let original_port = env::var("SONGBIRD_PORT").ok();
-    let original_addr = env::var("TOADSTOOL_BIND_ADDRESS").ok();
-
-    env::set_var("SONGBIRD_PORT", "9080");
-    env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0");
-
-    let config = NetworkEnvConfig::from_env();
-    assert_eq!(config.songbird_port, 9080);
-    assert_eq!(config.bind_address, "0.0.0.0");
-    assert_eq!(config.songbird_endpoint(), "http://localhost:9080");
-
-    if let Some(val) = original_port {
-        env::set_var("SONGBIRD_PORT", val);
-    } else {
-        env::remove_var("SONGBIRD_PORT");
-    }
-    if let Some(val) = original_addr {
-        env::set_var("TOADSTOOL_BIND_ADDRESS", val);
-    } else {
-        env::remove_var("TOADSTOOL_BIND_ADDRESS");
-    }
+    temp_env::with_vars(
+        [
+            ("SONGBIRD_PORT", Some("9080")),
+            ("TOADSTOOL_BIND_ADDRESS", Some("0.0.0.0")),
+        ],
+        || {
+            let config = NetworkEnvConfig::from_env();
+            assert_eq!(config.songbird_port, 9080);
+            assert_eq!(config.bind_address, "0.0.0.0");
+            assert_eq!(config.songbird_endpoint(), "http://localhost:9080");
+        },
+    );
 }
 
 #[test]
 fn test_environment_config() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-    let original_env = env::var("TOADSTOOL_ENV").ok();
-    let original_debug = env::var("TOADSTOOL_DEBUG").ok();
-
-    env::set_var("TOADSTOOL_ENV", "development");
-    env::set_var("TOADSTOOL_DEBUG", "false");
-
-    let config = EnvironmentConfig::from_env();
-    assert_eq!(config.environment, "development");
-    assert!(!config.debug);
-
-    match original_env {
-        Some(val) => env::set_var("TOADSTOOL_ENV", val),
-        None => env::remove_var("TOADSTOOL_ENV"),
-    }
-    match original_debug {
-        Some(val) => env::set_var("TOADSTOOL_DEBUG", val),
-        None => env::remove_var("TOADSTOOL_DEBUG"),
-    }
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_ENV", Some("development")),
+            ("TOADSTOOL_DEBUG", Some("false")),
+        ],
+        || {
+            let config = EnvironmentConfig::from_env();
+            assert_eq!(config.environment, "development");
+            assert!(!config.debug);
+        },
+    );
 }
 
 #[test]
 fn test_env_config_loader_empty_prefix_get_string() {
     let loader = EnvConfigLoader::with_prefix("");
     let test_key = format!("EMPTY_PREFIX_STR_{}", std::process::id());
-    env::set_var(&test_key, "found");
-    let value = loader.get_string(&test_key, "default");
-    assert_eq!(value, "found");
-    env::remove_var(&test_key);
+    temp_env::with_var(&test_key, Some("found"), || {
+        let value = loader.get_string(&test_key, "default");
+        assert_eq!(value, "found");
+    });
 }
 
 #[test]
 fn test_env_config_loader_empty_prefix_get_u16() {
     let loader = EnvConfigLoader::with_prefix("");
     let test_key = format!("EMPTY_PREFIX_U16_{}", std::process::id());
-    env::set_var(&test_key, "9999");
-    let value = loader.get_u16(&test_key, 0);
-    assert_eq!(value, 9999);
-    env::remove_var(&test_key);
+    temp_env::with_var(&test_key, Some("9999"), || {
+        let value = loader.get_u16(&test_key, 0);
+        assert_eq!(value, 9999);
+    });
 }
 
 #[test]
 fn test_env_config_loader_get_bool_yes_no_on_off() {
     let loader = EnvConfigLoader::new();
 
-    env::set_var("TOADSTOOL_BOOL_YES", "yes");
-    assert!(loader.get_bool("BOOL_YES", false));
-    env::remove_var("TOADSTOOL_BOOL_YES");
-
-    env::set_var("TOADSTOOL_BOOL_NO", "no");
-    assert!(!loader.get_bool("BOOL_NO", true));
-    env::remove_var("TOADSTOOL_BOOL_NO");
-
-    env::set_var("TOADSTOOL_BOOL_ON", "on");
-    assert!(loader.get_bool("BOOL_ON", false));
-    env::remove_var("TOADSTOOL_BOOL_ON");
-
-    env::set_var("TOADSTOOL_BOOL_OFF", "off");
-    assert!(!loader.get_bool("BOOL_OFF", true));
-    env::remove_var("TOADSTOOL_BOOL_OFF");
+    temp_env::with_var("TOADSTOOL_BOOL_YES", Some("yes"), || {
+        assert!(loader.get_bool("BOOL_YES", false));
+    });
+    temp_env::with_var("TOADSTOOL_BOOL_NO", Some("no"), || {
+        assert!(!loader.get_bool("BOOL_NO", true));
+    });
+    temp_env::with_var("TOADSTOOL_BOOL_ON", Some("on"), || {
+        assert!(loader.get_bool("BOOL_ON", false));
+    });
+    temp_env::with_var("TOADSTOOL_BOOL_OFF", Some("off"), || {
+        assert!(!loader.get_bool("BOOL_OFF", true));
+    });
 }
 
 #[test]
@@ -229,26 +194,17 @@ fn test_security_env_config_from_env() {
 
 #[test]
 fn test_security_env_config_cors_comma_separated() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let orig = env::var("TOADSTOOL_CORS_ALLOWED_ORIGINS").ok();
-    env::set_var(
+    temp_env::with_var(
         "TOADSTOOL_CORS_ALLOWED_ORIGINS",
-        "https://a.com, https://b.com , https://c.com",
+        Some("https://a.com, https://b.com , https://c.com"),
+        || {
+            let config = SecurityEnvConfig::from_env();
+            assert_eq!(config.cors_allowed_origins.len(), 3);
+            assert!(config
+                .cors_allowed_origins
+                .contains(&"https://a.com".to_string()));
+        },
     );
-
-    let config = SecurityEnvConfig::from_env();
-    assert_eq!(config.cors_allowed_origins.len(), 3);
-    assert!(config
-        .cors_allowed_origins
-        .contains(&"https://a.com".to_string()));
-
-    if let Some(v) = orig {
-        env::set_var("TOADSTOOL_CORS_ALLOWED_ORIGINS", v);
-    } else {
-        env::remove_var("TOADSTOOL_CORS_ALLOWED_ORIGINS");
-    }
 }
 
 #[test]
@@ -264,22 +220,27 @@ fn test_security_env_config_serialization_roundtrip() {
 fn test_environment_config_apply_to_config() {
     use crate::ToadStoolConfig;
 
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let mut config = ToadStoolConfig::default();
-    let env_config = EnvironmentConfig::from_env();
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_ENV", Some("staging")),
+            ("TOADSTOOL_DEBUG", Some("false")),
+        ],
+        || {
+            let mut config = ToadStoolConfig::default();
+            let env_config = EnvironmentConfig::from_env();
 
-    env_config.apply_to_config(&mut config);
+            env_config.apply_to_config(&mut config);
 
-    assert_eq!(config.app.environment, env_config.environment);
-    assert_eq!(
-        config.app.data_dir,
-        env_config.data_dir.to_string_lossy().to_string()
-    );
-    assert_eq!(
-        config.security.auth.enabled,
-        env_config.security.auth_enabled
+            assert_eq!(config.app.environment, env_config.environment);
+            assert_eq!(
+                config.app.data_dir,
+                env_config.data_dir.to_string_lossy().to_string()
+            );
+            assert_eq!(
+                config.security.auth.enabled,
+                env_config.security.auth_enabled
+            );
+        },
     );
 }
 
@@ -297,27 +258,27 @@ fn test_environment_config_serialization_roundtrip() {
 fn test_get_env_with_prefix() {
     let suffix = std::process::id();
     let key = format!("TEST_PREFIX_HELPER_{suffix}");
-    env::set_var(&key, "helper_value");
-    let value = get_env_with_prefix("TEST", &format!("PREFIX_HELPER_{suffix}"), "default");
-    assert_eq!(value, "helper_value");
-    env::remove_var(&key);
+    temp_env::with_var(&key, Some("helper_value"), || {
+        let value = get_env_with_prefix("TEST", &format!("PREFIX_HELPER_{suffix}"), "default");
+        assert_eq!(value, "helper_value");
+    });
 }
 
 #[test]
 fn test_get_env_bool_true() {
     let key = format!("TEST_BOOL_TRUE_{}", std::process::id());
-    env::set_var(&key, "true");
-    assert!(get_env_bool(&key, false));
-    env::remove_var(&key);
+    temp_env::with_var(&key, Some("true"), || {
+        assert!(get_env_bool(&key, false));
+    });
 }
 
 #[test]
 fn test_get_env_duration() {
     let key = format!("TEST_DURATION_{}", std::process::id());
-    env::set_var(&key, "120");
-    let value = get_env_duration(&key, Duration::from_secs(30));
-    assert_eq!(value, Duration::from_secs(120));
-    env::remove_var(&key);
+    temp_env::with_var(&key, Some("120"), || {
+        let value = get_env_duration(&key, Duration::from_secs(30));
+        assert_eq!(value, Duration::from_secs(120));
+    });
 }
 
 #[test]

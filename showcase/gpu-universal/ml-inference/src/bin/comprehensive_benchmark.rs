@@ -94,7 +94,7 @@ fn main() -> Result<()> {
             gpus
         }
         Err(e) => {
-            eprintln!("Error discovering GPUs: {}", e);
+            eprintln!("Error discovering GPUs: {e}");
             println!("Continuing with CPU-only benchmarks...");
             println!();
             Vec::new()
@@ -123,7 +123,7 @@ fn main() -> Result<()> {
     println!();
 
     for &batch_size in &config.batch_sizes {
-        println!("Testing batch size: {}", batch_size);
+        println!("Testing batch size: {batch_size}");
 
         // Warmup
         for _ in 0..config.warmup_runs {
@@ -159,7 +159,7 @@ fn main() -> Result<()> {
             runs: config.bench_runs,
         };
 
-        println!("  Batch {}:", batch_size);
+        println!("  Batch {batch_size}:");
         println!("    Throughput: {:.0} img/sec", result.throughput);
         println!("    Latency:    {:.2} ms", result.latency_ms);
         println!();

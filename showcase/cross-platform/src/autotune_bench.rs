@@ -23,10 +23,7 @@ fn format_rfc3339(t: SystemTime) -> String {
     let minute = ((time_of_day % 3600) / 60) as u8;
     let second = (time_of_day % 60) as u8;
     let (year, month, day) = days_since_epoch_to_ymd(days);
-    format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-        year, month, day, hour, minute, second
-    )
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
 }
 
 fn days_since_epoch_to_ymd(days: u32) -> (u32, u8, u8) {
@@ -98,7 +95,7 @@ fn generate_test_shader(workgroup_size: u32) -> String {
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let idx = global_id.x;
     if (idx >= arrayLength(&output)) {{
@@ -106,8 +103,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     }}
     output[idx] = a[idx] + b[idx];
 }}
-"#,
-        workgroup_size
+"#
     )
 }
 
@@ -294,9 +290,7 @@ async fn measure_true_throughput(
         let expected = data_a[0] + data_b[0];
         assert!(
             (result - expected).abs() < 1e-5,
-            "Validation failed: {} != {}",
-            result,
-            expected
+            "Validation failed: {result} != {expected}"
         );
     }
 
@@ -309,7 +303,7 @@ async fn autotune_workgroup_size(
     queue: &wgpu::Queue,
     device_name: &str,
 ) -> std::result::Result<(u32, f64), Box<dyn std::error::Error + Send + Sync>> {
-    println!("  Auto-tuning workgroup size for {}...", device_name);
+    println!("  Auto-tuning workgroup size for {device_name}...");
 
     let test_size = 4_000_000; // 4M elements (fits in dispatch limits for all WG sizes)
     let wg_sizes = [32, 64, 128, 256];
@@ -321,20 +315,17 @@ async fn autotune_workgroup_size(
         let shader = generate_test_shader(wg_size);
         match measure_true_throughput(device, queue, &shader, wg_size, test_size).await {
             Ok((latency, bandwidth)) => {
-                println!(
-                    "    WG={:>3}: {:>8.1}μs, {:>6.1} GB/s",
-                    wg_size, latency, bandwidth
-                );
+                println!("    WG={wg_size:>3}: {latency:>8.1}μs, {bandwidth:>6.1} GB/s");
                 if bandwidth > best_bw {
                     best_bw = bandwidth;
                     best_wg = wg_size;
                 }
             }
-            Err(e) => println!("    WG={}: ERROR - {}", wg_size, e),
+            Err(e) => println!("    WG={wg_size}: ERROR - {e}"),
         }
     }
 
-    println!("  → Optimal: WG={} ({:.1} GB/s)", best_wg, best_bw);
+    println!("  → Optimal: WG={best_wg} ({best_bw:.1} GB/s)");
     Ok((best_wg, best_bw))
 }
 
@@ -490,8 +481,7 @@ async fn autotune_batch_size(
         let throughput = ops_per_sec * test_size as f64 * 3.0 * 4.0 / 1e9; // GB/s
 
         println!(
-            "    Batch={:>2}: {:.0} ops/s, effective {:.1} GB/s",
-            batch_size, ops_per_sec, throughput
+            "    Batch={batch_size:>2}: {ops_per_sec:.0} ops/s, effective {throughput:.1} GB/s"
         );
 
         if throughput > best_throughput {
@@ -500,7 +490,7 @@ async fn autotune_batch_size(
         }
     }
 
-    println!("  → Optimal batch: {}", best_batch);
+    println!("  → Optimal batch: {best_batch}");
     Ok(best_batch)
 }
 
@@ -511,7 +501,7 @@ pub async fn calibrate_gpu(
     device_name: &str,
 ) -> std::result::Result<GpuCalibration, Box<dyn std::error::Error + Send + Sync>> {
     println!("\n╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║  CALIBRATING: {:<60} ║", device_name);
+    println!("║  CALIBRATING: {device_name:<60} ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
 
     // Step 1: Find optimal workgroup size

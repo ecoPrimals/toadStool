@@ -54,19 +54,14 @@ pub async fn discover_via_mdns() -> DiscoveryResult<Vec<DiscoveredService>> {
     // MdnsAdapter::discover_all() uses blocking recv_timeout internally;
     // run on the blocking thread pool to avoid starving the async executor.
     let endpoints = tokio::task::spawn_blocking(move || {
-        let rt = tokio::runtime::Handle::current();
-        rt.block_on(async move {
-            MdnsAdapter::new(mdns_config)
-                .await
-                .map_err(|e| DiscoveryError::MethodUnavailable {
-                    method: format!("mDNS init failed: {e}"),
-                })?
-                .discover_all()
-                .await
-                .map_err(|e| DiscoveryError::MethodUnavailable {
-                    method: format!("mDNS browse failed: {e}"),
-                })
-        })
+        MdnsAdapter::new(mdns_config)
+            .map_err(|e| DiscoveryError::MethodUnavailable {
+                method: format!("mDNS init failed: {e}"),
+            })?
+            .discover_all()
+            .map_err(|e| DiscoveryError::MethodUnavailable {
+                method: format!("mDNS browse failed: {e}"),
+            })
     })
     .await
     .map_err(|e| DiscoveryError::MethodUnavailable {

@@ -168,7 +168,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         println!("  Input: 10x100 matrix");
         println!("  NVIDIA result[0]: {:.8}", nvidia_output[0]);
         println!("  AMD result[0]:    {:.8}", amd_output[0]);
-        println!("  Max difference:   {:.2e}", max_diff);
+        println!("  Max difference:   {max_diff:.2e}");
 
         if max_diff < 1e-5 {
             println!("  ✓ Cross-vendor parity achieved (<1e-5 difference)");

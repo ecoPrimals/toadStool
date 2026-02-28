@@ -411,7 +411,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
 
         let workgroups = (size as u32)
             .div_ceil(self.optimal_workgroup_size)
-            .min(65535);
+            .min(65_535);
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());

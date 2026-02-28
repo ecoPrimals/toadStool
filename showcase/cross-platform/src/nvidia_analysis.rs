@@ -24,12 +24,11 @@ async fn benchmark_raw_compute(
         @compute @workgroup_size(256)
         fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             let idx = global_id.x;
-            if (idx < {}u) {{
+            if (idx < {size}u) {{
                 result[idx] = a[idx] + b[idx];
             }}
         }}
-    "#,
-        size
+    "#
     );
 
     let wgpu_device = device.device();
@@ -192,12 +191,11 @@ async fn measure_overheads(
         @compute @workgroup_size(256)
         fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             let idx = global_id.x;
-            if (idx < {}u) {{
+            if (idx < {size}u) {{
                 result[idx] = a[idx] + b[idx];
             }}
         }}
-    "#,
-        size
+    "#
     );
 
     // Pre-create everything
@@ -420,8 +418,7 @@ async fn measure_overheads(
     let achieved_bandwidth = (bytes_transferred as f64 / 1e9) / (total_with_wait / 1000.0);
 
     println!(
-        "\n    Theoretical minimum: {:.3} ms at {:.0} GB/s",
-        theoretical_time_ms, theoretical_peak
+        "\n    Theoretical minimum: {theoretical_time_ms:.3} ms at {theoretical_peak:.0} GB/s"
     );
     println!(
         "    Achieved:            {:.3} ms at {:.1} GB/s ({:.1}% efficiency)",
@@ -493,8 +490,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
             let pct = bandwidth / theoretical * 100.0;
 
             println!(
-                "  │ {:>14} │ {:>7.2} ms │ {:>7.1} GB/s│ {:>7.1}%   │",
-                label, time_ms, bandwidth, pct
+                "  │ {label:>14} │ {time_ms:>7.2} ms │ {bandwidth:>7.1} GB/s│ {pct:>7.1}%   │"
             );
         }
         println!("  └────────────────┴────────────┴────────────┴────────────┘\n");

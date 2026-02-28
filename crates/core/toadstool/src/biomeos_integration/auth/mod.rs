@@ -194,7 +194,7 @@ impl AuthenticationManager {
         self.backend.request_token(&token_request).await
     }
 
-    pub async fn sign_token_request(
+    pub fn sign_token_request(
         &self,
         token: &AuthenticationToken,
         target_primal: &str,
@@ -202,6 +202,7 @@ impl AuthenticationManager {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
+        #[allow(clippy::cast_sign_loss)]
         let payload = format!(
             "{}:{}:{}",
             token.id,
@@ -211,13 +212,14 @@ impl AuthenticationManager {
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0)
         );
-        self.sign_payload(&payload).await
+        self.sign_payload(&payload)
     }
 
-    pub async fn sign_verification_request(&self, primal_name: &str) -> ToadStoolResult<String> {
+    pub fn sign_verification_request(&self, primal_name: &str) -> ToadStoolResult<String> {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
+        #[allow(clippy::cast_sign_loss)]
         let payload = format!(
             "verify:{}:{}",
             primal_name,
@@ -226,17 +228,16 @@ impl AuthenticationManager {
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0)
         );
-        self.sign_payload(&payload).await
+        self.sign_payload(&payload)
     }
 
-    async fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
+    fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
         use base64::{engine::general_purpose, Engine as _};
 
         if let Some(ref seed_b64) = self.config.signing_key_seed {
             let seed_bytes = general_purpose::STANDARD.decode(seed_b64).map_err(|e| {
                 crate::ToadStoolError::configuration(format!(
-                    "Invalid signing key seed (base64 decode error): {}",
-                    e
+                    "Invalid signing key seed (base64 decode error): {e}"
                 ))
             })?;
             if seed_bytes.len() != 32 {
@@ -296,7 +297,7 @@ impl AuthenticationManager {
         Some(general_purpose::STANDARD.encode(verifying_key.as_bytes()))
     }
 
-    pub async fn start_token_refresh(&mut self) -> ToadStoolResult<()> {
+    pub fn start_token_refresh(&mut self) -> ToadStoolResult<()> {
         let refresh_interval = self.config.token_refresh_interval;
         let backend = Arc::clone(&self.backend);
         let refresh_task = tokio::spawn(async move {

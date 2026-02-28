@@ -77,8 +77,7 @@ pub async fn reshape(
     if num_elements != new_total {
         return Err(BarracudaError::InvalidInput {
             message: format!(
-                "Cannot reshape: input has {} elements, new shape {:?} requires {}",
-                num_elements, new_shape, new_total
+                "Cannot reshape: input has {num_elements} elements, new shape {new_shape:?} requires {new_total}"
             ),
         });
     }

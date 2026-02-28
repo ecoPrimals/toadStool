@@ -205,7 +205,7 @@ impl BenchmarkSuite {
         let hardware = self.discover_hardware().await?;
         println!("📊 Discovered {} compute device(s)", hardware.len());
         for hw in &hardware {
-            println!("   • {}", hw);
+            println!("   • {hw}");
         }
         println!();
 
@@ -313,7 +313,7 @@ impl BenchmarkSuite {
             let bandwidth_gbps = (size as f64 * 4.0) / median_time.as_secs_f64() / 1e9;
 
             let result = BenchmarkResult {
-                operation: format!("Sum [size={}]", size),
+                operation: format!("Sum [size={size}]"),
                 hardware: "CPU".to_string(),
                 framework: Framework::BarraCuda,
                 median_time,
@@ -336,7 +336,7 @@ impl BenchmarkSuite {
         println!("🔲 Convolution Operations");
 
         // Basic 1D convolution benchmark
-        let input_sizes = [1024usize, 4096, 16384];
+        let input_sizes = [1024usize, 4096, 16_384];
         let kernel_size = 7;
 
         for &input_size in &input_sizes {
@@ -384,7 +384,7 @@ impl BenchmarkSuite {
                 / 1e9;
 
             let result = BenchmarkResult {
-                operation: format!("Conv1D [in={}, k={}]", input_size, kernel_size),
+                operation: format!("Conv1D [in={input_size}, k={kernel_size}]"),
                 hardware: "CPU".to_string(),
                 framework: Framework::BarraCuda,
                 median_time,

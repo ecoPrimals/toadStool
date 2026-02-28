@@ -501,7 +501,7 @@ fn format_size(n: usize) -> String {
     } else if n >= 1_000 {
         format!("{}K", n / 1_000)
     } else {
-        format!("{}", n)
+        format!("{n}")
     }
 }
 
@@ -532,7 +532,7 @@ fn print_parity_analysis(results: &[BenchResult]) {
     let sizes = ["1M", "4M", "16M"];
 
     for op in operations {
-        println!("{}:", op);
+        println!("{op}:");
         for size in sizes {
             // Find CUDA baseline
             let cuda = results
@@ -559,7 +559,7 @@ fn print_parity_analysis(results: &[BenchResult]) {
                 if let Some(bc) = bc_nvidia {
                     let ratio = bc.time_us / cuda.time_us;
                     let gap = if ratio > 1.0 {
-                        format!("{:.1}x slower", ratio)
+                        format!("{ratio:.1}x slower")
                     } else {
                         format!("{:.1}x faster", 1.0 / ratio)
                     };
@@ -601,7 +601,7 @@ fn print_optimization_targets(results: &[BenchResult]) {
             .sum::<f64>()
             / cuda_times.len() as f64;
 
-        println!("Current average gap (BarraCuda vs CUDA): {:.1}x", avg_gap);
+        println!("Current average gap (BarraCuda vs CUDA): {avg_gap:.1}x");
         println!();
         println!("Identified bottlenecks:");
         println!("  1. wgpu command buffer submission overhead");
@@ -669,7 +669,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     println!("Running BarraCuda benchmarks (wgpu/Vulkan)...");
     match barracuda_bench::run_barracuda_benchmarks(&sizes, iterations).await {
         Ok(results) => all_results.extend(results),
-        Err(e) => eprintln!("  BarraCuda benchmark failed: {}", e),
+        Err(e) => eprintln!("  BarraCuda benchmark failed: {e}"),
     }
 
     // Results

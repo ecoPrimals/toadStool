@@ -17,6 +17,10 @@ use super::{
 
 impl ManualJsonRpcServer {
     /// Start server on Unix socket
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError`] if directory creation, socket bind, or permission setting fails.
     pub async fn serve(self, socket_path: PathBuf) -> ServerResult<()> {
         info!(
             "Starting manual JSON-RPC 2.0 server on Unix socket: {:?}",
@@ -77,6 +81,10 @@ impl ManualJsonRpcServer {
     }
 
     /// Start server on TCP listener (isomorphic fallback)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError`] if getting local address fails.
     pub async fn serve_tcp(self, listener: tokio::net::TcpListener) -> ServerResult<()> {
         let local_addr = listener
             .local_addr()

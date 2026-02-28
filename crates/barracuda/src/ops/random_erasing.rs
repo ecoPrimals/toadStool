@@ -39,10 +39,7 @@ impl RandomErasing {
         if erase_shape.len() != 2 || erase_shape[1] != 4 {
             return Err(BarracudaError::invalid_op(
                 "RandomErasing",
-                format!(
-                    "erase_boxes must be 2D [batch_size, 4], got shape {:?}",
-                    erase_shape
-                ),
+                format!("erase_boxes must be 2D [batch_size, 4], got shape {erase_shape:?}"),
             ));
         }
 
@@ -72,8 +69,7 @@ impl RandomErasing {
             return Err(BarracudaError::invalid_op(
                 "RandomErasing",
                 format!(
-                    "input must be 4D [batch, channels, height, width], got shape {:?}",
-                    input_shape
+                    "input must be 4D [batch, channels, height, width], got shape {input_shape:?}"
                 ),
             ));
         }

@@ -180,7 +180,7 @@ impl AutoTuner {
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let idx = global_id.x;
     if (idx >= arrayLength(&output)) {{
@@ -188,8 +188,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     }}
     output[idx] = a[idx] + b[idx];
 }}
-"#,
-            workgroup_size
+"#
         );
 
         let data: Vec<f32> = (0..size).map(|i| i as f32 * 0.001).collect();
@@ -288,7 +287,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             compilation_options: Default::default(),
         });
 
-        let workgroups = (size as u32).div_ceil(workgroup_size).min(65535);
+        let workgroups = (size as u32).div_ceil(workgroup_size).min(65_535);
 
         // Warmup
         for _ in 0..3 {
@@ -345,15 +344,14 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             r#"
 @group(0) @binding(0) var<storage, read_write> data: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let idx = global_id.x;
     if (idx < arrayLength(&data)) {{
         data[idx] = data[idx] + 1.0;
     }}
 }}
-"#,
-            workgroup_size
+"#
         );
 
         let data: Vec<f32> = vec![0.0; size];

@@ -30,7 +30,7 @@ fn main() -> Result<()> {
 
     // Run inference on subset for benchmarking
     let num_samples = 1000;
-    println!("Running inference on {} samples...", num_samples);
+    println!("Running inference on {num_samples} samples...");
 
     let start = Instant::now();
     let mut correct = 0;
@@ -59,16 +59,16 @@ fn main() -> Result<()> {
     // Display results
     println!();
     println!("═══ Results ═══");
-    println!("  Samples:    {}", num_samples);
-    println!("  Correct:    {}", correct);
+    println!("  Samples:    {num_samples}");
+    println!("  Correct:    {correct}");
     println!("  Accuracy:   {:.2}%", accuracy * 100.0);
     println!();
     println!("═══ Performance ═══");
     println!("  Total time: {:.2}s", total_time.as_secs_f64());
-    println!("  Avg latency: {:.3}ms", avg_latency);
-    println!("  Min latency: {:.3}ms", min_latency);
-    println!("  Max latency: {:.3}ms", max_latency);
-    println!("  Throughput: {:.0} inferences/sec", throughput);
+    println!("  Avg latency: {avg_latency:.3}ms");
+    println!("  Min latency: {min_latency:.3}ms");
+    println!("  Max latency: {max_latency:.3}ms");
+    println!("  Throughput: {throughput:.0} inferences/sec");
     println!();
 
     // Save results

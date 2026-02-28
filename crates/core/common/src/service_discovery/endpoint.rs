@@ -8,6 +8,10 @@ use super::types::{DiscoveryError, DiscoveryResult};
 
 impl ServiceEndpoint {
     /// Create endpoint from URL string
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DiscoveryError`] if the URL format is invalid or missing required parts.
     pub fn from_url_string(url: &str) -> DiscoveryResult<Self> {
         let parts: Vec<&str> = url.split("://").collect();
         if parts.len() != 2 {

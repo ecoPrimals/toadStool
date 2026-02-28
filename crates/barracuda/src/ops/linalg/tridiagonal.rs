@@ -106,7 +106,7 @@ pub fn tridiagonal_solve(a: &[f64], b: &[f64], c: &[f64], d: &[f64]) -> Result<V
         let denom = b[i] - a[i - 1] * c_prime[i - 1];
         if denom.abs() < 1e-15 {
             return Err(BarracudaError::Numerical {
-                message: format!("Division by zero at row {}: matrix may be singular", i),
+                message: format!("Division by zero at row {i}: matrix may be singular"),
             });
         }
         if i < n - 1 {
@@ -174,7 +174,7 @@ pub fn tridiagonal_solve_f32(a: &[f32], b: &[f32], c: &[f32], d: &[f32]) -> Resu
         let denom = b[i] - a[i - 1] * c_prime[i - 1];
         if denom.abs() < 1e-7 {
             return Err(BarracudaError::Numerical {
-                message: format!("Division by zero at row {}: matrix may be singular", i),
+                message: format!("Division by zero at row {i}: matrix may be singular"),
             });
         }
         if i < n - 1 {

@@ -45,6 +45,9 @@ pub mod ports {
 
 /// # ⚠️ DEPRECATED: Ecosystem primal service names
 ///
+/// **WateringHole Sovereignty**: Discover by CAPABILITY, not by hardcoded name.
+/// Scan for what a service CAN DO, not what it IS CALLED.
+///
 /// **Use `RuntimeDiscovery` instead** for primal-agnostic, capability-based discovery.
 ///
 /// These hardcoded names assume:
@@ -88,7 +91,9 @@ pub mod primals {
     pub const NESTGATE: &str = "nestgate";
 
     /// ToadStool compute service identifier
-    /// **This is self-knowledge** - acceptable for identifying ourselves
+    /// **This is self-knowledge** - the only canonical name for THIS primal.
+    /// Acceptable for identifying ourselves, socket paths, and IPC addressing.
+    /// For discovering OTHER primals, use capability-based discovery, not these constants.
     pub const TOADSTOOL: &str = "toadstool";
 
     /// Squirrel MCP platform identifier

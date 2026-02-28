@@ -37,9 +37,9 @@ fn main() -> Result<()> {
     let num_interactive = (total_samples as f32 * interactive_ratio) as usize;
     let num_batch = total_samples - num_interactive;
 
-    println!("Processing {} samples:", total_samples);
-    println!("  - {} interactive (CPU, single)", num_interactive);
-    println!("  - {} batch (GPU, batched)", num_batch);
+    println!("Processing {total_samples} samples:");
+    println!("  - {num_interactive} interactive (CPU, single)");
+    println!("  - {num_batch} batch (GPU, batched)");
     println!();
 
     // CPU: Interactive
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
 
     let cpu_time = cpu_start.elapsed();
     let cpu_latency = cpu_time.as_micros() as f64 / num_interactive as f64 / 1000.0;
-    println!("✓ CPU done: {:.3}ms avg latency", cpu_latency);
+    println!("✓ CPU done: {cpu_latency:.3}ms avg latency");
 
     // GPU: Batch (simulated with CPU for now)
     println!("GPU: Processing batch requests...");
@@ -85,7 +85,7 @@ fn main() -> Result<()> {
 
     let gpu_time = gpu_start.elapsed();
     let gpu_latency = gpu_time.as_micros() as f64 / (num_batches * batch_size) as f64 / 1000.0;
-    println!("✓ GPU done: {:.3}ms avg latency (batched)", gpu_latency);
+    println!("✓ GPU done: {gpu_latency:.3}ms avg latency (batched)");
 
     // Overall statistics
     let total_time = cpu_time + gpu_time;
@@ -95,19 +95,16 @@ fn main() -> Result<()> {
 
     println!();
     println!("═══ Hybrid Pipeline Results ═══");
-    println!("  Total samples: {}", total_samples);
-    println!("  Total correct: {}", total_correct);
+    println!("  Total samples: {total_samples}");
+    println!("  Total correct: {total_correct}");
     println!("  Overall accuracy: {:.2}%", overall_accuracy * 100.0);
     println!();
-    println!("  CPU latency: {:.3}ms", cpu_latency);
-    println!("  GPU latency: {:.3}ms", gpu_latency);
+    println!("  CPU latency: {cpu_latency:.3}ms");
+    println!("  GPU latency: {gpu_latency:.3}ms");
     println!("  GPU speedup: {:.1}x", cpu_latency / gpu_latency);
     println!();
     println!("  Total time: {:.2}s", total_time.as_secs_f64());
-    println!(
-        "  Overall throughput: {:.0} inferences/sec",
-        overall_throughput
-    );
+    println!("  Overall throughput: {overall_throughput:.0} inferences/sec");
     println!();
 
     println!("This demonstrates intelligent workload placement:");

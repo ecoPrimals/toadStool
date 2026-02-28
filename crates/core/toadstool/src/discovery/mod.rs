@@ -2,6 +2,12 @@
 //!
 //! Implements capability-based runtime discovery for primals.
 //!
+//! ## WateringHole Sovereignty Principle
+//!
+//! **Discover by CAPABILITY, not by hardcoded name.** Code should scan for what a
+//! service CAN DO, not what it IS CALLED. Use `service.has_capability("crypto.encrypt")`
+//! style checks, never `if name == "beardog"` pattern matching.
+//!
 //! ## Philosophy
 //!
 //! - **Self-Knowledge Only**: Each primal knows WHAT it can do (capabilities)
@@ -92,7 +98,7 @@ impl DiscoveredService {
     pub fn socket_addr(&self) -> ToadStoolResult<SocketAddr> {
         self.endpoint
             .parse()
-            .map_err(|e| ToadStoolError::configuration(format!("Invalid endpoint: {}", e)))
+            .map_err(|e| ToadStoolError::configuration(format!("Invalid endpoint: {e}")))
     }
 }
 

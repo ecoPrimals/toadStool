@@ -139,7 +139,7 @@ impl Device {
         // Device trait gives us get_driver() method
         let driver = self
             .get_driver()
-            .map_err(|e| DisplayError::IoctlFailed(format!("Failed to get driver: {}", e)))?;
+            .map_err(|e| DisplayError::IoctlFailed(format!("Failed to get driver: {e}")))?;
 
         let driver_name = driver.name().to_string_lossy().into_owned();
         let driver_version = format!(
@@ -243,7 +243,7 @@ impl Device {
 
         // Read directory entries
         let entries = std::fs::read_dir(drm_dir)
-            .map_err(|e| DisplayError::IoctlFailed(format!("Failed to read /dev/dri: {}", e)))?;
+            .map_err(|e| DisplayError::IoctlFailed(format!("Failed to read /dev/dri: {e}")))?;
 
         for entry in entries {
             let entry = entry?;

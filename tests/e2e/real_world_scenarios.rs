@@ -202,7 +202,7 @@ fn create_web_app_biome_config() -> BiomeConfig {
 }
 
 async fn simulate_biome_deployment(_config: &BiomeConfig) -> Result<DeploymentResult, String> {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
     Ok(DeploymentResult {
         deployment_id: "dep-001".to_string(),
         services_started: 3,
@@ -221,18 +221,17 @@ async fn simulate_traffic_load(requests: usize) -> TrafficResult {
 }
 
 async fn simulate_scale_up(_from: usize, _to: usize) -> Result<(), String> {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
     Ok(())
 }
 
 async fn simulate_service_failure(_service: &str) {
-    // Simulate crash
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    tokio::task::yield_now().await;
 }
 
 async fn wait_for_recovery(_service: &str, timeout_duration: Duration) -> Result<(), String> {
     timeout(timeout_duration, async {
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        tokio::task::yield_now().await;
         Ok(())
     })
     .await
@@ -240,12 +239,12 @@ async fn wait_for_recovery(_service: &str, timeout_duration: Duration) -> Result
 }
 
 async fn simulate_scale_down(_from: usize, _to: usize) -> Result<(), String> {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
     Ok(())
 }
 
 async fn simulate_clean_shutdown(_config: &BiomeConfig) -> Result<(), String> {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
     Ok(())
 }
 
@@ -257,14 +256,14 @@ async fn simulate_data_ingestion(size: usize) -> IngestionResult {
 }
 
 async fn simulate_wasm_transformation(_data_id: &str) -> Result<TransformationResult, String> {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
     Ok(TransformationResult {
         result_id: "transform-001".to_string(),
     })
 }
 
 async fn simulate_data_storage(_result_id: &str) -> Result<(), String> {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
     Ok(())
 }
 
@@ -279,7 +278,7 @@ async fn verify_data_consistency() -> Result<(), String> {
 }
 
 async fn simulate_model_load(_model_name: &str) -> Result<(), String> {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
     Ok(())
 }
 
@@ -298,7 +297,7 @@ async fn collect_model_metrics() -> ModelMetrics {
 }
 
 async fn simulate_model_update(_model_name: &str) -> Result<(), String> {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
     Ok(())
 }
 
@@ -314,7 +313,7 @@ async fn promote_model_version(_version: &str) -> Result<(), String> {
 }
 
 async fn deploy_service_mesh(services: &[&str]) -> MeshDeployment {
-    Mesh Deployment {
+    MeshDeployment {
         services_deployed: services.len(),
     }
 }
@@ -347,7 +346,7 @@ async fn submit_batch_job(_size: usize) -> Result<JobSubmission, String> {
 }
 
 async fn monitor_job_progress(_job_id: &str, _timeout: Duration) -> Result<(), String> {
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    tokio::task::yield_now().await;
     Ok(())
 }
 

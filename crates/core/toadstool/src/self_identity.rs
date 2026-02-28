@@ -272,7 +272,7 @@ impl SelfIdentity {
     ) -> Self {
         self.network = Some(NetworkIdentity {
             endpoint: if let Some(p) = port {
-                format!("{}:{}", hostname, p)
+                format!("{hostname}:{p}")
             } else {
                 hostname.clone()
             },

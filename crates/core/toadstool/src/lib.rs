@@ -54,7 +54,8 @@ pub mod error;
 pub mod execution;
 pub mod fractal_integration;
 pub mod ipc; // Universal IPC (evolved from ipc_helpers)
-pub mod ipc_helpers; // Legacy IPC helpers (backward compat)
+/// Legacy IPC helpers - prefer `toadstool::ipc` for new code.
+pub mod ipc_helpers;
 pub mod launcher; // Phase 3: Deployment coordination
 pub mod layer_adaptation;
 pub mod multi_workload_compositor;

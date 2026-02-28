@@ -69,7 +69,7 @@ impl CachedService {
 /// use toadstool_common::runtime_discovery::RuntimeDiscovery;
 /// use toadstool_config::mdns_discovery::MdnsDiscoveryClient;
 ///
-/// let client = MdnsDiscoveryClient::new().await?;
+/// let client = MdnsDiscoveryClient::new()?;
 /// let discovery = RuntimeDiscovery::new(Arc::new(client));
 ///
 /// // Discover coordination services
@@ -103,8 +103,12 @@ impl MdnsDiscoveryClient {
     /// # Returns
     ///
     /// A configured mDNS discovery client ready for use
-    pub async fn new() -> ToadStoolResult<Self> {
-        Self::with_ttl(Duration::from_secs(300)).await
+    ///
+    /// # Errors
+    ///
+    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
+    pub fn new() -> ToadStoolResult<Self> {
+        Self::with_ttl(Duration::from_secs(300))
     }
 
     /// Create a new mDNS discovery client with custom TTL
@@ -112,7 +116,11 @@ impl MdnsDiscoveryClient {
     /// # Arguments
     ///
     /// * `cache_ttl` - How long to cache discovered services
-    pub async fn with_ttl(cache_ttl: Duration) -> ToadStoolResult<Self> {
+    ///
+    /// # Errors
+    ///
+    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
+    pub fn with_ttl(cache_ttl: Duration) -> ToadStoolResult<Self> {
         let cache = Arc::new(RwLock::new(HashMap::new()));
         let advertised_services = Arc::new(RwLock::new(HashMap::new()));
 
@@ -399,13 +407,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_mdns_client_creation() {
-        let client = MdnsDiscoveryClient::new().await;
+        let client = MdnsDiscoveryClient::new();
         assert!(client.is_ok());
     }
 
     #[tokio::test]
     async fn test_cache_service() {
-        let client = MdnsDiscoveryClient::new().await.unwrap();
+        let client = MdnsDiscoveryClient::new().unwrap();
 
         let service = DiscoveredService {
             id: Some("test-service".to_string()),
@@ -423,7 +431,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_by_capability_empty() {
-        let client = MdnsDiscoveryClient::new().await.unwrap();
+        let client = MdnsDiscoveryClient::new().unwrap();
 
         let services = client
             .discover_by_capability(&Capability::Coordination(CoordinationCapability::default()))

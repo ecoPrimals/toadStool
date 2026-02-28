@@ -104,6 +104,8 @@ pub use ai_mcp_interface::{
 };
 pub use capability_traits::{EcosystemServiceDiscoverer, HardwareCapabilityDetector};
 
+/// Mock implementations for testing only. Production uses real `HardwareDetector` and
+/// `EcosystemDiscoverer`. Evolution: Mocks avoid I/O in tests; real impls use sysinfo + network scan.
 #[cfg(any(test, feature = "test-mocks"))]
 pub use capability_traits::{MockEcosystemDiscoverer, MockHardwareDetector};
 pub use ecosystem::{DiscoveredServices, EcosystemDiscoverer, ServiceInfo, ServiceType};

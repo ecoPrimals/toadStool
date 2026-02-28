@@ -119,7 +119,7 @@ impl TripletLoss {
         if margin < 0.0 {
             return Err(BarracudaError::invalid_op(
                 "TripletLoss",
-                format!("margin must be non-negative, got {}", margin),
+                format!("margin must be non-negative, got {margin}"),
             ));
         }
 

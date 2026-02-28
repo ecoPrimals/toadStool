@@ -414,6 +414,7 @@ mod tests {
             auto_provisioning: false,
             security_level: EdgeSecurityLevel::High,
             resource_strategy: ResourceAllocationStrategy::Conservative,
+            port_registry: toadstool_config::ports::PortRegistry::default(),
         };
 
         assert!(!config.discovery_enabled);
@@ -459,7 +460,10 @@ mod tests {
         let handle = EdgeExecutionHandle {
             id: Uuid::new_v4(),
             device_id: Uuid::new_v4(),
-            platform: EdgePlatform::RaspberryPi,
+            platform: EdgePlatform::RaspberryPi {
+                model: PiModel::Pi4,
+                os: PiOS::RaspberryPiOS,
+            },
             status: ExecutionStatus::Running,
             started_at: std::time::SystemTime::now(),
             resource_usage: ResourceUsage {
@@ -520,7 +524,10 @@ mod tests {
         let handle1 = EdgeExecutionHandle {
             id: Uuid::new_v4(),
             device_id: Uuid::new_v4(),
-            platform: EdgePlatform::ESP32,
+            platform: EdgePlatform::ESP32 {
+                chip: ESP32Variant::ESP32,
+                framework: ESP32Framework::ESPIDF,
+            },
             status: ExecutionStatus::Success,
             started_at: std::time::SystemTime::now(),
             resource_usage: ResourceUsage {
@@ -565,6 +572,7 @@ mod tests {
             auto_provisioning: true,
             security_level: EdgeSecurityLevel::Standard,
             resource_strategy: ResourceAllocationStrategy::Adaptive,
+            port_registry: toadstool_config::ports::PortRegistry::default(),
         };
 
         assert_eq!(config.cross_compile_cache_path, "/custom/edge/cache");
@@ -584,6 +592,7 @@ mod tests {
             auto_provisioning: true,
             security_level: EdgeSecurityLevel::Standard,
             resource_strategy: ResourceAllocationStrategy::Adaptive,
+            port_registry: toadstool_config::ports::PortRegistry::default(),
         };
 
         assert_eq!(config.discovery_timeout_secs, 120);

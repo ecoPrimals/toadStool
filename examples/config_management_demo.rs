@@ -274,7 +274,7 @@ async fn demonstrate_service_discovery() -> Result<(), Box<dyn std::error::Error
 
     info!("🔗 Available services:");
     for (service_name, port) in &service_ports {
-        let default_endpoint = format!("http://localhost:{}", port);
+        let default_endpoint = format!("http://localhost:{port}");
         let endpoint = service_endpoints
             .get(service_name)
             .unwrap_or(&default_endpoint);
@@ -414,28 +414,30 @@ fn demonstrate_configuration_file_loading() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
 
     #[tokio::test]
     async fn test_config_management_demo() {
-        // ✅ SELF-KNOWLEDGE: Other primals use non-prefixed env vars
-        env::set_var("TOADSTOOL_ENV", "test");
-        env::set_var("SONGBIRD_PORT", "9080"); // Non-prefixed for other primal
-        env::set_var("TOADSTOOL_DEBUG", "true");
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENV", Some("test")),
+                ("SONGBIRD_PORT", Some("9080")),
+                ("TOADSTOOL_DEBUG", Some("true")),
+            ],
+            || {
+                assert_eq!(ConfigUtils::get_environment(), "test");
+                #[allow(deprecated)]
+                {
+                    assert_eq!(ConfigUtils::get_songbird_port(), 9080);
+                }
+                assert!(ConfigUtils::get_debug_mode());
 
-        // Test configuration loading
-        assert_eq!(ConfigUtils::get_environment(), "test");
-        assert_eq!(ConfigUtils::get_songbird_port(), 9080);
-        assert!(ConfigUtils::get_debug_mode());
-
-        // Test service endpoints
-        let endpoints = ConfigUtils::get_service_endpoints();
-        assert!(endpoints.contains_key("songbird"));
-        assert!(endpoints.get("songbird").unwrap().contains("9080"));
-
-        // Clean up
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("SONGBIRD_PORT"); // Fixed: Match the env var we actually set
-        env::remove_var("TOADSTOOL_DEBUG");
+                // Sovereignty: get_service_endpoints only returns toadstool's own
+                let endpoints = ConfigUtils::get_service_endpoints();
+                assert!(
+                    endpoints.contains_key("toadstool"),
+                    "should contain toadstool (self-knowledge)"
+                );
+            },
+        );
     }
 }

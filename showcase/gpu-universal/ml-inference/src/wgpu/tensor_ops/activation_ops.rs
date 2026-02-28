@@ -43,7 +43,7 @@ impl Softmax {
         if axis >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Softmax",
-                format!("Axis {} out of bounds", axis),
+                format!("Axis {axis} out of bounds"),
             ));
         }
 

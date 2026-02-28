@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_pppm_params_memory_estimate() {
-        let params = PppmParams::auto(10000, 20.0, PppmAccuracy::Medium);
+        let params = PppmParams::auto(10_000, 20.0, PppmAccuracy::Medium);
         let mem = params.estimated_memory();
 
         // Should be reasonable (< 1 GB for typical parameters)

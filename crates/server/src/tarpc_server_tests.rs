@@ -17,7 +17,7 @@ impl WorkloadExecutor for MockExecutor {
                 queued_duration_secs: 0.0,
                 execution_duration_secs: 0.1,
                 cpu_cores_used: 1,
-                memory_used_bytes: submission.data.len() as u64,
+                memory_used_bytes: u64::try_from(submission.data.len()).unwrap_or(u64::MAX),
                 gpu_memory_used_bytes: None,
             },
         })
@@ -688,6 +688,67 @@ async fn test_standalone_executor_estimate_cpu_tflops_via_capabilities() {
     let caps = exec.query_capabilities().await.expect("capabilities");
     assert!(!caps.compute_units.is_empty());
     let unit = &caps.compute_units[0];
+    #[allow(clippy::cast_precision_loss)]
     let expected_tflops = (unit.cores as f64) * 0.1;
     assert_eq!(unit.tflops, Some(expected_tflops));
+}
+
+// ───── serve_unix and serve_tcp ────────────────────────────────────────────
+
+#[cfg(unix)]
+#[tokio::test]
+async fn test_serve_unix_binds_to_temp_socket() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let socket_path = temp_dir.path().join("tarpc-test.sock");
+    let socket_path_for_spawn = socket_path.clone();
+
+    let executor = Arc::new(MockExecutor);
+    let server = ToadStoolTarpcServer::new("test-v1", executor, None);
+
+    let server_handle = tokio::spawn(async move {
+        let _ = server.serve_unix(&socket_path_for_spawn).await;
+    });
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(100);
+    while !socket_path.exists() {
+        if std::time::Instant::now() >= deadline {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    assert!(socket_path.exists(), "socket file should exist after bind");
+    server_handle.abort();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn test_serve_unix_fails_when_parent_is_file() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let file_path = temp_dir.path().join("not_a_dir");
+    std::fs::File::create(&file_path).expect("create file");
+    let socket_path = file_path.join("tarpc.sock");
+
+    let executor = Arc::new(MockExecutor);
+    let server = ToadStoolTarpcServer::new("test-v1", executor, None);
+
+    let result = server.serve_unix(&socket_path).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_serve_tcp_binds_and_accepts() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind");
+    let executor = Arc::new(MockExecutor);
+    let server = ToadStoolTarpcServer::new("test-v1", executor, None);
+
+    let server_handle = tokio::spawn(async move {
+        let _ = server.serve_tcp(listener).await;
+    });
+
+    for _ in 0..20 {
+        tokio::task::yield_now().await;
+    }
+    server_handle.abort();
 }

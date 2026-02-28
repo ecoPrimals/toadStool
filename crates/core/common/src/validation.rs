@@ -47,8 +47,9 @@ pub fn validate_port(port: u16, field_name: &str) -> ConfigResult<()> {
 #[must_use]
 pub fn validate_timeout(timeout: Duration, field_name: &str) -> ConfigResult<()> {
     use toadstool_config::defaults::validation;
-    
-    let timeout_ms = timeout.as_millis() as u64;
+
+    #[allow(clippy::cast_possible_truncation)]
+    let timeout_ms = timeout.as_millis() as u64; // fits: validation caps at 24h (< u64::MAX ms)
     
     if timeout_ms < validation::MIN_TIMEOUT_MS {
         return Err(ConfigError::InvalidValue {

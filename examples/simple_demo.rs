@@ -56,7 +56,7 @@ async fn main() -> ToadStoolResult<()> {
 
     println!("Job completed with status: {:?}", response.status);
     if let Some(stdout) = response.output.stdout {
-        println!("Output: {}", stdout);
+        println!("Output: {stdout}");
     }
 
     println!("✅ Demo completed successfully!");

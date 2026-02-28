@@ -29,8 +29,7 @@ impl ChamferDistance {
             return Err(BarracudaError::invalid_op(
                 "ChamferDistance",
                 format!(
-                    "direction must be 0 (X→Y), 1 (Y→X), or 2 (bidirectional), got {}",
-                    direction
+                    "direction must be 0 (X→Y), 1 (Y→X), or 2 (bidirectional), got {direction}"
                 ),
             ));
         }
@@ -62,8 +61,7 @@ impl ChamferDistance {
             return Err(BarracudaError::invalid_op(
                 "ChamferDistance",
                 format!(
-                    "points must be 2D [num_points, point_dim], got shapes {:?} and {:?}",
-                    x_shape, y_shape
+                    "points must be 2D [num_points, point_dim], got shapes {x_shape:?} and {y_shape:?}"
                 ),
             ));
         }

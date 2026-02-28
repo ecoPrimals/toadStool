@@ -97,8 +97,7 @@ impl FheIntt {
 
         if !degree.is_power_of_two() {
             return Err(BarracudaError::Device(format!(
-                "Degree {} must be a power of 2 for INTT",
-                degree
+                "Degree {degree} must be a power of 2 for INTT"
             )));
         }
 

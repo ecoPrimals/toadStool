@@ -80,14 +80,14 @@ impl GpuInference {
             confidence,
             all_probabilities: output.to_vec(),
             latency,
-            backend: format!("{:?} (via ToadStool, CPU fallback)", backend),
+            backend: format!("{backend:?} (via ToadStool, CPU fallback)"),
         })
     }
 
     /// Get current backend being used
     pub fn current_backend(&self) -> String {
         if let Some(ref backend) = self.preferred_backend {
-            format!("{:?}", backend)
+            format!("{backend:?}")
         } else {
             "Automatic (CPU fallback)".to_string()
         }

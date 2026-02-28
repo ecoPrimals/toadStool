@@ -70,8 +70,7 @@ impl ScatterNd {
             return Err(BarracudaError::invalid_op(
                 "ScatterNd",
                 format!(
-                    "Values shape {:?} doesn't match expected shape {:?}",
-                    values_shape, expected_values_shape
+                    "Values shape {values_shape:?} doesn't match expected shape {expected_values_shape:?}"
                 ),
             ));
         }

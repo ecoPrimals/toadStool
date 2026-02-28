@@ -185,7 +185,7 @@ pub(super) fn run_cpu_operation(
         }
         _ => {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Unknown operation: {}", operation),
+                message: format!("Unknown operation: {operation}"),
             });
         }
     }

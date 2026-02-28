@@ -88,7 +88,7 @@ impl RdfHistogramF64 {
         });
 
         let wg_count = (n as u32).div_ceil(WG);
-        ComputeDispatch::new(&*self.device, "rdf_histogram_f64")
+        ComputeDispatch::new(&self.device, "rdf_histogram_f64")
             .shader(SHADER, "main")
             .f64()
             .storage_read(0, &pos_buf)

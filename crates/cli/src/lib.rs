@@ -90,7 +90,7 @@ where
     where
         C: std::fmt::Display + Send + Sync + 'static,
     {
-        self.map_err(|e| CliError::Other(format!("{}: {}", context, e)))
+        self.map_err(|e| CliError::Other(format!("{context}: {e}")))
     }
 }
 

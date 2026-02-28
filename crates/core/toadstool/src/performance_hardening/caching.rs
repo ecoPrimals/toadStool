@@ -83,13 +83,21 @@ where
                 access_order.push_back(key.clone());
 
                 stats.hits += 1;
-                stats.hit_rate = stats.hits as f64 / (stats.hits + stats.misses) as f64;
+                let hits = stats.hits;
+                let total = stats.hits + stats.misses;
+                #[allow(clippy::cast_precision_loss)]
+                let rate = hits as f64 / total as f64;
+                stats.hit_rate = rate;
 
                 Some(entry.value.clone())
             }
         } else {
             stats.misses += 1;
-            stats.hit_rate = stats.hits as f64 / (stats.hits + stats.misses) as f64;
+            let hits = stats.hits;
+            let total = stats.hits + stats.misses;
+            #[allow(clippy::cast_precision_loss)]
+            let rate = hits as f64 / total as f64;
+            stats.hit_rate = rate;
             None
         }
     }
@@ -130,6 +138,7 @@ where
     }
 
     /// Evict least recently used entry
+    #[allow(clippy::unused_async)] // May have await in future eviction logic
     async fn evict_lru(
         &self,
         entries: &mut HashMap<K, CacheEntry<V>>,
@@ -150,6 +159,7 @@ where
     }
 
     /// Start cleanup task
+    #[allow(clippy::unused_async)] // Spawns background task; async for API consistency
     pub async fn start_cleanup_task(&self) {
         let entries = Arc::clone(&self.entries);
         let access_order = Arc::clone(&self.access_order);

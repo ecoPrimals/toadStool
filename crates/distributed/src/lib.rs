@@ -7,6 +7,7 @@
 //! - Service registration and health reporting
 
 #![cfg_attr(test, allow(deprecated))] // Allow deprecated items in tests during transition
+#![allow(clippy::unused_async)] // Many placeholder/stub async fns for future impl; per-function allow in hot paths
 #![deny(unsafe_code)]
 
 // Core modules

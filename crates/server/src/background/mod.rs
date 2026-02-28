@@ -2,6 +2,8 @@
 //!
 //! ## Module structure
 //!
+#![allow(rustdoc::private_intra_doc_links)]
+//!
 //! - [`resource`] — CPU/memory monitoring, ResourceUsageUpdate events
 //! - [`health`] — Health checks, HealthStatusChanged events
 //! - [`statistics`] — Periodic stats aggregation
@@ -65,6 +67,9 @@ pub async fn start_background_services(state: ServerState) {
 
 #[cfg(test)]
 mod tests {
+    // Test helpers use MockResourceMonitor and MockRuntimeEngine for predictable behavior.
+    // Production background services receive ServerState from ToadStoolServer::new()
+    // which uses SystemResourceMonitor; runtime engines are registered by the application.
     use super::*;
     use std::collections::HashMap;
     use std::sync::Arc;

@@ -15,6 +15,7 @@ use std::time::Duration;
 
 impl ExecutionError {
     /// Create a runtime failure error
+    #[must_use]
     pub fn runtime_failure(
         runtime: impl Into<String>,
         workload_id: impl Into<String>,
@@ -28,6 +29,7 @@ impl ExecutionError {
     }
 
     /// Create a workload failure error
+    #[must_use]
     pub fn workload_failure(workload_id: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::WorkloadFailure {
             workload_id: workload_id.into(),
@@ -46,11 +48,13 @@ impl ExecutionError {
 
 impl ConfigError {
     /// Create a not found error
+    #[must_use]
     pub fn not_found(path: impl Into<String>) -> Self {
         Self::NotFound { path: path.into() }
     }
 
     /// Create a parse error
+    #[must_use]
     pub fn parse_error(reason: impl Into<String>) -> Self {
         Self::ParseError {
             reason: reason.into(),
@@ -58,6 +62,7 @@ impl ConfigError {
     }
 
     /// Create a validation error
+    #[must_use]
     pub fn validation_error(reason: impl Into<String>) -> Self {
         Self::ValidationError {
             reason: reason.into(),
@@ -67,6 +72,7 @@ impl ConfigError {
 
 impl ResourceError {
     /// Create an allocation failure error
+    #[must_use]
     pub fn allocation_failure(resource: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::AllocationFailure {
             resource: resource.into(),
@@ -75,6 +81,7 @@ impl ResourceError {
     }
 
     /// Create a limit exceeded error
+    #[must_use]
     pub fn limit_exceeded(
         resource: impl Into<String>,
         requested: impl Into<String>,
@@ -90,6 +97,7 @@ impl ResourceError {
 
 impl IntegrationError {
     /// Create a service unavailable error
+    #[must_use]
     pub fn service_unavailable(service: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::ServiceUnavailable {
             service: service.into(),
@@ -98,6 +106,7 @@ impl IntegrationError {
     }
 
     /// Create a connection failed error
+    #[must_use]
     pub fn connection_failed(service: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::ConnectionFailed {
             service: service.into(),
@@ -108,6 +117,7 @@ impl IntegrationError {
 
 impl SecurityError {
     /// Create a permission denied error
+    #[must_use]
     pub fn permission_denied(operation: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::PermissionDenied {
             operation: operation.into(),
@@ -116,6 +126,7 @@ impl SecurityError {
     }
 
     /// Create a policy violation error
+    #[must_use]
     pub fn policy_violation(policy: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::PolicyViolation {
             policy: policy.into(),
@@ -126,6 +137,7 @@ impl SecurityError {
 
 impl NetworkError {
     /// Create a connection failed error
+    #[must_use]
     pub fn connection_failed(endpoint: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::ConnectionFailed {
             endpoint: endpoint.into(),
@@ -134,6 +146,7 @@ impl NetworkError {
     }
 
     /// Create a timeout error
+    #[must_use]
     pub fn timeout(endpoint: impl Into<String>, duration: Duration) -> Self {
         Self::Timeout {
             endpoint: endpoint.into(),
@@ -144,6 +157,7 @@ impl NetworkError {
 
 impl SystemError {
     /// Create an I/O error
+    #[must_use]
     pub fn io(reason: impl Into<String>) -> Self {
         Self::Io {
             reason: reason.into(),
@@ -151,6 +165,7 @@ impl SystemError {
     }
 
     /// Create a file system error
+    #[must_use]
     pub fn file_system(path: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::FileSystem {
             path: path.into(),
@@ -159,6 +174,7 @@ impl SystemError {
     }
 
     /// Create a not supported error
+    #[must_use]
     pub fn not_supported(feature: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::NotSupported {
             feature: feature.into(),

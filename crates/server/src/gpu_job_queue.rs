@@ -156,6 +156,10 @@ impl GpuJobQueue {
     }
 
     /// Get the status of a job
+    ///
+    /// # Errors
+    ///
+    /// Returns [`JobQueueError`] if the job is not found.
     pub async fn status(&self, job_id: JobId) -> Result<ComputeJob, JobQueueError> {
         let jobs = self.jobs.read().await;
         jobs.get(&job_id)
@@ -166,6 +170,10 @@ impl GpuJobQueue {
     /// Get the result of a completed job
     ///
     /// Returns the result value if the job is completed, or an error otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`JobQueueError`] if the job is not found, not complete, failed, or was cancelled.
     pub async fn result(&self, job_id: JobId) -> Result<serde_json::Value, JobQueueError> {
         let jobs = self.jobs.read().await;
         let job = jobs
@@ -187,6 +195,10 @@ impl GpuJobQueue {
     }
 
     /// Cancel a pending or running job
+    ///
+    /// # Errors
+    ///
+    /// Returns [`JobQueueError`] if the job is not found or cannot be cancelled (e.g., already completed).
     pub async fn cancel(&self, job_id: JobId) -> Result<(), JobQueueError> {
         let mut jobs = self.jobs.write().await;
         let job = jobs
@@ -224,6 +236,10 @@ impl GpuJobQueue {
     }
 
     /// Mark a job as running (called by the executor)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`JobQueueError`] if the job is not found or not in Pending state.
     pub async fn mark_running(&self, job_id: JobId) -> Result<(), JobQueueError> {
         let mut jobs = self.jobs.write().await;
         let job = jobs
@@ -244,6 +260,10 @@ impl GpuJobQueue {
     }
 
     /// Mark a job as completed with a result (called by the executor)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`JobQueueError`] if the job is not found.
     pub async fn mark_completed(
         &self,
         job_id: JobId,
@@ -262,6 +282,10 @@ impl GpuJobQueue {
     }
 
     /// Mark a job as failed with an error (called by the executor)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`JobQueueError`] if the job is not found.
     pub async fn mark_failed(
         &self,
         job_id: JobId,

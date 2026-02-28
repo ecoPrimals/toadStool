@@ -66,12 +66,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     println!("═══ Available hotSpring Validations ═══");
     println!();
     for (name, description) in &validations {
-        println!("  • {}", name);
-        println!("    {}", description);
-        println!(
-            "    Run: cd {}/barracuda && cargo run --bin {}",
-            HOTSPRING_PATH, name
-        );
+        println!("  • {name}");
+        println!("    {description}");
+        println!("    Run: cd {HOTSPRING_PATH}/barracuda && cargo run --bin {name}");
         println!();
     }
 
@@ -106,7 +103,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     println!("═══ Next Steps ═══");
     println!();
     println!("  1. Run MD validation:");
-    println!("     cd {}/barracuda", HOTSPRING_PATH);
+    println!("     cd {HOTSPRING_PATH}/barracuda");
     println!("     cargo run --bin validate_md");
     println!();
     println!("  2. Run all validations:");

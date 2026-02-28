@@ -15,6 +15,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![deny(unsafe_code)]
+#![allow(clippy::unused_async)] // Test helpers/placeholders; async for trait/API consistency
 
 //! # `ToadStool` Testing Infrastructure
 //!
@@ -65,14 +66,14 @@ pub type TestResult<T = ()> = Result<T, Box<dyn std::error::Error + Send + Sync>
 pub mod constants {
     use std::time::Duration;
 
-    /// Default timeout for async tests
-    pub const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(30);
+    /// Default timeout for async tests (individual tests can set their own if needed)
+    pub const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(5);
 
     /// Short timeout for unit tests
-    pub const UNIT_TEST_TIMEOUT: Duration = Duration::from_secs(5);
+    pub const UNIT_TEST_TIMEOUT: Duration = Duration::from_secs(2);
 
-    /// Long timeout for integration tests
-    pub const INTEGRATION_TEST_TIMEOUT: Duration = Duration::from_secs(120);
+    /// Long timeout for integration tests (individual tests can set their own if needed)
+    pub const INTEGRATION_TEST_TIMEOUT: Duration = Duration::from_secs(30);
 
     /// Default test data size
     pub const DEFAULT_TEST_DATA_SIZE: usize = 1024;

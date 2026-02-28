@@ -286,8 +286,7 @@ impl BufferPool {
         if solver_buffers.contains_key(solver_id) {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "Solver '{}' already has pinned buffers. Call release_solver_buffers() first.",
-                    solver_id
+                    "Solver '{solver_id}' already has pinned buffers. Call release_solver_buffers() first."
                 ),
             });
         }
@@ -297,7 +296,7 @@ impl BufferPool {
             let label = desc
                 .label
                 .clone()
-                .unwrap_or_else(|| format!("{}:{}", solver_id, name));
+                .unwrap_or_else(|| format!("{solver_id}:{name}"));
             let buffer = self.inner.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(&label),
                 size: desc.size,

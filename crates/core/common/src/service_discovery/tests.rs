@@ -274,7 +274,7 @@ fn test_discover_from_env() {
                     let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
                         .await
                         .unwrap();
-                    let services = disc.discover_from_env().await.unwrap();
+                    let services = disc.discover_from_env().unwrap();
                     assert!(!services.is_empty(), "Should discover from env vars");
                     let svc = services.iter().find(|s| s.name == "testcompute").unwrap();
                     assert_eq!(svc.endpoints.len(), 1);
@@ -304,7 +304,7 @@ fn test_discover_from_env_invalid_url_returns_error() {
                     let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
                         .await
                         .unwrap();
-                    let result = disc.discover_from_env().await;
+                    let result = disc.discover_from_env();
                     assert!(result.is_ok() || result.is_err());
                 });
             })
@@ -674,7 +674,7 @@ async fn test_discover_from_env_key_strip_prefix_suffix() {
                     let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
                         .await
                         .unwrap();
-                    let services = disc.discover_from_env().await.unwrap();
+                    let services = disc.discover_from_env().unwrap();
                     let mysvc = services.iter().find(|s| s.name == "mysvc");
                     assert!(
                         mysvc.is_some(),
@@ -708,7 +708,7 @@ fn test_discover_from_env_invalid_url_propagates_error() {
                     let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
                         .await
                         .unwrap();
-                    let result = disc.discover_from_env().await;
+                    let result = disc.discover_from_env();
                     assert!(result.is_err());
                 });
             })

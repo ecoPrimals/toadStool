@@ -26,13 +26,13 @@ async fn main() -> Result<()> {
     println!("─────────────────────────────────────────────────────────");
 
     let input = vec![-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
-    println!("Input:  {:?}", input);
+    println!("Input:  {input:?}");
 
     let start = Instant::now();
     let output = executor.execute_relu(&input).await?;
     let elapsed = start.elapsed();
 
-    println!("Output: {:?}", output);
+    println!("Output: {output:?}");
     println!("Time:   {:.3} ms", elapsed.as_secs_f64() * 1000.0);
 
     // Verify correctness
@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
         .map(|(a, b)| (a - b).abs())
         .fold(0.0, f32::max);
 
-    println!("Max difference: {:.6}", max_diff);
+    println!("Max difference: {max_diff:.6}");
     println!(
         "Correctness: {}",
         if max_diff < 1e-5 {
@@ -63,14 +63,14 @@ async fn main() -> Result<()> {
     let a = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
     let b = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
 
-    println!("A (2x3): {:?}", a);
-    println!("B (3x2): {:?}", b);
+    println!("A (2x3): {a:?}");
+    println!("B (3x2): {b:?}");
 
     let start = Instant::now();
     let c = executor.execute_matmul(&a, &b, 2, 3, 2).await?;
     let elapsed = start.elapsed();
 
-    println!("C (2x2): {:?}", c);
+    println!("C (2x2): {c:?}");
     println!("Time:    {:.3} ms", elapsed.as_secs_f64() * 1000.0);
 
     // Expected: [[22, 28], [49, 64]]
@@ -81,8 +81,8 @@ async fn main() -> Result<()> {
         .map(|(a, b)| (a - b).abs())
         .fold(0.0, f32::max);
 
-    println!("Expected: {:?}", expected);
-    println!("Max difference: {:.6}", max_diff);
+    println!("Expected: {expected:?}");
+    println!("Max difference: {max_diff:.6}");
     println!(
         "Correctness: {}",
         if max_diff < 1e-3 {

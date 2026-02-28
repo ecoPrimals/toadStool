@@ -36,10 +36,7 @@ impl STFT {
         let window_size: usize = window.shape().iter().product();
         if window_size != n_fft {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Window length ({}) must match n_fft ({})",
-                    window_size, n_fft
-                ),
+                message: format!("Window length ({window_size}) must match n_fft ({n_fft})"),
             });
         }
 
@@ -47,10 +44,7 @@ impl STFT {
         let signal_size: usize = signal.shape().iter().product();
         if signal_size < n_fft {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Signal length ({}) must be at least n_fft ({})",
-                    signal_size, n_fft
-                ),
+                message: format!("Signal length ({signal_size}) must be at least n_fft ({n_fft})"),
             });
         }
 

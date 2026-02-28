@@ -56,15 +56,27 @@ pub type Result<T> = std::result::Result<T, ConfigError>;
 /// **Deep Debt**: All configs support multiple sources (file, env, builder)
 pub trait ToadStoolConfigTrait: Serialize + for<'de> Deserialize<'de> + Default + Sized {
     /// Load from TOML file
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError`] if the file cannot be read or TOML parsing fails.
     fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         let contents = std::fs::read_to_string(path)?;
         Ok(toml::from_str(&contents)?)
     }
 
     /// Load from environment variables (with TOADSTOOL_ prefix)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError`] if required environment variables are missing or invalid.
     fn from_env() -> Result<Self>;
 
     /// Save to TOML file
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError`] if serialization fails or the file cannot be written.
     fn to_file(&self, path: impl AsRef<Path>) -> Result<()> {
         let contents =
             toml::to_string_pretty(self).map_err(|e| ConfigError::Validation(e.to_string()))?;
@@ -78,6 +90,10 @@ pub trait ToadStoolConfigTrait: Serialize + for<'de> Deserialize<'de> + Default 
     }
 
     /// Validate configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError`] if validation fails (implementation-specific).
     fn validate(&self) -> Result<()> {
         Ok(()) // Default: always valid
     }
@@ -287,6 +303,11 @@ impl ProfilerConfigBuilder {
         self
     }
 
+    /// Build and validate the profiler configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError`] if validation fails.
     pub fn build(self) -> Result<ProfilerConfig> {
         self.config.validate()?;
         Ok(self.config)
@@ -854,5 +875,101 @@ output_format = "json"
     fn test_config_error_display() {
         let err = ConfigError::Validation("test".to_string());
         assert_eq!(err.to_string(), "Validation error: test");
+    }
+
+    #[test]
+    fn test_profiler_builder_override_chain_last_wins() {
+        let config = ProfilerConfigBuilder::new()
+            .warmup_iterations(10)
+            .warmup_iterations(20)
+            .benchmark_iterations(50)
+            .benchmark_iterations(100)
+            .build()
+            .expect("valid config");
+        assert_eq!(config.warmup_iterations, 20);
+        assert_eq!(config.benchmark_iterations, 100);
+    }
+
+    #[test]
+    fn test_profiler_builder_override_parallel_sequential() {
+        let config = ProfilerConfigBuilder::new()
+            .parallel()
+            .sequential()
+            .build()
+            .expect("valid config");
+        assert!(!config.parallel);
+    }
+
+    #[test]
+    fn test_profiler_from_file_invalid_toml() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("invalid.toml");
+        std::fs::write(&path, "warmup_iterations = [invalid").expect("write");
+        let err = ProfilerConfig::from_file(&path).expect_err("invalid TOML");
+        assert!(matches!(err, ConfigError::Toml(_)));
+    }
+
+    #[test]
+    fn test_profiler_from_file_wrong_structure_fails() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("wrong.toml");
+        std::fs::write(&path, "[section]\nfoo = 1").expect("write");
+        let err = ProfilerConfig::from_file(&path);
+        assert!(err.is_err(), "wrong TOML structure should fail parse");
+        assert!(matches!(err, Err(ConfigError::Toml(_))));
+    }
+
+    #[test]
+    fn test_profiler_to_file_serialization_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("out.toml");
+        let config = ProfilerConfig::default();
+        let result = config.to_file(&path);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_profiler_build_validation_both_zero() {
+        let err = ProfilerConfigBuilder::new()
+            .warmup_iterations(0)
+            .benchmark_iterations(0)
+            .build()
+            .expect_err("both zero should fail");
+        assert!(matches!(err, ConfigError::Validation(s) if s.contains("warmup")));
+    }
+
+    #[test]
+    fn test_config_error_io_display() {
+        let err = ConfigError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found",
+        ));
+        assert!(err.to_string().contains("file not found"));
+    }
+
+    #[test]
+    fn test_substrate_builder_override_chain() {
+        let config = SubstrateConfigBuilder::new()
+            .prefer_cpu()
+            .prefer_gpu()
+            .prefer_npu()
+            .power_budget_watts(5.0)
+            .power_budget_watts(10.0)
+            .target_latency()
+            .target_throughput()
+            .build();
+        assert_eq!(
+            config.preferred,
+            SubstratePreference::Specific(SubstrateType::Npu)
+        );
+        assert_eq!(config.power_budget_watts, Some(10.0));
+        assert_eq!(config.performance_target, PerformanceTarget::Throughput);
+    }
+
+    #[test]
+    fn test_profiler_builder_empty_chain_builds_defaults() {
+        let config = ProfilerConfigBuilder::new().build().expect("valid");
+        assert_eq!(config.warmup_iterations, 10);
+        assert_eq!(config.benchmark_iterations, 100);
     }
 }

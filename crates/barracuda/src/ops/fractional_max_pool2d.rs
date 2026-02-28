@@ -34,7 +34,7 @@ impl FractionalMaxPool2d {
         if shape.len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "fractional_max_pool2d",
-                format!("input must be 4D [B, C, H, W], got shape {:?}", shape),
+                format!("input must be 4D [B, C, H, W], got shape {shape:?}"),
             ));
         }
 
@@ -49,14 +49,14 @@ impl FractionalMaxPool2d {
         if pool_seq_h_shape.len() != 1 {
             return Err(BarracudaError::invalid_op(
                 "fractional_max_pool2d",
-                format!("pool_seq_h must be 1D, got shape {:?}", pool_seq_h_shape),
+                format!("pool_seq_h must be 1D, got shape {pool_seq_h_shape:?}"),
             ));
         }
 
         if pool_seq_w_shape.len() != 1 {
             return Err(BarracudaError::invalid_op(
                 "fractional_max_pool2d",
-                format!("pool_seq_w must be 1D, got shape {:?}", pool_seq_w_shape),
+                format!("pool_seq_w must be 1D, got shape {pool_seq_w_shape:?}"),
             ));
         }
 

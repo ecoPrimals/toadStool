@@ -49,10 +49,7 @@ pub async fn compute_with_kspace_gpu(
     let o3 = order * order * order;
     if !kx.is_power_of_two() || !ky.is_power_of_two() || !kz.is_power_of_two() {
         return Err(BarracudaError::InvalidInput {
-            message: format!(
-                "GPU FFT requires power-of-2 mesh dims, got ({}, {}, {})",
-                kx, ky, kz
-            ),
+            message: format!("GPU FFT requires power-of-2 mesh dims, got ({kx}, {ky}, {kz})"),
         });
     }
 

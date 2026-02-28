@@ -25,7 +25,7 @@ impl Tensor {
         if axis >= shape.len() {
             return Err(BarracudaError::invalid_op(
                 "argmax_dim",
-                format!("Axis {} out of bounds for shape {:?}", axis, shape),
+                format!("Axis {axis} out of bounds for shape {shape:?}"),
             ));
         }
 
@@ -78,7 +78,7 @@ impl Tensor {
         if axis >= shape.len() {
             return Err(BarracudaError::invalid_op(
                 "softmax_dim",
-                format!("Axis {} out of bounds for shape {:?}", axis, shape),
+                format!("Axis {axis} out of bounds for shape {shape:?}"),
             ));
         }
 

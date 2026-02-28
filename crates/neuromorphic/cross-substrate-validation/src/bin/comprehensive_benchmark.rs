@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stats = universal.stats();
 
     println!("   Universal Runtime:");
-    println!("{}", stats);
+    println!("{stats}");
 
     // Discover Akida devices
     let akida_result = DeviceManager::discover();
@@ -37,11 +37,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(manager) => {
             println!("   Akida devices: {}", manager.device_count());
             for (i, info) in manager.devices().iter().enumerate() {
-                println!("     Device {}: {:?}", i, info);
+                println!("     Device {i}: {info:?}");
             }
         }
         Err(e) => {
-            println!("   ⚠️  Akida devices: Not available ({:?})", e);
+            println!("   ⚠️  Akida devices: Not available ({e:?})");
             println!("   Note: Neuromorphic benchmarks will be skipped");
         }
     }

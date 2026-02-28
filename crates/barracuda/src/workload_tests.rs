@@ -237,7 +237,7 @@ fn test_device_selection_force_hint() {
     let device = selector.select(
         WorkloadType::ML,
         0.5,
-        10000,
+        10_000,
         Priority::Throughput,
         DeviceHint::Force(ComputeDevice::CPU),
     );
@@ -302,7 +302,7 @@ fn test_device_selection_sparse_high_sparsity() {
     let device = selector.select(
         WorkloadType::Sparse,
         0.95,
-        10000,
+        10_000,
         Priority::Energy,
         DeviceHint::Auto,
     );
@@ -315,7 +315,7 @@ fn test_device_selection_cpu_only() {
     let device = selector.select(
         WorkloadType::ML,
         0.5,
-        10000,
+        10_000,
         Priority::Throughput,
         DeviceHint::Auto,
     );

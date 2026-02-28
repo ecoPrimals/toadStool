@@ -48,6 +48,7 @@ impl ToadStoolTarpcServer {
             .unwrap_or(4)
             * 4; // ~4 workloads per core
 
+        #[allow(clippy::cast_precision_loss)]
         let base_utilization = if max_capacity > 0 {
             (active_count as f32) / (max_capacity as f32)
         } else {
@@ -69,6 +70,7 @@ impl ToadStoolTarpcServer {
             if let Ok(loadavg) = std::fs::read_to_string("/proc/loadavg") {
                 if let Some(first) = loadavg.split_whitespace().next() {
                     if let Ok(load) = first.parse::<f32>() {
+                        #[allow(clippy::cast_precision_loss)]
                         let cpu_count = std::thread::available_parallelism()
                             .map(|n| n.get() as f32)
                             .unwrap_or(4.0);
@@ -121,6 +123,10 @@ impl ToadStoolTarpcServer {
     /// Per wateringHole standard: JSON-RPC 2.0 is PRIMARY, tarpc is OPTIONAL
     ///
     /// Deep debt principle: No TCP hardcoding, use Unix sockets for multi-instance support
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError`] if directory creation, socket bind, permission setting, or accept fails.
     pub async fn serve_unix(self, socket_path: impl AsRef<std::path::Path>) -> ServerResult<()> {
         use tarpc::server::{BaseChannel, Channel};
         use tokio::net::UnixListener;
@@ -192,10 +198,15 @@ impl ToadStoolTarpcServer {
     ///
     /// Deep debt violation: TCP with hardcoded ports breaks multi-instance support.
     /// Use serve_unix() instead for production.
+    ///
+    /// # Errors
+    ///
+    /// Always returns [`ServerError`] (deprecated - use serve_unix or serve_tcp instead).
     #[deprecated(
         since = "2.2.0",
         note = "Use serve_unix() for production. TCP hardcoding violates deep debt principles."
     )]
+    #[allow(clippy::unused_async)] // Deprecated; returns Err immediately; kept async for API compatibility
     pub async fn serve_tcp_debug(self, addr: SocketAddr) -> ServerResult<()> {
         warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
         warn!("⚠️  Use Unix sockets for production (serve_unix)");
@@ -212,6 +223,10 @@ impl ToadStoolTarpcServer {
     ///
     /// This method is used only when Unix sockets fail due to platform constraints
     /// (SELinux, Android, etc.). The listener is pre-bound to 127.0.0.1:0 for security.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError`] if getting local address or accept fails.
     pub async fn serve_tcp(self, listener: tokio::net::TcpListener) -> ServerResult<()> {
         use tarpc::server::{BaseChannel, Channel};
         use tokio_serde::formats::Json;
@@ -340,6 +355,9 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
             .filter(|w| matches!(w.status, WorkloadStatus::Queued))
             .count();
 
+        #[allow(clippy::cast_possible_truncation)]
+        let error_count = self.error_count.load(Ordering::Relaxed) as usize; // display/metrics only
+
         Ok(HealthStatus {
             healthy: true,
             version: self.version.as_ref().to_string(),
@@ -347,7 +365,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
             resource_utilization: self.calculate_resource_utilization().await,
             active_workloads: active_count,
             queued_workloads: queued_count,
-            error_count: self.error_count.load(Ordering::Relaxed) as usize,
+            error_count,
         })
     }
 }
@@ -415,6 +433,7 @@ impl StandaloneExecutor {
     ///
     /// Rough estimate: modern CPU core ~0.1 TFLOPS
     fn estimate_cpu_tflops(cores: u32) -> Option<f64> {
+        #[allow(clippy::cast_precision_loss)]
         Some((cores as f64) * 0.1)
     }
 
@@ -431,7 +450,10 @@ impl StandaloneExecutor {
         }
 
         let total_usage: f32 = cpus.iter().map(sysinfo::Cpu::cpu_usage).sum();
-        total_usage / cpus.len() as f32
+        let len = cpus.len();
+        #[allow(clippy::cast_precision_loss)]
+        let avg = total_usage / len as f32;
+        avg
     }
 
     /// Query actual memory utilization (pure Rust via sysinfo)
@@ -446,7 +468,9 @@ impl StandaloneExecutor {
         }
 
         let used = total.saturating_sub(available);
-        ((used as f64 / total as f64) * 100.0) as f32
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+        let pct = ((used as f64 / total as f64) * 100.0) as f32;
+        pct
     }
 }
 
@@ -489,6 +513,7 @@ impl WorkloadExecutor for StandaloneExecutor {
         // Process the workload data
         // Real backends would parse submission.data and execute on GPU/CPU/NPU
         // For now, we perform a CPU-bound operation proportional to input size
+        #[allow(clippy::cast_possible_truncation)] // i bounded by output len (≤1024)
         let result_data = {
             let input_len = submission.data.len();
             // Simple processing: XOR-based transform (demonstrates actual work)
@@ -510,6 +535,7 @@ impl WorkloadExecutor for StandaloneExecutor {
         let total_cores = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
             .unwrap_or(4);
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         let cores_used =
             u32::try_from(((avg_cpu_util / 100.0) * total_cores as f32).ceil() as i64).unwrap_or(1);
 
@@ -522,9 +548,9 @@ impl WorkloadExecutor for StandaloneExecutor {
                 queued_duration_secs: 0.0, // Immediate execution (no queue)
                 execution_duration_secs: execution_duration,
                 cpu_cores_used: cores_used.max(1),
-                memory_used_bytes: submission.data.len() as u64,
+                memory_used_bytes: u64::try_from(submission.data.len()).unwrap_or(u64::MAX),
                 gpu_memory_used_bytes: if submission.workload_type == "gpu_compute" {
-                    Some(submission.data.len() as u64)
+                    Some(u64::try_from(submission.data.len()).unwrap_or(u64::MAX))
                 } else {
                     None
                 },
@@ -532,10 +558,12 @@ impl WorkloadExecutor for StandaloneExecutor {
         })
     }
 
+    #[allow(clippy::unused_async)] // WorkloadExecutor trait; sync capabilities clone
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
         Ok(self.capabilities.clone())
     }
 
+    #[allow(clippy::unused_async)] // WorkloadExecutor trait; no-op cancel in standalone mode
     async fn cancel(&self, workload_id: &str) -> Result<(), String> {
         warn!("Cancel requested for workload: {}", workload_id);
         Ok(())

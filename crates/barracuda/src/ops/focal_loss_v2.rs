@@ -32,14 +32,14 @@ impl FocalLossV2 {
         if !(0.0..=1.0).contains(&alpha) {
             return Err(BarracudaError::invalid_op(
                 "FocalLossV2",
-                format!("alpha must be in [0, 1], got {}", alpha),
+                format!("alpha must be in [0, 1], got {alpha}"),
             ));
         }
 
         if gamma < 0.0 {
             return Err(BarracudaError::invalid_op(
                 "FocalLossV2",
-                format!("gamma must be non-negative, got {}", gamma),
+                format!("gamma must be non-negative, got {gamma}"),
             ));
         }
 

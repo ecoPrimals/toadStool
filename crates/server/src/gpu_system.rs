@@ -6,6 +6,7 @@
 /// Query available GPU devices
 ///
 /// Detects NVIDIA GPUs via /proc on Linux, falls back to wgpu abstraction.
+#[must_use]
 pub fn query_gpu_devices() -> Vec<serde_json::Value> {
     let mut devices = Vec::new();
 
@@ -30,6 +31,7 @@ pub fn query_gpu_devices() -> Vec<serde_json::Value> {
 }
 
 /// Query GPU memory usage via nvidia-smi
+#[must_use]
 pub fn query_gpu_memory() -> Vec<serde_json::Value> {
     let mut devices = Vec::new();
 

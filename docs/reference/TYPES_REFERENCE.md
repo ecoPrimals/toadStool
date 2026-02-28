@@ -247,37 +247,6 @@ pub enum JobPriority {
 
 ---
 
-### 2.2 Legacy: `legacy::JobPriority`
-
-**Location**: `crates/runtime/legacy/src/types/configs.rs`
-
-**Definition**:
-```rust
-pub enum JobPriority {
-    Low,
-    Normal,
-    High,
-    Critical,
-    RealTime,  // Maps to Emergency in canonical
-}
-```
-
-**Purpose**: Backward compatibility with legacy systems
-
-**Conversions**:
-- ✅ `From<legacy::JobPriority> for toadstool::JobPriority`
-- ✅ `From<toadstool::JobPriority> for legacy::JobPriority`
-
-**Mapping**:
-| Legacy | Canonical |
-|--------|-----------|
-| `RealTime` | `Emergency` |
-| `Critical` | `Critical` |
-| `High` | `High` |
-| `Normal` | `Normal` |
-| `Low` | `Low` |
-| (none) | `Background` → `Low` |
-
 ---
 
 ## 3. Job and Workload Types

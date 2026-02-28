@@ -47,12 +47,7 @@ use crate::error::{BarracudaError, Result};
 fn wgsl_rk4_template(n_vars: usize, n_params: usize, derivative_fn: &str) -> String {
     let unroll_state2_from = |k: &str, coeff: &str| {
         (0..n_vars)
-            .map(|i| {
-                format!(
-                    "    state2[{}u] = state[{}u] + {} * {}[{}u];",
-                    i, i, coeff, k, i
-                )
-            })
+            .map(|i| format!("    state2[{i}u] = state[{i}u] + {coeff} * {k}[{i}u];"))
             .collect::<Vec<_>>()
             .join("\n")
     };
@@ -60,8 +55,7 @@ fn wgsl_rk4_template(n_vars: usize, n_params: usize, derivative_fn: &str) -> Str
         (0..n_vars)
             .map(|i| {
                 format!(
-                    "    yn[{}u] = state[{}u] + h * sixth * (k1[{}u] + two * k2[{}u] + two * k3[{}u] + k4[{}u]);",
-                    i, i, i, i, i, i
+                    "    yn[{i}u] = state[{i}u] + h * sixth * (k1[{i}u] + two * k2[{i}u] + two * k3[{i}u] + k4[{i}u]);"
                 )
             })
             .collect::<Vec<_>>()
@@ -69,25 +63,25 @@ fn wgsl_rk4_template(n_vars: usize, n_params: usize, derivative_fn: &str) -> Str
     };
     let unroll_read_state = || {
         (0..n_vars)
-            .map(|i| format!("    state[{}u] = initial_states[s_base + {}u];", i, i))
+            .map(|i| format!("    state[{i}u] = initial_states[s_base + {i}u];"))
             .collect::<Vec<_>>()
             .join("\n")
     };
     let unroll_read_params = || {
         (0..n_params)
-            .map(|i| format!("    params[{}u] = batch_params[p_base + {}u];", i, i))
+            .map(|i| format!("    params[{i}u] = batch_params[p_base + {i}u];"))
             .collect::<Vec<_>>()
             .join("\n")
     };
     let unroll_clamp = || {
         (0..n_vars)
-            .map(|i| format!("        state[{}u] = fclamp(yn[{}u], cmin, cmax);", i, i))
+            .map(|i| format!("        state[{i}u] = fclamp(yn[{i}u], cmin, cmax);"))
             .collect::<Vec<_>>()
             .join("\n")
     };
     let unroll_write = || {
         (0..n_vars)
-            .map(|i| format!("    output_states[s_base + {}u] = state[{}u];", i, i))
+            .map(|i| format!("    output_states[s_base + {i}u] = state[{i}u];"))
             .collect::<Vec<_>>()
             .join("\n")
     };

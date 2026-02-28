@@ -112,8 +112,7 @@ impl CryptoProviderRegistry {
         // Check if already registered
         if providers.contains_key(&provider_id) {
             return Err(ToadStoolError::configuration(format!(
-                "Provider {} already registered",
-                provider_id
+                "Provider {provider_id} already registered"
             )));
         }
 
@@ -125,7 +124,7 @@ impl CryptoProviderRegistry {
     pub async fn unregister(&self, provider_id: &str) -> ToadStoolResult<()> {
         let mut providers = self.providers.write().await;
         providers.remove(provider_id).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Provider {} not found", provider_id))
+            ToadStoolError::not_found(format!("Provider {provider_id} not found"))
         })?;
         Ok(())
     }
@@ -185,7 +184,7 @@ impl CryptoProviderRegistry {
         providers
             .get(provider_id)
             .map(Arc::clone)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Provider {} not found", provider_id)))
+            .ok_or_else(|| ToadStoolError::not_found(format!("Provider {provider_id} not found")))
     }
 
     /// List all registered providers

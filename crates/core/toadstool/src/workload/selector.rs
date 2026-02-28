@@ -253,7 +253,7 @@ impl BackendSelector {
             return BackendDecision::new(
                 CudaBackend::TranslatedGpu,
                 0.80,
-                format!("CUDA → GPU translation ({}) - good performance", gpu_vendor),
+                format!("CUDA → GPU translation ({gpu_vendor}) - good performance"),
             )
             .with_alternative(CudaBackend::CpuParallel)
             .with_alternative(CudaBackend::CpuSequential);

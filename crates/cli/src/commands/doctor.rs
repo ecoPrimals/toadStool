@@ -277,6 +277,7 @@ async fn check_hardware_health() -> HardwareReport {
     }
 }
 
+#[allow(clippy::unused_async)] // API consistency; may add async GPU check in future
 async fn check_gpu_available() -> bool {
     // Check if any GPU backend is available
     // This is a lightweight check that doesn't require full wgpu initialization
@@ -373,6 +374,7 @@ async fn check_ecosystem_health() -> EcosystemReport {
     }
 }
 
+#[allow(clippy::unused_async)] // API consistency with check_ecosystem_health
 async fn check_config_health() -> ConfigReport {
     let issues = vec![];
 

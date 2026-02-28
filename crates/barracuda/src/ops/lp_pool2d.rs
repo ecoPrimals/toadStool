@@ -33,10 +33,7 @@ impl LpPool2D {
         let shape = input.shape();
         if shape.len() != 4 {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!(
-                    "LpPool2D expects 4D tensor [B, C, H, W], got shape {:?}",
-                    shape
-                ),
+                message: format!("LpPool2D expects 4D tensor [B, C, H, W], got shape {shape:?}"),
             });
         }
 

@@ -13,11 +13,11 @@ pub const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(5);
 /// Short timeout for fast operations (1 second)
 pub const SHORT_TIMEOUT: Duration = Duration::from_secs(1);
 
-/// Long timeout for complex operations (30 seconds)
-pub const LONG_TIMEOUT: Duration = Duration::from_secs(30);
+/// Long timeout for complex operations (10 seconds)
+pub const LONG_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Chaos test timeout (60 seconds)
-pub const CHAOS_TIMEOUT: Duration = Duration::from_secs(60);
+/// Chaos test timeout (20 seconds; chaos tests are serialized and may need more)
+pub const CHAOS_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Error type for timeout operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,7 +154,7 @@ impl<E: std::fmt::Display> std::fmt::Display for RetryError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RetryError::Timeout => write!(f, "operation timed out"),
-            RetryError::Failed(e) => write!(f, "operation failed: {}", e),
+            RetryError::Failed(e) => write!(f, "operation failed: {e}"),
             RetryError::MaxAttemptsExceeded => write!(f, "max retry attempts exceeded"),
         }
     }
@@ -182,10 +182,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_default_timeout_failure() {
-        let result = with_default_timeout(async {
-            tokio::time::sleep(Duration::from_secs(10)).await;
-        })
-        .await;
+        let result = with_default_timeout(std::future::pending::<()>()).await;
         assert_eq!(result, Err(TimeoutError::Elapsed));
     }
 

@@ -320,8 +320,7 @@ impl WgpuDevice {
                     })
                     .unwrap_or_default();
                 BarracudaError::device(format!(
-                    "Backend {:?} not available for device {} (available: {:?})",
-                    backend, device_index, backends
+                    "Backend {backend:?} not available for device {device_index} (available: {backends:?})"
                 ))
             })?;
         Self::from_adapter_index(adapter_index).await
@@ -395,8 +394,7 @@ impl WgpuDevice {
 
         let available: Vec<_> = adapters.iter().map(|a| a.name.as_str()).collect();
         Err(BarracudaError::device(format!(
-            "No adapter matches '{}'. Available: {:?}",
-            selector, available
+            "No adapter matches '{selector}'. Available: {available:?}"
         )))
     }
 

@@ -43,9 +43,9 @@ impl Xoshiro256 {
         let mut z = seed;
         let mut s = [0u64; 4];
         for si in &mut s {
-            z = z.wrapping_add(0x9e3779b97f4a7c15);
-            z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
-            z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+            z = z.wrapping_add(0x9e37_79b9_7f4a_7c15);
+            z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
             *si = z ^ (z >> 31);
         }
         Self { s }
@@ -136,8 +136,7 @@ pub fn latin_hypercube(
         if lo >= hi {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "Bounds for dimension {} are invalid: [{}, {}] (lower >= upper)",
-                    i, lo, hi
+                    "Bounds for dimension {i} are invalid: [{lo}, {hi}] (lower >= upper)"
                 ),
             });
         }
@@ -423,7 +422,7 @@ mod tests {
             (-3000.0, -1000.0), // t0
             (100.0, 800.0),     // t1
             (-800.0, 0.0),      // t2
-            (8000.0, 20000.0),  // t3
+            (8000.0, 20_000.0), // t3
             (-1.0, 2.0),        // x0
             (-2.0, 1.0),        // x1
             (-2.0, 0.0),        // x2

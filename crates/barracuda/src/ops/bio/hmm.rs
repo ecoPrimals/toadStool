@@ -80,7 +80,7 @@ impl HmmBatchForwardF64 {
             .create_uniform_buffer("HmmForward:params", &params);
 
         let wg_count = n_seqs.div_ceil(256);
-        ComputeDispatch::new(&*self.device, "hmm_forward")
+        ComputeDispatch::new(&self.device, "hmm_forward")
             .shader(SHADER, "main")
             .f64()
             .uniform(0, &params_buf)

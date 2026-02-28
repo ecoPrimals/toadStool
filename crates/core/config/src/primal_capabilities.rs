@@ -305,6 +305,10 @@ impl PrimalCapabilitiesRegistry {
     ///
     /// Constructs endpoint from host and `default_port`
     /// In production, this should query actual service discovery (mDNS, Consul, etc.)
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CapabilityError`] if the primal is not found.
     pub fn get_endpoint(&self, primal_name: &str, host: &str) -> CapabilityResult<String> {
         let primal = self
             .primals
@@ -585,18 +589,14 @@ capabilities = ["test"]
 default_port = 7777
 "#;
         std::fs::write(&temp, content).unwrap();
-        let original = std::env::var("PRIMAL_CAPABILITIES_PATH").ok();
-        std::env::set_var("PRIMAL_CAPABILITIES_PATH", temp.to_str().unwrap());
-        let result = PrimalCapabilitiesRegistry::load_default();
-        if let Some(v) = original {
-            std::env::set_var("PRIMAL_CAPABILITIES_PATH", v);
-        } else {
-            std::env::remove_var("PRIMAL_CAPABILITIES_PATH");
-        }
+        let path_str = temp.to_str().unwrap().to_string();
+        temp_env::with_var("PRIMAL_CAPABILITIES_PATH", Some(path_str.as_str()), || {
+            let result = PrimalCapabilitiesRegistry::load_default();
+            assert!(result.is_ok());
+            let registry = result.unwrap();
+            assert!(registry.primals.contains_key("envtest"));
+        });
         let _ = std::fs::remove_file(&temp);
-        assert!(result.is_ok());
-        let registry = result.unwrap();
-        assert!(registry.primals.contains_key("envtest"));
     }
 
     #[test]

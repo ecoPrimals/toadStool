@@ -79,7 +79,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     for device in &devices {
         let name = device.name();
         println!("══════════════════════════════════════════════════════════════════════════════");
-        println!("  {}", name);
+        println!("  {name}");
         println!(
             "══════════════════════════════════════════════════════════════════════════════\n"
         );
@@ -123,7 +123,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         // Get stats after cold runs
         let ctx = get_device_context(device);
         let stats = ctx.stats();
-        println!("\n  After cold start: {}", stats);
+        println!("\n  After cold start: {stats}");
 
         // Test 2: Warm (reusing pooled buffers)
         println!("\n  Test 2: Warm Steady-State (reusing pooled buffers)");
@@ -152,7 +152,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
 
         // Get stats after warm runs
         let stats = ctx.stats();
-        println!("\n  After warm runs: {}", stats);
+        println!("\n  After warm runs: {stats}");
 
         // Test 3: Sustained throughput with pooling
         println!("\n  Test 3: Sustained Throughput (1 second)");
@@ -190,13 +190,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let reuses = stats_after.buffer_reuses - stats_before.buffer_reuses;
 
         println!("    Duration:       {:.2}s", elapsed.as_secs_f64());
-        println!("    Operations:     {}", ops);
-        println!("    Ops/second:     {:.0}", ops_per_sec);
-        println!(
-            "    New allocations: {} (should be 0 in steady state)",
-            new_allocs
-        );
-        println!("    Buffer reuses:   {}", reuses);
+        println!("    Operations:     {ops}");
+        println!("    Ops/second:     {ops_per_sec:.0}");
+        println!("    New allocations: {new_allocs} (should be 0 in steady state)");
+        println!("    Buffer reuses:   {reuses}");
 
         if new_allocs == 0 && reuses > 0 {
             println!("    ✅ Zero-allocation steady state achieved!");

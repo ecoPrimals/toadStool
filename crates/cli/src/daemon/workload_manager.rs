@@ -300,8 +300,7 @@ impl WorkloadManager {
             Ok(())
         } else {
             Err(crate::CliError::Other(format!(
-                "Workload {} not found",
-                workload_id
+                "Workload {workload_id} not found"
             )))
         }
     }

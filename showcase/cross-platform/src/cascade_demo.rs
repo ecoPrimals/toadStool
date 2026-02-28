@@ -163,7 +163,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     println!("    Stage 2 (NPU):  {:.3} ms", stage2.latency_ms);
     println!("    Stage 3 (CPU):  {:.3} ms", stage3.latency_ms);
     println!("    ────────────────────────");
-    println!("    Total:          {:.3} ms", total_latency);
+    println!("    Total:          {total_latency:.3} ms");
     println!();
 
     // Show device summary

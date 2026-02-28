@@ -294,17 +294,23 @@ impl ChaosEngine {
     ) -> ToadStoolResult<()> {
         debug!("Simulating network partition for {}ms", duration_ms);
 
-        // Simulate partition by updating system state
-        let mut state = self.system_state.write().await;
-        state.cluster_healthy = false;
+        {
+            let mut state = self.system_state.write().await;
+            state.cluster_healthy = false;
+        }
 
-        // Simulate partition duration
         let duration = Duration::from_millis(duration_ms);
         tokio::time::sleep(duration).await;
 
-        // Partition ends, system begins recovery
-        state.cluster_healthy = true;
-        state.recovery_count += 1;
+        {
+            let mut state = self.system_state.write().await;
+            state.cluster_healthy = true;
+            state.recovery_count += 1;
+        }
+        {
+            let mut metrics = self.metrics.write().await;
+            metrics.recovery_count += 1;
+        }
 
         Ok(())
     }
@@ -336,14 +342,23 @@ impl ChaosEngine {
             restart_delay_ms
         );
 
-        let mut state = self.system_state.write().await;
-        state.cluster_healthy = false;
+        {
+            let mut state = self.system_state.write().await;
+            state.cluster_healthy = false;
+        }
 
         // Simulate restart delay
         tokio::time::sleep(Duration::from_millis(restart_delay_ms)).await;
 
-        state.cluster_healthy = true;
-        state.recovery_count += 1;
+        {
+            let mut state = self.system_state.write().await;
+            state.cluster_healthy = true;
+            state.recovery_count += 1;
+        }
+        {
+            let mut metrics = self.metrics.write().await;
+            metrics.recovery_count += 1;
+        }
 
         Ok(())
     }

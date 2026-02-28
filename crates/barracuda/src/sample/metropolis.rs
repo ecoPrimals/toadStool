@@ -20,10 +20,10 @@ impl Xoshiro256StarStar {
         let mut s = [0u64; 4];
         let mut x = seed;
         for i in 0..4 {
-            x = x.wrapping_add(0x9e3779b97f4a7c15);
+            x = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
             let mut z = x;
-            z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
-            z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+            z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
             s[i] = z ^ (z >> 31);
         }
         Self { s }

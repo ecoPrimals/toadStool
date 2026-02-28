@@ -74,7 +74,7 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
         .merge(ByobApi::new(Arc::clone(&byob_executor)).router())
         .with_state(byob_executor);
 
-    let addr: SocketAddr = format!("{}:{}", bind_address, port)
+    let addr: SocketAddr = format!("{bind_address}:{port}")
         .parse()
         .map_err(|e| ToadStoolError::configuration(format!("Invalid bind address: {e}")))?;
     info!("Starting Toadstool BYOB Server on {}", addr);

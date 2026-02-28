@@ -170,10 +170,7 @@ fn print_comparison_table(
     println!("├─────────────────┼─────────────────────────┼─────────────┼─────────────┤");
 
     if let Some((add, mul)) = cuda_times {
-        println!(
-            "│ Native CUDA     │ NVIDIA RTX 3090 (CUDA)  │ {:>11.4} │ {:>11.4} │",
-            add, mul
-        );
+        println!("│ Native CUDA     │ NVIDIA RTX 3090 (CUDA)  │ {add:>11.4} │ {mul:>11.4} │");
     }
 
     let device_short = if barracuda_times.0.len() > 23 {
@@ -205,8 +202,8 @@ fn print_comparison_table(
             "CUDA faster"
         };
 
-        println!("  • Vector Add: {:.2}x — {}", add_ratio, add_status);
-        println!("  • Vector Mul: {:.2}x — {}", mul_ratio, mul_status);
+        println!("  • Vector Add: {add_ratio:.2}x — {add_status}");
+        println!("  • Vector Mul: {mul_ratio:.2}x — {mul_status}");
 
         let overall = (add_ratio + mul_ratio) / 2.0;
         if overall > 0.9 {

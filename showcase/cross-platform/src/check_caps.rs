@@ -76,7 +76,7 @@ async fn main() {
 
         // Print all available features for reference
         println!("\nAll available features:");
-        println!("  {:?}", features);
+        println!("  {features:?}");
     }
 
     println!("\n══════════════════════════════════════════════════════════════");

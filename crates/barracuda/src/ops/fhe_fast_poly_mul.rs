@@ -63,15 +63,13 @@ impl FheFastPolyMul {
         // Validate inputs
         if !degree.is_power_of_two() {
             return Err(BarracudaError::Device(format!(
-                "Degree must be power of 2, got {}",
-                degree
+                "Degree must be power of 2, got {degree}"
             )));
         }
 
-        if !(4..=65536).contains(&degree) {
+        if !(4..=65_536).contains(&degree) {
             return Err(BarracudaError::Device(format!(
-                "Degree must be in range [4, 65536], got {}",
-                degree
+                "Degree must be in range [4, 65_536], got {degree}"
             )));
         }
 

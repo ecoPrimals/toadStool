@@ -116,7 +116,7 @@ pub fn qr_decompose(a: &[f64], m: usize, n: usize) -> Result<QrDecomposition> {
 
     if m < n {
         return Err(BarracudaError::InvalidInput {
-            message: format!("QR requires m ≥ n, got m={}, n={}", m, n),
+            message: format!("QR requires m ≥ n, got m={m}, n={n}"),
         });
     }
 

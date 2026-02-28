@@ -96,7 +96,7 @@ impl FheRotate {
         // ✅ VALIDATION: Degree must be power of 2
         if !degree.is_power_of_two() || degree < 4 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Degree must be power of 2 >= 4, got {}", degree),
+                message: format!("Degree must be power of 2 >= 4, got {degree}"),
             });
         }
 
@@ -105,8 +105,7 @@ impl FheRotate {
         if rotation.abs() > max_rotation {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "Rotation {} out of range [-{}, {}] for degree {}",
-                    rotation, max_rotation, max_rotation, degree
+                    "Rotation {rotation} out of range [-{max_rotation}, {max_rotation}] for degree {degree}"
                 ),
             });
         }
@@ -248,7 +247,7 @@ impl FheRotate {
         let params = RotateParams {
             degree: self.degree,
             rotation: rotation_normalized,
-            modulus_lo: (self.modulus & 0xFFFFFFFF) as u32,
+            modulus_lo: (self.modulus & 0xFFFF_FFFF) as u32,
             modulus_hi: (self.modulus >> 32) as u32,
         };
 
@@ -321,11 +320,11 @@ mod tests {
     #[tokio::test]
     async fn test_rotate_validation() {
         // Test invalid degree
-        let result = FheRotate::new(Tensor::zeros(vec![8]).await.unwrap(), 3, 1, 12289);
+        let result = FheRotate::new(Tensor::zeros(vec![8]).await.unwrap(), 3, 1, 12_289);
         assert!(result.is_err());
 
         // Test rotation out of range
-        let result = FheRotate::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 3, 12289);
+        let result = FheRotate::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 3, 12_289);
         assert!(result.is_err()); // Max rotation for degree 4 is 2
 
         // Test negative rotation out of range

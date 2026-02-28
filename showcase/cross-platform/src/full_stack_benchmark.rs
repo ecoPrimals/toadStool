@@ -441,10 +441,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     let iterations = 20;
     let batch_size = 10;
 
-    println!(
-        "  Config: {} elements, {} iterations, batch size {}\n",
-        size, iterations, batch_size
-    );
+    println!("  Config: {size} elements, {iterations} iterations, batch size {batch_size}\n");
 
     // Header
     println!("  ┌────────────────────────────────────┬────────────┬────────────┬─────────┐");
@@ -512,8 +509,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         };
 
         println!(
-            "  │ BarraCuda {:25}│ {:>7.1} μs │ {:>7.1} μs │ {:>5.1}x  │",
-            short_name, single, batched, gap
+            "  │ BarraCuda {short_name:25}│ {single:>7.1} μs │ {batched:>7.1} μs │ {gap:>5.1}x  │"
         );
     }
 

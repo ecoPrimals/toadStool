@@ -55,7 +55,7 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
     if temperature <= 0.0 {
         return Err(crate::error::BarracudaError::invalid_op(
             "npu_softmax",
-            format!("Temperature must be positive, got {}", temperature),
+            format!("Temperature must be positive, got {temperature}"),
         ));
     }
 

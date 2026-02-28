@@ -33,7 +33,7 @@ impl MatrixPower {
         if rows != cols {
             return Err(BarracudaError::invalid_op(
                 "matrix_power",
-                format!("Requires square matrix, got {}x{}", rows, cols),
+                format!("Requires square matrix, got {rows}x{cols}"),
             ));
         }
 

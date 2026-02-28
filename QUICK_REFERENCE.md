@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 27, 2026 -- Session 68+++**
+**February 28, 2026 -- Session 70**
 
 ---
 
@@ -36,20 +36,18 @@ cargo build --release -p toadstool-cli
 ## Test
 
 ```bash
-# Full workspace (excludes hardware-dependent)
+# Full workspace (excludes GPU-dependent crates, runs concurrently)
 cargo test --workspace \
-  --exclude ml-inference-showcase \
-  --exclude homomorphic-computing \
   --exclude barracuda \
-  --exclude toadstool-runtime-gpu \
-  --exclude showcase-rbf-surrogate \
-  --exclude akida-detection-demo
+  --exclude ml-inference-showcase \
+  -- --test-threads=8
 
 # Specific crate
 cargo test -p toadstool-common
 cargo test -p toadstool-server
 cargo test -p toadstool-config
 cargo test -p toadstool-cli
+cargo test -p toadstool-distributed
 
 # BarraCuda (lib tests work without GPU; shader tests require GPU)
 cargo test -p barracuda --lib
@@ -57,16 +55,11 @@ cargo test -p barracuda --lib ops::linalg --release
 cargo test -p barracuda --lib linalg numerical special optimize surrogate --release
 
 # Coverage (requires cargo-llvm-cov)
-cargo llvm-cov -p toadstool-server --lib
-cargo llvm-cov -p toadstool-common --lib
-cargo llvm-cov -p toadstool-config --lib
 cargo llvm-cov --workspace --ignore-run-fail \
-  --exclude ml-inference-showcase \
-  --exclude homomorphic-computing \
   --exclude barracuda \
-  --exclude toadstool-runtime-gpu
+  --exclude ml-inference-showcase
 
-# Coverage (all 5 core crates combined)
+# Coverage (core crates combined)
 cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toadstool-server -p toadstool-distributed --summary-only
 ```
 
@@ -253,7 +246,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
 | `toadstool-api` | REST API, middleware (WebSocket removed; JSON-RPC polling) |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
-| `barracuda` | 700 WGSL shaders (21 DF64, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity |
+| `barracuda` | 661 WGSL shaders (21 DF64, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |
 | `toadstool-testing` | Chaos, fault, property, performance testing |
 
@@ -543,4 +536,4 @@ API reference: see [Scientific Computing Middleware API](#scientific-computing-m
 
 ---
 
-**Last Updated**: February 27, 2026 — Session 68+++
+**Last Updated**: February 28, 2026 — Session 70

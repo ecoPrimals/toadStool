@@ -57,7 +57,7 @@ impl CutMix {
         if shape.len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "cutmix",
-                format!("input must be 4D [B, C, H, W], got shape {:?}", shape),
+                format!("input must be 4D [B, C, H, W], got shape {shape:?}"),
             ));
         }
 
@@ -69,10 +69,7 @@ impl CutMix {
         if mix_idx >= batch_size as u32 {
             return Err(BarracudaError::invalid_op(
                 "cutmix",
-                format!(
-                    "mix_idx {} must be less than batch_size {}",
-                    mix_idx, batch_size
-                ),
+                format!("mix_idx {mix_idx} must be less than batch_size {batch_size}"),
             ));
         }
 
@@ -80,8 +77,7 @@ impl CutMix {
             return Err(BarracudaError::invalid_op(
                 "cutmix",
                 format!(
-                    "cut region [{}, {}] + [{}, {}] exceeds image size [{}, {}]",
-                    cut_x, cut_y, cut_w, cut_h, width, height
+                    "cut region [{cut_x}, {cut_y}] + [{cut_w}, {cut_h}] exceeds image size [{width}, {height}]"
                 ),
             ));
         }

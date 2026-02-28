@@ -66,7 +66,7 @@ impl TopK {
         if k > size {
             return Err(BarracudaError::invalid_op(
                 "TopK",
-                format!("k ({}) exceeds tensor size ({})", k, size),
+                format!("k ({k}) exceeds tensor size ({size})"),
             ));
         }
 

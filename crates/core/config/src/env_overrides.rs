@@ -165,7 +165,10 @@ impl ToadStoolConfig {
         }
 
         if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_GRPC") {
-            self.features.enable_grpc = enabled.to_lowercase() == "true";
+            #[allow(deprecated)]
+            {
+                self.features.enable_grpc = enabled.to_lowercase() == "true";
+            }
         }
 
         if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_GRAPHQL") {

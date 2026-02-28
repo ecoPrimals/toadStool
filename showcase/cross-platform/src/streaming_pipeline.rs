@@ -62,8 +62,7 @@ impl PipelineStats {
         let avg_latency = if total > 0 { latency / total } else { 0 };
 
         format!(
-            "GPU: {} frames | NPU: {} events | CPU: {} aggs | Avg latency: {}μs",
-            gpu, npu, cpu, avg_latency
+            "GPU: {gpu} frames | NPU: {npu} events | CPU: {cpu} aggs | Avg latency: {avg_latency}μs"
         )
     }
 }

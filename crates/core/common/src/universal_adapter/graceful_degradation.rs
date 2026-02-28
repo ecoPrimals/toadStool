@@ -43,7 +43,11 @@ impl GracefulDegradation {
     }
 
     /// Handle a missing capability
-    pub async fn handle_missing_capability(
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] when strategy is `Fail` or `Fallback` and no fallback is available.
+    pub fn handle_missing_capability(
         &self,
         capability: CapabilityType,
     ) -> ToadStoolResult<CapabilityHandle> {
@@ -54,18 +58,18 @@ impl GracefulDegradation {
 
             DegradationStrategy::Fallback => {
                 // Try to provide a fallback
-                self.try_fallback(capability).await
+                self.try_fallback(capability)
             }
 
             DegradationStrategy::Continue => {
                 // Return a "no-op" capability handle
-                self.create_noop_handle(capability).await
+                self.create_noop_handle(capability)
             }
         }
     }
 
     /// Try to provide a fallback implementation
-    async fn try_fallback(&self, capability: CapabilityType) -> ToadStoolResult<CapabilityHandle> {
+    fn try_fallback(&self, capability: CapabilityType) -> ToadStoolResult<CapabilityHandle> {
         // For now, we don't have fallback implementations
         // In the future, we could provide:
         // - Mock implementations for testing
@@ -82,10 +86,7 @@ impl GracefulDegradation {
     /// Returns a synthetic capability handle that represents "continue without this capability".
     /// The handle is valid but operations through it are no-ops. Useful for non-critical
     /// capabilities where the system can safely degrade.
-    async fn create_noop_handle(
-        &self,
-        capability: CapabilityType,
-    ) -> ToadStoolResult<CapabilityHandle> {
+    fn create_noop_handle(&self, capability: CapabilityType) -> ToadStoolResult<CapabilityHandle> {
         let provider_id = format!("noop-{}", uuid::Uuid::new_v4().as_simple());
         let provider = CapabilityInfo {
             provider_id: provider_id.clone(),
@@ -123,7 +124,7 @@ mod tests {
             min_trust_level: TrustLevel::High,
         };
 
-        let result = degradation.handle_missing_capability(capability).await;
+        let result = degradation.handle_missing_capability(capability);
         assert!(result.is_err(), "Should fail when capability not available");
     }
 
@@ -136,7 +137,7 @@ mod tests {
             min_trust_level: TrustLevel::High,
         };
 
-        let result = degradation.handle_missing_capability(capability).await;
+        let result = degradation.handle_missing_capability(capability);
         // For now, fallback also fails (no implementations yet)
         assert!(result.is_err());
     }
@@ -162,7 +163,7 @@ mod tests {
             min_trust_level: TrustLevel::High,
         };
 
-        let result = degradation.handle_missing_capability(capability).await;
+        let result = degradation.handle_missing_capability(capability);
         assert!(
             result.is_ok(),
             "Continue strategy should return no-op handle"

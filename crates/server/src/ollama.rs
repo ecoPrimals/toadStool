@@ -82,6 +82,10 @@ impl OllamaClient {
     /// List available models on this gate
     ///
     /// Calls `GET /api/tags` on the Ollama API.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OllamaError`] if the HTTP request fails or response JSON is invalid.
     pub async fn list_models(&self) -> Result<Vec<OllamaModel>, OllamaError> {
         let response = self.http_get("/api/tags").await?;
         let body: Value = serde_json::from_slice(response.as_bytes()).map_err(OllamaError::Json)?;
@@ -102,6 +106,10 @@ impl OllamaClient {
     /// Run inference on a model
     ///
     /// Calls `POST /api/generate` on the Ollama API.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OllamaError`] if the HTTP request fails or response JSON is invalid.
     pub async fn inference(
         &self,
         model: &str,
@@ -130,6 +138,10 @@ impl OllamaClient {
     /// Preload a model into VRAM
     ///
     /// Calls `POST /api/generate` with an empty prompt and `keep_alive` to load the model.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OllamaError`] if the HTTP request fails.
     pub async fn load(&self, model: &str) -> Result<(), OllamaError> {
         let body = serde_json::json!({
             "model": model,
@@ -146,6 +158,10 @@ impl OllamaClient {
     /// Unload a model from VRAM
     ///
     /// Calls `POST /api/generate` with `keep_alive: 0` to immediately unload.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OllamaError`] if the HTTP request fails.
     pub async fn unload(&self, model: &str) -> Result<(), OllamaError> {
         let body = serde_json::json!({
             "model": model,

@@ -34,7 +34,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let device_id = wgpu_device.global_id();
 
         println!("  GPU {}: {}", idx, device.name());
-        println!("    Device ID: {:?}", device_id);
+        println!("    Device ID: {device_id:?}");
 
         // Create a layout for this device
         let layout_sig = BindGroupLayoutSignature::elementwise_binary();

@@ -237,6 +237,7 @@ where
 /// assert_eq!(clamp(-5, 0, 10), 0);
 /// assert_eq!(clamp(15, 0, 10), 10);
 /// ```
+#[must_use]
 pub fn clamp<T: Ord>(value: T, min: T, max: T) -> T {
     if value < min {
         min
@@ -298,6 +299,7 @@ pub fn lerp(start: f64, end: f64, t: f64) -> f64 {
 /// assert!(in_range(&10, &0, &10));
 /// assert!(!in_range(&11, &0, &10));
 /// ```
+#[must_use]
 pub fn in_range<T: Ord>(value: &T, min: &T, max: &T) -> bool {
     value >= min && value <= max
 }

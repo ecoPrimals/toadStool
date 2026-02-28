@@ -38,4 +38,5 @@ pub use server::IpcServer;
 
 // Re-export legacy helpers for backward compatibility
 // These will gradually migrate to use the new platform layer
+#[allow(deprecated)]
 pub use crate::ipc_helpers::*;

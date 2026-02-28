@@ -49,13 +49,13 @@ impl Quantize {
         if scale <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "quantize",
-                format!("scale must be positive, got {}", scale),
+                format!("scale must be positive, got {scale}"),
             ));
         }
         if num_bits != 4 && num_bits != 8 {
             return Err(BarracudaError::invalid_op(
                 "quantize",
-                format!("num_bits must be 4 or 8, got {}", num_bits),
+                format!("num_bits must be 4 or 8, got {num_bits}"),
             ));
         }
 

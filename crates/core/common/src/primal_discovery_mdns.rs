@@ -44,7 +44,11 @@ impl MdnsAdapter {
     /// Create new mDNS adapter
     ///
     /// Initializes the mDNS daemon for service discovery.
-    pub async fn new(config: DiscoveryConfig) -> Result<Self, DiscoveryError> {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DiscoveryError`] if the mDNS daemon cannot be created.
+    pub fn new(config: DiscoveryConfig) -> Result<Self, DiscoveryError> {
         let daemon = ServiceDaemon::new()
             .map_err(|e| DiscoveryError::MDnsError(format!("Failed to create mDNS daemon: {e}")))?;
 
@@ -56,11 +60,15 @@ impl MdnsAdapter {
     }
 
     /// Create with custom timeout
-    pub async fn with_timeout(
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DiscoveryError`] if the mDNS daemon cannot be created.
+    pub fn with_timeout(
         config: DiscoveryConfig,
         timeout: Duration,
     ) -> Result<Self, DiscoveryError> {
-        let mut adapter = Self::new(config).await?;
+        let mut adapter = Self::new(config)?;
         adapter.timeout = timeout;
         Ok(adapter)
     }
@@ -69,7 +77,11 @@ impl MdnsAdapter {
     ///
     /// Performs a real mDNS browse operation and filters by capability.
     /// Returns services that advertise the requested capability.
-    pub async fn discover(&self, capability: &str) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DiscoveryError`] if mDNS browse fails.
+    pub fn discover(&self, capability: &str) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
         tracing::debug!(
             "Starting mDNS discovery for capability '{}' (timeout: {:?})",
             capability,
@@ -159,7 +171,11 @@ impl MdnsAdapter {
     }
 
     /// Discover all services via mDNS (regardless of capability)
-    pub async fn discover_all(&self) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DiscoveryError`] if mDNS browse fails.
+    pub fn discover_all(&self) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
         tracing::debug!(
             "Starting mDNS discovery for all services (timeout: {:?})",
             self.timeout
@@ -265,7 +281,7 @@ mod tests {
     #[tokio::test]
     async fn test_mdns_adapter_creation() {
         let config = DiscoveryConfig::default();
-        let result = MdnsAdapter::new(config).await;
+        let result = MdnsAdapter::new(config);
         // mDNS may not be available in all test environments
         if let Err(e) = &result {
             eprintln!(
@@ -280,7 +296,7 @@ mod tests {
     async fn test_mdns_adapter_with_timeout() {
         let config = DiscoveryConfig::default();
         let timeout = Duration::from_millis(500);
-        let result = MdnsAdapter::with_timeout(config, timeout).await;
+        let result = MdnsAdapter::with_timeout(config, timeout);
 
         if let Ok(adapter) = result {
             assert_eq!(adapter.timeout(), timeout);
@@ -291,11 +307,11 @@ mod tests {
     async fn test_mdns_adapter_discover_handles_no_services() {
         let config = DiscoveryConfig::default();
         // Use short timeout for test
-        let result = MdnsAdapter::with_timeout(config, Duration::from_millis(100)).await;
+        let result = MdnsAdapter::with_timeout(config, Duration::from_millis(100));
 
         if let Ok(adapter) = result {
             // Discovery should complete without error even if no services found
-            let endpoints = adapter.discover("nonexistent-capability").await;
+            let endpoints = adapter.discover("nonexistent-capability");
             if let Ok(eps) = endpoints {
                 // In most test environments, no real services will be found
                 eprintln!(
@@ -309,10 +325,10 @@ mod tests {
     #[tokio::test]
     async fn test_mdns_adapter_discover_all() {
         let config = DiscoveryConfig::default();
-        let result = MdnsAdapter::with_timeout(config, Duration::from_millis(100)).await;
+        let result = MdnsAdapter::with_timeout(config, Duration::from_millis(100));
 
         if let Ok(adapter) = result {
-            let endpoints = adapter.discover_all().await;
+            let endpoints = adapter.discover_all();
             if let Ok(eps) = endpoints {
                 eprintln!("discover_all found {} endpoints", eps.len());
             }

@@ -213,6 +213,7 @@ impl ManualJsonRpcServer {
         })
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC handler; sync estimator.estimate()
     pub(crate) async fn handle_resources_estimate(
         &self,
         request: JsonRpcRequest,

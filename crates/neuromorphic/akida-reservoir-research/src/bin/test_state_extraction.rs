@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
 
     info!("Found {} Akida device(s)", manager.device_count());
     for (i, device_info) in manager.devices().iter().enumerate() {
-        println!("   Device {}: {:?}", i, device_info);
+        println!("   Device {i}: {device_info:?}");
     }
 
     // Step 2: Check for model file
@@ -71,7 +71,7 @@ async fn main() -> Result<()> {
         println!("\n⚠️  EXPERIMENT NEEDS MODEL FILE");
         println!("    Looked for:");
         for path in &test_model_paths {
-            println!("      - {}", path);
+            println!("      - {path}");
         }
         println!("\n    To create a test model:");
         println!("      1. Use BrainChip Akida SDK to train a simple CNN");
@@ -88,8 +88,7 @@ async fn main() -> Result<()> {
     println!("\n3️⃣  Loading model...\n");
     let model = Model::from_file(&model_path).map_err(|e| {
         akida_reservoir_research::ReservoirError::InvalidState(format!(
-            "Failed to load model: {}: {e}",
-            model_path
+            "Failed to load model: {model_path}: {e}"
         ))
     })?;
 
@@ -167,7 +166,7 @@ async fn main() -> Result<()> {
         Err(e) => {
             error!("❌ State extraction failed: {}", e);
             println!("\n   ❌ EXPERIMENT FAILED");
-            println!("      Error: {}", e);
+            println!("      Error: {e}");
         }
     }
 

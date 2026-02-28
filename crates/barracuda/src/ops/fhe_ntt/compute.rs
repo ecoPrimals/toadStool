@@ -53,7 +53,7 @@ impl FheNtt {
             .iter()
             .flat_map(|&factor| {
                 // Split u64 into two u32s (little-endian)
-                vec![(factor & 0xFFFFFFFF) as u32, (factor >> 32) as u32]
+                vec![(factor & 0xFFFF_FFFF) as u32, (factor >> 32) as u32]
             })
             .collect();
 
@@ -81,11 +81,11 @@ impl FheNtt {
 
         let params = NttParams {
             degree: self.degree(),
-            modulus_lo: (self.modulus() & 0xFFFFFFFF) as u32,
+            modulus_lo: (self.modulus() & 0xFFFF_FFFF) as u32,
             modulus_hi: (self.modulus() >> 32) as u32,
-            barrett_mu_lo: (self.barrett_mu() & 0xFFFFFFFF) as u32,
+            barrett_mu_lo: (self.barrett_mu() & 0xFFFF_FFFF) as u32,
             barrett_mu_hi: (self.barrett_mu() >> 32) as u32,
-            root_of_unity_lo: (self.root_of_unity() & 0xFFFFFFFF) as u32,
+            root_of_unity_lo: (self.root_of_unity() & 0xFFFF_FFFF) as u32,
             root_of_unity_hi: (self.root_of_unity() >> 32) as u32,
             stage: 0,
         };
@@ -165,7 +165,7 @@ impl FheNtt {
                 device
                     .device
                     .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some(&format!("NTT Stage {} Encoder", stage)),
+                        label: Some(&format!("NTT Stage {stage} Encoder")),
                     });
 
             // Update params for this stage
@@ -175,13 +175,13 @@ impl FheNtt {
                 device
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some(&format!("NTT Params (Stage {})", stage)),
+                        label: Some(&format!("NTT Params (Stage {stage})")),
                         contents: bytemuck::bytes_of(&stage_params),
                         usage: wgpu::BufferUsages::UNIFORM,
                     });
 
             let stage_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("NTT Butterfly Bind Group (Stage {})", stage)),
+                label: Some(&format!("NTT Butterfly Bind Group (Stage {stage})")),
                 layout: self.bind_group_layout(),
                 entries: &[
                     wgpu::BindGroupEntry {
@@ -206,7 +206,7 @@ impl FheNtt {
             {
                 let mut compute_pass =
                     stage_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some(&format!("NTT Butterfly Pass (Stage {})", stage)),
+                        label: Some(&format!("NTT Butterfly Pass (Stage {stage})")),
                         timestamp_writes: None,
                     });
 

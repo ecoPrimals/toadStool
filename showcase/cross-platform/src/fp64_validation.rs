@@ -152,23 +152,17 @@ fn test_addition_precision(ctx: &GpuContext) {
         let f32_ulp = ulp_distance_f32(expected_f32, gpu_f32);
         let f64_ulp = ulp_distance_f64(expected_f64, gpu_f64);
 
-        println!("    {}", desc);
-        println!("      CPU f64:  {:.16e}", expected_f64);
-        println!(
-            "      GPU f32:  {:.16e}  (error: {:.2e}, {} ULP)",
-            gpu_f32, f32_error, f32_ulp
-        );
+        println!("    {desc}");
+        println!("      CPU f64:  {expected_f64:.16e}");
+        println!("      GPU f32:  {gpu_f32:.16e}  (error: {f32_error:.2e}, {f32_ulp} ULP)");
         if ctx.has_f64 {
-            println!(
-                "      GPU f64:  {:.16e}  (error: {:.2e}, {} ULP)",
-                gpu_f64, f64_error, f64_ulp
-            );
+            println!("      GPU f64:  {gpu_f64:.16e}  (error: {f64_error:.2e}, {f64_ulp} ULP)");
             if f64_ulp == 0 {
                 println!("      ✅ GPU f64 matches CPU f64 exactly!");
             } else if f64_ulp <= 1 {
                 println!("      ✅ GPU f64 within 1 ULP of CPU f64");
             } else {
-                println!("      ⚠️  GPU f64 differs by {} ULP", f64_ulp);
+                println!("      ⚠️  GPU f64 differs by {f64_ulp} ULP");
             }
         }
         println!();
@@ -191,9 +185,9 @@ fn test_accumulation_precision(ctx: &GpuContext) {
     let cpu_naive_f64: f64 = data_f64.iter().sum();
     let cpu_naive_f32: f32 = data_f32.iter().sum();
 
-    println!("    Harmonic series H_{} = Σ(1/i) for i=1 to {}", n, n);
+    println!("    Harmonic series H_{n} = Σ(1/i) for i=1 to {n}");
     println!();
-    println!("    CPU Kahan f64:  {:.15}", cpu_kahan_f64);
+    println!("    CPU Kahan f64:  {cpu_kahan_f64:.15}");
     println!(
         "    CPU naive f64:  {:.15}  (error: {:.2e})",
         cpu_naive_f64,
@@ -244,13 +238,13 @@ fn test_numerical_stability(ctx: &GpuContext) {
     let b = 1.0000000000000000_f64;
     let expected = a - b;
 
-    println!("    Catastrophic cancellation: {} - {}", a, b);
-    println!("    CPU f64:  {:.16e}", expected);
+    println!("    Catastrophic cancellation: {a} - {b}");
+    println!("    CPU f64:  {expected:.16e}");
 
     // Test with addition (b + (a - b) should equal a)
     let reconstructed = b + expected;
-    println!("    Reconstructed: {:.16e}", reconstructed);
-    println!("    Original a:    {:.16e}", a);
+    println!("    Reconstructed: {reconstructed:.16e}");
+    println!("    Original a:    {a:.16e}");
 
     if (reconstructed - a).abs() < 1e-15 {
         println!("    ✅ f64 precision preserved through cancellation");
@@ -278,13 +272,13 @@ fn test_precision_verification(ctx: &GpuContext) {
 
     let (gpu_f32_result, gpu_f64_result) = run_single_add(ctx, a, b);
 
-    println!("    a = {:.16e}", a);
-    println!("    b = {:.16e}", b);
+    println!("    a = {a:.16e}");
+    println!("    b = {b:.16e}");
     println!();
-    println!("    CPU f64:  {:.16e}", cpu_f64);
-    println!("    CPU f32:  {:.16e}", cpu_f32);
-    println!("    GPU f64:  {:.16e}", gpu_f64_result);
-    println!("    GPU f32:  {:.16e}", gpu_f32_result);
+    println!("    CPU f64:  {cpu_f64:.16e}");
+    println!("    CPU f32:  {cpu_f32:.16e}");
+    println!("    GPU f64:  {gpu_f64_result:.16e}");
+    println!("    GPU f32:  {gpu_f32_result:.16e}");
     println!();
 
     // The key test: GPU f64 should match CPU f64 MUCH better than CPU f32
@@ -297,10 +291,7 @@ fn test_precision_verification(ctx: &GpuContext) {
 
     if is_true_f64 {
         println!("    ✅ GPU f64 matches CPU f64 (NOT f32) - TRUE double precision!");
-        println!(
-            "       f64 error: {:.2e}, f32 error: {:.2e}",
-            f64_error, f32_error
-        );
+        println!("       f64 error: {f64_error:.2e}, f32 error: {f32_error:.2e}");
     } else if f64_error < 1e-14 {
         println!("    ✅ GPU f64 matches CPU f64 exactly (test values happen to work in both precisions)");
     } else {

@@ -64,7 +64,7 @@ impl RandomPerspective {
         // Generate random corner displacements from seed (CPU-side, deterministic)
         let mut rng = self.seed;
         let mut rand = || {
-            rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
+            rng = rng.wrapping_mul(1_103_515_245).wrapping_add(12_345);
             ((rng % 2000) as f32 / 1000.0 - 1.0) * self.distortion_scale
         };
 
@@ -286,7 +286,7 @@ mod tests {
         let tensor = Tensor::from_vec_on(image_data.clone(), vec![3, 100, 100], device)
             .await
             .unwrap();
-        let transformed_tensor = tensor.random_perspective(0.2, 33333).unwrap();
+        let transformed_tensor = tensor.random_perspective(0.2, 33_333).unwrap();
         let transformed = transformed_tensor.to_vec().unwrap();
         assert_eq!(transformed.len(), image_data.len());
     }

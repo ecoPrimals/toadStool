@@ -37,8 +37,7 @@ impl Ifft1D {
 
         if degree & (degree - 1) != 0 {
             return Err(BarracudaError::Device(format!(
-                "IFFT degree {} must be power of 2",
-                degree
+                "IFFT degree {degree} must be power of 2"
             )));
         }
 
@@ -339,7 +338,7 @@ impl Ifft1D {
                 device
                     .device
                     .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some(&format!("IFFT Stage {} Encoder", stage)),
+                        label: Some(&format!("IFFT Stage {stage} Encoder")),
                     });
 
             let stage_params = FftParams {
@@ -351,13 +350,13 @@ impl Ifft1D {
                 device
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some(&format!("IFFT Params (Stage {})", stage)),
+                        label: Some(&format!("IFFT Params (Stage {stage})")),
                         contents: bytemuck::bytes_of(&stage_params),
                         usage: wgpu::BufferUsages::UNIFORM,
                     });
 
             let stage_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("IFFT Butterfly Bind Group (Stage {})", stage)),
+                label: Some(&format!("IFFT Butterfly Bind Group (Stage {stage})")),
                 layout: &self.bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
@@ -382,7 +381,7 @@ impl Ifft1D {
             {
                 let mut compute_pass =
                     stage_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some(&format!("IFFT Butterfly Pass (Stage {})", stage)),
+                        label: Some(&format!("IFFT Butterfly Pass (Stage {stage})")),
                         timestamp_writes: None,
                     });
 

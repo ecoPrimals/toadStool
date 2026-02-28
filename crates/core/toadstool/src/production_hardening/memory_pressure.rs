@@ -66,6 +66,7 @@ impl MemoryPressureHandler {
     }
 
     pub async fn update_memory_usage(&self, total_memory: u64, used_memory: u64) {
+        #[allow(clippy::cast_precision_loss)]
         let usage_percent = (used_memory as f64 / total_memory as f64) * 100.0;
 
         let level = if usage_percent >= self.config.emergency_threshold {
@@ -88,6 +89,7 @@ impl MemoryPressureHandler {
         }
     }
 
+    #[allow(clippy::unused_async)] // API consistency; may add async sysinfo in future
     pub async fn get_pressure_level(&self) -> MemoryPressureLevel {
         MemoryPressureLevel::Normal
     }

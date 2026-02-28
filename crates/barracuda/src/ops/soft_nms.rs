@@ -37,24 +37,21 @@ impl SoftNMS {
         if boxes_shape.len() != 2 || boxes_shape[1] != 4 {
             return Err(crate::error::BarracudaError::invalid_op(
                 "SoftNMS",
-                format!("Boxes must be [N, 4], got {:?}", boxes_shape),
+                format!("Boxes must be [N, 4], got {boxes_shape:?}"),
             ));
         }
 
         if scores_shape.len() != 1 || scores_shape[0] != boxes_shape[0] {
             return Err(crate::error::BarracudaError::invalid_op(
                 "SoftNMS",
-                format!(
-                    "Scores must match number of boxes: {:?} vs {:?}",
-                    scores_shape, boxes_shape
-                ),
+                format!("Scores must match number of boxes: {scores_shape:?} vs {boxes_shape:?}"),
             ));
         }
 
         if !(0.0..=1.0).contains(&iou_threshold) {
             return Err(crate::error::BarracudaError::invalid_op(
                 "SoftNMS",
-                format!("IoU threshold must be in [0, 1], got {}", iou_threshold),
+                format!("IoU threshold must be in [0, 1], got {iou_threshold}"),
             ));
         }
 

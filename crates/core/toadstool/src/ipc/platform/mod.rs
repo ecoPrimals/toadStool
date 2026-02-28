@@ -73,7 +73,7 @@ impl Endpoint {
         // Default: Unix socket (Linux desktop, macOS)
         let runtime_dir = get_runtime_dir();
         Self::Unix {
-            path: PathBuf::from(format!("{}/biomeos/toadstool.sock", runtime_dir)),
+            path: PathBuf::from(format!("{runtime_dir}/biomeos/toadstool.sock")),
         }
     }
 
@@ -100,8 +100,8 @@ impl Endpoint {
         match self {
             Self::Unix { path } => format!("unix:{}", path.display()),
             #[cfg(target_os = "linux")]
-            Self::Abstract { name } => format!("abstract:{}", name),
-            Self::Tcp { host, port } => format!("tcp://{}:{}", host, port),
+            Self::Abstract { name } => format!("abstract:{name}"),
+            Self::Tcp { host, port } => format!("tcp://{host}:{port}"),
         }
     }
 
@@ -164,7 +164,7 @@ fn get_runtime_dir() -> String {
     std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
         // Pure Rust UID fallback (no unsafe libc!)
         if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
-            format!("/run/user/{}", uid)
+            format!("/run/user/{uid}")
         } else {
             // Ultimate fallback
             "/tmp/biomeos-runtime".to_string()

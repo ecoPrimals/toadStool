@@ -192,6 +192,10 @@ impl UnixJsonRpcClient {
     ///     .call_typed("beardog.encrypt", params)
     ///     .await?;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] if the JSON-RPC call fails or response deserialization fails.
     pub async fn call_typed<T: for<'de> Deserialize<'de>>(
         &self,
         method: &str,
@@ -205,7 +209,8 @@ impl UnixJsonRpcClient {
     /// Check if socket exists and is accessible
     ///
     /// **Use Case**: Graceful degradation - check before calling
-    pub async fn is_available(&self) -> bool {
+    #[must_use]
+    pub fn is_available(&self) -> bool {
         self.socket_path.exists()
     }
 
@@ -262,7 +267,7 @@ mod tests {
         assert!(response.error.is_some());
 
         let error = response.error.unwrap();
-        assert_eq!(error.code, -32600);
+        assert_eq!(error.code, -32_600);
         assert_eq!(error.message.as_ref(), "Invalid Request");
     }
 
@@ -309,7 +314,7 @@ mod tests {
         let response: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
 
         let error = response.error.unwrap();
-        assert_eq!(error.code, -32603);
+        assert_eq!(error.code, -32_603);
         assert!(error.data.is_some());
         assert!(error.data.unwrap()["details"]
             .as_str()
@@ -392,7 +397,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_error_debug() {
         let error = JsonRpcError {
-            code: -32700,
+            code: -32_700,
             message: Cow::Borrowed("Parse error"),
             data: None,
         };
@@ -421,7 +426,7 @@ mod tests {
             id: 2,
             result: None,
             error: Some(JsonRpcError {
-                code: -32600,
+                code: -32_600,
                 message: Cow::Borrowed("Bad request"),
                 data: None,
             }),
@@ -434,7 +439,7 @@ mod tests {
     #[test]
     fn test_error_without_data() {
         let error = JsonRpcError {
-            code: -32601,
+            code: -32_601,
             message: Cow::Borrowed("Method not found"),
             data: None,
         };

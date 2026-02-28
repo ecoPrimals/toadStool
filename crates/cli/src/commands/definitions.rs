@@ -308,7 +308,7 @@ pub enum Commands {
         bind: String,
 
         /// Server port
-        #[arg(short, long, default_value_t = toadstool_common::constants::network::BYOB_DEFAULT_PORT)]
+        #[arg(short, long, default_value_t = toadstool_config::ports::toadstool::DAEMON_API)]
         port: u16,
 
         /// Configuration file path (TOML)

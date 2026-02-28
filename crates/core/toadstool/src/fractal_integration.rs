@@ -80,7 +80,7 @@ impl FractalRuntime {
         let layer = detector
             .detect()
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Layer detection failed: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Layer detection failed: {e}")))?;
 
         info!("📍 Deployment layer detected: {}", layer);
 

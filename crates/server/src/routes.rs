@@ -61,6 +61,8 @@ pub fn build_router(config: &ServerConfig, state: ServerState) -> Router {
 
 #[cfg(all(test, feature = "api"))]
 mod tests {
+    // Test helper uses MockResourceMonitor for predictable behavior. Production
+    // routes receive ServerState from ToadStoolServer::new() which uses SystemResourceMonitor.
     use super::*;
     use std::collections::HashMap;
     use std::sync::Arc;

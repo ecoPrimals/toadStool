@@ -239,8 +239,8 @@ mod tests {
             return;
         };
         // 10000 elements
-        let input_data = vec![1.0; 10000];
-        let input = Tensor::from_data(&input_data, vec![10000], device.clone()).unwrap();
+        let input_data = vec![1.0; 10_000];
+        let input = Tensor::from_data(&input_data, vec![10_000], device.clone()).unwrap();
         let (left, right) = input.split(5000).unwrap();
         assert_eq!(left.to_vec().unwrap().len(), 5000);
         assert_eq!(right.to_vec().unwrap().len(), 5000);

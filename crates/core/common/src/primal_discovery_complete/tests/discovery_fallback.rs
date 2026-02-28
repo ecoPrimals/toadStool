@@ -17,9 +17,7 @@ async fn test_discovery_with_fallback() {
     );
     config.enable_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let capability = Capability::Coordination(CoordinationCapability::ServiceDiscovery);
     let result = engine.discover_by_capability(&capability).await;
@@ -38,7 +36,7 @@ async fn test_with_config_require_mdns_no_client() {
         ..Default::default()
     };
 
-    let result = PrimalDiscoveryEngine::with_config(None, config).await;
+    let result = PrimalDiscoveryEngine::with_config(None, config);
 
     assert!(result.is_err());
     let err_msg = result.err().unwrap().to_string();
@@ -52,9 +50,7 @@ async fn test_discover_by_capability_not_found() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let capability = Capability::Compute(ComputeCapability::NativeExecution);
     let result = engine.discover_by_capability(&capability).await;
@@ -74,9 +70,7 @@ async fn test_create_fallback_service_https() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let capability = Capability::Storage(StorageCapability::ObjectStorage);
     let services = engine
@@ -98,9 +92,7 @@ async fn test_create_fallback_service_socket_addr() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let capability = Capability::Compute(ComputeCapability::NativeExecution);
     let services = engine
@@ -121,9 +113,7 @@ async fn test_create_fallback_service_http() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let capability = Capability::Custom {
         name: "test".to_string(),
@@ -173,7 +163,6 @@ async fn test_mdns_discovery_success_path() {
     config.require_mdns = false;
 
     let engine = PrimalDiscoveryEngine::with_config(Some(std::sync::Arc::new(mock)), config)
-        .await
         .expect("Failed to create engine");
 
     let result = engine
@@ -205,7 +194,6 @@ async fn test_mdns_discovery_empty_falls_to_fallback() {
     config.require_mdns = false;
 
     let engine = PrimalDiscoveryEngine::with_config(Some(std::sync::Arc::new(mock)), config)
-        .await
         .expect("Failed to create engine");
 
     let result = engine
@@ -236,7 +224,6 @@ async fn test_mdns_discovery_error_falls_to_fallback() {
     config.require_mdns = false;
 
     let engine = PrimalDiscoveryEngine::with_config(Some(std::sync::Arc::new(mock)), config)
-        .await
         .expect("Failed to create engine");
 
     let result = engine
@@ -260,9 +247,7 @@ async fn test_cache_hit_returns_cached_service() {
     config.require_mdns = false;
     config.cache_ttl = Duration::from_secs(300);
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let cap = Capability::Coordination(CoordinationCapability::ServiceDiscovery);
     let first = engine.discover_by_capability(&cap).await.unwrap();
@@ -282,9 +267,7 @@ async fn test_create_fallback_service_malformed_url_uses_defaults() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let cap = Capability::Custom {
         name: "test".to_string(),
@@ -311,9 +294,7 @@ async fn test_create_fallback_service_http_no_port_uses_80() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let cap = Capability::Custom {
         name: "test".to_string(),
@@ -333,7 +314,6 @@ async fn test_with_config_enable_mdns_no_fallbacks_warn_path() {
     config.fallbacks.clear();
 
     let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
         .expect("Should create even with no mDNS and no fallbacks");
 
     let cap = Capability::Compute(ComputeCapability::NativeExecution);
@@ -353,7 +333,6 @@ async fn test_with_config_mdns_enabled_with_client() {
     config.require_mdns = false;
 
     let engine = PrimalDiscoveryEngine::with_config(Some(std::sync::Arc::new(mock)), config)
-        .await
         .expect("Should create when mDNS client provided");
     let _ = engine;
 }
@@ -365,9 +344,7 @@ async fn test_discover_by_capability_not_found_no_fallback() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let cap = Capability::Custom {
         name: "nonexistent-cap".to_string(),
@@ -390,9 +367,7 @@ async fn test_create_fallback_service_url_with_path() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let cap = Capability::Custom {
         name: "api".to_string(),
@@ -415,9 +390,7 @@ async fn test_discovered_service_metadata_source() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let cap = Capability::Custom {
         name: "meta".to_string(),
@@ -440,7 +413,6 @@ async fn test_mdns_discovery_empty_no_fallback_fails() {
     config.require_mdns = false;
 
     let engine = PrimalDiscoveryEngine::with_config(Some(std::sync::Arc::new(mock)), config)
-        .await
         .expect("create");
 
     let cap = Capability::Compute(ComputeCapability::NativeExecution);
@@ -460,7 +432,6 @@ async fn test_mdns_discovery_error_no_fallback_fails() {
     config.require_mdns = false;
 
     let engine = PrimalDiscoveryEngine::with_config(Some(std::sync::Arc::new(mock)), config)
-        .await
         .expect("create");
 
     let cap = Capability::Storage(StorageCapability::ObjectStorage);
@@ -477,9 +448,7 @@ async fn test_create_fallback_service_unknown_protocol_uses_http() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let cap = Capability::Custom {
         name: "test".to_string(),
@@ -497,9 +466,7 @@ async fn test_not_found_error_includes_capability_name() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let cap = Capability::Custom {
         name: "unique-cap-x".to_string(),
@@ -521,9 +488,7 @@ async fn test_fallback_service_metadata_source() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let cap = Capability::Custom {
         name: "meta-cap".to_string(),

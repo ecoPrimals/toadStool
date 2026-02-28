@@ -56,12 +56,12 @@ pub const WGSL_CHI2_DECOMPOSED_F64: &str =
 pub fn chi_squared_pdf(x: f64, k: f64) -> Result<f64> {
     if k <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("chi_squared_pdf requires k > 0, got {}", k),
+            message: format!("chi_squared_pdf requires k > 0, got {k}"),
         });
     }
     if x < 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("chi_squared_pdf requires x >= 0, got {}", x),
+            message: format!("chi_squared_pdf requires x >= 0, got {x}"),
         });
     }
 
@@ -107,7 +107,7 @@ pub fn chi_squared_pdf(x: f64, k: f64) -> Result<f64> {
 pub fn chi_squared_cdf(x: f64, k: f64) -> Result<f64> {
     if k <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("chi_squared_cdf requires k > 0, got {}", k),
+            message: format!("chi_squared_cdf requires k > 0, got {k}"),
         });
     }
     if x < 0.0 {
@@ -133,7 +133,7 @@ pub fn chi_squared_cdf(x: f64, k: f64) -> Result<f64> {
 pub fn chi_squared_sf(x: f64, k: f64) -> Result<f64> {
     if k <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("chi_squared_sf requires k > 0, got {}", k),
+            message: format!("chi_squared_sf requires k > 0, got {k}"),
         });
     }
     if x < 0.0 {
@@ -171,12 +171,12 @@ pub fn chi_squared_sf(x: f64, k: f64) -> Result<f64> {
 pub fn chi_squared_quantile(p: f64, k: f64) -> Result<f64> {
     if k <= 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("chi_squared_quantile requires k > 0, got {}", k),
+            message: format!("chi_squared_quantile requires k > 0, got {k}"),
         });
     }
     if p <= 0.0 || p >= 1.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!("chi_squared_quantile requires 0 < p < 1, got {}", p),
+            message: format!("chi_squared_quantile requires 0 < p < 1, got {p}"),
         });
     }
 

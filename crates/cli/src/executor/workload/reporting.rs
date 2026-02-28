@@ -32,11 +32,11 @@ pub(super) fn print_text_output(
 
     if let Some(exit_code) = response.output.exit_code {
         let status_str = if exit_code == 0 {
-            format!("{}", exit_code).bright_green()
+            format!("{exit_code}").bright_green()
         } else {
-            format!("{}", exit_code).bright_red()
+            format!("{exit_code}").bright_red()
         };
-        println!("Exit Code:     {}", status_str);
+        println!("Exit Code:     {status_str}");
     }
 
     println!();
@@ -45,7 +45,7 @@ pub(super) fn print_text_output(
         if !stdout.is_empty() {
             println!("{}", "Standard Output:".bright_blue());
             println!("{}", "─".repeat(60));
-            println!("{}", stdout);
+            println!("{stdout}");
             println!("{}", "─".repeat(60));
             println!();
         }
@@ -55,7 +55,7 @@ pub(super) fn print_text_output(
         if !stderr.is_empty() {
             println!("{}", "Standard Error:".bright_yellow());
             println!("{}", "─".repeat(60));
-            println!("{}", stderr);
+            println!("{stderr}");
             println!("{}", "─".repeat(60));
             println!();
         }

@@ -13,6 +13,7 @@ const QUANTUM_FRAMEWORKS: &[(&str, &str)] = &[
 ];
 
 /// Detect quantum computing platforms.
+#[allow(clippy::unused_async)] // Sync probe; async for API consistency with SubstrateDetector
 pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let mut platforms = Vec::new();
 

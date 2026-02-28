@@ -232,26 +232,15 @@ impl ToadStoolSongbirdIntegration {
         _request: SongbirdJobRequest,
         endpoint: &str,
     ) -> ToadStoolResult<SongbirdJobResponse> {
-        debug!("Submitting job via gRPC to: {}", endpoint);
+        tracing::error!(
+            "gRPC protocol deprecated (UNIVERSAL_IPC_STANDARD_V3) for endpoint: {}. Migrate to JSON-RPC.",
+            endpoint
+        );
 
-        // Parse gRPC endpoint
-        let _uri = endpoint
-            .parse::<http::Uri>()
-            .map_err(|e| ToadStoolError::network(format!("Invalid gRPC endpoint: {e}")))?;
-
-        // In a real implementation, this would use tonic or similar gRPC client
-        // ✅ MODERNIZED: No fake work - either implement or return immediately
-        // NOTE: gRPC client planned for production Songbird integration
-        // Current: HTTP client sufficient for MVP
-        // Future: Full gRPC with streaming support
-        // Priority: P2 (performance optimization)
-
-        Ok(SongbirdJobResponse::Success {
-            job_id: uuid::Uuid::new_v4(),
-            status: "accepted".to_string(),
-            message: "Job submitted successfully via gRPC".to_string(),
-            estimated_completion: Some(SystemTime::now() + std::time::Duration::from_secs(300)),
-        })
+        Err(ToadStoolError::not_supported(
+            "gRPC job submission removed. Migrate to JSON-RPC over Unix socket via SongbirdClient. \
+             (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through Songbird primal.",
+        ))
     }
 
     async fn submit_via_message_queue(
@@ -456,7 +445,7 @@ mod tests {
                     headers: std::collections::HashMap::new(),
                 },
                 grpc: GrpcProtocolConfig {
-                    timeout_ms: 10000,
+                    timeout_ms: 10_000,
                     max_message_size: 4 * 1024 * 1024,
                     compression: false,
                 },
@@ -568,7 +557,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_submit_job_via_grpc_moderate_complexity() {
+    async fn test_submit_job_grpc_returns_error() {
         let config = UniversalSchedulerConfig::default();
         let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
         let integration = ToadStoolSongbirdIntegration::new(
@@ -582,11 +571,45 @@ mod tests {
         let mut job = simple_job();
         job.resource_requirements.cpu.min_cores = 8.0;
         job.resource_requirements.memory.min_bytes = 32 * 1024 * 1024 * 1024;
-        let handles = integration.submit_job(job).await.unwrap();
-        assert!(!handles.is_empty(), "moderate job should produce sub-tasks");
-        for h in &handles {
-            assert!(matches!(h.status, SubTaskStatus::Submitted));
-        }
+        let result = integration.submit_job(job).await;
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("gRPC job submission removed"),
+            "error should direct users to migrate to JSON-RPC"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_submit_via_grpc_returns_not_supported() {
+        use toadstool::error::{SystemError, ToadStoolError};
+        let config = UniversalSchedulerConfig::default();
+        let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
+        let integration = ToadStoolSongbirdIntegration::new(
+            "test".to_string(),
+            grpc_connection(),
+            capacity_config(),
+            scheduler,
+        )
+        .await
+        .unwrap();
+        let mut job = simple_job();
+        job.resource_requirements.cpu.min_cores = 8.0;
+        job.resource_requirements.memory.min_bytes = 32 * 1024 * 1024 * 1024;
+        let err = integration.submit_job(job).await.unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ToadStoolError::System(SystemError::NotSupported { .. })
+            ),
+            "submit_via_grpc must return not_supported error variant"
+        );
+        assert!(
+            err.to_string().contains("JSON-RPC"),
+            "error should mention JSON-RPC migration path"
+        );
     }
 
     #[tokio::test]

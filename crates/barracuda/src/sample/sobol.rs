@@ -195,7 +195,7 @@ impl SobolGenerator {
     pub fn new(dim: usize) -> Result<Self> {
         if dim == 0 || dim > MAX_SOBOL_DIM {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Dimension must be 1..{}", MAX_SOBOL_DIM),
+                message: format!("Dimension must be 1..{MAX_SOBOL_DIM}"),
             });
         }
 

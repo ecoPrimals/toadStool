@@ -119,7 +119,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         println!(
             "\n══════════════════════════════════════════════════════════════════════════════"
         );
-        println!("  {} (WG={})", name, wg_size);
+        println!("  {name} (WG={wg_size})");
         println!(
             "══════════════════════════════════════════════════════════════════════════════\n"
         );

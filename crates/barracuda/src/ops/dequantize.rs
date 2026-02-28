@@ -32,7 +32,7 @@ impl Dequantize {
         if scale <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "dequantize",
-                format!("scale must be positive, got {}", scale),
+                format!("scale must be positive, got {scale}"),
             ));
         }
 

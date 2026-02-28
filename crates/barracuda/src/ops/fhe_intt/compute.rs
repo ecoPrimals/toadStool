@@ -48,7 +48,7 @@ impl FheIntt {
         let inv_twiddle_data: Vec<u32> = self
             .inv_twiddle_factors()
             .iter()
-            .flat_map(|&factor| vec![(factor & 0xFFFFFFFF) as u32, (factor >> 32) as u32])
+            .flat_map(|&factor| vec![(factor & 0xFFFF_FFFF) as u32, (factor >> 32) as u32])
             .collect();
 
         let inv_twiddle_buffer =
@@ -76,11 +76,11 @@ impl FheIntt {
 
         let params = InttParams {
             degree: self.degree(),
-            modulus_lo: (self.modulus() & 0xFFFFFFFF) as u32,
+            modulus_lo: (self.modulus() & 0xFFFF_FFFF) as u32,
             modulus_hi: (self.modulus() >> 32) as u32,
-            barrett_mu_lo: (self.barrett_mu() & 0xFFFFFFFF) as u32,
+            barrett_mu_lo: (self.barrett_mu() & 0xFFFF_FFFF) as u32,
             barrett_mu_hi: (self.barrett_mu() >> 32) as u32,
-            inv_root_lo: (self.inv_root_of_unity() & 0xFFFFFFFF) as u32,
+            inv_root_lo: (self.inv_root_of_unity() & 0xFFFF_FFFF) as u32,
             inv_root_hi: (self.inv_root_of_unity() >> 32) as u32,
             stage: 0,
         };
@@ -152,7 +152,7 @@ impl FheIntt {
                 device
                     .device
                     .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some(&format!("INTT Stage {} Encoder", stage)),
+                        label: Some(&format!("INTT Stage {stage} Encoder")),
                     });
 
             let stage_params = InttParams { stage, ..params };
@@ -161,13 +161,13 @@ impl FheIntt {
                 device
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some(&format!("INTT Params (Stage {})", stage)),
+                        label: Some(&format!("INTT Params (Stage {stage})")),
                         contents: bytemuck::bytes_of(&stage_params),
                         usage: wgpu::BufferUsages::UNIFORM,
                     });
 
             let stage_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("INTT Butterfly Bind Group (Stage {})", stage)),
+                label: Some(&format!("INTT Butterfly Bind Group (Stage {stage})")),
                 layout: self.bind_group_layout(),
                 entries: &[
                     wgpu::BindGroupEntry {
@@ -192,7 +192,7 @@ impl FheIntt {
             {
                 let mut compute_pass =
                     stage_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some(&format!("INTT Butterfly Pass (Stage {})", stage)),
+                        label: Some(&format!("INTT Butterfly Pass (Stage {stage})")),
                         timestamp_writes: None,
                     });
 
@@ -233,7 +233,7 @@ impl FheIntt {
 
         // Update params with inv_n (reuse root_of_unity fields)
         let scale_params = InttParams {
-            inv_root_lo: (self.inv_n() & 0xFFFFFFFF) as u32,
+            inv_root_lo: (self.inv_n() & 0xFFFF_FFFF) as u32,
             inv_root_hi: (self.inv_n() >> 32) as u32,
             ..params
         };

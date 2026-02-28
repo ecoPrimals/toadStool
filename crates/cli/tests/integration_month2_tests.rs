@@ -4,6 +4,7 @@
 //! Tier 1 tests: Coverage-measured integration tests
 //! Focus: Cross-module interactions, command execution, state management
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -240,14 +241,14 @@ async fn test_resource_cleanup_on_task_completion() {
 // ============================================================================
 
 struct TestExecutor {
-    active_tasks: Arc<RwLock<usize>>,
+    active_tasks: Arc<AtomicUsize>,
     max_tasks: usize,
-    allocated_memory: Arc<RwLock<usize>>,
+    allocated_memory: Arc<AtomicUsize>,
 }
 
 impl TestExecutor {
     async fn active_tasks(&self) -> usize {
-        *self.active_tasks.read().await
+        self.active_tasks.load(Ordering::SeqCst)
     }
 
     async fn start_task(&self, name: &str) -> Result<MockTask, String> {
@@ -256,8 +257,7 @@ impl TestExecutor {
             return Err("Invalid task".to_string());
         }
 
-        let mut count = self.active_tasks.write().await;
-        *count += 1;
+        self.active_tasks.fetch_add(1, Ordering::SeqCst);
         Ok(MockTask::new(Arc::clone(&self.active_tasks)))
     }
 
@@ -266,11 +266,8 @@ impl TestExecutor {
         _name: &str,
         memory_mb: usize,
     ) -> Result<MockTask, String> {
-        let mut mem = self.allocated_memory.write().await;
-        *mem += memory_mb;
-
-        let mut count = self.active_tasks.write().await;
-        *count += 1;
+        self.allocated_memory.fetch_add(memory_mb, Ordering::SeqCst);
+        self.active_tasks.fetch_add(1, Ordering::SeqCst);
         Ok(MockTask::with_memory(
             Arc::clone(&self.active_tasks),
             Arc::clone(&self.allocated_memory),
@@ -288,7 +285,7 @@ impl TestExecutor {
     }
 
     async fn allocated_memory(&self) -> usize {
-        *self.allocated_memory.read().await
+        self.allocated_memory.load(Ordering::SeqCst)
     }
 
     async fn discover_services(&self) -> Result<Vec<String>, String> {
@@ -310,12 +307,12 @@ impl TestExecutor {
 
 #[allow(dead_code)]
 struct MockTask {
-    active_tasks: Arc<RwLock<usize>>,
-    allocated_memory: Option<(Arc<RwLock<usize>>, usize)>, // (shared mem, amount)
+    active_tasks: Arc<AtomicUsize>,
+    allocated_memory: Option<(Arc<AtomicUsize>, usize)>, // (shared mem, amount)
 }
 
 impl MockTask {
-    fn new(active_tasks: Arc<RwLock<usize>>) -> Self {
+    fn new(active_tasks: Arc<AtomicUsize>) -> Self {
         Self {
             active_tasks,
             allocated_memory: None,
@@ -323,8 +320,8 @@ impl MockTask {
     }
 
     fn with_memory(
-        active_tasks: Arc<RwLock<usize>>,
-        allocated_memory: Arc<RwLock<usize>>,
+        active_tasks: Arc<AtomicUsize>,
+        allocated_memory: Arc<AtomicUsize>,
         amount: usize,
     ) -> Self {
         Self {
@@ -340,41 +337,10 @@ impl MockTask {
 
 impl Drop for MockTask {
     fn drop(&mut self) {
-        // Decrement active tasks count (blocking is acceptable in Drop)
-        let active_tasks = Arc::clone(&self.active_tasks);
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Handle::try_current().unwrap_or_else(|_| {
-                tokio::runtime::Runtime::new()
-                    .expect("failed to create tokio runtime for Drop cleanup")
-                    .handle()
-                    .clone()
-            });
-            rt.block_on(async move {
-                let mut count = active_tasks.write().await;
-                *count = count.saturating_sub(1);
-            });
-        })
-        .join()
-        .ok();
-
-        // Clean up allocated memory
+        // Use atomic operations - no block_on needed, avoids "Cannot start runtime from within runtime"
+        self.active_tasks.fetch_sub(1, Ordering::SeqCst);
         if let Some((mem, amount)) = &self.allocated_memory {
-            let mem = Arc::clone(mem);
-            let amount = *amount;
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Handle::try_current().unwrap_or_else(|_| {
-                    tokio::runtime::Runtime::new()
-                        .expect("failed to create tokio runtime for Drop cleanup")
-                        .handle()
-                        .clone()
-                });
-                rt.block_on(async move {
-                    let mut allocated = mem.write().await;
-                    *allocated = allocated.saturating_sub(amount);
-                });
-            })
-            .join()
-            .ok();
+            mem.fetch_sub(*amount, Ordering::SeqCst);
         }
     }
 }
@@ -397,9 +363,9 @@ impl Executor {
 
         Ok(Self {
             inner: TestExecutor {
-                active_tasks: Arc::new(RwLock::new(0)),
+                active_tasks: Arc::new(AtomicUsize::new(0)),
                 max_tasks: config.max_tasks,
-                allocated_memory: Arc::new(RwLock::new(0)),
+                allocated_memory: Arc::new(AtomicUsize::new(0)),
             },
         })
     }
@@ -411,9 +377,9 @@ impl Executor {
 
 async fn create_test_executor() -> TestExecutor {
     TestExecutor {
-        active_tasks: Arc::new(RwLock::new(0)),
+        active_tasks: Arc::new(AtomicUsize::new(0)),
         max_tasks: 10,
-        allocated_memory: Arc::new(RwLock::new(0)),
+        allocated_memory: Arc::new(AtomicUsize::new(0)),
     }
 }
 

@@ -97,7 +97,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
         };
 
         let execution_id = coordinator.submit_execution(request).await?;
-        println!("✓ Submitted execution '{}': {}", name, execution_id);
+        println!("✓ Submitted execution '{name}': {execution_id}");
     }
 
     // Wait for executions to complete
@@ -178,7 +178,7 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
     };
 
     let execution_id = coordinator.submit_execution(ml_request).await?;
-    println!("✓ Processed Songbird-routed execution: {}", execution_id);
+    println!("✓ Processed Songbird-routed execution: {execution_id}");
 
     tokio::time::sleep(Duration::from_secs(1)).await;
     println!("✓ Songbird integration demonstration completed");

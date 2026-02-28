@@ -47,12 +47,9 @@ impl AlignedBuffer {
         let layout = Layout::from_size_align(size, align)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {e}")))?;
 
-        // UNAVOIDABLE UNSAFE: std::alloc::alloc_zeroed is the only way to get
-        // custom-aligned zero-initialized heap memory. Vec/Box lack alignment control.
-        //
-        // SAFETY: (1) layout valid (from_size_align succeeded, align power-of-two);
-        // (2) alloc_zeroed returns ptr valid for layout.size() bytes, or null on OOM;
-        // (3) memory is zero-initialized; (4) ptr used for dealloc with same layout in Drop.
+        // SAFETY: Layout is valid (from_size_align succeeded, align is power-of-two). alloc_zeroed
+        // returns a pointer valid for layout.size() bytes, or null on OOM. Memory is
+        // zero-initialized. The pointer is used for dealloc with the same layout in Drop.
         let raw = unsafe { std::alloc::alloc_zeroed(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
 
@@ -94,8 +91,8 @@ impl Drop for AlignedBuffer {
         // Drop cannot propagate errors, so expect is the correct choice.
         let layout = Layout::from_size_align(self.size, self.align)
             .expect("layout valid: matches original allocation");
-        // SAFETY: (1) ptr from alloc_zeroed(layout) in new(); (2) layout matches;
-        // (3) Drop runs exactly once; (4) no references exist (self is being dropped).
+        // SAFETY: ptr comes from alloc_zeroed(layout) in new(); layout matches the allocation.
+        // Drop runs exactly once; no references exist (self is being dropped).
         unsafe { dealloc(self.ptr.as_ptr(), layout) };
     }
 }
@@ -161,8 +158,8 @@ impl CpuBackend {
     /// This function reconstructs the buffer and lets Drop handle deallocation.
     fn free_aligned_safe(ptr: *mut u8, size: usize, align: usize) {
         if !ptr.is_null() {
-            // SAFETY: ptr/size/align from allocate_aligned_safe; caller transfers ownership.
-            // from_raw takes ownership; Drop deallocates with matching layout.
+            // SAFETY: ptr, size, and align come from allocate_aligned_safe; caller transfers
+            // ownership. from_raw takes ownership; Drop deallocates with matching layout.
             if let Some(buffer) = unsafe { AlignedBuffer::from_raw(ptr, size, align) } {
                 drop(buffer); // Explicit drop for clarity (would happen anyway)
             }
@@ -303,8 +300,8 @@ mod tests {
         let size = alloc.size;
         // Use safe slice creation via NonNull for test - encapsulates the unsafe.
         let ptr = NonNull::new(cpu_ptr).expect("cpu_ptr from allocate_unified is non-null");
-        // SAFETY: (1) ptr from allocate_unified, valid for alloc.size bytes; (2) allocation
-        // not freed (we hold it); (3) exclusive access in test; (4) u8 align=1.
+        // SAFETY: ptr from allocate_unified, valid for alloc.size bytes. Allocation not freed (we
+        // hold it). Exclusive access in test. u8 has alignment 1.
         let slice = unsafe { std::slice::from_raw_parts_mut(ptr.as_ptr(), size) };
         slice.fill(42);
         assert_eq!(slice[0], 42);

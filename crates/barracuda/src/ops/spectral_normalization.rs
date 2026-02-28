@@ -46,10 +46,7 @@ impl SpectralNormalization {
         if weight_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "SpectralNormalization",
-                format!(
-                    "weight must be 2D [rows, cols], got shape {:?}",
-                    weight_shape
-                ),
+                format!("weight must be 2D [rows, cols], got shape {weight_shape:?}"),
             ));
         }
 

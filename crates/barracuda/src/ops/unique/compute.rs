@@ -237,7 +237,7 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     let input_size: usize = unique.input().len();
 
     // Use hash table size - large minimum to avoid collisions (hash stores only occupancy, not value)
-    let num_buckets = (input_size * 32).next_power_of_two().clamp(8192, 65536);
+    let num_buckets = (input_size * 32).next_power_of_two().clamp(8192, 65_536);
 
     // Create hash table (atomic u32)
     let hash_table_buffer = device.create_buffer_u32(num_buckets)?;

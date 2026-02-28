@@ -32,7 +32,7 @@ impl Mixup {
         if !(0.0..=1.0).contains(&lambda) {
             return Err(BarracudaError::invalid_op(
                 "Mixup",
-                format!("lambda must be in [0, 1], got {}", lambda),
+                format!("lambda must be in [0, 1], got {lambda}"),
             ));
         }
 
@@ -56,10 +56,7 @@ impl Mixup {
         if input_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "Mixup",
-                format!(
-                    "input must be 2D [batch_size, feature_size], got shape {:?}",
-                    input_shape
-                ),
+                format!("input must be 2D [batch_size, feature_size], got shape {input_shape:?}"),
             ));
         }
 

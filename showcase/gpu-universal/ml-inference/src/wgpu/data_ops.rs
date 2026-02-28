@@ -555,9 +555,7 @@ impl WgpuExecutor {
 
         anyhow::ensure!(
             input_size == output_size,
-            "Reshape: input size ({}) must match output size ({})",
-            input_size,
-            output_size
+            "Reshape: input size ({input_size}) must match output size ({output_size})"
         );
 
         let shader_source = include_str!("../shaders/reshape.wgsl");

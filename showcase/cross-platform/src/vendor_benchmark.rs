@@ -220,7 +220,7 @@ fn print_speedup_analysis(results: &[BenchResult]) {
             .find(|r| r.backend == "CPU" && r.operation == op);
 
         if let Some(cpu) = cpu_result {
-            println!("{}:", op);
+            println!("{op}:");
             for r in results
                 .iter()
                 .filter(|r| r.operation == op && r.backend != "CPU")
@@ -317,10 +317,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     let iterations = 10;
 
     for &size in &sizes {
-        println!(
-            "\n═══ Benchmarking {}×{} matrices ({} iterations) ═══",
-            size, size, iterations
-        );
+        println!("\n═══ Benchmarking {size}×{size} matrices ({iterations} iterations) ═══");
 
         // BarraCuda on each GPU
         for (i, gpu) in pool.devices().iter().enumerate() {
@@ -353,7 +350,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
 
     // Group by size
     for &size in &sizes {
-        println!("\n=== Matrix Size: {}×{} ===", size, size);
+        println!("\n=== Matrix Size: {size}×{size} ===");
         let size_results: Vec<_> = all_results
             .iter()
             .filter(|r| r.size == size)

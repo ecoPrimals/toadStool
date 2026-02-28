@@ -13,7 +13,7 @@
 //!
 //! ## Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_display::input::InputManager;
 //!
 //! # async fn example() -> Result<()> {

@@ -117,7 +117,7 @@ async fn run_single_gpu(
     test_data: &MnistDataset,
     num_samples: usize,
 ) -> Result<BenchmarkStats> {
-    println!("🎮 Running on: {}", gpu);
+    println!("🎮 Running on: {gpu}");
     println!("   Mode: Single GPU");
 
     let start = Instant::now();
@@ -179,8 +179,8 @@ async fn run_dual_gpu_parallel(
     test_data: &MnistDataset,
     num_samples: usize,
 ) -> Result<BenchmarkStats> {
-    println!("🎮 GPU 1: {}", gpu1);
-    println!("🎮 GPU 2: {}", gpu2);
+    println!("🎮 GPU 1: {gpu1}");
+    println!("🎮 GPU 2: {gpu2}");
     println!("   Mode: Parallel Execution");
 
     let start = Instant::now();
@@ -309,8 +309,8 @@ fn print_comparison(single: &BenchmarkStats, dual: &BenchmarkStats) {
     println!();
 
     println!("Multi-GPU Scaling:");
-    println!("  Speedup:     {:.2}x", speedup);
-    println!("  Efficiency:  {:.1}%", efficiency);
+    println!("  Speedup:     {speedup:.2}x");
+    println!("  Efficiency:  {efficiency:.1}%");
     println!();
 
     if efficiency > 90.0 {

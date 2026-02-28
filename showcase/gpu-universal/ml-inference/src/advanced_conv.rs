@@ -227,15 +227,11 @@ impl GroupedConv2D {
     ) -> Result<Self> {
         anyhow::ensure!(
             in_channels.is_multiple_of(groups),
-            "in_channels ({}) must be divisible by groups ({})",
-            in_channels,
-            groups
+            "in_channels ({in_channels}) must be divisible by groups ({groups})"
         );
         anyhow::ensure!(
             out_channels.is_multiple_of(groups),
-            "out_channels ({}) must be divisible by groups ({})",
-            out_channels,
-            groups
+            "out_channels ({out_channels}) must be divisible by groups ({groups})"
         );
 
         Ok(Self {

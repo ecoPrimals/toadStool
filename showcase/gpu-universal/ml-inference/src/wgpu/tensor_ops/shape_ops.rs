@@ -106,13 +106,13 @@ impl Reshape {
         if old_shape.contains(&0) {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
-                format!("Old shape contains zero: {:?}", old_shape),
+                format!("Old shape contains zero: {old_shape:?}"),
             ));
         }
         if new_shape.contains(&0) {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
-                format!("New shape contains zero: {:?}", new_shape),
+                format!("New shape contains zero: {new_shape:?}"),
             ));
         }
 
@@ -214,19 +214,19 @@ impl Slice {
             if step == 0 {
                 return Err(BarracudaError::invalid_params(
                     "Slice",
-                    format!("Step cannot be zero in dimension {}", dim),
+                    format!("Step cannot be zero in dimension {dim}"),
                 ));
             }
             if start >= end {
                 return Err(BarracudaError::invalid_params(
                     "Slice",
-                    format!("Start {} >= end {} in dimension {}", start, end, dim),
+                    format!("Start {start} >= end {end} in dimension {dim}"),
                 ));
             }
             if end > size {
                 return Err(BarracudaError::invalid_params(
                     "Slice",
-                    format!("End {} exceeds size {} in dimension {}", end, size, dim),
+                    format!("End {end} exceeds size {size} in dimension {dim}"),
                 ));
             }
         }
@@ -743,7 +743,7 @@ impl Squeeze {
         if dim >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Squeeze",
-                format!("Dimension {} out of bounds for shape {:?}", dim, shape),
+                format!("Dimension {dim} out of bounds for shape {shape:?}"),
             ));
         }
 
@@ -914,10 +914,7 @@ impl Expand {
         if shape.len() != target_shape.len() && !(shape.len() == 1 && target_shape.len() == 2) {
             return Err(BarracudaError::invalid_params(
                 "Expand",
-                format!(
-                    "Shape ranks must match or be broadcastable: {:?} → {:?}",
-                    shape, target_shape
-                ),
+                format!("Shape ranks must match or be broadcastable: {shape:?} → {target_shape:?}"),
             ));
         }
 
@@ -929,7 +926,7 @@ impl Expand {
             if src_dim != tgt_dim && src_dim != 1 {
                 return Err(BarracudaError::invalid_params(
                     "Expand",
-                    format!("Cannot broadcast dim {} from {} to {}", i, src_dim, tgt_dim),
+                    format!("Cannot broadcast dim {i} from {src_dim} to {tgt_dim}"),
                 ));
             }
         }

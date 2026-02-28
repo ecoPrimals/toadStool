@@ -61,6 +61,7 @@ impl DeploymentValidator {
             ));
         }
 
+        #[allow(clippy::cast_possible_truncation)]
         if request.services.len() > request.resource_quotas.max_concurrent_services as usize {
             return Err(ToadStoolError::resource(format!(
                 "Service count {} exceeds team quota {}",
@@ -81,8 +82,7 @@ impl DeploymentValidator {
     fn validate_service(name: &str, spec: &ServiceSpec) -> ToadStoolResult<()> {
         if spec.image.is_none() && spec.command.is_none() {
             return Err(ToadStoolError::validation(format!(
-                "Service '{}' must have either image or command specified",
-                name
+                "Service '{name}' must have either image or command specified"
             )));
         }
 
@@ -92,8 +92,7 @@ impl DeploymentValidator {
             if let Some(host_port) = port_mapping.host_port {
                 if !seen_host_ports.insert(host_port) {
                     return Err(ToadStoolError::validation(format!(
-                        "Service '{}' has duplicate host port: {}",
-                        name, host_port
+                        "Service '{name}' has duplicate host port: {host_port}"
                     )));
                 }
             }

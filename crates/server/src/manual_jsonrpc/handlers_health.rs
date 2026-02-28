@@ -11,6 +11,7 @@ use super::{
 };
 
 impl ManualJsonRpcServer {
+    #[allow(clippy::unused_async)] // JSON-RPC handler; async for API consistency
     pub(crate) async fn handle_health(&self, request: JsonRpcRequest) -> serde_json::Value {
         self.success_response(
             serde_json::json!({
@@ -24,6 +25,7 @@ impl ManualJsonRpcServer {
         )
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC handler; async for API consistency
     pub(crate) async fn handle_version(&self, request: JsonRpcRequest) -> serde_json::Value {
         self.success_response(
             serde_json::json!({"version": self.version, "protocol": "json-rpc-2.0"}),
@@ -31,6 +33,7 @@ impl ManualJsonRpcServer {
         )
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC handler; async for API consistency
     pub(crate) async fn handle_discover_capabilities(
         &self,
         request: JsonRpcRequest,
@@ -93,6 +96,7 @@ impl ManualJsonRpcServer {
         .unwrap_or_else(|_| serde_json::json!({"error": SERIALIZATION_FAILED}))
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC handler; sync query_gpu_devices()
     pub(crate) async fn handle_gpu_info(&self, request: JsonRpcRequest) -> serde_json::Value {
         let result = serde_json::json!({
             "devices": query_gpu_devices(),
@@ -102,6 +106,7 @@ impl ManualJsonRpcServer {
         self.success_response(result, &request)
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC handler; sync query_gpu_memory()
     pub(crate) async fn handle_gpu_memory(&self, request: JsonRpcRequest) -> serde_json::Value {
         self.success_response(
             serde_json::json!({ "devices": query_gpu_memory() }),

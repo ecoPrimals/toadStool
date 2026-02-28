@@ -38,7 +38,7 @@ impl WeightNormalization {
         if v_shape.is_empty() {
             return Err(BarracudaError::invalid_op(
                 "WeightNormalization",
-                format!("v must have at least 1 dimension, got shape {:?}", v_shape),
+                format!("v must have at least 1 dimension, got shape {v_shape:?}"),
             ));
         }
 

@@ -148,8 +148,8 @@ pub enum DiscoveryError {
 /// # Errors
 ///
 /// Returns error if no bearDog service can be discovered
-pub async fn discover_encryption_service() -> DiscoveryResult {
-    discover_service_by_capability("encryption").await
+pub fn discover_encryption_service() -> DiscoveryResult {
+    discover_service_by_capability("encryption")
 }
 
 /// Discover encryption service at a specific filesystem base path.
@@ -163,7 +163,7 @@ pub async fn discover_encryption_service() -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if service not found at the given path
-pub async fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
+pub fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
     // Default to "beardog" — the primal's canonical filesystem directory name.
     // Override via TOADSTOOL_CRYPTO_SERVICE_SUBDIR for custom layouts.
     let subdir =
@@ -188,8 +188,8 @@ pub async fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if no nestGate service can be discovered
-pub async fn discover_storage_service() -> DiscoveryResult {
-    discover_service_by_capability("storage").await
+pub fn discover_storage_service() -> DiscoveryResult {
+    discover_service_by_capability("storage")
 }
 
 /// Discover storage service at a specific filesystem base path.
@@ -203,7 +203,7 @@ pub async fn discover_storage_service() -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if service not found at the given path
-pub async fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
+pub fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
     // Default to "nestgate" — the primal's canonical filesystem directory name.
     // Override via TOADSTOOL_STORAGE_SERVICE_SUBDIR for custom layouts.
     let subdir = std::env::var("TOADSTOOL_STORAGE_SERVICE_SUBDIR")
@@ -221,8 +221,8 @@ pub async fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if no songBird service can be discovered
-pub async fn discover_coordination_service() -> DiscoveryResult {
-    discover_service_by_capability("coordination").await
+pub fn discover_coordination_service() -> DiscoveryResult {
+    discover_service_by_capability("coordination")
 }
 
 // ============================================================================
@@ -234,8 +234,8 @@ pub async fn discover_coordination_service() -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if no squirrel service can be discovered
-pub async fn discover_mcp_service() -> DiscoveryResult {
-    discover_service_by_capability("mcp").await
+pub fn discover_mcp_service() -> DiscoveryResult {
+    discover_service_by_capability("mcp")
 }
 
 // ============================================================================
@@ -254,7 +254,7 @@ pub async fn discover_mcp_service() -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if no service with the requested capability can be discovered
-pub async fn discover_service_by_capability(capability: &str) -> DiscoveryResult {
+pub fn discover_service_by_capability(capability: &str) -> DiscoveryResult {
     info!("🔍 Discovering service with capability: {}", capability);
 
     // Try environment variable first (highest priority)
@@ -325,7 +325,6 @@ pub async fn discover_service_by_capability(capability: &str) -> DiscoveryResult
 /// Built-in default endpoints for known capabilities.
 /// Returns `None` for all capabilities — discovered via capability resolution at runtime.
 /// Caller sets `TOADSTOOL_{CAPABILITY}_ENDPOINT` or discovers via mDNS/registry.
-#[must_use]
 fn builtin_default_endpoint(_capability: &str) -> Option<String> {
     None
 }
@@ -364,8 +363,8 @@ fn discover_filesystem_service(base_path: &str, service_name: &str) -> Discovery
 /// # Errors
 ///
 /// Returns error if no cache service can be discovered
-pub async fn discover_cache_service() -> DiscoveryResult {
-    discover_service_by_capability("cache").await
+pub fn discover_cache_service() -> DiscoveryResult {
+    discover_service_by_capability("cache")
 }
 
 /// Discover `PostgreSQL` database service
@@ -373,8 +372,8 @@ pub async fn discover_cache_service() -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if no database service can be discovered
-pub async fn discover_database_service() -> DiscoveryResult {
-    discover_service_by_capability("database").await
+pub fn discover_database_service() -> DiscoveryResult {
+    discover_service_by_capability("database")
 }
 
 /// Discover S3-compatible object storage
@@ -382,8 +381,8 @@ pub async fn discover_database_service() -> DiscoveryResult {
 /// # Errors
 ///
 /// Returns error if no object storage service can be discovered
-pub async fn discover_object_storage() -> DiscoveryResult {
-    discover_service_by_capability("object-storage").await
+pub fn discover_object_storage() -> DiscoveryResult {
+    discover_service_by_capability("object-storage")
 }
 
 #[cfg(test)]
@@ -402,7 +401,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_encryption_service().await;
+                        let result = discover_encryption_service();
                         assert!(result.is_ok());
                         let endpoints = result.unwrap();
                         assert_eq!(endpoints.len(), 1);
@@ -430,7 +429,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_encryption_service().await;
+                        let result = discover_encryption_service();
                         assert!(
                             result.is_err(),
                             "encryption discovery must fail when no env/discovery provides endpoint"
@@ -464,7 +463,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_encryption_service().await;
+                        let result = discover_encryption_service();
                         assert!(result.is_ok());
                         let endpoints = result.unwrap();
                         assert_eq!(endpoints[0].url, "http://custom-beardog:9090");
@@ -490,7 +489,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_service_by_capability("nonexistent").await;
+                        let result = discover_service_by_capability("nonexistent");
                         assert!(result.is_err());
                         match result {
                             Err(DiscoveryError::NoServiceFound { capability }) => {
@@ -520,7 +519,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_service_by_capability("cache").await;
+                        let result = discover_service_by_capability("cache");
                         assert!(result.is_ok());
                         let endpoints = result.unwrap();
                         assert_eq!(endpoints.len(), 1);
@@ -547,7 +546,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_storage_service().await;
+                        let result = discover_storage_service();
                         assert!(result.is_ok());
                         assert_eq!(result.unwrap()[0].url, "http://nestgate:8080");
                     });
@@ -570,7 +569,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_coordination_service().await;
+                        let result = discover_coordination_service();
                         assert!(result.is_ok());
                         assert_eq!(result.unwrap()[0].url, "http://songbird:6061");
                     });
@@ -593,7 +592,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_mcp_service().await;
+                        let result = discover_mcp_service();
                         assert!(result.is_ok());
                         assert_eq!(result.unwrap()[0].url, "http://squirrel:6062");
                     });
@@ -616,7 +615,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_cache_service().await;
+                        let result = discover_cache_service();
                         assert!(result.is_ok());
                         assert_eq!(result.unwrap()[0].url, "redis://localhost:6379");
                     });
@@ -639,7 +638,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_database_service().await;
+                        let result = discover_database_service();
                         assert!(result.is_ok());
                         assert_eq!(result.unwrap()[0].url, "postgres://localhost:5432");
                     });
@@ -662,7 +661,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async {
-                        let result = discover_object_storage().await;
+                        let result = discover_object_storage();
                         assert!(result.is_ok());
                         assert_eq!(result.unwrap()[0].url, "https://s3.example.com");
                     });
@@ -688,7 +687,7 @@ mod tests {
                     .build()
                     .expect("runtime");
                 rt.block_on(async move {
-                    let result = discover_beardog_at(&base_str).await;
+                    let result = discover_beardog_at(&base_str);
                     assert!(result.is_ok());
                     assert_eq!(result.unwrap()[0].service_id, "beardog-fs");
                 });
@@ -714,7 +713,7 @@ mod tests {
                     .build()
                     .expect("runtime");
                 rt.block_on(async move {
-                    let result = discover_nestgate_at(&base_str).await;
+                    let result = discover_nestgate_at(&base_str);
                     assert!(result.is_ok());
                     assert_eq!(result.unwrap()[0].service_id, "nestgate-fs");
                 });
@@ -743,7 +742,7 @@ mod tests {
                         .build()
                         .expect("runtime");
                     rt.block_on(async move {
-                        let result = discover_beardog_at(&base_str).await;
+                        let result = discover_beardog_at(&base_str);
                         assert!(result.is_ok());
                         assert_eq!(result.unwrap()[0].service_id, "custom_crypto-fs");
                     });
@@ -764,7 +763,7 @@ mod tests {
                     .build()
                     .expect("runtime");
                 rt.block_on(async {
-                    let result = discover_beardog_at("/nonexistent/path/12345").await;
+                    let result = discover_beardog_at("/nonexistent/path/12345");
                     assert!(result.is_err());
                 });
             })

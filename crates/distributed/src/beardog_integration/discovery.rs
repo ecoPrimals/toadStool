@@ -82,7 +82,7 @@ impl BearDogDiscovery {
             ..Default::default()
         };
 
-        match PrimalDiscovery::with_config(discovery_config).await {
+        match PrimalDiscovery::with_config(discovery_config) {
             Ok(discovery) => match discovery.find_capability("security").await {
                 Ok(endpoint) => {
                     let beardog_endpoint = BearDogEndpoint {
@@ -125,7 +125,7 @@ impl BearDogDiscovery {
                 .insert("orchestration".to_string(), songbird_endpoint);
         }
 
-        match PrimalDiscovery::with_config(discovery_config).await {
+        match PrimalDiscovery::with_config(discovery_config) {
             Ok(discovery) => match discovery.find_capability("security").await {
                 Ok(endpoint) => {
                     let beardog_endpoint = BearDogEndpoint {

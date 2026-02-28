@@ -39,7 +39,7 @@ impl MFCC {
     ) -> Result<Self> {
         if n_mfcc > n_mels {
             return Err(BarracudaError::InvalidInput {
-                message: format!("n_mfcc ({}) cannot exceed n_mels ({})", n_mfcc, n_mels),
+                message: format!("n_mfcc ({n_mfcc}) cannot exceed n_mels ({n_mels})"),
             });
         }
 

@@ -109,27 +109,21 @@ impl FheKeySwitch {
         // ✅ VALIDATION: Degree must be power of 2
         if !degree.is_power_of_two() || degree < 4 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Degree must be power of 2 >= 4, got {}", degree),
+                message: format!("Degree must be power of 2 >= 4, got {degree}"),
             });
         }
 
         // ✅ VALIDATION: Decomposition base must be reasonable
         if !(2..=(1 << 24)).contains(&decomp_base) {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Decomposition base must be in [2, 2^24], got {}",
-                    decomp_base
-                ),
+                message: format!("Decomposition base must be in [2, 2^24], got {decomp_base}"),
             });
         }
 
         // ✅ VALIDATION: Decomposition levels must be positive
         if decomp_levels == 0 || decomp_levels > 32 {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Decomposition levels must be in [1, 32], got {}",
-                    decomp_levels
-                ),
+                message: format!("Decomposition levels must be in [1, 32], got {decomp_levels}"),
             });
         }
 
@@ -281,7 +275,7 @@ impl FheKeySwitch {
             degree: self.degree,
             decomp_base: self.decomp_base,
             decomp_levels: self.decomp_levels,
-            modulus_lo: (self.modulus & 0xFFFFFFFF) as u32,
+            modulus_lo: (self.modulus & 0xFFFF_FFFF) as u32,
             modulus_hi: (self.modulus >> 32) as u32,
             _padding: [0; 3],
         };
@@ -362,15 +356,17 @@ mod tests {
     #[tokio::test]
     async fn test_key_switch_validation() {
         // Test invalid degree
-        let result = FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 3, 12289, 1 << 16, 3);
+        let result =
+            FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 3, 12_289, 1 << 16, 3);
         assert!(result.is_err());
 
         // Test invalid decomposition base
-        let result = FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 12289, 1, 3);
+        let result = FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 12_289, 1, 3);
         assert!(result.is_err());
 
         // Test invalid decomposition levels
-        let result = FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 12289, 1 << 16, 0);
+        let result =
+            FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 12_289, 1 << 16, 0);
         assert!(result.is_err());
     }
 

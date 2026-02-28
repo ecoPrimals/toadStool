@@ -257,7 +257,7 @@ mod tests {
         let spec = Some(ResourceSpec {
             cpu_cores: Some(4.0),
             memory_mb: Some(8192),
-            disk_mb: Some(10240),
+            disk_mb: Some(10_240),
             gpu: Some(true),
         });
 

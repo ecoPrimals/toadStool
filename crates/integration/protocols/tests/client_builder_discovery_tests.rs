@@ -92,7 +92,7 @@ fn test_health_status_ordering() {
         HealthStatus::Unknown,
     ];
     for s in &statuses {
-        assert!(format!("{:?}", s).len() > 0);
+        assert!(!format!("{s:?}").is_empty());
     }
 }
 

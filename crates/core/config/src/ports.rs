@@ -28,6 +28,9 @@ pub mod toadstool {
 
     /// Metrics/monitoring port (0 = OS-assigned)
     pub const METRICS: u16 = 0;
+
+    /// Daemon/BYOB HTTP API port (default when not using OS-assigned)
+    pub const DAEMON_API: u16 = 8084;
 }
 
 /// Discovery fallback ports for initial connection before runtime discovery
@@ -121,7 +124,7 @@ impl Default for PortRegistry {
 /// Used in tests to avoid conflicts with running services
 pub mod test {
     /// Base port for test services (increments per test)
-    pub const BASE: u16 = 50000;
+    pub const BASE: u16 = 50_000;
 
     /// Generate unique test port
     ///
@@ -136,11 +139,11 @@ pub mod test {
 pub mod ranges {
     /// ToadStool service range (0 = OS-assigned; explicit range for env override)
     pub const TOADSTOOL_START: u16 = 0;
-    pub const TOADSTOOL_END: u16 = 65535;
+    pub const TOADSTOOL_END: u16 = 65_535;
 
     /// Test port range: 50000-65535
-    pub const TEST_START: u16 = 50000;
-    pub const TEST_END: u16 = 65535;
+    pub const TEST_START: u16 = 50_000;
+    pub const TEST_END: u16 = 65_535;
 }
 
 /// Pure version: resolve port from an explicit env value
@@ -184,6 +187,12 @@ pub fn distributed_port() -> u16 {
 #[must_use]
 pub fn metrics_port() -> u16 {
     get_port_with_env(toadstool::METRICS, "TOADSTOOL_METRICS_PORT")
+}
+
+/// Get daemon/BYOB API port (with environment override)
+#[must_use]
+pub fn daemon_port() -> u16 {
+    get_toadstool_port("DAEMON_API", toadstool::DAEMON_API)
 }
 
 /// Get ToadStool port with environment variable override

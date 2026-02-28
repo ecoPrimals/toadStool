@@ -28,10 +28,7 @@ impl GIoULoss {
         if box_format > 2 {
             return Err(BarracudaError::invalid_op(
                 "GIoULoss",
-                format!(
-                    "box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {}",
-                    box_format
-                ),
+                format!("box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {box_format}"),
             ));
         }
 
@@ -62,8 +59,7 @@ impl GIoULoss {
             return Err(BarracudaError::invalid_op(
                 "GIoULoss",
                 format!(
-                    "boxes must be 2D [num_boxes, 4], got shapes {:?} and {:?}",
-                    pred_shape, target_shape
+                    "boxes must be 2D [num_boxes, 4], got shapes {pred_shape:?} and {target_shape:?}"
                 ),
             ));
         }

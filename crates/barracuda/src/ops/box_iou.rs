@@ -28,10 +28,7 @@ impl BoxIoU {
         if box_format > 2 {
             return Err(BarracudaError::invalid_op(
                 "BoxIoU",
-                format!(
-                    "box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {}",
-                    box_format
-                ),
+                format!("box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {box_format}"),
             ));
         }
 
@@ -63,10 +60,7 @@ impl BoxIoU {
         if a_shape.len() != 2 || b_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "BoxIoU",
-                format!(
-                    "boxes must be 2D [num_boxes, 4], got shapes {:?} and {:?}",
-                    a_shape, b_shape
-                ),
+                format!("boxes must be 2D [num_boxes, 4], got shapes {a_shape:?} and {b_shape:?}"),
             ));
         }
 

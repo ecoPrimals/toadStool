@@ -41,9 +41,9 @@ fn test_test_result_err() {
 fn test_constants_timeout_values() {
     use toadstool_testing::constants::*;
 
-    assert_eq!(DEFAULT_TEST_TIMEOUT, Duration::from_secs(30));
-    assert_eq!(UNIT_TEST_TIMEOUT, Duration::from_secs(5));
-    assert_eq!(INTEGRATION_TEST_TIMEOUT, Duration::from_secs(120));
+    assert_eq!(DEFAULT_TEST_TIMEOUT, Duration::from_secs(5));
+    assert_eq!(UNIT_TEST_TIMEOUT, Duration::from_secs(2));
+    assert_eq!(INTEGRATION_TEST_TIMEOUT, Duration::from_secs(30));
 }
 
 #[test]

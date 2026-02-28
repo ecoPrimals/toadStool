@@ -64,6 +64,7 @@ impl EnvironmentConfig {
     }
 
     /// Apply environment configuration to an existing `ToadStoolConfig`.
+    #[allow(clippy::cast_precision_loss)]
     pub fn apply_to_config(&self, config: &mut ToadStoolConfig) {
         if let Ok(addr) = format!(
             "{}:{}",

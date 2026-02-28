@@ -56,18 +56,14 @@ impl GriffinLim {
         if n_freqs != expected_freqs {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "n_freqs ({}) must equal n_fft/2 + 1 ({}) for STFT consistency",
-                    n_freqs, expected_freqs
+                    "n_freqs ({n_freqs}) must equal n_fft/2 + 1 ({expected_freqs}) for STFT consistency"
                 ),
             });
         }
 
         if hop_length == 0 || hop_length > n_fft {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "hop_length ({}) must be in [1, n_fft={}]",
-                    hop_length, n_fft
-                ),
+                message: format!("hop_length ({hop_length}) must be in [1, n_fft={n_fft}]"),
             });
         }
 

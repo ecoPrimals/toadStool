@@ -3,7 +3,7 @@
 //! This module provides `From` implementations to convert common error types
 //! from the standard library and external crates into ToadStool error types.
 
-use super::types::{SystemError, ToadStoolError};
+use super::types::{ExecutionError, SystemError, ToadStoolError};
 
 // ============================================================================
 // Standard Error Conversions
@@ -40,6 +40,32 @@ impl From<serde_json::Error> for SystemError {
         Self::Serialization {
             reason: err.to_string(),
         }
+    }
+}
+
+// ============================================================================
+// Tokio Error Conversions
+// ============================================================================
+
+impl From<tokio::time::error::Elapsed> for ToadStoolError {
+    fn from(err: tokio::time::error::Elapsed) -> Self {
+        ExecutionError::Timeout {
+            duration: std::time::Duration::from_secs(0),
+            operation: err.to_string(),
+        }
+        .into()
+    }
+}
+
+impl From<tokio::task::JoinError> for ToadStoolError {
+    fn from(err: tokio::task::JoinError) -> Self {
+        ToadStoolError::Runtime(format!("Task join failed: {err}"))
+    }
+}
+
+impl From<tokio::sync::broadcast::error::RecvError> for ToadStoolError {
+    fn from(err: tokio::sync::broadcast::error::RecvError) -> Self {
+        ToadStoolError::Runtime(format!("Broadcast receive failed: {err}"))
     }
 }
 

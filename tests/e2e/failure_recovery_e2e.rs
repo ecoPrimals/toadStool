@@ -63,8 +63,7 @@ async fn test_circuit_breaker_recovery() {
     let circuit_open = failure_count > threshold;
     assert!(circuit_open, "Circuit should open");
     
-    // Simulate recovery period
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    tokio::task::yield_now().await;
     
     // Circuit can attempt to close
     let can_retry = true;
@@ -234,10 +233,10 @@ async fn test_timeout_recovery_with_retry() {
     // Test recovery after timeout with retry
     let operation_timeout = Duration::from_millis(10);
     
-    // First attempt times out
+    // First attempt times out (use pending future - never completes)
     let first_attempt = tokio::time::timeout(
         operation_timeout,
-        async { tokio::time::sleep(Duration::from_millis(20)).await }
+        std::future::pending::<()>()
     ).await;
     
     assert!(first_attempt.is_err(), "Should timeout");

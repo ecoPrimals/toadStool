@@ -93,7 +93,7 @@ impl VelocityVerletF64 {
         });
 
         let wg_count = (n as u32).div_ceil(WG);
-        ComputeDispatch::new(&*self.device, "VV:step")
+        ComputeDispatch::new(&self.device, "VV:step")
             .shader(SHADER, "main")
             .f64()
             .storage_read(0, &pos_buf)
@@ -178,7 +178,7 @@ impl VelocityVerletF64 {
         });
 
         let wg_count = (n as u32).div_ceil(WG);
-        ComputeDispatch::new(&*self.device, "VV:half_vel")
+        ComputeDispatch::new(&self.device, "VV:half_vel")
             .shader(SHADER, "velocity_half_step")
             .f64()
             .storage_read(0, &dummy_ro)
@@ -259,7 +259,7 @@ impl VelocityVerletF64 {
         });
 
         let wg_count = (n as u32).div_ceil(WG);
-        ComputeDispatch::new(&*self.device, "VV:pos_update")
+        ComputeDispatch::new(&self.device, "VV:pos_update")
             .shader(SHADER, "position_update")
             .f64()
             .storage_read(0, &pos_buf)

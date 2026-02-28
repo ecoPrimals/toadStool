@@ -18,7 +18,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1.8", features = ["v4", "serde"] }
 tracing = "0.1"
-thiserror = { workspace = true }
+thiserror = "2.0"
 futures = "0.3"
 md5 = "0.7"
 
@@ -40,7 +40,10 @@ bindgen = { version = "0.69", optional = true }
 # coap = "0.10"  # Optional - not critical for core functionality
 
 # Device discovery and management
-sysinfo = { workspace = true }
+sysinfo = "0.30"
+
+# HTTP client for file downloads (optional - used by ESP32 download_file when path is URL)
+reqwest = { version = "0.12", optional = true, default-features = false, features = ["rustls-tls"] }
 # Pure Rust udev parsing - reading /sys/class directly instead of libudev
 # Removed: udev = "0.8" (uses libudev C library)
 # Removed: libudev = "0.3" (C library dependency)
@@ -58,6 +61,8 @@ raspberry-pi = ["rppal"]
 # ESP32 support requires esp-idf-sys (C dependency) - not in default
 esp32 = ["esp-idf-sys"]
 all-platforms = ["raspberry-pi", "esp32"]
+# Enable HTTP downloads for ESP32 (e.g. OTA firmware URLs)
+http-downloads = ["reqwest"]
 # Enable C build dependencies for native bindings (only if needed)
 native-bindings = ["cc", "bindgen"]
 

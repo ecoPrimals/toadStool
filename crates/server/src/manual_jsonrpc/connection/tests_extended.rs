@@ -448,6 +448,97 @@ async fn test_handle_connection_unix_malformed_json_trailing() {
 }
 
 #[tokio::test]
+async fn test_handle_connection_unix_http_get() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::UnixStream;
+
+    let (mut client, server) = UnixStream::pair().unwrap();
+    let server_instance = test_server();
+    tokio::spawn(async move {
+        let _ = server_instance.handle_connection(server).await;
+    });
+
+    let body = r#"{"jsonrpc":"2.0","method":"toadstool.health","params":{},"id":200}"#;
+    let req = format!(
+        "GET /rpc HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    client.write_all(req.as_bytes()).await.unwrap();
+    client.flush().await.unwrap();
+
+    let mut buf = String::new();
+    client.read_to_string(&mut buf).await.unwrap();
+    assert!(buf.contains("HTTP/1.1 200"));
+    let body_start = buf.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
+    let json_part = &buf[body_start..];
+    let parsed: serde_json::Value = serde_json::from_str(json_part.trim()).unwrap();
+    assert!(parsed.get("result").is_some());
+}
+
+#[tokio::test]
+async fn test_handle_tcp_connection_http_get() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    let server_instance = test_server();
+    let server_arc = Arc::new(server_instance);
+    let server_clone = Arc::clone(&server_arc);
+    tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let _ = server_clone.handle_tcp_connection(stream).await;
+    });
+
+    let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let body = r#"{"jsonrpc":"2.0","method":"compute.health","params":{},"id":201}"#;
+    let req = format!(
+        "GET /rpc HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    stream.write_all(req.as_bytes()).await.unwrap();
+    stream.flush().await.unwrap();
+    stream.shutdown().await.ok();
+
+    let mut buf = String::new();
+    stream.read_to_string(&mut buf).await.unwrap();
+    assert!(buf.contains("HTTP/1.1 200"));
+    let body_start = buf.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
+    let json_part = buf[body_start..].trim();
+    let parsed: serde_json::Value = serde_json::from_str(json_part).unwrap();
+    assert!(parsed.get("result").is_some());
+}
+
+#[tokio::test]
+async fn test_handle_connection_parse_error_increments_error_count() {
+    use std::sync::atomic::Ordering;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::UnixStream;
+
+    let error_count = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    let server = ManualJsonRpcServer::new(
+        Arc::new(StandaloneExecutor::new()),
+        "test-1.0.0".to_string(),
+        Some(Arc::clone(&error_count)),
+    );
+
+    let (mut client, server_stream) = UnixStream::pair().unwrap();
+    tokio::spawn(async move {
+        let _ = server.handle_connection(server_stream).await;
+    });
+
+    client.write_all(b"not valid json\n").await.unwrap();
+    client.flush().await.unwrap();
+
+    let mut buf = vec![0u8; 256];
+    let _ = client.read(&mut buf).await.unwrap_or(0);
+
+    assert!(error_count.load(Ordering::Relaxed) >= 1);
+}
+
+#[tokio::test]
 async fn test_handle_tcp_connection_compute_submit_validation() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

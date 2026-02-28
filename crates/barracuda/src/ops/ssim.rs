@@ -38,7 +38,7 @@ impl SSIM {
         if shape1 != shape2 {
             return Err(crate::error::BarracudaError::invalid_op(
                 "SSIM",
-                format!("Images must have same shape: {:?} vs {:?}", shape1, shape2),
+                format!("Images must have same shape: {shape1:?} vs {shape2:?}"),
             ));
         }
 
@@ -52,7 +52,7 @@ impl SSIM {
         if window_size == 0 || window_size > shape1[0] || window_size > shape1[1] {
             return Err(crate::error::BarracudaError::invalid_op(
                 "SSIM",
-                format!("Invalid window_size: {}", window_size),
+                format!("Invalid window_size: {window_size}"),
             ));
         }
 

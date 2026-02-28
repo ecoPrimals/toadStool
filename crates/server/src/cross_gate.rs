@@ -128,6 +128,7 @@ impl JobRouter {
             return RoutingDecision {
                 gate_id: gate.gate_id.clone(),
                 reason: RoutingReason::ModelLoaded,
+                #[allow(clippy::cast_possible_truncation)]
                 estimated_wait_ms: gate.queue_depth as u64 * 100, // rough estimate
             };
         }
@@ -144,6 +145,7 @@ impl JobRouter {
             return RoutingDecision {
                 gate_id: best.gate_id.clone(),
                 reason: RoutingReason::MostVramAvailable,
+                #[allow(clippy::cast_possible_truncation)]
                 estimated_wait_ms: best.queue_depth as u64 * 100,
             };
         }
@@ -153,6 +155,7 @@ impl JobRouter {
             return RoutingDecision {
                 gate_id: gate.gate_id.clone(),
                 reason: RoutingReason::ShortestQueue,
+                #[allow(clippy::cast_possible_truncation)]
                 estimated_wait_ms: gate.queue_depth as u64 * 100,
             };
         }

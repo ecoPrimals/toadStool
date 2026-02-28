@@ -48,7 +48,7 @@ impl LinuxEdgeDevice {
             memory_bytes: 0,
             storage_bytes: 0,
             processor_info: "linux-generic".to_string(),
-            supported_protocols: vec!["unix-socket".to_string()],
+            supported_protocols: vec!["unix".to_string()],
             security: DeviceSecurity {
                 secure_boot: false,
                 encrypted_storage: false,

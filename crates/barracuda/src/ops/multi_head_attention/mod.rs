@@ -115,8 +115,7 @@ impl MultiHeadAttention {
         if !d_model.is_multiple_of(num_heads) {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: format!(
-                    "d_model ({}) must be divisible by num_heads ({})",
-                    d_model, num_heads
+                    "d_model ({d_model}) must be divisible by num_heads ({num_heads})"
                 ),
             });
         }

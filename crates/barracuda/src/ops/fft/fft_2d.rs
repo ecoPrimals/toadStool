@@ -26,8 +26,7 @@ impl Fft2D {
 
         if shape[0] != rows as usize || shape[1] != cols as usize || shape[2] != 2 {
             return Err(BarracudaError::Device(format!(
-                "FFT 2D shape mismatch: expected [{}, {}, 2], got {:?}",
-                rows, cols, shape
+                "FFT 2D shape mismatch: expected [{rows}, {cols}, 2], got {shape:?}"
             )));
         }
 

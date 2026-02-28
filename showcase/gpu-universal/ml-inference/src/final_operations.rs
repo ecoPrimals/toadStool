@@ -437,8 +437,7 @@ impl CrossEntropyLoss {
             let true_class = targets[b];
             anyhow::ensure!(
                 true_class < num_classes,
-                "Target class {} out of range",
-                true_class
+                "Target class {true_class} out of range"
             );
 
             // Log probability of true class
@@ -613,8 +612,7 @@ impl Concatenate {
                 let tensor_channels = channels[tensor_idx];
                 anyhow::ensure!(
                     tensor.len() == batch_size * tensor_channels * spatial_size,
-                    "Tensor {} size mismatch",
-                    tensor_idx
+                    "Tensor {tensor_idx} size mismatch"
                 );
 
                 // Copy this tensor's channels

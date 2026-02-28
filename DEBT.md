@@ -76,7 +76,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-CD | ComputeDispatch migration | High | 34/250 ops migrated (~3,739 lines removed). ~216 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
-| D-COV | Test coverage ~82% → 90% | Medium | Barracuda near target. Gap: async networking, server lifecycle, deep protocol handlers. |
+| D-COV | Test coverage → 90% | Medium | Major gains in S70: +150 tests across CLI, server, API, monitoring, distributed, config. Gap: barracuda GPU ops, neuromorphic drivers. |
 
 ### DF64 Transcendental Coverage
 
@@ -109,7 +109,24 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Recently Resolved (S69++)
+## Recently Resolved (S70)
+
+| Item | Resolution |
+|------|-----------|
+| 15 production stubs | Primals client (real JSON-RPC), orchestrator deploy, coordinator cancel (CancellationToken), deprecated HTTP caller (returns error), edge platforms (proper errors) |
+| Test concurrency | All tests concurrent, zero `#[serial]`, zero fixed sleeps in non-chaos tests |
+| Environment safety | All `std::env::set_var` in tests → `temp_env` (8 files migrated) |
+| Test timeouts | Reduced defaults: 30s→5s, 120s→30s, 60s→20s, unit 5s→2s |
+| All doctests | Fixed across common, core, display, testing crates |
+| ChaosEngine metrics | `recovery_count` synced between SystemState and ChaosMetrics |
+| Error codes | `WORKLOAD_NOT_FOUND` for job queue (was METHOD_NOT_FOUND) |
+| Storage benchmark | Race condition fixed (unique nanos-based temp files) |
+| Nested runtime | MockTask drop panic eliminated (AtomicUsize replaces RwLock) |
+| +150 new tests | lifecycle, dispatch, jsonrpc, monitoring, nestgate, display IPC, daemon servers, config validation |
+| Real mDNS parser | Replaced placeholder `Ok(None)` in zero_config service discovery |
+| Barracuda unused_async | Crate-level `#![allow(clippy::unused_async)]` with documented justification |
+
+## Previously Resolved (S69++)
 
 | Item | Resolution |
 |------|-----------|

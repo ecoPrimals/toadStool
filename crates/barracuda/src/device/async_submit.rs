@@ -249,7 +249,7 @@ impl AsyncReadback {
 
             match self.receiver.try_recv() {
                 Ok(result) => {
-                    return result.map_err(|e| format!("Map error: {:?}", e));
+                    return result.map_err(|e| format!("Map error: {e:?}"));
                 }
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
                     // Not ready — yield to let the runtime drive other tasks.
@@ -326,7 +326,7 @@ impl AsyncReadback {
         self.receiver
             .recv()
             .map_err(|_| "Readback cancelled — sender dropped".to_string())?
-            .map_err(|e| format!("Map error: {:?}", e))?;
+            .map_err(|e| format!("Map error: {e:?}"))?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
         let result = bytemuck::cast_slice::<u8, f32>(&data).to_vec();
@@ -341,7 +341,7 @@ impl AsyncReadback {
         self.receiver
             .recv()
             .map_err(|_| "Readback cancelled — sender dropped".to_string())?
-            .map_err(|e| format!("Map error: {:?}", e))?;
+            .map_err(|e| format!("Map error: {e:?}"))?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
         let result = bytemuck::cast_slice::<u8, f64>(&data).to_vec();

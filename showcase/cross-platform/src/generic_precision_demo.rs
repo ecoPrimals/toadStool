@@ -358,7 +358,7 @@ fn demonstrate_shader_generation() {
         // Show the key type substitution
         let scalar_type = format!("array<{}>", precision.scalar());
         if shader.contains(&scalar_type) {
-            println!("      ✅ Uses {}", scalar_type);
+            println!("      ✅ Uses {scalar_type}");
         }
     }
 
@@ -444,7 +444,7 @@ fn benchmark_precisions(ctx: &GpuContext) {
     let a_f64: Vec<f64> = (0..n).map(|i| (i as f64) * 0.001).collect();
     let b_f64: Vec<f64> = (0..n).map(|i| (i as f64) * 0.002).collect();
 
-    println!("\n  {} elements, {} iterations", n, iterations);
+    println!("\n  {n} elements, {iterations} iterations");
     println!("  ─────────────────────────────────────────");
 
     // CPU f32
@@ -516,7 +516,7 @@ fn benchmark_precisions(ctx: &GpuContext) {
 
         // f64 vs f32 on GPU
         let f64_slowdown = gpu_f64_time.as_secs_f64() / gpu_f32_time.as_secs_f64();
-        println!("\n    GPU f64/f32 ratio: {:.2}x", f64_slowdown);
+        println!("\n    GPU f64/f32 ratio: {f64_slowdown:.2}x");
         if f64_slowdown < 3.0 {
             println!("    ✅ Excellent f64 performance! (better than 1:32 theoretical)");
         } else if f64_slowdown < 10.0 {

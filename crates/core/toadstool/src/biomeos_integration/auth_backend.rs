@@ -104,8 +104,7 @@ impl BearDogBackend {
             .await
             .map_err(|e| {
                 ToadStoolError::configuration(format!(
-                    "No crypto service discovered: {}. Ensure a crypto provider is running.",
-                    e
+                    "No crypto service discovered: {e}. Ensure a crypto provider is running."
                 ))
             })?;
 
@@ -203,11 +202,11 @@ impl InMemoryAuthBackend {
 
     /// Generate a test token
     fn generate_test_token(&self, requesting_primal: &str) -> AuthenticationToken {
-        let token_id = format!("test-token-{}", requesting_primal);
+        let token_id = format!("test-token-{requesting_primal}");
         AuthenticationToken {
             id: token_id,
             token_type: "Bearer".to_string(),
-            token: format!("test-token-value-{}", requesting_primal),
+            token: format!("test-token-value-{requesting_primal}"),
             public_key: "test-public-key".to_string(),
             expires_at: SystemTime::now() + Duration::from_secs(3600),
             issued_at: SystemTime::now(),

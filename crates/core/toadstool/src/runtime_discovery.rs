@@ -315,7 +315,10 @@ impl RuntimeDiscovery {
             }
 
             let mut state_write = state.write().await;
-            state_write.stats.timeouts += stale.len() as u64;
+            let stale_count = stale.len();
+            #[allow(clippy::cast_possible_truncation)]
+            let timeout_delta = stale_count as u64;
+            state_write.stats.timeouts += timeout_delta;
             state_write.stats.active_services = services_write.len();
         }
     }

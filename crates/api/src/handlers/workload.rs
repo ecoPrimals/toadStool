@@ -48,7 +48,7 @@ pub async fn execute_workload(
     let response = provider.handle_workload(request).await.map_err(|e| {
         ApiError::new(
             "EXECUTION_ERROR",
-            &format!("Failed to execute workload: {}", e),
+            &format!("Failed to execute workload: {e}"),
         )
     })?;
 

@@ -36,6 +36,7 @@ toadstool-management-monitoring = { path = "../management/monitoring" }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
+tokio-util = { version = "0.7" }
 async-trait = "0.1"
 futures = "0.3"
 
@@ -81,3 +82,4 @@ tokio-test = "0.4"
 tempfile = "3.0"
 temp-env = "0.3"
 toml = "0.8"
+anyhow = "1"

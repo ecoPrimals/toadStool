@@ -54,8 +54,7 @@ impl Fft1DF64 {
         // Validate degree is power of 2
         if degree & (degree - 1) != 0 {
             return Err(BarracudaError::Device(format!(
-                "FFT degree {} must be power of 2",
-                degree
+                "FFT degree {degree} must be power of 2"
             )));
         }
 
@@ -346,13 +345,13 @@ impl Fft1DF64 {
                 device
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some(&format!("FFT 1D f64 Params Stage {}", stage)),
+                        label: Some(&format!("FFT 1D f64 Params Stage {stage}")),
                         contents: bytemuck::bytes_of(&stage_params),
                         usage: wgpu::BufferUsages::UNIFORM,
                     });
 
             let stage_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("FFT 1D f64 Bind Group Stage {}", stage)),
+                label: Some(&format!("FFT 1D f64 Bind Group Stage {stage}")),
                 layout: &self.bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
@@ -380,7 +379,7 @@ impl Fft1DF64 {
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some(&format!("FFT 1D f64 Butterfly Stage {}", stage)),
+                    label: Some(&format!("FFT 1D f64 Butterfly Stage {stage}")),
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.pipeline_butterfly);

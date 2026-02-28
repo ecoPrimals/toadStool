@@ -46,7 +46,7 @@ impl PrimalRegistry {
         RegistrationResponse {
             success: true,
             primal_id,
-            token: Some("dummy_token".to_string()),
+            token: None,
             error: None,
         }
     }

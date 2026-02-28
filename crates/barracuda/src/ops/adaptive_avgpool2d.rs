@@ -68,7 +68,7 @@ impl AdaptiveAvgPool2D {
 
         if shape.len() != 4 {
             return Err(crate::error::BarracudaError::invalid_op("Shape Error", 
-                format!("AdaptiveAvgPool2D expects 4D input [batch, channels, height, width], got shape {:?}", shape)
+                format!("AdaptiveAvgPool2D expects 4D input [batch, channels, height, width], got shape {shape:?}")
             ));
         }
 

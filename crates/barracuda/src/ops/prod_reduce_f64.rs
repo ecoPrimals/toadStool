@@ -103,7 +103,7 @@ impl ProdReduceF64 {
         };
         let params_buffer = device.create_uniform_buffer("ProdReduce params", &params);
 
-        ComputeDispatch::new(&*device, "prod_reduce_pass1")
+        ComputeDispatch::new(&device, "prod_reduce_pass1")
             .shader(Self::wgsl_shader(), entry_point)
             .f64()
             .storage_read(0, &input_buffer)
@@ -133,7 +133,7 @@ impl ProdReduceF64 {
         let params2_buffer = device.create_uniform_buffer("ProdReduce params 2", &params2);
 
         let n_workgroups2 = n_workgroups.div_ceil(wg_size);
-        ComputeDispatch::new(&*device, "prod_reduce_pass2")
+        ComputeDispatch::new(&device, "prod_reduce_pass2")
             .shader(Self::wgsl_shader(), entry_point)
             .f64()
             .storage_read(0, &partial_buffer)

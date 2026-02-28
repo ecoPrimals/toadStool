@@ -54,7 +54,7 @@ impl Default for BearDogConfig {
             // Standard primal socket location
             let runtime_dir =
                 std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
-            format!("{}/beardog.sock", runtime_dir)
+            format!("{runtime_dir}/beardog.sock")
         });
 
         Self {
@@ -199,7 +199,7 @@ impl BearDogIntegration {
         match self.make_request("auth.authenticate", &auth_request).await {
             Ok(result) => {
                 let auth_response: AuthResponse = serde_json::from_value(result).map_err(|e| {
-                    ToadStoolError::security(format!("Failed to parse auth response: {}", e))
+                    ToadStoolError::security(format!("Failed to parse auth response: {e}"))
                 })?;
 
                 // Store access token
@@ -271,7 +271,7 @@ impl BearDogIntegration {
             Ok(result) => {
                 let authz_response: AuthzResponse =
                     serde_json::from_value(result).map_err(|e| {
-                        ToadStoolError::security(format!("Failed to parse authz response: {}", e))
+                        ToadStoolError::security(format!("Failed to parse authz response: {e}"))
                     })?;
 
                 // Audit the authorization decision
@@ -529,9 +529,7 @@ impl BearDogIntegration {
         // EVOLVED: Pure Rust JSON-RPC over Unix socket!
         let mut stream = UnixStream::connect(&self.config.socket_path)
             .await
-            .map_err(|e| {
-                ToadStoolError::security(format!("Failed to connect to BearDog: {}", e))
-            })?;
+            .map_err(|e| ToadStoolError::security(format!("Failed to connect to BearDog: {e}")))?;
 
         // Create JSON-RPC 2.0 request
         let request = serde_json::json!({
@@ -542,30 +540,27 @@ impl BearDogIntegration {
         });
 
         let request_str = serde_json::to_string(&request)
-            .map_err(|e| ToadStoolError::security(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::security(format!("Failed to serialize request: {e}")))?;
 
         // Send request
         stream
             .write_all(request_str.as_bytes())
             .await
-            .map_err(|e| ToadStoolError::security(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| ToadStoolError::security(format!("Failed to send request: {e}")))?;
 
         // Read response
         let mut response = Vec::new();
         stream
             .read_to_end(&mut response)
             .await
-            .map_err(|e| ToadStoolError::security(format!("Failed to read response: {}", e)))?;
+            .map_err(|e| ToadStoolError::security(format!("Failed to read response: {e}")))?;
 
         // Parse JSON-RPC response
         let response_json: serde_json::Value = serde_json::from_slice(&response)
-            .map_err(|e| ToadStoolError::security(format!("Failed to parse response: {}", e)))?;
+            .map_err(|e| ToadStoolError::security(format!("Failed to parse response: {e}")))?;
 
         if let Some(error) = response_json.get("error") {
-            return Err(ToadStoolError::security(format!(
-                "BearDog error: {}",
-                error
-            )));
+            return Err(ToadStoolError::security(format!("BearDog error: {error}")));
         }
 
         response_json

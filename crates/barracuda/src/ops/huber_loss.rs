@@ -266,7 +266,7 @@ impl Tensor {
         if delta <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "HuberLoss",
-                format!("delta must be positive, got {}", delta),
+                format!("delta must be positive, got {delta}"),
             ));
         }
 

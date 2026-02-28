@@ -94,7 +94,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
                 tiler.predict_bandwidth(data_bytes),
             ),
         };
-        println!("  │ {:30} │ {:14} │ {:12.0} │", desc, status, bw);
+        println!("  │ {desc:30} │ {status:14} │ {bw:12.0} │");
     }
 
     println!("  └────────────────────────────────┴────────────────┴────────────────┘");

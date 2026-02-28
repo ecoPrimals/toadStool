@@ -3,6 +3,16 @@
 //! This module provides static string constants for common values throughout the codebase.
 //! Using these interned strings eliminates unnecessary string allocations.
 //!
+//! ## WateringHole Sovereignty: Discover by Capability, Address by Name
+//!
+//! - **`capabilities::*`** — Use for DISCOVERY. Scan for what a service CAN DO.
+//!   Example: `if capabilities.contains(capabilities::CRYPTO)` or
+//!   `discover_capability(capabilities::STORAGE)`.
+//!
+//! - **`primals::*`** — Use for IPC ADDRESSING only (socket paths, endpoint IDs).
+//!   These are canonical names for routing messages, NOT for capability matching.
+//!   Never use `if name == primals::BEARDOG` to select a service; use capability checks.
+//!
 //! # Performance Impact
 //!
 //! **Before** (allocation per use):
@@ -37,10 +47,14 @@
 /// Capability type constants (Deep Debt compliant)
 ///
 /// These represent WHAT services do, not WHO provides them.
-/// Use these for capability-based discovery!
+/// Use these for capability-based discovery! Never match on primal names.
 pub mod capabilities {
     /// Security capabilities (encryption, signing, key management)
     pub const SECURITY: &str = "security";
+
+    /// Cryptographic capabilities (encryption, signing, key management, PKI).
+    /// Use for discovery: `discover_capability(capabilities::CRYPTO)`.
+    pub const CRYPTO: &str = "crypto";
 
     /// Storage capabilities (persistence, compression, versioning)
     pub const STORAGE: &str = "storage";
@@ -123,12 +137,17 @@ pub mod protocols {
 
     /// Unix domain socket
     pub const UNIX: &str = "unix";
+
+    /// tarpc protocol
+    pub const TARPC: &str = "tarpc";
 }
 
 /// ⚠️ DEPRECATED: Legacy primal name constants
 ///
-/// These hardcoded names violate the Deep Debt principle of self-knowledge.
-/// Use capability-based discovery instead!
+/// **For IPC addressing only** (socket paths, endpoint IDs, message routing).
+/// These are canonical names for addressing — NOT for capability matching.
+/// Use `capabilities::*` for discovery; use these only when you already have
+/// a discovered service and need its name for socket paths or routing.
 ///
 /// # Migration Guide
 ///
@@ -214,7 +233,9 @@ mod tests {
     #[test]
     fn test_capabilities() {
         assert_eq!(capabilities::SECURITY, "security");
+        assert_eq!(capabilities::CRYPTO, "crypto");
         assert_eq!(capabilities::STORAGE, "storage");
+        assert_eq!(capabilities::COORDINATION, "coordination");
         assert_eq!(capabilities::ENCRYPTION, "encryption");
     }
 
@@ -224,6 +245,9 @@ mod tests {
         assert_eq!(protocols::HTTP, "http");
         assert_eq!(protocols::GRPC, "grpc");
         assert_eq!(protocols::WEBSOCKET, "websocket");
+        assert_eq!(protocols::JSONRPC, "jsonrpc");
+        assert_eq!(protocols::UNIX, "unix");
+        assert_eq!(protocols::TARPC, "tarpc");
     }
 
     #[test]

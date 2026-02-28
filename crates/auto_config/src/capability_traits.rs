@@ -52,6 +52,11 @@ impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
 // ============================================================================
 // Mock Implementations for Testing
 // ============================================================================
+//
+// Evolution path: These mocks are behind #[cfg(any(test, feature = "test-mocks"))].
+// Production always uses real HardwareDetector and EcosystemDiscoverer (see
+// IntelligentAutoConfig::new(), ConfigBuilder::build(), get_system_summary()).
+// If test-mocks feature is enabled, callers can inject mocks for integration tests.
 
 /// Mock hardware detector for testing
 ///

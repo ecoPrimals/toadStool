@@ -22,9 +22,13 @@ fn test_config_default() {
 #[test]
 fn test_network_config_default_has_valid_bind_address() {
     let network = NetworkConfig::default();
-    // bind_address is a SocketAddr — port must be non-zero in a real config
-    let port = network.bind_address.port();
-    assert!(port > 0, "Default bind address should have a valid port");
+    let addr = network.bind_address;
+    // Port 0 = OS-assigned at bind time (sovereignty: runtime discovery)
+    // IP can be 0.0.0.0 (all interfaces) or 127.0.0.1 (localhost) depending on env
+    assert!(
+        addr.ip().is_unspecified() || addr.ip().is_loopback(),
+        "Default bind address should be 0.0.0.0 or 127.0.0.1, got: {addr}"
+    );
 }
 
 #[test]

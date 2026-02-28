@@ -29,7 +29,7 @@ impl LabelSmoothing {
         if !(0.0..=1.0).contains(&smoothing) {
             return Err(BarracudaError::invalid_op(
                 "LabelSmoothing",
-                format!("smoothing must be in [0, 1], got {}", smoothing),
+                format!("smoothing must be in [0, 1], got {smoothing}"),
             ));
         }
 
@@ -58,10 +58,7 @@ impl LabelSmoothing {
         if labels_shape.len() != 1 {
             return Err(BarracudaError::invalid_op(
                 "LabelSmoothing",
-                format!(
-                    "labels must be 1D [batch_size], got shape {:?}",
-                    labels_shape
-                ),
+                format!("labels must be 1D [batch_size], got shape {labels_shape:?}"),
             ));
         }
 

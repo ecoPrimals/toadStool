@@ -64,10 +64,7 @@ impl MatmulTiled {
         if a_shape.len() != 2 || b_shape.len() != 2 {
             return Err(crate::error::BarracudaError::invalid_op(
                 "MatmulTiled",
-                format!(
-                    "Expected 2D tensors, got shapes {:?} and {:?}",
-                    a_shape, b_shape
-                ),
+                format!("Expected 2D tensors, got shapes {a_shape:?} and {b_shape:?}"),
             ));
         }
 

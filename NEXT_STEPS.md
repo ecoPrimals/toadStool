@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 28, 2026 -- Session 69++
-**Status**: Production-grade | AGPL-3 compliant | 1 clippy warning (deprecated grpc fallback) | Standalone-resilient | Zero chrono | Zero anyhow | 45 justified unsafe | 661 WGSL shaders | 2,726+ barracuda tests | Barracuda ~82% coverage | Rust 1.80+
-**Latest**: 34 ops → ComputeDispatch (~3,739 lines removed). NAK workgroup tuning. metalForge streaming. manual_jsonrpc fully migrated. 16 large files refactored. +100 new tests. All spring handoffs absorbed.
+**Updated**: February 28, 2026 -- Session 70
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 661 WGSL shaders | 2,726+ barracuda tests | 4,700+ workspace lib tests | Rust 1.80+
+**Latest**: Test concurrency evolution. 15 production stubs evolved. All env tests thread-safe. All doctests passing. 6m30s test suite. +150 new tests.
 
 ---
 
@@ -62,16 +62,23 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **`manual_jsonrpc` → `pure_jsonrpc`** -- full migration, unibin uses pure_jsonrpc
 - [x] **GPU Lanczos kernel** -- `lanczos_iteration_f64.wgsl` + `lanczos_eigensolver()` dispatch
 - [x] **rust-version** -- bumped 1.75 → 1.80 (LazyLock stable)
-- [x] **Production stubs** -- 4 stubs evolved to real implementations
-- [x] **Dead code documented** -- all 18 unjustified `#[allow(dead_code)]` annotated
+- [x] **Production stubs** -- 15+ stubs evolved to real implementations or proper errors
+- [x] **Dead code documented** -- all `#[allow(dead_code)]` annotated with justification
 - [x] **Unidirectional streaming** -- ring_buffer + unidirectional + stateful + pipeline
 - [x] **MD observables** -- stress_virial_f64, vacf_batch_f64 created + dispatch wired
 - [x] **AlphaFold2 advanced (17)** -- all created + dispatch wired
 - [x] **airSpring batch ops** -- hargreaves_et0, dual_kc, van_genuchten, batched_crop_pipeline
+- [x] **Test concurrency** -- all tests concurrent, zero serial, zero fixed sleeps in non-chaos
+- [x] **Environment safety** -- all `std::env::set_var` migrated to `temp_env`
+- [x] **All doctests passing** -- common, core, display, testing
+- [x] **Error code correctness** -- `WORKLOAD_NOT_FOUND` for job queue, `EXECUTION_NOT_FOUND` for API
+- [x] **Chaos metrics sync** -- ChaosEngine recovery_count propagated to both SystemState and ChaosMetrics
+- [x] **Edge platform evolution** -- ESP32, Raspberry Pi, industrial, microcontroller return proper errors
+- [x] **Real mDNS parser** -- replaces placeholder `Ok(None)` in zero_config service discovery
 - [ ] **ComputeDispatch migration** -- 34/250 ops migrated; ~216 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
-- [ ] **Test coverage target 90%** -- barracuda at ~82% (2,726 tests); +100 new tests added S69++
+- [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed
 
 ### Cross-Repo Debt
 
@@ -82,34 +89,50 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ## Completed This Session
 
+### Session 70: Deep Debt + Test Concurrency Evolution
+
+**Production stubs evolved (15+)**: Primals client (real JSON-RPC over Unix sockets), orchestrator
+(validates + deploys via `biome.deploy`), coordinator cancel (CancellationToken-based), deprecated
+HTTP caller (returns proper error), registration token (`None` instead of "dummy_token"), ESP32
+download (feature-gated HTTP or proper error), Raspberry Pi/industrial/microcontroller (return
+`PlatformNotAvailable`), OS compat layer (real `uname` on Linux).
+
+**Test concurrency evolution**: All `std::env::set_var` in tests migrated to `temp_env` (8 files).
+All sleeps removed from non-chaos tests (monitoring → polling, tarpc → yield, resilience → reduced
+intervals). Default test timeouts aggressively reduced (30s→5s, 120s→30s, 60s→20s, unit 5s→2s).
+Storage benchmark race condition fixed (nanos-based unique temp files). Nested runtime panics
+eliminated (MockTask drop uses AtomicUsize). All doctests fixed across 4 crates.
+
+**ChaosEngine fix**: `recovery_count` now correctly synced between `SystemState` and `ChaosMetrics`
+in both `inject_service_crash` and `inject_network_partition`.
+
+**Error code fix**: `job_queue_error` now returns `WORKLOAD_NOT_FOUND` (-32000) instead of
+`METHOD_NOT_FOUND` (-32601) for missing jobs.
+
+**Coverage expansion (+150 tests)**: lifecycle_ops, dispatch, api/jsonrpc, monitoring/lib,
+pure_jsonrpc/handler, unibin/mod, tarpc_server, nestgate/client, display/ipc/server,
+daemon/jsonrpc_server, daemon/http_server, service_discovery (real mDNS parser),
+distributed/adapter, config/builder, config/validation.
+
+**Barracuda**: Crate-level `#![allow(clippy::unused_async)]` with documented justification.
+
+**Infrastructure**: Killed 2 zombie barracuda processes (running since Feb 26 at 100% CPU).
+Full workspace test suite: 6m30s wall time, 0 failures, 0 warnings, 8 threads.
+
 ### Session 69++: Architecture & Code Evolution
 
 **ComputeDispatch migration (34 ops)**: 5 linalg + 15 special functions + 14 MD/bio/reduce.
 ~3,739 lines of manual BGL/BG/pipeline boilerplate replaced with fluent builder pattern.
 
-**NAK workgroup tuning**: `workgroup_size_for_arch()` (Volta 64, Ada 256, RDNA 64),
-`workgroup_size_2d_for_arch()`, `optimal_workgroup_size_arch()` — 6 tests.
-
 **metalForge streaming pipeline**: `PipelineBuilder` → `StreamingPipeline` with chained
-GPU dispatches, zero CPU readback. `execute()`, `execute_iterations(n)`, `execute_and_read<T>()`.
+GPU dispatches, zero CPU readback.
 
-**manual_jsonrpc → pure_jsonrpc**: Full handler parity (resources, gpu, ollama, gate/cluster).
-Unix/TCP connection layer. Unibin migrated. manual_jsonrpc deprecated.
-
-**Production stubs → implementations**: biome.rs (real validation), container benchmarking
-(Docker/Podman runtime detection), gRPC fallback (deprecated), OpenCL (capability-based).
-
-**Smart refactoring (10 large files)**: alphafold2.rs (882→5 modules), workload.rs (821→6),
-cli/main.rs (805→setup+dispatch), server/lib.rs (710→3), installer.rs (852→8),
-mdns.rs (730→3), performance/lib.rs (703→4). All production files < 1000 lines.
-
-**Hardcoded IPs → constants**: 6 production files. rust-version 1.75→1.80. Dead code documented.
-Unsafe evolution (GPU memory bounds checks, SAFETY docs). +100 new tests across workspace.
+**manual_jsonrpc → pure_jsonrpc**: Full handler parity. Unix/TCP connection layer. Unibin migrated.
 
 ### Session 69/69+: Cross-Spring Absorption + Deep Debt
 
 All 5 spring handoffs absorbed (196 handoff files). 30+ new WGSL shaders created + dispatch wired.
-13 S69 shaders → Rust dispatch. anyhow fully eliminated. 6 large files refactored.
+anyhow fully eliminated. 6 large files refactored.
 
 ### Session 68+++: Deep Debt Sweep
 

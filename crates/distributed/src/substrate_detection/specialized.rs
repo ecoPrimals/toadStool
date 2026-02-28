@@ -11,6 +11,7 @@ const WASM_RUNTIMES: &[(&str, &str)] = &[
 ];
 
 /// Detect specialized platforms (e.g. WebAssembly runtimes).
+#[allow(clippy::unused_async)] // Sync probe; async for API consistency with SubstrateDetector
 pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let mut platforms = Vec::new();
 

@@ -179,6 +179,12 @@ impl CapabilityProvider {
 /// Discover multiple providers for a capability
 ///
 /// Useful for load balancing or failover scenarios
+///
+/// # Errors
+///
+/// Returns [`CapabilityError`] if:
+/// - Discovery service is unavailable (socket unreachable)
+/// - Response is invalid (missing services array, name, or endpoint fields)
 pub async fn discover_all(capability: Capability) -> Result<Vec<CapabilityProvider>> {
     let discovery_socket =
         std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| "/primal/songbird".to_string());
@@ -273,12 +279,16 @@ fn string_to_capability(s: &str) -> Capability {
 }
 
 #[cfg(test)]
-#[allow(clippy::await_holding_lock)]
 mod tests {
     use super::*;
     use crate::primal_identity::CryptoCapability;
 
-    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    fn run_async<F: std::future::Future<Output = O> + Send, O: Send>(
+        f: impl FnOnce() -> F + Send,
+    ) -> O {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+        rt.block_on(f())
+    }
 
     #[tokio::test]
     async fn test_capability_provider_structure() {
@@ -476,43 +486,39 @@ mod tests {
         assert_eq!(provider1.capabilities(), provider2.capabilities());
     }
 
-    #[tokio::test]
-    async fn test_discover_fails_when_socket_unavailable() {
-        let _guard = ENV_MUTEX.lock().unwrap();
-        std::env::set_var(
+    #[test]
+    fn test_discover_fails_when_socket_unavailable() {
+        temp_env::with_var(
             "SONGBIRD_SOCKET",
-            "/tmp/nonexistent_toadstool_test_12345.sock",
+            Some("/tmp/nonexistent_toadstool_test_12345.sock"),
+            || {
+                let result = run_async(|| {
+                    CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+                });
+                assert!(result.is_err());
+                assert!(matches!(
+                    result.unwrap_err(),
+                    CapabilityError::DiscoveryUnavailable
+                ));
+            },
         );
-
-        let result =
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption)).await;
-
-        std::env::remove_var("SONGBIRD_SOCKET");
-
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            CapabilityError::DiscoveryUnavailable
-        ));
     }
 
-    #[tokio::test]
-    async fn test_discover_all_fails_when_socket_unavailable() {
-        let _guard = ENV_MUTEX.lock().unwrap();
-        std::env::set_var(
+    #[test]
+    fn test_discover_all_fails_when_socket_unavailable() {
+        temp_env::with_var(
             "SONGBIRD_SOCKET",
-            "/tmp/nonexistent_toadstool_test_67890.sock",
+            Some("/tmp/nonexistent_toadstool_test_67890.sock"),
+            || {
+                let result =
+                    run_async(|| discover_all(Capability::Crypto(CryptoCapability::Encryption)));
+                assert!(result.is_err());
+                assert!(matches!(
+                    result.unwrap_err(),
+                    CapabilityError::DiscoveryUnavailable
+                ));
+            },
         );
-
-        let result = discover_all(Capability::Crypto(CryptoCapability::Encryption)).await;
-
-        std::env::remove_var("SONGBIRD_SOCKET");
-
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            CapabilityError::DiscoveryUnavailable
-        ));
     }
 
     #[tokio::test]
@@ -576,9 +582,9 @@ mod tests {
         (socket_path, handle)
     }
 
-    #[tokio::test]
-    async fn test_discover_success() {
-        let _guard = ENV_MUTEX.lock().unwrap();
+    #[test]
+    fn test_discover_success() {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
         let result = serde_json::json!({
             "services": [{
                 "name": "beardog",
@@ -586,113 +592,112 @@ mod tests {
                 "capabilities": ["crypto", "encryption"]
             }]
         });
-        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
-        std::env::set_var("SONGBIRD_SOCKET", socket_path.to_str().unwrap());
-
-        let provider =
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-                .await
-                .expect("discover should succeed");
-
-        std::env::remove_var("SONGBIRD_SOCKET");
+        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let path_str = socket_path.to_str().unwrap().to_string();
+        let provider = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
+                CryptoCapability::Encryption,
+            )))
+            .expect("discover should succeed")
+        });
         std::fs::remove_file(&socket_path).ok();
 
         assert_eq!(provider.service_name(), "beardog");
         assert!(provider.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
     }
 
-    #[tokio::test]
-    async fn test_discover_no_provider_found() {
-        let _guard = ENV_MUTEX.lock().unwrap();
+    #[test]
+    fn test_discover_no_provider_found() {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
         let result = serde_json::json!({ "services": [] });
-        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
-        std::env::set_var("SONGBIRD_SOCKET", socket_path.to_str().unwrap());
-
-        let err = CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-            .await
-            .unwrap_err();
-
-        std::env::remove_var("SONGBIRD_SOCKET");
+        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let path_str = socket_path.to_str().unwrap().to_string();
+        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
+                CryptoCapability::Encryption,
+            )))
+        })
+        .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
         assert!(matches!(err, CapabilityError::NoProviderFound(_)));
     }
 
-    #[tokio::test]
-    async fn test_discover_invalid_response_no_services_array() {
-        let _guard = ENV_MUTEX.lock().unwrap();
+    #[test]
+    fn test_discover_invalid_response_no_services_array() {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
         let result = serde_json::json!({ "not_services": [] });
-        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
-        std::env::set_var("SONGBIRD_SOCKET", socket_path.to_str().unwrap());
-
-        let err = CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-            .await
-            .unwrap_err();
-
-        std::env::remove_var("SONGBIRD_SOCKET");
+        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let path_str = socket_path.to_str().unwrap().to_string();
+        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
+                CryptoCapability::Encryption,
+            )))
+        })
+        .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
         assert!(matches!(err, CapabilityError::InvalidResponse(_)));
         assert!(err.to_string().contains("No services array"));
     }
 
-    #[tokio::test]
-    async fn test_discover_invalid_response_no_name() {
-        let _guard = ENV_MUTEX.lock().unwrap();
+    #[test]
+    fn test_discover_invalid_response_no_name() {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
         let result = serde_json::json!({
             "services": [{ "endpoint": "/tmp/x.sock", "capabilities": [] }]
         });
-        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
-        std::env::set_var("SONGBIRD_SOCKET", socket_path.to_str().unwrap());
-
-        let err = CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-            .await
-            .unwrap_err();
-
-        std::env::remove_var("SONGBIRD_SOCKET");
+        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let path_str = socket_path.to_str().unwrap().to_string();
+        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
+                CryptoCapability::Encryption,
+            )))
+        })
+        .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
         assert!(matches!(err, CapabilityError::InvalidResponse(_)));
         assert!(err.to_string().contains("No name field"));
     }
 
-    #[tokio::test]
-    async fn test_discover_invalid_response_no_endpoint() {
-        let _guard = ENV_MUTEX.lock().unwrap();
+    #[test]
+    fn test_discover_invalid_response_no_endpoint() {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
         let result = serde_json::json!({
             "services": [{ "name": "beardog", "capabilities": [] }]
         });
-        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
-        std::env::set_var("SONGBIRD_SOCKET", socket_path.to_str().unwrap());
-
-        let err = CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-            .await
-            .unwrap_err();
-
-        std::env::remove_var("SONGBIRD_SOCKET");
+        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let path_str = socket_path.to_str().unwrap().to_string();
+        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
+                CryptoCapability::Encryption,
+            )))
+        })
+        .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
         assert!(matches!(err, CapabilityError::InvalidResponse(_)));
         assert!(err.to_string().contains("No endpoint field"));
     }
 
-    #[tokio::test]
-    async fn test_discover_all_success() {
-        let _guard = ENV_MUTEX.lock().unwrap();
+    #[test]
+    fn test_discover_all_success() {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
         let result = serde_json::json!({
             "services": [
                 { "name": "beardog1", "endpoint": "/tmp/b1.sock", "capabilities": ["crypto"] },
                 { "name": "beardog2", "endpoint": "/tmp/b2.sock", "capabilities": ["crypto"] }
             ]
         });
-        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
-        std::env::set_var("SONGBIRD_SOCKET", socket_path.to_str().unwrap());
-
-        let providers = discover_all(Capability::Crypto(CryptoCapability::Encryption))
-            .await
-            .expect("discover_all should succeed");
-
-        std::env::remove_var("SONGBIRD_SOCKET");
+        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let path_str = socket_path.to_str().unwrap().to_string();
+        let providers = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+            rt.block_on(discover_all(Capability::Crypto(
+                CryptoCapability::Encryption,
+            )))
+            .expect("discover_all should succeed")
+        });
         std::fs::remove_file(&socket_path).ok();
 
         assert_eq!(providers.len(), 2);
@@ -700,9 +705,9 @@ mod tests {
         assert_eq!(providers[1].service_name(), "beardog2");
     }
 
-    #[tokio::test]
-    async fn test_discover_capabilities_from_service() {
-        let _guard = ENV_MUTEX.lock().unwrap();
+    #[test]
+    fn test_discover_capabilities_from_service() {
+        let rt = tokio::runtime::Runtime::new().expect("create runtime");
         let result = serde_json::json!({
             "services": [{
                 "name": "beardog",
@@ -710,15 +715,14 @@ mod tests {
                 "capabilities": ["crypto", "authentication", "custom_cap"]
             }]
         });
-        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
-        std::env::set_var("SONGBIRD_SOCKET", socket_path.to_str().unwrap());
-
-        let provider =
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-                .await
-                .expect("discover should succeed");
-
-        std::env::remove_var("SONGBIRD_SOCKET");
+        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let path_str = socket_path.to_str().unwrap().to_string();
+        let provider = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
+                CryptoCapability::Encryption,
+            )))
+            .expect("discover should succeed")
+        });
         std::fs::remove_file(&socket_path).ok();
 
         let caps = provider.capabilities();
@@ -726,22 +730,17 @@ mod tests {
         assert!(provider.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
     }
 
-    #[tokio::test]
-    async fn test_discover_default_socket_path() {
-        let _guard = ENV_MUTEX.lock().unwrap();
-        let prev = std::env::var("SONGBIRD_SOCKET").ok();
-        std::env::remove_var("SONGBIRD_SOCKET");
-
-        let result =
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption)).await;
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            CapabilityError::DiscoveryUnavailable
-        ));
-
-        if let Some(p) = prev {
-            std::env::set_var("SONGBIRD_SOCKET", p);
-        }
+    #[test]
+    fn test_discover_default_socket_path() {
+        temp_env::with_var_unset("SONGBIRD_SOCKET", || {
+            let result = run_async(|| {
+                CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+            });
+            assert!(result.is_err());
+            assert!(matches!(
+                result.unwrap_err(),
+                CapabilityError::DiscoveryUnavailable
+            ));
+        });
     }
 }

@@ -43,10 +43,7 @@ impl ISTFT {
         let window_size: usize = window.shape().iter().product();
         if window_size != n_fft {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Window length ({}) must match n_fft ({})",
-                    window_size, n_fft
-                ),
+                message: format!("Window length ({window_size}) must match n_fft ({n_fft})"),
             });
         }
 
@@ -57,8 +54,7 @@ impl ISTFT {
         if stft_size != expected_size {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "STFT data size ({}) must equal num_frames * bins_per_frame * 2 ({})",
-                    stft_size, expected_size
+                    "STFT data size ({stft_size}) must equal num_frames * bins_per_frame * 2 ({expected_size})"
                 ),
             });
         }

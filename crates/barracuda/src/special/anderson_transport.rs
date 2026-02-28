@@ -55,10 +55,7 @@ pub fn anderson_conductance(
 ) -> Result<f64> {
     if disorder_strength < 0.0 {
         return Err(BarracudaError::InvalidInput {
-            message: format!(
-                "disorder_strength must be non-negative, got {}",
-                disorder_strength
-            ),
+            message: format!("disorder_strength must be non-negative, got {disorder_strength}"),
         });
     }
 

@@ -105,7 +105,7 @@ impl ServiceDiscovery {
     async fn discover_via_method(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
         let services = match &self.method {
             DiscoveryMethod::Auto => self.discover_auto().await,
-            DiscoveryMethod::Environment => self.discover_from_env().await,
+            DiscoveryMethod::Environment => self.discover_from_env(),
             DiscoveryMethod::Mdns => discover_via_mdns().await,
             DiscoveryMethod::ConfigFile { path } => discover_from_config(path).await,
             DiscoveryMethod::Registry { endpoint } => discover_from_registry(endpoint).await,
@@ -147,7 +147,7 @@ impl ServiceDiscovery {
         method: &DiscoveryMethod,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
         match method {
-            DiscoveryMethod::Environment => self.discover_from_env().await,
+            DiscoveryMethod::Environment => self.discover_from_env(),
             DiscoveryMethod::Mdns => discover_via_mdns().await,
             DiscoveryMethod::ConfigFile { path } => discover_from_config(path).await,
             DiscoveryMethod::Registry { endpoint } => discover_from_registry(endpoint).await,
@@ -156,7 +156,11 @@ impl ServiceDiscovery {
     }
 
     /// Discover from environment variables (pub for tests)
-    pub async fn discover_from_env(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DiscoveryError`] if a service URL cannot be parsed.
+    pub fn discover_from_env(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
         let mut services = Vec::new();
         for (key, value) in std::env::vars() {
             if key.starts_with("TOADSTOOL_SERVICE_") && key.ends_with("_URL") {
@@ -192,7 +196,7 @@ impl ServiceDiscovery {
         info!("Using localhost fallbacks for development");
         if let Some(url) = self.fallbacks.get_fallback_url(PRIMAL_NAME) {
             services.push(DiscoveredService {
-                id: format!("fallback-{}", PRIMAL_NAME),
+                id: format!("fallback-{PRIMAL_NAME}"),
                 name: PRIMAL_NAME.to_string(),
                 version: "dev".to_string(),
                 capabilities: vec![Capability::Compute(

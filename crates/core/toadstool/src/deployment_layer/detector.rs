@@ -38,7 +38,7 @@ impl LayerDetector {
         if let Some(container) = self.detect_container().await? {
             return Ok(container);
         }
-        if let Some(cloud) = self.detect_cloud().await? {
+        if let Some(cloud) = self.detect_cloud()? {
             return Ok(cloud);
         }
         if let Some(vm) = self.detect_vm().await? {
@@ -82,26 +82,26 @@ impl LayerDetector {
         Ok(None)
     }
 
-    async fn detect_cloud(&self) -> Result<Option<DeploymentLayer>, DetectionError> {
-        if self.check_aws_metadata().await {
+    fn detect_cloud(&self) -> Result<Option<DeploymentLayer>, DetectionError> {
+        if self.check_aws_metadata() {
             return Ok(Some(DeploymentLayer::CloudLayer {
                 provider: CloudProvider::AWS,
-                instance_type: self.get_aws_instance_type().await.ok(),
-                region: self.get_aws_region().await.ok(),
+                instance_type: self.get_aws_instance_type().ok(),
+                region: self.get_aws_region().ok(),
             }));
         }
-        if self.check_gcp_metadata().await {
+        if self.check_gcp_metadata() {
             return Ok(Some(DeploymentLayer::CloudLayer {
                 provider: CloudProvider::GCP,
-                instance_type: self.get_gcp_instance_type().await.ok(),
-                region: self.get_gcp_region().await.ok(),
+                instance_type: self.get_gcp_instance_type().ok(),
+                region: self.get_gcp_region().ok(),
             }));
         }
-        if self.check_azure_metadata().await {
+        if self.check_azure_metadata() {
             return Ok(Some(DeploymentLayer::CloudLayer {
                 provider: CloudProvider::Azure,
-                instance_type: self.get_azure_instance_type().await.ok(),
-                region: self.get_azure_region().await.ok(),
+                instance_type: self.get_azure_instance_type().ok(),
+                region: self.get_azure_region().ok(),
             }));
         }
         Ok(None)
@@ -113,19 +113,19 @@ impl LayerDetector {
             if product.contains("virtualbox") {
                 return Ok(Some(DeploymentLayer::VMLayer {
                     hypervisor: "VirtualBox".to_string(),
-                    gpu_passthrough: self.detect_gpu_passthrough().await,
+                    gpu_passthrough: self.detect_gpu_passthrough(),
                 }));
             }
             if product.contains("vmware") {
                 return Ok(Some(DeploymentLayer::VMLayer {
                     hypervisor: "VMware".to_string(),
-                    gpu_passthrough: self.detect_gpu_passthrough().await,
+                    gpu_passthrough: self.detect_gpu_passthrough(),
                 }));
             }
             if product.contains("kvm") || product.contains("qemu") {
                 return Ok(Some(DeploymentLayer::VMLayer {
                     hypervisor: "QEMU/KVM".to_string(),
-                    gpu_passthrough: self.detect_gpu_passthrough().await,
+                    gpu_passthrough: self.detect_gpu_passthrough(),
                 }));
             }
         }
@@ -222,57 +222,57 @@ impl LayerDetector {
         Err(DetectionError::ContainerIdNotFound)
     }
 
-    async fn check_aws_metadata(&self) -> bool {
+    fn check_aws_metadata(&self) -> bool {
         std::env::var("AWS_EXECUTION_ENV").is_ok()
             || std::env::var("AWS_LAMBDA_FUNCTION_NAME").is_ok()
             || std::env::var("ECS_CONTAINER_METADATA_URI").is_ok()
     }
 
-    async fn get_aws_instance_type(&self) -> Result<String, DetectionError> {
+    fn get_aws_instance_type(&self) -> Result<String, DetectionError> {
         std::env::var("AWS_INSTANCE_TYPE")
             .or_else(|_| std::env::var("EC2_INSTANCE_TYPE"))
             .or(Ok("unknown".to_string()))
     }
 
-    async fn get_aws_region(&self) -> Result<String, DetectionError> {
+    fn get_aws_region(&self) -> Result<String, DetectionError> {
         std::env::var("AWS_REGION")
             .or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
             .or(Ok("us-east-1".to_string()))
     }
 
-    async fn check_gcp_metadata(&self) -> bool {
+    fn check_gcp_metadata(&self) -> bool {
         std::env::var("GCP_PROJECT").is_ok()
             || std::env::var("GOOGLE_CLOUD_PROJECT").is_ok()
             || std::env::var("GCLOUD_PROJECT").is_ok()
     }
 
-    async fn get_gcp_instance_type(&self) -> Result<String, DetectionError> {
+    fn get_gcp_instance_type(&self) -> Result<String, DetectionError> {
         std::env::var("GCE_MACHINE_TYPE").or(Ok("unknown".to_string()))
     }
 
-    async fn get_gcp_region(&self) -> Result<String, DetectionError> {
+    fn get_gcp_region(&self) -> Result<String, DetectionError> {
         std::env::var("GCE_ZONE")
             .or_else(|_| std::env::var("GOOGLE_CLOUD_ZONE"))
             .or(Ok("unknown".to_string()))
     }
 
-    async fn check_azure_metadata(&self) -> bool {
+    fn check_azure_metadata(&self) -> bool {
         std::env::var("AZURE_SUBSCRIPTION_ID").is_ok()
             || std::env::var("WEBSITE_INSTANCE_ID").is_ok()
             || std::env::var("FUNCTIONS_WORKER_RUNTIME").is_ok()
     }
 
-    async fn get_azure_instance_type(&self) -> Result<String, DetectionError> {
+    fn get_azure_instance_type(&self) -> Result<String, DetectionError> {
         std::env::var("AZURE_VM_SIZE").or(Ok("unknown".to_string()))
     }
 
-    async fn get_azure_region(&self) -> Result<String, DetectionError> {
+    fn get_azure_region(&self) -> Result<String, DetectionError> {
         std::env::var("AZURE_LOCATION")
             .or_else(|_| std::env::var("AZURE_REGION"))
             .or(Ok("unknown".to_string()))
     }
 
-    async fn detect_gpu_passthrough(&self) -> bool {
+    fn detect_gpu_passthrough(&self) -> bool {
         Path::new("/dev/dri").exists()
     }
 

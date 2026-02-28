@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 27, 2026 -- Session 68+++
+**Last Updated**: February 28, 2026 -- Session 70
 
 ---
 
@@ -28,17 +28,17 @@
 
 ---
 
-## Current State (Session 68+++ — February 27, 2026)
+## Current State (Session 70 — February 28, 2026)
 
-**Still evolving.** Deep debt sweep complete. `chrono` fully eliminated. Unsafe evolved. Dead code cleaned. Transitioning from fp64 shaders to true math — springs will have many interactions to evolve as barracuda owns all precision.
+**Still evolving.** Deep debt swept. Test suite fully concurrent and fast. All production stubs evolved. Transitioning from fp64 shaders to true math — springs will have many interactions to evolve as barracuda owns all precision.
 
-- **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery. `RUST_TEST_THREADS=4` default.
-- **Deep debt: clean** — Zero `chrono`, zero `log` (core), 45 justified `unsafe` blocks, ~400 lines dead code removed, zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `dbg!()`
+- **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery.
+- **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests. 6m30s full workspace.
+- **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero production stubs/mocks, 45 justified `unsafe` blocks, zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `dbg!()`. All env tests thread-safe via `temp_env`.
 - **Dual-layer universal precision** — Layer 1: `op_preamble`. Layer 2: naga-guided `df64_rewrite`. `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
-- **700 WGSL shaders** — zero orphans, 21 DF64 files, **zero f32-only**. All f64 canonical.
-- **122 shader tests** — unit, e2e, chaos (15), fault (13).
-- **2,546+ barracuda tests** + 21,599 workspace tests | all quality gates green
+- **661 WGSL shaders** — zero orphans, 21 DF64 files, **zero f32-only**. All f64 canonical.
+- **2,726+ barracuda tests** + 4,700+ workspace lib tests | all quality gates green (0 warnings)
 - **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU
 - **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory
 - **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields + DF64 variants

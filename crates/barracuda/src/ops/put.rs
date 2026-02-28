@@ -47,10 +47,7 @@ impl Put {
         for &idx in &indices {
             if idx as usize >= output_size {
                 return Err(crate::error::BarracudaError::InvalidInput {
-                    message: format!(
-                        "Index {} out of bounds for output size {}",
-                        idx, output_size
-                    ),
+                    message: format!("Index {idx} out of bounds for output size {output_size}"),
                 });
             }
         }

@@ -39,8 +39,7 @@ impl Rfft {
         // Validate degree is power of 2
         if degree == 0 || (degree & (degree - 1)) != 0 {
             return Err(BarracudaError::Device(format!(
-                "FFT degree must be power of 2, got {}",
-                degree
+                "FFT degree must be power of 2, got {degree}"
             )));
         }
 

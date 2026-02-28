@@ -296,10 +296,7 @@ pub(super) fn dispatch(
 
             if c_in != k_c_in {
                 return Err(crate::error::BarracudaError::InvalidInput {
-                    message: format!(
-                        "Conv2D input channels {} != kernel in-channels {}",
-                        c_in, k_c_in
-                    ),
+                    message: format!("Conv2D input channels {c_in} != kernel in-channels {k_c_in}"),
                 });
             }
 

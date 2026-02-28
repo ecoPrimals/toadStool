@@ -306,16 +306,19 @@ impl JsonRpcHandler {
             .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC method dispatch; async for API consistency
     async fn health(&self) -> Result<serde_json::Value, JsonRpcError> {
         let uptime = self.start_time.elapsed();
 
+        #[allow(clippy::cast_possible_truncation)]
+        let error_count = self.error_count.load(Ordering::Relaxed) as usize; // display only
         let status = HealthStatus {
             healthy: true,
             version: self.version.clone(),
             uptime_secs: uptime.as_secs(),
             active_workloads: 0,
             queued_workloads: 0,
-            error_count: self.error_count.load(Ordering::Relaxed) as usize,
+            error_count,
             resource_utilization: 0.0,
         };
 
@@ -323,6 +326,7 @@ impl JsonRpcHandler {
             .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC method dispatch; async for API consistency
     async fn version_info(&self) -> Result<serde_json::Value, JsonRpcError> {
         let mut info = HashMap::new();
         info.insert("version".to_string(), self.version.clone());
@@ -416,7 +420,9 @@ impl JsonRpcHandler {
 
     fn job_queue_error(&self, err: JobQueueError) -> JsonRpcError {
         let code = match &err {
-            JobQueueError::JobNotFound { .. } => JsonRpcError::METHOD_NOT_FOUND,
+            JobQueueError::JobNotFound { .. } => {
+                toadstool_common::constants::jsonrpc::error_codes::WORKLOAD_NOT_FOUND
+            }
             _ => JsonRpcError::INTERNAL_ERROR,
         };
         JsonRpcError {
@@ -439,6 +445,7 @@ impl JsonRpcHandler {
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid graph parameter: {e}")))
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC method dispatch; sync estimator.estimate()
     async fn resources_estimate(
         &self,
         params: Option<&serde_json::Value>,
@@ -483,6 +490,7 @@ impl JsonRpcHandler {
             })
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC method dispatch; async for API consistency
     async fn discover_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
         let capabilities = serde_json::json!({
             "node_capabilities": [
@@ -508,6 +516,7 @@ impl JsonRpcHandler {
         Ok(capabilities)
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC method dispatch; async for API consistency
     async fn gpu_info(&self) -> Result<serde_json::Value, JsonRpcError> {
         Ok(serde_json::json!({
             "devices": crate::gpu_system::query_gpu_devices(),
@@ -516,6 +525,7 @@ impl JsonRpcHandler {
         }))
     }
 
+    #[allow(clippy::unused_async)] // JSON-RPC method dispatch; async for API consistency
     async fn gpu_memory(&self) -> Result<serde_json::Value, JsonRpcError> {
         Ok(serde_json::json!({
             "devices": crate::gpu_system::query_gpu_memory(),

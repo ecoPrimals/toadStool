@@ -41,8 +41,7 @@ impl OneCycle {
     ) -> Result<Self> {
         if current_step >= total_steps {
             return Err(crate::error::BarracudaError::Device(format!(
-                "Current step {} exceeds total steps {}",
-                current_step, total_steps
+                "Current step {current_step} exceeds total steps {total_steps}"
             )));
         }
 
@@ -99,13 +98,13 @@ mod tests {
 
     #[test]
     fn test_onecycle() {
-        let op = OneCycle::new(0.01, 10000, 0, 0.3, 25.0, 10000.0).unwrap();
+        let op = OneCycle::new(0.01, 10_000, 0, 0.3, 25.0, 10_000.0).unwrap();
         let lr_start = op.execute().unwrap();
 
-        let op = OneCycle::new(0.01, 10000, 3000, 0.3, 25.0, 10000.0).unwrap();
+        let op = OneCycle::new(0.01, 10_000, 3000, 0.3, 25.0, 10_000.0).unwrap();
         let lr_peak = op.execute().unwrap();
 
-        let op = OneCycle::new(0.01, 10000, 9999, 0.3, 25.0, 10000.0).unwrap();
+        let op = OneCycle::new(0.01, 10_000, 9999, 0.3, 25.0, 10_000.0).unwrap();
         let lr_end = op.execute().unwrap();
 
         assert!(lr_peak > lr_start);

@@ -215,7 +215,7 @@ mod tests {
         let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
-        let signal = Tensor::from_vec_on(vec![0.5; 10000], vec![10000], device.clone())
+        let signal = Tensor::from_vec_on(vec![0.5; 10_000], vec![10_000], device.clone())
             .await
             .unwrap();
 

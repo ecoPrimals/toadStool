@@ -117,8 +117,7 @@ impl HealthMonitor for ByobHealthMonitor {
             Ok(())
         } else {
             Err(crate::ToadStoolError::runtime(format!(
-                "Deployment {} not found",
-                deployment_id
+                "Deployment {deployment_id} not found"
             )))
         }
     }

@@ -100,7 +100,7 @@ async fn run_inference_on_gpu(
     test_data: &MnistDataset,
     num_samples: usize,
 ) -> Result<BenchmarkStats> {
-    println!("🎮 Running on {}...", gpu);
+    println!("🎮 Running on {gpu}...");
     println!("   Backend: {}", gpu.backend);
     println!("   Memory:  {:.1} GB", gpu.memory_gb);
 
@@ -201,7 +201,7 @@ async fn run_inference_on_gpu(
     let batch_size = if use_batching { 64 } else { 1 };
 
     if use_batching {
-        println!("   🚀 Using batched execution (batch_size={})", batch_size);
+        println!("   🚀 Using batched execution (batch_size={batch_size})");
     }
 
     // Run inference (batched if GPU, single if CPU)
@@ -273,16 +273,16 @@ async fn run_inference_on_gpu(
 
     // Display results
     println!("  ═══ Results ═══");
-    println!("  Samples:    {}", num_samples);
-    println!("  Correct:    {}", correct);
+    println!("  Samples:    {num_samples}");
+    println!("  Correct:    {correct}");
     println!("  Accuracy:   {:.2}%", accuracy * 100.0);
     println!();
     println!("  ═══ Performance ═══");
     println!("  Total time:    {:.2}s", total_time.as_secs_f64());
-    println!("  Avg latency:   {:.3}ms", avg_latency);
-    println!("  Min latency:   {:.3}ms", min_latency);
-    println!("  Max latency:   {:.3}ms", max_latency);
-    println!("  Throughput:    {:.0} images/sec", throughput);
+    println!("  Avg latency:   {avg_latency:.3}ms");
+    println!("  Min latency:   {min_latency:.3}ms");
+    println!("  Max latency:   {max_latency:.3}ms");
+    println!("  Throughput:    {throughput:.0} images/sec");
 
     Ok(BenchmarkStats {
         backend: format!("{} {}", gpu.vendor, gpu.backend),
@@ -393,7 +393,7 @@ fn print_summary(gpus: &[GpuInfo], results: &[BenchmarkStats]) {
         let gpu_result = &results[0];
         let cpu_result = &results[1];
         let speedup = gpu_result.throughput_per_sec / cpu_result.throughput_per_sec;
-        println!("  ⚡ GPU Speedup: {:.1}x faster than CPU!", speedup);
+        println!("  ⚡ GPU Speedup: {speedup:.1}x faster than CPU!");
     }
     println!();
 

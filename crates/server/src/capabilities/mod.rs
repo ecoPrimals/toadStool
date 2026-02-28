@@ -84,6 +84,7 @@ impl PrimalCapabilities {
     /// Discover self (self-knowledge!)
     ///
     /// Deep debt principle: Query local system only!
+    #[allow(clippy::unused_async)] // API consistency; may add async discovery in future
     pub async fn discover_self(primal_type: &str) -> Self {
         info!("🔍 Discovering self capabilities (self-knowledge!)");
 
@@ -121,6 +122,10 @@ impl PrimalCapabilities {
     /// - Writes capability file to shared discovery directory
     /// - Peers can read it to discover us
     /// - No centralized registry!
+    ///
+    /// # Errors
+    ///
+    /// Returns error string if directory creation, serialization, or file write fails.
     pub async fn announce(&self) -> Result<(), String> {
         let discovery_dir = discovery_directory();
 
@@ -147,6 +152,10 @@ impl PrimalCapabilities {
     /// Find peer with specific capability
     ///
     /// Deep debt principle: Runtime discovery!
+    ///
+    /// # Errors
+    ///
+    /// Returns error string if discovery directory read fails or no peer with the capability is found.
     pub async fn find_peer_with(capability: &str) -> Result<Self, String> {
         Self::find_peer_with_in(capability, &discovery_directory()).await
     }
@@ -154,6 +163,10 @@ impl PrimalCapabilities {
     /// Find peer with specific capability in a given discovery directory.
     ///
     /// Testable variant that avoids global env var mutation.
+    ///
+    /// # Errors
+    ///
+    /// Returns error string if directory read fails, file parse fails, or no peer with the capability is found.
     pub async fn find_peer_with_in(
         capability: &str,
         discovery_dir: &std::path::Path,
@@ -200,6 +213,10 @@ impl PrimalCapabilities {
     /// Find all peers
     ///
     /// Deep debt principle: Peer discovery at runtime!
+    ///
+    /// # Errors
+    ///
+    /// Returns error string if discovery directory read fails.
     pub async fn find_all_peers() -> Result<Vec<Self>, String> {
         Self::find_all_peers_in(&discovery_directory()).await
     }
@@ -207,6 +224,10 @@ impl PrimalCapabilities {
     /// Find all peers in a given discovery directory.
     ///
     /// Testable variant that avoids global env var mutation.
+    ///
+    /// # Errors
+    ///
+    /// Returns error string if discovery directory read fails.
     pub async fn find_all_peers_in(discovery_dir: &std::path::Path) -> Result<Vec<Self>, String> {
         debug!("🔍 Discovering all peers");
         let mut peers = Vec::new();
@@ -242,6 +263,10 @@ impl PrimalCapabilities {
     }
 
     /// Cleanup announcement on shutdown
+    ///
+    /// # Errors
+    ///
+    /// Returns error string if capability file removal fails.
     pub async fn cleanup(&self) -> Result<(), String> {
         let discovery_dir = discovery_directory();
         let capability_file = discovery_dir.join(format!("{}.json", self.primal_id));
@@ -261,6 +286,7 @@ impl PrimalCapabilities {
 /// Query local system resources
 ///
 /// Deep debt principle: Self-knowledge only!
+#[must_use]
 pub fn query_system_resources() -> SystemResources {
     let cpu_cores = std::thread::available_parallelism()
         .map(std::num::NonZero::get)
@@ -514,7 +540,7 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
 /// Capability name constants (avoids repeated literal allocations)
 pub(crate) const CAP_COMPUTE: &str = "compute";
 pub(crate) const CAP_ORCHESTRATION: &str = "orchestration";
-pub(crate) const CAP_JSON_RPC: &str = "json-rpc";
+pub(crate) const CAP_JSON_RPC: &str = "jsonrpc";
 pub(crate) const CAP_MEMORY_LARGE: &str = "memory-large";
 pub(crate) const CAP_MEMORY_MEDIUM: &str = "memory-medium";
 pub(crate) const CAP_MEMORY_SMALL: &str = "memory-small";
@@ -522,6 +548,7 @@ pub(crate) const CAP_MEMORY_SMALL: &str = "memory-small";
 /// Build capabilities list from resources
 ///
 /// Deep debt principle: Self-knowledge - report only what we have!
+#[must_use]
 pub fn build_capabilities(resources: &SystemResources) -> Vec<String> {
     let mut capabilities = vec![
         CAP_COMPUTE.to_string(),

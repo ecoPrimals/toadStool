@@ -144,9 +144,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         };
 
         println!("══════════════════════════════════════════════════════════════════════════════");
-        println!("  {}", name);
-        println!("  Theoretical Bandwidth: {:.1} GB/s", theoretical);
-        println!("  L2/Infinity Cache: {:.0} MB", cache_size_mb);
+        println!("  {name}");
+        println!("  Theoretical Bandwidth: {theoretical:.1} GB/s");
+        println!("  L2/Infinity Cache: {cache_size_mb:.0} MB");
         println!(
             "  Min size for DRAM test: {}M elements ({:.0} MB)",
             min_dram_size / 1_000_000,
@@ -211,8 +211,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
             };
 
             println!(
-                "  │ {:>14} │ {:>8.1} │ {:>8.0} │ {:>8.1} │ {:>10.1}% {:6} │",
-                size_str, data_mb, time_us, bandwidth, pct, note
+                "  │ {size_str:>14} │ {data_mb:>8.1} │ {time_us:>8.0} │ {bandwidth:>8.1} │ {pct:>10.1}% {note:6} │"
             );
         }
         println!("  └────────────────┴────────────┴────────────┴────────────┴────────────────┘\n");
@@ -227,9 +226,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let dram_pct = dram_bw / theoretical * 100.0;
 
         println!("     Data size:     192 MB (12 bytes/element × 16M elements)");
-        println!("     Time per op:   {:.0} μs", dram_time);
-        println!("     Bandwidth:     {:.1} GB/s", dram_bw);
-        println!("     % Theoretical: {:.1}%", dram_pct);
+        println!("     Time per op:   {dram_time:.0} μs");
+        println!("     Bandwidth:     {dram_bw:.1} GB/s");
+        println!("     % Theoretical: {dram_pct:.1}%");
 
         if dram_pct > 85.0 {
             println!("     Status:        ✅ EXCELLENT (>85% theoretical)");

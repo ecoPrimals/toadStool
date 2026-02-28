@@ -205,6 +205,10 @@ impl FallbackEndpoints {
     }
 
     /// Deprecated alias for `fallback_endpoint`. Use `fallback_endpoint` instead.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if localhost fallback is disabled.
     #[deprecated(since = "0.3.0", note = "Use fallback_endpoint() instead")]
     pub fn localhost_endpoint(&self, offset: u16) -> Result<String, std::io::Error> {
         self.fallback_endpoint(offset)

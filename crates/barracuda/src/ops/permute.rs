@@ -37,12 +37,12 @@ impl Permute {
         for &idx in &permutation {
             if idx >= num_dims {
                 return Err(crate::error::BarracudaError::InvalidInput {
-                    message: format!("Invalid permutation index {} for rank {}", idx, num_dims),
+                    message: format!("Invalid permutation index {idx} for rank {num_dims}"),
                 });
             }
             if seen[idx] {
                 return Err(crate::error::BarracudaError::InvalidInput {
-                    message: format!("Duplicate index {} in permutation", idx),
+                    message: format!("Duplicate index {idx} in permutation"),
                 });
             }
             seen[idx] = true;

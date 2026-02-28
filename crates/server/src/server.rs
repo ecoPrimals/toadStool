@@ -76,6 +76,9 @@ impl ToadStoolServer {
             None
         };
 
+        // Production uses real SystemResourceMonitor from toadstool::resources.
+        // Tests use MockResourceMonitor (toadstool_testing) for predictable behavior.
+        // Evolution: No mock in production path; SystemResourceMonitor reads /proc (Linux) or equivalent.
         let state = ServerState {
             runtime_engines: Arc::new(RwLock::new(HashMap::new())),
             active_executions: Arc::new(RwLock::new(HashMap::new())),
@@ -192,6 +195,8 @@ impl ToadStoolServer {
 
 #[cfg(test)]
 mod tests {
+    // Production uses real RuntimeEngine implementations (native, wasm, etc.).
+    // MockRuntimeEngine is test-only for unit tests; never in production paths.
     use super::*;
     use toadstool_testing::mocks::MockRuntimeEngine;
 

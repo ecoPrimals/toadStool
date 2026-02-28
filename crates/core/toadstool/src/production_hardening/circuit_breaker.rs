@@ -65,6 +65,7 @@ pub enum CircuitBreakerError {
 impl CircuitBreaker {
     #[must_use]
     pub fn new(service_name: impl Into<String>, config: CircuitBreakerConfig) -> Self {
+        #[allow(clippy::cast_possible_truncation)]
         let half_open_permits = config.half_open_max_requests as usize;
         Self {
             config,

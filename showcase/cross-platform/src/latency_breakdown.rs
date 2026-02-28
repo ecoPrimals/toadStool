@@ -59,7 +59,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         println!(
             "\n══════════════════════════════════════════════════════════════════════════════"
         );
-        println!("  {}", name);
+        println!("  {name}");
         println!(
             "══════════════════════════════════════════════════════════════════════════════\n"
         );
@@ -103,9 +103,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let shader_subsequent = shader_times[1..].iter().sum::<f64>() / (iterations - 1) as f64;
 
         println!("  1. SHADER COMPILATION");
-        println!("     First:      {:>8.1} μs", shader_first);
-        println!("     Subsequent: {:>8.1} μs (avg)", shader_subsequent);
-        println!("     Average:    {:>8.1} μs\n", shader_avg);
+        println!("     First:      {shader_first:>8.1} μs");
+        println!("     Subsequent: {shader_subsequent:>8.1} μs (avg)");
+        println!("     Average:    {shader_avg:>8.1} μs\n");
 
         // Keep one shader for subsequent tests
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -161,7 +161,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let bgl_avg = bgl_times.iter().sum::<f64>() / iterations as f64;
 
         println!("  2. BIND GROUP LAYOUT CREATION");
-        println!("     Average:    {:>8.1} μs\n", bgl_avg);
+        println!("     Average:    {bgl_avg:>8.1} μs\n");
 
         // Keep one for subsequent tests
         let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -198,7 +198,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let bg_avg = bg_times.iter().sum::<f64>() / iterations as f64;
 
         println!("  3. BIND GROUP CREATION");
-        println!("     Average:    {:>8.1} μs\n", bg_avg);
+        println!("     Average:    {bg_avg:>8.1} μs\n");
 
         // Keep one for subsequent tests
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -247,9 +247,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let pipeline_subsequent = pipeline_times[1..].iter().sum::<f64>() / (iterations - 1) as f64;
 
         println!("  4. COMPUTE PIPELINE CREATION");
-        println!("     First:      {:>8.1} μs", pipeline_first);
-        println!("     Subsequent: {:>8.1} μs (avg)", pipeline_subsequent);
-        println!("     Average:    {:>8.1} μs\n", pipeline_avg);
+        println!("     First:      {pipeline_first:>8.1} μs");
+        println!("     Subsequent: {pipeline_subsequent:>8.1} μs (avg)");
+        println!("     Average:    {pipeline_avg:>8.1} μs\n");
 
         // Keep one for subsequent tests
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -283,7 +283,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let encode_avg = encode_times.iter().sum::<f64>() / iterations as f64;
 
         println!("  5. COMMAND ENCODING (no submit)");
-        println!("     Average:    {:>8.1} μs\n", encode_avg);
+        println!("     Average:    {encode_avg:>8.1} μs\n");
 
         // ═══════════════════════════════════════════════════════════════════════
         // MEASURE 6: SUBMIT + WAIT (GPU execution)
@@ -307,7 +307,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let submit_avg = submit_times.iter().sum::<f64>() / iterations as f64;
 
         println!("  6. SUBMIT + GPU EXECUTION + WAIT");
-        println!("     Average:    {:>8.1} μs\n", submit_avg);
+        println!("     Average:    {submit_avg:>8.1} μs\n");
 
         // ═══════════════════════════════════════════════════════════════════════
         // MEASURE 7: FULL OPERATION (like current add.rs)
@@ -378,7 +378,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let full_avg = full_times.iter().sum::<f64>() / iterations as f64;
 
         println!("  7. FULL OPERATION (recreate everything)");
-        println!("     Average:    {:>8.1} μs\n", full_avg);
+        println!("     Average:    {full_avg:>8.1} μs\n");
 
         // ═══════════════════════════════════════════════════════════════════════
         // MEASURE 8: OPTIMIZED (reuse shader + pipeline)
@@ -405,7 +405,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let opt_avg = opt_times.iter().sum::<f64>() / iterations as f64;
 
         println!("  8. OPTIMIZED (reuse shader + pipeline)");
-        println!("     Average:    {:>8.1} μs\n", opt_avg);
+        println!("     Average:    {opt_avg:>8.1} μs\n");
 
         // ═══════════════════════════════════════════════════════════════════════
         // SUMMARY
@@ -444,8 +444,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
             100.0 * submit_avg / full_avg
         );
         println!("  ──────────────────────────────────────────────────────────────");
-        println!("  Full (current add.rs):  {:>8.1} μs", full_avg);
-        println!("  Optimized (reuse):      {:>8.1} μs", opt_avg);
+        println!("  Full (current add.rs):  {full_avg:>8.1} μs");
+        println!("  Optimized (reuse):      {opt_avg:>8.1} μs");
         println!("  Potential speedup:      {:>8.1}x", full_avg / opt_avg);
         println!("\n  CUDA reference:         ~15-50 μs");
         println!("  ROCm reference:         ~20-60 μs");

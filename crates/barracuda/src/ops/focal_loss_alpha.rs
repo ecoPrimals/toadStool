@@ -30,7 +30,7 @@ impl FocalLossAlpha {
         if gamma < 0.0 {
             return Err(BarracudaError::invalid_op(
                 "FocalLossAlpha",
-                format!("gamma must be non-negative, got {}", gamma),
+                format!("gamma must be non-negative, got {gamma}"),
             ));
         }
 
@@ -61,17 +61,14 @@ impl FocalLossAlpha {
         if pred_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "FocalLossAlpha",
-                format!(
-                    "predictions must be 2D [batch, num_classes], got shape {:?}",
-                    pred_shape
-                ),
+                format!("predictions must be 2D [batch, num_classes], got shape {pred_shape:?}"),
             ));
         }
 
         if target_shape.len() != 1 {
             return Err(BarracudaError::invalid_op(
                 "FocalLossAlpha",
-                format!("targets must be 1D [batch], got shape {:?}", target_shape),
+                format!("targets must be 1D [batch], got shape {target_shape:?}"),
             ));
         }
 

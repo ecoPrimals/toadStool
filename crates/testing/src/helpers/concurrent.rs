@@ -190,7 +190,7 @@ where
 {
     let start = tokio::time::Instant::now();
     let mut current_interval = check_interval;
-    let max_interval = check_interval * 4; // Cap backoff
+    let max_interval = std::cmp::min(check_interval * 2, Duration::from_millis(20));
 
     while !condition() {
         if start.elapsed() > timeout_duration {
@@ -205,7 +205,7 @@ where
             return Ok(());
         }
 
-        // Sleep with exponential backoff
+        // Short sleep with exponential backoff (capped for fast tests)
         tokio::time::sleep(current_interval).await;
         current_interval = std::cmp::min(current_interval * 2, max_interval);
     }
@@ -228,7 +228,7 @@ where
 {
     let start = tokio::time::Instant::now();
     let mut current_interval = check_interval;
-    let max_interval = check_interval * 4; // Cap backoff
+    let max_interval = std::cmp::min(check_interval * 2, Duration::from_millis(20));
 
     while !condition().await {
         if start.elapsed() > timeout_duration {
@@ -243,7 +243,7 @@ where
             return Ok(());
         }
 
-        // Sleep with exponential backoff
+        // Short sleep with exponential backoff (capped for fast tests)
         tokio::time::sleep(current_interval).await;
         current_interval = std::cmp::min(current_interval * 2, max_interval);
     }
@@ -341,7 +341,7 @@ mod tests {
         let s = Arc::clone(&state);
 
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            tokio::task::yield_now().await;
             *s.lock().await = true;
         });
 

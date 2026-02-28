@@ -139,10 +139,9 @@ mod ioctls {
 /// Returns `Err` if the kernel returns a negative value (errno).
 #[inline]
 fn vfio_ioctl_int(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong) -> Result<i32> {
-    let ret = unsafe {
-        // SAFETY: VFIO ioctl with no arg. fd valid from caller; op is VFIO constant.
-        libc::ioctl(fd.as_raw_fd(), op as _, 0)
-    };
+    // SAFETY: VFIO ioctl with no arg. fd is valid from caller; op is a VFIO constant.
+    // The kernel only reads the fd and op; no pointer or struct is passed.
+    let ret = unsafe { libc::ioctl(fd.as_raw_fd(), op as _, 0) };
     if ret < 0 {
         Err(AkidaError::capability_query_failed(format!(
             "ioctl failed: {}",
@@ -156,10 +155,9 @@ fn vfio_ioctl_int(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong) -> Result<i32> 
 /// Safe wrapper for VFIO ioctls that take a u32 arg and return int.
 #[inline]
 fn vfio_ioctl_int_arg(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: u32) -> Result<i32> {
-    let ret = unsafe {
-        // SAFETY: VFIO ioctl with u32 arg (e.g. CHECK_EXTENSION, SET_IOMMU). fd valid; arg is value.
-        libc::ioctl(fd.as_raw_fd(), op as _, arg)
-    };
+    // SAFETY: VFIO ioctl with u32 arg (e.g. CHECK_EXTENSION, SET_IOMMU). fd is valid; arg is a
+    // plain value, not a pointer. The kernel reads the integer directly.
+    let ret = unsafe { libc::ioctl(fd.as_raw_fd(), op as _, arg) };
     if ret < 0 {
         Err(AkidaError::capability_query_failed(format!(
             "ioctl failed: {}",
@@ -173,10 +171,9 @@ fn vfio_ioctl_int_arg(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: u32) -
 /// Safe wrapper for VFIO _IOWR ioctls (read/write struct).
 #[inline]
 fn vfio_ioctl_iowr<T>(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: &mut T) -> Result<()> {
-    let ret = unsafe {
-        // SAFETY: _IOWR ioctl reads/writes arg. fd valid; arg points to valid struct; layout matches kernel.
-        libc::ioctl(fd.as_raw_fd(), op as _, arg)
-    };
+    // SAFETY: _IOWR ioctl reads/writes arg. fd is valid; arg points to a valid struct with layout
+    // matching the kernel's expected format. T is #[repr(C)] and properly initialized.
+    let ret = unsafe { libc::ioctl(fd.as_raw_fd(), op as _, arg) };
     if ret < 0 {
         Err(AkidaError::capability_query_failed(format!(
             "ioctl failed: {}",
@@ -190,10 +187,9 @@ fn vfio_ioctl_iowr<T>(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: &mut T
 /// Safe wrapper for VFIO _IOW ioctls (write-only struct).
 #[inline]
 fn vfio_ioctl_iow<T>(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: &T) -> Result<()> {
-    let ret = unsafe {
-        // SAFETY: _IOW ioctl reads arg. fd valid; arg points to valid struct; layout matches kernel.
-        libc::ioctl(fd.as_raw_fd(), op as _, arg)
-    };
+    // SAFETY: _IOW ioctl reads arg. fd is valid; arg points to a valid struct with layout matching
+    // the kernel's expected format. T is #[repr(C)] and properly initialized.
+    let ret = unsafe { libc::ioctl(fd.as_raw_fd(), op as _, arg) };
     if ret < 0 {
         Err(AkidaError::capability_query_failed(format!(
             "ioctl failed: {}",
@@ -211,10 +207,9 @@ fn vfio_ioctl_ptr_arg(
     op: std::os::raw::c_ulong,
     arg: *const std::ffi::c_void,
 ) -> Result<i32> {
-    let ret = unsafe {
-        // SAFETY: ioctl with pointer arg. fd valid; arg valid for kernel to read (e.g. C string, fd ptr).
-        libc::ioctl(fd.as_raw_fd(), op as _, arg)
-    };
+    // SAFETY: ioctl with pointer arg. fd is valid; arg is valid for the kernel to read (e.g. C
+    // string, fd pointer). Caller guarantees arg points to valid memory for the kernel's use.
+    let ret = unsafe { libc::ioctl(fd.as_raw_fd(), op as _, arg) };
     if ret < 0 {
         Err(AkidaError::capability_query_failed(format!(
             "ioctl failed: {}",
@@ -342,10 +337,9 @@ impl DmaBuffer {
         );
 
         // Use safe ioctl wrapper; validates return code
-        let container_borrowed = unsafe {
-            // SAFETY: container_fd valid from VFIO container open; caller guarantees it outlives this call.
-            BorrowedFd::borrow_raw(container_fd)
-        };
+        // SAFETY: container_fd is valid from VFIO container open; caller guarantees it outlives
+        // this call. borrow_raw requires a valid fd; we hold the container File.
+        let container_borrowed = unsafe { BorrowedFd::borrow_raw(container_fd) };
         if let Err(e) = vfio_ioctl_iow(container_borrowed, ioctls::VFIO_IOMMU_MAP_DMA, &dma_map) {
             tracing::warn!("DMA map failed: {e}");
             // Clean up allocated memory on failure
@@ -421,10 +415,9 @@ impl Drop for DmaBuffer {
         };
 
         // Use safe ioctl wrapper; ignore error in Drop (can't propagate)
-        let container_borrowed = unsafe {
-            // SAFETY: container_fd valid from VFIO container; DmaBuffer dropped before container.
-            BorrowedFd::borrow_raw(self.container_fd)
-        };
+        // SAFETY: container_fd is valid from VFIO container; DmaBuffer is dropped before the
+        // container, so the fd is still open. borrow_raw requires a valid fd.
+        let container_borrowed = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
         let _ = vfio_ioctl_iow(container_borrowed, ioctls::VFIO_IOMMU_UNMAP_DMA, &dma_unmap);
 
         // Deallocate memory (use safe Layout::from_size_align - eliminates one unsafe block)
@@ -651,11 +644,9 @@ impl NpuBackend for VfioBackend {
         )?;
 
         // Take ownership of the fd returned by the kernel
-        let device = unsafe {
-            // SAFETY: device_fd from successful VFIO_GROUP_GET_DEVICE_FD; kernel returns valid fd.
-            // We take ownership; OwnedFd will close it on drop.
-            OwnedFd::from_raw_fd(device_fd)
-        };
+        // SAFETY: device_fd comes from successful VFIO_GROUP_GET_DEVICE_FD; the kernel returns a
+        // valid fd. We take ownership; OwnedFd will close it on drop.
+        let device = unsafe { OwnedFd::from_raw_fd(device_fd) };
 
         // Query device info
         let mut device_info = VfioDeviceInfo {

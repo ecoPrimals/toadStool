@@ -19,6 +19,10 @@ pub fn get_biomeos_dir() -> PathBuf {
 }
 
 /// Ensure biomeos directory exists with proper permissions
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] if directory creation or permission setting fails.
 pub fn ensure_biomeos_dir() -> std::io::Result<PathBuf> {
     let biomeos_dir = get_biomeos_dir();
     std::fs::create_dir_all(&biomeos_dir)?;

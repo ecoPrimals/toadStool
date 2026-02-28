@@ -25,8 +25,7 @@ impl Take {
         if indices.iter().any(|&idx| idx as usize >= input_size) {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: format!(
-                    "Index out of bounds: input_size={}, indices={:?}",
-                    input_size, indices
+                    "Index out of bounds: input_size={input_size}, indices={indices:?}"
                 ),
             });
         }

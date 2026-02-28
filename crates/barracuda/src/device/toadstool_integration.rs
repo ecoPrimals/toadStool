@@ -372,7 +372,7 @@ impl std::fmt::Display for HardwareReport {
                 f64_mark,
                 device.backends.join("/")
             )?;
-            writeln!(f, "      Preferred backend: {}", preferred)?;
+            writeln!(f, "      Preferred backend: {preferred}")?;
         }
         Ok(())
     }

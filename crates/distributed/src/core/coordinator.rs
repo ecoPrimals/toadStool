@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -29,11 +30,12 @@ pub struct StandaloneExecutor {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)] // Fields used for execution tracking; full usage in Phase 5+
+#[allow(dead_code)] // Fields used for execution tracking; cancel_token used for cancellation
 struct ExecutionSession {
     pub execution_id: Uuid,
     pub request: ExecutionRequest,
     pub started_at: Instant,
+    pub cancel_token: CancellationToken,
 }
 
 impl DistributedCoordinator {
@@ -144,13 +146,30 @@ impl DistributedCoordinator {
     pub async fn submit_execution(&self, request: ExecutionRequest) -> ToadStoolResult<Uuid> {
         info!("Submitting execution request");
 
-        // For now, route everything to standalone executor
-        let execution_id = Uuid::new_v4();
+        // Use request's execution_id when valid (enables cancel by workload_id), else generate new
+        let execution_id = if request.execution_id != Uuid::nil() {
+            request.execution_id
+        } else {
+            Uuid::new_v4()
+        };
+
         self.standalone_executor
             .submit_execution(execution_id, request)
             .await?;
 
         Ok(execution_id)
+    }
+
+    /// Cancel a running or queued execution by ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the execution ID is not found in active executions.
+    #[must_use = "Cancellation result should be checked"]
+    pub async fn cancel_execution(&self, execution_id: Uuid) -> ToadStoolResult<()> {
+        self.standalone_executor
+            .cancel_execution(execution_id)
+            .await
     }
 
     async fn detect_capabilities() -> ToadStoolResult<ToadStoolCapabilities> {
@@ -176,10 +195,12 @@ impl StandaloneExecutor {
             execution_id
         );
 
+        let cancel_token = CancellationToken::new();
         let session = ExecutionSession {
             execution_id,
             request,
             started_at: Instant::now(),
+            cancel_token,
         };
 
         // Check if we're at capacity
@@ -203,6 +224,20 @@ impl StandaloneExecutor {
         // For now, we'll just log it
         info!("Execution {} queued for processing", execution_id);
 
+        Ok(())
+    }
+
+    async fn cancel_execution(&self, execution_id: Uuid) -> ToadStoolResult<()> {
+        let mut active_executions = self.active_executions.write().await;
+        let session = active_executions.remove(&execution_id).ok_or_else(|| {
+            toadstool::ToadStoolError::execution(format!(
+                "Execution {} not found (already completed or never submitted)",
+                execution_id
+            ))
+        })?;
+
+        session.cancel_token.cancel();
+        info!("Execution {} cancelled", execution_id);
         Ok(())
     }
 }

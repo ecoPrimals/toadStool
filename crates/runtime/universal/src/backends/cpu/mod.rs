@@ -112,7 +112,7 @@ impl CpuComputeUnit {
             ],
         };
 
-        let name = format!("CPU ({} cores)", num_cores);
+        let name = format!("CPU ({num_cores} cores)");
 
         Self { name, capabilities }
     }

@@ -42,7 +42,7 @@ impl CircularPad2d {
         if shape.len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "circular_pad2d",
-                format!("input must be 4D [B, C, H, W], got shape {:?}", shape),
+                format!("input must be 4D [B, C, H, W], got shape {shape:?}"),
             ));
         }
 

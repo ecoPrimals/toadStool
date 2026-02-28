@@ -55,8 +55,8 @@ fn main() -> Result<()> {
     let w_in_mean = w_in.mean().unwrap_or(0.0);
     let w_in_std = w_in.std(0.0);
     println!("   W_in (Input weights):");
-    println!("      Mean: {:.6}", w_in_mean);
-    println!("      Std:  {:.6}", w_in_std);
+    println!("      Mean: {w_in_mean:.6}");
+    println!("      Std:  {w_in_std:.6}");
     println!(
         "      Min:  {:.6}",
         w_in.iter().cloned().fold(f32::INFINITY, f32::min)
@@ -69,8 +69,8 @@ fn main() -> Result<()> {
     let w_res_mean = w_res.mean().unwrap_or(0.0);
     let w_res_std = w_res.std(0.0);
     println!("\n   W_res (Reservoir weights):");
-    println!("      Mean: {:.6}", w_res_mean);
-    println!("      Std:  {:.6}", w_res_std);
+    println!("      Mean: {w_res_mean:.6}");
+    println!("      Std:  {w_res_std:.6}");
     println!(
         "      Min:  {:.6}",
         w_res.iter().cloned().fold(f32::INFINITY, f32::min)
@@ -83,7 +83,7 @@ fn main() -> Result<()> {
     // Check echo state property (approximate)
     let frobenius_norm: f32 = w_res.iter().map(|&x| x * x).sum::<f32>().sqrt();
     println!("\n   Echo State Property:");
-    println!("      Frobenius norm: {:.6}", frobenius_norm);
+    println!("      Frobenius norm: {frobenius_norm:.6}");
     println!("      Target spectral radius: 0.9");
 
     if frobenius_norm < 1.5 {
@@ -93,7 +93,7 @@ fn main() -> Result<()> {
     }
 
     // Save
-    println!("\n💾 Would save to: reservoir_seed{}_size1000.npy", seed);
+    println!("\n💾 Would save to: reservoir_seed{seed}_size1000.npy");
     println!("\n   ⚠️  NOTE: .fbz conversion not yet implemented!");
     println!("   To create actual .fbz file:");
     println!("      1. Export weights to NumPy format (.npy)");

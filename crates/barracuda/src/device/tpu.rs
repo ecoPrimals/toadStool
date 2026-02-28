@@ -370,7 +370,7 @@ impl std::fmt::Display for TpuGeneration {
             TpuGeneration::V5 => write!(f, "v5"),
             TpuGeneration::V5e => write!(f, "v5e"),
             TpuGeneration::CoralEdge => write!(f, "Coral Edge"),
-            TpuGeneration::Custom(v) => write!(f, "Custom v{}", v),
+            TpuGeneration::Custom(v) => write!(f, "Custom v{v}"),
         }
     }
 }

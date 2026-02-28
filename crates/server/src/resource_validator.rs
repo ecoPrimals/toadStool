@@ -139,6 +139,10 @@ impl ResourceValidator {
     /// 2. System capability query
     /// 3. Comparison and gap analysis
     /// 4. Warning generation
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError`] if estimation fails or system capability query fails.
     pub async fn validate_availability(
         &self,
         graph: &ExecutionGraph,
@@ -276,7 +280,8 @@ impl ResourceValidator {
                 // Conservative estimate: 2GB per GPU (wgpu doesn't expose actual memory)
                 // Real memory should be queried via vendor-specific APIs when needed
                 let estimated_memory_per_gpu = 2 * 1024 * 1024 * 1024; // 2GB
-                let total_gpu_memory = estimated_memory_per_gpu * gpu_count as u64;
+                #[allow(clippy::cast_possible_truncation)]
+                let total_gpu_memory = estimated_memory_per_gpu * gpu_count as u64; // fits: GPU count < u64::MAX
 
                 (total_gpu_memory, total_gpu_memory, gpu_count, gpu_types)
             }
@@ -289,6 +294,7 @@ impl ResourceValidator {
 
     /// Discover GPUs using wgpu (vendor-agnostic, part of barraCuda)
     #[cfg(feature = "gpu-discovery")]
+    #[allow(clippy::unused_async)] // Sync wgpu enumerate; async for API consistency with fallback
     async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -319,6 +325,7 @@ impl ResourceValidator {
 
     /// Fallback when GPU discovery not available
     #[cfg(not(feature = "gpu-discovery"))]
+    #[allow(clippy::unused_async)] // Matches gpu-discovery variant; sync fallback
     async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
         Ok(Vec::new())
     }
@@ -349,9 +356,9 @@ impl ResourceValidator {
         if estimate.cpu_cores > capabilities.available_cpu_cores {
             gaps.push(ResourceGap {
                 resource_type: "cpu_cores".to_string(),
-                required: estimate.cpu_cores as u64,
-                available: capabilities.available_cpu_cores as u64,
-                shortage: (estimate.cpu_cores - capabilities.available_cpu_cores) as u64,
+                required: u64::from(estimate.cpu_cores),
+                available: u64::from(capabilities.available_cpu_cores),
+                shortage: u64::from(estimate.cpu_cores - capabilities.available_cpu_cores),
                 suggestion: format!(
                     "Need {} more CPU cores. Consider reducing parallelism or waiting for resources.",
                     estimate.cpu_cores - capabilities.available_cpu_cores
@@ -425,6 +432,7 @@ impl ResourceValidator {
         let mut warnings = Vec::new();
 
         // Warn if CPU usage is > 70%
+        #[allow(clippy::cast_precision_loss)]
         let cpu_usage = estimate.cpu_cores as f32 / capabilities.available_cpu_cores as f32;
         if cpu_usage > 0.7 && cpu_usage <= 1.0 {
             warnings.push(format!(
@@ -434,6 +442,7 @@ impl ResourceValidator {
         }
 
         // Warn if memory usage is > 70%
+        #[allow(clippy::cast_precision_loss)]
         let memory_usage =
             estimate.memory_bytes as f32 / capabilities.available_memory_bytes as f32;
         if memory_usage > 0.7 && memory_usage <= 1.0 {
@@ -445,6 +454,7 @@ impl ResourceValidator {
 
         // Warn if GPU memory usage is > 70%
         if capabilities.total_gpu_memory_bytes > 0 {
+            #[allow(clippy::cast_precision_loss)]
             let gpu_usage =
                 estimate.gpu_memory_bytes as f32 / capabilities.available_gpu_memory_bytes as f32;
             if gpu_usage > 0.7 && gpu_usage <= 1.0 {
@@ -456,6 +466,7 @@ impl ResourceValidator {
         }
 
         // Warn if storage usage is > 80%
+        #[allow(clippy::cast_precision_loss)]
         let storage_usage =
             estimate.storage_bytes as f32 / capabilities.available_storage_bytes as f32;
         if storage_usage > 0.8 && storage_usage <= 1.0 {

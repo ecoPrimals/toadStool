@@ -68,7 +68,10 @@ impl ConstraintEvaluation {
         }
 
         let total_score: f64 = soft_results.iter().map(|s| s.score()).sum();
-        total_score / soft_results.len() as f64
+        let len = soft_results.len();
+        #[allow(clippy::cast_precision_loss)]
+        let result = total_score / len as f64;
+        result
     }
 }
 

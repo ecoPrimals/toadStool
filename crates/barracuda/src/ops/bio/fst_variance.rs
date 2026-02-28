@@ -81,8 +81,7 @@ pub fn fst_variance_decomposition(
         if !(0.0..=1.0).contains(&p) {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "fst_variance_decomposition: allele_freqs[{}] = {} must be in [0,1]",
-                    i, p
+                    "fst_variance_decomposition: allele_freqs[{i}] = {p} must be in [0,1]"
                 ),
             });
         }

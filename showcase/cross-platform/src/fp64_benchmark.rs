@@ -490,8 +490,7 @@ async fn main() {
             if let Some((f64_time, f64_bw)) = run_f64_benchmark(ctx, size, iterations) {
                 let ratio = f64_time / f32_time;
                 println!(
-                    "  │ {:>10} │ {:>8.1} μs / {:>6.1} GB/s │ {:>8.1} μs / {:>6.1} GB/s │ {:>6.1}x  │",
-                    size_str, f32_time, f32_bw, f64_time, f64_bw, ratio
+                    "  │ {size_str:>10} │ {f32_time:>8.1} μs / {f32_bw:>6.1} GB/s │ {f64_time:>8.1} μs / {f64_bw:>6.1} GB/s │ {ratio:>6.1}x  │"
                 );
             } else {
                 println!(

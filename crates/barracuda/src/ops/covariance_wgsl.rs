@@ -68,7 +68,7 @@ impl Covariance {
 
         if n <= ddof as usize {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Need more than {} elements for ddof={}", ddof, ddof),
+                message: format!("Need more than {ddof} elements for ddof={ddof}"),
             });
         }
 

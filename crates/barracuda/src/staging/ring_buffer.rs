@@ -168,7 +168,7 @@ impl GpuRingBuffer {
         // Create staging buffer for output direction
         let staging_buffer = if config.direction == BufferDirection::DeviceToHost {
             Some(device.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(&format!("{}:Staging", label)),
+                label: Some(&format!("{label}:Staging")),
                 size: capacity as u64,
                 usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,

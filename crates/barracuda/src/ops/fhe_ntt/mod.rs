@@ -109,8 +109,7 @@ impl FheNtt {
 
         if !degree.is_power_of_two() {
             return Err(BarracudaError::Device(format!(
-                "Degree {} must be a power of 2 for NTT",
-                degree
+                "Degree {degree} must be a power of 2 for NTT"
             )));
         }
 
@@ -123,8 +122,7 @@ impl FheNtt {
         // Check that modulus ≡ 1 (mod 2N)
         if !(modulus - 1).is_multiple_of(2 * degree as u64) {
             return Err(BarracudaError::Device(format!(
-                "Modulus {} must satisfy q ≡ 1 (mod 2N) where N={}",
-                modulus, degree
+                "Modulus {modulus} must satisfy q ≡ 1 (mod 2N) where N={degree}"
             )));
         }
 

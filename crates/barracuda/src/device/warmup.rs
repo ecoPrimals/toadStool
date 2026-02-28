@@ -65,14 +65,13 @@ impl WarmupOp {
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> out: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = a[idx] + b[idx];
 }}
-"#,
-                workgroup_size
+"#
             ),
 
             WarmupOp::Mul => format!(
@@ -81,14 +80,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> out: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = a[idx] * b[idx];
 }}
-"#,
-                workgroup_size
+"#
             ),
 
             WarmupOp::Fma => format!(
@@ -98,14 +96,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 @group(0) @binding(2) var<storage, read> c: array<f32>;
 @group(0) @binding(3) var<storage, read_write> out: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = fma(a[idx], b[idx], c[idx]);
 }}
-"#,
-                workgroup_size
+"#
             ),
 
             WarmupOp::Scale => format!(
@@ -114,14 +111,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 @group(0) @binding(1) var<storage, read_write> out: array<f32>;
 @group(0) @binding(2) var<uniform> scale: f32;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = a[idx] * scale;
 }}
-"#,
-                workgroup_size
+"#
             ),
 
             WarmupOp::ReLU => format!(
@@ -129,14 +125,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read_write> out: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = max(a[idx], 0.0);
 }}
-"#,
-                workgroup_size
+"#
             ),
 
             // For complex ops, use placeholder shaders that exercise the pipeline
@@ -147,14 +142,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 @group(0) @binding(2) var<storage, read_write> out: array<f32>;
 @group(0) @binding(3) var<uniform> params: vec4<u32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = a[idx] + b[idx];
 }}
-"#,
-                workgroup_size
+"#
             ),
 
             WarmupOp::BinaryOp => format!(
@@ -163,14 +157,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> out: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = a[idx] + b[idx];
 }}
-"#,
-                workgroup_size
+"#
             ),
 
             WarmupOp::UnaryOp => format!(
@@ -178,14 +171,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read_write> out: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
     let idx = gid.x;
     if (idx >= arrayLength(&out)) {{ return; }}
     out[idx] = a[idx];
 }}
-"#,
-                workgroup_size
+"#
             ),
         }
     }
@@ -349,7 +341,7 @@ pub fn warmup_device(device: &WgpuDevice, config: &WarmupConfig) -> Result<Warmu
                 &shader_source,
                 layout_sig,
                 "main",
-                Some(&format!("{:?}_wg{}", op, wg_size)),
+                Some(&format!("{op:?}_wg{wg_size}")),
             );
 
             shaders += 1;

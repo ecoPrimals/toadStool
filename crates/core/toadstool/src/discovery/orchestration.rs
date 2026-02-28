@@ -61,8 +61,7 @@ impl OrchestrationClient {
             .await
             .map_err(|e| {
                 ToadStoolError::configuration(format!(
-                    "Failed to discover service-discovery capability: {}",
-                    e
+                    "Failed to discover service-discovery capability: {e}"
                 ))
             })
     }
@@ -74,8 +73,7 @@ impl OrchestrationClient {
             .await
             .map_err(|e| {
                 ToadStoolError::configuration(format!(
-                    "Failed to discover load-balancing capability: {}",
-                    e
+                    "Failed to discover load-balancing capability: {e}"
                 ))
             })
     }
@@ -87,8 +85,7 @@ impl OrchestrationClient {
             .await
             .map_err(|e| {
                 ToadStoolError::configuration(format!(
-                    "Failed to discover job-routing capability: {}",
-                    e
+                    "Failed to discover job-routing capability: {e}"
                 ))
             })
     }

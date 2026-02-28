@@ -45,7 +45,7 @@ impl<T> AsyncOp<T> {
     pub async fn wait(self) -> Result<T> {
         self.receiver
             .await
-            .map_err(|e| anyhow::anyhow!("Operation channel closed: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Operation channel closed: {e}"))?
     }
 }
 

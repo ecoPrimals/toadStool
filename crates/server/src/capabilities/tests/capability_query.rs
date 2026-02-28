@@ -69,7 +69,7 @@ fn test_build_capabilities_multiple_gpus() {
 fn test_capability_constants() {
     assert_eq!(CAP_COMPUTE, "compute");
     assert_eq!(CAP_ORCHESTRATION, "orchestration");
-    assert_eq!(CAP_JSON_RPC, "json-rpc");
+    assert_eq!(CAP_JSON_RPC, "jsonrpc");
     assert_eq!(CAP_MEMORY_LARGE, "memory-large");
     assert_eq!(CAP_MEMORY_MEDIUM, "memory-medium");
     assert_eq!(CAP_MEMORY_SMALL, "memory-small");

@@ -193,7 +193,7 @@ pub fn entry_api_example(key: String) -> String {
     // ✅ Efficient: single lookup, no unwrap
     cache
         .entry(key.clone())
-        .or_insert_with(|| format!("default-{}", key))
+        .or_insert_with(|| format!("default-{key}"))
         .clone()
 }
 
@@ -284,33 +284,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .timeout_secs(60)
         .retry_attempts(5)
         .build()?;
-    println!("   Config: {:?}\n", config);
+    println!("   Config: {config:?}\n");
 
     // ✅ 2. Error handling with ?
     println!("2. Modern Error Handling:");
     let endpoint = modern_error_handling_example()?;
-    println!("   Endpoint: {}\n", endpoint);
+    println!("   Endpoint: {endpoint}\n");
 
     // ✅ 3. Zero-copy with Cow
     println!("3. Zero-Copy String Handling:");
     let short = zero_copy_string_example("short");
     let long = zero_copy_string_example("this is a very long string that will be truncated");
-    println!("   Short (borrowed): {:?}", short);
-    println!("   Long (owned): {:?}\n", long);
+    println!("   Short (borrowed): {short:?}");
+    println!("   Long (owned): {long:?}\n");
 
     // ✅ 4. Async discovery
     println!("4. Async Service Discovery:");
     let coordinators = discover_service("coordination").await?;
-    println!("   Found coordinators: {:?}\n", coordinators);
+    println!("   Found coordinators: {coordinators:?}\n");
 
     // ✅ 5. Self-aware service
     println!("5. Self-Aware Service Pattern:");
     let service = SelfAwareService::new("toadstool", 8084, vec!["compute", "orchestration"]);
     let ad = service.advertise();
-    println!("   Advertisement: {:?}", ad);
+    println!("   Advertisement: {ad:?}");
 
     let peers = service.discover_peer("storage").await?;
-    println!("   Discovered storage services: {:?}\n", peers);
+    println!("   Discovered storage services: {peers:?}\n");
 
     // ✅ 6. Modern data store
     println!("6. Modern Data Store:");

@@ -253,8 +253,7 @@ impl SquirrelBackend {
             })
             .map_err(|e| {
                 ToadStoolError::configuration(format!(
-                    "No ML/MCP service discovered: {}. Ensure a ML provider is running.",
-                    e
+                    "No ML/MCP service discovered: {e}. Ensure a ML provider is running."
                 ))
             })?;
 
@@ -530,8 +529,7 @@ impl AgentBackend for InMemoryAgentBackend {
             Ok(())
         } else {
             Err(ToadStoolError::not_found(format!(
-                "Agent {} not found",
-                agent_name
+                "Agent {agent_name} not found"
             )))
         }
     }
@@ -545,8 +543,7 @@ impl AgentBackend for InMemoryAgentBackend {
             Ok(())
         } else {
             Err(ToadStoolError::not_found(format!(
-                "Agent {} not found",
-                agent_name
+                "Agent {agent_name} not found"
             )))
         }
     }
@@ -555,7 +552,7 @@ impl AgentBackend for InMemoryAgentBackend {
         let mut agents = self.agents.lock().await;
         agents
             .remove(agent_name)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Agent {} not found", agent_name)))?;
+            .ok_or_else(|| ToadStoolError::not_found(format!("Agent {agent_name} not found")))?;
 
         tracing::debug!("Removed test agent {}", agent_name);
         Ok(())
@@ -566,7 +563,7 @@ impl AgentBackend for InMemoryAgentBackend {
         agents
             .get(agent_name)
             .map(|agent| agent.status.clone())
-            .ok_or_else(|| ToadStoolError::not_found(format!("Agent {} not found", agent_name)))
+            .ok_or_else(|| ToadStoolError::not_found(format!("Agent {agent_name} not found")))
     }
 
     async fn list_agents(&self) -> ToadStoolResult<Vec<AgentInfo>> {
@@ -584,14 +581,14 @@ impl AgentBackend for InMemoryAgentBackend {
         agents
             .get(agent_name)
             .map(|agent| agent.resources.clone())
-            .ok_or_else(|| ToadStoolError::not_found(format!("Agent {} not found", agent_name)))
+            .ok_or_else(|| ToadStoolError::not_found(format!("Agent {agent_name} not found")))
     }
 
     async fn unload_model(&self, model_name: &str) -> ToadStoolResult<()> {
         let mut models = self.models.lock().await;
         models
             .remove(model_name)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Model {} not found", model_name)))?;
+            .ok_or_else(|| ToadStoolError::not_found(format!("Model {model_name} not found")))?;
 
         tracing::debug!("Unloaded test model {}", model_name);
         Ok(())

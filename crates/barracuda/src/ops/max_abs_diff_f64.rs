@@ -121,7 +121,7 @@ impl MaxAbsDiffF64 {
         };
         let params_buffer = device.create_uniform_buffer("MaxAbsDiff params", &params);
 
-        ComputeDispatch::new(&*device, "max_abs_diff_pass1")
+        ComputeDispatch::new(&device, "max_abs_diff_pass1")
             .shader(Self::wgsl_shader(), "max_abs_diff_f64")
             .f64()
             .storage_read(0, &a_buffer)
@@ -160,7 +160,7 @@ impl MaxAbsDiffF64 {
             mapped_at_creation: false,
         });
 
-        ComputeDispatch::new(&*device, "max_abs_diff_pass2")
+        ComputeDispatch::new(&device, "max_abs_diff_pass2")
             .shader(Self::wgsl_shader(), "max_reduce_pass2")
             .f64()
             .storage_read(0, &partial_buffer)

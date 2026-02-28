@@ -35,14 +35,14 @@ impl CrossProduct {
         if shape_a.len() != 2 || shape_a[1] != 3 {
             return Err(BarracudaError::invalid_op(
                 "cross_product",
-                format!("input_a must be [N, 3], got shape {:?}", shape_a),
+                format!("input_a must be [N, 3], got shape {shape_a:?}"),
             ));
         }
 
         if shape_b.len() != 2 || shape_b[1] != 3 {
             return Err(BarracudaError::invalid_op(
                 "cross_product",
-                format!("input_b must be [N, 3], got shape {:?}", shape_b),
+                format!("input_b must be [N, 3], got shape {shape_b:?}"),
             ));
         }
 

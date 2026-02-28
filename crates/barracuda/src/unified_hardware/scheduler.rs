@@ -42,7 +42,7 @@ impl ComputeScheduler {
         let descriptors: Vec<_> = inputs.iter().map(|t| t.descriptor().clone()).collect();
         let executor = self.select_executor(op, &descriptors).ok_or_else(|| {
             crate::error::BarracudaError::NoAvailableExecutor {
-                operation: format!("{:?}", op),
+                operation: format!("{op:?}"),
             }
         })?;
         executor.execute(op, inputs).await

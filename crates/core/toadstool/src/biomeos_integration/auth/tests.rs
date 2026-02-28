@@ -96,9 +96,7 @@ async fn test_sign_token_request_mock() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
-    let signature = manager
-        .sign_token_request(&token, well_known::SONGBIRD)
-        .await;
+    let signature = manager.sign_token_request(&token, well_known::SONGBIRD);
     assert!(signature.is_ok());
     assert!(signature.unwrap().starts_with("ed25519:mock:"));
 }
@@ -159,7 +157,6 @@ async fn test_sign_token_request_disabled_returns_signature_disabled() {
     let token = manager.get_current_token().await.expect("token");
     let sig = manager
         .sign_token_request(&token, well_known::NESTGATE)
-        .await
         .unwrap();
     assert_eq!(sig, "signature_disabled");
 }
@@ -170,7 +167,6 @@ async fn test_sign_verification_request_disabled_returns_signature_disabled() {
     let manager = AuthenticationManager::with_inmemory(config);
     let sig = manager
         .sign_verification_request(well_known::SONGBIRD)
-        .await
         .unwrap();
     assert_eq!(sig, "signature_disabled");
 }
@@ -220,9 +216,7 @@ async fn test_sign_payload_invalid_base64_returns_error() {
     };
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
-    let result = manager
-        .sign_token_request(&token, well_known::SONGBIRD)
-        .await;
+    let result = manager.sign_token_request(&token, well_known::SONGBIRD);
     assert!(result.is_err());
 }
 
@@ -241,9 +235,7 @@ async fn test_sign_payload_wrong_key_length_returns_error() {
     };
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
-    let result = manager
-        .sign_token_request(&token, well_known::SONGBIRD)
-        .await;
+    let result = manager.sign_token_request(&token, well_known::SONGBIRD);
     assert!(result.is_err());
 }
 
@@ -273,7 +265,7 @@ async fn test_start_and_stop_token_refresh() {
     let mut config = test_config();
     config.token_refresh_interval = std::time::Duration::from_secs(3600);
     let mut manager = AuthenticationManager::with_inmemory(config);
-    let start_result = manager.start_token_refresh().await;
+    let start_result = manager.start_token_refresh();
     assert!(start_result.is_ok());
     manager.stop_token_refresh();
 }

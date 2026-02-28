@@ -248,7 +248,7 @@ fn parse_newick_subtree(
             branch_length = bl_str
                 .parse::<f64>()
                 .map_err(|_| BarracudaError::InvalidInput {
-                    message: format!("Invalid branch length: {}", bl_str),
+                    message: format!("Invalid branch length: {bl_str}"),
                 })?;
         }
 
@@ -272,7 +272,7 @@ fn build_flat_tree_from_parsed(
     let mut leaf_names: Vec<(String, usize)> = Vec::new();
     for (idx, node) in nodes.iter().enumerate() {
         if node.children.is_empty() {
-            let name = node.name.clone().unwrap_or_else(|| format!("leaf_{}", idx));
+            let name = node.name.clone().unwrap_or_else(|| format!("leaf_{idx}"));
             leaf_names.push((name, idx));
         }
     }

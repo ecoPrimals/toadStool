@@ -47,30 +47,27 @@ pub async fn bind(name: &str) -> ToadStoolResult<UnixListener> {
     // Create abstract socket address using Linux extension
     let socket_addr = SocketAddr::from_abstract_name(abstract_name.as_bytes()).map_err(|e| {
         ToadStoolError::integration(format!(
-            "Failed to create abstract socket address for @{}: {}",
-            abstract_name, e
+            "Failed to create abstract socket address for @{abstract_name}: {e}"
         ))
     })?;
 
     // Create socket
     let socket = std::os::unix::net::UnixListener::bind_addr(&socket_addr).map_err(|e| {
         ToadStoolError::integration(format!(
-            "Failed to bind abstract socket @{}: {}",
-            abstract_name, e
+            "Failed to bind abstract socket @{abstract_name}: {e}"
         ))
     })?;
 
     // Set non-blocking for tokio
     socket.set_nonblocking(true).map_err(|e| {
         ToadStoolError::integration(format!(
-            "Failed to set non-blocking on abstract socket: {}",
-            e
+            "Failed to set non-blocking on abstract socket: {e}"
         ))
     })?;
 
     // Convert to tokio::net::UnixListener
     UnixListener::from_std(socket).map_err(|e| {
-        ToadStoolError::integration(format!("Failed to convert abstract socket to tokio: {}", e))
+        ToadStoolError::integration(format!("Failed to convert abstract socket to tokio: {e}"))
     })
 }
 
@@ -87,30 +84,27 @@ pub async fn connect(name: &str) -> ToadStoolResult<UnixStream> {
     // Create abstract socket address using Linux extension
     let socket_addr = SocketAddr::from_abstract_name(abstract_name.as_bytes()).map_err(|e| {
         ToadStoolError::integration(format!(
-            "Failed to create abstract socket address for @{}: {}",
-            abstract_name, e
+            "Failed to create abstract socket address for @{abstract_name}: {e}"
         ))
     })?;
 
     // Connect using std socket first
     let std_stream = std::os::unix::net::UnixStream::connect_addr(&socket_addr).map_err(|e| {
         ToadStoolError::integration(format!(
-            "Failed to connect to abstract socket @{}: {}",
-            abstract_name, e
+            "Failed to connect to abstract socket @{abstract_name}: {e}"
         ))
     })?;
 
     // Set non-blocking for tokio
     std_stream.set_nonblocking(true).map_err(|e| {
         ToadStoolError::integration(format!(
-            "Failed to set non-blocking on abstract socket: {}",
-            e
+            "Failed to set non-blocking on abstract socket: {e}"
         ))
     })?;
 
     // Convert to tokio::net::UnixStream
     UnixStream::from_std(std_stream).map_err(|e| {
-        ToadStoolError::integration(format!("Failed to convert abstract socket to tokio: {}", e))
+        ToadStoolError::integration(format!("Failed to convert abstract socket to tokio: {e}"))
     })
 }
 

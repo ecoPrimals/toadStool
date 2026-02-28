@@ -128,19 +128,19 @@ impl Nadam {
         if !(0.0..1.0).contains(&beta1) {
             return Err(BarracudaError::invalid_op(
                 "NAdam",
-                format!("beta1 must be in [0, 1), got {}", beta1),
+                format!("beta1 must be in [0, 1), got {beta1}"),
             ));
         }
         if !(0.0..1.0).contains(&beta2) {
             return Err(BarracudaError::invalid_op(
                 "NAdam",
-                format!("beta2 must be in [0, 1), got {}", beta2),
+                format!("beta2 must be in [0, 1), got {beta2}"),
             ));
         }
         if epsilon <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "NAdam",
-                format!("epsilon must be positive, got {}", epsilon),
+                format!("epsilon must be positive, got {epsilon}"),
             ));
         }
         if step == 0 {

@@ -191,7 +191,7 @@ fn test_env_override_resource_limits() {
 
     // Float comparisons with epsilon (both are f64)
     assert!((config.runtime.resource_limits.max_cpu_usage - 80.5).abs() < 0.001);
-    assert!((config.runtime.resource_limits.max_memory_usage - 4294967296.0).abs() < 0.1);
+    assert!((config.runtime.resource_limits.max_memory_usage - 4_294_967_296.0).abs() < 0.1);
 
     clear_toadstool_env_vars();
 }
@@ -451,7 +451,10 @@ fn test_env_override_api_protocols() {
 
     let mut config = ToadStoolConfig::default();
     config.features.enable_openapi = false;
-    config.features.enable_grpc = false;
+    #[allow(deprecated)]
+    {
+        config.features.enable_grpc = false;
+    }
     config.features.enable_graphql = false;
 
     std::env::set_var("TOADSTOOL_ENABLE_OPENAPI", "true");
@@ -461,7 +464,9 @@ fn test_env_override_api_protocols() {
     config.apply_env_overrides().unwrap();
 
     assert!(config.features.enable_openapi);
-    assert!(config.features.enable_grpc);
+    #[allow(deprecated)]
+    let grpc_enabled = config.features.enable_grpc;
+    assert!(grpc_enabled);
     assert!(config.features.enable_graphql);
 
     clear_toadstool_env_vars();
@@ -504,7 +509,7 @@ fn test_env_override_wasm_config() {
     config.apply_env_overrides().unwrap();
 
     assert_eq!(config.runtime.wasm.engine, "wasmi");
-    assert_eq!(config.runtime.wasm.max_memory, 536870912);
+    assert_eq!(config.runtime.wasm.max_memory, 536_870_912);
     assert!(config.runtime.wasm.enable_wasi);
 
     clear_toadstool_env_vars();
@@ -531,7 +536,7 @@ fn test_env_override_python_config() {
         Some("/opt/venv".to_string())
     );
     assert_eq!(config.runtime.python.index_url, "https://pypi.org/simple");
-    assert_eq!(config.runtime.python.max_memory, 2147483648);
+    assert_eq!(config.runtime.python.max_memory, 2_147_483_648);
 
     clear_toadstool_env_vars();
 }
@@ -689,7 +694,7 @@ fn test_env_override_logging_advanced() {
     assert!(config.logging.enable_thread_ids);
     assert!(config.logging.enable_module_paths);
     assert!(config.logging.log_rotation);
-    assert_eq!(config.logging.max_log_size, 104857600);
+    assert_eq!(config.logging.max_log_size, 104_857_600);
     assert_eq!(config.logging.max_log_files, 10);
 
     clear_toadstool_env_vars();

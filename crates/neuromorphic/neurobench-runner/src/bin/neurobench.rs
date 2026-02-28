@@ -184,8 +184,7 @@ fn parse_benchmark(name: &str) -> Result<Benchmark> {
         "nhp-motor" | "nhpmotor" | "nhp_motor" | "motor" => Ok(Benchmark::NhpMotor),
         "event-camera" | "eventcamera" | "event_camera" => Ok(Benchmark::EventCamera),
         _ => Err(neurobench_runner::Error::BenchmarkFailed(format!(
-            "Unknown benchmark: {}. Use --list to see available benchmarks.",
-            name
+            "Unknown benchmark: {name}. Use --list to see available benchmarks."
         ))),
     }
 }
@@ -201,7 +200,7 @@ fn list_benchmarks() {
         Benchmark::NhpMotor,
         Benchmark::EventCamera,
     ] {
-        println!("\n  {:?}", benchmark);
+        println!("\n  {benchmark:?}");
         println!("    {}", benchmark.description());
         println!("    Classes: {}", benchmark.num_classes());
         println!("    Input shape: {:?}", benchmark.input_shape());
@@ -223,7 +222,7 @@ fn print_summary_table(results: &[BenchmarkResult]) {
     for result in results {
         let power = result
             .mean_power_mw
-            .map_or("-".to_string(), |p| format!("{:.1}", p));
+            .map_or("-".to_string(), |p| format!("{p:.1}"));
 
         println!(
             "{:<20} {:>9.1}% {:>10.1}/s {:>10.3}ms {:>12}",

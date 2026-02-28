@@ -439,7 +439,7 @@ impl ZeroConfigDeployment {
         };
 
         let biomeos_dir = get_biomeos_dir();
-        let socket_path = biomeos_dir.join(format!("{}.sock", primal_name));
+        let socket_path = biomeos_dir.join(format!("{primal_name}.sock"));
 
         self.check_unix_socket_endpoint(&socket_path, capability_name)
             .await

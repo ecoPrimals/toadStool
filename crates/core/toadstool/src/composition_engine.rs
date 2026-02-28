@@ -111,7 +111,7 @@ impl CompositionEngine {
 
         // Evaluate each constraint
         for constraint in &request.constraints {
-            let satisfaction = self.evaluate_constraint(constraint).await;
+            let satisfaction = self.evaluate_constraint(constraint);
 
             debug!("  {} -> {:?}", constraint, satisfaction);
 
@@ -135,6 +135,7 @@ impl CompositionEngine {
         };
 
         // Update stats
+        #[allow(clippy::cast_precision_loss)]
         let duration_ms = start.elapsed().as_millis() as f64;
         self.update_stats(&evaluation, duration_ms).await;
 
@@ -151,7 +152,7 @@ impl CompositionEngine {
     }
 
     /// Evaluate a single constraint against available capabilities
-    async fn evaluate_constraint(&self, constraint: &Constraint) -> ConstraintSatisfaction {
+    fn evaluate_constraint(&self, constraint: &Constraint) -> ConstraintSatisfaction {
         match constraint {
             Constraint::RequiresGPU => {
                 if self.runtime.has_gpu_access() {
@@ -175,14 +176,14 @@ impl CompositionEngine {
 
             Constraint::MinMemoryGB(required_gb) => {
                 if let Some(available_bytes) = self.capabilities.compute.memory_bytes {
+                    #[allow(clippy::cast_precision_loss)]
                     let available_gb = available_bytes as f64 / 1_073_741_824.0; // bytes to GB
                     if available_gb >= *required_gb {
                         ConstraintSatisfaction::Satisfied
                     } else {
                         ConstraintSatisfaction::Unsatisfied {
                             reason: format!(
-                                "Insufficient memory: need {}GB, have {:.2}GB",
-                                required_gb, available_gb
+                                "Insufficient memory: need {required_gb}GB, have {available_gb:.2}GB"
                             ),
                         }
                     }
@@ -200,8 +201,7 @@ impl CompositionEngine {
                     } else {
                         ConstraintSatisfaction::Unsatisfied {
                             reason: format!(
-                                "Insufficient CPU cores: need {}, have {}",
-                                required_cores, available_cores
+                                "Insufficient CPU cores: need {required_cores}, have {available_cores}"
                             ),
                         }
                     }
@@ -220,8 +220,7 @@ impl CompositionEngine {
                 } else {
                     ConstraintSatisfaction::Unsatisfied {
                         reason: format!(
-                            "Latency too high: need <{}ms, estimated {}ms",
-                            max_ms, estimated_latency
+                            "Latency too high: need <{max_ms}ms, estimated {estimated_latency}ms"
                         ),
                     }
                 }
@@ -233,6 +232,7 @@ impl CompositionEngine {
                     ConstraintSatisfaction::Satisfied
                 } else {
                     // Partial satisfaction based on how close we are
+                    #[allow(clippy::cast_precision_loss)]
                     let ratio = *preferred_ms as f64 / estimated_latency as f64;
                     ConstraintSatisfaction::Partial(ratio.min(1.0))
                 }
@@ -246,8 +246,7 @@ impl CompositionEngine {
                 } else {
                     ConstraintSatisfaction::Unsatisfied {
                         reason: format!(
-                            "Insufficient bandwidth: need {}Gbps, estimated {}Gbps",
-                            required_gbps, estimated_bandwidth
+                            "Insufficient bandwidth: need {required_gbps}Gbps, estimated {estimated_bandwidth}Gbps"
                         ),
                     }
                 }
@@ -274,7 +273,7 @@ impl CompositionEngine {
                     ConstraintSatisfaction::Satisfied
                 } else {
                     ConstraintSatisfaction::Unsatisfied {
-                        reason: format!("Required capability '{}' not available", cap),
+                        reason: format!("Required capability '{cap}' not available"),
                     }
                 }
             }
@@ -321,8 +320,7 @@ impl CompositionEngine {
                 } else {
                     ConstraintSatisfaction::Unsatisfied {
                         reason: format!(
-                            "Wrong layer: need '{}', have '{}'",
-                            required_layer, current_layer
+                            "Wrong layer: need '{required_layer}', have '{current_layer}'"
                         ),
                     }
                 }
@@ -362,8 +360,7 @@ impl CompositionEngine {
                 } else {
                     ConstraintSatisfaction::Unsatisfied {
                         reason: format!(
-                            "Too expensive: need <${}/hr, estimated ${}/hr",
-                            max_cost, estimated_cost
+                            "Too expensive: need <${max_cost}/hr, estimated ${estimated_cost}/hr"
                         ),
                     }
                 }
@@ -483,7 +480,10 @@ impl CompositionEngine {
                 1.0
             } else {
                 let total: f64 = soft_results.iter().map(|s| s.score()).sum();
-                total / soft_results.len() as f64
+                let len = soft_results.len();
+                #[allow(clippy::cast_precision_loss)]
+                let result = total / len as f64;
+                result
             }
         };
 
@@ -505,6 +505,7 @@ impl CompositionEngine {
         }
 
         // Update running average
+        #[allow(clippy::cast_precision_loss)]
         let total = stats.total_evaluations as f64;
         stats.avg_evaluation_ms = ((stats.avg_evaluation_ms * (total - 1.0)) + duration_ms) / total;
     }

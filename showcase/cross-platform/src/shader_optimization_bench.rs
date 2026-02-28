@@ -34,7 +34,7 @@ fn generate_scalar_shader(workgroup_size: u32) -> String {
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let idx = global_id.x;
     if (idx >= arrayLength(&output)) {{
@@ -42,8 +42,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     }}
     output[idx] = a[idx] + b[idx];
 }}
-"#,
-        workgroup_size
+"#
     )
 }
 
@@ -63,7 +62,7 @@ struct Params {{
 @group(0) @binding(2) var<storage, read_write> output: array<vec4<f32>>;
 @group(0) @binding(3) var<uniform> params: Params;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let idx = global_id.x;
     if (idx >= params.vec_count) {{
@@ -71,8 +70,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     }}
     output[idx] = a[idx] + b[idx];
 }}
-"#,
-        workgroup_size
+"#
     )
 }
 
@@ -92,7 +90,7 @@ struct Params {{
 @group(0) @binding(2) var<storage, read_write> output: array<vec4<f32>>;
 @group(0) @binding(3) var<uniform> params: Params;
 
-@compute @workgroup_size({})
+@compute @workgroup_size({workgroup_size})
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let base = global_id.x * 2u;
     let vec_count = params.vec_count;
@@ -104,8 +102,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
         output[base + 1u] = a[base + 1u] + b[base + 1u];
     }}
 }}
-"#,
-        workgroup_size
+"#
     )
 }
 
@@ -329,7 +326,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
             _ => "Unknown",
         };
 
-        println!("Testing on {}...\n", gpu_name);
+        println!("Testing on {gpu_name}...\n");
 
         // Get raw wgpu device
         let wgpu_device = pool
@@ -346,10 +343,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
             match run_benchmark(device, queue, &shader, size, iterations, false).await {
                 Ok(time_us) => {
                     let bw = (bytes as f64) / (time_us * 1000.0);
-                    println!(
-                        "    WG={:>3}: {:>8.1}μs  ({:>6.1} GB/s)",
-                        wg_size, time_us, bw
-                    );
+                    println!("    WG={wg_size:>3}: {time_us:>8.1}μs  ({bw:>6.1} GB/s)");
                     results.push(BenchResult {
                         gpu: gpu_name.to_string(),
                         variant: "scalar".to_string(),
@@ -360,7 +354,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
                         bandwidth_gbps: bw,
                     });
                 }
-                Err(e) => println!("    WG={}: ERROR - {}", wg_size, e),
+                Err(e) => println!("    WG={wg_size}: ERROR - {e}"),
             }
         }
 
@@ -371,10 +365,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
             match run_benchmark(device, queue, &shader, size, iterations, true).await {
                 Ok(time_us) => {
                     let bw = (bytes as f64) / (time_us * 1000.0);
-                    println!(
-                        "    WG={:>3}: {:>8.1}μs  ({:>6.1} GB/s)",
-                        wg_size, time_us, bw
-                    );
+                    println!("    WG={wg_size:>3}: {time_us:>8.1}μs  ({bw:>6.1} GB/s)");
                     results.push(BenchResult {
                         gpu: gpu_name.to_string(),
                         variant: "vec4".to_string(),
@@ -385,7 +376,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
                         bandwidth_gbps: bw,
                     });
                 }
-                Err(e) => println!("    WG={}: ERROR - {}", wg_size, e),
+                Err(e) => println!("    WG={wg_size}: ERROR - {e}"),
             }
         }
 
@@ -396,10 +387,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
             match run_benchmark(device, queue, &shader, size, iterations, true).await {
                 Ok(time_us) => {
                     let bw = (bytes as f64) / (time_us * 1000.0);
-                    println!(
-                        "    WG={:>3}: {:>8.1}μs  ({:>6.1} GB/s)",
-                        wg_size, time_us, bw
-                    );
+                    println!("    WG={wg_size:>3}: {time_us:>8.1}μs  ({bw:>6.1} GB/s)");
                     results.push(BenchResult {
                         gpu: gpu_name.to_string(),
                         variant: "8x".to_string(),
@@ -410,7 +398,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
                         bandwidth_gbps: bw,
                     });
                 }
-                Err(e) => println!("    WG={}: ERROR - {}", wg_size, e),
+                Err(e) => println!("    WG={wg_size}: ERROR - {e}"),
             }
         }
 
@@ -430,7 +418,7 @@ async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Err
                 .partial_cmp(&b.bandwidth_gbps)
                 .unwrap_or(std::cmp::Ordering::Equal)
         }) {
-            println!("{} - Best configuration:", gpu);
+            println!("{gpu} - Best configuration:");
             println!(
                 "  Variant: {} (WG={}, {}/thread)",
                 best.variant, best.workgroup_size, best.elements_per_thread

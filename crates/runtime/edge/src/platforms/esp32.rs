@@ -440,6 +440,25 @@ impl ESP32Device {
         }
     }
     
+    /// Download file via HTTP(S) when path is a URL.
+    #[cfg(feature = "http-downloads")]
+    async fn download_via_http(&self, url: &str) -> ToadStoolResult<Vec<u8>> {
+        let client = reqwest::Client::builder()
+            .build()
+            .map_err(|e| ToadStoolError::network(format!("Failed to create HTTP client: {}", e)))?;
+        let bytes = client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("HTTP request failed: {}", e)))?
+            .error_for_status()
+            .map_err(|e| ToadStoolError::network(format!("HTTP error: {}", e)))?
+            .bytes()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("Failed to read response: {}", e)))?;
+        Ok(bytes.to_vec())
+    }
+
     /// Detect ESP32 chip variant
     fn detect_chip_variant(vid: u16, pid: u16) -> ESP32Variant {
         // This is a simplified detection - in reality, would need to query the chip
@@ -576,9 +595,50 @@ impl EdgeDevice for ESP32Device {
         Ok(())
     }
     
+    /// Download file from ESP32 device or from HTTP(S) URL.
+    ///
+    /// When `path` is an `http://` or `https://` URL, attempts HTTP download via reqwest
+    /// (requires `http-downloads` feature). For device filesystem paths, returns
+    /// `NotImplemented` since real serial/network file transfer requires device-specific
+    /// protocol integration.
     async fn download_file(&self, path: &str) -> ToadStoolResult<Vec<u8>> {
-        let _response = self.send_command(&format!("DOWNLOAD {}", path)).await?;
-        Ok(vec![]) // Placeholder
+        let path_trimmed = path.trim();
+        if path_trimmed.starts_with("http://") || path_trimmed.starts_with("https://") {
+            #[cfg(feature = "http-downloads")]
+            {
+                match self.download_via_http(path_trimmed).await {
+                    Ok(data) => return Ok(data),
+                    Err(e) => {
+                        error!("ESP32 HTTP download failed for {}: {}", path, e);
+                        return Err(ToadStoolError::network(format!(
+                            "ESP32 HTTP download failed: {}",
+                            e
+                        )));
+                    }
+                }
+            }
+            #[cfg(not(feature = "http-downloads"))]
+            {
+                return Err(
+                    toadstool_common::error::SystemError::NotSupported {
+                        feature: "esp32_http_download".to_string(),
+                        reason: "HTTP download requires 'http-downloads' feature. Enable with: toadstool-runtime-edge = { features = [\"http-downloads\"] }".to_string(),
+                    }
+                    .into(),
+                );
+            }
+        }
+
+        // Device filesystem path: would require real DOWNLOAD command protocol
+        let _ = self.send_command(&format!("DOWNLOAD {}", path)).await;
+        Err(toadstool_common::error::SystemError::NotSupported {
+            feature: "esp32_file_download".to_string(),
+            reason: format!(
+                "Download from ESP32 device filesystem not implemented. Path: {}. Use http(s):// URL for remote files, or implement serial/network file transfer protocol.",
+                path
+            ),
+        }
+        .into())
     }
     
     async fn execute_command(&self, command: &str) -> ToadStoolResult<String> {

@@ -30,13 +30,13 @@ impl FakeQuantize {
         if num_bits == 0 || num_bits > 32 {
             return Err(BarracudaError::invalid_op(
                 "fake_quantize",
-                format!("num_bits must be between 1 and 32, got {}", num_bits),
+                format!("num_bits must be between 1 and 32, got {num_bits}"),
             ));
         }
         if scale <= 0.0 {
             return Err(BarracudaError::invalid_op(
                 "fake_quantize",
-                format!("scale must be positive, got {}", scale),
+                format!("scale must be positive, got {scale}"),
             ));
         }
         Ok(Self {

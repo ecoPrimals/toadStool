@@ -800,7 +800,7 @@ async fn save_benchmark_results(results: &[NetworkBenchmarkResults]) -> ToadStoo
         .replace('-', "")
         .replace('T', "_")
         .replace([':', 'Z'], "");
-    let filename = format!("network_benchmark_results_{}.json", datetime);
+    let filename = format!("network_benchmark_results_{datetime}.json");
 
     tokio::fs::write(&filename, json_results)
         .await

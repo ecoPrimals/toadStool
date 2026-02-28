@@ -57,7 +57,7 @@ async fn main() -> Result<()> {
         let config = toadstool_runtime_container::byob_server::ByobServerConfig::default();
         return toadstool_runtime_container::byob_server::run_byob_server(config)
             .await
-            .map_err(|e| CliError::Other(format!("BYOB server failed: {}", e)));
+            .map_err(|e| CliError::Other(format!("BYOB server failed: {e}")));
     }
 
     // Parse command line arguments
@@ -118,5 +118,5 @@ async fn run_server_daemon(family_id: Option<String>) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
     toadstool_server::run_server_main(family_id)
         .await
-        .map_err(|e| CliError::Other(format!("Server failed: {}", e)))
+        .map_err(|e| CliError::Other(format!("Server failed: {e}")))
 }

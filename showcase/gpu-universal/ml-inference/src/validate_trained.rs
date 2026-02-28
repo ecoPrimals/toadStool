@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
 
     println!("Results:");
     println!("  Accuracy:    {:.2}%", accuracy * 100.0);
-    println!("  Avg latency: {:.3}ms", avg_latency);
+    println!("  Avg latency: {avg_latency:.3}ms");
     println!("  Total time:  {:.2}s", total_time.as_secs_f64());
     println!();
 
@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
 
     println!("Results:");
     println!("  Accuracy:    {:.2}%", accuracy * 100.0);
-    println!("  Avg latency: {:.3}ms", avg_latency);
+    println!("  Avg latency: {avg_latency:.3}ms");
     println!("  Total time:  {:.2}s", total_time.as_secs_f64());
     println!();
 

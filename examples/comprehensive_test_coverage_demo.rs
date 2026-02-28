@@ -162,9 +162,9 @@ fn simulate_test_execution() {
     let mut total_duration = Duration::new(0, 0);
 
     for (suite_name, test_count, duration) in test_suites {
-        println!("   Running {}: {} tests... ", suite_name, test_count);
+        println!("   Running {suite_name}: {test_count} tests... ");
         std::thread::sleep(Duration::from_millis(50)); // Simulate test execution
-        println!("      ✅ Completed in {:?}", duration);
+        println!("      ✅ Completed in {duration:?}");
 
         total_tests += test_count;
         total_duration += duration;
@@ -172,8 +172,8 @@ fn simulate_test_execution() {
 
     println!();
     println!("📋 Test Execution Summary:");
-    println!("   Total Tests Run: {}", total_tests);
-    println!("   Total Duration: {:?}", total_duration);
+    println!("   Total Tests Run: {total_tests}");
+    println!("   Total Duration: {total_duration:?}");
     println!("   Success Rate: 100% (all tests passing)");
     println!("   Coverage: Comprehensive across all components");
     println!();

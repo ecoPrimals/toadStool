@@ -108,12 +108,12 @@ impl StorageClient {
     pub async fn discover_with_capability(capability: Capability) -> NestGateResult<Self> {
         let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto)
             .await
-            .map_err(|e| NestGateError::Connection(format!("Discovery failed: {}", e)))?;
+            .map_err(|e| NestGateError::Connection(format!("Discovery failed: {e}")))?;
 
         let service = discovery
             .find_service_by_capability(capability)
             .await
-            .map_err(|e| NestGateError::Connection(format!("No storage service found: {}", e)))?;
+            .map_err(|e| NestGateError::Connection(format!("No storage service found: {e}")))?;
 
         let service_name = service.name.clone();
 
@@ -153,7 +153,7 @@ impl StorageClient {
     /// Returns an error if the client configuration is invalid or connection fails
     pub async fn connect(service_name: &str) -> NestGateResult<Self> {
         let config = NestGateConfig {
-            endpoint: format!("unix://{}", service_name), // Placeholder
+            endpoint: format!("unix://{service_name}"), // Placeholder
             ..Default::default()
         };
         Self::with_config(config, Some(service_name.to_string())).await
@@ -457,5 +457,200 @@ impl StorageClient {
         // Cache implementation would go here
         // For now, this is a no-op
         debug!("Cache cleanup completed (no-op)");
+    }
+
+    /// Create client for testing without health check (skips RPC connectivity)
+    ///
+    /// Use for unit tests that exercise local logic (store_artifact, retrieve_artifact,
+    /// checksum, content-type detection) without requiring a running NestGate server.
+    #[cfg(test)]
+    pub fn new_for_testing(config: NestGateConfig, service_name: String) -> Self {
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+        Self {
+            rpc_client,
+            config,
+            service_name,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::CacheConfig;
+    use crate::pipeline::PipelineConfig;
+    use std::path::PathBuf;
+    use std::time::Duration;
+
+    fn test_client() -> StorageClient {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: None,
+        };
+        StorageClient::new_for_testing(config, "test-storage".to_string())
+    }
+
+    #[test]
+    fn test_client_construction() {
+        let client = test_client();
+        assert_eq!(client.config.endpoint, "unix://test");
+        assert_eq!(client.config.max_retries, 2);
+    }
+
+    #[test]
+    fn test_store_artifact_returns_result() {
+        let client = test_client();
+        let data = b"hello world";
+        let result = client.store_artifact("test.bin", data).unwrap();
+        assert!(matches!(result.status, StorageStatus::Success));
+        assert_eq!(result.message, "Artifact stored successfully");
+    }
+
+    #[test]
+    fn test_store_artifact_checksum() {
+        let client = test_client();
+        let data = b"consistent data for checksum";
+        let r1 = client.store_artifact("a", data).unwrap();
+        let r2 = client.store_artifact("b", data).unwrap();
+        assert!(matches!(r1.status, StorageStatus::Success));
+        assert!(matches!(r2.status, StorageStatus::Success));
+    }
+
+    #[test]
+    fn test_store_artifact_content_type_zip() {
+        let client = test_client();
+        let zip_magic = [0x50, 0x4B, 0x03, 0x04]; // PK..
+        let result = client.store_artifact("archive.zip", &zip_magic).unwrap();
+        assert!(matches!(result.status, StorageStatus::Success));
+    }
+
+    #[test]
+    fn test_store_artifact_content_type_png() {
+        let client = test_client();
+        let png_magic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        let result = client.store_artifact("image.png", &png_magic).unwrap();
+        assert!(matches!(result.status, StorageStatus::Success));
+    }
+
+    #[test]
+    fn test_store_artifact_content_type_jpeg() {
+        let client = test_client();
+        let jpeg_magic = [0xFF, 0xD8, 0xFF];
+        let result = client.store_artifact("photo.jpg", &jpeg_magic).unwrap();
+        assert!(matches!(result.status, StorageStatus::Success));
+    }
+
+    #[test]
+    fn test_store_artifact_content_type_octet_stream() {
+        let client = test_client();
+        let data = b"generic binary";
+        let result = client.store_artifact("data.bin", data).unwrap();
+        assert!(matches!(result.status, StorageStatus::Success));
+    }
+
+    #[test]
+    fn test_retrieve_artifact_not_in_cache() {
+        let client = test_client();
+        let id = uuid::Uuid::new_v4();
+        let result = client.retrieve_artifact(id).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_retrieve_artifact_with_cache_disabled() {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: Some(CacheConfig {
+                enabled: false,
+                cache_dir: None,
+                max_size: 0,
+                ttl: Duration::from_secs(0),
+            }),
+        };
+        let client = StorageClient::new_for_testing(config, "test".to_string());
+        let result = client.retrieve_artifact(uuid::Uuid::new_v4()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_cleanup_cache_disabled_noop() {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: Some(CacheConfig {
+                enabled: false,
+                cache_dir: None,
+                max_size: 0,
+                ttl: Duration::from_secs(0),
+            }),
+        };
+        let client = StorageClient::new_for_testing(config, "test".to_string());
+        client.cleanup_cache();
+    }
+
+    #[test]
+    fn test_cleanup_cache_enabled_noop() {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: Some(CacheConfig {
+                enabled: true,
+                cache_dir: Some(PathBuf::from("/tmp/test-cache")),
+                max_size: 1024,
+                ttl: Duration::from_secs(3600),
+            }),
+        };
+        let client = StorageClient::new_for_testing(config, "test".to_string());
+        client.cleanup_cache();
+    }
+
+    #[test]
+    fn test_nestgate_error_display() {
+        let e = NestGateError::Connection("test".to_string());
+        assert!(e.to_string().contains("test"));
+        let e = NestGateError::Network("net".to_string());
+        assert!(e.to_string().contains("net"));
+        let e = NestGateError::Pipeline("pipe".to_string());
+        assert!(e.to_string().contains("pipe"));
+    }
+
+    #[test]
+    fn test_pipeline_config_serialization() {
+        let config = PipelineConfig {
+            pipeline_id: "p1".to_string(),
+            name: "Test".to_string(),
+            inputs: vec![],
+            outputs: vec![],
+            steps: vec![],
+            schedule: None,
+            resources: None,
+        };
+        let json = serde_json::to_value(&config).unwrap();
+        assert_eq!(json["pipeline_id"], "p1");
+        assert_eq!(json["name"], "Test");
+    }
+
+    #[test]
+    fn test_artifact_filters_serialization() {
+        let filters = ArtifactFilters {
+            artifact_type: Some(ArtifactType::DataFile),
+            execution_id: None,
+            created_since: None,
+            tags: HashMap::new(),
+        };
+        let json = serde_json::to_value(&filters).unwrap();
+        assert!(json.get("artifact_type").is_some());
     }
 }

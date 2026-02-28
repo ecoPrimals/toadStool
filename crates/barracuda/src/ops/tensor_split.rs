@@ -33,7 +33,7 @@ impl TensorSplit {
         for &idx in &split_indices {
             if idx > dim_size {
                 return Err(crate::error::BarracudaError::InvalidInput {
-                    message: format!("Split index {} exceeds dimension size {}", idx, dim_size),
+                    message: format!("Split index {idx} exceeds dimension size {dim_size}"),
                 });
             }
         }
@@ -165,14 +165,14 @@ impl TensorSplit {
                 device
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some(&format!("TensorSplit Params {}", i)),
+                        label: Some(&format!("TensorSplit Params {i}")),
                         contents: bytemuck::cast_slice(&[params]),
                         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     });
 
             // Create bind group for this split
             let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("TensorSplit Bind Group {}", i)),
+                label: Some(&format!("TensorSplit Bind Group {i}")),
                 layout: &bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
@@ -217,12 +217,12 @@ impl TensorSplit {
                 device
                     .device
                     .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some(&format!("TensorSplit Encoder {}", i)),
+                        label: Some(&format!("TensorSplit Encoder {i}")),
                     });
 
             {
                 let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some(&format!("TensorSplit Pass {}", i)),
+                    label: Some(&format!("TensorSplit Pass {i}")),
                     timestamp_writes: None,
                 });
                 compute_pass.set_pipeline(&compute_pipeline);

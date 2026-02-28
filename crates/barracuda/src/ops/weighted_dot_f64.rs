@@ -239,7 +239,7 @@ mod tests {
         };
         let op = WeightedDotF64::new(device).unwrap();
 
-        let n = 10000;
+        let n = 10_000;
         let w: Vec<f64> = (0..n).map(|i| 1.0 / (i as f64 + 1.0)).collect();
         let a: Vec<f64> = (0..n).map(|i| (i as f64).sin()).collect();
         let b: Vec<f64> = (0..n).map(|i| (i as f64).cos()).collect();

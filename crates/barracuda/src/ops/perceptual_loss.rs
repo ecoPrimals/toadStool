@@ -35,8 +35,7 @@ impl PerceptualLoss {
             if !features_size.is_multiple_of(weights_size) {
                 return Err(BarracudaError::InvalidInput {
                     message: format!(
-                        "Weights dimension mismatch: features size {} must be divisible by weights size {}",
-                        features_size, weights_size
+                        "Weights dimension mismatch: features size {features_size} must be divisible by weights size {weights_size}"
                     ),
                 });
             }

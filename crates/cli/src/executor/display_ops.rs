@@ -17,6 +17,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 /// Display and logging operation implementations
 impl BiomeExecutor {
+    #[allow(clippy::unused_async)] // CLI display; async for API consistency
     pub(super) async fn print_biomes_table(
         &self,
         biomes: &[&RunningBiome],
@@ -77,11 +78,11 @@ impl BiomeExecutor {
             let lines_vec: Vec<&str> = content.lines().collect();
             let start_idx = lines_vec.len().saturating_sub(n);
             for line in &lines_vec[start_idx..] {
-                println!("{}", line);
+                println!("{line}");
             }
         } else {
             // Show all lines
-            print!("{}", content);
+            print!("{content}");
         }
 
         Ok(())
@@ -108,7 +109,7 @@ impl BiomeExecutor {
                     interval.tick().await;
                 }
                 Ok(_) => {
-                    print!("{}", line);
+                    print!("{line}");
                     line.clear();
                 }
                 Err(e) => {

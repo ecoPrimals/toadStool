@@ -99,8 +99,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
     let warmup_time = warmup_start.elapsed();
 
     let total_pipelines: usize = warmup_results.iter().map(|r| r.pipelines_created).sum();
-    println!("  Pipelines warmed: {}", total_pipelines);
-    println!("  Total time:       {:?}", warmup_time);
+    println!("  Pipelines warmed: {total_pipelines}");
+    println!("  Total time:       {warmup_time:?}");
     println!(
         "  Time per pipeline: {:.2}ms\n",
         warmup_time.as_secs_f64() * 1000.0 / total_pipelines.max(1) as f64
@@ -119,7 +119,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let theoretical = if is_nvidia { 936.0 } else { 576.0 };
 
         println!("══════════════════════════════════════════════════════════════════════════════");
-        println!("  {} (Theoretical: {:.0} GB/s)", name, theoretical);
+        println!("  {name} (Theoretical: {theoretical:.0} GB/s)");
         println!(
             "══════════════════════════════════════════════════════════════════════════════\n"
         );
@@ -143,8 +143,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
             let pct = bandwidth / theoretical * 100.0;
 
             println!(
-                "  │ {:>14} │ {:>7.2} ms │ {:>7.1} GB/s│ {:>7.1}%   │",
-                label, time_ms, bandwidth, pct
+                "  │ {label:>14} │ {time_ms:>7.2} ms │ {bandwidth:>7.1} GB/s│ {pct:>7.1}%   │"
             );
         }
         println!("  └────────────────┴────────────┴────────────┴────────────┘\n");
@@ -207,8 +206,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let ops_per_sec = ops as f64 / elapsed.as_secs_f64();
         let bandwidth = (size * 3 * 4) as f64 * ops as f64 / elapsed.as_secs_f64() / 1e9;
 
-        println!("    Operations:     {}", ops);
-        println!("    Ops/second:     {:.0}", ops_per_sec);
+        println!("    Operations:     {ops}");
+        println!("    Ops/second:     {ops_per_sec:.0}");
         println!(
             "    Bandwidth:      {:.1} GB/s ({:.1}% of theoretical)\n",
             bandwidth,
@@ -219,7 +218,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let ctx = get_device_context(device);
         let stats = ctx.stats();
         println!("  TensorContext Stats:");
-        println!("    {}\n", stats);
+        println!("    {stats}\n");
     }
 
     // Summary

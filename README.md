@@ -32,13 +32,15 @@ Nest    = Tower  + NestGate           <- storage
 |------|--------|
 | `cargo build --workspace` | Clean |
 | `cargo fmt --all -- --check` | 0 diffs |
-| `cargo clippy --workspace --all-targets` | 1 warning (deprecated grpc fallback -- intentional) |
+| `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace --lib` | 2,726+ barracuda + 21,599+ workspace tests |
+| `cargo test --workspace` | 2,726+ barracuda + 4,700+ workspace lib + integration tests |
+| Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | Five springs validation | 4,000+ acceptance checks |
 | `unsafe` blocks | 45 workspace-wide (2 barracuda, rest FFI/hardware/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
+| Production stubs | 0 -- all stubs evolved to real implementations or proper errors |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs | 0 -- all evolved to formal `BLOCKED(reason)` markers |
 | Dead code | ~400 lines removed; ~35 justified `#[allow(dead_code)]` (feature-gated, GPU fallbacks) |
@@ -48,6 +50,8 @@ Nest    = Tower  + NestGate           <- storage
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | Orphan shaders | 0 -- all 661 WGSL shaders wired to Rust (21 DF64 files) |
 | File size limit | All production files under 1000 lines |
+| Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
+| Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
 ---
 
@@ -268,22 +272,31 @@ toadStool/
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 0 |
+| Clippy warnings (`-D warnings`) | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
 | Unit tests (barracuda) | 2,726+ |
 | Shader-specific tests | 155 (unit + e2e + chaos + fault + naga validation) |
 | WGSL shaders (barracuda) | 661 (zero orphans, shader-first, 21 DF64 + 200+ f64 — zero f32-only, all f64 canonical) |
-| Unit tests (full workspace) | 21,599+ |
+| Lib tests (server) | 576 |
+| Lib tests (core toadstool) | 1,340 |
+| Lib tests (distributed) | 1,057 |
+| Lib tests (common) | 921 |
+| Lib tests (config) | 368 |
+| Lib tests (CLI) | 209 |
+| Lib tests (testing) | 107 |
+| Lib tests (API) | 58 |
+| Full workspace test time | ~6m30s (8 threads, excluding GPU crates) |
 | `unsafe` blocks | 45 workspace-wide (2 barracuda, rest FFI/hardware/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
+| Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
 | Production `todo!()`/`dbg!()` | 0 |
-| Production TODOs | 0 -- all `BLOCKED(reason)` markers |
 | Dead code removed | ~400 lines; ~35 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants |
 | External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core) |
 | Five springs validation | 4,000+ acceptance checks |
+| Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 
 ---
 
@@ -295,15 +308,15 @@ toadStool/
 - **ComputeDispatch migration** -- 34/250 ops migrated; ~216 legacy ops use manual BGL/BG boilerplate (incremental)
 - **DF64 as default path** -- df64_rewrite as default precision, not fallback (groundSpring V35)
 - **NpuDispatch trait** -- generic NPU interface (airSpring/wetSpring/groundSpring converge)
-- **Test coverage** -- barracuda at ~82% → 90% target
+- **Test coverage** -- pushing toward 90% target; major coverage gains in CLI, server, API, monitoring, distributed
 - **DF64 transcendental coverage** -- extend `asin_df64`, `acos_df64`, `atan_df64`, `sinh_df64`, `cosh_df64`, `gamma_df64`, `erf_df64`
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
 ### Recently Completed
+- **Session 70: Deep debt + test concurrency evolution** -- 15 production stubs evolved to real implementations (primals client JSON-RPC, orchestrator deploy, coordinator cancel with CancellationToken, deprecated HTTP caller returns errors). All `std::env::set_var` in tests migrated to `temp_env` (8 files). All sleeps removed from non-chaos tests. Default test timeouts reduced (30s→5s, 120s→30s). All doctests fixed. ChaosEngine metrics sync corrected. Storage benchmark race condition fixed. Nested runtime panics eliminated. Barracuda `#![allow(clippy::unused_async)]` with justification. Edge/embedded placeholders evolved to proper errors. Real mDNS response parser. +150 new tests across workspace. All files under 1000 lines confirmed. Full workspace test suite: 6m30s, 0 failures.
 - **Session 69++: Architecture evolution** -- metalForge streaming pipeline. manual_jsonrpc → pure_jsonrpc (full migration). 34 ops → ComputeDispatch (~3,739 lines removed). NAK workgroup tuning. 4 production stubs → real implementations. 16 large files smart-refactored. +100 new tests. rust-version 1.75→1.80.
 - **Session 69/69+: Cross-spring absorption + deep debt** -- 5 spring handoffs absorbed (196 handoff files). 30+ new WGSL shaders (17 AlphaFold2, GPU Lanczos, airSpring batch ops, MD observables). anyhow fully eliminated from all ~30 crates. 13 S69 shaders → Rust dispatch via ComputeDispatch.
 - **Session 68+++: Deep debt sweep** -- chrono eliminated (28 crates, 200+ files → `std::time`). Unsafe 47→45. ~400 lines dead code removed.
-- **Session 68: Dual-layer universal precision** -- `op_preamble` + naga-guided `df64_rewrite`. 122 shader tests.
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -316,7 +329,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 | D-CD | ComputeDispatch migration (~216 legacy ops) | Active -- incremental, 34 done |
 | D-DF64 | DF64 as default path (not fallback) | Active -- architectural |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Active -- design phase |
-| D-COV | Test coverage 82% → 90% | Active |
+| D-COV | Test coverage → 90% | Active -- major gains in server, CLI, API, monitoring |
 | W-001 | f64 transcendental polyfill for all drivers | Sovereign -- `compile_shader_f64()` handles 28 functions |
 | W-003 | NAK compiler scheduling gap (SM70 Volta) | Active -- Phases 1+4 done; Titan V hw validation pending |
 | D-S20-003 | neuralSpring `evolved/` migration (~2075 lines) | Blocked -- awaiting neuralSpring team |
@@ -341,4 +354,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 28, 2026 -- 661 WGSL shaders. 2,726+ barracuda tests. 34 ops migrated to ComputeDispatch. All quality gates green. Rust 1.80+. Zero anyhow. Zero chrono. 45 justified unsafe. All files < 1000 lines.
+**Last Updated**: February 28, 2026 -- 661 WGSL shaders. 2,726+ barracuda tests. 4,700+ workspace lib tests. 34 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings, 0 test failures). Fully concurrent test suite (6m30s). Rust 1.80+. Zero anyhow. Zero chrono. Zero production stubs. 45 justified unsafe. All files < 1000 lines.

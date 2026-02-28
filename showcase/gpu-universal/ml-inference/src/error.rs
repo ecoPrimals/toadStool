@@ -251,10 +251,10 @@ impl From<wgpu::Error> for BarracudaError {
                 available: 0, // Unknown from wgpu error
             },
             wgpu::Error::Validation { source, .. } => {
-                Self::DeviceInitialization(format!("Validation error: {}", source))
+                Self::DeviceInitialization(format!("Validation error: {source}"))
             }
             wgpu::Error::Internal { source, .. } => {
-                Self::Internal(format!("wgpu internal error: {}", source))
+                Self::Internal(format!("wgpu internal error: {source}"))
             }
         }
     }
@@ -265,7 +265,7 @@ impl From<wgpu::BufferAsyncError> for BarracudaError {
     fn from(err: wgpu::BufferAsyncError) -> Self {
         Self::BufferOperation {
             operation: "async buffer operation".to_string(),
-            reason: format!("{:?}", err),
+            reason: format!("{err:?}"),
         }
     }
 }

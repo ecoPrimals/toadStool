@@ -24,7 +24,7 @@ use tokio::sync::Barrier;
 use toadstool_cli::executor::{BiomeExecutor, RunBiomeOptions, UpBiomeOptions};
 use toadstool_cli::{
     BiomeManifest, BiomeMetadata, BiomeNetworking, BiomeResources, BiomeSecurity, BiomeStorage,
-    CliContext,
+    CliContext, CliError,
 };
 
 // ============================================================================
@@ -40,7 +40,7 @@ fn create_test_context() -> CliContext {
 }
 
 async fn create_test_executor() -> Result<BiomeExecutor> {
-    BiomeExecutor::new().await
+    Ok(BiomeExecutor::new().await?)
 }
 
 #[allow(dead_code)]
@@ -385,8 +385,9 @@ async fn test_resource_limit_combinations() {
             let exec = Arc::clone(&executor);
 
             tokio::spawn(async move {
-                let manifest_path =
-                    create_manifest_file(&format!("res-{}", i), manifest_content).await?;
+                let manifest_path = create_manifest_file(&format!("res-{}", i), manifest_content)
+                    .await
+                    .map_err(|e| CliError::Other(e.to_string()))?;
 
                 let ctx = create_test_context();
                 let opts = RunBiomeOptions {
@@ -567,7 +568,9 @@ async fn test_up_biome_detach_mode_variations() {
 
             tokio::spawn(async move {
                 let manifest_path =
-                    create_manifest_file(&format!("detach-{}", detach), manifest_content).await?;
+                    create_manifest_file(&format!("detach-{}", detach), manifest_content)
+                        .await
+                        .map_err(|e| CliError::Other(e.to_string()))?;
 
                 let ctx = create_test_context();
                 let opts = UpBiomeOptions {
@@ -615,7 +618,9 @@ async fn test_up_biome_different_health_intervals() {
 
             tokio::spawn(async move {
                 let manifest_path =
-                    create_manifest_file(&format!("health-{}", interval), manifest_content).await?;
+                    create_manifest_file(&format!("health-{}", interval), manifest_content)
+                        .await
+                        .map_err(|e| CliError::Other(e.to_string()))?;
 
                 let ctx = create_test_context();
                 let opts = UpBiomeOptions {
@@ -797,7 +802,7 @@ async fn test_biome_name_with_special_characters() {
 async fn test_log_lines_boundary_values() {
     let executor = create_test_executor().await.unwrap();
 
-    let line_counts = vec![1, 10, 50, 100, 1000, 10000];
+    let line_counts = vec![1, 10, 50, 100, 1000, 10_000];
 
     for lines in line_counts {
         let result = executor

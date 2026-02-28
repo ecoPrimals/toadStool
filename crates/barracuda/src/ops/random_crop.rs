@@ -44,10 +44,7 @@ impl RandomCrop {
         if crop_shape.len() != 2 || crop_shape[1] != 2 {
             return Err(BarracudaError::invalid_op(
                 "RandomCrop",
-                format!(
-                    "crop_positions must be 2D [batch_size, 2], got shape {:?}",
-                    crop_shape
-                ),
+                format!("crop_positions must be 2D [batch_size, 2], got shape {crop_shape:?}"),
             ));
         }
 
@@ -73,8 +70,7 @@ impl RandomCrop {
             return Err(BarracudaError::invalid_op(
                 "RandomCrop",
                 format!(
-                    "input must be 4D [batch, channels, height, width], got shape {:?}",
-                    input_shape
+                    "input must be 4D [batch, channels, height, width], got shape {input_shape:?}"
                 ),
             ));
         }

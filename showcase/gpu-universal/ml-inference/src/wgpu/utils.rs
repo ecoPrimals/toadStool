@@ -108,14 +108,14 @@ impl WgpuExecutor {
         let pipeline_layout = self
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(&format!("{} Pipeline Layout", shader_label)),
+                label: Some(&format!("{shader_label} Pipeline Layout")),
                 bind_group_layouts: &[bind_group_layout],
                 push_constant_ranges: &[],
             });
 
         self.device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(&format!("{} Pipeline", shader_label)),
+                label: Some(&format!("{shader_label} Pipeline")),
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
@@ -165,12 +165,12 @@ impl WgpuExecutor {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some(&format!("{} Encoder", label)),
+                label: Some(&format!("{label} Encoder")),
             });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some(&format!("{} Pass", label)),
+                label: Some(&format!("{label} Pass")),
                 timestamp_writes: None,
             });
             compute_pass.set_pipeline(pipeline);

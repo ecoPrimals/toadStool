@@ -25,8 +25,7 @@ pub(super) fn parse_runtime_hint(hint: &str) -> Result<RuntimeType> {
         "container" | "docker" => Ok(RuntimeType::Container),
         "gpu" => Ok(RuntimeType::Gpu),
         _ => Err(crate::CliError::Other(format!(
-            "Unknown runtime type: {}",
-            hint
+            "Unknown runtime type: {hint}"
         ))),
     }
 }

@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         y_train_data.push(y);
     }
 
-    println!("  Training points: {}", n_train);
+    println!("  Training points: {n_train}");
     println!("  Parameter space: 1D [0, 1]");
 
     // Step 3: Train RBF surrogate on GPU
@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let predictions = y_pred.to_vec()?;
 
     println!("  ✓ Predictions computed");
-    println!("  Evaluation points: {}", n_eval);
+    println!("  Evaluation points: {n_eval}");
     println!(
         "  Prediction time: {:.2} ms",
         pred_time.as_secs_f64() * 1000.0
@@ -116,8 +116,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     mean_error /= n_eval as f32;
 
-    println!("  Mean error: {:.6}", mean_error);
-    println!("  Max error: {:.6}", max_error);
+    println!("  Mean error: {mean_error:.6}");
+    println!("  Max error: {max_error:.6}");
 
     if mean_error < 0.1 {
         println!("  ✓ Accuracy: EXCELLENT (< 0.1)");
@@ -132,7 +132,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("  Training:   {:.2} ms", train_time.as_secs_f64() * 1000.0);
     println!("  Prediction: {:.2} ms", pred_time.as_secs_f64() * 1000.0);
-    println!("  Accuracy:   Mean {:.6}, Max {:.6}", mean_error, max_error);
+    println!("  Accuracy:   Mean {mean_error:.6}, Max {max_error:.6}");
     println!();
     println!("🦈 BarraCuda: GPU-accelerated scientific computing ready!");
     println!("🔬 hotSpring: Physics surrogate learning operational!");

@@ -200,7 +200,7 @@ fn scan_pcie_for_akida() -> Result<Vec<PcieDevice>> {
 
 /// Query board information
 fn query_board_info(device: &PcieDevice, index: usize) -> Result<AkidaBoard> {
-    let device_path = PathBuf::from(format!("/dev/akida{}", index));
+    let device_path = PathBuf::from(format!("/dev/akida{index}"));
 
     // Query PCIe link info
     let (pcie_gen, pcie_lanes) = query_pcie_link_info(&device.address).unwrap_or((2, 4)); // Default: PCIe Gen2 x4
@@ -233,11 +233,11 @@ fn query_board_info(device: &PcieDevice, index: usize) -> Result<AkidaBoard> {
 fn query_pcie_link_info(address: &str) -> Result<(u8, u8)> {
     use std::fs;
 
-    let base_path = format!("/sys/bus/pci/devices/{}", address);
+    let base_path = format!("/sys/bus/pci/devices/{address}");
 
     // Read current link speed and width
-    let speed_path = format!("{}/current_link_speed", base_path);
-    let width_path = format!("{}/current_link_width", base_path);
+    let speed_path = format!("{base_path}/current_link_speed");
+    let width_path = format!("{base_path}/current_link_width");
 
     let generation = if let Ok(speed) = fs::read_to_string(&speed_path) {
         parse_pcie_speed(&speed)
@@ -275,7 +275,7 @@ fn query_power_consumption(pcie_address: &str) -> f64 {
     use std::fs;
 
     // Search for hwmon directory
-    let hwmon_base = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
+    let hwmon_base = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
 
     if let Ok(entries) = fs::read_dir(&hwmon_base) {
         for entry in entries.flatten() {
@@ -312,7 +312,7 @@ fn query_temperature(pcie_address: &str) -> f64 {
     use std::fs;
 
     // Search for hwmon directory
-    let hwmon_base = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
+    let hwmon_base = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
 
     if let Ok(entries) = fs::read_dir(&hwmon_base) {
         for entry in entries.flatten() {
@@ -346,7 +346,7 @@ fn query_temperature(pcie_address: &str) -> f64 {
 /// Check board health
 fn check_board_health(address: &str) -> Result<BoardHealth> {
     // Check if device is accessible
-    let base_path = format!("/sys/bus/pci/devices/{}", address);
+    let base_path = format!("/sys/bus/pci/devices/{address}");
 
     if std::fs::metadata(&base_path).is_ok() {
         // Device exists and is accessible

@@ -29,17 +29,14 @@ impl BBoxTransform {
         if anchor_shape.len() != 2 || anchor_shape[1] != 4 {
             return Err(crate::error::BarracudaError::invalid_op(
                 "BBoxTransform",
-                format!("Anchors must be [N, 4], got {:?}", anchor_shape),
+                format!("Anchors must be [N, 4], got {anchor_shape:?}"),
             ));
         }
 
         if delta_shape != anchor_shape {
             return Err(crate::error::BarracudaError::invalid_op(
                 "BBoxTransform",
-                format!(
-                    "Deltas must match anchors shape: {:?} vs {:?}",
-                    delta_shape, anchor_shape
-                ),
+                format!("Deltas must match anchors shape: {delta_shape:?} vs {anchor_shape:?}"),
             ));
         }
 

@@ -344,9 +344,8 @@ impl WgpuExecutor {
         // Validate size (Deep Debt: graceful limit, not hardcoded crash)
         anyhow::ensure!(
             size <= 512,
-            "Scan currently supports up to 512 elements (got {}). \
-             Hierarchical scan for larger arrays coming soon!",
-            size
+            "Scan currently supports up to 512 elements (got {size}). \
+             Hierarchical scan for larger arrays coming soon!"
         );
 
         let shader_source = include_str!("../shaders/scan.wgsl");

@@ -222,7 +222,7 @@ impl NpuHomomorphic {
     fn measure_npu_power() -> f64 {
         // Try known Akida PCIe addresses
         for pcie_addr in &["0000:a1:00.0", "0000:e2:00.0"] {
-            let hwmon_dir = format!("/sys/bus/pci/devices/{}/hwmon", pcie_addr);
+            let hwmon_dir = format!("/sys/bus/pci/devices/{pcie_addr}/hwmon");
             if let Ok(entries) = std::fs::read_dir(&hwmon_dir) {
                 for entry in entries.flatten() {
                     let power_path = entry.path().join("power1_input");

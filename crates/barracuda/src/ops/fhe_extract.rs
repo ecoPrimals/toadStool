@@ -88,14 +88,14 @@ impl FheExtract {
         // ✅ VALIDATION: Degree must be power of 2
         if !degree.is_power_of_two() || degree < 4 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Degree must be power of 2 >= 4, got {}", degree),
+                message: format!("Degree must be power of 2 >= 4, got {degree}"),
             });
         }
 
         // ✅ VALIDATION: Index must be in bounds
         if index >= degree {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Index {} out of bounds for degree {}", index, degree),
+                message: format!("Index {index} out of bounds for degree {degree}"),
             });
         }
 

@@ -47,7 +47,7 @@ impl RotaryEmbedding {
         if !head_dim.is_multiple_of(2) {
             return Err(BarracudaError::invalid_op(
                 "RotaryEmbedding",
-                format!("head_dim ({}) must be even for pairwise rotation", head_dim),
+                format!("head_dim ({head_dim}) must be even for pairwise rotation"),
             ));
         }
 

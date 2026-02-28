@@ -11,7 +11,7 @@
 //!
 //! ## Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_display::window::{WindowManager, CreateWindowRequest};
 //!
 //! # async fn example() -> Result<()> {

@@ -310,7 +310,7 @@ async fn test_resource_monitoring_updates_peak_concurrent() {
             if stats.peak_concurrent_executions >= 5 {
                 return stats.peak_concurrent_executions;
             }
-            // ✅ MODERN: Immediate execution (sleep removed)
+            tokio::task::yield_now().await;
         }
     })
     .await;

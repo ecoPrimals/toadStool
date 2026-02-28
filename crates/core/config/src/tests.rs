@@ -1,9 +1,6 @@
 //! Tests for configuration constants and network utilities
 
-use std::env;
-
 use super::*;
-use crate::env_config::tests::get_env_lock;
 
 // ===== Network constants =====
 #[test]
@@ -62,98 +59,63 @@ fn test_default_federation_address() {
     let _addr = network::default_federation_address();
 }
 
-// ===== Port getters (with env mutex for usage tests) =====
+// ===== Port getters (with temp_env for thread-safe scoping) =====
 #[test]
 #[allow(deprecated)]
 fn test_get_songbird_port_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original = env::var("SONGBIRD_PORT").ok();
-    env::remove_var("SONGBIRD_PORT");
-    let port = network::get_songbird_port();
-    assert!(port > 0);
-    if let Some(v) = original {
-        env::set_var("SONGBIRD_PORT", v);
-    }
+    temp_env::with_var("SONGBIRD_PORT", None::<&str>, || {
+        let port = network::get_songbird_port();
+        assert!(port > 0);
+    });
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_beardog_port_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original = env::var("BEARDOG_PORT").ok();
-    env::remove_var("BEARDOG_PORT");
-    let port = network::get_beardog_port();
-    assert_eq!(port, 8081);
-    if let Some(v) = original {
-        env::set_var("BEARDOG_PORT", v);
-    }
+    temp_env::with_var("BEARDOG_PORT", None::<&str>, || {
+        let port = network::get_beardog_port();
+        assert_eq!(port, 8081);
+    });
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_nestgate_port_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original = env::var("NESTGATE_PORT").ok();
-    env::remove_var("NESTGATE_PORT");
-    let port = network::get_nestgate_port();
-    assert_eq!(port, 8082);
-    if let Some(v) = original {
-        env::set_var("NESTGATE_PORT", v);
-    }
+    temp_env::with_var("NESTGATE_PORT", None::<&str>, || {
+        let port = network::get_nestgate_port();
+        assert_eq!(port, 8082);
+    });
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_squirrel_port_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original = env::var("TOADSTOOL_SQUIRREL_PORT").ok();
-    env::remove_var("TOADSTOOL_SQUIRREL_PORT");
-    let port = network::get_squirrel_port();
-    assert_eq!(port, 8083);
-    if let Some(v) = original {
-        env::set_var("TOADSTOOL_SQUIRREL_PORT", v);
-    }
+    temp_env::with_var("TOADSTOOL_SQUIRREL_PORT", None::<&str>, || {
+        let port = network::get_squirrel_port();
+        assert_eq!(port, 8083);
+    });
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_toadstool_port_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original_port = env::var("TOADSTOOL_PORT").ok();
-    let original_api = env::var("TOADSTOOL_API_PORT").ok();
-    env::remove_var("TOADSTOOL_PORT");
-    env::remove_var("TOADSTOOL_API_PORT");
-    let _port = network::get_toadstool_port();
-    if let Some(v) = original_port {
-        env::set_var("TOADSTOOL_PORT", v);
-    }
-    if let Some(v) = original_api {
-        env::set_var("TOADSTOOL_API_PORT", v);
-    }
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_PORT", None::<&str>),
+            ("TOADSTOOL_API_PORT", None::<&str>),
+        ],
+        || {
+            let _port = network::get_toadstool_port();
+        },
+    );
 }
 
 #[test]
 fn test_get_bind_host_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original = env::var("BIND_ADDRESS").ok();
-    env::remove_var("BIND_ADDRESS");
-    let host = network::get_bind_host();
-    assert_eq!(host, "127.0.0.1");
-    if let Some(v) = original {
-        env::set_var("BIND_ADDRESS", v);
-    }
+    temp_env::with_var("BIND_ADDRESS", None::<&str>, || {
+        let host = network::get_bind_host();
+        assert_eq!(host, "127.0.0.1");
+    });
 }
 
 // ===== Endpoint getters =====

@@ -39,6 +39,10 @@ impl ProviderRegistry {
     }
 
     /// Register a capability provider
+    ///
+    /// # Errors
+    ///
+    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn register(&mut self, info: CapabilityInfo) -> ToadStoolResult<()> {
         let provider_id = info.provider_id.clone();
 
@@ -55,12 +59,20 @@ impl ProviderRegistry {
     }
 
     /// Unregister a provider
+    ///
+    /// # Errors
+    ///
+    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn unregister(&mut self, provider_id: &str) -> ToadStoolResult<()> {
         self.providers.remove(provider_id);
         Ok(())
     }
 
     /// Find the best matching provider for a capability request
+    ///
+    /// # Errors
+    ///
+    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn find_best_match(
         &self,
         requested: &CapabilityType,

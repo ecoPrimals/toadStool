@@ -256,11 +256,11 @@ impl GpuHmcTrajectory {
     /// Seed RNG buffers from a host seed.
     pub fn seed_rng(&self, seed: u32, bufs: &GpuHmcBuffers) {
         let link_seeds: Vec<u32> = (0..self.n_links)
-            .map(|i| seed.wrapping_mul(2654435761).wrapping_add(i))
+            .map(|i| seed.wrapping_mul(2_654_435_761).wrapping_add(i))
             .collect();
         let site_seeds: Vec<u32> = (0..self.volume)
             .map(|i| {
-                seed.wrapping_mul(1103515245)
+                seed.wrapping_mul(1_103_515_245)
                     .wrapping_add(i)
                     .wrapping_add(1)
             })

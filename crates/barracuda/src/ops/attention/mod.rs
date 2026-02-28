@@ -109,26 +109,21 @@ impl Attention {
             return Err(BarracudaError::invalid_op(
                 "attention",
                 format!(
-                    "query requires 4D tensor [batch, heads, seq_len, head_dim], got {}D",
-                    q_ndim
+                    "query requires 4D tensor [batch, heads, seq_len, head_dim], got {q_ndim}D"
                 ),
             ));
         }
         if k_ndim != 4 {
             return Err(BarracudaError::invalid_op(
                 "attention",
-                format!(
-                    "key requires 4D tensor [batch, heads, seq_len, head_dim], got {}D",
-                    k_ndim
-                ),
+                format!("key requires 4D tensor [batch, heads, seq_len, head_dim], got {k_ndim}D"),
             ));
         }
         if v_ndim != 4 {
             return Err(BarracudaError::invalid_op(
                 "attention",
                 format!(
-                    "value requires 4D tensor [batch, heads, seq_len, head_dim], got {}D",
-                    v_ndim
+                    "value requires 4D tensor [batch, heads, seq_len, head_dim], got {v_ndim}D"
                 ),
             ));
         }

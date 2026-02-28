@@ -106,7 +106,7 @@ impl SumReduceF64 {
         };
         let params_buffer = device.create_uniform_buffer("Reduce params", &params);
 
-        ComputeDispatch::new(&*device, "sum_reduce_pass1")
+        ComputeDispatch::new(&device, "sum_reduce_pass1")
             .shader(Self::wgsl_shader(), entry_point)
             .f64()
             .storage_read(0, &input_buffer)
@@ -137,7 +137,7 @@ impl SumReduceF64 {
         let params2_buffer = device.create_uniform_buffer("Reduce params 2", &params2);
 
         let n_workgroups2 = n_workgroups.div_ceil(wg_size);
-        ComputeDispatch::new(&*device, "sum_reduce_pass2")
+        ComputeDispatch::new(&device, "sum_reduce_pass2")
             .shader(Self::wgsl_shader(), entry_point)
             .f64()
             .storage_read(0, &partial_buffer)

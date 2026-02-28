@@ -48,7 +48,7 @@ impl NMS {
         if !(0.0..=1.0).contains(&iou_threshold) {
             return Err(BarracudaError::invalid_op(
                 "NMS",
-                format!("iou_threshold must be in [0, 1], got {}", iou_threshold),
+                format!("iou_threshold must be in [0, 1], got {iou_threshold}"),
             ));
         }
 

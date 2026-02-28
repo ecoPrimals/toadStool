@@ -1,18 +1,13 @@
 //! Cache, config, and capability tests
 
 use super::super::*;
-use super::common::*;
 use crate::primal_identity::{ComputeCapability, CoordinationCapability};
 use std::collections::HashMap;
 use std::time::Duration;
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_cache_freshness() {
-    let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-    let engine = PrimalDiscoveryEngine::new(None)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::new(None).expect("Failed to create engine");
 
     let service = DiscoveredService {
         id: Some("test-service".to_string()),
@@ -41,12 +36,8 @@ async fn test_cache_freshness() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_cache_stats() {
-    let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-    let engine = PrimalDiscoveryEngine::new(None)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::new(None).expect("Failed to create engine");
 
     let stats = engine.cache_stats().await;
     assert_eq!(stats.total_entries, 0, "Cache should be empty initially");
@@ -76,9 +67,7 @@ async fn test_clear_cache() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let capability = Capability::Coordination(CoordinationCapability::ServiceDiscovery);
     let _ = engine.discover_by_capability(&capability).await.unwrap();
@@ -93,19 +82,18 @@ async fn test_clear_cache() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
 async fn test_discovery_config_default_with_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    std::env::set_var("TOADSTOOL_MDNS_ENABLE", "false");
-    std::env::set_var("TOADSTOOL_MDNS_REQUIRE", "true");
-
-    let config = DiscoveryConfig::default();
-
-    assert!(!config.enable_mdns);
-    assert!(config.require_mdns);
-
-    std::env::remove_var("TOADSTOOL_MDNS_ENABLE");
-    std::env::remove_var("TOADSTOOL_MDNS_REQUIRE");
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_MDNS_ENABLE", Some("false")),
+            ("TOADSTOOL_MDNS_REQUIRE", Some("true")),
+        ],
+        || {
+            let config = DiscoveryConfig::default();
+            assert!(!config.enable_mdns);
+            assert!(config.require_mdns);
+        },
+    );
 }
 
 #[tokio::test]
@@ -124,9 +112,8 @@ async fn test_cache_stats_stale_entries() {
         ..Default::default()
     };
 
-    let engine_with_short_ttl = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine_with_short_ttl =
+        PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
     engine_with_short_ttl
         .cache_service("stale_key", service.clone())
         .await;
@@ -197,9 +184,7 @@ async fn test_cache_stats_empty() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     let stats = engine.cache_stats().await;
     assert_eq!(stats.total_entries, 0);
@@ -230,9 +215,7 @@ async fn test_cached_endpoint_is_fresh() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
 
     engine.cache_service("fresh_key", service).await;
     let cached = engine.get_from_cache("fresh_key").await;
@@ -248,9 +231,7 @@ async fn test_cache_stats_multiple_entries() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create engine");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create engine");
 
     for i in 0..3 {
         let service = DiscoveredService {
@@ -278,9 +259,7 @@ async fn test_cached_endpoint_stale_after_ttl() {
     // which tokio virtual time cannot advance)
     config.cache_ttl = Duration::ZERO;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let service = DiscoveredService {
         id: Some("stale".to_string()),
@@ -362,9 +341,7 @@ async fn test_cache_stats_after_clear() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     let _ = engine
         .discover_by_capability(&Capability::Custom {
@@ -432,9 +409,7 @@ async fn test_cached_endpoint_is_fresh_with_nonzero_ttl() {
     config.require_mdns = false;
     config.cache_ttl = std::time::Duration::from_secs(600);
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config)
-        .await
-        .expect("create");
+    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
 
     engine.cache_service("fresh_key", service).await;
     let cached = engine.get_from_cache("fresh_key").await;

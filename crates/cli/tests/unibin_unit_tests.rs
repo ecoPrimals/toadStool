@@ -237,7 +237,7 @@ fn test_server_default_port() {
     let cli = Cli::parse_from(args);
 
     if let Commands::Server { port, .. } = cli.command {
-        assert_eq!(port, 8084); // Default port
+        assert_eq!(port, 0); // OS-assigned port (sovereignty: runtime discovery)
     } else {
         panic!("Expected Server command");
     }

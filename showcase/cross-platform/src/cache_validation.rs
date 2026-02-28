@@ -43,7 +43,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         println!(
             "\n══════════════════════════════════════════════════════════════════════════════"
         );
-        println!("  {}", name);
+        println!("  {name}");
         println!(
             "══════════════════════════════════════════════════════════════════════════════\n"
         );
@@ -58,7 +58,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let warmup_start = Instant::now();
         let _ = a.add(&b)?;
         let warmup_time = warmup_start.elapsed().as_micros();
-        println!("  First call (cold cache): {} μs\n", warmup_time);
+        println!("  First call (cold cache): {warmup_time} μs\n");
 
         // Measure subsequent calls (should hit cache)
         let mut times = Vec::with_capacity(iterations);
@@ -73,16 +73,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         let max = times.iter().cloned().fold(0.0f64, f64::max);
 
         println!("  Subsequent calls (warm cache):");
-        println!("     Min:     {:>8.1} μs", min);
-        println!("     Max:     {:>8.1} μs", max);
-        println!("     Average: {:>8.1} μs\n", avg);
+        println!("     Min:     {min:>8.1} μs");
+        println!("     Max:     {max:>8.1} μs");
+        println!("     Average: {avg:>8.1} μs\n");
 
         // Speedup
         let speedup = warmup_time as f64 / avg;
-        println!(
-            "  Cache effectiveness: {:.1}x faster after caching",
-            speedup
-        );
+        println!("  Cache effectiveness: {speedup:.1}x faster after caching");
 
         // Compare to targets
         println!("\n  ──────────────────────────────────────────────────────────────");
@@ -94,12 +91,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sy
         println!("  ──────────────────────────────────────────────────────────────");
 
         if avg < 400.0 {
-            println!(
-                "  ✅ CACHING IS WORKING! ({:.0}μs is much less than ~1200μs)",
-                avg
-            );
+            println!("  ✅ CACHING IS WORKING! ({avg:.0}μs is much less than ~1200μs)");
         } else {
-            println!("  ❌ CACHING MAY NOT BE WORKING ({:.0}μs is too high)", avg);
+            println!("  ❌ CACHING MAY NOT BE WORKING ({avg:.0}μs is too high)");
         }
     }
 

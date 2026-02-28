@@ -38,6 +38,7 @@ impl ConfigurationExt for ZeroConfigDeployment {
 
 impl ZeroConfigDeployment {
     /// Generate biome configuration
+    #[allow(clippy::unused_async)] // Config generation; async for API consistency
     pub(crate) async fn generate_biome_config(&self) -> Result<BiomeConfig> {
         debug!("Generating biome configuration");
 
@@ -67,6 +68,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Generate runtime configuration
+    #[allow(clippy::unused_async)] // Config generation; async for API consistency
     pub(crate) async fn generate_runtime_config(&self) -> Result<RuntimeConfig> {
         debug!("Generating runtime configuration");
 
@@ -98,6 +100,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Generate security configuration
+    #[allow(clippy::unused_async)] // Config generation; async for API consistency
     pub(crate) async fn generate_security_config(&self) -> Result<SecurityConfig> {
         debug!("Generating security configuration");
 
@@ -114,6 +117,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Generate network configuration
+    #[allow(clippy::unused_async)] // Config generation; async for API consistency
     pub(crate) async fn generate_network_config(&self) -> Result<NetworkConfig> {
         debug!("Generating network configuration");
 
@@ -145,6 +149,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Generate storage configuration
+    #[allow(clippy::unused_async)] // Config generation; async for API consistency
     pub(crate) async fn generate_storage_config(&self) -> Result<StorageConfig> {
         debug!("Generating storage configuration");
 

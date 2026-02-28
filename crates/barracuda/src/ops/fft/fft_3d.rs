@@ -33,8 +33,7 @@ impl Fft3D {
             || shape[3] != 2
         {
             return Err(BarracudaError::Device(format!(
-                "FFT 3D shape mismatch: expected [{}, {}, {}, 2], got {:?}",
-                nx, ny, nz, shape
+                "FFT 3D shape mismatch: expected [{nx}, {ny}, {nz}, 2], got {shape:?}"
             )));
         }
 

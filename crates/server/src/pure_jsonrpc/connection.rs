@@ -18,6 +18,10 @@ use crate::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest, JsonRpcResponse};
 ///
 /// Accepts connections, parses JSON-RPC requests (raw JSON or HTTP/JSON hybrid),
 /// dispatches to the handler, and writes responses.
+///
+/// # Errors
+///
+/// Returns [`ServerError`] if directory creation, socket bind, or permission setting fails.
 pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> ServerResult<()> {
     info!(
         "Starting pure JSON-RPC 2.0 server on Unix socket: {:?}",
@@ -76,6 +80,10 @@ pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> S
 }
 
 /// Serve JSON-RPC on a TCP listener (isomorphic fallback).
+///
+/// # Errors
+///
+/// Returns [`ServerError`] if getting local address fails.
 pub async fn serve_tcp(handler: Arc<JsonRpcHandler>, listener: TcpListener) -> ServerResult<()> {
     let local_addr = listener
         .local_addr()

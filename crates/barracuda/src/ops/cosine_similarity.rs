@@ -45,8 +45,7 @@ impl CosineSimilarity {
             return Err(BarracudaError::invalid_op(
                 "CosineSimilarity",
                 format!(
-                    "vectors must be 2D [num_vectors, dim], got shapes {:?} and {:?}",
-                    a_shape, b_shape
+                    "vectors must be 2D [num_vectors, dim], got shapes {a_shape:?} and {b_shape:?}"
                 ),
             ));
         }

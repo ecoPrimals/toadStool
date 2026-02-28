@@ -67,8 +67,9 @@ impl SystemResourceMonitor {
         self.refresh_system().await?;
         let mut system = self.system.write().await;
         system.refresh_cpu();
-        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
-            / system.cpus().len().max(1) as f32;
+        let len = system.cpus().len().max(1);
+        #[allow(clippy::cast_precision_loss)]
+        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / len as f32;
         Ok(f64::from(cpu_usage))
     }
 
@@ -166,6 +167,7 @@ impl SystemResourceMonitor {
         #[cfg(not(unix))]
         {
             let cpu_usage = self.get_cpu_usage().await?;
+            #[allow(clippy::cast_precision_loss)]
             let estimated_load = cpu_usage / 100.0 * _system.cpus().len() as f64;
             Ok(LoadAverages {
                 one_minute: estimated_load,
@@ -204,15 +206,18 @@ impl SystemResourceMonitor {
         let updated_metrics = RuntimeMetrics {
             cpu: CpuMetrics {
                 usage_percent: cpu_usage,
+                #[allow(clippy::cast_precision_loss)]
                 cores_used: cpu_usage / 100.0 * self.system.read().await.cpus().len() as f64,
                 cpu_time_seconds: cpu_usage / 100.0,
             },
             memory: MemoryMetrics {
+                #[allow(clippy::cast_precision_loss)]
                 usage_percent: (used_memory as f64 / total_memory as f64) * 100.0,
                 used_bytes: used_memory,
                 peak_bytes: used_memory,
             },
             storage: StorageMetrics {
+                #[allow(clippy::cast_precision_loss)]
                 usage_percent: (used_storage as f64 / total_storage as f64) * 100.0,
                 used_bytes: used_storage,
                 bytes_read: 0,
@@ -312,9 +317,11 @@ impl ResourceMonitor for SystemResourceMonitor {
 
             system.refresh_cpu();
             let total_cpu_cores = system.cpus().len();
+            #[allow(clippy::cast_precision_loss)]
             let cpu_usage_percent = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
                 / total_cpu_cores as f32;
             let cpu_usage_percent = f64::from(cpu_usage_percent);
+            #[allow(clippy::cast_precision_loss)]
             let cpu_cores = total_cpu_cores as f64;
             let available_cpu_cores = cpu_cores * (1.0 - cpu_usage_percent / 100.0);
 
@@ -322,7 +329,11 @@ impl ResourceMonitor for SystemResourceMonitor {
             let used_memory = system.used_memory();
             let available_memory = total_memory - used_memory;
             let memory_usage_percent = if total_memory > 0 {
-                (used_memory as f64 / total_memory as f64) * 100.0
+                let used = used_memory;
+                let total = total_memory;
+                #[allow(clippy::cast_precision_loss)]
+                let pct = (used as f64 / total as f64) * 100.0;
+                pct
             } else {
                 0.0
             };

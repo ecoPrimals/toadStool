@@ -1,7 +1,7 @@
 # ToadStool Showcase Collection
 ## Pure Rust Hardware + Universal Compute Demonstrations
 
-**Status**: ✅ Production Ready | **Updated**: February 8, 2026
+**Status**: Production Ready | **Updated**: February 28, 2026
 
 ---
 
@@ -100,15 +100,6 @@ Benchmark data and validation reports:
 - FHE speedup analysis
 
 ---
-
-## 🗄️ Archived Showcases
-
-Older showcases moved to `archive/`:
-- `archive/gaming/` - Gaming evolution demos
-- `archive/distributed/` - Multi-primal demos
-- `archive/misc/` - Legacy showcases
-
-These may be outdated with the new ToadStool architecture.
 
 ---
 
@@ -218,8 +209,6 @@ All showcases follow deep debt principles:
 ## 🚀 Status
 
 **Core Showcases**: 7 working demonstrations  
-**Archived**: 10+ older showcases  
-**New**: NPU raytracing comparison  
 **Hardware**: 16 devices discovered  
 **Tests**: All passing  
 

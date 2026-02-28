@@ -55,7 +55,7 @@ impl Determinant {
         if rows != cols {
             return Err(BarracudaError::invalid_op(
                 "determinant",
-                format!("Requires square matrix, got {}x{}", rows, cols),
+                format!("Requires square matrix, got {rows}x{cols}"),
             ));
         }
 

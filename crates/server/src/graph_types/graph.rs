@@ -119,10 +119,12 @@ impl ExecutionGraph {
         Ok(())
     }
 
+    #[must_use]
     pub fn get_node(&self, id: &str) -> Option<&GraphNode> {
         self.nodes.iter().find(|n| n.id == id)
     }
 
+    #[must_use]
     pub fn get_dependents(&self, node_id: &str) -> Vec<&GraphNode> {
         let dependent_ids: Vec<&str> = self
             .edges
@@ -137,6 +139,7 @@ impl ExecutionGraph {
             .collect()
     }
 
+    #[must_use]
     pub fn get_dependencies(&self, node_id: &str) -> Vec<&GraphNode> {
         let dependency_ids: Vec<&str> = self
             .edges

@@ -64,7 +64,7 @@ impl DiscoveryManager {
         info!("🔍 Finding service with capability: {:?}", capability);
 
         // Check capability cache first
-        let capability_key = format!("{:?}", capability);
+        let capability_key = format!("{capability:?}");
         {
             let cap_cache = self.capability_cache.read().await;
             if let Some(service_ids) = cap_cache.get(&capability_key) {
@@ -120,8 +120,7 @@ impl DiscoveryManager {
         // Check if any required capabilities are missing
         if !missing_required.is_empty() {
             return Err(ToadStoolError::not_found(format!(
-                "Missing required capabilities: {:?}",
-                missing_required
+                "Missing required capabilities: {missing_required:?}"
             )));
         }
 

@@ -51,10 +51,7 @@ fn main() -> Result<()> {
     let num_batches = 10;
 
     println!("═══ CPU Inference ═══");
-    println!(
-        "Testing {} batches of {} samples...",
-        num_batches, batch_size
-    );
+    println!("Testing {num_batches} batches of {batch_size} samples...");
 
     let cpu_start = Instant::now();
     let mut cpu_correct = 0;

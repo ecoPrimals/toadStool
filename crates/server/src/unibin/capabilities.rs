@@ -5,6 +5,7 @@
 /// Query local GPU and compute capabilities
 ///
 /// Uses sysinfo and wgpu for pure Rust discovery.
+#[allow(clippy::unused_async)] // API consistency; may add async I/O for GPU discovery in future
 pub async fn query_local_capabilities() -> Vec<String> {
     let mut capabilities = vec!["compute".to_string(), "cpu".to_string()];
 
@@ -18,6 +19,7 @@ pub async fn query_local_capabilities() -> Vec<String> {
 
     let mut sys = sysinfo::System::new_all();
     sys.refresh_memory();
+    #[allow(clippy::cast_precision_loss)]
     let total_memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
     if total_memory_gb >= 32.0 {
         capabilities.push("high-memory".to_string());

@@ -84,13 +84,8 @@ impl ReportGenerator {
 
         writeln!(report, "| Metric | Value |").unwrap_or_default();
         writeln!(report, "|--------|-------|").unwrap_or_default();
-        writeln!(report, "| Total Operations | {} |", total_ops).unwrap_or_default();
-        writeln!(
-            report,
-            "| Operations with CUDA comparison | {} |",
-            cuda_count
-        )
-        .unwrap_or_default();
+        writeln!(report, "| Total Operations | {total_ops} |").unwrap_or_default();
+        writeln!(report, "| Operations with CUDA comparison | {cuda_count} |").unwrap_or_default();
         writeln!(
             report,
             "| ≥90% parity | {} ({:.1}%) |",
@@ -112,7 +107,7 @@ impl ReportGenerator {
             ops_at_100 as f64 / cuda_count as f64 * 100.0
         )
         .unwrap_or_default();
-        writeln!(report, "| Average parity | {:.1}% |", avg_parity).unwrap_or_default();
+        writeln!(report, "| Average parity | {avg_parity:.1}% |").unwrap_or_default();
         writeln!(report).unwrap_or_default();
     }
 

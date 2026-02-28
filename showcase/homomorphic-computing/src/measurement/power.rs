@@ -127,7 +127,7 @@ impl CpuPowerMonitor {
     /// Read energy counter in microjoules
     fn read_energy_uj(&self, path: &PathBuf) -> Result<u64> {
         let contents = fs::read_to_string(path)
-            .map_err(|e| anyhow!("Failed to read RAPL (may need sudo): {}", e))?;
+            .map_err(|e| anyhow!("Failed to read RAPL (may need sudo): {e}"))?;
         let value = contents.trim().parse::<u64>()?;
         Ok(value)
     }
@@ -268,7 +268,7 @@ impl NpuPowerMonitor {
     pub fn measure_watts(&self) -> Result<PowerMeasurement> {
         // Try known Akida PCIe addresses
         for pcie_addr in &["0000:a1:00.0", "0000:e2:00.0"] {
-            let hwmon_dir = format!("/sys/bus/pci/devices/{}/hwmon", pcie_addr);
+            let hwmon_dir = format!("/sys/bus/pci/devices/{pcie_addr}/hwmon");
             if let Ok(entries) = std::fs::read_dir(&hwmon_dir) {
                 for entry in entries.flatten() {
                     let power_path = entry.path().join("power1_input");
@@ -278,7 +278,7 @@ impl NpuPowerMonitor {
                             return Ok(PowerMeasurement {
                                 watts,
                                 is_measured: true,
-                                method: format!("hwmon sysfs ({})", pcie_addr),
+                                method: format!("hwmon sysfs ({pcie_addr})"),
                             });
                         }
                     }

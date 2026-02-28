@@ -106,7 +106,7 @@ impl UniversalServiceAdapter {
             .resolver
             .resolve(capability.clone())
             .await
-            .context(format!("Failed to resolve capability: {}", capability))?;
+            .context(format!("Failed to resolve capability: {capability}"))?;
 
         // Invoke via appropriate protocol
         let response = self.invoke_provider(&provider, request).await?;
@@ -132,24 +132,39 @@ impl UniversalServiceAdapter {
         let protocol = Self::select_protocol(&provider.protocols)?;
 
         match protocol.as_str() {
-            "jsonrpc" | "unix-socket" | "unix" => self.invoke_jsonrpc(provider, request).await,
+            "jsonrpc" | "unix" => self.invoke_jsonrpc(provider, request).await,
             "http" | "https" => self.invoke_http(provider, request).await,
-            "grpc" => self.invoke_grpc_fallback(provider, request).await,
+            "grpc" => {
+                tracing::error!(
+                    "gRPC protocol deprecated (UNIVERSAL_IPC_STANDARD_V3). Migrate to JSON-RPC over Unix socket."
+                );
+                Err(crate::CliError::Other(
+                    "gRPC protocol not supported. Migrate to JSON-RPC over Unix socket: \
+                     use UnixJsonRpcClient from toadstool_common::unix_jsonrpc_client. \
+                     (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through Songbird."
+                        .to_string(),
+                ))?
+            }
             _ => Err(crate::CliError::Other(format!(
-                "Unsupported protocol: {} (use jsonrpc or unix-socket)",
-                protocol
+                "Unsupported protocol: {protocol} (use jsonrpc or unix)"
             )))?,
         }
     }
 
     /// Select the best protocol from available options
     ///
-    /// Preference order (UNIVERSAL_IPC_STANDARD_V3): jsonrpc, unix-socket > http > grpc
+    /// Preference order (UNIVERSAL_IPC_STANDARD_V3): jsonrpc, unix > http > grpc
     fn select_protocol(protocols: &[String]) -> Result<String> {
-        // Prefer JSON-RPC / Unix socket (pure Rust, no tonic/protobuf)
-        for preferred in &["jsonrpc", "unix-socket", "unix"] {
+        // Prefer JSON-RPC (canonical) or json-rpc (alias)
+        for preferred in &["jsonrpc", "json-rpc"] {
             if protocols.iter().any(|p| p == preferred) {
-                return Ok(preferred.to_string());
+                return Ok("jsonrpc".to_string());
+            }
+        }
+        // Prefer Unix socket (canonical) or unix-socket (alias)
+        for preferred in &["unix", "unix-socket"] {
+            if protocols.iter().any(|p| p == preferred) {
+                return Ok("unix".to_string());
             }
         }
 
@@ -187,8 +202,7 @@ impl UniversalServiceAdapter {
             endpoint.to_string()
         } else {
             return Err(crate::CliError::Other(format!(
-                "Endpoint is not a Unix socket path (expected unix:///path or /path): {}",
-                endpoint
+                "Endpoint is not a Unix socket path (expected unix:///path or /path): {endpoint}"
             )));
         };
 
@@ -237,6 +251,7 @@ impl UniversalServiceAdapter {
     /// Invoke via HTTP/REST
     ///
     /// DEEP DEBT: HTTP adapter removed - use Unix socket RPC instead!
+    #[allow(clippy::unused_async)] // Trait method; deprecated, returns Err immediately
     async fn invoke_http(
         &self,
         _provider: &ServiceProvider,
@@ -250,32 +265,6 @@ impl UniversalServiceAdapter {
         Err(crate::CliError::Other(
             "HTTP adapter removed. Use Unix socket RPC instead. \
              For external HTTP, route through Songbird (Concentrated Gap architecture)."
-                .to_string(),
-        ))?
-    }
-
-    /// Invoke via gRPC (deprecated in favor of JSON-RPC)
-    ///
-    /// # Deprecation
-    ///
-    /// gRPC is deprecated. Migrate to JSON-RPC over Unix sockets (UNIVERSAL_IPC_STANDARD_V3):
-    ///
-    /// - **Migration path**: Use `UnixJsonRpcClient` from `toadstool_common::unix_jsonrpc_client`
-    /// - **Why**: gRPC requires tonic (protobuf, C deps) and violates ecoBin; JSON-RPC is pure Rust
-    /// - **For external HTTP**: Route through Songbird (Concentrated Gap architecture)
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use JSON-RPC via UnixJsonRpcClient. See UNIVERSAL_IPC_STANDARD_V3."
-    )]
-    async fn invoke_grpc_fallback(
-        &self,
-        _provider: &ServiceProvider,
-        _request: Request,
-    ) -> Result<Response> {
-        Err(crate::CliError::Other(
-            "gRPC protocol not supported. Migrate to JSON-RPC over Unix socket: \
-             use UnixJsonRpcClient from toadstool_common::unix_jsonrpc_client. \
-             (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through Songbird."
                 .to_string(),
         ))?
     }
@@ -328,7 +317,7 @@ impl Response {
             }),
             ResponseStatus::Error => {
                 let error = self.error.unwrap_or_else(|| "Unknown error".to_string());
-                Err(crate::CliError::Other(format!("Service error: {}", error)))
+                Err(crate::CliError::Other(format!("Service error: {error}")))
             }
         }
     }
@@ -386,10 +375,20 @@ mod tests {
     }
 
     #[test]
-    fn test_protocol_selection_prefers_unix_socket_over_http() {
+    fn test_protocol_selection_prefers_unix_over_http() {
+        let protocols = vec!["http".to_string(), "unix".to_string()];
+        let selected = UniversalServiceAdapter::select_protocol(&protocols).unwrap();
+        assert_eq!(selected, "unix");
+    }
+
+    #[test]
+    fn test_protocol_selection_unix_socket_alias_normalizes_to_unix() {
         let protocols = vec!["http".to_string(), "unix-socket".to_string()];
         let selected = UniversalServiceAdapter::select_protocol(&protocols).unwrap();
-        assert_eq!(selected, "unix-socket");
+        assert_eq!(
+            selected, "unix",
+            "unix-socket alias should normalize to canonical unix"
+        );
     }
 
     #[test]

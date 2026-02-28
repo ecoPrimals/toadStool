@@ -64,7 +64,7 @@ pub async fn run_cache_probe() -> std::result::Result<(), Box<dyn std::error::Er
         {
             Ok(d) => d,
             Err(e) => {
-                println!("  ⚠ Failed to create device: {}\n", e);
+                println!("  ⚠ Failed to create device: {e}\n");
                 continue;
             }
         };
@@ -81,7 +81,7 @@ pub async fn run_cache_probe() -> std::result::Result<(), Box<dyn std::error::Er
         let hierarchy = SubstrateMemoryHierarchy::probe(&wgpu_device).await;
         let probe_time = probe_start.elapsed();
 
-        println!("  ✓ Probing completed in {:.2?}\n", probe_time);
+        println!("  ✓ Probing completed in {probe_time:.2?}\n");
 
         // Report discovered hierarchy
         print_hierarchy(&hierarchy);
@@ -136,7 +136,7 @@ fn print_hierarchy(hierarchy: &SubstrateMemoryHierarchy) {
 
     let optimal_mb = hierarchy.optimal_tile_bytes as f64 / (1024.0 * 1024.0);
     println!("  ├────────────────────────────────────────────────────────────────────┤");
-    println!("  │ Optimal Tile Size: {:>6.2} MB", optimal_mb);
+    println!("  │ Optimal Tile Size: {optimal_mb:>6.2} MB");
     println!("  ╰────────────────────────────────────────────────────────────────────╯\n");
 }
 
@@ -195,11 +195,8 @@ fn print_probe_vs_estimate(
         "matches estimate".to_string()
     };
 
-    println!("    Probed cache:    {:>8.2} MB", probed_mb);
-    println!(
-        "    Estimated cache: {:>8.2} MB  ({})",
-        estimated_mb, comparison
-    );
+    println!("    Probed cache:    {probed_mb:>8.2} MB");
+    println!("    Estimated cache: {estimated_mb:>8.2} MB  ({comparison})");
     println!(
         "    Probed VRAM BW:  {:>8.1} GB/s",
         probed.main_memory.bandwidth_gbs
@@ -231,7 +228,7 @@ async fn main() {
         .init();
 
     if let Err(e) = run_cache_probe().await {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }

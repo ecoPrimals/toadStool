@@ -226,7 +226,7 @@ impl Min {
                 // Dimension-wise min reduction
                 if dim >= shape.len() {
                     return Err(crate::error::BarracudaError::InvalidInput {
-                        message: format!("Dimension {} out of range for shape {:?}", dim, shape),
+                        message: format!("Dimension {dim} out of range for shape {shape:?}"),
                     });
                 }
 

@@ -58,21 +58,21 @@ pub const DEFAULT_PORT: u16 = 8370;
 /// }
 /// ```
 pub async fn bind(host: &str, port: u16) -> ToadStoolResult<TcpListener> {
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
 
-    TcpListener::bind(&addr).await.map_err(|e| {
-        ToadStoolError::integration(format!("Failed to bind TCP socket {}: {}", addr, e))
-    })
+    TcpListener::bind(&addr)
+        .await
+        .map_err(|e| ToadStoolError::integration(format!("Failed to bind TCP socket {addr}: {e}")))
 }
 
 /// Connect to TCP socket
 ///
 /// **Deep Debt**: Async, timeout-aware (using tokio::time)
 pub async fn connect(host: &str, port: u16) -> ToadStoolResult<TcpStream> {
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
 
     TcpStream::connect(&addr).await.map_err(|e| {
-        ToadStoolError::integration(format!("Failed to connect to TCP socket {}: {}", addr, e))
+        ToadStoolError::integration(format!("Failed to connect to TCP socket {addr}: {e}"))
     })
 }
 
@@ -82,12 +82,11 @@ pub async fn connect(host: &str, port: u16) -> ToadStoolResult<TcpStream> {
 /// Returns `Result` instead of panicking on parse failure.
 #[allow(deprecated)]
 pub fn default_addr() -> ToadStoolResult<SocketAddr> {
-    format!("{}:{}", LOCALHOST_IPV4, DEFAULT_PORT)
+    format!("{LOCALHOST_IPV4}:{DEFAULT_PORT}")
         .parse()
         .map_err(|e| {
             ToadStoolError::configuration(format!(
-                "Invalid default TCP address {}:{}: {}",
-                LOCALHOST_IPV4, DEFAULT_PORT, e
+                "Invalid default TCP address {LOCALHOST_IPV4}:{DEFAULT_PORT}: {e}"
             ))
         })
 }
@@ -100,12 +99,11 @@ pub fn default_addr() -> ToadStoolResult<SocketAddr> {
 pub fn local_network_addr() -> ToadStoolResult<SocketAddr> {
     // Try to get local IP via interface detection
     // Fallback to 0.0.0.0 (bind all interfaces)
-    format!("{}:{}", BIND_ALL_IPV4, DEFAULT_PORT)
+    format!("{BIND_ALL_IPV4}:{DEFAULT_PORT}")
         .parse()
         .map_err(|e| {
             ToadStoolError::configuration(format!(
-                "Invalid network address {}:{}: {}",
-                BIND_ALL_IPV4, DEFAULT_PORT, e
+                "Invalid network address {BIND_ALL_IPV4}:{DEFAULT_PORT}: {e}"
             ))
         })
 }
@@ -170,7 +168,7 @@ mod tests {
     #[tokio::test]
     async fn test_bind_specific_port() {
         // Try to bind specific port (might fail if in use)
-        let port = 18370; // Use high port to avoid conflicts
+        let port = 18_370; // Use high port to avoid conflicts
 
         match bind("127.0.0.1", port).await {
             Ok(listener) => {
@@ -186,7 +184,7 @@ mod tests {
     #[tokio::test]
     async fn test_connect_refused() {
         // Try to connect to port that's not listening
-        let result = connect("127.0.0.1", 19999).await;
+        let result = connect("127.0.0.1", 19_999).await;
 
         // Should fail (connection refused)
         assert!(result.is_err());

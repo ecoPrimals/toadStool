@@ -87,11 +87,13 @@ pub enum BiomeDeploymentStatus {
 
 impl BiomeOrchestrator {
     /// Create a new biome orchestrator with default config
+    #[allow(clippy::unused_async)] // API consistency with with_config
     pub async fn new() -> ToadStoolResult<Self> {
         Self::with_config(BiomeOSConfig::default()).await
     }
 
     /// Create a new biome orchestrator with custom config (e.g. for testing)
+    #[allow(clippy::unused_async)] // API consistency with trait/async ecosystem
     pub async fn with_config(config: BiomeOSConfig) -> ToadStoolResult<Self> {
         Ok(Self {
             config,
@@ -100,6 +102,7 @@ impl BiomeOrchestrator {
     }
 
     /// Initialize the orchestrator
+    #[allow(clippy::unused_async)] // API consistency with DeploymentLayer trait
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         tracing::info!("Initializing biome orchestrator");
         Ok(())
@@ -110,6 +113,7 @@ impl BiomeOrchestrator {
     /// Validates the deployment configuration and returns a meaningful response.
     /// If the full deployment pipeline (biomeOS endpoint) is not available,
     /// validation still runs and returns proper errors for invalid configurations.
+    #[allow(clippy::unused_async)] // API consistency with DeploymentLayer trait
     pub async fn execute_deployment(
         &self,
         job: UniversalJob,
@@ -124,8 +128,7 @@ impl BiomeOrchestrator {
             } => (team_id.clone(), biome_manifest.clone()),
             other => {
                 return Err(ToadStoolError::validation(format!(
-                    "BiomeOrchestrator expects BiomeOS job type, got: {:?}",
-                    other
+                    "BiomeOrchestrator expects BiomeOS job type, got: {other:?}"
                 )));
             }
         };

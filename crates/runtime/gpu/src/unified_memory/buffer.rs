@@ -144,13 +144,10 @@ impl UnifiedBuffer {
             self.size > 0,
             "Buffer size must be > 0 (validated by validate_cpu_ptr)"
         );
-        // UNAVOIDABLE UNSAFE: from_raw_parts_mut - no safe alternative when wrapping
-        // backend-returned raw pointer for slice access.
-        //
-        // SAFETY: (1) cpu_ptr NonNull, validated (alignment, allocation, not NULL page);
-        // (2) size validated at creation and in validate_cpu_ptr; (3) exclusive &mut self;
-        // (4) ptr from backend allocation, valid for size bytes; (5) u8 align=1;
-        // (6) write_async/read_async/fill bounds-check before using subslice.
+        // SAFETY: cpu_ptr is NonNull and validated (alignment, allocation, not NULL page). Size
+        // validated at creation and in validate_cpu_ptr. Exclusive &mut self ensures no aliasing.
+        // ptr from backend allocation, valid for size bytes. u8 has alignment 1. Callers
+        // (write_async/read_async/fill) bounds-check before using subslice.
         Ok(unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) })
     }
 
@@ -172,13 +169,10 @@ impl UnifiedBuffer {
             self.size > 0,
             "Buffer size must be > 0 (validated by validate_cpu_ptr)"
         );
-        // UNAVOIDABLE UNSAFE: from_raw_parts - no safe alternative when wrapping
-        // backend-returned raw pointer for slice access.
-        //
-        // SAFETY: (1) cpu_ptr NonNull, validated (alignment, allocation, not NULL page);
-        // (2) size validated; (3) &self gives shared access, no concurrent mutation;
-        // (4) ptr from backend allocation, valid for size bytes; (5) u8 align=1;
-        // (6) read_async bounds-checks offset+len before using subslice.
+        // SAFETY: cpu_ptr is NonNull and validated (alignment, allocation, not NULL page). Size
+        // validated. &self gives shared access with no concurrent mutation. ptr from backend
+        // allocation, valid for size bytes. u8 has alignment 1. read_async bounds-checks
+        // offset+len before using subslice.
         Ok(unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) })
     }
 

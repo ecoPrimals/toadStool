@@ -48,7 +48,7 @@ impl StorageBackend for InMemoryBackend {
         Box::pin(async move {
             let volume_info = VolumeInfo {
                 name: config_name.clone(),
-                id: format!("test-{}", config_name),
+                id: format!("test-{config_name}"),
                 size: config_size,
                 storage_class: config_storage_class.unwrap_or(storage_tier),
                 status: "Available".to_string(),
@@ -75,7 +75,7 @@ impl StorageBackend for InMemoryBackend {
         Box::pin(async move {
             let volume_info = VolumeInfo {
                 name: config_name.clone(),
-                id: format!("test-pv-{}", config_name),
+                id: format!("test-pv-{config_name}"),
                 size: config_capacity,
                 storage_class: config_storage_class,
                 status: "Available".to_string(),
@@ -104,8 +104,7 @@ impl StorageBackend for InMemoryBackend {
             let vols = volumes.lock().await;
             if !vols.contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
-                    "Volume {} not found",
-                    volume_name
+                    "Volume {volume_name} not found"
                 )));
             }
 
@@ -131,8 +130,7 @@ impl StorageBackend for InMemoryBackend {
             let vols = volumes.lock().await;
             if !vols.contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
-                    "Volume {} not found",
-                    volume_name
+                    "Volume {volume_name} not found"
                 )));
             }
 
@@ -155,7 +153,7 @@ impl StorageBackend for InMemoryBackend {
         Box::pin(async move {
             let mut vols = volumes.lock().await;
             vols.remove(&volume_name).ok_or_else(|| {
-                ToadStoolError::not_found(format!("Volume {} not found", volume_name))
+                ToadStoolError::not_found(format!("Volume {volume_name} not found"))
             })?;
 
             tracing::debug!("Deleted test volume: {}", volume_name);
@@ -174,9 +172,7 @@ impl StorageBackend for InMemoryBackend {
             let vols = volumes.lock().await;
             vols.get(&volume_name)
                 .map(|_| VolumeStatus::Available)
-                .ok_or_else(|| {
-                    ToadStoolError::not_found(format!("Volume {} not found", volume_name))
-                })
+                .ok_or_else(|| ToadStoolError::not_found(format!("Volume {volume_name} not found")))
         })
     }
 

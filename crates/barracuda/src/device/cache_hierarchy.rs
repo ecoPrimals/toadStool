@@ -386,7 +386,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             compilation_options: Default::default(),
         });
 
-        let workgroups = (elements as u32).div_ceil(256).min(65535);
+        let workgroups = (elements as u32).div_ceil(256).min(65_535);
 
         let run_pass = |poll: bool| {
             let mut enc =

@@ -32,6 +32,10 @@ pub async fn bind_and_serve(addr: SocketAddr, router: Router) -> ServerResult<()
 /// Cancel all active executions and broadcast completion events.
 ///
 /// Called during graceful shutdown to clean up in-flight workloads.
+///
+/// # Errors
+///
+/// This implementation does not fail; returns [`ServerResult`] for API consistency.
 pub async fn cancel_all_executions(state: &ServerState) -> ServerResult<()> {
     info!("Cancelling active executions during shutdown");
 
@@ -44,10 +48,11 @@ pub async fn cancel_all_executions(state: &ServerState) -> ServerResult<()> {
             .send(ServerEvent::ExecutionCompleted {
                 execution_id: id,
                 status: ExecutionStatus::Cancelled,
+                #[allow(clippy::cast_possible_truncation)]
                 duration_ms: std::time::SystemTime::now()
                     .duration_since(execution.started_at)
                     .unwrap_or_default()
-                    .as_millis() as u64,
+                    .as_millis() as u64, // fits: duration < u64::MAX ms
                 timestamp: std::time::SystemTime::now(),
             });
     }
@@ -58,6 +63,8 @@ pub async fn cancel_all_executions(state: &ServerState) -> ServerResult<()> {
 
 #[cfg(test)]
 mod tests {
+    // Test helper uses MockResourceMonitor for predictable behavior. Production
+    // lifecycle receives ServerState from ToadStoolServer::new() which uses SystemResourceMonitor.
     use super::*;
     use std::collections::HashMap;
     use std::sync::Arc;

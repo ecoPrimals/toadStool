@@ -83,8 +83,7 @@ impl CapabilityResolver {
             .await
             .map_err(|e| {
                 crate::CliError::Other(format!(
-                    "Failed to discover capability '{}': {:?}",
-                    capability, e
+                    "Failed to discover capability '{capability}': {e:?}"
                 ))
             })?;
 
@@ -127,8 +126,7 @@ impl CapabilityResolver {
             .await
             .map_err(|e| {
                 crate::CliError::Other(format!(
-                    "Failed to discover capability '{}': {:?}",
-                    capability, e
+                    "Failed to discover capability '{capability}': {e:?}"
                 ))
             })?;
 
@@ -185,8 +183,7 @@ impl CapabilityResolver {
             .await
             .map_err(|e| {
                 crate::CliError::Other(format!(
-                    "Failed to refresh capability '{}': {:?}",
-                    capability, e
+                    "Failed to refresh capability '{capability}': {e:?}"
                 ))
             })?;
 

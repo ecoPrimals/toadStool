@@ -54,6 +54,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy orchestrator
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_orchestrator(&self) -> Result<()> {
         debug!("Deploying ToadStool orchestrator");
 
@@ -68,6 +69,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy monitoring
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_monitoring(&self) -> Result<()> {
         debug!("Deploying monitoring services");
 
@@ -99,6 +101,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy native runtime
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_native_runtime(&self) -> Result<()> {
         debug!("Deploying native runtime");
         // ✅ MODERNIZED: No fake work - runtimes are already available via registry
@@ -106,6 +109,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy container runtime
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_container_runtime(&self) -> Result<()> {
         debug!("Deploying container runtime");
         // ✅ MODERNIZED: No fake work
@@ -113,6 +117,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy WASM runtime
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_wasm_runtime(&self) -> Result<()> {
         debug!("Deploying WASM runtime");
         // ✅ MODERNIZED: No fake work
@@ -120,6 +125,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy GPU runtime
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_gpu_runtime(&self) -> Result<()> {
         debug!("Deploying GPU runtime");
         // ✅ MODERNIZED: No fake work
@@ -127,6 +133,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy monitoring services
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     pub(crate) async fn deploy_monitoring_services(&self) -> Result<()> {
         debug!("Deploying monitoring services");
         // ✅ MODERNIZED: No fake work
@@ -156,6 +163,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy Songbird integration
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_songbird_integration(&self) -> Result<()> {
         debug!("Deploying Songbird integration");
         // ✅ MODERNIZED: No fake work - integration happens via capability discovery
@@ -163,6 +171,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy BearDog integration
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_beardog_integration(&self) -> Result<()> {
         debug!("Deploying BearDog integration");
         // ✅ MODERNIZED: No fake work
@@ -170,6 +179,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Deploy NestGate integration
+    #[allow(clippy::unused_async)] // Placeholder; async for API consistency
     async fn deploy_nestgate_integration(&self) -> Result<()> {
         debug!("Deploying NestGate integration");
         // ✅ MODERNIZED: No fake work

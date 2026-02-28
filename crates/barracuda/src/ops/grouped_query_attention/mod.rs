@@ -112,8 +112,7 @@ impl GroupedQueryAttention {
         if !num_q_heads.is_multiple_of(num_kv_heads) {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: format!(
-                    "num_q_heads ({}) must be divisible by num_kv_heads ({})",
-                    num_q_heads, num_kv_heads
+                    "num_q_heads ({num_q_heads}) must be divisible by num_kv_heads ({num_kv_heads})"
                 ),
             });
         }

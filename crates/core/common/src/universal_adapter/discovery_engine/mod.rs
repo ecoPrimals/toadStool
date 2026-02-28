@@ -41,6 +41,11 @@ pub struct DiscoveryEngine {
 }
 
 impl DiscoveryEngine {
+    /// Creates discovery engine with default sources (mDNS, environment, local registry).
+    ///
+    /// # Errors
+    ///
+    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn with_defaults() -> ToadStoolResult<Self> {
         let sources: Vec<Box<dyn DiscoverySource>> = vec![
             Box::new(MDnsSource::new()),
@@ -53,6 +58,9 @@ impl DiscoveryEngine {
         })
     }
 
+    /// # Errors
+    ///
+    /// This constructor does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn new(sources: Vec<Box<dyn DiscoverySource>>) -> ToadStoolResult<Self> {
         Ok(Self {
             sources,
@@ -68,6 +76,9 @@ impl DiscoveryEngine {
         }
     }
 
+    /// # Errors
+    ///
+    /// Does not return errors; individual source failures are logged. Returns [`ToadStoolResult`] for API consistency.
     pub async fn discover_all(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         let mut all_providers = Vec::new();
         let mut seen_ids = HashSet::new();

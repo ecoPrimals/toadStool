@@ -241,6 +241,7 @@ impl MonitoringSystem {
         Ok(())
     }
 
+    #[allow(clippy::unused_async)] // Spawns background task; async for API consistency
     async fn spawn_collection_task(
         &self,
         session_id: Uuid,
@@ -283,6 +284,7 @@ impl MonitoringSystem {
         });
     }
 
+    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
     async fn collect_system_health(&self) -> Result<SystemHealth> {
         Ok(SystemHealth {
             overall_status: HealthStatus::Healthy,
@@ -293,6 +295,7 @@ impl MonitoringSystem {
         })
     }
 
+    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
     async fn collect_biome_status(&self) -> Result<Vec<BiomeStatusSummary>> {
         Ok(vec![BiomeStatusSummary {
             name: "example-biome".to_string(),
@@ -305,6 +308,7 @@ impl MonitoringSystem {
         }])
     }
 
+    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
     async fn collect_resource_usage(&self) -> Result<SystemResourceUsage> {
         Ok(SystemResourceUsage {
             cpu_percent: 45.2,
@@ -318,10 +322,12 @@ impl MonitoringSystem {
         })
     }
 
+    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
     async fn get_active_alerts(&self) -> Result<Vec<ActiveAlert>> {
         Ok(vec![])
     }
 
+    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
     async fn collect_performance_metrics(&self) -> Result<PerformanceMetrics> {
         Ok(PerformanceMetrics {
             execution_latency_ms: 125.5,
@@ -384,6 +390,7 @@ impl MetricsStore {
         stats.avg = (stats.avg * (stats.count - 1) as f64 + value) / stats.count as f64;
     }
 
+    #[allow(clippy::unused_async)] // Sync retain; async for API consistency
     async fn cleanup_old_data(&mut self) {
         let now = std::time::SystemTime::now();
         if let Some(cutoff_time) = now.checked_sub(self.retention_period) {

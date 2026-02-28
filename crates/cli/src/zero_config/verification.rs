@@ -38,6 +38,7 @@ impl VerificationExt for ZeroConfigDeployment {
 
 impl ZeroConfigDeployment {
     /// Verify core services
+    #[allow(clippy::unused_async)] // Sync checks; async for API consistency
     pub(crate) async fn verify_core_services(&self) -> Result<()> {
         debug!("Verifying core services");
 
@@ -59,6 +60,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Verify runtime engines
+    #[allow(clippy::unused_async)] // Sync checks; async for API consistency
     pub(crate) async fn verify_runtime_engines(&self) -> Result<()> {
         debug!("Verifying runtime engines");
 
@@ -86,6 +88,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Verify ecosystem connectivity
+    #[allow(clippy::unused_async)] // Sync checks; async for API consistency
     pub(crate) async fn verify_ecosystem_connectivity(&self) -> Result<()> {
         debug!("Verifying ecosystem connectivity");
 

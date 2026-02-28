@@ -24,7 +24,7 @@ impl MigrationCoordinator {
                 WorkloadLocation::Cloud {
                     provider: "SimulatedCloud".to_string(),
                     region: "us-west-1".to_string(),
-                    instance_id: format!("instance-{}", workload_id),
+                    instance_id: format!("instance-{workload_id}"),
                 }
             }
             Some(WorkloadLocation::Cloud { .. }) => {
@@ -71,6 +71,7 @@ impl MigrationCoordinator {
             WorkloadLocation::Cloud { .. } => stats.migrations_to_cloud += 1,
         }
 
+        #[allow(clippy::cast_precision_loss)]
         let total = stats.total_migrations as f64;
         stats.avg_migration_time_secs =
             ((stats.avg_migration_time_secs * (total - 1.0)) + duration_secs) / total;

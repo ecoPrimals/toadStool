@@ -156,7 +156,7 @@ pub fn chi2_decomposed(
 
         if e <= 0.0 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("expected[{}] = {} must be > 0", i, e),
+                message: format!("expected[{i}] = {e} must be > 0"),
             });
         }
 
@@ -249,7 +249,7 @@ pub fn chi2_decomposed_weighted(
 
         if sigma <= 0.0 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("uncertainties[{}] = {} must be > 0", i, sigma),
+                message: format!("uncertainties[{i}] = {sigma} must be > 0"),
             });
         }
 

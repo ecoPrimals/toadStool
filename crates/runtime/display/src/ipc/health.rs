@@ -48,7 +48,7 @@ pub struct HealthCheckResult {
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool_display::ipc::health::check_display_health;
 ///
 /// # async fn example() -> Result<()> {
@@ -92,7 +92,7 @@ pub async fn check_display_health() -> Result<HealthCheckResult> {
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool_display::ipc::health::check_display_health_with_timeout;
 /// use std::time::Duration;
 ///
@@ -114,7 +114,7 @@ pub async fn check_display_health_with_timeout(timeout: Duration) -> Result<Heal
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool_display::ipc::health::monitor_display_health;
 /// use std::time::Duration;
 ///

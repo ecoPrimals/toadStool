@@ -69,15 +69,14 @@ pub fn create_wasi_context(config: &WasiConfig) -> ToadStoolResult<WasiCtx> {
     if config.inherit_env {
         builder.inherit_env().map_err(|e| {
             toadstool::error::ToadStoolError::configuration(format!(
-                "Failed to inherit environment: {}",
-                e
+                "Failed to inherit environment: {e}"
             ))
         })?;
     }
 
     // Add command-line arguments
     builder.args(&config.args).map_err(|e| {
-        toadstool::error::ToadStoolError::configuration(format!("Failed to set args: {}", e))
+        toadstool::error::ToadStoolError::configuration(format!("Failed to set args: {e}"))
     })?;
 
     // Add preopened directories

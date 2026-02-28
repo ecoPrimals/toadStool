@@ -59,7 +59,7 @@ impl Default for Rk45Config {
             h_init: 0.01,
             h_min: 1e-12,
             h_max: 1.0,
-            max_steps: 100000,
+            max_steps: 100_000,
             safety: 0.9,
         }
     }
@@ -209,10 +209,10 @@ where
     const A76: f64 = 11.0 / 84.0;
 
     // Error estimation coefficients (5th order - 4th order)
-    const E1: f64 = 71.0 / 57600.0;
-    const E3: f64 = -71.0 / 16695.0;
+    const E1: f64 = 71.0 / 57_600.0;
+    const E3: f64 = -71.0 / 16_695.0;
     const E4: f64 = 71.0 / 1920.0;
-    const E5: f64 = -17253.0 / 339200.0;
+    const E5: f64 = -17_253.0 / 339_200.0;
     const E6: f64 = 22.0 / 525.0;
     const E7: f64 = -1.0 / 40.0;
 

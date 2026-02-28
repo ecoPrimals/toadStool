@@ -88,7 +88,7 @@ impl FheModulusSwitch {
         // ✅ VALIDATION: Degree must be power of 2
         if !degree.is_power_of_two() || degree < 4 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Degree must be power of 2 >= 4, got {}", degree),
+                message: format!("Degree must be power of 2 >= 4, got {degree}"),
             });
         }
 
@@ -96,8 +96,7 @@ impl FheModulusSwitch {
         if modulus_new >= modulus_old {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "New modulus ({}) must be < old modulus ({})",
-                    modulus_new, modulus_old
+                    "New modulus ({modulus_new}) must be < old modulus ({modulus_old})"
                 ),
             });
         }
@@ -230,9 +229,9 @@ impl FheModulusSwitch {
 
         let params = SwitchParams {
             degree: self.degree,
-            modulus_old_lo: (self.modulus_old & 0xFFFFFFFF) as u32,
+            modulus_old_lo: (self.modulus_old & 0xFFFF_FFFF) as u32,
             modulus_old_hi: (self.modulus_old >> 32) as u32,
-            modulus_new_lo: (self.modulus_new & 0xFFFFFFFF) as u32,
+            modulus_new_lo: (self.modulus_new & 0xFFFF_FFFF) as u32,
             modulus_new_hi: (self.modulus_new >> 32) as u32,
             _padding: [0; 3],
         };
@@ -309,7 +308,7 @@ mod tests {
         let result = FheModulusSwitch::new(
             Tensor::zeros(vec![8]).await.unwrap(),
             3, // Not power of 2
-            12289,
+            12_289,
             6145,
         );
         assert!(result.is_err());
@@ -318,8 +317,8 @@ mod tests {
         let result = FheModulusSwitch::new(
             Tensor::zeros(vec![8]).await.unwrap(),
             4,
-            12289,
-            12289, // Equal (should fail)
+            12_289,
+            12_289, // Equal (should fail)
         );
         assert!(result.is_err());
     }

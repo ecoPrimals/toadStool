@@ -13,7 +13,7 @@ use url::Url;
 
 /// Helper to create a test manager
 async fn create_manager() -> Result<UniversalComputeManager> {
-    UniversalComputeManager::new().await
+    Ok(UniversalComputeManager::new().await?)
 }
 
 // ==================================================

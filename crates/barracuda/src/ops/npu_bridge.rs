@@ -101,7 +101,7 @@ where
                 tracing::warn!("⚠️  NPU not available: {:?}", e);
                 return Err(BarracudaError::DeviceNotAvailable {
                     device: "NPU".to_string(),
-                    reason: format!("NPU initialization failed: {:?}", e),
+                    reason: format!("NPU initialization failed: {e:?}"),
                 });
             }
         }

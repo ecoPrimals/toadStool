@@ -680,6 +680,7 @@ impl LayerCapabilityAdapter {
     /// Detect storage write bandwidth (bytes/sec) via runtime heuristics
     ///
     /// **Deep Debt**: Runtime detection, no hardcoding
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
     fn detect_storage_write_bandwidth() -> Option<u64> {
         // Write is typically 80% of read for SSDs, 90% for HDDs
         Self::detect_storage_read_bandwidth().map(|read_bw| (read_bw as f64 * 0.85) as u64)

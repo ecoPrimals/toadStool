@@ -255,7 +255,7 @@ mod tests {
         let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
-        let size = 10000;
+        let size = 10_000;
         let a_data: Vec<f32> = (0..size).map(|i| (i as f32) * 0.001).collect();
         let b_data: Vec<f32> = (0..size).map(|i| (size - i) as f32 * 0.001).collect();
         let c_data: Vec<f32> = (0..size).map(|_| 1.0).collect();

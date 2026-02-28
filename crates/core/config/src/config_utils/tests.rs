@@ -1,73 +1,36 @@
 use super::*;
-use std::env;
-
-// ✅ MODERN: Use shared lock from env_config to prevent test races
-use crate::env_config::tests::get_env_lock;
 
 #[test]
 fn test_config_utils() {
-    // ✅ MODERN: Recover from poisoned lock (robust concurrent testing)
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    temp_env::with_vars(
+        [
+            ("SONGBIRD_PORT", Some("8080")),
+            ("BEARDOG_PORT", Some("8081")),
+            ("NESTGATE_PORT", Some("8082")),
+            ("BIND_ADDRESS", Some("127.0.0.1")),
+            ("TOADSTOOL_ENV", Some("development")),
+            ("TOADSTOOL_DEBUG", Some("false")),
+        ],
+        || {
+            assert_eq!(ConfigUtils::get_songbird_port(), 8080);
+            assert_eq!(ConfigUtils::get_beardog_port(), 8081);
+            assert_eq!(ConfigUtils::get_nestgate_port(), 8082);
+            assert_eq!(ConfigUtils::get_bind_address(), "127.0.0.1");
+            assert_eq!(ConfigUtils::get_environment(), "development");
+            assert!(!ConfigUtils::get_debug_mode());
 
-    // Save original environment state
-    // ✅ SELF-KNOWLEDGE: Other primals use non-prefixed env vars
-    let original_songbird = env::var("SONGBIRD_PORT").ok();
-    let original_beardog = env::var("BEARDOG_PORT").ok();
-    let original_nestgate = env::var("NESTGATE_PORT").ok();
-    let original_host = env::var("BIND_ADDRESS").ok();
-    let original_debug = env::var("TOADSTOOL_DEBUG").ok();
-    let original_env = env::var("TOADSTOOL_ENV").ok(); // Fixed: use ENV not ENVIRONMENT
-
-    // ✅ SELF-KNOWLEDGE: Set other primal ports without TOADSTOOL_ prefix
-    env::set_var("SONGBIRD_PORT", "8080");
-    env::set_var("BEARDOG_PORT", "8081");
-    env::set_var("NESTGATE_PORT", "8082");
-    env::set_var("BIND_ADDRESS", "127.0.0.1");
-    env::set_var("TOADSTOOL_ENV", "development"); // Fixed: use ENV not ENVIRONMENT
-    env::set_var("TOADSTOOL_DEBUG", "false"); // Explicitly set to false
-
-    // Test default values
-    assert_eq!(ConfigUtils::get_songbird_port(), 8080);
-    assert_eq!(ConfigUtils::get_beardog_port(), 8081);
-    assert_eq!(ConfigUtils::get_nestgate_port(), 8082);
-    assert_eq!(ConfigUtils::get_bind_address(), "127.0.0.1");
-    assert_eq!(ConfigUtils::get_environment(), "development");
-    assert!(!ConfigUtils::get_debug_mode());
-
-    // Test environment override
-    env::set_var("SONGBIRD_PORT", "9080");
-    env::set_var("TOADSTOOL_DEBUG", "true");
-
-    assert_eq!(ConfigUtils::get_songbird_port(), 9080);
-    assert!(ConfigUtils::get_debug_mode());
-
-    // ✅ MODERN: Restore original environment state
-    match original_songbird {
-        Some(val) => env::set_var("SONGBIRD_PORT", val),
-        None => env::remove_var("SONGBIRD_PORT"),
-    }
-    match original_beardog {
-        Some(val) => env::set_var("BEARDOG_PORT", val),
-        None => env::remove_var("BEARDOG_PORT"),
-    }
-    match original_nestgate {
-        Some(val) => env::set_var("NESTGATE_PORT", val),
-        None => env::remove_var("NESTGATE_PORT"),
-    }
-    match original_host {
-        Some(val) => env::set_var("TOADSTOOL_BIND_ADDRESS", val),
-        None => env::remove_var("TOADSTOOL_BIND_ADDRESS"),
-    }
-    match original_debug {
-        Some(val) => env::set_var("TOADSTOOL_DEBUG", val),
-        None => env::remove_var("TOADSTOOL_DEBUG"),
-    }
-    match original_env {
-        Some(val) => env::set_var("TOADSTOOL_ENV", val), // Fixed: use ENV not ENVIRONMENT
-        None => env::remove_var("TOADSTOOL_ENV"),
-    }
+            temp_env::with_vars(
+                [
+                    ("SONGBIRD_PORT", Some("9080")),
+                    ("TOADSTOOL_DEBUG", Some("true")),
+                ],
+                || {
+                    assert_eq!(ConfigUtils::get_songbird_port(), 9080);
+                    assert!(ConfigUtils::get_debug_mode());
+                },
+            );
+        },
+    );
 }
 
 #[test]
@@ -112,9 +75,6 @@ fn test_port_ranges() {
 
 #[test]
 fn test_get_federation_metrics_health_events_ports() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _fed = ConfigUtils::get_federation_port();
     let _metrics = ConfigUtils::get_metrics_port();
     let _health = ConfigUtils::get_health_port();
@@ -123,16 +83,10 @@ fn test_get_federation_metrics_health_events_ports() {
 
 #[test]
 fn test_get_external_hostname_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original = env::var("TOADSTOOL_EXTERNAL_HOSTNAME").ok();
-    env::remove_var("TOADSTOOL_EXTERNAL_HOSTNAME");
-    let host = ConfigUtils::get_external_hostname();
-    assert!(!host.is_empty());
-    if let Some(v) = original {
-        env::set_var("TOADSTOOL_EXTERNAL_HOSTNAME", v);
-    }
+    temp_env::with_var("TOADSTOOL_EXTERNAL_HOSTNAME", None::<&str>, || {
+        let host = ConfigUtils::get_external_hostname();
+        assert!(!host.is_empty());
+    });
 }
 
 #[test]
@@ -305,17 +259,11 @@ fn test_get_toadstool_endpoint() {
 
 #[test]
 fn test_get_squirrel_port_default() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let original = env::var("SQUIRREL_PORT").ok();
-    env::remove_var("SQUIRREL_PORT");
-    let port = ConfigUtils::get_squirrel_port();
-    assert_eq!(
-        port, 8083,
-        "DEFAULT_SQUIRREL_DISCOVERY_PORT = 8083 for cold-start bootstrap"
-    );
-    if let Some(v) = original {
-        env::set_var("SQUIRREL_PORT", v);
-    }
+    temp_env::with_var("SQUIRREL_PORT", None::<&str>, || {
+        let port = ConfigUtils::get_squirrel_port();
+        assert_eq!(
+            port, 8083,
+            "DEFAULT_SQUIRREL_DISCOVERY_PORT = 8083 for cold-start bootstrap"
+        );
+    });
 }

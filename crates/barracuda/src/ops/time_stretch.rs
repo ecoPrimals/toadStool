@@ -47,10 +47,7 @@ impl TimeStretch {
         let window_size: usize = window.shape().iter().product();
         if window_size != n_fft {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Window length ({}) must match n_fft ({})",
-                    window_size, n_fft
-                ),
+                message: format!("Window length ({window_size}) must match n_fft ({n_fft})"),
             });
         }
 
@@ -284,7 +281,7 @@ mod tests {
         let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
-        let signal = Tensor::from_vec_on(vec![0.5; 10000], vec![10000], device.clone())
+        let signal = Tensor::from_vec_on(vec![0.5; 10_000], vec![10_000], device.clone())
             .await
             .unwrap();
         let window = WindowFunction::new(512, WindowType::Hann, device.clone())

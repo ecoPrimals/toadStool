@@ -8,6 +8,7 @@ use self::operations::{
 };
 
 impl UniversalComputeManager {
+    #[allow(clippy::unused_async)] // API consistency; may add async init in future
     pub async fn new() -> Result<Self> {
         info!("🌍 Initializing Universal Compute Manager");
 

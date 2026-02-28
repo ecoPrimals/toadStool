@@ -79,8 +79,7 @@ impl EdgeConv {
             return Err(BarracudaError::invalid_op(
                 "EdgeConv",
                 format!(
-                    "node_features must be 2D [num_nodes, feature_dim], got shape {:?}",
-                    node_shape
+                    "node_features must be 2D [num_nodes, feature_dim], got shape {node_shape:?}"
                 ),
             ));
         }

@@ -49,7 +49,7 @@ impl ProcessingSubstrate {
             Self::Gpu(target) => format!("GPU:{}", target.name()),
             Self::Cpu(target) => format!("CPU:{}", target.name()),
             Self::Neuromorphic(target) => format!("Neuromorphic:{}", target.name()),
-            Self::Custom(name) => format!("Custom:{}", name),
+            Self::Custom(name) => format!("Custom:{name}"),
         }
     }
 
@@ -70,7 +70,7 @@ impl ProcessingSubstrate {
             Self::Cpu(target) => Ok(target.capabilities()),
             Self::Neuromorphic(_) => anyhow::bail!("Neuromorphic not yet implemented"),
             Self::Custom(name) => {
-                anyhow::bail!("Custom accelerator '{}' not yet implemented", name)
+                anyhow::bail!("Custom accelerator '{name}' not yet implemented")
             }
         }
     }
@@ -163,13 +163,13 @@ impl GpuTarget {
         let vendor = self
             .vendor
             .as_ref()
-            .map(|v| format!("{:?}", v))
+            .map(|v| format!("{v:?}"))
             .unwrap_or_else(|| "Any".to_string());
         let device = self
             .device_index
-            .map(|i| format!("#{}", i))
+            .map(|i| format!("#{i}"))
             .unwrap_or_default();
-        format!("{}{}", vendor, device)
+        format!("{vendor}{device}")
     }
 
     async fn is_available(&self) -> bool {
@@ -346,7 +346,7 @@ impl CpuTarget {
     fn name(&self) -> String {
         let threads = self
             .threads
-            .map(|t| format!("{}t", t))
+            .map(|t| format!("{t}t"))
             .unwrap_or_else(|| "all".to_string());
         format!("{}:{:?}", threads, self.simd)
     }

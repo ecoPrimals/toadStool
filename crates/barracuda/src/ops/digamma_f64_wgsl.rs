@@ -152,7 +152,7 @@ impl DigammaF64 {
         const B6: f64 = 1.0 / 252.0;
         const B8: f64 = -1.0 / 240.0;
         const B10: f64 = 1.0 / 132.0;
-        const B12: f64 = -691.0 / 32760.0;
+        const B12: f64 = -691.0 / 32_760.0;
 
         let mut sum = x.ln() - 0.5 * inv_x;
         let mut term = inv_x2;

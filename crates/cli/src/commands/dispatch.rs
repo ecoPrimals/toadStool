@@ -224,7 +224,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             };
             toadstool_runtime_container::byob_server::run_byob_server(config)
                 .await
-                .map_err(|e| CliError::Other(format!("BYOB server failed: {}", e)))?;
+                .map_err(|e| CliError::Other(format!("BYOB server failed: {e}")))?;
         }
 
         Commands::Doctor {
@@ -488,18 +488,13 @@ async fn execute_universal_command(operation: &UniversalCommands) -> Result<()> 
     Ok(())
 }
 
-/// Run ToadStool in server/daemon mode
-///
-/// UNIBIN PHASE 1 COMPLETE: CLI structure ready
-/// UNIBIN PHASE 2 BLOCKED: Server crate has 51 compilation errors
-///
-/// Honest status: NOW 100% UniBin compliant! Library compiles, server integrated!
+/// Run ToadStool in server/daemon mode (UniBin compliant)
 async fn run_server_daemon(family_id: Option<String>) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
 
     toadstool_server::run_server_main(family_id)
         .await
-        .map_err(|e| CliError::Other(format!("Server failed: {}", e)))?;
+        .map_err(|e| CliError::Other(format!("Server failed: {e}")))?;
 
     Ok(())
 }

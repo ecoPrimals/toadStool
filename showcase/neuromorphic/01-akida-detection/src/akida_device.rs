@@ -11,7 +11,7 @@ pub fn query_board_info(device: &PcieDevice, index: usize) -> Result<AkidaBoard>
     // In production, this would use the Akida SDK to query actual board state
     // For now, we'll use mock data based on known Akida AKD1000 specs
 
-    let device_path = PathBuf::from(format!("/dev/akida{}", index));
+    let device_path = PathBuf::from(format!("/dev/akida{index}"));
 
     // Try to get real PCIe link info if available
     let (pcie_gen, pcie_lanes) = query_pcie_link_info(&device.address).unwrap_or((2, 4)); // Default: PCIe Gen2 x4
@@ -39,11 +39,11 @@ pub fn query_board_info(device: &PcieDevice, index: usize) -> Result<AkidaBoard>
 fn query_pcie_link_info(address: &str) -> Result<(u8, u8)> {
     use std::fs;
 
-    let base_path = format!("/sys/bus/pci/devices/{}", address);
+    let base_path = format!("/sys/bus/pci/devices/{address}");
 
     // Try to read current link speed and width
-    let speed_path = format!("{}/current_link_speed", base_path);
-    let width_path = format!("{}/current_link_width", base_path);
+    let speed_path = format!("{base_path}/current_link_speed");
+    let width_path = format!("{base_path}/current_link_width");
 
     let generation = if let Ok(speed) = fs::read_to_string(&speed_path) {
         parse_pcie_speed(&speed)
@@ -102,7 +102,7 @@ fn check_board_health(address: &str) -> Result<BoardHealth> {
     use std::path::Path;
 
     // Check if device is present in sysfs
-    let device_path = format!("/sys/bus/pci/devices/{}", address);
+    let device_path = format!("/sys/bus/pci/devices/{address}");
 
     if !Path::new(&device_path).exists() {
         return Ok(BoardHealth::Error);

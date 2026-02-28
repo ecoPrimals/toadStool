@@ -31,7 +31,7 @@ impl PSNR {
         if shape1 != shape2 {
             return Err(crate::error::BarracudaError::invalid_op(
                 "PSNR",
-                format!("Tensors must have same shape: {:?} vs {:?}", shape1, shape2),
+                format!("Tensors must have same shape: {shape1:?} vs {shape2:?}"),
             ));
         }
 

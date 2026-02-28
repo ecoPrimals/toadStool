@@ -1,3 +1,5 @@
+#![allow(deprecated)] // Intentional: this module is deprecated, kept for backward compatibility
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -13,6 +15,10 @@ use crate::types::UniversalJob;
 ///
 /// **DEPRECATED**: HTTP-based external calls removed
 /// **Use**: Unix socket connections via primal integrations instead
+#[deprecated(
+    since = "2.0.0",
+    note = "HTTP-based ecosystem calls removed. Use Unix socket connections via primal integrations instead."
+)]
 pub struct EcosystemCaller {
     /// HTTP client for REST APIs - REMOVED (use Unix sockets!)
     _stub_marker: String,
@@ -53,6 +59,10 @@ pub struct MessageQueueConnection {
 }
 
 impl EcosystemCaller {
+    #[deprecated(
+        since = "2.0.0",
+        note = "HTTP-based ecosystem calls removed. Use Unix socket connections via primal integrations instead."
+    )]
     #[must_use]
     pub fn new() -> Self {
         tracing::warn!("EcosystemCaller: HTTP removed - use Unix socket integrations");
@@ -66,10 +76,14 @@ impl EcosystemCaller {
         }
     }
 
-    pub async fn call_service(&self, job: &UniversalJob) -> ToadStoolResult<()> {
-        // Simplified service calling
-        tracing::info!("Calling ecosystem service for job: {:?}", job.job_id);
-        Ok(())
+    #[deprecated(
+        since = "2.0.0",
+        note = "HTTP-based ecosystem calls removed. Use Unix socket connections via primal integrations instead."
+    )]
+    pub async fn call_service(&self, _job: &UniversalJob) -> ToadStoolResult<()> {
+        Err(toadstool::ToadStoolError::integration(
+            "EcosystemCaller is deprecated: HTTP-based service calls removed. Use Unix socket connections via primal integrations (e.g. PrimalClient) instead.",
+        ))
     }
 }
 

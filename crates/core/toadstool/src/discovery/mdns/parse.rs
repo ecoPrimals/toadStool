@@ -45,7 +45,7 @@ pub fn parse_service_info(info: &ServiceInfo) -> ToadStoolResult<DiscoveredServi
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "unknown".to_string());
 
-                let features_key = format!("cap_{}_features", cap_name);
+                let features_key = format!("cap_{cap_name}_features");
                 let features = info
                     .get_property_val_str(&features_key)
                     .map(|f| f.split(',').map(|s| s.to_string()).collect())
@@ -337,7 +337,7 @@ mod tests {
             "test-instance",
             "myhost.example.com",
             "",
-            12345u16,
+            12_345u16,
             Some(properties),
         )
         .expect("ServiceInfo creation");

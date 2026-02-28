@@ -48,7 +48,7 @@ impl SimpleNetwork {
         let mut indices: Vec<usize> = (0..num_samples).collect();
 
         println!("Training network...");
-        println!("  Samples: {}", num_samples);
+        println!("  Samples: {num_samples}");
         println!("  Batch size: {}", config.batch_size);
         println!("  Epochs: {}", config.epochs);
         println!("  Learning rate: {}", config.learning_rate);
@@ -207,32 +207,32 @@ impl SimpleNetwork {
         // Save w1
         for row in self.w1.rows() {
             for &val in row {
-                write!(file, "{} ", val)?;
+                write!(file, "{val} ")?;
             }
             writeln!(file)?;
         }
 
         // Save b1
         for &val in &self.b1 {
-            write!(file, "{} ", val)?;
+            write!(file, "{val} ")?;
         }
         writeln!(file)?;
 
         // Save w2
         for row in self.w2.rows() {
             for &val in row {
-                write!(file, "{} ", val)?;
+                write!(file, "{val} ")?;
             }
             writeln!(file)?;
         }
 
         // Save b2
         for &val in &self.b2 {
-            write!(file, "{} ", val)?;
+            write!(file, "{val} ")?;
         }
         writeln!(file)?;
 
-        println!("✓ Saved weights to {}", path);
+        println!("✓ Saved weights to {path}");
         Ok(())
     }
 
@@ -250,7 +250,7 @@ impl SimpleNetwork {
             line.split_whitespace()
                 .map(|s| {
                     s.parse::<f32>()
-                        .with_context(|| format!("Failed to parse '{}' as f32 in {}", s, context))
+                        .with_context(|| format!("Failed to parse '{s}' as f32 in {context}"))
                 })
                 .collect()
         };
@@ -259,9 +259,8 @@ impl SimpleNetwork {
         let parse_dims = |line: String, context: &str| -> Result<Vec<usize>> {
             line.split_whitespace()
                 .map(|s| {
-                    s.parse::<usize>().with_context(|| {
-                        format!("Failed to parse '{}' as dimension in {}", s, context)
-                    })
+                    s.parse::<usize>()
+                        .with_context(|| format!("Failed to parse '{s}' as dimension in {context}"))
                 })
                 .collect()
         };
@@ -309,7 +308,7 @@ impl SimpleNetwork {
             w1_data.extend(row);
         }
         let w1 = Array2::from_shape_vec((dims1[0], dims1[1]), w1_data)
-            .with_context(|| format!("Failed to create w1 array with shape {:?}", dims1))?;
+            .with_context(|| format!("Failed to create w1 array with shape {dims1:?}"))?;
 
         // Read b1
         let b1_line = lines
@@ -335,7 +334,7 @@ impl SimpleNetwork {
             w2_data.extend(row);
         }
         let w2 = Array2::from_shape_vec((dims2[0], dims2[1]), w2_data)
-            .with_context(|| format!("Failed to create w2 array with shape {:?}", dims2))?;
+            .with_context(|| format!("Failed to create w2 array with shape {dims2:?}"))?;
 
         // Read b2
         let b2_line = lines
@@ -344,7 +343,7 @@ impl SimpleNetwork {
         let b2_data = parse_line(b2_line, "b2 bias")?;
         let b2 = Array1::from_vec(b2_data);
 
-        println!("✓ Loaded weights from {}", path);
+        println!("✓ Loaded weights from {path}");
         Ok(Self { w1, b1, w2, b2 })
     }
 }

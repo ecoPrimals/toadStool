@@ -1,3 +1,5 @@
+#![allow(deprecated)] // EcosystemCaller is deprecated; scheduler uses it until migrated to primal integrations
+
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

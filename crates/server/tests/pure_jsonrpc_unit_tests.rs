@@ -333,7 +333,10 @@ async fn test_compute_result_job_not_found() {
 
     assert!(response.result.is_none());
     let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+    assert_eq!(
+        err.code,
+        toadstool_common::constants::jsonrpc::error_codes::WORKLOAD_NOT_FOUND
+    );
 }
 
 #[tokio::test]
@@ -468,4 +471,285 @@ fn test_jsonrpc_request_with_params_array() {
     let json = r#"{"jsonrpc":"2.0","method":"foo","params":[1,2],"id":1}"#;
     let req: JsonRpcRequest<'_> = serde_json::from_str(json).expect("Parse failed");
     assert!(req.params.is_some());
+}
+
+// ───── Additional coverage: gpu, gate, resources, ollama, compute aliases ───
+
+#[tokio::test]
+async fn test_gpu_info() {
+    let handler = test_handler();
+    let request = mk_request("gpu.info", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["devices"].is_array());
+    assert_eq!(result["driver"], "wgpu");
+}
+
+#[tokio::test]
+async fn test_gpu_memory() {
+    let handler = test_handler();
+    let request = mk_request("gpu.memory", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["devices"].is_array());
+}
+
+#[tokio::test]
+async fn test_compute_discover_capabilities() {
+    let handler = test_handler();
+    let request = mk_request("compute.discover_capabilities", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["node_capabilities"].is_array());
+    assert!(result["methods"].is_array());
+    assert!(result["version"].as_str().is_some());
+}
+
+#[tokio::test]
+async fn test_compute_version() {
+    let handler = test_handler();
+    let request = mk_request("compute.version", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert_eq!(result["version"], "test-1.0.0");
+}
+
+#[tokio::test]
+async fn test_compute_capabilities() {
+    let handler = test_handler();
+    let request = mk_request("compute.capabilities", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["service_id"].as_str().is_some());
+}
+
+#[tokio::test]
+async fn test_toadstool_list_workloads() {
+    let handler = test_handler();
+    let request = mk_request("toadstool.list_workloads", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["jobs"].is_array());
+    assert!(result["counts"].is_object());
+}
+
+#[tokio::test]
+async fn test_gate_list() {
+    let handler = test_handler();
+    let request = mk_request("gate.list", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["gates"].is_array());
+}
+
+#[tokio::test]
+async fn test_gate_route() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "model": "llama2",
+        "vram_required_mb": 4096
+    });
+    let request = mk_request("gate.route", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["gate_id"].as_str().is_some());
+    assert!(result["reason"].as_str().is_some());
+}
+
+#[tokio::test]
+async fn test_gate_route_missing_params() {
+    let handler = test_handler();
+    let request = mk_request("gate.route", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn test_gate_update() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "gate_id": "test-gate",
+        "gpu_model": "RTX 4090",
+        "vram_total_mb": 24000,
+        "vram_available_mb": 20000,
+        "loaded_models": [],
+        "queue_depth": 0,
+        "reachable": true
+    });
+    let request = mk_request("gate.update", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert_eq!(result["updated"], true);
+    assert_eq!(result["gate_id"], "test-gate");
+}
+
+#[tokio::test]
+async fn test_gate_update_invalid_params() {
+    let handler = test_handler();
+    let params = serde_json::json!({"invalid": "data"});
+    let request = mk_request("gate.update", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn test_gate_remove() {
+    let handler = test_handler();
+    let params = serde_json::json!({"gate_id": "gate-to-remove"});
+    let request = mk_request("gate.remove", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert_eq!(result["removed"], true);
+}
+
+#[tokio::test]
+async fn test_gate_remove_missing_gate_id() {
+    let handler = test_handler();
+    let request = mk_request("gate.remove", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn test_resources_estimate_empty_graph() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "graph": {
+            "id": "empty",
+            "nodes": [],
+            "edges": [],
+            "metadata": {}
+        }
+    });
+    let request = mk_request("resources.estimate", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_some() || response.error.is_some());
+}
+
+#[tokio::test]
+async fn test_resources_estimate_missing_params() {
+    let handler = test_handler();
+    let request = mk_request("resources.estimate", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn test_resources_validate_availability() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "graph": {
+            "id": "validate",
+            "nodes": [],
+            "edges": [],
+            "metadata": {}
+        }
+    });
+    let request = mk_request("resources.validate_availability", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_some() || response.error.is_some());
+}
+
+#[tokio::test]
+async fn test_resources_suggest_optimizations() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "graph": {
+            "id": "optimize",
+            "nodes": [],
+            "edges": [],
+            "metadata": {}
+        }
+    });
+    let request = mk_request("resources.suggest_optimizations", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_some() || response.error.is_some());
+}
+
+#[tokio::test]
+async fn test_ai_local_inference_alias() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "graph": {
+            "id": "x",
+            "nodes": [],
+            "edges": [],
+            "metadata": {}
+        }
+    });
+    let request = mk_request("ai.local_inference", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_some() || response.error.is_some());
+}
+
+#[tokio::test]
+async fn test_ai_local_execute_alias() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "graph": {
+            "id": "x",
+            "nodes": [],
+            "edges": [],
+            "metadata": {}
+        }
+    });
+    let request = mk_request("ai.local_execute", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_some() || response.error.is_some());
+}
+
+#[tokio::test]
+async fn test_ollama_list_models() {
+    let handler = test_handler();
+    let request = mk_request("ollama.list_models", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_some() || response.error.is_some());
+}
+
+#[tokio::test]
+async fn test_ollama_inference_missing_params() {
+    let handler = test_handler();
+    let request = mk_request("ollama.inference", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn test_ollama_load_missing_model() {
+    let handler = test_handler();
+    let request = mk_request("ollama.load", Some(serde_json::json!({})), 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn test_ollama_unload_missing_model() {
+    let handler = test_handler();
+    let request = mk_request("ollama.unload", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
 }

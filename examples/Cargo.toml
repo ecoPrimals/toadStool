@@ -187,6 +187,9 @@ futures = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 colored = "2.0"
 
+# Test utilities
+temp-env = "0.3"
+
 
 [features]
 default = ["pure-ecosystem"]

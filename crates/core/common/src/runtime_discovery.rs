@@ -254,7 +254,7 @@ impl RuntimeDiscovery {
 
 /// Service cache for discovered services
 ///
-/// Uses Arc<DiscoveredService> internally for zero-copy sharing.
+/// Uses `Arc<DiscoveredService>` internally for zero-copy sharing.
 /// This avoids expensive clones during cache operations (insert, lookup).
 /// Cloning only happens at API boundaries when returning to callers.
 #[derive(Debug)]

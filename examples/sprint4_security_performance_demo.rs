@@ -359,10 +359,8 @@ async fn demonstrate_security_policies() -> Result<(), Box<dyn std::error::Error
         );
 
         // Simulate policy evaluation (the actual implementation would call the policy manager)
-        let policy_result = format!(
-            "Policy evaluation for {} completed - ALLOW with monitoring",
-            name
-        );
+        let policy_result =
+            format!("Policy evaluation for {name} completed - ALLOW with monitoring");
         info!("  ✅ {}", policy_result);
     }
 

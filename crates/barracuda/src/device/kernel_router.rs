@@ -226,7 +226,7 @@ impl KernelRouter {
             } => {
                 let device = self.select_wgsl_device(*particle_count);
                 Ok(KernelTarget::Wgsl {
-                    shader: format!("forces/{}", force_type),
+                    shader: format!("forces/{force_type}"),
                     device,
                     workgroup_size: [64, 1, 1],
                 })
@@ -286,7 +286,7 @@ impl KernelRouter {
                 }
                 let device = self.select_wgsl_device(CPU_FALLBACK_THRESHOLD * 10);
                 Ok(KernelTarget::Wgsl {
-                    shader: format!("snn/{}", model_name),
+                    shader: format!("snn/{model_name}"),
                     device,
                     workgroup_size: [64, 1, 1],
                 })
@@ -392,7 +392,7 @@ impl KernelRouter {
 
         // Add home directory path if available
         if let Ok(home) = std::env::var("HOME") {
-            model_dirs.push(format!("{}/.local/share/akida/models", home));
+            model_dirs.push(format!("{home}/.local/share/akida/models"));
         }
 
         for dir in model_dirs {
@@ -480,7 +480,7 @@ mod tests {
     fn test_physics_force_routes_to_wgsl() {
         let router = KernelRouter::default();
         let workload = ComputeWorkload::PhysicsForce {
-            particle_count: 10000,
+            particle_count: 10_000,
             force_type: "lennard_jones".to_string(),
         };
         let target = router.route(&workload).unwrap();

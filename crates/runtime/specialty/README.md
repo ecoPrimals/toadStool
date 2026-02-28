@@ -87,9 +87,8 @@ members = [
 ```
 
 ### Step 2: Fix Compilation Errors
-Follow the guide in:
-- `docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_11_HOUR_ASSESSMENT.md`
-- `docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_FINAL_STATUS.md`
+
+See `STATUS.md` (root) for current crate status.
 
 ### Step 3: Implement Traits
 See implementation guide:
@@ -99,10 +98,8 @@ See implementation guide:
 
 ## 📚 **Documentation**
 
-### Session Reports (December 4, 2025)
-- **11-Hour Assessment**: `docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_11_HOUR_ASSESSMENT.md`
-- **Final Status**: `docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_FINAL_STATUS.md`
-- **Deep Analysis**: `docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_DEEP_ANALYSIS.md`
+### References
+- **Root Status**: `STATUS.md`
 
 ### Architecture
 - **Dec 3 Refactoring**: Created trait hierarchy (incomplete)
@@ -182,10 +179,7 @@ Specialty runtime can be added later when:
 
 ## 📞 **Questions?**
 
-See documentation:
-- Main: `docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_11_HOUR_ASSESSMENT.md`
-- Status: `STATUS.md` (root)
-- Session: `docs/sessions/dec-4-2025/SESSION_COMPLETE_10_HOURS.md`
+See `STATUS.md` (root) for current project status.
 
 ---
 

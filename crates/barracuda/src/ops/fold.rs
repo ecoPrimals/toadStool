@@ -35,10 +35,7 @@ impl Fold {
         let shape = input.shape();
         if shape.len() != 3 {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!(
-                    "Fold expects 3D tensor [B, C*K*K, L], got shape {:?}",
-                    shape
-                ),
+                message: format!("Fold expects 3D tensor [B, C*K*K, L], got shape {shape:?}"),
             });
         }
 
@@ -79,8 +76,7 @@ impl Fold {
         if !channels_times_kernel.is_multiple_of(kernel_elements) {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: format!(
-                    "Input channels*kernel ({}) must be divisible by kernel elements ({})",
-                    channels_times_kernel, kernel_elements
+                    "Input channels*kernel ({channels_times_kernel}) must be divisible by kernel elements ({kernel_elements})"
                 ),
             });
         }

@@ -16,7 +16,7 @@ use uuid::Uuid;
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```ignore
 /// use toadstool_testing::helpers::sync::wait_for_condition;
 /// use std::time::Duration;
 /// use std::sync::Arc;
@@ -60,8 +60,7 @@ where
         let now = Instant::now();
         if now >= deadline {
             return Err(ToadStoolError::runtime(format!(
-                "Condition not met within {:?}",
-                timeout
+                "Condition not met within {timeout:?}"
             )));
         }
 
@@ -88,7 +87,7 @@ where
 {
     wait_for_condition(check, timeout, initial_interval)
         .await
-        .map_err(|e| ToadStoolError::runtime(format!("{}: {}", error_message, e)))
+        .map_err(|e| ToadStoolError::runtime(format!("{error_message}: {e}")))
 }
 
 /// Wait for a service to become healthy
@@ -173,7 +172,7 @@ impl TestIsolation {
         // This ensures different test instances get different ports
         let name_hash = test_name.bytes().map(u32::from).sum::<u32>();
         let uuid_hash = test_id.as_u128() as u32;
-        let port_base = 10000 + ((name_hash.wrapping_add(uuid_hash)) % 20000) as u16;
+        let port_base = 10_000 + ((name_hash.wrapping_add(uuid_hash)) % 20_000) as u16;
 
         Self {
             test_name: test_name.to_string(),
@@ -232,7 +231,7 @@ impl TestBarrier {
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```ignore
 /// use toadstool_testing::helpers::sync::EventCoordinator;
 ///
 /// # async fn example() -> Result<()> {
@@ -272,6 +271,7 @@ impl EventCoordinator {
     }
 
     /// Signal an event
+    #[allow(clippy::unused_async)] // broadcast::Sender::send is sync; async for API consistency
     pub async fn signal(&self, event: &str) {
         let _ = self.tx.send(event.to_string());
     }
@@ -291,7 +291,7 @@ impl EventCoordinator {
             }
         })
         .await
-        .map_err(|_| ToadStoolError::runtime(format!("Timeout waiting for event: {}", event)))?
+        .map_err(|_| ToadStoolError::runtime(format!("Timeout waiting for event: {event}")))?
     }
 }
 
@@ -406,7 +406,7 @@ mod tests {
         tokio::spawn({
             let coordinator = coordinator.clone();
             async move {
-                tokio::time::sleep(Duration::from_millis(50)).await;
+                tokio::task::yield_now().await;
                 coordinator.signal("ready").await;
             }
         });

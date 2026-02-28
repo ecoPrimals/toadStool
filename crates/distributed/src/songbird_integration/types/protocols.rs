@@ -30,6 +30,15 @@ pub struct HttpProtocolConfig {
 }
 
 /// gRPC protocol configuration
+///
+/// # Deprecation
+///
+/// gRPC is deprecated per wateringHole UNIVERSAL_IPC_STANDARD_V3.
+/// Migrate to JSON-RPC 2.0 over Unix sockets.
+#[deprecated(
+    since = "0.3.0",
+    note = "gRPC deprecated per UNIVERSAL_IPC_STANDARD_V3. Use JSON-RPC over Unix socket."
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GrpcProtocolConfig {
     pub timeout_ms: u64,
@@ -84,7 +93,7 @@ mod tests {
     #[test]
     fn test_grpc_protocol_config_construction() {
         let config = GrpcProtocolConfig {
-            timeout_ms: 10000,
+            timeout_ms: 10_000,
             max_message_size: 4 * 1024 * 1024,
             compression: true,
         };

@@ -14,11 +14,11 @@ mod hardcoded_approach {
     pub const NESTGATE_PORT: u16 = 8082;
 
     pub fn get_orchestration_url() -> String {
-        format!("http://localhost:{}", SONGBIRD_PORT)
+        format!("http://localhost:{SONGBIRD_PORT}")
     }
 
     pub fn get_security_url() -> String {
-        format!("http://localhost:{}", BEARDOG_PORT)
+        format!("http://localhost:{BEARDOG_PORT}")
     }
 }
 
@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let discovery = PrimalDiscovery::with_config(config).await?;
+    let discovery = PrimalDiscovery::with_config(config)?;
 
     // Discover services by capability, not by name!
     println!("🔍 Discovering services by capability...\n");
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   Discovered via: {:?}", endpoint.discovered_via);
             println!("   Trust level: {:?}", endpoint.trust_level);
         }
-        Err(e) => println!("❌ Orchestration not found: {}", e),
+        Err(e) => println!("❌ Orchestration not found: {e}"),
     }
 
     println!();
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   URL: {}", endpoint.url());
             println!("   Discovered via: {:?}", endpoint.discovered_via);
         }
-        Err(e) => println!("❌ Security not found: {}", e),
+        Err(e) => println!("❌ Security not found: {e}"),
     }
 
     println!();
@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   URL: {}", endpoint.url());
             println!("   Discovered via: {:?}", endpoint.discovered_via);
         }
-        Err(e) => println!("❌ Storage not found: {}", e),
+        Err(e) => println!("❌ Storage not found: {e}"),
     }
 
     println!("\n🎉 Benefits of discovery-based approach:");
