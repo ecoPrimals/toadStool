@@ -197,6 +197,98 @@ fn batched_compute(
             
             output[batch_idx] = dr_new;
         }
+        case 5u: {
+            // SensorCalibration: SoilWatch 10 VWC — Dong et al. (2024) Eq. 5
+            // input: [raw_count]
+            let raw = input[base + 0u];
+            let c3 = raw * raw * raw;
+            let c2 = raw * raw;
+            output[batch_idx] = f64(2e-13) * c3 - f64(4e-9) * c2 + f64(4e-5) * raw - f64(0.0677);
+        }
+        case 6u: {
+            // HargreavesEt0: Hargreaves-Samani (1985) — FAO-56 Eq. 52
+            // input: [tmax, tmin, lat_rad, doy]
+            let tmax = input[base + 0u];
+            let tmin = input[base + 1u];
+            let lat_rad = input[base + 2u];
+            let doy_f = input[base + 3u];
+            let zero = tmax - tmax;
+            let two_pi = zero + 6.283185307179586;
+
+            // Extraterrestrial radiation Ra (MJ/m²/day) — FAO-56 Eq. 21-25
+            let dr = (zero + 1.0) + (zero + 0.033) * cos_f64(two_pi * doy_f / (zero + 365.0));
+            let delta_decl = (zero + 0.409) * sin_f64(two_pi * doy_f / (zero + 365.0) - (zero + 1.39));
+            var ws_arg = -tan_f64(lat_rad) * tan_f64(delta_decl);
+            if (ws_arg > (zero + 1.0))  { ws_arg = zero + 1.0; }
+            if (ws_arg < (zero - 1.0))  { ws_arg = zero - 1.0; }
+            let ws = acos_f64(ws_arg);
+            let ra_mj = (zero + 37.586) * dr * (
+                ws * sin_f64(lat_rad) * sin_f64(delta_decl) +
+                cos_f64(lat_rad) * cos_f64(delta_decl) * sin_f64(ws)
+            );
+            let ra_mm = ra_mj * (zero + 0.408);
+
+            let tmean = (tmax + tmin) * (zero + 0.5);
+            var td = tmax - tmin;
+            if (td < zero) { td = zero; }
+            var et0 = (zero + 0.0023) * (tmean + (zero + 17.8)) * sqrt(td) * ra_mm;
+            if (et0 < zero) { et0 = zero; }
+            output[batch_idx] = et0;
+        }
+        case 7u: {
+            // KcClimateAdjust: FAO-56 Eq. 62
+            // input: [kc_table, u2, rh_min, crop_height_m]
+            let kc_table = input[base + 0u];
+            let u2 = input[base + 1u];
+            let rh_min = input[base + 2u];
+            let h = input[base + 3u];
+            let zero = kc_table - kc_table;
+
+            let adj = ((zero + 0.04) * (u2 - (zero + 2.0)) - (zero + 0.004) * (rh_min - (zero + 45.0)))
+                    * pow_f64(h / (zero + 3.0), zero + 0.3);
+            var kc = kc_table + adj;
+            if (kc < zero) { kc = zero; }
+            output[batch_idx] = kc;
+        }
+        case 8u: {
+            // DualKcKe: FAO-56 Eq. 71/74 soil evaporation coefficient
+            // input: [kcb, kc_max, few, mulch_factor, de_prev, rew, tew, p_eff, et0]
+            let kcb = input[base + 0u];
+            let kc_max = input[base + 1u];
+            let few = input[base + 2u];
+            let mulch = input[base + 3u];
+            let de_prev = input[base + 4u];
+            let rew = input[base + 5u];
+            let tew = input[base + 6u];
+            let p_eff = input[base + 7u];
+            // et0 = input[base + 8u]; reserved for future multi-output
+            let zero = kcb - kcb;
+
+            var de = de_prev - p_eff;
+            if (de < zero) { de = zero; }
+            if (de > tew)  { de = tew; }
+
+            // Evaporation reduction coefficient Kr (FAO-56 Eq. 74)
+            var kr = zero + 1.0;
+            if (de > rew) {
+                let denom = tew - rew;
+                if (denom > (zero + 0.001)) {
+                    kr = (tew - de) / denom;
+                } else {
+                    kr = zero;
+                }
+                if (kr < zero) { kr = zero; }
+            }
+
+            // Ke = min(Kr*(Kc_max - Kcb), few*Kc_max) * mulch (FAO-56 Eq. 71)
+            let ke_full = kr * (kc_max - kcb);
+            let ke_limit = few * kc_max;
+            var ke = ke_full;
+            if (ke > ke_limit) { ke = ke_limit; }
+            ke = ke * mulch;
+            if (ke < zero) { ke = zero; }
+            output[batch_idx] = ke;
+        }
         default: {
             // Identity / passthrough first element
             output[batch_idx] = input[base];

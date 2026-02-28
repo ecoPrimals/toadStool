@@ -123,6 +123,31 @@ pub fn chao1(counts: &[f64]) -> f64 {
     }
 }
 
+/// Chao 1984 estimator from integer counts (classic formula).
+///
+/// `S_chao1 = S_obs + f1²/(2·f2)` when f2 > 0,
+/// else `S_obs + f1·(f1−1)/2` when f1 > 0.
+///
+/// This variant accepts `u64` counts directly, avoiding f64 allocation
+/// for amplicon sequencing pipelines with integer abundance tables.
+///
+/// Provenance: groundSpring `rare_biosphere.rs` → toadStool absorption (S70).
+#[inline]
+#[must_use]
+pub fn chao1_classic(counts: &[u64]) -> f64 {
+    let s_obs = counts.iter().filter(|&&c| c > 0).count() as f64;
+    let f1 = counts.iter().filter(|&&c| c == 1).count() as f64;
+    let f2 = counts.iter().filter(|&&c| c == 2).count() as f64;
+
+    if f2 > 0.0 {
+        s_obs + (f1 * f1) / (2.0 * f2)
+    } else if f1 > 0.0 {
+        s_obs + f1 * (f1 - 1.0) / 2.0
+    } else {
+        s_obs
+    }
+}
+
 /// Pielou's evenness: J' = H'/ln(S). Range [0, 1].
 ///
 /// Returns 0.0 when S ≤ 1 (undefined).

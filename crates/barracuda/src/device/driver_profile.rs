@@ -478,6 +478,21 @@ impl GpuDriverProfile {
         }
         w
     }
+
+    /// Preferred 1D workgroup size for the GPU architecture.
+    ///
+    /// Volta/Turing (SM70/SM75): 64-wide warps → 64.
+    /// Ampere/Ada (SM80+) and AMD RDNA: 256 occupancy sweet spot.
+    /// Fallback: 128 (safe universal default).
+    #[must_use]
+    pub fn preferred_workgroup_size(&self) -> u32 {
+        match self.arch {
+            GpuArch::Volta | GpuArch::Turing => 64,
+            GpuArch::Ampere | GpuArch::Ada => 256,
+            GpuArch::Rdna2 | GpuArch::Rdna3 => 256,
+            _ => 128,
+        }
+    }
 }
 
 impl fmt::Display for GpuDriverProfile {

@@ -32,9 +32,19 @@
 //!
 //! - **Linear, Quadratic, Exponential, Logarithmic**: Closed-form least-squares
 //!
-//! # Hydrology (S66 absorption from airSpring)
+//! # Hydrology (S66+S70 absorption from airSpring/groundSpring)
 //!
+//! - **FAO-56 Penman-Monteith ET₀** (scalar, full equation)
 //! - **Hargreaves ET₀, Crop coefficient, Soil water balance**: FAO-56 reference
+//!
+//! # Population Genetics (S70 absorption from groundSpring)
+//!
+//! - **Kimura fixation probability**, **Error threshold** (quasispecies)
+//! - **Detection power/threshold** for rare taxa
+//!
+//! # Jackknife (S70 absorption from groundSpring)
+//!
+//! - **Leave-one-out jackknife** for mean and arbitrary statistics
 //!
 //! # Moving Window f64 (S66 absorption from airSpring)
 //!
@@ -64,7 +74,9 @@ pub mod bootstrap;
 pub mod chi2;
 pub mod correlation;
 pub mod diversity;
+pub mod evolution;
 pub mod hydrology;
+pub mod jackknife;
 pub mod metrics;
 pub mod moving_window_f64;
 pub mod normal;
@@ -79,11 +91,15 @@ pub use correlation::{
     correlation_matrix, covariance, covariance_matrix, pearson_correlation, spearman_correlation,
 };
 pub use diversity::{
-    alpha_diversity, bray_curtis, bray_curtis_condensed, bray_curtis_matrix, chao1,
+    alpha_diversity, bray_curtis, bray_curtis_condensed, bray_curtis_matrix, chao1, chao1_classic,
     condensed_index, observed_features, pielou_evenness, rarefaction_curve, shannon,
     shannon_from_frequencies, simpson, AlphaDiversity,
 };
-pub use hydrology::{crop_coefficient, hargreaves_et0, hargreaves_et0_batch, soil_water_balance};
+pub use evolution::{detection_power, detection_threshold, error_threshold, kimura_fixation_prob};
+pub use hydrology::{
+    crop_coefficient, fao56_et0, hargreaves_et0, hargreaves_et0_batch, soil_water_balance,
+};
+pub use jackknife::{jackknife, jackknife_mean_variance, JackknifeResult};
 pub use metrics::{
     dot, hill, hit_rate, index_of_agreement, l2_norm, mae, mbe, mean, monod, nash_sutcliffe,
     percentile, r_squared, rmse,

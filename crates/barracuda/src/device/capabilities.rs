@@ -178,6 +178,28 @@ pub struct DeviceCapabilities {
     pub gpu_dispatch_threshold_override: Option<usize>,
 }
 
+/// NVK (and some other drivers) may report absurd `max_buffer_size` values
+/// (e.g. 2^57). Cap to architecture-appropriate defaults when the reported
+/// value exceeds 64 GB, which no consumer GPU actually has.
+fn sanitize_max_buffer_size(reported: u64, device_name: &str) -> u64 {
+    const MAX_SANE_BUFFER: u64 = 64 * 1024 * 1024 * 1024; // 64 GB
+    if reported > MAX_SANE_BUFFER {
+        let capped = if device_name.contains("Titan V") || device_name.contains("V100") {
+            12 * 1024 * 1024 * 1024 // 12 GB VRAM
+        } else if device_name.contains("RTX 30") || device_name.contains("RTX 40") {
+            24 * 1024 * 1024 * 1024 // 24 GB max consumer
+        } else {
+            8 * 1024 * 1024 * 1024 // 8 GB conservative default
+        };
+        tracing::warn!(
+            "Driver reported max_buffer_size={reported} (>64GB), capping to {capped} for {device_name}"
+        );
+        capped
+    } else {
+        reported
+    }
+}
+
 impl DeviceCapabilities {
     /// Detect capabilities from wgpu device
     ///
@@ -189,7 +211,7 @@ impl DeviceCapabilities {
         Self {
             device_name: adapter_info.name.clone(),
             device_type: adapter_info.device_type,
-            max_buffer_size: limits.max_buffer_size,
+            max_buffer_size: sanitize_max_buffer_size(limits.max_buffer_size, &adapter_info.name),
             max_workgroup_size: (
                 limits.max_compute_workgroup_size_x,
                 limits.max_compute_workgroup_size_y,

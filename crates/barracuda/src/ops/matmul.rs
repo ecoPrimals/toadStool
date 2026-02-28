@@ -232,15 +232,21 @@ impl Tensor {
     /// let c = a.matmul(&b)?;  // Routes to best device!
     /// ```
     pub fn matmul(self, other: &Self) -> Result<Self> {
-        // NPU routing: sparse tensors or energy-priority policy route to Akida.
+        self.matmul_ref(other)
+    }
+
+    /// Non-consuming matrix multiply: `C[m×n] = self[m×k] × other[k×n]`.
+    ///
+    /// Unlike [`matmul`](Self::matmul), this borrows `self` so it can be
+    /// reused in recurrent architectures (ESN, LSTM) without cloning.
+    pub fn matmul_ref(&self, other: &Self) -> Result<Self> {
         if self.should_use_npu_for_matmul(other) {
-            tracing::debug!("Routing matmul to NPU (sparse or energy priority)");
-            return self.matmul_npu(other);
+            tracing::debug!("Routing matmul_ref to NPU (sparse or energy priority)");
+            return self.clone().matmul_npu(other);
         }
 
-        // Existing WGSL path (GPU/CPU)
-        tracing::debug!("Routing matmul to WGSL (GPU/CPU)");
-        MatMul::new(&self, other).execute()
+        tracing::debug!("Routing matmul_ref to WGSL (GPU/CPU)");
+        MatMul::new(self, other).execute()
     }
 
     /// Check if NPU should be used for this matmul.

@@ -56,12 +56,12 @@ pub use loss::LossFunction;
 pub use metrics::{EvalMetrics, TrainHistory, TrainingMetrics};
 pub use optimizer::Optimizer;
 
-// Internal modules
+pub mod simple_mlp;
+
 mod config;
 mod layer;
 mod loss;
 mod metrics;
 mod optimizer;
 
-// Network implementation still in parent nn.rs
-// Will be moved to network.rs and builder.rs in follow-up refactoring
+pub use simple_mlp::SimpleMlp;

@@ -14,7 +14,11 @@
 //!
 //! - `Op::Fao56Et0` (0): FAO-56 Penman-Monteith reference ET₀
 //! - `Op::WaterBalance` (1): Daily water balance update
-//! - `Op::Custom` (2+): User-defined operations
+//! - `Op::Custom` (2): User-defined operations (passthrough)
+//! - `Op::SensorCalibration` (5): SoilWatch 10 VWC — Dong et al. (2024)
+//! - `Op::HargreavesEt0` (6): Hargreaves-Samani (1985) ET₀
+//! - `Op::KcClimateAdjust` (7): FAO-56 Eq. 62 Kc climate adjustment
+//! - `Op::DualKcKe` (8): FAO-56 Eq. 71/74 dual Kc soil evaporation
 //!
 //! # Example
 //!
@@ -45,24 +49,49 @@ pub const WGSL_MC_ET0_PROPAGATE_F64: &str =
 #[repr(u32)]
 pub enum Op {
     /// FAO-56 Penman-Monteith ET₀
-    /// Input per batch: [tmax, tmin, rh_max, rh_min, wind_2m, Rs, elevation, lat, doy]
+    /// Input per batch: `[tmax, tmin, rh_max, rh_min, wind_2m, Rs, elevation, lat, doy]`
     Fao56Et0 = 0,
 
     /// Water balance daily update
-    /// Input per batch: [Dr_prev, P, I, ETc, TAW, RAW, p]
+    /// Input per batch: `[Dr_prev, P, I, ETc, TAW, RAW, p]`
     WaterBalance = 1,
 
     /// Custom operation (passthrough first element)
     Custom = 2,
+
+    /// SoilWatch 10 sensor calibration — Dong et al. (2024)
+    /// Input per batch: `[raw_count]`
+    /// Output: VWC (cm³/cm³)
+    SensorCalibration = 5,
+
+    /// Hargreaves-Samani (1985) ET₀ — FAO-56 Eq. 52
+    /// Input per batch: `[tmax, tmin, lat_rad, doy]`
+    /// Output: ET₀ (mm/day)
+    HargreavesEt0 = 6,
+
+    /// FAO-56 Eq. 62 Kc climate adjustment
+    /// Input per batch: `[kc_table, u2, rh_min, crop_height_m]`
+    /// Output: adjusted Kc
+    KcClimateAdjust = 7,
+
+    /// FAO-56 Eq. 71/74 dual Kc soil evaporation coefficient
+    /// Input per batch: `[kcb, kc_max, few, mulch_factor, de_prev, rew, tew, p_eff, et0]`
+    /// Output: Ke
+    DualKcKe = 8,
 }
 
 impl Op {
     /// Number of input elements per batch item
+    #[must_use]
     pub fn stride(&self) -> usize {
         match self {
-            Op::Fao56Et0 => 9,     // [tmax, tmin, rh_max, rh_min, wind, Rs, elev, lat, doy]
-            Op::WaterBalance => 7, // [Dr_prev, P, I, ETc, TAW, RAW, p]
+            Op::Fao56Et0 => 9,
+            Op::WaterBalance => 7,
             Op::Custom => 1,
+            Op::SensorCalibration => 1,
+            Op::HargreavesEt0 => 4,
+            Op::KcClimateAdjust => 4,
+            Op::DualKcKe => 9,
         }
     }
 }
@@ -345,6 +374,46 @@ impl BatchedElementwiseF64 {
                     water_balance_cpu(dr_prev, precip, irrig, etc, taw, raw)
                 }
                 Op::Custom => data[base],
+                Op::SensorCalibration => {
+                    let raw = data[base];
+                    2e-13 * raw.powi(3) - 4e-9 * raw.powi(2) + 4e-5 * raw - 0.0677
+                }
+                Op::HargreavesEt0 => {
+                    let tmax = data[base];
+                    let tmin = data[base + 1];
+                    let lat_rad = data[base + 2];
+                    let doy = data[base + 3];
+                    hargreaves_et0_cpu(tmax, tmin, lat_rad, doy)
+                }
+                Op::KcClimateAdjust => {
+                    let kc_table = data[base];
+                    let u2 = data[base + 1];
+                    let rh_min = data[base + 2];
+                    let h = data[base + 3];
+                    let adj =
+                        (0.04 * (u2 - 2.0) - 0.004 * (rh_min - 45.0)) * (h / 3.0_f64).powf(0.3);
+                    (kc_table + adj).max(0.0)
+                }
+                Op::DualKcKe => {
+                    let kcb: f64 = data[base];
+                    let kc_max: f64 = data[base + 1];
+                    let few: f64 = data[base + 2];
+                    let mulch: f64 = data[base + 3];
+                    let de_prev: f64 = data[base + 4];
+                    let rew: f64 = data[base + 5];
+                    let tew: f64 = data[base + 6];
+                    let p_eff: f64 = data[base + 7];
+
+                    let de = (de_prev - p_eff).clamp(0.0, tew);
+                    let kr: f64 = if de > rew {
+                        ((tew - de) / (tew - rew).max(0.001)).max(0.0)
+                    } else {
+                        1.0
+                    };
+                    let ke_full = kr * (kc_max - kcb);
+                    let ke_limit = few * kc_max;
+                    (ke_full.min(ke_limit) * mulch).max(0.0)
+                }
             };
             results.push(result);
         }
@@ -410,6 +479,28 @@ impl BatchedElementwiseF64 {
 // ============================================================================
 // CPU REFERENCE IMPLEMENTATIONS (for tests and validation)
 // ============================================================================
+
+/// Hargreaves-Samani ET₀ (CPU reference) — FAO-56 Eq. 52
+pub fn hargreaves_et0_cpu(tmax: f64, tmin: f64, lat_rad: f64, doy: f64) -> f64 {
+    use std::f64::consts::PI;
+    let two_pi = 2.0 * PI;
+    let dr = 1.0 + 0.033 * (two_pi * doy / 365.0).cos();
+    let decl = 0.409 * (two_pi * doy / 365.0 - 1.39).sin();
+    let ws_arg = (-lat_rad.tan() * decl.tan()).clamp(-1.0, 1.0);
+    let ws = ws_arg.acos();
+    let ra_mj =
+        37.586 * dr * (ws * lat_rad.sin() * decl.sin() + lat_rad.cos() * decl.cos() * ws.sin());
+    let ra_mm = ra_mj * 0.408;
+    let tmean = (tmax + tmin) * 0.5;
+    let td = (tmax - tmin).max(0.0);
+    (0.0023 * (tmean + 17.8) * td.sqrt() * ra_mm).max(0.0)
+}
+
+/// FAO-56 Eq. 62 Kc climate adjustment (CPU reference)
+pub fn kc_climate_adjust_cpu(kc_table: f64, u2: f64, rh_min: f64, crop_height_m: f64) -> f64 {
+    let adj = (0.04 * (u2 - 2.0) - 0.004 * (rh_min - 45.0)) * (crop_height_m / 3.0_f64).powf(0.3);
+    (kc_table + adj).max(0.0)
+}
 
 #[cfg(test)]
 /// FAO-56 Penman-Monteith ET₀ (CPU reference)
@@ -571,5 +662,59 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_sensor_calibration_cpu() {
+        let raw = 15_000.0_f64;
+        let vwc = 2e-13 * raw.powi(3) - 4e-9 * raw.powi(2) + 4e-5 * raw - 0.0677;
+        assert!(vwc > 0.0 && vwc < 1.0, "VWC={vwc} out of range");
+    }
+
+    #[test]
+    fn test_hargreaves_et0_cpu() {
+        use std::f64::consts::PI;
+        let lat_rad = 50.8 * PI / 180.0;
+        let et0 = hargreaves_et0_cpu(21.5, 12.3, lat_rad, 187.0);
+        assert!(
+            et0 > 1.0 && et0 < 10.0,
+            "Hargreaves ET₀={et0}, expected 1-10 mm/day"
+        );
+    }
+
+    #[test]
+    fn test_kc_climate_adjust_cpu() {
+        let kc = kc_climate_adjust_cpu(1.15, 3.0, 30.0, 2.0);
+        assert!(kc > 1.0 && kc < 2.0, "Kc={kc}, expected ~1.15-1.3");
+    }
+
+    #[test]
+    fn test_dual_kc_ke_cpu() {
+        let kcb: f64 = 0.3;
+        let kc_max: f64 = 1.2;
+        let few: f64 = 0.5;
+        let mulch: f64 = 1.0;
+        let de_prev: f64 = 5.0;
+        let rew: f64 = 9.0;
+        let tew: f64 = 22.0;
+        let p_eff: f64 = 0.0;
+
+        let de = (de_prev - p_eff).clamp(0.0, tew);
+        assert!(de < rew, "should be below REW");
+        let ke_full = 1.0_f64 * (kc_max - kcb);
+        let ke_limit = few * kc_max;
+        let ke = ke_full.min(ke_limit) * mulch;
+        assert!(ke > 0.0 && ke < 1.0, "Ke={ke}");
+    }
+
+    #[test]
+    fn test_op_strides() {
+        assert_eq!(Op::Fao56Et0.stride(), 9);
+        assert_eq!(Op::WaterBalance.stride(), 7);
+        assert_eq!(Op::Custom.stride(), 1);
+        assert_eq!(Op::SensorCalibration.stride(), 1);
+        assert_eq!(Op::HargreavesEt0.stride(), 4);
+        assert_eq!(Op::KcClimateAdjust.stride(), 4);
+        assert_eq!(Op::DualKcKe.stride(), 9);
     }
 }
