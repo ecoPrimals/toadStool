@@ -11,6 +11,7 @@
 //! - ✅ Agnostic (no hardcoded constants)
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
@@ -151,7 +152,7 @@ impl MorseBuffers {
 /// Shared between `compute_gpu` and `compute_gpu_with_energy`.
 fn reduce_bond_forces(
     dev: &WgpuDevice,
-    shader: &wgpu::ShaderModule,
+    shader_source: &str,
     bond_forces_buf: &wgpu::Buffer,
     pairs_buf: &wgpu::Buffer,
     n_particles: usize,
@@ -192,105 +193,16 @@ fn reduce_bond_forces(
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-    let r_bgl = dev
-        .device
-        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-    let r_pl = dev
-        .device
-        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[&r_bgl],
-            push_constant_ranges: &[],
-        });
-    let reduce_pipeline = dev
-        .device
-        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("reduce_bond_forces_f64"),
-            layout: Some(&r_pl),
-            module: shader,
-            entry_point: "reduce_bond_forces_f64",
-            cache: None,
-            compilation_options: Default::default(),
-        });
-
-    let r_bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: None,
-        layout: &r_bgl,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: rp_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: bond_forces_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: pairs_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: particle_forces_buf.as_entire_binding(),
-            },
-        ],
-    });
-
     let wg = (n_particles as u32).div_ceil(WORKGROUP_SIZE_1D);
-    let mut enc = dev
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    {
-        let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-        p.set_pipeline(&reduce_pipeline);
-        p.set_bind_group(0, &r_bg, &[]);
-        p.dispatch_workgroups(wg, 1, 1);
-    }
-    dev.submit_and_poll(Some(enc.finish()));
+    ComputeDispatch::new(dev, "reduce_bond_forces_f64")
+        .shader(shader_source, "reduce_bond_forces_f64")
+        .f64()
+        .uniform(0, &rp_buf)
+        .storage_read(1, bond_forces_buf)
+        .storage_read(2, pairs_buf)
+        .storage_rw(3, &particle_forces_buf)
+        .dispatch(wg, 1, 1)
+        .submit();
 
     dev.read_f64_buffer(&particle_forces_buf, n_particles * 3)
 }
@@ -357,90 +269,26 @@ impl MorseForceF64 {
         });
 
         let src = Self::wgsl_shader_for_device(dev);
-        let shader = dev.compile_shader_f64(&src, Some("Morse f64 w/ energy"));
-
-        let bgl = dev
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: None,
-                entries: &(0..8u32)
-                    .map(|i| wgpu::BindGroupLayoutEntry {
-                        binding: i,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: if i == 6 {
-                                wgpu::BufferBindingType::Uniform
-                            } else if i == 5 || i == 7 {
-                                wgpu::BufferBindingType::Storage { read_only: false }
-                            } else {
-                                wgpu::BufferBindingType::Storage { read_only: true }
-                            },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    })
-                    .collect::<Vec<_>>(),
-            });
-
-        let pl = dev
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: None,
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-        let pipeline = dev
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("morse_with_energy_f64"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "morse_with_energy_f64",
-                cache: dev.pipeline_cache(),
-                compilation_options: Default::default(),
-            });
-
-        let bind_bufs: [&wgpu::Buffer; 8] = [
-            &buffers.pos,
-            &buffers.pairs,
-            &buffers.de,
-            &buffers.wp,
-            &buffers.eq,
-            &buffers.bond_forces,
-            &buffers.params,
-            &bond_energy_buf,
-        ];
-        let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &bind_bufs
-                .iter()
-                .enumerate()
-                .map(|(i, b)| wgpu::BindGroupEntry {
-                    binding: i as u32,
-                    resource: b.as_entire_binding(),
-                })
-                .collect::<Vec<_>>(),
-        });
-
         let wg = (n_bonds as u32).div_ceil(WORKGROUP_SIZE_1D);
-        let mut enc = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        {
-            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-            p.set_pipeline(&pipeline);
-            p.set_bind_group(0, &bg, &[]);
-            p.dispatch_workgroups(wg, 1, 1);
-        }
-        dev.submit_and_poll(Some(enc.finish()));
+        ComputeDispatch::new(dev, "morse_with_energy_f64")
+            .shader(&src, "morse_with_energy_f64")
+            .f64()
+            .storage_read(0, &buffers.pos)
+            .storage_read(1, &buffers.pairs)
+            .storage_read(2, &buffers.de)
+            .storage_read(3, &buffers.wp)
+            .storage_read(4, &buffers.eq)
+            .storage_rw(5, &buffers.bond_forces)
+            .uniform(6, &buffers.params)
+            .storage_rw(7, &bond_energy_buf)
+            .dispatch(wg, 1, 1)
+            .submit();
 
         let energies = dev.read_f64_buffer(&bond_energy_buf, n_bonds)?;
 
         let forces = reduce_bond_forces(
             dev,
-            &shader,
+            &src,
             &buffers.bond_forces,
             &buffers.pairs,
             n_particles,
@@ -461,87 +309,23 @@ impl MorseForceF64 {
         let buffers = MorseBuffers::new(dev, positions, bonds);
 
         let src = Self::wgsl_shader_for_device(dev);
-        let shader = dev.compile_shader_f64(&src, Some("Morse f64"));
-
-        let bgl = dev
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: None,
-                entries: &(0..7u32)
-                    .map(|i| wgpu::BindGroupLayoutEntry {
-                        binding: i,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: if i == 6 {
-                                wgpu::BufferBindingType::Uniform
-                            } else if i == 5 {
-                                wgpu::BufferBindingType::Storage { read_only: false }
-                            } else {
-                                wgpu::BufferBindingType::Storage { read_only: true }
-                            },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    })
-                    .collect::<Vec<_>>(),
-            });
-
-        let pl = dev
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: None,
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-        let pipeline = dev
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("morse_bonds_f64"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "morse_bonds_f64",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let bind_bufs: [&wgpu::Buffer; 7] = [
-            &buffers.pos,
-            &buffers.pairs,
-            &buffers.de,
-            &buffers.wp,
-            &buffers.eq,
-            &buffers.bond_forces,
-            &buffers.params,
-        ];
-        let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &bind_bufs
-                .iter()
-                .enumerate()
-                .map(|(i, b)| wgpu::BindGroupEntry {
-                    binding: i as u32,
-                    resource: b.as_entire_binding(),
-                })
-                .collect::<Vec<_>>(),
-        });
-
         let wg = (n_bonds as u32).div_ceil(WORKGROUP_SIZE_1D);
-        let mut enc = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        {
-            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-            p.set_pipeline(&pipeline);
-            p.set_bind_group(0, &bg, &[]);
-            p.dispatch_workgroups(wg, 1, 1);
-        }
-        dev.submit_and_poll(Some(enc.finish()));
+        ComputeDispatch::new(dev, "morse_bonds_f64")
+            .shader(&src, "morse_bonds_f64")
+            .f64()
+            .storage_read(0, &buffers.pos)
+            .storage_read(1, &buffers.pairs)
+            .storage_read(2, &buffers.de)
+            .storage_read(3, &buffers.wp)
+            .storage_read(4, &buffers.eq)
+            .storage_rw(5, &buffers.bond_forces)
+            .uniform(6, &buffers.params)
+            .dispatch(wg, 1, 1)
+            .submit();
 
         reduce_bond_forces(
             dev,
-            &shader,
+            &src,
             &buffers.bond_forces,
             &buffers.pairs,
             n_particles,

@@ -5,7 +5,6 @@
 //! - Subsequent ops reuse from pool
 //! - Steady-state should show zero allocations
 
-use anyhow::Result;
 use barracuda::device::{clear_global_contexts, get_device_context, warmup_pool, WarmupConfig};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
@@ -47,7 +46,7 @@ async fn benchmark_tensor_ops(
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

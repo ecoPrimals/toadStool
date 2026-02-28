@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use std::time::SystemTime;
 use uuid::Uuid;
 
+use crate::error::DistributedError;
 use crate::types::UniversalJob;
-use anyhow::Result;
 
 /// Workload request from a primal
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -179,7 +179,10 @@ impl WorkloadExecutor {
     ///
     /// # Errors
     /// Returns error if job conversion fails
-    pub async fn execute(&self, request: WorkloadRequest) -> Result<WorkloadResponse> {
+    pub async fn execute(
+        &self,
+        request: WorkloadRequest,
+    ) -> Result<WorkloadResponse, DistributedError> {
         tracing::info!(
             "Executing workload from {}: {}",
             request.from_primal,
@@ -214,7 +217,10 @@ impl WorkloadExecutor {
     /// - Complete parameter translation
     /// - Advanced resource requirement handling
     /// - Custom constraint support
-    fn convert_to_universal_job(&self, request: &WorkloadRequest) -> Result<UniversalJob> {
+    fn convert_to_universal_job(
+        &self,
+        request: &WorkloadRequest,
+    ) -> Result<UniversalJob, DistributedError> {
         tracing::debug!(
             "Converting workload request {} to UniversalJob",
             request.request_id
@@ -266,11 +272,7 @@ impl WorkloadExecutor {
         // - Advanced resource constraint handling
         //
         // Current implementation provides basic structure for testing and demo purposes
-        Err(anyhow::anyhow!(
-            "Workload conversion to UniversalJob requires scheduler integration. \
-             This implements the primal capability interface for workload management. \
-             Enable full scheduler integration to process actual workloads."
-        ))
+        Err(DistributedError::WorkloadConversionRequiresScheduler)
     }
 }
 

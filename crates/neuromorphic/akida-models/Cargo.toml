@@ -15,7 +15,6 @@ thiserror = { workspace = true }
 
 # Zero-copy binary data (Arc<[u8]>-style sharing for model weights)
 bytes = { workspace = true }
-anyhow = "1"
 
 # Binary parsing
 nom = "7"           # Parser combinators for binary formats

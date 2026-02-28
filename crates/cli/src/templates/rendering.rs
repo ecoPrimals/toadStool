@@ -2,7 +2,7 @@
 //!
 //! Supports both TOML (preferred, ecoBin compliant) and YAML formats.
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use tracing::info;
 
 use super::types_mod::BiomeTemplate;

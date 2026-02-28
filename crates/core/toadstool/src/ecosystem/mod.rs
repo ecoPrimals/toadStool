@@ -77,7 +77,7 @@ pub struct EcosystemCoordinator {
     /// Service manager
     management: Arc<ServiceManager>,
     /// Service discovery client (stored for potential direct use)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Reserved: direct discovery for fallback/reconnect
     discovery_client: Arc<ServiceDiscovery>,
     /// Configuration
     config: EcosystemConfig,

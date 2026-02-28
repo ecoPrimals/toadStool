@@ -261,7 +261,7 @@ impl ByobComputeExecutor {
     }
 
     /// Monitor deployment health
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Phase 2+: background health monitoring loop
     async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);
 

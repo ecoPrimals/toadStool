@@ -2,7 +2,7 @@
 //!
 //! **Deep Debt**: Runtime discovery, intelligent selection, automatic fallback
 
-use anyhow::{anyhow, Result};
+use crate::error::OrchestrationError;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -28,7 +28,7 @@ impl WorkloadOrchestrator {
     /// Discover all available substrates
     ///
     /// **Deep Debt**: Runtime discovery, capability-based
-    pub async fn discover() -> Result<Self> {
+    pub async fn discover() -> Result<Self, OrchestrationError> {
         let substrates = Arc::new(RwLock::new(Vec::new()));
         let policy = SelectionPolicy::default();
         let history = Arc::new(RwLock::new(PerformanceHistory::new()));
@@ -62,7 +62,10 @@ impl WorkloadOrchestrator {
     /// Execute a workload on optimal substrate
     ///
     /// **Deep Debt**: Automatic selection based on actual capabilities
-    pub async fn execute(&self, request: WorkloadRequest) -> Result<WorkloadResult> {
+    pub async fn execute(
+        &self,
+        request: WorkloadRequest,
+    ) -> Result<WorkloadResult, OrchestrationError> {
         let start = Instant::now();
 
         // Select optimal substrate
@@ -70,7 +73,10 @@ impl WorkloadOrchestrator {
 
         // Execute operation (simplified for now)
         let operation = self.convert_request_to_operation(&request)?;
-        let output = substrate.execute_buffer_op(operation).await?;
+        let output = substrate
+            .execute_buffer_op(operation)
+            .await
+            .map_err(|e| OrchestrationError::Substrate(e.to_string()))?;
 
         // Record performance
         let duration = start.elapsed();
@@ -91,7 +97,10 @@ impl WorkloadOrchestrator {
     }
 
     /// Execute workload with fallback on failure
-    pub async fn execute_with_fallback(&self, request: WorkloadRequest) -> Result<WorkloadResult> {
+    pub async fn execute_with_fallback(
+        &self,
+        request: WorkloadRequest,
+    ) -> Result<WorkloadResult, OrchestrationError> {
         let candidates = self.rank_substrates(&request)?;
 
         for substrate in candidates {
@@ -104,15 +113,18 @@ impl WorkloadOrchestrator {
             }
         }
 
-        Err(anyhow!("All substrates failed"))
+        Err(OrchestrationError::AllSubstratesFailed)
     }
 
     /// Select optimal substrate for workload
-    fn select_substrate(&self, request: &WorkloadRequest) -> Result<SubstrateHandle> {
+    fn select_substrate(
+        &self,
+        request: &WorkloadRequest,
+    ) -> Result<SubstrateHandle, OrchestrationError> {
         let substrates = self.substrates.read();
 
         if substrates.is_empty() {
-            return Err(anyhow!("No substrates available"));
+            return Err(OrchestrationError::NoSubstrates);
         }
 
         // Apply selection policy
@@ -123,7 +135,10 @@ impl WorkloadOrchestrator {
     }
 
     /// Rank substrates by suitability
-    fn rank_substrates(&self, request: &WorkloadRequest) -> Result<Vec<SubstrateHandle>> {
+    fn rank_substrates(
+        &self,
+        request: &WorkloadRequest,
+    ) -> Result<Vec<SubstrateHandle>, OrchestrationError> {
         let substrates = self.substrates.read();
         let history = self.history.read();
 
@@ -138,10 +153,13 @@ impl WorkloadOrchestrator {
         &self,
         substrate: SubstrateHandle,
         request: &WorkloadRequest,
-    ) -> Result<WorkloadResult> {
+    ) -> Result<WorkloadResult, OrchestrationError> {
         let start = Instant::now();
         let operation = self.convert_request_to_operation(request)?;
-        let output = substrate.execute_buffer_op(operation).await?;
+        let output = substrate
+            .execute_buffer_op(operation)
+            .await
+            .map_err(|e| OrchestrationError::Substrate(e.to_string()))?;
 
         Ok(WorkloadResult {
             substrate_name: substrate.name().to_string(),
@@ -153,7 +171,10 @@ impl WorkloadOrchestrator {
     }
 
     /// Convert workload request to buffer operation
-    fn convert_request_to_operation(&self, request: &WorkloadRequest) -> Result<BufferOperation> {
+    fn convert_request_to_operation(
+        &self,
+        request: &WorkloadRequest,
+    ) -> Result<BufferOperation, OrchestrationError> {
         // Simplified conversion for now
         Ok(BufferOperation::Custom {
             name: "generic_operation".to_string(),
@@ -267,9 +288,9 @@ impl WorkloadRequestBuilder {
         self
     }
 
-    pub fn build(self) -> Result<WorkloadRequest> {
+    pub fn build(self) -> Result<WorkloadRequest, OrchestrationError> {
         if self.request.operation_count == 0 {
-            return Err(anyhow!("Operation count must be > 0"));
+            return Err(OrchestrationError::InvalidOperationCount);
         }
         Ok(self.request)
     }
@@ -377,7 +398,10 @@ mod tests {
             self.substrate_type
         }
 
-        async fn execute_buffer_op(&self, _op: BufferOperation) -> Result<BufferOutput> {
+        async fn execute_buffer_op(
+            &self,
+            _op: BufferOperation,
+        ) -> Result<BufferOutput, toadstool_runtime_universal::SubstrateError> {
             Ok(BufferOutput {
                 data: vec![0; 100],
                 metadata: BufferMetadata {

@@ -585,7 +585,7 @@ let port = defaults::network::API_PORT;  // Bad: ignores env vars
 
 ## 📚 Related Documentation
 
-- **Module Documentation**: See `crates/core/config/src/defaults.rs` for inline docs
+- **Module Documentation**: See `crates/core/config/src/defaults/` for inline docs
 - **Environment Config**: See `crates/core/config/src/env_config.rs` for environment variable system
 - **Config Patterns**: See `CONFIG_PATTERNS_GUIDE.md` for configuration best practices
 - **Base Configs**: See `crates/core/common/src/config_bases.rs` for reusable config types
@@ -622,7 +622,7 @@ let config = EnvironmentConfig::from_env();
 
 *🍄 ToadStool - Universal Compute Platform*  
 *Constants Reference - November 8, 2025*  
-*For questions or updates, see `/crates/core/config/src/defaults.rs`*
+*For questions or updates, see `/crates/core/config/src/defaults/`*
 
 ---
 

@@ -13,6 +13,7 @@
 pub mod compatibility;
 pub mod core;
 pub mod ecosystem;
+pub mod error;
 pub mod hosting;
 pub mod metrics;
 pub mod network;

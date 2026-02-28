@@ -293,9 +293,9 @@ impl BiomeExecutor {
                 env_vars: HashMap::new(),
                 user: None,
             }),
-            _ => {
-                bail!("Unsupported workload source: {source:?}");
-            }
+            _ => Err(crate::CliError::Other(format!(
+                "Unsupported workload source: {source:?}"
+            ))),
         }
     }
 
@@ -309,7 +309,7 @@ impl BiomeExecutor {
             let mut biomes = self.biomes.write().await;
             biomes
                 .remove(biome_name)
-                .ok_or_else(|| anyhow::anyhow!("Biome '{biome_name}' not found"))?
+                .ok_or_else(|| crate::CliError::Other(format!("Biome '{biome_name}' not found")))?
         };
 
         info!(
@@ -453,7 +453,9 @@ impl BiomeExecutor {
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow::anyhow!("Failed to send signal: {error_msg}"));
+            return Err(crate::CliError::Other(format!(
+                "Failed to send signal: {error_msg}"
+            )));
         }
 
         Ok(())

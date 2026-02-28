@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use toadstool::ToadStoolResult as Result;
 use tokio::sync::RwLock;
 use tracing::info;
 

@@ -3,9 +3,9 @@
 //! Stores learned optimal configurations across runs.
 //! Platform-agnostic storage location (XDG dirs on Linux, etc.).
 
+use crate::error::AdaptiveError;
 use crate::fingerprint::GpuFingerprint;
 use crate::types::{OpType, SizeClass};
-use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -112,15 +112,16 @@ impl OptimizationCache {
     /// # Errors
     ///
     /// Returns error if file I/O fails.
-    pub fn load_or_create(gpu: &GpuFingerprint) -> Result<Self> {
+    pub fn load_or_create(gpu: &GpuFingerprint) -> Result<Self, AdaptiveError> {
         let cache_path = Self::cache_path(gpu)?;
 
         if cache_path.exists() {
             // Load existing cache
-            let contents = fs::read_to_string(&cache_path).context("Failed to read cache file")?;
+            let contents = fs::read_to_string(&cache_path)
+                .map_err(|e| AdaptiveError::Other(format!("Failed to read cache file: {e}")))?;
 
-            let mut cache: Self =
-                serde_json::from_str(&contents).context("Failed to parse cache file")?;
+            let mut cache: Self = serde_json::from_str(&contents)
+                .map_err(|e| AdaptiveError::Other(format!("Failed to parse cache file: {e}")))?;
 
             // Verify cache is for this GPU
             if cache.gpu_fingerprint.cache_key() != gpu.cache_key() {
@@ -159,21 +160,26 @@ impl OptimizationCache {
     /// # Errors
     ///
     /// Returns error if file I/O fails.
-    pub fn save(&self) -> Result<()> {
+    pub fn save(&self) -> Result<(), AdaptiveError> {
         let cache_path = Self::cache_path(&self.gpu_fingerprint)?;
 
         // Ensure directory exists
         if let Some(parent) = cache_path.parent() {
-            fs::create_dir_all(parent).context("Failed to create cache directory")?;
+            fs::create_dir_all(parent).map_err(|e| {
+                AdaptiveError::Other(format!("Failed to create cache directory: {e}"))
+            })?;
         }
 
         // Serialize to JSON
-        let contents = serde_json::to_string_pretty(self).context("Failed to serialize cache")?;
+        let contents = serde_json::to_string_pretty(self)
+            .map_err(|e| AdaptiveError::Other(format!("Failed to serialize cache: {e}")))?;
 
         // Write atomically (write to temp, then rename)
         let temp_path = cache_path.with_extension("tmp");
-        fs::write(&temp_path, contents).context("Failed to write cache file")?;
-        fs::rename(temp_path, cache_path).context("Failed to rename cache file")?;
+        fs::write(&temp_path, contents)
+            .map_err(|e| AdaptiveError::Other(format!("Failed to write cache file: {e}")))?;
+        fs::rename(temp_path, cache_path)
+            .map_err(|e| AdaptiveError::Other(format!("Failed to rename cache file: {e}")))?;
 
         Ok(())
     }
@@ -184,11 +190,12 @@ impl OptimizationCache {
     /// - Linux: ~/.cache/barracuda/
     /// - macOS: ~/Library/Caches/barracuda/
     /// - Windows: %LOCALAPPDATA%\barracuda\
-    fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf> {
+    fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf, AdaptiveError> {
         use etcetera::{choose_base_strategy, BaseStrategy};
 
-        let strategy =
-            choose_base_strategy().context("Failed to determine base directory strategy")?;
+        let strategy = choose_base_strategy().map_err(|e| {
+            AdaptiveError::Other(format!("Failed to determine base directory strategy: {e}"))
+        })?;
         let cache_dir = strategy.cache_dir();
 
         let barracuda_cache = cache_dir.join("barracuda");

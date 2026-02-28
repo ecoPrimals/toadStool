@@ -361,6 +361,44 @@ async fn test_esn_train_ridge_regression_regularization() {
 }
 
 #[tokio::test]
+async fn test_esn_export_import_weights() {
+    let config = ESNConfig {
+        input_size: 1,
+        reservoir_size: 20,
+        output_size: 1,
+        ..Default::default()
+    };
+
+    let mut esn = ESN::new(config.clone()).await.unwrap();
+    let inputs = vec![vec![1.0], vec![2.0], vec![3.0]];
+    let targets = vec![vec![2.0], vec![3.0], vec![4.0]];
+    esn.train(&inputs, &targets).await.unwrap();
+
+    let exported = esn.export_weights().unwrap();
+    assert_eq!(exported.w_in.len(), 20);
+    assert_eq!(exported.w_res.len(), 400);
+    assert!(exported.w_out.is_some());
+    assert_eq!(exported.w_out.as_ref().unwrap().len(), 20);
+
+    let mut esn2 = ESN::new(config.clone()).await.unwrap();
+    esn2.import_weights(&exported.w_in, &exported.w_res, exported.w_out.as_deref())
+        .unwrap();
+    assert!(esn2.is_trained());
+}
+
+#[tokio::test]
+async fn test_esn_exported_weights_migrate_to_multi_head() {
+    let exported = super::ExportedWeights {
+        w_in: vec![0.0; 20],
+        w_res: vec![0.0; 400],
+        w_out: Some(vec![1.0; 20]),
+    };
+
+    let migrated = exported.migrate_to_multi_head(20, 11).unwrap();
+    assert_eq!(migrated.w_out.as_ref().unwrap().len(), 11 * 20);
+}
+
+#[tokio::test]
 async fn test_esn_large_reservoir() {
     let config = ESNConfig {
         input_size: 5,

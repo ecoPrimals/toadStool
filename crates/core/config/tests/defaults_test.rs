@@ -136,6 +136,29 @@ fn test_all_timeouts_positive() {
 }
 
 #[test]
+fn test_timeouts_discovery_interval_and_keepalive() {
+    assert_eq!(timeouts::DISCOVERY_MS, 5_000);
+    assert_eq!(timeouts::DISCOVERY_INTERVAL_MS, 30_000);
+    assert_eq!(timeouts::KEEPALIVE_SEC, 60);
+}
+
+#[test]
+fn test_network_bind_address_default() {
+    assert_eq!(network::BIND_ADDRESS_DEFAULT, "0.0.0.0");
+}
+
+#[test]
+fn test_discovery_fallback_ports() {
+    use toadstool_config::ports::discovery_fallback;
+
+    assert_eq!(discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT, 8080);
+    assert_eq!(discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT, 8081);
+    assert_eq!(discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT, 8082);
+    assert_eq!(discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT, 8083);
+    assert_eq!(discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT, 8088);
+}
+
+#[test]
 fn test_no_port_conflicts() {
     // Port 0 (OS-assigned) is outside container range 3000-3999
     let service_ports = [

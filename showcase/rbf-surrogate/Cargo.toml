@@ -17,6 +17,5 @@ path = "src/main.rs"
 barracuda = { path = "../../crates/barracuda" }
 toadstool-core = { path = "../../crates/toadstool-core" }
 tokio = { version = "1.43", features = ["full"] }
-anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"

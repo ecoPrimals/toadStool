@@ -3,7 +3,7 @@
 //! Uniquely identifies GPU hardware for cache lookup and optimization.
 //! Uses capability-based discovery (no hardcoding!).
 
-use anyhow::{Context, Result};
+use crate::error::AdaptiveError;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -75,7 +75,7 @@ impl GpuFingerprint {
     /// # Errors
     ///
     /// Returns error if GPU discovery fails.
-    pub async fn discover() -> Result<Self> {
+    pub async fn discover() -> Result<Self, AdaptiveError> {
         // Create wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -90,7 +90,7 @@ impl GpuFingerprint {
                 compatible_surface: None,
             })
             .await
-            .context("Failed to find GPU adapter")?;
+            .ok_or_else(|| AdaptiveError::Other("Failed to find GPU adapter".to_string()))?;
 
         let info = adapter.get_info();
 

@@ -38,6 +38,7 @@ use crate::{DisplayError, Result};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use toadstool_common::constants::network::LOCALHOST_IPV4;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio::sync::RwLock;
@@ -60,7 +61,7 @@ pub enum IpcTransport {
 /// ```rust,ignore
 /// use toadstool_display::{DisplayServer, WindowManager};
 ///
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> Result<()> {
 /// let manager = WindowManager::new().await?;
 /// let server = Arc::new(DisplayServer::new(manager));
 ///
@@ -187,7 +188,8 @@ impl DisplayServer {
         tracing::info!("   Protocol: JSON-RPC 2.0 (same as Unix socket)");
 
         // Bind to localhost only (security: same as Unix socket)
-        let listener = TcpListener::bind("127.0.0.1:0")
+        let bind_addr = format!("{}:0", LOCALHOST_IPV4);
+        let listener = TcpListener::bind(&bind_addr)
             .await
             .map_err(|e| DisplayError::IpcError(format!("Failed to bind TCP socket: {e}")))?;
 

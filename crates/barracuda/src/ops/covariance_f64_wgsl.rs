@@ -10,7 +10,7 @@
 //! - PCA
 //! - Kalman filters
 
-use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -29,8 +29,6 @@ struct Params {
 /// f64 Covariance evaluator
 pub struct CovarianceF64 {
     device: Arc<WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl CovarianceF64 {
@@ -40,82 +38,7 @@ impl CovarianceF64 {
 
     /// Create new Covariance f64 operation
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("CovarianceF64"));
-
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("CovarianceF64 BGL"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("CovarianceF64 PL"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("CovarianceF64 Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        Ok(Self {
-            device,
-            pipeline,
-            bind_group_layout,
-        })
+        Ok(Self { device })
     }
 
     /// Compute covariance between two vectors (population covariance, ddof=0)
@@ -177,61 +100,17 @@ impl CovarianceF64 {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        let bind_group = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("CovarianceF64 BG"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: x_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: y_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                ],
-            });
+        ComputeDispatch::new(self.device.as_ref(), "CovarianceF64")
+            .shader(Self::wgsl_shader(), "main")
+            .f64()
+            .storage_read(0, &x_buf)
+            .storage_read(1, &y_buf)
+            .storage_rw(2, &output_buf)
+            .uniform(3, &params_buf)
+            .dispatch(1, 1, 1)
+            .submit();
 
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("CovarianceF64 Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("CovarianceF64 Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(1u32.div_ceil(WORKGROUP_SIZE_1D).max(1), 1, 1);
-        }
-
-        let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("CovarianceF64 Staging"),
-            size: output_size as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, output_size as u64);
-
-        self.device.submit_and_poll(Some(encoder.finish()));
-
-        let result: Vec<f64> = self.device.map_staging_buffer(&staging_buf, 1)?;
+        let result: Vec<f64> = self.device.read_buffer_f64(&output_buf, 1)?;
         Ok(result[0])
     }
 

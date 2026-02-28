@@ -167,7 +167,7 @@ pub struct UniversalCloudOrchestrator {
     /// Multi-cloud load balancer
     pub(crate) _load_balancer: MultiCloudLoadBalancer,
     /// Federation manager for cloud-to-cloud communication
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Phase 2+: cloud-to-cloud federation
     pub(crate) federation_manager: CloudFederationManager,
 }
 

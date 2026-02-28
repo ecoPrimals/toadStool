@@ -48,6 +48,12 @@ use crate::device::{AkidaBoard, WgpuDevice};
 use crate::error::{BarracudaError, Result as BarracudaResult};
 use std::fmt;
 
+/// Fallback system memory estimate (GB) when actual detection fails — 64-bit systems.
+const FALLBACK_SYSTEM_MEMORY_GB_64BIT: usize = 8;
+
+/// Fallback system memory estimate (GB) when actual detection fails — 32-bit systems.
+const FALLBACK_SYSTEM_MEMORY_GB_32BIT: usize = 2;
+
 /// Unified device abstraction
 ///
 /// **Hardware-agnostic** - Represents ANY compute device!
@@ -450,9 +456,9 @@ fn is_npu_available() -> bool {
 fn estimate_system_memory() -> usize {
     // Platform-specific - for now, conservative estimate
     if cfg!(target_pointer_width = "64") {
-        8 // Assume at least 8GB on 64-bit systems
+        FALLBACK_SYSTEM_MEMORY_GB_64BIT
     } else {
-        2 // 32-bit systems likely have less
+        FALLBACK_SYSTEM_MEMORY_GB_32BIT
     }
 }
 

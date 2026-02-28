@@ -13,7 +13,8 @@ use barracuda::device::{CacheAwareTiler, SubstrateMemoryHierarchy, WgpuDevice};
 use std::time::Instant;
 
 /// Run cache probing benchmarks on all available GPUs
-pub async fn run_cache_probe() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_cache_probe() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>
+{
     println!("╔══════════════════════════════════════════════════════════════════════╗");
     println!("║         CACHE PROBING MICROBENCHMARK - RUNTIME DISCOVERY             ║");
     println!("║                  The Silicon Tells Us What It Can Do                 ║");

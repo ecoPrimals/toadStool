@@ -10,14 +10,13 @@
 
 use std::time::{Duration, SystemTime};
 
-use anyhow::Result;
 use tokio::time::sleep;
 use tracing::info;
 use uuid::Uuid;
 
 // Simple demo that shows universal compute platform concepts
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())

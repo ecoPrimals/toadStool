@@ -193,6 +193,140 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     )
 }
 
+/// Universal precision RK4 template using `Scalar`/`op_*` abstractions.
+///
+/// Generates WGSL that works with any precision preamble (f32, f64, df64, f16).
+/// The derivative function must use `Scalar` instead of `f64`.
+/// The appropriate precision preamble is prepended by the device's
+/// `compile_op_shader()` method.
+fn wgsl_rk4_template_universal(n_vars: usize, n_params: usize, derivative_fn: &str) -> String {
+    let unroll_state2_from = |k: &str, coeff: &str| {
+        (0..n_vars)
+            .map(
+                |i| format!("    state2[{i}u] = op_add(state[{i}u], op_mul({coeff}, {k}[{i}u]));",),
+            )
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let unroll_yn = || {
+        (0..n_vars)
+            .map(|i| {
+                format!(
+                    "    yn[{i}u] = op_add(state[{i}u], op_mul(h, op_mul(sixth, op_add(op_add(k1[{i}u], op_mul(two, k2[{i}u])), op_add(op_mul(two, k3[{i}u]), k4[{i}u])))));"
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let unroll_read_state = || {
+        (0..n_vars)
+            .map(|i| format!("    state[{i}u] = initial_states[s_base + {i}u];"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let unroll_read_params = || {
+        (0..n_params)
+            .map(|i| format!("    params[{i}u] = batch_params[p_base + {i}u];"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let unroll_clamp = || {
+        (0..n_vars)
+            .map(|i| format!("        state[{i}u] = op_max(cmin, op_min(cmax, yn[{i}u]));"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let unroll_write = || {
+        (0..n_vars)
+            .map(|i| format!("    output_states[s_base + {i}u] = state[{i}u];"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    format!(
+        r#"// Generic batched ODE RK4 — universal precision (Scalar/op_*)
+// Precision preamble injected by compile_op_shader()
+
+const N_VARS:   u32 = {n_vars}u;
+const N_PARAMS: u32 = {n_params}u;
+
+struct OdeConfig {{
+    n_batches:      u32,
+    n_steps:        u32,
+    _pad0:          u32,
+    _pad1:          u32,
+    h:              Scalar,
+    t0:             Scalar,
+    clamp_max:      Scalar,
+    clamp_min:      Scalar,
+}}
+
+@group(0) @binding(0) var<uniform>             config:         OdeConfig;
+@group(0) @binding(1) var<storage, read>       initial_states: array<Scalar>;
+@group(0) @binding(2) var<storage, read>       batch_params:   array<Scalar>;
+@group(0) @binding(3) var<storage, read_write> output_states:  array<Scalar>;
+
+{derivative_fn}
+
+fn rk4_step(state: array<Scalar, {n_vars}>, params: array<Scalar, {n_params}>, t: Scalar, h: Scalar) -> array<Scalar, {n_vars}> {{
+    let half = op_from_f32(0.5);
+    let two  = op_from_f32(2.0);
+    let h2   = op_mul(h, half);
+
+    let k1 = deriv(state, params, t);
+    var state2: array<Scalar, {n_vars}>;
+{unroll_k1}
+    let k2 = deriv(state2, params, op_add(t, h2));
+
+{unroll_k2}
+    let k3 = deriv(state2, params, op_add(t, h2));
+
+{unroll_k3}
+    let k4 = deriv(state2, params, op_add(t, h));
+
+    var yn: array<Scalar, {n_vars}>;
+    let sixth = op_div(op_one(), op_from_f32(6.0));
+{unroll_yn}
+    return yn;
+}}
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
+    let b = global_id.x;
+    if (b >= config.n_batches) {{ return; }}
+
+    let s_base = b * N_VARS;
+    let p_base = b * N_PARAMS;
+
+    var state: array<Scalar, {n_vars}>;
+{read_state}
+    var params: array<Scalar, {n_params}>;
+{read_params}
+    let cmax = config.clamp_max;
+    let cmin = config.clamp_min;
+    let h = config.h;
+    var t = config.t0;
+
+    for (var step = 0u; step < config.n_steps; step = step + 1u) {{
+        let yn = rk4_step(state, params, t, h);
+{clamp}
+        t = op_add(t, h);
+    }}
+
+{write}
+}}
+"#,
+        unroll_k1 = unroll_state2_from("k1", "h2"),
+        unroll_k2 = unroll_state2_from("k2", "h2"),
+        unroll_k3 = unroll_state2_from("k3", "h"),
+        unroll_yn = unroll_yn(),
+        read_state = unroll_read_state(),
+        read_params = unroll_read_params(),
+        clamp = unroll_clamp(),
+        write = unroll_write(),
+    )
+}
+
 /// Trait for ODE systems that can be integrated by the generic batched RK4 solver.
 ///
 /// Implement this trait to add new ODE systems without writing a new WGSL shader.
@@ -207,10 +341,20 @@ pub trait OdeSystem {
     /// Name used for WGSL function generation and diagnostics.
     fn system_name() -> &'static str;
 
-    /// WGSL source for the derivative function.
+    /// WGSL source for the derivative function (f64).
     ///
     /// Must define: `fn deriv(state: array<f64, N_VARS>, params: array<f64, N_PARAMS>, t: f64) -> array<f64, N_VARS>`
     fn wgsl_derivative() -> &'static str;
+
+    /// WGSL source for the derivative function using universal precision (`Scalar`/`op_*`).
+    ///
+    /// Must define: `fn deriv(state: array<Scalar, N_VARS>, params: array<Scalar, N_PARAMS>, t: Scalar) -> array<Scalar, N_VARS>`
+    ///
+    /// Default: `None` (falls back to f64 variant). Implement this when evolving
+    /// ODE systems to universal precision.
+    fn wgsl_derivative_universal() -> Option<&'static str> {
+        None
+    }
 
     /// CPU implementation of the derivative for testing and small batches.
     ///
@@ -228,10 +372,21 @@ pub struct BatchedOdeRK4<S: OdeSystem> {
 }
 
 impl<S: OdeSystem> BatchedOdeRK4<S> {
-    /// Generate complete WGSL shader source by combining the RK4 template with the system's derivative.
+    /// Generate complete f64 WGSL shader source by combining the RK4 template with the system's derivative.
     #[must_use]
     pub fn generate_shader() -> String {
         wgsl_rk4_template(S::N_VARS, S::N_PARAMS, S::wgsl_derivative())
+    }
+
+    /// Generate universal-precision WGSL shader using `Scalar`/`op_*`.
+    ///
+    /// Returns `Some(shader)` if the system provides a universal derivative,
+    /// `None` otherwise. Compile with `compile_op_shader()` and a
+    /// [`Precision`](crate::shaders::precision::Precision) to select precision.
+    #[must_use]
+    pub fn generate_shader_universal() -> Option<String> {
+        S::wgsl_derivative_universal()
+            .map(|deriv| wgsl_rk4_template_universal(S::N_VARS, S::N_PARAMS, deriv))
     }
 
     /// Run batched RK4 integration on CPU (for testing / small batches).
@@ -347,6 +502,19 @@ fn deriv(state: array<f64, 1>, params: array<f64, 1>, t: f64) -> array<f64, 1> {
 "#
         }
 
+        fn wgsl_derivative_universal() -> Option<&'static str> {
+            Some(
+                r#"
+fn deriv(state: array<Scalar, 1>, params: array<Scalar, 1>, t: Scalar) -> array<Scalar, 1> {
+    let k = params[0];
+    var dy: array<Scalar, 1>;
+    dy[0] = op_neg(op_mul(k, state[0]));
+    return dy;
+}
+"#,
+            )
+        }
+
         fn cpu_derivative(_t: f64, state: &[f64], params: &[f64]) -> Vec<f64> {
             let k = params[0];
             vec![-k * state[0]]
@@ -413,6 +581,23 @@ fn deriv(state: array<f64, 1>, params: array<f64, 1>, t: f64) -> array<f64, 1> {
         assert!(shader.contains("@compute @workgroup_size(64)"));
         assert!(shader.contains("const N_VARS:   u32 = 1u"));
         assert!(shader.contains("const N_PARAMS: u32 = 1u"));
+    }
+
+    #[test]
+    fn test_generated_universal_wgsl_has_expected_structure() {
+        let shader = BatchedOdeRK4::<ExponentialDecay>::generate_shader_universal()
+            .expect("ExponentialDecay should have a universal derivative");
+        assert!(shader.contains("fn main"));
+        assert!(shader.contains("fn deriv"));
+        assert!(shader.contains("fn rk4_step"));
+        assert!(shader.contains("Scalar"));
+        assert!(shader.contains("op_add"));
+        assert!(shader.contains("op_mul"));
+        assert!(shader.contains("op_from_f32"));
+        assert!(
+            !shader.contains("f64"),
+            "universal template must not contain raw f64"
+        );
     }
 
     #[test]

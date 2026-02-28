@@ -37,7 +37,7 @@ use toadstool_runtime_wasm::WasmRuntimeEngine;
 // We'll use mock implementations for the demo
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize ToadStool with tracing
     init()?;
 
@@ -265,7 +265,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// Create a native process execution request
-fn create_native_request() -> anyhow::Result<ExecutionRequest> {
+fn create_native_request() -> Result<ExecutionRequest, Box<dyn std::error::Error>> {
     Ok(ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Native {
@@ -310,7 +310,7 @@ fn create_native_request() -> anyhow::Result<ExecutionRequest> {
 }
 
 /// Create a WebAssembly module execution request
-fn create_wasm_request() -> anyhow::Result<ExecutionRequest> {
+fn create_wasm_request() -> Result<ExecutionRequest, Box<dyn std::error::Error>> {
     // Create a minimal WASM module for testing
     let minimal_wasm = vec![
         0x00, 0x61, 0x73, 0x6d, // WASM magic number
@@ -366,7 +366,7 @@ fn create_wasm_request() -> anyhow::Result<ExecutionRequest> {
 }
 
 /// Create a container execution request
-fn create_container_request() -> anyhow::Result<ExecutionRequest> {
+fn create_container_request() -> Result<ExecutionRequest, Box<dyn std::error::Error>> {
     Ok(ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Container {
@@ -412,7 +412,7 @@ fn create_container_request() -> anyhow::Result<ExecutionRequest> {
 }
 
 /// Create a GPU foundation test request
-fn create_gpu_request() -> anyhow::Result<ExecutionRequest> {
+fn create_gpu_request() -> Result<ExecutionRequest, Box<dyn std::error::Error>> {
     Ok(ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
@@ -464,7 +464,7 @@ fn create_gpu_request() -> anyhow::Result<ExecutionRequest> {
 /// Create a security context test request
 fn create_security_test_request(
     isolation_level: IsolationLevel,
-) -> anyhow::Result<ExecutionRequest> {
+) -> Result<ExecutionRequest, Box<dyn std::error::Error>> {
     // Create security context and modify it using with_capability
     let mut security_context = SecurityContext::for_isolation_level(isolation_level.clone());
 
@@ -534,7 +534,9 @@ fn create_security_test_request(
 }
 
 /// Create a resource limit test request
-fn create_resource_test_request(memory_mb: u64) -> anyhow::Result<ExecutionRequest> {
+fn create_resource_test_request(
+    memory_mb: u64,
+) -> Result<ExecutionRequest, Box<dyn std::error::Error>> {
     Ok(ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Native {

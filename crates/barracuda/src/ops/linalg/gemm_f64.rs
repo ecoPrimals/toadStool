@@ -557,8 +557,28 @@ fn bgl_uniform(idx: u32) -> wgpu::BindGroupLayoutEntry {
 mod tests {
     use super::*;
 
+    const GEMM_DF64_SHADER: &str = include_str!("../../shaders/linalg/gemm_df64.wgsl");
+
     fn approx_eq(a: f64, b: f64, tol: f64) -> bool {
         (a - b).abs() < tol
+    }
+
+    #[test]
+    fn gemm_params_layout() {
+        assert_eq!(std::mem::size_of::<GemmParams>(), 32);
+    }
+
+    #[test]
+    fn gemm_f64_shader_source_valid() {
+        let source = GemmF64::WGSL;
+        assert!(!source.is_empty());
+        assert!(source.contains("fn main") || source.contains("@compute"));
+    }
+
+    #[test]
+    fn gemm_df64_shader_source_valid() {
+        assert!(!GEMM_DF64_SHADER.is_empty());
+        assert!(GEMM_DF64_SHADER.contains("fn main") || GEMM_DF64_SHADER.contains("@compute"));
     }
 
     #[tokio::test]

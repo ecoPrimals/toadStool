@@ -80,7 +80,9 @@ impl BiomeExecutor {
         {
             let biomes = self.biomes.read().await;
             if biomes.contains_key(&biome_name) {
-                bail!("Biome '{biome_name}' is already running");
+                return Err(crate::CliError::Other(format!(
+                    "Biome '{biome_name}' is already running"
+                )));
             }
         }
 
@@ -153,7 +155,9 @@ impl BiomeExecutor {
         {
             let biomes = self.biomes.read().await;
             if biomes.contains_key(&biome_name) {
-                bail!("Biome '{biome_name}' is already running");
+                return Err(crate::CliError::Other(format!(
+                    "Biome '{biome_name}' is already running"
+                )));
             }
         }
 
@@ -205,7 +209,10 @@ impl BiomeExecutor {
         {
             let biomes = self.biomes.read().await;
             if !biomes.contains_key(&biome_name) {
-                bail!("Biome '{}' is not running", biome_name);
+                return Err(crate::CliError::Other(format!(
+                    "Biome '{}' is not running",
+                    biome_name
+                )));
             }
         }
 
@@ -279,16 +286,16 @@ impl BiomeExecutor {
         };
         // Get biome
         let biomes = self.biomes.read().await;
-        let biome = biomes
-            .get(&biome_name)
-            .ok_or_else(|| anyhow::anyhow!("Biome '{}' is not running", biome_name))?;
+        let biome = biomes.get(&biome_name).ok_or_else(|| {
+            crate::CliError::Other(format!("Biome '{}' is not running", biome_name))
+        })?;
 
         // Determine log file (clone to release borrow)
         let log_file = if let Some(service) = &service_name {
             biome
                 .log_files
                 .get(service)
-                .ok_or_else(|| anyhow::anyhow!("Service '{}' not found", service))?
+                .ok_or_else(|| crate::CliError::Other(format!("Service '{}' not found", service)))?
                 .clone()
         } else {
             // Show all logs (default to first service or biome log)
@@ -296,7 +303,7 @@ impl BiomeExecutor {
                 .log_files
                 .values()
                 .next()
-                .ok_or_else(|| anyhow::anyhow!("No log files found for biome"))?
+                .ok_or_else(|| crate::CliError::Other("No log files found for biome".to_string()))?
                 .clone()
         };
 

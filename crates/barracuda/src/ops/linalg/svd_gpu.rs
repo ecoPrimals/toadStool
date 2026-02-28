@@ -373,6 +373,21 @@ impl SvdGpu {
 mod tests {
     use super::*;
 
+    const SVD_F32_SHADER: &str = include_str!("../../shaders/linalg/svd.wgsl");
+    const SVD_F64_SHADER: &str = include_str!("../../shaders/linalg/svd_f64.wgsl");
+
+    #[test]
+    fn svd_f32_shader_source_valid() {
+        assert!(!SVD_F32_SHADER.is_empty());
+        assert!(SVD_F32_SHADER.contains("fn ") || SVD_F32_SHADER.contains("@compute"));
+    }
+
+    #[test]
+    fn svd_f64_shader_source_valid() {
+        assert!(!SVD_F64_SHADER.is_empty());
+        assert!(SVD_F64_SHADER.contains("fn ") || SVD_F64_SHADER.contains("@compute"));
+    }
+
     #[tokio::test]
     async fn test_svd_gpu_identity() {
         let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await

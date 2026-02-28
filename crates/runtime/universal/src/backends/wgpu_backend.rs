@@ -34,7 +34,7 @@ impl WgpuComputeUnit {
                 None,
             )
             .await
-            .map_err(|e| ComputeError::BackendError(e.into()))?;
+            .map_err(|e| ComputeError::BackendError(e.to_string()))?;
 
         // Estimate capabilities based on device type
         let (memory_capacity, compute_throughput, power_profile) = match info.device_type {

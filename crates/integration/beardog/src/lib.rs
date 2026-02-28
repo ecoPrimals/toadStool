@@ -24,7 +24,7 @@
 //! ```rust,ignore
 //! use toadstool_integration_beardog::EntropyClient;
 //!
-//! async fn example() -> anyhow::Result<()> {
+//! async fn example() -> Result<(), BeardogError> {
 //!     let client = EntropyClient::discover().await?;
 //!     let seed = client.generate_seed().await?;
 //!     // Use seed for GPU random operations...
@@ -43,14 +43,14 @@
 )]
 
 mod discovery;
+mod error;
 mod seed;
 mod types;
 
 pub use discovery::EntropyClient;
+pub use error::BeardogError;
 pub use seed::{EphemeralSeed, SeedQuality};
 pub use types::{EntropyMixing, EntropySource};
-
-use anyhow::Result;
 
 /// Discover bearDog entropy service via capability discovery
 ///
@@ -75,7 +75,7 @@ use anyhow::Result;
 /// ```rust,ignore
 /// use toadstool_integration_beardog::discover_entropy;
 ///
-/// async fn example() -> anyhow::Result<()> {
+/// async fn example() -> Result<(), BeardogError> {
 ///     match discover_entropy().await {
 ///         Ok(client) => {
 ///             let seed = client.generate_seed().await?;
@@ -87,7 +87,7 @@ use anyhow::Result;
 ///     Ok(())
 /// }
 /// ```
-pub async fn discover_entropy() -> Result<EntropyClient> {
+pub async fn discover_entropy() -> Result<EntropyClient, BeardogError> {
     EntropyClient::discover().await
 }
 

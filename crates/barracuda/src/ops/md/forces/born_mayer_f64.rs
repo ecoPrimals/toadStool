@@ -10,6 +10,7 @@
 //! - Steric effects modeling
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
@@ -159,75 +160,17 @@ impl BornMayerForceF64 {
             });
 
         let src = Self::wgsl_shader_for_device(dev);
-        let shader = dev.compile_shader_f64(&src, Some("BornMayer f64"));
-
-        let bgl = dev
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: None,
-                entries: &(0..5u32)
-                    .map(|i| wgpu::BindGroupLayoutEntry {
-                        binding: i,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: if i == 4 {
-                                wgpu::BufferBindingType::Uniform
-                            } else if i == 3 {
-                                wgpu::BufferBindingType::Storage { read_only: false }
-                            } else {
-                                wgpu::BufferBindingType::Storage { read_only: true }
-                            },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    })
-                    .collect::<Vec<_>>(),
-            });
-
-        let pl = dev
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: None,
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-        let pipeline = dev
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("born_mayer_f64"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let bufs: [&wgpu::Buffer; 5] = [&pos_buf, &a_buf, &rho_buf, &forces_buf, &params_buf];
-        let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &bufs
-                .iter()
-                .enumerate()
-                .map(|(i, b)| wgpu::BindGroupEntry {
-                    binding: i as u32,
-                    resource: b.as_entire_binding(),
-                })
-                .collect::<Vec<_>>(),
-        });
-
         let wg = (n as u32).div_ceil(WORKGROUP_SIZE_1D);
-        let mut enc = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        {
-            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-            p.set_pipeline(&pipeline);
-            p.set_bind_group(0, &bg, &[]);
-            p.dispatch_workgroups(wg, 1, 1);
-        }
-        dev.submit_and_poll(Some(enc.finish()));
+        ComputeDispatch::new(dev, "born_mayer_f64")
+            .shader(&src, "main")
+            .f64()
+            .storage_read(0, &pos_buf)
+            .storage_read(1, &a_buf)
+            .storage_read(2, &rho_buf)
+            .storage_rw(3, &forces_buf)
+            .uniform(4, &params_buf)
+            .dispatch(wg, 1, 1)
+            .submit();
 
         dev.read_f64_buffer(&forces_buf, n * 3)
     }

@@ -65,7 +65,7 @@ impl Generator<i32> for ConfigurableGenerator {
 struct AlwaysPassProperty;
 
 impl Property<i32> for AlwaysPassProperty {
-    fn test(&self, _value: &i32) -> Result<(), anyhow::Error> {
+    fn test(&self, _value: &i32) -> toadstool::ToadStoolResult<()> {
         Ok(())
     }
 
@@ -81,9 +81,12 @@ struct FailOnValueProperty {
 }
 
 impl Property<i32> for FailOnValueProperty {
-    fn test(&self, value: &i32) -> Result<(), anyhow::Error> {
+    fn test(&self, value: &i32) -> toadstool::ToadStoolResult<()> {
         if *value == self.fail_value {
-            anyhow::bail!("Value {} failed", value)
+            return Err(toadstool::ToadStoolError::runtime(format!(
+                "Value {} failed",
+                value
+            )));
         }
         Ok(())
     }
@@ -100,9 +103,12 @@ struct FailOnLargeProperty {
 }
 
 impl Property<i32> for FailOnLargeProperty {
-    fn test(&self, value: &i32) -> Result<(), anyhow::Error> {
+    fn test(&self, value: &i32) -> toadstool::ToadStoolResult<()> {
         if *value > self.threshold {
-            anyhow::bail!("Value {} exceeds threshold {}", value, self.threshold)
+            return Err(toadstool::ToadStoolError::runtime(format!(
+                "Value {} exceeds threshold {}",
+                value, self.threshold
+            )));
         }
         Ok(())
     }
@@ -119,7 +125,7 @@ struct SlowProperty {
 }
 
 impl Property<i32> for SlowProperty {
-    fn test(&self, _value: &i32) -> Result<(), anyhow::Error> {
+    fn test(&self, _value: &i32) -> toadstool::ToadStoolResult<()> {
         std::thread::sleep(Duration::from_millis(self.delay_ms));
         Ok(())
     }
@@ -136,7 +142,7 @@ struct CountingProperty {
 }
 
 impl Property<i32> for CountingProperty {
-    fn test(&self, _value: &i32) -> Result<(), anyhow::Error> {
+    fn test(&self, _value: &i32) -> toadstool::ToadStoolResult<()> {
         self.counter.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
@@ -394,7 +400,7 @@ fn test_size_grows_gradually() {
     }
 
     impl Property<i32> for SizeTrackingProperty {
-        fn test(&self, value: &i32) -> Result<(), anyhow::Error> {
+        fn test(&self, value: &i32) -> toadstool::ToadStoolResult<()> {
             let mut last = self.last_value.lock().unwrap();
             // Values should generally increase (TestIntGenerator multiplies size by 10)
             if *value < *last {

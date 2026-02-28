@@ -6,8 +6,8 @@
 //!
 //! Updated November 21, 2025 - Using actual PrimalRequest/Response API
 
-use anyhow::Result;
 use std::collections::HashMap;
+use toadstool::ToadStoolResult as Result;
 use tokio::sync::broadcast;
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
@@ -65,7 +65,7 @@ async fn test_concurrent_primal_context_creation() -> Result<()> {
                 metadata: HashMap::new(),
             };
             tx.send(i).ok();
-            Ok::<_, anyhow::Error>(context)
+            Ok::<_, toadstool::ToadStoolError>(context)
         }));
     }
 
@@ -183,7 +183,7 @@ async fn test_concurrent_network_location_creation() -> Result<()> {
                 },
             };
             assert!(!location.ip_address.is_empty());
-            Ok::<_, anyhow::Error>(())
+            Ok::<_, toadstool::ToadStoolError>(())
         }));
     }
 
@@ -225,7 +225,7 @@ async fn test_stress_context_creation() -> Result<()> {
                 metadata: HashMap::new(),
             };
             tx.send(i).ok();
-            Ok::<_, anyhow::Error>(context)
+            Ok::<_, toadstool::ToadStoolError>(context)
         }));
     }
 
@@ -273,7 +273,7 @@ async fn test_sustained_concurrent_operations() -> Result<()> {
                 metadata: HashMap::new(),
             };
 
-            Ok::<_, anyhow::Error>(context)
+            Ok::<_, toadstool::ToadStoolError>(context)
         }));
     }
 
@@ -320,7 +320,7 @@ async fn test_timeout_protected_operations() -> Result<()> {
                     metadata: HashMap::new(),
                 };
 
-                Ok::<_, anyhow::Error>(context)
+                Ok::<_, toadstool::ToadStoolError>(context)
             })
             .await
         }));

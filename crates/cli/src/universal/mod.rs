@@ -26,7 +26,7 @@ pub use types::{
 };
 
 // Core imports for manager
-use anyhow::{bail, Context, Result};
+use crate::{CliContextExt, Result};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::net::SocketAddr;

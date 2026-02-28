@@ -6,7 +6,7 @@
 //! - Ecosystem service discovery
 //! - Production-grade verification
 
-use anyhow::Result;
+use crate::Result;
 use std::future::Future;
 use tracing::{debug, info, warn};
 
@@ -43,7 +43,9 @@ impl ZeroConfigDeployment {
 
         // ✅ REAL IMPLEMENTATION: Verify system info is available
         if self.system_info.cpu.cores == 0 {
-            anyhow::bail!("System info not properly initialized");
+            return Err(crate::CliError::Other(
+                "System info not properly initialized".to_string(),
+            ));
         }
 
         // Verify start time is reasonable (deployment started)
@@ -65,11 +67,13 @@ impl ZeroConfigDeployment {
 
         // Verify we have minimum resources
         if system_info.memory.total_bytes < 512 * 1024 * 1024 {
-            anyhow::bail!("Insufficient memory (< 512MB)");
+            return Err(crate::CliError::Other(
+                "Insufficient memory (< 512MB)".to_string(),
+            ));
         }
 
         if system_info.cpu.cores == 0 {
-            anyhow::bail!("No CPU cores detected");
+            return Err(crate::CliError::Other("No CPU cores detected".to_string()));
         }
 
         debug!(

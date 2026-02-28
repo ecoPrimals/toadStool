@@ -22,9 +22,11 @@
 //! | `types` | `JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `JsonWorkloadSubmission` |
 //! | `handler` | `JsonRpcHandler` — routing, method dispatch, SemanticMethodRegistry wiring |
 
+mod connection;
 mod handler;
 mod types;
 
+pub use connection::{serve_tcp, serve_unix};
 pub use handler::JsonRpcHandler;
 pub use types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JsonWorkloadSubmission};
 

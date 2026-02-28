@@ -7,7 +7,7 @@ use std::borrow::Cow;
 /// Get contextual error suggestion based on error content
 ///
 /// Returns `Cow::Borrowed` for static suggestions, `Cow::Owned` for dynamic ones.
-pub fn get_error_suggestion(error: &anyhow::Error) -> Option<Cow<'static, str>> {
+pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static, str>> {
     let error_str = error.to_string().to_lowercase();
 
     // File system errors - static suggestions (zero-copy)
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_error_suggestion_borrowed() {
-        let error = anyhow::anyhow!("No such file or directory");
+        let error = crate::CliError::Other("No such file or directory".to_string());
         let suggestion = get_error_suggestion(&error);
         assert!(suggestion.is_some());
 

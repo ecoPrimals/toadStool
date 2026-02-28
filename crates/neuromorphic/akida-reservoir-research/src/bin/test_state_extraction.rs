@@ -5,11 +5,11 @@
 use akida_driver::DeviceManager;
 use akida_models::Model;
 use akida_reservoir_research::state_extraction::StateExtractor;
-use anyhow::{Context, Result};
+use akida_reservoir_research::ReservoirResult as Result;
 use tracing::{error, info, warn};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -28,7 +28,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 1: Discover devices
     println!("1️⃣  Discovering Akida devices...\n");
-    let manager = DeviceManager::discover().context("Failed to discover Akida devices")?;
+    let manager = DeviceManager::discover().map_err(|e| {
+        akida_reservoir_research::ReservoirError::InvalidState(format!(
+            "Failed to discover Akida devices: {e}"
+        ))
+    })?;
 
     if manager.device_count() == 0 {
         error!("❌ No Akida devices found!");
@@ -82,19 +86,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 3: Load model
     println!("\n3️⃣  Loading model...\n");
-    let model = Model::from_file(&model_path)
-        .with_context(|| format!("Failed to load model: {}", model_path))?;
+    let model = Model::from_file(&model_path).map_err(|e| {
+        akida_reservoir_research::ReservoirError::InvalidState(format!(
+            "Failed to load model: {}: {e}",
+            model_path
+        ))
+    })?;
 
     info!("Model loaded: {} layers", model.layer_count());
     info!("Program size: {} bytes", model.program_size());
 
     // Step 4: Load to device
     println!("\n4️⃣  Loading model to device...\n");
-    let mut device = manager.open_first().context("Failed to open device")?;
+    let mut device = manager.open_first().map_err(|e| {
+        akida_reservoir_research::ReservoirError::InvalidState(format!(
+            "Failed to open device: {e}"
+        ))
+    })?;
 
-    let load_metrics = model
-        .load_to_device(&mut device)
-        .context("Failed to load to device")?;
+    let load_metrics = model.load_to_device(&mut device).map_err(|e| {
+        akida_reservoir_research::ReservoirError::InvalidState(format!(
+            "Failed to load to device: {e}"
+        ))
+    })?;
 
     info!("Loaded in {:?}", load_metrics.duration);
 
@@ -107,9 +121,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Input size: {} bytes", input.len());
 
-    let result = model
-        .infer(&input, &mut device)
-        .context("Inference failed")?;
+    let result = model.infer(&input, &mut device).map_err(|e| {
+        akida_reservoir_research::ReservoirError::InvalidState(format!("Inference failed: {e}"))
+    })?;
 
     info!("Inference complete");
     info!("Output size: {} values", result.output.len());

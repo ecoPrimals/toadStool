@@ -8,7 +8,7 @@
 //! This demonstrates continuous parallel utilization of all hardware.
 
 use akida_driver::{select_backend, BackendSelection};
-use anyhow::Result;
+
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::tensor::Tensor;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -69,7 +69,7 @@ impl PipelineStats {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("╔══════════════════════════════════════════════════════════════════════╗");
     println!("║     STREAMING HETEROGENEOUS PIPELINE                                 ║");
     println!("║     Real-time parallel processing across all hardware                ║");

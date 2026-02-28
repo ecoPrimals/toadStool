@@ -2,7 +2,7 @@
 //!
 //! Creates random, fixed-weight reservoirs with the echo state property.
 
-use anyhow::{Context, Result};
+use crate::error::Result;
 use ndarray::{Array1, Array2};
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
@@ -72,7 +72,11 @@ impl ReservoirGenerator {
         info!("Generating reservoir weights...");
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(self.config.seed);
-        let normal = Normal::new(0.0, 1.0).context("Failed to create normal distribution")?;
+        let normal = Normal::new(0.0, 1.0).map_err(|e| {
+            crate::error::ReservoirError::Numerical(format!(
+                "Failed to create normal distribution: {e}"
+            ))
+        })?;
 
         // Generate input weights: W_in (reservoir_size × input_size)
         debug!(
@@ -87,8 +91,9 @@ impl ReservoirGenerator {
             .map(|_| normal.sample(&mut rng) as f32 * self.config.input_scaling)
             .collect();
 
-        let w_in =
-            Array2::from_shape_vec(w_in_shape, w_in_vec).context("Failed to create W_in array")?;
+        let w_in = Array2::from_shape_vec(w_in_shape, w_in_vec).map_err(|e| {
+            crate::error::ReservoirError::Numerical(format!("Failed to create W_in array: {e}"))
+        })?;
 
         // Generate reservoir weights: W_res (reservoir_size × reservoir_size)
         debug!(
@@ -110,8 +115,9 @@ impl ReservoirGenerator {
             })
             .collect();
 
-        let mut w_res = Array2::from_shape_vec(w_res_shape, w_res_vec)
-            .context("Failed to create W_res array")?;
+        let mut w_res = Array2::from_shape_vec(w_res_shape, w_res_vec).map_err(|e| {
+            crate::error::ReservoirError::Numerical(format!("Failed to create W_res array: {e}"))
+        })?;
 
         // Scale to desired spectral radius (enforce echo state property)
         self.scale_spectral_radius(&mut w_res);

@@ -16,7 +16,7 @@
 //! ```rust,no_run
 //! use toadstool_display::input::InputManager;
 //!
-//! # async fn example() -> anyhow::Result<()> {
+//! # async fn example() -> Result<()> {
 //! let mut manager = InputManager::discover().await?;
 //!
 //! // Subscribe to input events

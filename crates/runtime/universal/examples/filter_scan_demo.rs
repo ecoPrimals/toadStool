@@ -7,12 +7,11 @@
 //! These operations are common in data processing and demonstrate
 //! different parallelism patterns.
 
-use anyhow::Result;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Filter & Scan Operations Demo       ║");
     println!("║  barraCuda Phase 1 - Operation Pattern Learning         ║");
@@ -129,10 +128,12 @@ async fn main() -> Result<()> {
     let filter_result = runtime.execute_optimal(filter_workload).await?;
     let filtered_data = match filter_result.data {
         WorkloadData::F32Vec(data) => data,
-        other => anyhow::bail!(
-            "Filter operation returned unexpected result type: {:?}",
-            other
-        ),
+        other => {
+            return Err(ComputeError::ExecutionFailed(format!(
+                "Filter operation returned unexpected result type: {:?}",
+                other
+            )))
+        }
     };
 
     println!(

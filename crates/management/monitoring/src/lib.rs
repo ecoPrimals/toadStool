@@ -871,3 +871,59 @@ impl Default for SystemResourceMonitor {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn system_resource_monitor_new() {
+        let monitor = SystemResourceMonitor::new();
+        let _ = monitor;
+    }
+
+    #[test]
+    fn system_resource_monitor_with_config() {
+        let config = MonitoringConfig::default();
+        let monitor = SystemResourceMonitor::with_config(config);
+        let _ = monitor;
+    }
+
+    #[test]
+    fn system_resource_monitor_default() {
+        let monitor = SystemResourceMonitor::default();
+        let _ = monitor;
+    }
+
+    #[tokio::test]
+    async fn register_and_unregister_process() {
+        let monitor = SystemResourceMonitor::new();
+        let path = std::path::Path::new("test_executable");
+        monitor
+            .register_process("workload-1", 12345, path)
+            .await
+            .unwrap();
+        monitor.unregister_process("workload-1").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn unregister_nonexistent_returns_error() {
+        let monitor = SystemResourceMonitor::new();
+        let result = monitor.unregister_process("nonexistent").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_metrics_nonexistent_returns_error() {
+        let monitor = SystemResourceMonitor::new();
+        let result = monitor.get_metrics_async("nonexistent").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn start_and_stop_monitoring_loop() {
+        let monitor = SystemResourceMonitor::new();
+        monitor.start_monitoring_loop().await.unwrap();
+        monitor.stop_monitoring_loop().await.unwrap();
+    }
+}

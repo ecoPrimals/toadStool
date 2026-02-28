@@ -171,7 +171,6 @@ toadstool-security-sandbox = { path = "../crates/security/sandbox" }
 
 # Standard dependencies
 tokio = { workspace = true, features = ["full"] }
-anyhow = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

@@ -14,7 +14,6 @@
 //! - ROCm (HIP) on AMD RX 6950 XT
 //! - BarraCuda (wgpu/Vulkan) on both
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
 use barracuda::tensor::Tensor;
 use std::time::Instant;
@@ -103,7 +102,10 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
 }
 "#;
 
-    pub fn run_cuda_benchmarks(sizes: &[usize], iterations: usize) -> Result<Vec<BenchResult>> {
+    pub fn run_cuda_benchmarks(
+        sizes: &[usize],
+        iterations: usize,
+    ) -> std::result::Result<Vec<BenchResult>, Box<dyn std::error::Error + Send + Sync>> {
         let device = CudaDevice::new(0)?;
         let mut results = Vec::new();
 
@@ -258,7 +260,10 @@ mod rocm_bench {
     use std::process::Command;
 
     /// Run ROCm benchmarks by compiling and executing HIP kernels
-    pub fn run_rocm_benchmarks(sizes: &[usize], iterations: usize) -> Result<Vec<BenchResult>> {
+    pub fn run_rocm_benchmarks(
+        sizes: &[usize],
+        iterations: usize,
+    ) -> std::result::Result<Vec<BenchResult>, Box<dyn std::error::Error + Send + Sync>> {
         let mut results = Vec::new();
 
         // Create temporary HIP source file
@@ -346,10 +351,11 @@ int main(int argc, char** argv) {
             .output()?;
 
         if !compile.status.success() {
-            anyhow::bail!(
+            return Err(std::io::Error::other(format!(
                 "hipcc compilation failed: {}",
                 String::from_utf8_lossy(&compile.stderr)
-            );
+            ))
+            .into());
         }
 
         for &size in sizes {
@@ -407,7 +413,7 @@ mod barracuda_bench {
     pub async fn run_barracuda_benchmarks(
         sizes: &[usize],
         iterations: usize,
-    ) -> Result<Vec<BenchResult>> {
+    ) -> std::result::Result<Vec<BenchResult>, Box<dyn std::error::Error + Send + Sync>> {
         let config = WorkloadConfig {
             exclude_software: true,
             min_gflops: 100.0,
@@ -421,7 +427,7 @@ mod barracuda_bench {
         for (idx, gpu_info) in pool.devices().iter().enumerate() {
             let device = pool
                 .device(idx)
-                .ok_or_else(|| anyhow::anyhow!("No device"))?;
+                .ok_or_else(|| std::io::Error::other("No device"))?;
             let device_name = match gpu_info.vendor {
                 GpuVendor::Nvidia => "RTX 3090",
                 GpuVendor::Amd => "RX 6950 XT",
@@ -613,7 +619,7 @@ fn print_optimization_targets(results: &[BenchResult]) {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

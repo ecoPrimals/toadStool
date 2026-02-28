@@ -15,6 +15,7 @@
 //! - Full f64 precision via SPIR-V/Vulkan
 //! - Safe Rust wrapper (no unsafe code)
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -72,65 +73,6 @@ impl ProdReduceF64 {
             return Ok(data[0]);
         }
 
-        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("Prod Reduce f64"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("ProdReduce BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("ProdReduce PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(entry_point),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point,
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
         // Two-pass reduction
         let n = data.len();
         let wg_size = 256;
@@ -161,43 +103,14 @@ impl ProdReduceF64 {
         };
         let params_buffer = device.create_uniform_buffer("ProdReduce params", &params);
 
-        let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ProdReduce BG pass 1"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: partial_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        {
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("ProdReduce pass 1"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("ProdReduce pass 1"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bg, &[]);
-                pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
-            }
-            device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(&*device, "prod_reduce_pass1")
+            .shader(Self::wgsl_shader(), entry_point)
+            .f64()
+            .storage_read(0, &input_buffer)
+            .storage_rw(1, &partial_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch(n_workgroups as u32, 1, 1)
+            .submit();
 
         if n_workgroups <= 1 {
             return Self::read_f64_scalar(&device, &partial_buffer);
@@ -220,43 +133,14 @@ impl ProdReduceF64 {
         let params2_buffer = device.create_uniform_buffer("ProdReduce params 2", &params2);
 
         let n_workgroups2 = n_workgroups.div_ceil(wg_size);
-        let bg2 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ProdReduce BG pass 2"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: partial_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: final_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params2_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        {
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("ProdReduce pass 2"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("ProdReduce pass 2"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bg2, &[]);
-                pass.dispatch_workgroups(n_workgroups2 as u32, 1, 1);
-            }
-            device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(&*device, "prod_reduce_pass2")
+            .shader(Self::wgsl_shader(), entry_point)
+            .f64()
+            .storage_read(0, &partial_buffer)
+            .storage_rw(1, &final_buffer)
+            .uniform(2, &params2_buffer)
+            .dispatch(n_workgroups2 as u32, 1, 1)
+            .submit();
 
         if n_workgroups2 > 1 {
             // Third pass (extremely rare): read back partials and multiply on CPU

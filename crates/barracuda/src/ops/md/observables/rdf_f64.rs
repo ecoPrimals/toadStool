@@ -8,6 +8,7 @@
 //! - Phase identification (solid/liquid/gas)
 //! - Validation against experiment/theory
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -31,50 +32,11 @@ struct RdfParams {
 /// GPU-accelerated RDF histogram calculator (f64 positions, u32 bins).
 pub struct RdfHistogramF64 {
     device: Arc<WgpuDevice>,
-    hist_pipeline: wgpu::ComputePipeline,
-    hist_bgl: wgpu::BindGroupLayout,
 }
 
 impl RdfHistogramF64 {
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let module = device.compile_shader_f64(SHADER, Some("rdf_histogram_f64"));
-
-        let hist_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("RDF:bgl"),
-                entries: &[
-                    storage_bgl(0, true),  // positions
-                    storage_bgl(1, false), // histogram (atomic)
-                    uniform_bgl(2),        // params
-                ],
-            });
-
-        let layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("RDF:layout"),
-                bind_group_layouts: &[&hist_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let hist_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("RDF:pipeline"),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: "main",
-                    compilation_options: Default::default(),
-                    cache: None,
-                });
-
-        Ok(Self {
-            device,
-            hist_pipeline,
-            hist_bgl,
-        })
+        Ok(Self { device })
     }
 
     /// WGSL kernel for RDF histogram (f32 variant, for GPUs without f64).
@@ -106,7 +68,6 @@ impl RdfHistogramF64 {
         };
 
         let d = &self.device.device;
-        let q = &self.device.queue;
 
         let pos_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("RDF:pos"),
@@ -126,24 +87,15 @@ impl RdfHistogramF64 {
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("RDF:bg"),
-            layout: &self.hist_bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: pos_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: hist_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let wg_count = (n as u32).div_ceil(WG);
+        ComputeDispatch::new(&*self.device, "rdf_histogram_f64")
+            .shader(SHADER, "main")
+            .f64()
+            .storage_read(0, &pos_buf)
+            .storage_rw(1, &hist_buf)
+            .uniform(2, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
 
         let readback = d.create_buffer(&wgpu::BufferDescriptor {
             label: Some("RDF:readback"),
@@ -151,21 +103,11 @@ impl RdfHistogramF64 {
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-
         let mut enc = d.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("RDF:enc"),
         });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("RDF:pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.hist_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups((n as u32).div_ceil(WG), 1, 1);
-        }
         enc.copy_buffer_to_buffer(&hist_buf, 0, &readback, 0, (n_bins * 4) as u64);
-        q.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
 
         self.device.map_staging_buffer::<u32>(&readback, n_bins)
     }
@@ -206,32 +148,6 @@ impl RdfHistogramF64 {
         }
 
         Ok((r, gr))
-    }
-}
-
-fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
     }
 }
 

@@ -2,13 +2,12 @@
 //!
 //! Tests workload distribution across NVIDIA and AMD GPUs.
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
 use barracuda::tensor::Tensor;
 use std::time::Instant;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt::init();
 
     println!("╔══════════════════════════════════════════════════════════════╗");

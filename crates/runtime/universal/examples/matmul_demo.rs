@@ -8,13 +8,13 @@
 //!
 //! MatMul is THE most important operation in deep learning - used everywhere!
 
-use anyhow::Result;
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Matrix Multiplication Demo          ║");
     println!("║  barraCuda Phase 1 - THE Fundamental Operation          ║");

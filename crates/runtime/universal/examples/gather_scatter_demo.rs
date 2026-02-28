@@ -6,12 +6,12 @@
 //! - Sparse operations (sparse matrix operations)
 //! - Graph algorithms (neighbor access)
 
-use anyhow::Result;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Gather & Scatter Operations Demo    ║");
     println!("║  barraCuda Phase 1 - Indexing Pattern Learning          ║");

@@ -3,7 +3,7 @@
 //! Runs two reservoirs in parallel and concatenates their states.
 
 use akida_reservoir_research::ensemble::{DualChipEnsemble, EnsembleConfig};
-use anyhow::Result;
+use akida_reservoir_research::ReservoirResult as Result;
 use tracing::info;
 
 #[tokio::main]

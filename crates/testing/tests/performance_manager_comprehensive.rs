@@ -119,7 +119,7 @@ async fn test_benchmark_error_handling() {
                 let current = iter_clone.fetch_add(1, Ordering::SeqCst);
                 // Fail on specific iterations to test error handling
                 if current == 3 {
-                    Err(anyhow::anyhow!("Test error"))
+                    Err(toadstool::ToadStoolError::runtime("Test error"))
                 } else {
                     Ok(())
                 }

@@ -115,7 +115,7 @@ mod error_codes {
 pub async fn start_jsonrpc_server(
     socket_path: &Path,
     workload_manager: Arc<WorkloadManager>,
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     let state = ServerState {
         start_time: Instant::now(),
         workload_manager,
@@ -161,7 +161,7 @@ pub async fn start_jsonrpc_server(
 }
 
 /// Handle a single client connection
-async fn handle_connection(stream: UnixStream, state: ServerState) -> anyhow::Result<()> {
+async fn handle_connection(stream: UnixStream, state: ServerState) -> crate::Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
     let mut line = String::new();

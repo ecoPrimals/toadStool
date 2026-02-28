@@ -1,6 +1,6 @@
 //! Capability resolver - discovers and resolves capability providers
 
-use anyhow::Result;
+use crate::Result;
 use std::sync::Arc;
 
 use super::registry::{CapabilityRegistry, ServiceProvider};
@@ -82,7 +82,10 @@ impl CapabilityResolver {
             .discover(capability.as_str())
             .await
             .map_err(|e| {
-                anyhow::anyhow!("Failed to discover capability '{}': {:?}", capability, e)
+                crate::CliError::Other(format!(
+                    "Failed to discover capability '{}': {:?}",
+                    capability, e
+                ))
             })?;
 
         let provider = ServiceProvider::from(discovered);
@@ -123,7 +126,10 @@ impl CapabilityResolver {
             .discover_with_preferences(capability.as_str(), preferences)
             .await
             .map_err(|e| {
-                anyhow::anyhow!("Failed to discover capability '{}': {:?}", capability, e)
+                crate::CliError::Other(format!(
+                    "Failed to discover capability '{}': {:?}",
+                    capability, e
+                ))
             })?;
 
         let provider = ServiceProvider::from(discovered);
@@ -178,7 +184,10 @@ impl CapabilityResolver {
             .discover(capability.as_str())
             .await
             .map_err(|e| {
-                anyhow::anyhow!("Failed to refresh capability '{}': {:?}", capability, e)
+                crate::CliError::Other(format!(
+                    "Failed to refresh capability '{}': {:?}",
+                    capability, e
+                ))
             })?;
 
         let provider = ServiceProvider::from(discovered);

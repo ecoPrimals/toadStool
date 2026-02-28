@@ -395,7 +395,7 @@ pub enum ComputeError {
     ExecutionFailed(String),
 
     #[error("Backend error: {0}")]
-    BackendError(#[from] anyhow::Error),
+    BackendError(String),
 
     #[error("No suitable compute unit found for workload")]
     NoSuitableUnit,

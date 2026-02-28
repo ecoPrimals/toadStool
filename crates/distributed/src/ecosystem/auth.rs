@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Authentication manager
-#[allow(dead_code)]
+#[allow(dead_code)] // Phase 2+: distributed auth token/credential management
 pub struct AuthenticationManager {
     tokens: Arc<RwLock<HashMap<String, AuthToken>>>,
     credentials: Arc<RwLock<HashMap<String, Credentials>>>,

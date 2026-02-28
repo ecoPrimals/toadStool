@@ -7,13 +7,12 @@
 //!
 //! **Deep Debt**: Uses ToadStool for hardware discovery
 
-use anyhow::Result;
 use barracuda::ops::interpolation::{RbfInterpolator, RbfKernelType};
 use barracuda::tensor::Tensor;
 use toadstool_core::HardwareManager;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     println!("\n╔══════════════════════════════════════════════════════╗");

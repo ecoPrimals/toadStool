@@ -1,0 +1,173 @@
+//! Configuration manager for applying ToadStool configuration to the system
+
+use std::path::PathBuf;
+
+use tokio::fs;
+use tracing::info;
+
+use toadstool_config::ToadStoolConfig;
+
+use super::paths::config_path_for_platform;
+use crate::ToadStoolError;
+use toadstool_common::platform_paths::Platform;
+
+/// Configuration manager for applying configurations
+#[derive(Debug, Clone)]
+pub struct ConfigManager {
+    config_path: PathBuf,
+}
+
+impl ConfigManager {
+    pub fn new() -> Self {
+        let platform = Platform::detect();
+        let config_path = config_path_for_platform(&platform);
+        Self { config_path }
+    }
+
+    /// Apply configuration to the system
+    pub async fn apply_configuration(
+        &self,
+        config: &ToadStoolConfig,
+    ) -> Result<(), ToadStoolError> {
+        info!("⚙️ Applying ToadStool configuration...");
+
+        if !self.config_path.exists() {
+            fs::create_dir_all(&self.config_path).await?;
+        }
+
+        // Write main configuration file
+        let config_json = serde_json::to_string_pretty(config)?;
+        fs::write(self.config_path.join("toadstool.json"), config_json).await?;
+
+        // Write runtime-specific configurations
+        self.write_runtime_configs(config).await?;
+
+        // Write security configuration
+        self.write_security_config(config).await?;
+
+        // Write logging/observability configuration
+        self.write_observability_config(config).await?;
+
+        info!("✅ Configuration applied successfully");
+        Ok(())
+    }
+
+    async fn write_runtime_configs(&self, config: &ToadStoolConfig) -> Result<(), ToadStoolError> {
+        let runtime_dir = self.config_path.join("runtimes");
+        if !runtime_dir.exists() {
+            fs::create_dir_all(&runtime_dir).await?;
+        }
+
+        // Native runtime config (always enabled)
+        let native_config = serde_json::json!({
+            "enabled": true,
+            "max_concurrent": config.runtime.max_concurrent_executions,
+            "timeout_seconds": config.runtime.execution_timeout.as_secs(),
+            "memory_limit_mb": (config.runtime.resource_limits.max_memory_usage / 1024.0) as u64
+        });
+        fs::write(
+            runtime_dir.join("native.json"),
+            serde_json::to_string_pretty(&native_config)?,
+        )
+        .await?;
+
+        // Container runtime config
+        let container_config = serde_json::json!({
+            "enabled": true,
+            "engine": config.runtime.container.runtime,
+            "memory_limit_mb": (config.runtime.resource_limits.max_memory_usage / 1024.0) as u64,
+            "cpu_limit": config.runtime.resource_limits.max_cpu_usage
+        });
+        fs::write(
+            runtime_dir.join("container.json"),
+            serde_json::to_string_pretty(&container_config)?,
+        )
+        .await?;
+
+        // WASM runtime config
+        let wasm_config = serde_json::json!({
+            "enabled": true,
+            "memory_limit_mb": 128,
+            "enable_wasi": true
+        });
+        fs::write(
+            runtime_dir.join("wasm.json"),
+            serde_json::to_string_pretty(&wasm_config)?,
+        )
+        .await?;
+
+        // GPU runtime config (if present)
+        if config.runtime.gpu.is_some() {
+            let gpu_config = serde_json::json!({
+                "enabled": true,
+                "memory_fraction": 0.8,
+                "compute_mode": "default"
+            });
+            fs::write(
+                runtime_dir.join("gpu.json"),
+                serde_json::to_string_pretty(&gpu_config)?,
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn write_security_config(&self, config: &ToadStoolConfig) -> Result<(), ToadStoolError> {
+        let security_config = serde_json::json!({
+            "auth": {
+                "enabled": config.security.auth.enabled,
+                "provider": config.security.auth.provider
+            },
+            "sandboxing": {
+                "enabled": config.security.sandbox.enabled,
+                "sandbox_type": config.security.sandbox.sandbox_type
+            },
+            "resource_limits": {
+                "max_cpu_usage": config.runtime.resource_limits.max_cpu_usage,
+                "max_memory_usage": config.runtime.resource_limits.max_memory_usage,
+                "max_disk_usage": config.runtime.resource_limits.max_disk_usage
+            }
+        });
+
+        fs::write(
+            self.config_path.join("security.json"),
+            serde_json::to_string_pretty(&security_config)?,
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn write_observability_config(
+        &self,
+        config: &ToadStoolConfig,
+    ) -> Result<(), ToadStoolError> {
+        let observability_config = serde_json::json!({
+            "logging": {
+                "level": config.logging.level,
+                "format": config.logging.format,
+                "log_to_file": config.logging.log_to_file
+            },
+            "metrics": config.metrics.as_ref().map(|m| serde_json::json!({
+                "enabled": m.enabled,
+                "endpoint": m.endpoint,
+                "format": m.format
+            }))
+        });
+
+        fs::write(
+            self.config_path.join("observability.json"),
+            serde_json::to_string_pretty(&observability_config)?,
+        )
+        .await?;
+
+        Ok(())
+    }
+}
+
+impl Default for ConfigManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}

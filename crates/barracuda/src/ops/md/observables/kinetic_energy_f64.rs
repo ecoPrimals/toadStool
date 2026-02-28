@@ -7,6 +7,7 @@
 //! - Energy monitoring in MD
 //! - Thermostat validation
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -28,57 +29,17 @@ struct KeParams {
 /// GPU-accelerated f64 kinetic energy calculator.
 pub struct KineticEnergyF64 {
     device: Arc<WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
 }
 
 impl KineticEnergyF64 {
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let module = device.compile_shader_f64(SHADER, Some("kinetic_energy_f64"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("KE:bgl"),
-                entries: &[
-                    storage_bgl(0, true),  // velocities
-                    storage_bgl(1, true),  // masses
-                    storage_bgl(2, false), // ke_buf
-                    uniform_bgl(3),        // params
-                ],
-            });
-
-        let layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("KE:layout"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("KE:pipeline"),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: "main",
-                compilation_options: Default::default(),
-                cache: None,
-            });
-
-        Ok(Self {
-            device,
-            pipeline,
-            bgl,
-        })
+        Ok(Self { device })
     }
 
     /// Compute per-particle KE on GPU: KE_i = ½ m_i v_i²
     pub fn per_particle(&self, velocities: &[f64], masses: &[f64]) -> Result<Vec<f64>> {
         let n = masses.len();
         let d = &self.device.device;
-        let q = &self.device.queue;
 
         let vel_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("KE:vel"),
@@ -109,28 +70,16 @@ impl KineticEnergyF64 {
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("KE:bg"),
-            layout: &self.bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: vel_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: mass_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: ke_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let wg_count = (n as u32).div_ceil(WG);
+        ComputeDispatch::new(&*self.device, "kinetic_energy_f64")
+            .shader(SHADER, "main")
+            .f64()
+            .storage_read(0, &vel_buf)
+            .storage_read(1, &mass_buf)
+            .storage_rw(2, &ke_buf)
+            .uniform(3, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
 
         let rb = d.create_buffer(&wgpu::BufferDescriptor {
             label: Some("KE:rb"),
@@ -138,16 +87,9 @@ impl KineticEnergyF64 {
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-
         let mut enc = d.create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups((n as u32).div_ceil(WG), 1, 1);
-        }
         enc.copy_buffer_to_buffer(&ke_buf, 0, &rb, 0, out_size);
-        q.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
 
         self.device.map_staging_buffer::<f64>(&rb, n)
     }
@@ -166,32 +108,6 @@ impl KineticEnergyF64 {
         }
         let ke_total = self.total(velocities, masses)?;
         Ok(2.0 * ke_total / (3.0 * n as f64 * k_b))
-    }
-}
-
-fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
     }
 }
 

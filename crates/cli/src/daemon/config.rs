@@ -2,7 +2,7 @@
 //!
 //! Configuration for ToadStool daemon mode including ports, paths, and resource limits.
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -88,10 +88,10 @@ impl DaemonConfig {
     async fn load_from_file(path: &PathBuf) -> Result<Self> {
         let content = tokio::fs::read_to_string(path)
             .await
-            .with_context(|| format!("Failed to read config file: {}", path.display()))?;
+            .context(format!("Failed to read config file: {}", path.display()))?;
 
         let config: Self = toml::from_str(&content)
-            .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
+            .context(format!("Failed to parse config file: {}", path.display()))?;
 
         Ok(config)
     }
@@ -99,15 +99,21 @@ impl DaemonConfig {
     /// Validate configuration
     fn validate(&self) -> Result<()> {
         if self.port < 1024 {
-            anyhow::bail!("Port must be >= 1024 (non-privileged)");
+            return Err(crate::CliError::Other(
+                "Port must be >= 1024 (non-privileged)".to_string(),
+            ));
         }
 
         if self.max_concurrent_workloads == 0 {
-            anyhow::bail!("max_concurrent_workloads must be > 0");
+            return Err(crate::CliError::Other(
+                "max_concurrent_workloads must be > 0".to_string(),
+            ));
         }
 
         if self.max_concurrent_workloads > 1000 {
-            anyhow::bail!("max_concurrent_workloads too high (max: 1000)");
+            return Err(crate::CliError::Other(
+                "max_concurrent_workloads too high (max: 1000)".to_string(),
+            ));
         }
 
         Ok(())

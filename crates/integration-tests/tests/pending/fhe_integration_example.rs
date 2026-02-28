@@ -17,7 +17,7 @@
 
 #[cfg(test)]
 mod fhe_integration {
-    use anyhow::Result;
+    use toadstool::ToadStoolResult as Result;
 
     /// Example: NTT round-trip with small polynomial
     ///

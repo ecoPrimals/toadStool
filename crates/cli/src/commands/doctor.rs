@@ -10,7 +10,7 @@
 //! - Configuration validity
 //! - Runtime dependencies
 
-use anyhow::Result;
+use crate::Result;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

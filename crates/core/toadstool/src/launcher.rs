@@ -21,7 +21,7 @@
 //! - ✅ Pure Rust
 //! - ✅ Zero unsafe
 
-use anyhow::{Context, Result};
+use crate::error::{ToadStoolError, ToadStoolResult};
 use std::path::PathBuf;
 use std::time::Duration;
 use toadstool_common::constants::timeouts;
@@ -82,13 +82,13 @@ impl std::fmt::Display for Endpoint {
 /// ```rust,no_run
 /// use toadstool::launcher::discover_toadstool_endpoint;
 ///
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> ToadStoolResult<()> {
 /// let endpoint = discover_toadstool_endpoint().await?;
 /// println!("Found toadstool at: {}", endpoint);
 /// # Ok(())
 /// # }
 /// ```
-pub async fn discover_toadstool_endpoint() -> Result<Endpoint> {
+pub async fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
     // Try Unix socket paths (XDG-compliant)
     let unix_paths = get_toadstool_socket_paths();
     for path in unix_paths {
@@ -112,8 +112,8 @@ pub async fn discover_toadstool_endpoint() -> Result<Endpoint> {
         }
     }
 
-    Err(anyhow::anyhow!(
-        "No toadstool endpoint found (tried Unix sockets and TCP discovery)"
+    Err(ToadStoolError::not_found(
+        "No toadstool endpoint found (tried Unix sockets and TCP discovery)",
     ))
 }
 
@@ -172,13 +172,13 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
 /// ```rust,no_run
 /// use toadstool::launcher::{LaunchConfig, launch_toadstool};
 ///
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> ToadStoolResult<()> {
 /// let config = LaunchConfig::default();
 /// launch_toadstool(config).await?;
 /// # Ok(())
 /// # }
 /// ```
-pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
+pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
     info!("🚀 Launching toadstool with config: {:?}", config);
 
     // Build command
@@ -195,7 +195,9 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
         "   Spawning process: {:?} {:?}",
         config.binary_path, config.args
     );
-    let mut child = cmd.spawn().context("Failed to spawn toadstool process")?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| ToadStoolError::runtime(format!("Failed to spawn toadstool process: {e}")))?;
 
     // Poll for endpoint readiness (no blind sleep — event-driven startup detection)
     info!(
@@ -212,14 +214,17 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
         // Check if process crashed
         match child.try_wait() {
             Ok(Some(status)) => {
-                return Err(anyhow::anyhow!(
+                return Err(ToadStoolError::runtime(format!(
                     "Toadstool process exited prematurely with status: {}",
                     status
-                ));
+                )));
             }
             Ok(None) => {}
             Err(e) => {
-                return Err(anyhow::anyhow!("Failed to check process status: {}", e));
+                return Err(ToadStoolError::runtime(format!(
+                    "Failed to check process status: {}",
+                    e
+                )));
             }
         }
 
@@ -236,10 +241,10 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
         interval.tick().await;
     }
 
-    Err(anyhow::anyhow!(
+    Err(ToadStoolError::runtime(format!(
         "Timeout waiting for toadstool endpoint: {:?}",
         last_error
-    ))
+    )))
 }
 
 /// Check toadstool health
@@ -251,13 +256,13 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
 /// ```rust,no_run
 /// use toadstool::launcher::check_toadstool_health;
 ///
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> ToadStoolResult<()> {
 /// check_toadstool_health().await?;
 /// println!("Health check passed");
 /// # Ok(())
 /// # }
 /// ```
-pub async fn check_toadstool_health() -> Result<()> {
+pub async fn check_toadstool_health() -> ToadStoolResult<()> {
     // Basic health check by verifying endpoint exists
     verify_endpoint_exists().await
 }
@@ -271,16 +276,16 @@ pub async fn check_toadstool_health() -> Result<()> {
 /// ```rust,no_run
 /// use toadstool::launcher::verify_endpoint_exists;
 ///
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> ToadStoolResult<()> {
 /// verify_endpoint_exists().await?;
 /// println!("Endpoint is accessible");
 /// # Ok(())
 /// # }
 /// ```
-pub async fn verify_endpoint_exists() -> Result<()> {
+pub async fn verify_endpoint_exists() -> ToadStoolResult<()> {
     discover_toadstool_endpoint()
         .await
-        .context("Endpoint verification failed")?;
+        .map_err(|e| ToadStoolError::runtime(format!("Endpoint verification failed: {e}")))?;
     Ok(())
 }
 

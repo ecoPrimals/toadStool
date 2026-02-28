@@ -45,10 +45,13 @@
 )]
 
 pub mod cache;
+pub mod error;
 pub mod fingerprint;
 pub mod profiler;
 pub mod selector;
 pub mod types;
+
+pub use error::AdaptiveError;
 
 pub use cache::{OptimizationCache, WorkgroupConfig};
 pub use fingerprint::{GpuFingerprint, GpuVendor};
@@ -56,7 +59,6 @@ pub use profiler::{ProfilingConfig, RuntimeProfiler};
 pub use selector::{ConfigSelector, FallbackStrategy};
 pub use types::{OpType, SizeClass};
 
-use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -70,7 +72,7 @@ use tokio::sync::RwLock;
 ///
 /// ```rust,ignore
 /// # use toadstool_runtime_adaptive::AdaptiveExecutor;
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> Result<(), AdaptiveError> {
 /// // One-time setup (profiles GPU on first run)
 /// let executor = AdaptiveExecutor::new().await?;
 ///
@@ -95,7 +97,7 @@ impl AdaptiveExecutor {
     /// # Errors
     ///
     /// Returns error if GPU initialization fails or profiling encounters issues.
-    pub async fn new() -> Result<Self> {
+    pub async fn new() -> Result<Self, AdaptiveError> {
         // Discover GPU hardware (no hardcoding!)
         let fingerprint = GpuFingerprint::discover().await?;
 
@@ -145,7 +147,7 @@ impl AdaptiveExecutor {
     async fn quick_profile(
         profiler: &RuntimeProfiler,
         cache: &Arc<RwLock<OptimizationCache>>,
-    ) -> Result<()> {
+    ) -> Result<(), AdaptiveError> {
         // Profile core operations with common size classes
         let operations = vec![
             OpType::MatMul,
@@ -201,7 +203,7 @@ impl AdaptiveExecutor {
     /// # Errors
     ///
     /// Returns error if profiling fails.
-    pub async fn force_reprofile(&self) -> Result<()> {
+    pub async fn force_reprofile(&self) -> Result<(), AdaptiveError> {
         tracing::info!("Re-profiling GPU...");
         Self::quick_profile(&self.profiler, &self.cache).await?;
         tracing::info!("Re-profiling complete!");

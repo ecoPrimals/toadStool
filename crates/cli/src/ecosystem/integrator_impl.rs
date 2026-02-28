@@ -16,7 +16,7 @@
 
 use self::discovery::*;
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -225,7 +225,7 @@ impl EcosystemIntegrator {
                 // Parse endpoint for storage
                 let addr: SocketAddr = endpoint
                     .parse()
-                    .with_context(|| format!("Invalid endpoint: {endpoint}"))?;
+                    .context(format!("Invalid endpoint: {endpoint}"))?;
 
                 // Store connection (capability-based, not hardcoded)
                 #[allow(deprecated)]
@@ -327,7 +327,7 @@ impl EcosystemIntegrator {
                 // Parse endpoint for storage
                 let addr: SocketAddr = endpoint
                     .parse()
-                    .with_context(|| format!("Invalid endpoint: {endpoint}"))?;
+                    .context(format!("Invalid endpoint: {endpoint}"))?;
 
                 // Store connection (capability-based, not hardcoded)
                 #[allow(deprecated)]

@@ -14,7 +14,7 @@
 //! ```rust,no_run
 //! use toadstool_display::window::{WindowManager, CreateWindowRequest};
 //!
-//! # async fn example() -> anyhow::Result<()> {
+//! # async fn example() -> Result<()> {
 //! let mut manager = WindowManager::new().await?;
 //!
 //! let window_id = manager.create_window(CreateWindowRequest {

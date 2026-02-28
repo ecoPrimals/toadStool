@@ -6,7 +6,7 @@
 //! - DNS-SD/Service Discovery (DNS-based)
 //! - Localhost fallback (development)
 
-use anyhow::Result;
+use crate::Result;
 use std::net::IpAddr;
 use std::time::Duration;
 use tokio::net::UdpSocket;
@@ -16,6 +16,9 @@ use tracing::debug;
 use super::types::ServiceEndpoint;
 use toadstool_common::constants::ecosystem::well_known;
 use toadstool_common::primal_sockets::get_biomeos_dir;
+
+/// Bind to any interface with OS-assigned port (mDNS socket)
+const BIND_ANY: &str = "0.0.0.0:0";
 
 /// Service discovery coordinator
 pub struct ServiceDiscovery {
@@ -124,7 +127,7 @@ impl ServiceDiscovery {
         let mdns_port = 5353;
 
         // Create UDP socket for mDNS
-        let socket = match UdpSocket::bind("0.0.0.0:0").await {
+        let socket = match UdpSocket::bind(BIND_ANY).await {
             Ok(s) => s,
             Err(e) => {
                 debug!("Failed to create mDNS socket: {}", e);

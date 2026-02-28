@@ -3,7 +3,7 @@
 //! # Zero-Copy Optimization (Phase 2.3)
 //! Service discovery types use `Arc<str>` for frequently-cloned string fields.
 
-use anyhow::Result;
+use crate::Result;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -331,18 +331,14 @@ impl CryptoVerificationContext {
         public_key_bytes: &[u8],
     ) -> Result<bool> {
         // Parse public key from bytes (RustCrypto ed25519-dalek - pure Rust!)
-        let public_key = VerifyingKey::from_bytes(
-            public_key_bytes
-                .try_into()
-                .map_err(|_| anyhow::anyhow!("Invalid public key length (expected 32 bytes)"))?,
-        )?;
+        let public_key = VerifyingKey::from_bytes(public_key_bytes.try_into().map_err(|_| {
+            crate::CliError::Other("Invalid public key length (expected 32 bytes)".to_string())
+        })?)?;
 
         // Parse signature from bytes
-        let signature = Signature::from_bytes(
-            signature_bytes
-                .try_into()
-                .map_err(|_| anyhow::anyhow!("Invalid signature length (expected 64 bytes)"))?,
-        );
+        let signature = Signature::from_bytes(signature_bytes.try_into().map_err(|_| {
+            crate::CliError::Other("Invalid signature length (expected 64 bytes)".to_string())
+        })?);
 
         // Verify signature using RustCrypto (pure Rust, no C/assembly!)
         match public_key.verify(message, &signature) {
@@ -385,11 +381,11 @@ impl CryptoVerificationContext {
         // Decode public key and signature
         let public_key_bytes = BASE64
             .decode(public_key_base64)
-            .map_err(|e| anyhow::anyhow!("Failed to decode public key: {e}"))?;
+            .map_err(|e| crate::CliError::Other(format!("Failed to decode public key: {e}")))?;
 
         let signature_bytes = BASE64
             .decode(&response.signature.signature)
-            .map_err(|e| anyhow::anyhow!("Failed to decode signature: {e}"))?;
+            .map_err(|e| crate::CliError::Other(format!("Failed to decode signature: {e}")))?;
 
         // Create canonical message for verification
         let message = self.create_canonical_message(response)?;
@@ -408,12 +404,14 @@ impl CryptoVerificationContext {
         data.insert("timestamp", &timestamp);
         data.insert("nonce", &response.signature.nonce);
 
-        let capabilities_json = serde_json::to_string(&response.capabilities)
-            .map_err(|e| anyhow::anyhow!("Failed to serialize capabilities: {e}"))?;
+        let capabilities_json = serde_json::to_string(&response.capabilities).map_err(|e| {
+            crate::CliError::Other(format!("Failed to serialize capabilities: {e}"))
+        })?;
         data.insert("capabilities", &capabilities_json);
 
-        let canonical_json = serde_json::to_string(&data)
-            .map_err(|e| anyhow::anyhow!("Failed to create canonical message: {e}"))?;
+        let canonical_json = serde_json::to_string(&data).map_err(|e| {
+            crate::CliError::Other(format!("Failed to create canonical message: {e}"))
+        })?;
 
         Ok(canonical_json.into_bytes())
     }

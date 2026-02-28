@@ -362,6 +362,23 @@ impl GridQuadratureGemm {
 mod tests {
     use super::*;
 
+    const GRID_QUADRATURE_SHADER: &str =
+        include_str!("../../shaders/linalg/grid_quadrature_gemm_f64.wgsl");
+
+    #[test]
+    fn quad_params_layout() {
+        assert_eq!(std::mem::size_of::<QuadParams>(), 16);
+    }
+
+    #[test]
+    fn grid_quadrature_gemm_shader_source_valid() {
+        assert!(!GRID_QUADRATURE_SHADER.is_empty());
+        assert!(
+            GRID_QUADRATURE_SHADER.contains("fn main")
+                || GRID_QUADRATURE_SHADER.contains("@compute")
+        );
+    }
+
     #[tokio::test]
     async fn test_grid_quadrature_gemm_identity() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await

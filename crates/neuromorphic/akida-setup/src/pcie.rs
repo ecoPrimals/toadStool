@@ -1,6 +1,6 @@
 //! `PCIe` device management
 
-use anyhow::{bail, Context, Result};
+use crate::error::{Result, SetupError};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -20,10 +20,13 @@ pub fn discover_akida_devices() -> Result<Vec<AkidaDevice>> {
         .arg("-d")
         .arg("1e7c:bca1") // Akida vendor:device
         .output()
-        .context("Failed to run lspci")?;
+        .map_err(|e| SetupError::Setup(format!("Failed to run lspci: {e}")))?;
 
     if !output.status.success() {
-        bail!("lspci failed: {}", String::from_utf8_lossy(&output.stderr));
+        return Err(SetupError::Setup(format!(
+            "lspci failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -57,12 +60,14 @@ pub fn enable_pcie_device(pcie_address: &str) -> Result<()> {
 
     // Enable device
     fs::write(&enable_path, "1")
-        .with_context(|| format!("Failed to enable device {pcie_address}"))?;
+        .map_err(|e| SetupError::Setup(format!("Failed to enable device {pcie_address}: {e}")))?;
 
     // Verify
     let enabled = fs::read_to_string(&enable_path)?;
     if enabled.trim() != "1" {
-        bail!("Failed to enable device {pcie_address}");
+        return Err(SetupError::Setup(format!(
+            "Failed to enable device {pcie_address}"
+        )));
     }
 
     Ok(())
@@ -73,7 +78,9 @@ pub fn load_kernel_module(module_path: &str) -> Result<()> {
     let path = Path::new(module_path);
 
     if !path.exists() {
-        bail!("Kernel module not found: {module_path}");
+        return Err(SetupError::Setup(format!(
+            "Kernel module not found: {module_path}"
+        )));
     }
 
     // Check if already loaded
@@ -86,15 +93,20 @@ pub fn load_kernel_module(module_path: &str) -> Result<()> {
     let output = Command::new("insmod")
         .arg(module_path)
         .output()
-        .context("Failed to run insmod")?;
+        .map_err(|e| SetupError::Setup(format!("Failed to run insmod: {e}")))?;
 
     if !output.status.success() {
-        bail!("insmod failed: {}", String::from_utf8_lossy(&output.stderr));
+        return Err(SetupError::Setup(format!(
+            "insmod failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
     }
 
     // Verify loaded
     if !is_module_loaded()? {
-        bail!("Module loaded but not found in lsmod");
+        return Err(SetupError::Setup(
+            "Module loaded but not found in lsmod".to_string(),
+        ));
     }
 
     Ok(())
@@ -104,7 +116,7 @@ pub fn load_kernel_module(module_path: &str) -> Result<()> {
 pub fn is_module_loaded() -> Result<bool> {
     let output = Command::new("lsmod")
         .output()
-        .context("Failed to run lsmod")?;
+        .map_err(|e| SetupError::Setup(format!("Failed to run lsmod: {e}")))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.contains("akida_pcie"))
@@ -115,7 +127,7 @@ pub fn unload_kernel_module() -> Result<()> {
     let output = Command::new("rmmod")
         .arg("akida_pcie")
         .output()
-        .context("Failed to run rmmod")?;
+        .map_err(|e| SetupError::Setup(format!("Failed to run rmmod: {e}")))?;
 
     // Ignore errors (module might not be loaded)
     if !output.status.success() {

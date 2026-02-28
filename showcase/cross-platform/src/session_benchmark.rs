@@ -3,7 +3,6 @@
 //! Demonstrates the performance improvement from using TensorSession
 //! for operation batching vs individual tensor operations.
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
 use std::time::Instant;
@@ -13,7 +12,7 @@ async fn benchmark_unbatched(
     device: &WgpuDevice,
     size: usize,
     num_ops: usize,
-) -> Result<(f64, f64)> {
+) -> std::result::Result<(f64, f64), Box<dyn std::error::Error + Send + Sync>> {
     let data: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
 
     let device_arc = std::sync::Arc::new(device.clone());
@@ -42,7 +41,11 @@ async fn benchmark_unbatched(
 }
 
 /// Run batched tensor operations using TensorSession
-fn benchmark_batched(device: &WgpuDevice, size: usize, num_ops: usize) -> Result<(f64, f64)> {
+fn benchmark_batched(
+    device: &WgpuDevice,
+    size: usize,
+    num_ops: usize,
+) -> std::result::Result<(f64, f64), Box<dyn std::error::Error + Send + Sync>> {
     let data: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
 
     // Warmup
@@ -77,7 +80,7 @@ fn benchmark_batched(device: &WgpuDevice, size: usize, num_ops: usize) -> Result
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)
@@ -105,9 +108,11 @@ async fn main() -> Result<()> {
     ];
 
     for idx in 0..pool.devices().len() {
-        let wgpu_device = pool
-            .device(idx)
-            .ok_or_else(|| anyhow::anyhow!("No device"))?;
+        let wgpu_device =
+            pool.device(idx)
+                .ok_or_else(|| -> Box<dyn std::error::Error + Send + Sync> {
+                    std::io::Error::other("No device").into()
+                })?;
         let name = wgpu_device.name();
         let wg_size = wgpu_device.optimal_workgroup_size();
 

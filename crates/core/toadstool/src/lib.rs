@@ -146,12 +146,12 @@ pub const UNIVERSAL_CAPABILITIES: &[&str] = &[
 /// Returns an error if:
 /// - Tracing subscriber initialization fails
 /// - System resources cannot be accessed
-pub fn init() -> anyhow::Result<()> {
+pub fn init() -> ToadStoolResult<()> {
     // Initialize tracing for universal compute
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .try_init()
-        .map_err(|e| anyhow::anyhow!("Failed to initialize tracing: {e}"))?;
+        .map_err(|e| ToadStoolError::runtime(format!("Failed to initialize tracing: {e}")))?;
 
     tracing::info!(
         "🍄 ToadStool Universal Compute Platform v{} initialized",
@@ -171,7 +171,7 @@ pub fn init() -> anyhow::Result<()> {
 /// - Platform initialization fails
 /// - Ecosystem discovery fails
 /// - Primal integration fails
-pub async fn init_with_ecosystem() -> anyhow::Result<UniversalComputePlatform> {
+pub async fn init_with_ecosystem() -> ToadStoolResult<UniversalComputePlatform> {
     init()?;
 
     tracing::info!("🌐 Initializing ecosystem integration...");
@@ -188,7 +188,7 @@ pub async fn init_with_ecosystem() -> anyhow::Result<UniversalComputePlatform> {
 }
 
 /// Initialize `ToadStool` with biomeOS as a primal (same as ecosystem init)
-pub async fn init_with_biomeos() -> anyhow::Result<UniversalComputePlatform> {
+pub async fn init_with_biomeos() -> ToadStoolResult<UniversalComputePlatform> {
     init()?;
 
     tracing::info!("🌱 Initializing with biomeOS as primal...");

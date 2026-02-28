@@ -38,7 +38,7 @@ tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 # JSON-RPC server
 # ⚠️ REMOVED: jsonrpsee pulls ring (C dependency) - Evolved to Pure Rust!
 # jsonrpsee = { version = "0.21", features = ["server", "macros"] }
-# ✅ NOW USING: manual_jsonrpc.rs and pure_jsonrpc.rs (100% Pure Rust!)
+# ✅ NOW USING: pure_jsonrpc (canonical). manual_jsonrpc deprecated (100% Pure Rust!)
 
 # tarpc for high-performance RPC
 tarpc = { workspace = true }
@@ -60,7 +60,7 @@ async-trait = "0.1"
 #   NEW: Songbird discovers ToadStool via Unix socket (capability-based discovery)
 #   RESULT: ToadStool has NO legitimate need for HTTP/TLS dependencies!
 # 
-# Deep Debt Solution: ToadStool provides Unix socket server (manual_jsonrpc.rs),
+# Deep Debt Solution: ToadStool provides Unix socket server (pure_jsonrpc),
 # Songbird discovers ToadStool via socket path, registration happens via JSON-RPC over Unix.
 # This achieves 100% Pure Rust and TRUE UniBin (no C deps, trivial cross-compilation).
 #

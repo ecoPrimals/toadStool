@@ -3,7 +3,7 @@
 //! This module provides pure Rust implementations for setting up Akida NPU hardware,
 //! replacing shell scripts with compiled code that's portable across systems.
 
-use anyhow::{bail, Context, Result};
+use crate::error::{AkidaError, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -107,10 +107,10 @@ impl NpuSetup {
             }
         }
 
-        bail!(
+        Err(AkidaError::setup_failed(
             "Akida kernel module not found. Set AKIDA_DRIVER_PATH environment variable \
-            or install the driver to /lib/modules/$(uname -r)/extra/akida-pcie.ko"
-        );
+            or install the driver to /lib/modules/$(uname -r)/extra/akida-pcie.ko",
+        ))
     }
 
     /// Enable PCIe devices
@@ -147,7 +147,9 @@ impl NpuSetup {
 
         // Need privilege escalation
         if !self.pkexec_available {
-            bail!("Need root to enable device. Install pkexec or run as root.");
+            return Err(AkidaError::setup_failed(
+                "Need root to enable device. Install pkexec or run as root.",
+            ));
         }
 
         let status = Command::new("pkexec")
@@ -157,7 +159,9 @@ impl NpuSetup {
             .status()?;
 
         if !status.success() {
-            bail!("Failed to enable device {address} (pkexec)");
+            return Err(AkidaError::setup_failed(format!(
+                "Failed to enable device {address} (pkexec)"
+            )));
         }
 
         info!("Enabled {address} (pkexec)");
@@ -173,7 +177,10 @@ impl NpuSetup {
             return Ok(());
         }
 
-        let driver_path = self.driver_path.as_ref().context("Driver path not set")?;
+        let driver_path = self
+            .driver_path
+            .as_ref()
+            .ok_or_else(|| AkidaError::setup_failed("Driver path not set"))?;
 
         // Try direct insmod first
         if let Ok(status) = Command::new("insmod").arg(driver_path).status() {
@@ -185,7 +192,9 @@ impl NpuSetup {
 
         // Need privilege escalation
         if !self.pkexec_available {
-            bail!("Need root to load module. Install pkexec or run as root.");
+            return Err(AkidaError::setup_failed(
+                "Need root to load module. Install pkexec or run as root.",
+            ));
         }
 
         let status = Command::new("pkexec")
@@ -194,14 +203,16 @@ impl NpuSetup {
             .status()?;
 
         if !status.success() {
-            bail!("Failed to load kernel module");
+            return Err(AkidaError::setup_failed("Failed to load kernel module"));
         }
 
         info!("Module loaded (pkexec)");
 
         // Verify it loaded
         if !is_module_loaded()? {
-            bail!("Module loaded but not showing in lsmod");
+            return Err(AkidaError::setup_failed(
+                "Module loaded but not showing in lsmod",
+            ));
         }
 
         Ok(())
@@ -255,7 +266,9 @@ fn check_hardware() -> Result<()> {
     let output = Command::new("lspci").arg("-d").arg(&filter).output()?;
 
     if !output.status.success() || output.stdout.is_empty() {
-        bail!("No Akida NPU hardware detected. Run 'lspci -d {filter}' to verify.");
+        return Err(AkidaError::setup_failed(format!(
+            "No Akida NPU hardware detected. Run 'lspci -d {filter}' to verify."
+        )));
     }
 
     let devices = String::from_utf8_lossy(&output.stdout);
@@ -285,13 +298,17 @@ fn verify_device_nodes() -> Result<()> {
         std::thread::sleep(Duration::from_millis(100));
     }
 
-    bail!("Device nodes not created. Check dmesg for errors.");
+    Err(AkidaError::setup_failed(
+        "Device nodes not created. Check dmesg for errors.",
+    ))
 }
 
 /// Get current kernel version
 fn kernel_version() -> Result<String> {
     let output = Command::new("uname").arg("-r").output()?;
-    Ok(String::from_utf8(output.stdout)?.trim().to_string())
+    let s = String::from_utf8(output.stdout)
+        .map_err(|e| AkidaError::setup_failed(format!("Invalid kernel version output: {e}")))?;
+    Ok(s.trim().to_string())
 }
 
 /// Pure Rust replacement for `which::which()`.

@@ -2,7 +2,7 @@
 
 use super::{BiomeTemplate, TemplateGenerator};
 use crate::{BiomeManifest, BiomeMetadata};
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use std::path::PathBuf;
 use tokio::fs;
 use tracing::info;
@@ -23,8 +23,8 @@ impl TemplateGenerator {
 
         // Check if file exists and handle overwrite
         if output_path.exists() && !self.force_overwrite {
-            return Err(anyhow::anyhow!(
-                "biome.yaml already exists. Use --force to overwrite."
+            return Err(crate::CliError::Other(
+                "biome.yaml already exists. Use --force to overwrite.".to_string(),
             ));
         }
 
@@ -39,7 +39,10 @@ impl TemplateGenerator {
         // Write to file
         fs::write(&output_path, yaml_content)
             .await
-            .with_context(|| format!("Failed to write biome.yaml to {}", output_path.display()))?;
+            .context(format!(
+                "Failed to write biome.yaml to {}",
+                output_path.display()
+            ))?;
 
         info!("✅ Generated biome.yaml: {}", output_path.display());
         super::rendering::print_template_info(&template);
@@ -102,7 +105,9 @@ impl TemplateGenerator {
             "distributed" | "cluster" => Ok(BiomeTemplate::Distributed),
             "sovereign" | "security" => Ok(BiomeTemplate::Sovereign),
             "development" | "dev" | "test" => Ok(BiomeTemplate::Development),
-            _ => Err(anyhow::anyhow!("Unknown template type: {template_str}")),
+            _ => Err(crate::CliError::Other(format!(
+                "Unknown template type: {template_str}"
+            ))),
         }
     }
 

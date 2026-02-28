@@ -2,13 +2,27 @@
 //!
 //! Extension trait for performance benchmarking operations.
 
-use anyhow::Result;
+use crate::Result;
 use std::collections::HashMap;
 use std::future::Future;
 use tokio::fs;
+use tokio::process::Command;
 use tokio::time::Instant;
 
 use crate::universal::types::{BenchmarkTest, BenchmarkType, SystemInfo};
+
+/// Detect if Docker or Podman is available. Returns (name, command_path).
+async fn detect_container_runtime() -> Option<(String, String)> {
+    // Prefer Docker, then Podman
+    for (name, cmd) in [("docker", "docker"), ("podman", "podman")] {
+        if let Ok(output) = Command::new(cmd).arg("--version").output().await {
+            if output.status.success() {
+                return Some((name.to_string(), cmd.to_string()));
+            }
+        }
+    }
+    None
+}
 
 /// Benchmarking operations trait
 pub trait BenchmarkingOps {
@@ -72,7 +86,9 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
                 tests.push(self.run_container_benchmark().await?);
             }
             _ => {
-                anyhow::bail!("Unknown benchmark suite: {suite}");
+                return Err(crate::CliError::Other(format!(
+                    "Unknown benchmark suite: {suite}"
+                )));
             }
         }
 
@@ -222,19 +238,59 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     async fn run_container_benchmark(&self) -> Result<BenchmarkTest> {
-        // Container startup test: measure process-spawn-like overhead (CPU work)
-        // BLOCKED(container-runtime): Requires OCI container integration for real measurements.
-        // Current stub uses CPU micro-work; real benchmark needs containerd/runc or equivalent.
+        // Detect container runtime (Docker or Podman)
+        let runtime = detect_container_runtime().await;
+        let (runtime_name, runtime_cmd) = match runtime {
+            Some((name, cmd)) => (name, cmd),
+            None => {
+                return Err(crate::CliError::Other(
+                    "Container runtime not supported: neither Docker nor Podman is available. \
+                     Install Docker (https://docs.docker.com/get-docker/) or Podman \
+                     (https://podman.io/) to run container benchmarks."
+                        .to_string(),
+                ));
+            }
+        };
+
+        // Real benchmark: run a minimal container and measure startup + compute time
         let start = Instant::now();
 
-        let mut result = 0u64;
-        for i in 0..20_000 {
-            result = std::hint::black_box(result.wrapping_add(i));
-        }
-        let _ = std::hint::black_box(result);
+        // Use alpine (small) or busybox - run simple compute: echo + exit
+        let output = tokio::process::Command::new(&runtime_cmd)
+            .args(["run", "--rm", "alpine", "sh", "-c", "echo done && exit 0"])
+            .output()
+            .await
+            .map_err(|e| {
+                crate::CliError::Other(format!(
+                    "Container runtime '{}' failed: {}. \
+                     Ensure the daemon is running (e.g. systemctl start docker).",
+                    runtime_name, e
+                ))
+            })?;
 
         let duration = start.elapsed();
-        let score = 1000.0 / duration.as_millis() as f64;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(crate::CliError::Other(format!(
+                "Container benchmark failed ({}): {}",
+                output.status,
+                stderr.trim()
+            )));
+        }
+
+        // Score: higher is better; 1000/duration_ms gives ops-per-second-like metric
+        let score = 1000.0 / duration.as_millis().max(1) as f64;
+
+        let mut details = HashMap::new();
+        details.insert(
+            "runtime".to_string(),
+            serde_json::Value::String(runtime_name.to_string()),
+        );
+        details.insert(
+            "image".to_string(),
+            serde_json::Value::String("alpine".to_string()),
+        );
 
         Ok(BenchmarkTest {
             name: "Container Startup".to_string(),
@@ -242,7 +298,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
             duration,
             score,
             unit: "score".to_string(),
-            details: HashMap::new(),
+            details,
         })
     }
 

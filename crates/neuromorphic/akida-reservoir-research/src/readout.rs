@@ -6,7 +6,7 @@
 // Mathematical notation (n, l, etc.) is standard in linear algebra
 #![allow(clippy::many_single_char_names)]
 
-use anyhow::Result;
+use crate::error::Result;
 use ndarray::{Array1, Array2};
 use tracing::{debug, info};
 
@@ -68,11 +68,11 @@ impl ReadoutTrainer {
         let n_outputs = targets.ncols();
 
         if states.nrows() != targets.nrows() {
-            anyhow::bail!(
+            return Err(crate::error::ReservoirError::InvalidState(format!(
                 "Mismatch: states has {} samples, targets has {}",
                 states.nrows(),
                 targets.nrows()
-            );
+            )));
         }
 
         info!(
@@ -169,7 +169,9 @@ impl ReadoutTrainer {
 fn cholesky_decompose(a: &Array2<f64>) -> Result<Array2<f64>> {
     let n = a.nrows();
     if n != a.ncols() {
-        anyhow::bail!("Matrix must be square for Cholesky decomposition");
+        return Err(crate::error::ReservoirError::Numerical(
+            "Matrix must be square for Cholesky decomposition".to_string(),
+        ));
     }
 
     let mut l = Array2::zeros((n, n));
@@ -185,7 +187,9 @@ fn cholesky_decompose(a: &Array2<f64>) -> Result<Array2<f64>> {
                 }
                 let diag = a[[j, j]] - sum;
                 if diag <= 0.0 {
-                    anyhow::bail!("Matrix is not positive definite at diagonal element {j}");
+                    return Err(crate::error::ReservoirError::Numerical(format!(
+                        "Matrix is not positive definite at diagonal element {j}"
+                    )));
                 }
                 l[[j, j]] = diag.sqrt();
             } else {

@@ -2,7 +2,7 @@
 //!
 //! Extension trait for workload migration operations between platforms.
 
-use anyhow::Result;
+use crate::Result;
 use std::future::Future;
 use tokio::time::Duration;
 use tracing::info;
@@ -153,7 +153,9 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
                 self.cleanup_source_workload(&plan.source_platform).await?;
             }
         } else {
-            return Err(anyhow::anyhow!("Migration verification failed"));
+            return Err(crate::CliError::Other(
+                "Migration verification failed".to_string(),
+            ));
         }
 
         Ok(())

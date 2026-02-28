@@ -31,7 +31,6 @@ image = { version = "0.25", optional = true }
 tokio = { version = "1.35", features = ["rt-multi-thread", "macros"] }
 
 # Error handling
-anyhow = "1.0"
 thiserror = { workspace = true }
 
 # Byte manipulation

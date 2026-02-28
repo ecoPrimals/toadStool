@@ -8,13 +8,13 @@
 //!
 //! Pooling is THE downsampling operation in CNNs!
 
-use anyhow::Result;
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Pooling Operations Demo             ║");
     println!("║  barraCuda Phase 1 - THE FINAL OPERATION! 100%!         ║");

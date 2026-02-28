@@ -309,7 +309,7 @@ fn test_invariant_property_creation() {
         if *x >= 0 {
             Ok(())
         } else {
-            Err(anyhow::anyhow!("negative"))
+            Err(toadstool::ToadStoolError::runtime("negative"))
         }
     });
 
@@ -328,7 +328,7 @@ fn test_invariant_property_test_success() {
 #[test]
 fn test_invariant_property_test_failure() {
     let property = InvariantProperty::new("always_false".to_string(), |_x: &i64| {
-        Err(anyhow::anyhow!("always fails"))
+        Err(toadstool::ToadStoolError::runtime("always fails"))
     });
 
     assert!(property.test(&42).is_err());
@@ -352,7 +352,7 @@ fn test_run_simple_property() {
         if *x >= 0 {
             Ok(())
         } else {
-            Err(anyhow::anyhow!("negative value"))
+            Err(toadstool::ToadStoolError::runtime("negative value"))
         }
     });
 
@@ -375,7 +375,7 @@ fn test_run_failing_property() {
     let mut runner = PropertyTestRunner::new(config);
     let generator = IntegerGenerator::new(0, 100);
     let property = InvariantProperty::new("always_fails".to_string(), |_x: &i64| {
-        Err(anyhow::anyhow!("always fails"))
+        Err(toadstool::ToadStoolError::runtime("always fails"))
     });
 
     let result = runner.run_test(generator, property);

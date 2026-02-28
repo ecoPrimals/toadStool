@@ -3,12 +3,12 @@
 //! Tests the Akida NPU through the pure Rust VFIO backend.
 
 use akida_driver::{select_backend, BackendSelection};
-use anyhow::Result;
+
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Initialize logging
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)

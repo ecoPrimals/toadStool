@@ -2,7 +2,7 @@
 
 use akida_driver::setup::NpuSetup;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> akida_driver::Result<()> {
     tracing_subscriber::fmt::init();
 
     let mut setup = NpuSetup::new();

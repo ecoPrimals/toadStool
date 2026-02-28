@@ -4,9 +4,9 @@
 //! Platform and vendor agnostic - measures YOUR specific hardware!
 
 use crate::cache::{OperationProfile, WorkgroupConfig};
+use crate::error::AdaptiveError;
 use crate::fingerprint::GpuFingerprint;
 use crate::types::{OpType, SizeClass};
-use anyhow::{Context, Result};
 
 /// Profiling configuration
 #[derive(Debug, Clone)]
@@ -48,7 +48,7 @@ impl RuntimeProfiler {
     /// # Errors
     ///
     /// Returns error if GPU initialization fails.
-    pub fn new(fingerprint: GpuFingerprint) -> Result<Self> {
+    pub fn new(fingerprint: GpuFingerprint) -> Result<Self, AdaptiveError> {
         Ok(Self {
             fingerprint,
             config: ProfilingConfig::default(),
@@ -77,7 +77,7 @@ impl RuntimeProfiler {
         op_type: OpType,
         size_classes: &[SizeClass],
         workgroup_candidates: &[usize],
-    ) -> Result<OperationProfile> {
+    ) -> Result<OperationProfile, AdaptiveError> {
         let mut profile = OperationProfile::new(op_type);
 
         for &size_class in size_classes {
@@ -105,7 +105,7 @@ impl RuntimeProfiler {
         op_type: OpType,
         size_class: SizeClass,
         candidates: &[usize],
-    ) -> Result<WorkgroupConfig> {
+    ) -> Result<WorkgroupConfig, AdaptiveError> {
         let mut best_config: Option<WorkgroupConfig> = None;
         let mut best_time = f64::MAX;
 
@@ -127,7 +127,9 @@ impl RuntimeProfiler {
             }
         }
 
-        best_config.context("No valid workgroup configuration found")
+        best_config.ok_or_else(|| {
+            AdaptiveError::Other("No valid workgroup configuration found".to_string())
+        })
     }
 
     /// Benchmark specific workgroup size
@@ -143,7 +145,7 @@ impl RuntimeProfiler {
         op_type: OpType,
         size: usize,
         workgroup_size: usize,
-    ) -> Result<f64> {
+    ) -> Result<f64, AdaptiveError> {
         let _ = &self.config;
         #[allow(clippy::cast_precision_loss)]
         let estimated_us = Self::simulate_gpu_time(op_type, size, workgroup_size) as f64;
@@ -191,7 +193,7 @@ impl RuntimeProfiler {
     /// # Errors
     ///
     /// Returns error if profiling fails.
-    pub fn quick_profile_all(&self) -> Result<Vec<OperationProfile>> {
+    pub fn quick_profile_all(&self) -> Result<Vec<OperationProfile>, AdaptiveError> {
         let operations = vec![
             OpType::MatMul,
             OpType::LayerNorm,

@@ -164,6 +164,25 @@ impl BatchedEighGpu {
 mod tests {
     use super::*;
 
+    const BATCHED_EIGH_SHADER: &str = include_str!("../../../shaders/linalg/batched_eigh_f64.wgsl");
+    const BATCHED_EIGH_SINGLE_SHADER: &str =
+        include_str!("../../../shaders/linalg/batched_eigh_single_dispatch_f64.wgsl");
+
+    #[test]
+    fn batched_eigh_shader_source_valid() {
+        assert!(!BATCHED_EIGH_SHADER.is_empty());
+        assert!(BATCHED_EIGH_SHADER.contains("fn ") || BATCHED_EIGH_SHADER.contains("@compute"));
+    }
+
+    #[test]
+    fn batched_eigh_single_dispatch_shader_source_valid() {
+        assert!(!BATCHED_EIGH_SINGLE_SHADER.is_empty());
+        assert!(
+            BATCHED_EIGH_SINGLE_SHADER.contains("fn ")
+                || BATCHED_EIGH_SINGLE_SHADER.contains("@compute")
+        );
+    }
+
     fn approx_eq_f64(a: f64, b: f64, tol: f64) -> bool {
         (a - b).abs() < tol
     }

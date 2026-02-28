@@ -76,7 +76,7 @@ pub use flat_tree::FlatTree;
 pub use fst_variance::{fst_variance_decomposition, FstResult};
 pub use gillespie::{GillespieConfig, GillespieGpu, GillespieResult};
 pub use hill_gate::{HillGateGpu, HillGateParams};
-pub use hmm::HmmBatchForwardF64;
+pub use hmm::{hmm_backward, hmm_viterbi, HmmBatchForwardF64, ViterbiResult};
 pub use kmer_histogram::KmerHistogramGpu;
 pub use locus_variance::LocusVarianceGpu;
 pub use multi_obj_fitness::MultiObjFitnessGpu;

@@ -3,6 +3,21 @@ use crate::device::test_pool::{
     get_test_device_if_f64_gpu_available, get_test_device_if_gpu_available,
 };
 
+const CHOLESKY_F32_SHADER: &str = include_str!("../../shaders/linalg/cholesky.wgsl");
+const CHOLESKY_F64_SHADER: &str = include_str!("../../shaders/linalg/cholesky_f64.wgsl");
+
+#[test]
+fn cholesky_f32_shader_source_valid() {
+    assert!(!CHOLESKY_F32_SHADER.is_empty());
+    assert!(CHOLESKY_F32_SHADER.contains("fn ") || CHOLESKY_F32_SHADER.contains("@compute"));
+}
+
+#[test]
+fn cholesky_f64_shader_source_valid() {
+    assert!(!CHOLESKY_F64_SHADER.is_empty());
+    assert!(CHOLESKY_F64_SHADER.contains("fn ") || CHOLESKY_F64_SHADER.contains("@compute"));
+}
+
 #[tokio::test]
 async fn test_cholesky_2x2() {
     let Some(device) = get_test_device_if_gpu_available().await else {

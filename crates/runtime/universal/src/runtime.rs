@@ -25,8 +25,8 @@ impl UniversalRuntime {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use toadstool_runtime_universal::UniversalRuntime;
-    /// # async fn example() -> anyhow::Result<()> {
+    /// # use toadstool_runtime_universal::{ComputeError, UniversalRuntime};
+    /// # async fn example() -> Result<(), ComputeError> {
     /// let runtime = UniversalRuntime::discover().await?;
     /// println!("Found {} compute units", runtime.num_units());
     /// # Ok(())
@@ -62,8 +62,8 @@ impl UniversalRuntime {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use toadstool_runtime_universal::{UniversalRuntime, WorkloadBuilder, OperationType};
-    /// # async fn example() -> anyhow::Result<()> {
+    /// # use toadstool_runtime_universal::{ComputeError, OperationType, UniversalRuntime, WorkloadBuilder};
+    /// # async fn example() -> Result<(), ComputeError> {
     /// let runtime = UniversalRuntime::discover().await?;
     ///
     /// let workload = WorkloadBuilder::new()
@@ -120,8 +120,8 @@ impl UniversalRuntime {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use toadstool_runtime_universal::UniversalRuntime;
-    /// # async fn example() -> anyhow::Result<()> {
+    /// # use toadstool_runtime_universal::{ComputeError, UniversalRuntime};
+    /// # async fn example() -> Result<(), ComputeError> {
     /// let runtime = UniversalRuntime::discover().await?;
     ///
     /// let input = vec![1.0f32, 2.0, 3.0, 4.0];

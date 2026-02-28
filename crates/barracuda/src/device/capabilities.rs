@@ -28,6 +28,25 @@
 //! # }
 //! ```
 
+// ============================================================================
+// Capability-Based Constants (replaces hardcoded device limits)
+// ============================================================================
+
+/// Mock device max buffer size (1 GiB) — used in tests when no real device.
+pub const MOCK_DEVICE_MAX_BUFFER_SIZE: u64 = 1024 * 1024 * 1024;
+
+/// Mock device max buffer size for limited-device tests (128 KiB).
+pub const MOCK_DEVICE_MAX_BUFFER_SIZE_LIMITED: u64 = 128 * 1024;
+
+/// Minimum buffer size (bytes) for FHE workloads — 16K degree polynomial estimate.
+pub const FHE_MIN_BUFFER_SIZE: u64 = 256 * 1024;
+
+/// Minimum invocations per workgroup to consider device "high performance".
+pub const HIGH_PERFORMANCE_MIN_INVOCATIONS: u32 = 1024;
+
+/// Bytes per megabyte (for display formatting).
+const BYTES_PER_MB: u64 = 1024 * 1024;
+
 // Re-export driver/compiler types so callers that previously imported them
 // from `capabilities` continue to compile without path changes.
 pub use crate::device::driver_profile::{
@@ -57,6 +76,64 @@ pub const WORKGROUP_SIZE_1D: u32 = 256;
 /// Standard 2D shader workgroup size per dimension.
 /// Matches `@workgroup_size(16, 16)` in all 2D WGSL shaders.
 pub const WORKGROUP_SIZE_2D: u32 = 16;
+
+// ============================================================================
+// Architecture-Aware Workgroup Sizes
+// ============================================================================
+//
+// NAK/NVK (Volta) needs 64-wide workgroups; Ada/Ampere can use 256-wide.
+// Use these when GpuArch is known (e.g. from GpuDriverProfile).
+
+/// Optimal 1D workgroup size based on GPU architecture.
+///
+/// NVIDIA Volta/Turing: 64 (warp size 32, 2 warps = sweet spot for NAK)
+/// NVIDIA Ampere/Ada: 256 (warp size 32, 8 warps = full occupancy)
+/// AMD RDNA2/3: 64 (wave64 native)
+/// AMD CDNA: 256 (wave64 × 4)
+/// Intel Arc: 128 (EU subgroup 16 × 8)
+/// Apple M: 64 (SIMD width 32 × 2)
+/// Software/Unknown: 64 (conservative)
+#[must_use]
+pub fn workgroup_size_for_arch(arch: &GpuArch) -> u32 {
+    match arch {
+        GpuArch::Volta | GpuArch::Turing => 64,
+        GpuArch::Ampere | GpuArch::Ada => 256,
+        GpuArch::Rdna2 | GpuArch::Rdna3 => 64,
+        GpuArch::Cdna2 => 256,
+        GpuArch::IntelArc => 128,
+        GpuArch::AppleM => 64,
+        GpuArch::Software | GpuArch::Unknown => 64,
+    }
+}
+
+/// 2D workgroup size (per dimension) based on GPU architecture.
+#[must_use]
+pub fn workgroup_size_2d_for_arch(arch: &GpuArch) -> u32 {
+    match arch {
+        GpuArch::Ampere | GpuArch::Ada | GpuArch::Cdna2 => 16,
+        _ => 8,
+    }
+}
+
+/// Optimal 1D workgroup size when GPU architecture is known.
+///
+/// Use this instead of [`DeviceCapabilities::optimal_workgroup_size`] when
+/// you have a [`GpuArch`] from [`GpuDriverProfile`]. Applies workload-specific
+/// adjustments on top of the architecture base size.
+#[must_use]
+pub fn optimal_workgroup_size_arch(
+    arch: &GpuArch,
+    workload: WorkloadType,
+    max_invocations: u32,
+) -> u32 {
+    let base = workgroup_size_for_arch(arch);
+    let size = match workload {
+        WorkloadType::ElementWise | WorkloadType::MatMul | WorkloadType::FHE => base,
+        WorkloadType::Reduction => base * 2,
+        WorkloadType::Convolution => base / 2,
+    };
+    size.min(max_invocations)
+}
 
 /// Device capabilities - runtime hardware limits
 ///
@@ -297,7 +374,7 @@ impl DeviceCapabilities {
     pub fn supports_fhe(&self) -> bool {
         // FHE needs large buffers for polynomial operations
         // Minimum: 16K degree polynomial * 8 bytes * 2 (input/output) = 256KB
-        self.max_buffer_size >= 256 * 1024
+        self.max_buffer_size >= FHE_MIN_BUFFER_SIZE
     }
 
     /// Check if device supports large matrix operations
@@ -394,7 +471,7 @@ impl DeviceCapabilities {
     /// **Deep Debt**: Workload routing decisions based on capabilities
     pub fn is_high_performance(&self) -> bool {
         matches!(self.device_type, wgpu::DeviceType::DiscreteGpu)
-            && self.max_compute_invocations_per_workgroup >= 1024
+            && self.max_compute_invocations_per_workgroup >= HIGH_PERFORMANCE_MIN_INVOCATIONS
     }
 }
 
@@ -436,12 +513,12 @@ impl fmt::Display for DeviceCapabilities {
         writeln!(
             f,
             "  Max Buffer Size: {} MB",
-            self.max_buffer_size / (1024 * 1024)
+            self.max_buffer_size / BYTES_PER_MB
         )?;
         writeln!(
             f,
             "  Max Allocation: {} MB",
-            self.max_allocation_size() / (1024 * 1024)
+            self.max_allocation_size() / BYTES_PER_MB
         )?;
         writeln!(f)?;
         writeln!(f, "Compute:")?;
@@ -515,7 +592,7 @@ mod tests {
         let caps = DeviceCapabilities {
             device_name: "Test GPU".to_string(),
             device_type: wgpu::DeviceType::DiscreteGpu,
-            max_buffer_size: 1024 * 1024 * 1024, // 1GB
+            max_buffer_size: MOCK_DEVICE_MAX_BUFFER_SIZE,
             max_workgroup_size: (256, 256, 64),
             max_compute_workgroups: (65535, 65535, 65535),
             max_compute_invocations_per_workgroup: 256,
@@ -564,7 +641,7 @@ mod tests {
         let caps_supported = DeviceCapabilities {
             device_name: "Large GPU".to_string(),
             device_type: wgpu::DeviceType::DiscreteGpu,
-            max_buffer_size: 1024 * 1024 * 1024, // 1GB - supports FHE
+            max_buffer_size: MOCK_DEVICE_MAX_BUFFER_SIZE,
             max_workgroup_size: (256, 256, 64),
             max_compute_workgroups: (65535, 65535, 65535),
             max_compute_invocations_per_workgroup: 1024,
@@ -581,7 +658,7 @@ mod tests {
         let caps_limited = DeviceCapabilities {
             device_name: "Small GPU".to_string(),
             device_type: wgpu::DeviceType::IntegratedGpu,
-            max_buffer_size: 128 * 1024, // 128KB - too small for FHE
+            max_buffer_size: MOCK_DEVICE_MAX_BUFFER_SIZE_LIMITED,
             max_workgroup_size: (128, 128, 32),
             max_compute_workgroups: (65535, 65535, 65535),
             max_compute_invocations_per_workgroup: 256,
@@ -594,5 +671,37 @@ mod tests {
         };
 
         assert!(!caps_limited.supports_fhe());
+    }
+
+    // ── Architecture-aware workgroup size tests ───────────────────────────────
+
+    #[test]
+    fn test_workgroup_size_volta() {
+        assert_eq!(workgroup_size_for_arch(&GpuArch::Volta), 64);
+    }
+
+    #[test]
+    fn test_workgroup_size_ada() {
+        assert_eq!(workgroup_size_for_arch(&GpuArch::Ada), 256);
+    }
+
+    #[test]
+    fn test_workgroup_size_rdna2() {
+        assert_eq!(workgroup_size_for_arch(&GpuArch::Rdna2), 64);
+    }
+
+    #[test]
+    fn test_workgroup_size_unknown() {
+        assert_eq!(workgroup_size_for_arch(&GpuArch::Unknown), 64);
+    }
+
+    #[test]
+    fn test_workgroup_2d_ampere() {
+        assert_eq!(workgroup_size_2d_for_arch(&GpuArch::Ampere), 16);
+    }
+
+    #[test]
+    fn test_workgroup_2d_volta() {
+        assert_eq!(workgroup_size_2d_for_arch(&GpuArch::Volta), 8);
     }
 }

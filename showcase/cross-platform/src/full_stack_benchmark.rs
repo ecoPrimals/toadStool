@@ -3,7 +3,6 @@
 //! Comprehensive comparison with batching and warmup enabled.
 //! Also profiles the software stack to identify optimization targets.
 
-use anyhow::Result;
 use barracuda::device::{warmup_pool, WarmupConfig};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
@@ -29,7 +28,10 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
 }
 "#;
 
-    pub fn benchmark_cuda(size: usize, iterations: usize) -> anyhow::Result<(f64, f64)> {
+    pub fn benchmark_cuda(
+        size: usize,
+        iterations: usize,
+    ) -> std::result::Result<(f64, f64), Box<dyn std::error::Error + Send + Sync>> {
         let dev = CudaDevice::new(0)?;
 
         // Compile kernel
@@ -114,7 +116,10 @@ mod rocm_bench {
     use std::process::Command;
     use std::time::Instant;
 
-    pub fn benchmark_rocm(size: usize, iterations: usize) -> anyhow::Result<(f64, f64)> {
+    pub fn benchmark_rocm(
+        size: usize,
+        iterations: usize,
+    ) -> std::result::Result<(f64, f64), Box<dyn std::error::Error + Send + Sync>> {
         let hip_code = format!(
             r#"
 #include <hip/hip_runtime.h>
@@ -207,10 +212,11 @@ int main() {{
             .output()?;
 
         if !compile.status.success() {
-            return Err(anyhow::anyhow!(
+            return Err(std::io::Error::other(format!(
                 "hipcc compilation failed: {}",
                 String::from_utf8_lossy(&compile.stderr)
-            ));
+            ))
+            .into());
         }
 
         let run = Command::new(&exe_path).output()?;
@@ -225,7 +231,7 @@ int main() {{
             }
         }
 
-        Err(anyhow::anyhow!("Failed to parse ROCm output"))
+        Err(std::io::Error::other("Failed to parse ROCm output").into())
     }
 }
 
@@ -237,7 +243,7 @@ async fn benchmark_barracuda_single(
     device: &Arc<WgpuDevice>,
     size: usize,
     iterations: usize,
-) -> Result<f64> {
+) -> std::result::Result<f64, Box<dyn std::error::Error + Send + Sync>> {
     let data: Vec<f32> = (0..size).map(|i| i as f32 * 0.001).collect();
     let a = Tensor::from_data(&data, vec![size], device.clone())?;
     let b = Tensor::from_data(&data, vec![size], device.clone())?;
@@ -263,7 +269,7 @@ async fn benchmark_barracuda_batched(
     size: usize,
     iterations: usize,
     batch_size: usize,
-) -> Result<f64> {
+) -> std::result::Result<f64, Box<dyn std::error::Error + Send + Sync>> {
     let data: Vec<f32> = (0..size).map(|i| i as f32 * 0.001).collect();
 
     // Use TensorSession for batching
@@ -294,7 +300,9 @@ async fn benchmark_barracuda_batched(
 // Stack profiling
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn profile_wgpu_stack(device: &Arc<WgpuDevice>) -> Result<()> {
+fn profile_wgpu_stack(
+    device: &Arc<WgpuDevice>,
+) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("\n  ═══════════════════════════════════════════════════════════════");
     println!("  Software Stack Profile: {}", device.name());
     println!("  ═══════════════════════════════════════════════════════════════\n");
@@ -366,7 +374,7 @@ fn profile_wgpu_stack(device: &Arc<WgpuDevice>) -> Result<()> {
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

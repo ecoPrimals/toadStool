@@ -6,7 +6,6 @@
 //! 3. Validating byte counts match what we expect
 //! 4. Comparing against known GPU specs
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
 use std::sync::Arc;
@@ -105,7 +104,7 @@ async fn validate_correctness(device: &Arc<WgpuDevice>, size: usize) -> bool {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

@@ -2,7 +2,7 @@
 //!
 //! Extension trait for displaying platform capabilities and summaries.
 
-use anyhow::Result;
+use crate::Result;
 use std::future::Future;
 use tracing::info;
 

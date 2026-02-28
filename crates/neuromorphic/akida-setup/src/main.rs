@@ -9,12 +9,12 @@
 //! 3. Set up permissions
 //! 4. Verify operation
 
-use anyhow::{bail, Result};
-
+mod error;
 mod pcie;
 mod permissions;
 mod verification;
 
+use error::{Result, SetupError};
 use pcie::{discover_akida_devices, enable_pcie_device, is_module_loaded, load_kernel_module};
 use permissions::{
     list_device_nodes, setup_device_permissions, setup_pcie_permissions, setup_udev_rules,
@@ -57,10 +57,10 @@ fn main() -> Result<()> {
 
     // Check if running as root
     if !is_root() {
-        bail!(
+        return Err(SetupError::Setup(format!(
             "This binary must be run as root. Try: sudo {}",
             std::env::current_exe()?.display()
-        );
+        )));
     }
 
     let config = SetupConfig::default();
@@ -70,7 +70,9 @@ fn main() -> Result<()> {
     let devices = discover_akida_devices()?;
 
     if devices.is_empty() {
-        bail!("No Akida devices found. Check lspci output.");
+        return Err(SetupError::Setup(
+            "No Akida devices found. Check lspci output.".to_string(),
+        ));
     }
 
     tracing::info!("✅ Found {} Akida device(s):", devices.len());

@@ -31,7 +31,9 @@ pub mod integrators;
 pub mod neighbor;
 pub mod observables;
 pub mod pbc;
+pub mod stress_virial;
 pub mod thermostats;
+pub mod vacf;
 
 pub use electrostatics::{PppmAccuracy, PppmParams};
 pub use forces::*;
@@ -42,9 +44,11 @@ pub use observables::{
     RdfHistogramF64, SsfGpu, Vacf, VacfGpu,
 };
 pub use pbc::{DistanceMetric, PbcDistance};
+pub use stress_virial::compute_stress_virial;
 pub use thermostats::{
     BerendsenThermostat, LangevinParams, LangevinStep, NoseHooverChain, NoseHooverHalfKick,
 };
+pub use vacf::compute_vacf_batch;
 
 // Re-export for convenience
 pub use pbc::PbcDistance as Pbc;

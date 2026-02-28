@@ -3,7 +3,6 @@
 //! Tests the hypothesis: the 10x gap is constant overhead (~300μs),
 //! so for large workloads where GPU execution dominates, we approach parity.
 
-use anyhow::Result;
 use barracuda::device::{warmup_pool, WarmupConfig};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
@@ -14,7 +13,7 @@ async fn benchmark_at_scale(
     device: &Arc<WgpuDevice>,
     size: usize,
     iterations: usize,
-) -> Result<(f64, f64, f64)> {
+) -> std::result::Result<(f64, f64, f64), Box<dyn std::error::Error + Send + Sync>> {
     // Returns (total_time_ms, throughput_gops, effective_bandwidth_gbps)
 
     let data: Vec<f32> = (0..size).map(|i| (i % 10000) as f32 * 0.0001).collect();
@@ -52,7 +51,7 @@ async fn benchmark_batched_at_scale(
     size: usize,
     batch_ops: usize,
     iterations: usize,
-) -> Result<(f64, f64, f64)> {
+) -> std::result::Result<(f64, f64, f64), Box<dyn std::error::Error + Send + Sync>> {
     let data: Vec<f32> = (0..size).map(|i| (i % 10000) as f32 * 0.0001).collect();
 
     let mut total_time_ms = 0.0;
@@ -86,7 +85,7 @@ async fn benchmark_batched_at_scale(
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

@@ -37,9 +37,13 @@ use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const SCAN_WG: u32 = 256;
 /// Maximum elements for the two-level path (WG³ = 16,777,216).
 const SCAN_L2_THRESHOLD: u32 = SCAN_WG * SCAN_WG * SCAN_WG;
+
+// ─── Public types ────────────────────────────────────────────────────────────
 
 /// Result of a stream-compaction filter operation.
 pub struct FilterResult {
@@ -74,7 +78,7 @@ impl FilterOperation {
     }
 }
 
-// GPU uniform structs ─────────────────────────────────────────────────────────
+// ─── GPU uniform structs ──────────────────────────────────────────────────────
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
@@ -197,11 +201,23 @@ impl Filter {
             });
         }
 
+        // Empty input: return immediately without creating zero-sized buffers (wgpu rejects them)
+        if n == 0 {
+            let output_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Filter Output Empty"),
+                size: 1, // Minimum 1 byte for valid buffer
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            });
+            let selected = Tensor::from_buffer(output_buf, vec![0], device.clone());
+            return Ok(FilterResult { selected, count: 0 });
+        }
+
         let n_groups = n_u32.div_ceil(SCAN_WG);
         let u32_bytes = std::mem::size_of::<u32>() as u64;
         let f32_bytes = std::mem::size_of::<f32>() as u64;
 
-        // ── Allocate core buffers ─────────────────────────────────────────────
+        // ── 1. Allocate core buffers ─────────────────────────────────────────
         let flags_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Filter Flags"),
             size: n as u64 * u32_bytes,
@@ -592,7 +608,7 @@ impl Filter {
 
         device.submit_and_poll(Some(encoder.finish()));
 
-        // Read back the count (one u32 — cheap).
+        // ── 6. Read back count and build result ───────────────────────────────
         let count_vec = crate::utils::read_buffer_u32(device, &total_buf, 1)?;
         let count = count_vec[0] as usize;
 
@@ -630,6 +646,55 @@ impl Tensor {
     /// Stream-compact keeping elements `< threshold`. Returns `(selected, count)`.
     pub fn filter_lt(self, threshold: f32) -> Result<FilterResult> {
         self.filter(FilterOperation::LessThan, threshold)
+    }
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    const FILTER_SHADER: &str = include_str!("../shaders/misc/filter.wgsl");
+    const PREFIX_SUM_SHADER: &str = include_str!("../shaders/misc/prefix_sum.wgsl");
+
+    #[test]
+    fn filter_params_layout() {
+        assert_eq!(std::mem::size_of::<FilterParams>(), 32);
+    }
+
+    #[test]
+    fn scan_config_layout() {
+        assert_eq!(std::mem::size_of::<ScanConfig>(), 16);
+    }
+
+    #[test]
+    fn filter_shader_source_valid() {
+        assert!(!FILTER_SHADER.is_empty());
+        assert!(FILTER_SHADER.contains("evaluate_predicate"));
+        assert!(FILTER_SHADER.contains("scatter"));
+    }
+
+    #[test]
+    fn prefix_sum_shader_source_valid() {
+        assert!(!PREFIX_SUM_SHADER.is_empty());
+        assert!(PREFIX_SUM_SHADER.contains("local_scan"));
+        assert!(PREFIX_SUM_SHADER.contains("add_wg_offsets"));
+    }
+
+    #[test]
+    fn filter_shader_compiles() {
+        let source = FILTER_SHADER;
+        assert!(!source.is_empty());
+        assert!(source.contains("@compute"));
+        assert!(source.contains("fn evaluate_predicate"));
+    }
+
+    #[test]
+    fn prefix_sum_shader_compiles() {
+        let source = PREFIX_SUM_SHADER;
+        assert!(!source.is_empty());
+        assert!(source.contains("@compute"));
+        assert!(source.contains("fn local_scan"));
+        assert!(source.contains("apply_l1_offsets"));
     }
 }
 

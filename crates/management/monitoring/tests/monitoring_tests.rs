@@ -579,3 +579,25 @@ fn test_monitoring_config_development_scenario() {
     assert_eq!(config.granularity.to_duration(), Duration::from_secs(1));
     assert!(!config.enable_threshold_monitoring);
 }
+
+#[test]
+fn test_resource_monitor_error_converts_to_toadstool_error() {
+    let err = ResourceMonitorError::ProcessNotRegistered("test-123".to_string());
+    let toadstool_err: toadstool::ToadStoolError = err.into();
+    let err_str = toadstool_err.to_string();
+    assert!(err_str.contains("Process not registered") || err_str.contains("test-123"));
+}
+
+#[test]
+fn test_monitoring_granularity_custom_zero_duration() {
+    let granularity = MonitoringGranularity::Custom(Duration::ZERO);
+    let duration = granularity.to_duration();
+    assert_eq!(duration, Duration::ZERO);
+}
+
+#[test]
+fn test_system_resource_monitor_default() {
+    let monitor = SystemResourceMonitor::default();
+    let debug_string = format!("{monitor:?}");
+    assert!(debug_string.contains("SystemResourceMonitor"));
+}

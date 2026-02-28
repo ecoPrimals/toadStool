@@ -2,9 +2,9 @@
 //!
 //! Discovers bearDog entropy service at runtime - NO HARDCODING!
 
+use crate::error::BeardogError;
 use crate::seed::{EphemeralSeed, SeedQuality};
 use crate::types::{EntropyMixing, EntropySource};
-use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 /// Request for ephemeral seed generation
@@ -54,7 +54,7 @@ impl EntropyClient {
     /// - Service discovery unavailable
     /// - No bearDog service found
     /// - Connection fails
-    pub async fn discover() -> Result<Self> {
+    pub async fn discover() -> Result<Self, BeardogError> {
         // Step 1: Check environment variable (user can override)
         if let Ok(endpoint) = std::env::var("TOADSTOOL_ENTROPY_SERVICE_URL") {
             tracing::info!("Using entropy service from environment: {}", endpoint);
@@ -98,7 +98,7 @@ impl EntropyClient {
     /// 3. Select best available service
     ///
     /// For now, returns error to demonstrate graceful fallback.
-    async fn discover_via_capability() -> Result<String> {
+    async fn discover_via_capability() -> Result<String, BeardogError> {
         // Future: Implement full capability discovery via songBird unix socket
         // Current: Falls back to system entropy (graceful degradation)
 
@@ -129,17 +129,18 @@ impl EntropyClient {
 
         // No HTTP fallbacks - capability-based discovery only
         // Users must ensure Unix socket exists or set BEARDOG_URL environment variable
-        anyhow::bail!(
+        Err(BeardogError::Other(
             "No crypto service found via capability discovery. \
              Ensure bearDog is running or set BEARDOG_URL environment variable."
-        )
+                .to_string(),
+        ))
     }
 
     /// Probe unix socket to check if crypto service is available
     ///
     /// **PURE RUST**: Uses unix socket instead of HTTP
     /// **CAPABILITY-BASED**: Discovers crypto service by capability (not hardcoded name)
-    async fn probe_service(_url: &str) -> Result<()> {
+    async fn probe_service(_url: &str) -> Result<(), BeardogError> {
         // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
@@ -153,9 +154,7 @@ impl EntropyClient {
                 tracing::debug!("Crypto service unix socket available");
                 Ok(())
             }
-            Err(e) => {
-                anyhow::bail!("Crypto service socket not available: {e}")
-            }
+            Err(e) => Err(BeardogError::Io(e)),
         }
     }
 
@@ -163,7 +162,7 @@ impl EntropyClient {
     ///
     /// **PURE RUST**: Uses unix socket instead of HTTP
     /// **CAPABILITY-BASED**: Discovers crypto service by capability
-    async fn connect(endpoint: &str) -> Result<Self> {
+    async fn connect(endpoint: &str) -> Result<Self, BeardogError> {
         // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
@@ -198,7 +197,7 @@ impl EntropyClient {
     /// # Errors
     ///
     /// Returns error if request fails and fallback is disabled.
-    pub async fn generate_seed(&self) -> Result<EphemeralSeed> {
+    pub async fn generate_seed(&self) -> Result<EphemeralSeed, BeardogError> {
         self.generate_seed_with_request(SeedRequest::default())
             .await
     }
@@ -208,7 +207,10 @@ impl EntropyClient {
     /// # Errors
     ///
     /// Returns error if request fails and fallback is disabled.
-    pub async fn generate_seed_with_request(&self, request: SeedRequest) -> Result<EphemeralSeed> {
+    pub async fn generate_seed_with_request(
+        &self,
+        request: SeedRequest,
+    ) -> Result<EphemeralSeed, BeardogError> {
         if !self.available {
             // Fallback to system entropy
             return Ok(Self::system_entropy_fallback());
@@ -230,14 +232,20 @@ impl EntropyClient {
     /// Request seed from bearDog service via unix socket
     ///
     /// **PURE RUST**: JSON-RPC over unix socket (no HTTP!)
-    async fn request_from_beardog(&self, request: &SeedRequest) -> Result<EphemeralSeed> {
-        let params = serde_json::to_value(request).context("Failed to serialize seed request")?;
+    async fn request_from_beardog(
+        &self,
+        request: &SeedRequest,
+    ) -> Result<EphemeralSeed, BeardogError> {
+        let params = serde_json::to_value(request)
+            .map_err(|e| BeardogError::Other(format!("Failed to serialize seed request: {e}")))?;
 
         let seed: EphemeralSeed = self
             .rpc_client
             .call_typed("beardog.entropy.generate_seed", params)
             .await
-            .context("Failed to request seed from bearDog")?;
+            .map_err(|e| {
+                BeardogError::Other(format!("Failed to request seed from bearDog: {e}"))
+            })?;
 
         Ok(seed)
     }

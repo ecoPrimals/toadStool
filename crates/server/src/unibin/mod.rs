@@ -1,10 +1,6 @@
 //! UniBin server entry point
 //!
 //! Shared server main logic for both toadstool and toadstool-server binaries
-//!
-//! Uses ManualJsonRpcServer (deprecated); migration to pure_jsonrpc tracked in manual_jsonrpc/MIGRATION.md
-
-#![allow(deprecated)] // ManualJsonRpcServer: migration to pure_jsonrpc pending serving layer
 
 mod capabilities;
 mod execution;
@@ -29,8 +25,8 @@ pub mod exit_codes {
 }
 
 use crate::errors::ServerError;
+use crate::pure_jsonrpc::JsonRpcHandler;
 use crate::tarpc_server::ToadStoolTarpcServer;
-use crate::ManualJsonRpcServer;
 
 /// Resolve family ID from CLI override or environment (testable helper)
 #[must_use]
@@ -125,11 +121,11 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
     info!("🔌 Starting IPC servers (isomorphic mode)...");
 
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
-    let jsonrpc_server = ManualJsonRpcServer::new(
+    let jsonrpc_handler = Arc::new(JsonRpcHandler::new(
         Arc::clone(&executor),
         version.clone(),
         Some(Arc::clone(&error_count)),
-    );
+    ));
 
     let socket_path_for_server = socket_path.clone();
     let jsonrpc_socket_for_server = jsonrpc_socket.clone();
@@ -137,7 +133,7 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
     let server_handle = tokio::spawn(async move {
         match execution::start_servers_with_fallback(
             server,
-            jsonrpc_server,
+            jsonrpc_handler,
             socket_path_for_server,
             jsonrpc_socket_for_server,
         )

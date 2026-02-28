@@ -18,7 +18,7 @@
 //! ).await?;
 //! ```
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -97,7 +97,7 @@ impl CryptoAdapter {
         let verified = data
             .get("verified")
             .and_then(|v| v.as_bool())
-            .ok_or_else(|| anyhow::anyhow!("Invalid response format"))?;
+            .ok_or_else(|| crate::CliError::Other("Invalid response format".to_string()))?;
 
         Ok(verified)
     }
@@ -141,14 +141,14 @@ impl CryptoAdapter {
             .and_then(|v| v.as_str())
             .map(base64::decode)
             .transpose()?
-            .ok_or_else(|| anyhow::anyhow!("Missing public_key in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing public_key in response".to_string()))?;
 
         let private_key = data
             .get("private_key")
             .and_then(|v| v.as_str())
             .map(base64::decode)
             .transpose()?
-            .ok_or_else(|| anyhow::anyhow!("Missing private_key in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing private_key in response".to_string()))?;
 
         Ok(KeyPair {
             public_key,
@@ -185,7 +185,7 @@ impl CryptoAdapter {
             .and_then(|v| v.as_str())
             .map(base64::decode)
             .transpose()?
-            .ok_or_else(|| anyhow::anyhow!("Missing ciphertext in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing ciphertext in response".to_string()))?;
 
         Ok(ciphertext)
     }
@@ -219,7 +219,7 @@ impl CryptoAdapter {
             .and_then(|v| v.as_str())
             .map(base64::decode)
             .transpose()?
-            .ok_or_else(|| anyhow::anyhow!("Missing plaintext in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing plaintext in response".to_string()))?;
 
         Ok(plaintext)
     }
@@ -247,7 +247,7 @@ impl CryptoAdapter {
             .and_then(|v| v.as_str())
             .map(base64::decode)
             .transpose()?
-            .ok_or_else(|| anyhow::anyhow!("Missing bytes in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing bytes in response".to_string()))?;
 
         Ok(bytes)
     }
@@ -297,14 +297,10 @@ impl CryptoAdapter {
         );
 
         // Read permissions file
-        let permissions_data = fs::read_to_string(permissions_path)
-            .await
-            .with_context(|| {
-                format!(
-                    "Failed to read permissions file: {}",
-                    permissions_path.display()
-                )
-            })?;
+        let permissions_data = fs::read_to_string(permissions_path).await.context(format!(
+            "Failed to read permissions file: {}",
+            permissions_path.display()
+        ))?;
 
         // Parse permissions as generic JSON (service-agnostic)
         let permissions: serde_json::Value =
@@ -331,14 +327,19 @@ impl CryptoAdapter {
         let is_valid = validate_data
             .get("valid")
             .and_then(|v| v.as_bool())
-            .ok_or_else(|| anyhow::anyhow!("Invalid validation response format"))?;
+            .ok_or_else(|| {
+                crate::CliError::Other("Invalid validation response format".to_string())
+            })?;
 
         if !is_valid {
             let reason = validate_data
                 .get("reason")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Unknown validation error");
-            anyhow::bail!("Permission validation failed: {}", reason);
+            return Err(crate::CliError::Other(format!(
+                "Permission validation failed: {}",
+                reason
+            )));
         }
 
         info!("✅ Crypto permission validation successful");

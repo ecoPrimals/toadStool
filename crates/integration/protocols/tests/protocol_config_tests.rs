@@ -86,3 +86,41 @@ fn test_protocol_config_clone() {
     assert_eq!(config.service_id, cloned.service_id);
     assert_eq!(config.default_format, cloned.default_format);
 }
+
+#[test]
+fn test_protocol_config_default_service_id_format() {
+    let config = ProtocolConfig::default();
+    assert!(config.service_id.starts_with("toadstool-"));
+    assert!(config.service_id.len() > 10);
+}
+
+#[test]
+fn test_protocol_config_default_request_timeout() {
+    let config = ProtocolConfig::default();
+    assert_eq!(config.request_timeout, Duration::from_secs(30));
+}
+
+// ============================================================================
+// ConnectionPoolConfig Tests
+// ============================================================================
+
+#[test]
+fn test_connection_pool_config_default() {
+    let pool = ConnectionPoolConfig::default();
+    assert_eq!(pool.max_connections_per_service, 10);
+    assert_eq!(pool.idle_timeout, Duration::from_secs(300));
+    assert_eq!(pool.keep_alive_interval, Duration::from_secs(30));
+    assert_eq!(pool.max_concurrent_requests, 100);
+}
+
+#[test]
+fn test_connection_pool_config_custom() {
+    let pool = ConnectionPoolConfig {
+        max_connections_per_service: 50,
+        idle_timeout: Duration::from_secs(60),
+        keep_alive_interval: Duration::from_secs(10),
+        max_concurrent_requests: 200,
+    };
+    assert_eq!(pool.max_connections_per_service, 50);
+    assert_eq!(pool.idle_timeout, Duration::from_secs(60));
+}

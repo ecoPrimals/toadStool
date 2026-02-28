@@ -9,4 +9,4 @@
 
 pub mod hardware;
 
-pub use hardware::{HardwareDevice, HardwareManager, HardwareType};
+pub use hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};

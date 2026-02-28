@@ -227,8 +227,9 @@ pub mod prelude {
     pub use crate::snn::{SNNConfig, SNNLayer, SpikingNetwork};
     #[cfg(feature = "gpu")]
     pub use crate::staging::{
-        BufferDirection, GpuRingBuffer, PipelineStats, RingBufferConfig, UnidirectionalConfig,
-        UnidirectionalPipeline, WorkHandle, WriteHandle,
+        BufferDirection, GpuRingBuffer, PipelineBuilder, PipelineStats, RingBufferConfig, Stage,
+        StageLink, StreamingPipeline, UnidirectionalConfig, UnidirectionalPipeline, WorkHandle,
+        WriteHandle,
     };
     #[cfg(feature = "gpu")]
     pub use crate::tensor::Tensor;

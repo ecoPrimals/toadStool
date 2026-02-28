@@ -6,13 +6,13 @@
 //!
 //! These operations are fundamental for modern neural networks (especially Transformers).
 
-use anyhow::Result;
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: GELU & Dropout Demo                 ║");
     println!("║  barraCuda Phase 1 - Modern Activations & Regularization║");

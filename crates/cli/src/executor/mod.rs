@@ -37,7 +37,7 @@ pub use types::{WasiExecutionConfig, WasmExecutionInfo, WasmModule};
 pub mod workload;
 
 // Core imports
-use anyhow::{bail, Context, Result};
+use crate::{CliContextExt, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

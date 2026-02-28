@@ -23,6 +23,7 @@
 //! }
 //! ```
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -80,80 +81,6 @@ impl MaxAbsDiffF64 {
             return Ok((a[0] - b[0]).abs());
         }
 
-        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("Max Abs Diff f64"));
-
-        // Bind group layout for pass 1 (two inputs + output + params)
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("MaxAbsDiff BGL"),
-                entries: &[
-                    // input_a
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // input_b
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // output
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // params
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("MaxAbsDiff PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("max_abs_diff_f64"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "max_abs_diff_f64",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
         // Two-pass reduction
         let n = a.len();
         let wg_size = 256;
@@ -194,66 +121,20 @@ impl MaxAbsDiffF64 {
         };
         let params_buffer = device.create_uniform_buffer("MaxAbsDiff params", &params);
 
-        // Pass 1 bind group
-        let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("MaxAbsDiff BG pass 1"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: a_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: b_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: partial_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Execute pass 1
-        {
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("MaxAbsDiff pass 1"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("MaxAbsDiff pass 1"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bg, &[]);
-                pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
-            }
-            device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(&*device, "max_abs_diff_pass1")
+            .shader(Self::wgsl_shader(), "max_abs_diff_f64")
+            .f64()
+            .storage_read(0, &a_buffer)
+            .storage_read(1, &b_buffer)
+            .storage_rw(2, &partial_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch(n_workgroups as u32, 1, 1)
+            .submit();
 
         // If single workgroup, result is ready
         if n_workgroups <= 1 {
             return Self::read_f64_scalar(&device, &partial_buffer);
         }
-
-        // Pass 2: reduce partial maxes using max_reduce_pass2
-        let pipeline2 = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("max_reduce_pass2"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "max_reduce_pass2",
-                cache: None,
-                compilation_options: Default::default(),
-            });
 
         let n_workgroups2 = n_workgroups.div_ceil(wg_size);
         let final_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -279,48 +160,15 @@ impl MaxAbsDiffF64 {
             mapped_at_creation: false,
         });
 
-        let bg2 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("MaxAbsDiff BG pass 2"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: partial_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: dummy_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: final_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params2_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Execute pass 2
-        {
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("MaxAbsDiff pass 2"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("MaxAbsDiff pass 2"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&pipeline2);
-                pass.set_bind_group(0, &bg2, &[]);
-                pass.dispatch_workgroups(n_workgroups2 as u32, 1, 1);
-            }
-            device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(&*device, "max_abs_diff_pass2")
+            .shader(Self::wgsl_shader(), "max_reduce_pass2")
+            .f64()
+            .storage_read(0, &partial_buffer)
+            .storage_read(1, &dummy_buffer)
+            .storage_rw(2, &final_buffer)
+            .uniform(3, &params2_buffer)
+            .dispatch(n_workgroups2 as u32, 1, 1)
+            .submit();
 
         // For very large inputs, may need CPU fallback
         if n_workgroups2 > 1 {

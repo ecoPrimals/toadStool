@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use anyhow::Result;
+use crate::error::DistributedError;
 
 /// A compute capability that ToadStool can provide
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -237,7 +237,11 @@ impl CapabilityRegistry {
     }
 
     /// Update a capability's availability
-    pub fn update_capability(&mut self, mut capability: Capability, available: bool) -> Result<()> {
+    pub fn update_capability(
+        &mut self,
+        mut capability: Capability,
+        available: bool,
+    ) -> Result<(), DistributedError> {
         capability.available = available;
         self.capabilities.insert(capability.id.clone(), capability);
         Ok(())

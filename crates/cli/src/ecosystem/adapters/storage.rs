@@ -15,7 +15,7 @@
 //! let mount = storage.mount_distributed_storage(requirements).await?;
 //! ```
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use bytes::Bytes;
 use serde_json::json;
 use std::path::PathBuf;
@@ -189,7 +189,7 @@ impl StorageAdapter {
             .and_then(|v| v.as_str())
             .map(base64::decode)
             .transpose()?
-            .ok_or_else(|| anyhow::anyhow!("Missing data in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing data in response".to_string()))?;
 
         Ok(Bytes::from(bytes))
     }
@@ -235,7 +235,7 @@ impl StorageAdapter {
         let value = data
             .get("value")
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Missing value in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing value in response".to_string()))?;
 
         Ok(value)
     }

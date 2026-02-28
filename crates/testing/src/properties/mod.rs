@@ -49,7 +49,7 @@
 //! let generator = IntegerGenerator::new(0, 100);
 //! let property = InvariantProperty::new(
 //!     "positive".to_string(),
-//!     |x: &i64| if *x >= 0 { Ok(()) } else { Err(anyhow::anyhow!("negative")) }
+//!     |x: &i64| if *x >= 0 { Ok(()) } else { Err(toadstool::ToadStoolError::runtime("negative")) }
 //! );
 //!
 //! let result = runner.run_test(generator, property);
@@ -308,7 +308,7 @@ mod tests {
             if *x >= 0 {
                 Ok(())
             } else {
-                Err(anyhow::anyhow!("negative value"))
+                Err(toadstool::ToadStoolError::runtime("negative value"))
             }
         });
 

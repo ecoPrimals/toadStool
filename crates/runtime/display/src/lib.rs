@@ -40,7 +40,7 @@
 //! use toadstool_display::{DisplayServer, WindowManager};
 //!
 //! #[tokio::main]
-//! async fn main() -> anyhow::Result<()> {
+//! async fn main() -> Result<()> {
 //!     // Initialize display backend
 //!     let manager = WindowManager::new().await?;
 //!     

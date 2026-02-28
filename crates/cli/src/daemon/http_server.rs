@@ -44,7 +44,7 @@ pub struct ServerState {
 pub async fn start_http_server(
     port: u16,
     workload_manager: Arc<WorkloadManager>,
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     let state = ServerState {
         start_time: Instant::now(),
         workload_manager,
@@ -279,8 +279,8 @@ impl IntoResponse for ApiError {
 }
 
 #[cfg(feature = "daemon")]
-impl From<anyhow::Error> for ApiError {
-    fn from(err: anyhow::Error) -> Self {
+impl From<crate::CliError> for ApiError {
+    fn from(err: crate::CliError) -> Self {
         error!("Internal error: {}", err);
         ApiError::InternalError(err.to_string())
     }

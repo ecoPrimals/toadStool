@@ -2,8 +2,7 @@
 //!
 //! **Deep Debt**: Intelligent, configurable selection policies
 
-use anyhow::{anyhow, Result};
-
+use crate::error::OrchestrationError;
 use crate::orchestrator::*;
 
 /// Selection policy for choosing substrates
@@ -35,9 +34,9 @@ impl SelectionPolicy {
         substrates: &[SubstrateHandle],
         request: &WorkloadRequest,
         history: &PerformanceHistory,
-    ) -> Result<SubstrateHandle> {
+    ) -> Result<SubstrateHandle, OrchestrationError> {
         if substrates.is_empty() {
-            return Err(anyhow!("No substrates available"));
+            return Err(OrchestrationError::NoSubstrates);
         }
 
         match self {
@@ -58,7 +57,7 @@ impl SelectionPolicy {
         substrates: &[SubstrateHandle],
         request: &WorkloadRequest,
         history: &PerformanceHistory,
-    ) -> Result<Vec<(SubstrateHandle, f64)>> {
+    ) -> Result<Vec<(SubstrateHandle, f64)>, OrchestrationError> {
         let mut ranked: Vec<_> = substrates
             .iter()
             .map(|s| {
@@ -77,7 +76,7 @@ impl SelectionPolicy {
         &self,
         substrates: &[SubstrateHandle],
         history: &PerformanceHistory,
-    ) -> Result<SubstrateHandle> {
+    ) -> Result<SubstrateHandle, OrchestrationError> {
         let mut best = substrates[0].clone();
         let mut best_duration = history
             .average_duration_for(best.substrate_type())
@@ -98,7 +97,10 @@ impl SelectionPolicy {
     }
 
     /// Select most energy-efficient substrate
-    fn select_most_efficient(&self, substrates: &[SubstrateHandle]) -> Result<SubstrateHandle> {
+    fn select_most_efficient(
+        &self,
+        substrates: &[SubstrateHandle],
+    ) -> Result<SubstrateHandle, OrchestrationError> {
         let mut best = substrates[0].clone();
         let mut best_power = best.capabilities().power_watts;
 
@@ -119,7 +121,7 @@ impl SelectionPolicy {
         substrates: &[SubstrateHandle],
         request: &WorkloadRequest,
         history: &PerformanceHistory,
-    ) -> Result<SubstrateHandle> {
+    ) -> Result<SubstrateHandle, OrchestrationError> {
         let mut best = substrates[0].clone();
         let mut best_score = self.score_substrate(&best, request, history);
 
@@ -193,6 +195,7 @@ mod tests {
     use async_trait::async_trait;
     use std::sync::Arc;
     use toadstool_runtime_universal::substrate::*;
+    use toadstool_runtime_universal::SubstrateError;
 
     struct MockSubstrate {
         name: String,
@@ -216,7 +219,10 @@ mod tests {
             caps
         }
 
-        async fn execute_buffer_op(&self, _op: BufferOperation) -> Result<BufferOutput> {
+        async fn execute_buffer_op(
+            &self,
+            _op: BufferOperation,
+        ) -> Result<BufferOutput, SubstrateError> {
             Ok(BufferOutput::default())
         }
     }

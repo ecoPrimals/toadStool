@@ -183,7 +183,7 @@ impl NaturalLanguageConfig {
     ///
     /// NOTE: Pass-through implementation - configuration validation happens
     /// elsewhere in the pipeline. Reserved for future optimization passes.
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Reserved: future config optimization passes
     async fn validate_and_optimize(
         &self,
         config: ToadStoolConfig,

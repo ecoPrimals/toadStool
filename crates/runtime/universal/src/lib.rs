@@ -30,10 +30,10 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use toadstool_runtime_universal::UniversalRuntime;
+//! use toadstool_runtime_universal::{ComputeError, UniversalRuntime};
 //!
 //! #[tokio::main]
-//! async fn main() -> anyhow::Result<()> {
+//! async fn main() -> Result<(), ComputeError> {
 //!     // Discover all available compute units
 //!     let runtime = UniversalRuntime::discover().await?;
 //!     
@@ -54,12 +54,14 @@
 
 pub mod backends;
 pub mod capabilities;
+pub mod error;
 pub mod runtime;
 pub mod substrate; // ✅ NEW: Simplified substrate abstraction
 pub mod types;
 
 pub use backends::*;
 pub use capabilities::*;
+pub use error::SubstrateError;
 pub use runtime::*;
 pub use substrate::*; // ✅ Export substrate traits
 pub use types::*;

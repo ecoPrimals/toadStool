@@ -5,7 +5,7 @@
 //! - Configuration files (TOML)
 //! - Runtime overrides
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -111,10 +111,12 @@ impl ServiceDiscoveryConfig {
     /// - The TOML syntax is invalid or cannot be parsed
     #[must_use = "Configuration loading should be checked"]
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
-        let contents = std::fs::read_to_string(path.as_ref())
-            .with_context(|| format!("Failed to read config file: {}", path.as_ref().display()))?;
+        let contents = std::fs::read_to_string(path.as_ref()).context(format!(
+            "Failed to read config file: {}",
+            path.as_ref().display()
+        ))?;
 
-        toml::from_str(&contents).with_context(|| "Failed to parse TOML configuration")
+        toml::from_str(&contents).context("Failed to parse TOML configuration")
     }
 
     /// Load configuration from default locations
@@ -170,8 +172,10 @@ impl ServiceDiscoveryConfig {
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
         let toml = toml::to_string_pretty(self).context("Failed to serialize configuration")?;
 
-        std::fs::write(path.as_ref(), toml)
-            .with_context(|| format!("Failed to write config to: {}", path.as_ref().display()))?;
+        std::fs::write(path.as_ref(), toml).context(format!(
+            "Failed to write config to: {}",
+            path.as_ref().display()
+        ))?;
 
         Ok(())
     }

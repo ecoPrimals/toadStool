@@ -55,7 +55,7 @@ tarpc = "*"         # JSON-RPC
 use toadstool_display::{DisplayServer, WindowManager};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> toadstool_display::Result<()> {
     let manager = WindowManager::new().await?;
     let server = DisplayServer::new(manager)
         .bind("/run/user/1000/toadstool/display.sock")
@@ -71,7 +71,7 @@ async fn main() -> anyhow::Result<()> {
 use toadstool_display::{DisplayClient, WindowId};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> toadstool_display::Result<()> {
     let client = DisplayClient::connect(
         "/run/user/1000/toadstool/display.sock"
     ).await?;

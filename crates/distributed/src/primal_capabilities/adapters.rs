@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use super::registry::Capability;
-use anyhow::Result;
+use crate::error::DistributedError;
 
 /// Trait for primal adapters
 ///
@@ -22,20 +22,23 @@ pub trait PrimalAdapter: Send + Sync {
     fn endpoint(&self) -> &str;
 
     /// Register capabilities with the primal
-    async fn register_capabilities(&self, capabilities: Vec<Capability>) -> Result<()>;
+    async fn register_capabilities(
+        &self,
+        capabilities: Vec<Capability>,
+    ) -> Result<(), DistributedError>;
 
     /// Send heartbeat to the primal
-    async fn send_heartbeat(&self) -> Result<()>;
+    async fn send_heartbeat(&self) -> Result<(), DistributedError>;
 
     /// Notify primal of capability change
     async fn notify_capability_change(
         &self,
         capability: &Capability,
         available: bool,
-    ) -> Result<()>;
+    ) -> Result<(), DistributedError>;
 
     /// Deregister from the primal
-    async fn deregister(&self) -> Result<()>;
+    async fn deregister(&self) -> Result<(), DistributedError>;
 }
 
 /// Songbird primal adapter
@@ -62,7 +65,7 @@ impl SongbirdAdapter {
     /// Returns an error if:
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
-    pub fn new(songbird_endpoint: &str) -> Result<Self> {
+    pub fn new(songbird_endpoint: &str) -> Result<Self, DistributedError> {
         // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
         // Note: This function is sync, so we use the tokio blocking bridge
         let socket_path = if let Ok(handle) = tokio::runtime::Handle::try_current() {
@@ -78,12 +81,8 @@ impl SongbirdAdapter {
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         // Get ToadStool's own endpoint from environment (required - primal self-knowledge)
-        let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT").map_err(|_| {
-            anyhow::anyhow!(
-                "TOADSTOOL_ENDPOINT not set - primal must know its own endpoint for discovery. \
-                 Set via environment variable or configuration file."
-            )
-        })?;
+        let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT")
+            .map_err(|_| DistributedError::ToadstoolEndpointNotSet)?;
 
         Ok(Self {
             endpoint: songbird_endpoint.to_string(),
@@ -94,7 +93,10 @@ impl SongbirdAdapter {
 
     /// Create adapter with explicit endpoint (for testing/development)
     #[cfg(test)]
-    pub fn new_with_endpoint(songbird_endpoint: &str, toadstool_endpoint: String) -> Result<Self> {
+    pub fn new_with_endpoint(
+        songbird_endpoint: &str,
+        toadstool_endpoint: String,
+    ) -> Result<Self, DistributedError> {
         // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
         let socket_path = if let Ok(handle) = tokio::runtime::Handle::try_current() {
             handle
@@ -126,7 +128,10 @@ impl PrimalAdapter for SongbirdAdapter {
         &self.endpoint
     }
 
-    async fn register_capabilities(&self, capabilities: Vec<Capability>) -> Result<()> {
+    async fn register_capabilities(
+        &self,
+        capabilities: Vec<Capability>,
+    ) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let registration = SongbirdRegistrationRequest {
             service_id: "toadstool".to_string(),
@@ -157,7 +162,7 @@ impl PrimalAdapter for SongbirdAdapter {
             .rpc_client
             .call("songbird.register_capabilities", params)
             .await
-            .map_err(|e| anyhow::anyhow!("Songbird registration failed: {e}"))?;
+            .map_err(|e| DistributedError::SongbirdRegistration(e.to_string()))?;
 
         tracing::info!(
             "Successfully registered {} capabilities with Songbird via unix socket",
@@ -167,7 +172,7 @@ impl PrimalAdapter for SongbirdAdapter {
         Ok(())
     }
 
-    async fn send_heartbeat(&self) -> Result<()> {
+    async fn send_heartbeat(&self) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let heartbeat = SongbirdHeartbeat {
             service_id: "toadstool".to_string(),
@@ -193,7 +198,7 @@ impl PrimalAdapter for SongbirdAdapter {
         &self,
         capability: &Capability,
         available: bool,
-    ) -> Result<()> {
+    ) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let update = SongbirdCapabilityUpdate {
             service_id: "toadstool".to_string(),
@@ -216,7 +221,7 @@ impl PrimalAdapter for SongbirdAdapter {
         Ok(())
     }
 
-    async fn deregister(&self) -> Result<()> {
+    async fn deregister(&self) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let request = SongbirdDeregisterRequest {
             service_id: "toadstool".to_string(),

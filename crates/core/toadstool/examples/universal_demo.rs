@@ -10,7 +10,7 @@ use toadstool::universal::{
 use uuid::Uuid;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> toadstool::ToadStoolResult<()> {
     // Initialize tracing (ignore if already initialized)
     let _ = tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())

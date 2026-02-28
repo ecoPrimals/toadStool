@@ -462,6 +462,19 @@ pub mod lattice;
 // Absorbed from hotSpring v0.6.4 (Feb 2026)
 pub mod physics;
 
+// AlphaFold2 Evoformer primitives (neuralSpring S69 absorption)
+// Triangle multiplication, MSA attention, IPA, triangle attention, backbone update, torsion angles
+pub mod alphafold2;
+
+// Anderson coupling (tight-binding Hamiltonian, groundSpring S69 absorption)
+pub mod anderson_coupling;
+
+// Lanczos eigensolver (symmetric eigenvalue problems, spectral methods)
+pub mod lanczos;
+
+// Statistical ops (f64) — matrix correlation, OLS regression (neuralSpring S69)
+pub mod stats_f64;
+
 // Life-science + analytical chemistry GPU primitives (wetSpring handoff v4, Feb 2026)
 // Smith-Waterman banded alignment, Gillespie SSA, decision-tree inference, Felsenstein pruning
 pub mod bio;

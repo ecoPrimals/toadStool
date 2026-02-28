@@ -1,7 +1,7 @@
 //! Setup verification
 
+use crate::error::{Result, SetupError};
 use crate::pcie::AkidaDevice;
-use anyhow::{bail, Context, Result};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::thread;
@@ -35,13 +35,17 @@ fn verify_pcie_enabled(pcie_address: &str) -> Result<()> {
     let enabled = fs::read_to_string(&enable_path)?;
 
     if enabled.trim() != "1" {
-        bail!("Device {pcie_address} not enabled");
+        return Err(SetupError::Setup(format!(
+            "Device {pcie_address} not enabled"
+        )));
     }
 
     // Check BARs are accessible
     let resource_path = format!("/sys/bus/pci/devices/{pcie_address}/resource0");
     if !std::path::Path::new(&resource_path).exists() {
-        bail!("BAR resources not accessible for {pcie_address}");
+        return Err(SetupError::Setup(format!(
+            "BAR resources not accessible for {pcie_address}"
+        )));
     }
 
     tracing::debug!("✅ {} verified", pcie_address);
@@ -51,12 +55,12 @@ fn verify_pcie_enabled(pcie_address: &str) -> Result<()> {
 fn verify_kernel_module() -> Result<()> {
     let output = std::process::Command::new("lsmod")
         .output()
-        .context("Failed to run lsmod")?;
+        .map_err(|e| SetupError::Setup(format!("Failed to run lsmod: {e}")))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     if !stdout.contains("akida_pcie") {
-        bail!("Kernel module not loaded");
+        return Err(SetupError::Setup("Kernel module not loaded".to_string()));
     }
 
     tracing::debug!("✅ Kernel module verified");
@@ -67,7 +71,7 @@ fn verify_device_nodes() -> Result<()> {
     let nodes = crate::permissions::list_device_nodes()?;
 
     if nodes.is_empty() {
-        bail!("No /dev/akida* nodes found");
+        return Err(SetupError::Setup("No /dev/akida* nodes found".to_string()));
     }
 
     // Check permissions
@@ -76,7 +80,9 @@ fn verify_device_nodes() -> Result<()> {
         let permissions = metadata.permissions();
 
         if permissions.mode() & 0o666 != 0o666 {
-            bail!("Incorrect permissions on {node}");
+            return Err(SetupError::Setup(format!(
+                "Incorrect permissions on {node}"
+            )));
         }
     }
 

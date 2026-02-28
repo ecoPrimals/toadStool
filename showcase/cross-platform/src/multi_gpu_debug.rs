@@ -2,12 +2,11 @@
 //!
 //! Debug why pipeline caching breaks across multiple GPUs
 
-use anyhow::Result;
 use barracuda::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)
@@ -30,7 +29,7 @@ async fn main() -> Result<()> {
     for idx in 0..pool.devices().len() {
         let device = pool
             .device(idx)
-            .ok_or_else(|| anyhow::anyhow!("No device"))?;
+            .ok_or_else(|| std::io::Error::other("No device"))?;
         let wgpu_device = device.device();
         let device_id = wgpu_device.global_id();
 

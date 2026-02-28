@@ -6,12 +6,12 @@
 //!
 //! These operations are essential for neural networks and scientific computing.
 
-use anyhow::Result;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Transpose & Softmax Demo            ║");
     println!("║  barraCuda Phase 1 - Data Movement & Normalization      ║");

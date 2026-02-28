@@ -8,7 +8,6 @@
 //! This demonstrates true heterogeneous computing across all available silicon.
 
 use akida_driver::{select_backend, BackendSelection};
-use anyhow::Result;
 use barracuda::linalg::sparse::{cg_solve, CsrMatrix};
 use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
 use barracuda::tensor::Tensor;
@@ -37,7 +36,7 @@ struct EnsembleResult {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt::init();
 
     println!("╔══════════════════════════════════════════════════════════════════════╗");
@@ -167,7 +166,7 @@ async fn main() -> Result<()> {
             .await
             .ok();
 
-            Ok::<_, anyhow::Error>(())
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
         });
     }
 
@@ -200,7 +199,7 @@ async fn main() -> Result<()> {
             .await
             .ok();
 
-            Ok::<_, anyhow::Error>(())
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
         });
     }
 
@@ -229,7 +228,7 @@ async fn main() -> Result<()> {
             .await
             .ok();
 
-            Ok::<_, anyhow::Error>(())
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
         });
     }
 
@@ -285,7 +284,7 @@ async fn main() -> Result<()> {
             .await
             .ok();
 
-            Ok::<_, anyhow::Error>(())
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
         });
     }
 

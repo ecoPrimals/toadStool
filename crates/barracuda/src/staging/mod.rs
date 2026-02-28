@@ -22,10 +22,12 @@
 //! - Batched async output (no blocking on readback)
 //! - Capability-based configuration
 
+mod pipeline;
 mod ring_buffer;
 mod stateful;
 mod unidirectional;
 
+pub use pipeline::{PipelineBuilder, Stage, StageLink, StreamingPipeline};
 pub use ring_buffer::{
     BufferDirection, GpuRingBuffer, RingBufferConfig, RingBufferStats, WriteHandle,
 };

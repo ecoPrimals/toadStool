@@ -6,6 +6,29 @@ use crate::device::test_pool::{
 };
 use crate::tensor::Tensor;
 
+const TRIANGULAR_SOLVE_F32_SHADER: &str =
+    include_str!("../../../shaders/linalg/triangular_solve.wgsl");
+const TRIANGULAR_SOLVE_F64_SHADER: &str =
+    include_str!("../../../shaders/linalg/triangular_solve_f64.wgsl");
+
+#[test]
+fn triangular_solve_f32_shader_source_valid() {
+    assert!(!TRIANGULAR_SOLVE_F32_SHADER.is_empty());
+    assert!(
+        TRIANGULAR_SOLVE_F32_SHADER.contains("fn ")
+            || TRIANGULAR_SOLVE_F32_SHADER.contains("@compute")
+    );
+}
+
+#[test]
+fn triangular_solve_f64_shader_source_valid() {
+    assert!(!TRIANGULAR_SOLVE_F64_SHADER.is_empty());
+    assert!(
+        TRIANGULAR_SOLVE_F64_SHADER.contains("fn ")
+            || TRIANGULAR_SOLVE_F64_SHADER.contains("@compute")
+    );
+}
+
 #[tokio::test]
 async fn test_forward_substitution_2x2() {
     let Some(device) = get_test_device_if_gpu_available().await else {

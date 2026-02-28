@@ -43,7 +43,7 @@
 //! }
 //! ```
 
-use anyhow::Result;
+use crate::error::SubstrateError;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -67,12 +67,15 @@ pub trait ComputeSubstrate: Send + Sync {
     /// Execute a buffer operation
     ///
     /// **Deep Debt**: Simple, generic operation interface
-    async fn execute_buffer_op(&self, operation: BufferOperation) -> Result<BufferOutput>;
+    async fn execute_buffer_op(
+        &self,
+        operation: BufferOperation,
+    ) -> Result<BufferOutput, SubstrateError>;
 
     /// Measure power consumption (optional, returns estimate if unavailable)
     ///
     /// **Deep Debt**: Measure actual power, don't hardcode
-    async fn measure_power(&self) -> Result<PowerMeasurement> {
+    async fn measure_power(&self) -> Result<PowerMeasurement, SubstrateError> {
         // Default: Estimate based on substrate type
         Ok(PowerMeasurement::estimated_for_type(self.substrate_type()))
     }
@@ -80,7 +83,10 @@ pub trait ComputeSubstrate: Send + Sync {
     /// Profile operation performance
     ///
     /// **Deep Debt**: Profile actual performance, don't hardcode
-    async fn profile_operation(&self, operation: &BufferOperation) -> Result<PerformanceMetrics> {
+    async fn profile_operation(
+        &self,
+        operation: &BufferOperation,
+    ) -> Result<PerformanceMetrics, SubstrateError> {
         let start = std::time::Instant::now();
         let _ = self.execute_buffer_op(operation.clone()).await?;
         let duration = start.elapsed();
@@ -418,7 +424,7 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
             .substrate
             .execute_buffer_op(buffer_op)
             .await
-            .map_err(|e| ComputeError::ExecutionFailed(e.to_string()))?;
+            .map_err(|e: SubstrateError| ComputeError::ExecutionFailed(e.to_string()))?;
         let duration = start.elapsed();
 
         // Convert BufferOutput → Output
@@ -488,7 +494,10 @@ mod tests {
             SubstrateType::Cpu
         }
 
-        async fn execute_buffer_op(&self, operation: BufferOperation) -> Result<BufferOutput> {
+        async fn execute_buffer_op(
+            &self,
+            operation: BufferOperation,
+        ) -> Result<BufferOutput, SubstrateError> {
             Ok(BufferOutput {
                 data: vec![0; operation.buffer_size()],
                 metadata: BufferMetadata {

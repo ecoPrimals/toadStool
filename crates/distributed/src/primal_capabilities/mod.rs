@@ -61,7 +61,7 @@ pub use adapters::{PrimalAdapter, SongbirdAdapter};
 pub use registry::{Capability, CapabilityRegistry};
 pub use workload::{WorkloadExecutor, WorkloadRequest, WorkloadResponse};
 
-use anyhow::Result;
+use crate::error::DistributedError;
 
 /// Primal-agnostic capability provider
 ///
@@ -90,7 +90,10 @@ impl CapabilityProvider {
     /// Register capabilities with a primal endpoint
     ///
     /// This is primal-agnostic - works with Songbird, Squirrel, or any future primal
-    pub async fn register_with_primal(&self, primal_endpoint: &str) -> Result<()> {
+    pub async fn register_with_primal(
+        &self,
+        primal_endpoint: &str,
+    ) -> Result<(), DistributedError> {
         // Auto-detect primal type from endpoint or use generic adapter
         let adapter = self.create_adapter_for_endpoint(primal_endpoint).await?;
 
@@ -109,7 +112,7 @@ impl CapabilityProvider {
     }
 
     /// Send heartbeat to all connected primals
-    pub async fn send_heartbeats(&self) -> Result<()> {
+    pub async fn send_heartbeats(&self) -> Result<(), DistributedError> {
         let adapters = self.adapters.read().await;
 
         for (endpoint, adapter) in adapters.iter() {
@@ -122,7 +125,10 @@ impl CapabilityProvider {
     }
 
     /// Handle an incoming workload request from any primal
-    pub async fn handle_workload(&self, request: WorkloadRequest) -> Result<WorkloadResponse> {
+    pub async fn handle_workload(
+        &self,
+        request: WorkloadRequest,
+    ) -> Result<WorkloadResponse, DistributedError> {
         self.executor.execute(request).await
     }
 
@@ -133,7 +139,11 @@ impl CapabilityProvider {
     }
 
     /// Update capabilities (e.g., when GPU becomes available/unavailable)
-    pub async fn update_capability(&self, capability: Capability, available: bool) -> Result<()> {
+    pub async fn update_capability(
+        &self,
+        capability: Capability,
+        available: bool,
+    ) -> Result<(), DistributedError> {
         // Clone for later notification
         let cap_for_notification = capability.clone();
 
@@ -155,7 +165,10 @@ impl CapabilityProvider {
     }
 
     /// Create appropriate adapter for a primal endpoint
-    async fn create_adapter_for_endpoint(&self, endpoint: &str) -> Result<Box<dyn PrimalAdapter>> {
+    async fn create_adapter_for_endpoint(
+        &self,
+        endpoint: &str,
+    ) -> Result<Box<dyn PrimalAdapter>, DistributedError> {
         // Auto-detect primal type from endpoint or use generic adapter
         if endpoint.contains("songbird") || endpoint.contains("8080") {
             Ok(Box::new(SongbirdAdapter::new(endpoint)?))

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-//! Batch HMM forward algorithm (f64, GPU).
+//! Batch HMM algorithms (f64, GPU) — forward, backward, Viterbi.
 //!
 //! One thread per observation sequence. Sequential over T time steps within
 //! each sequence, parallel across B sequences. All computation in log-domain
@@ -9,14 +9,18 @@
 //! ## Absorbed from
 //!
 //! wetSpring handoff v6, `hmm_forward_f64.wgsl` — 13/13 GPU checks PASS.
+//! neuralSpring S69, `hmm_backward_log_f64.wgsl` + `hmm_viterbi_f64.wgsl`.
 //! Polyfill required for Ada Lovelace (uses f64 exp/log in `log_sum_exp2`).
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 
 const SHADER: &str = include_str!("../../shaders/bio/hmm_forward_f64.wgsl");
+const SHADER_BACKWARD: &str = include_str!("../../shaders/bio/hmm_backward_log_f64.wgsl");
+const SHADER_VITERBI: &str = include_str!("../../shaders/bio/hmm_viterbi_f64.wgsl");
 
 /// Log-domain f32 HMM forward shader (neuralSpring metalForge provenance).
 ///
@@ -43,49 +47,11 @@ struct HmmParams {
 /// Batch HMM forward pass on GPU.
 pub struct HmmBatchForwardF64 {
     device: Arc<WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
 }
 
 impl HmmBatchForwardF64 {
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let module = device.compile_shader_f64(SHADER, Some("hmm_forward_f64"));
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("HmmForward:bgl"),
-                entries: &[
-                    bgl_uniform(0),
-                    bgl_storage(1, true),  // log_trans
-                    bgl_storage(2, true),  // log_emit
-                    bgl_storage(3, true),  // log_pi
-                    bgl_storage(4, true),  // observations
-                    bgl_storage(5, false), // log_alpha_out
-                    bgl_storage(6, false), // log_lik_out
-                ],
-            });
-        let layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("HmmForward:layout"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("HmmForward:pipeline"),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: "main",
-                compilation_options: Default::default(),
-                cache: None,
-            });
-        Ok(Self {
-            device,
-            pipeline,
-            bgl,
-        })
+        Ok(Self { device })
     }
 
     /// Dispatch the forward pass on GPU-resident buffers.
@@ -109,79 +75,127 @@ impl HmmBatchForwardF64 {
             n_steps,
             n_seqs,
         };
-        let params_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("HmmForward:params"),
-            size: std::mem::size_of::<HmmParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        self.device
-            .queue
-            .write_buffer(&params_buf, 0, bytemuck::bytes_of(&params));
+        let params_buf = self
+            .device
+            .create_uniform_buffer("HmmForward:params", &params);
 
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("HmmForward:bg"),
-                layout: &self.bgl,
-                entries: &[
-                    bg_entry(0, &params_buf),
-                    bg_entry(1, log_trans),
-                    bg_entry(2, log_emit),
-                    bg_entry(3, log_pi),
-                    bg_entry(4, observations),
-                    bg_entry(5, log_alpha_out),
-                    bg_entry(6, log_lik_out),
-                ],
-            });
-
-        let mut enc = self
-            .device
-            .device
-            .create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(n_seqs.div_ceil(256), 1, 1);
-        }
-        self.device.submit_and_poll(Some(enc.finish()));
+        let wg_count = n_seqs.div_ceil(256);
+        ComputeDispatch::new(&*self.device, "hmm_forward")
+            .shader(SHADER, "main")
+            .f64()
+            .uniform(0, &params_buf)
+            .storage_read(1, log_trans)
+            .storage_read(2, log_emit)
+            .storage_read(3, log_pi)
+            .storage_read(4, observations)
+            .storage_rw(5, log_alpha_out)
+            .storage_rw(6, log_lik_out)
+            .dispatch(wg_count, 1, 1)
+            .submit();
         Ok(())
     }
 }
 
-fn bg_entry(binding: u32, buf: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
-    wgpu::BindGroupEntry {
-        binding,
-        resource: buf.as_entire_binding(),
-    }
+// ── HMM Backward (log-domain, ComputeDispatch) ─────────────────────────────
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct HmmBackwardParams {
+    t_steps: u32,
+    n_states: u32,
 }
 
-fn bgl_uniform(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
+/// Batch HMM backward pass (β) on GPU via ComputeDispatch.
+///
+/// Computes log-domain backward variables for posterior decoding.
+/// Single workgroup — sequential over time, parallel across states.
+pub fn hmm_backward(
+    device: &Arc<WgpuDevice>,
+    log_trans: &[f64],
+    log_emit: &[f64],
+    t_steps: u32,
+    n_states: u32,
+) -> Result<Vec<f64>> {
+    let out_len = (t_steps * n_states) as usize;
+    let trans_buf = device.create_buffer_f64_init("hmm_bwd:trans", log_trans);
+    let emit_buf = device.create_buffer_f64_init("hmm_bwd:emit", log_emit);
+    let out_buf = device.create_buffer_f64(out_len)?;
+    let params = HmmBackwardParams { t_steps, n_states };
+    let params_buf = device.create_uniform_buffer("hmm_bwd:params", &params);
+
+    ComputeDispatch::new(device, "hmm_backward")
+        .shader(SHADER_BACKWARD, "main")
+        .f64()
+        .storage_read(0, &trans_buf)
+        .storage_read(1, &emit_buf)
+        .storage_rw(2, &out_buf)
+        .uniform(3, &params_buf)
+        .dispatch(1, 1, 1)
+        .submit();
+
+    device.read_f64_buffer(&out_buf, out_len)
 }
 
-fn bgl_storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
+// ── HMM Viterbi Decoding (ComputeDispatch) ──────────────────────────────────
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct HmmViterbiParams {
+    t_steps: u32,
+    n_states: u32,
+}
+
+/// Viterbi decoding result.
+#[derive(Debug, Clone)]
+pub struct ViterbiResult {
+    pub path: Vec<u32>,
+    pub delta: Vec<f64>,
+    pub psi: Vec<u32>,
+}
+
+/// Batch HMM Viterbi decoding on GPU via ComputeDispatch.
+///
+/// Finds the maximum-likelihood state sequence. Single workgroup dispatch
+/// (sequential over time steps).
+pub fn hmm_viterbi(
+    device: &Arc<WgpuDevice>,
+    log_trans: &[f64],
+    log_emit: &[f64],
+    log_init: &[f64],
+    t_steps: u32,
+    n_states: u32,
+) -> Result<ViterbiResult> {
+    let path_len = t_steps as usize;
+    let delta_len = (t_steps * n_states) as usize;
+    let psi_len = delta_len;
+
+    let trans_buf = device.create_buffer_f64_init("viterbi:trans", log_trans);
+    let emit_buf = device.create_buffer_f64_init("viterbi:emit", log_emit);
+    let init_buf = device.create_buffer_f64_init("viterbi:init", log_init);
+    let path_buf = device.create_buffer_u32(path_len)?;
+    let delta_buf = device.create_buffer_f64(delta_len)?;
+    let psi_buf = device.create_buffer_u32(psi_len)?;
+    let params = HmmViterbiParams { t_steps, n_states };
+    let params_buf = device.create_uniform_buffer("viterbi:params", &params);
+
+    ComputeDispatch::new(device, "hmm_viterbi")
+        .shader(SHADER_VITERBI, "main")
+        .f64()
+        .storage_read(0, &trans_buf)
+        .storage_read(1, &emit_buf)
+        .storage_read(2, &init_buf)
+        .storage_rw(3, &path_buf)
+        .storage_rw(4, &delta_buf)
+        .storage_rw(5, &psi_buf)
+        .uniform(6, &params_buf)
+        .dispatch(1, 1, 1)
+        .submit();
+
+    let path = device.read_buffer_u32(&path_buf, path_len)?;
+    let delta = device.read_f64_buffer(&delta_buf, delta_len)?;
+    let psi = device.read_buffer_u32(&psi_buf, psi_len)?;
+
+    Ok(ViterbiResult { path, delta, psi })
 }
 
 #[cfg(test)]
@@ -192,5 +206,37 @@ mod tests {
     fn shader_source_valid() {
         assert!(SHADER.contains("log_sum_exp2"));
         assert!(SHADER.contains("HmmParams"));
+    }
+
+    #[test]
+    fn backward_shader_source_valid() {
+        assert!(SHADER_BACKWARD.contains("HmmBackwardParams"));
+    }
+
+    #[test]
+    fn viterbi_shader_source_valid() {
+        assert!(SHADER_VITERBI.contains("HmmViterbiParams"));
+    }
+
+    #[test]
+    fn test_backward_shader_contains_entrypoint() {
+        assert!(SHADER_BACKWARD.contains("@compute"));
+        assert!(SHADER_BACKWARD.contains("fn main"));
+    }
+
+    #[test]
+    fn test_viterbi_shader_contains_entrypoint() {
+        assert!(SHADER_VITERBI.contains("@compute"));
+        assert!(SHADER_VITERBI.contains("fn main"));
+    }
+
+    #[test]
+    fn params_layout_backward() {
+        assert_eq!(std::mem::size_of::<HmmBackwardParams>(), 8);
+    }
+
+    #[test]
+    fn params_layout_viterbi() {
+        assert_eq!(std::mem::size_of::<HmmViterbiParams>(), 8);
     }
 }

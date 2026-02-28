@@ -18,6 +18,46 @@ pub struct ExportedWeights {
     pub w_out: Option<Vec<f32>>,
 }
 
+impl ExportedWeights {
+    /// Migrate a single-head weight snapshot to a multi-head ESN.
+    ///
+    /// The reservoir weights (`w_in`, `w_res`) are preserved unchanged.
+    /// If `w_out` was trained for 1 head, it is replicated across all
+    /// `new_output_size` heads. If `w_out` is `None`, it remains `None`.
+    ///
+    /// hotSpring v0.6.15 absorption: enables 1-head → 11-head migration.
+    pub fn migrate_to_multi_head(
+        &self,
+        reservoir_size: usize,
+        new_output_size: usize,
+    ) -> BarracudaResult<Self> {
+        let mut migrated = self.clone();
+        if let Some(ref w_out) = self.w_out {
+            let old_outputs = w_out.len() / reservoir_size;
+            if old_outputs == 0 || w_out.len() % reservoir_size != 0 {
+                return Err(BarracudaError::InvalidInput {
+                    message: format!(
+                        "w_out length {} not divisible by reservoir_size {}",
+                        w_out.len(),
+                        reservoir_size
+                    ),
+                });
+            }
+            if old_outputs == new_output_size {
+                return Ok(migrated);
+            }
+            let mut new_w_out = Vec::with_capacity(new_output_size * reservoir_size);
+            for head in 0..new_output_size {
+                let src_head = head % old_outputs;
+                let src_start = src_head * reservoir_size;
+                new_w_out.extend_from_slice(&w_out[src_start..src_start + reservoir_size]);
+            }
+            migrated.w_out = Some(new_w_out);
+        }
+        Ok(migrated)
+    }
+}
+
 /// Hardware-Agnostic Echo State Network
 ///
 /// **Uses BarraCuda Tensors** - Works on CPU, GPU, NPU!

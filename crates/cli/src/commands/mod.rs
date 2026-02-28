@@ -5,6 +5,7 @@
 mod definitions;
 pub use definitions::{Commands, EcosystemCommands, UniversalCommands};
 
+pub mod dispatch;
 pub mod doctor;
 
 // NPU commands require akida-driver (optional)

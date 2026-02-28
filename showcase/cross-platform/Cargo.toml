@@ -159,9 +159,6 @@ burn-inference = { path = "../../crates/ml/burn-inference" }
 tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "time"] }
 futures = "0.3"
 
-# Error handling
-anyhow = "1.0"
-
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

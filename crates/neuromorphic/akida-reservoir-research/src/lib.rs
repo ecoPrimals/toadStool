@@ -28,11 +28,13 @@
 #![allow(dead_code)] // Research crate, many components not yet used
 
 pub mod ensemble;
+pub mod error;
 pub mod readout;
 pub mod reservoir;
 pub mod state_extraction;
 
 pub use ensemble::{DualChipEnsemble, EnsembleConfig};
+pub use error::{ReservoirError, Result as ReservoirResult};
 pub use readout::{ReadoutPredictor, ReadoutTrainer};
 pub use reservoir::{ReservoirConfig, ReservoirGenerator};
 pub use state_extraction::{LayerActivations, StateExtractor};

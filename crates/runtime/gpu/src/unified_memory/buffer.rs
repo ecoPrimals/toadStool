@@ -134,24 +134,23 @@ impl UnifiedBuffer {
     ///
     /// # Guarantees
     /// - Pointer is validated (not null, properly aligned, allocation exists)
-    /// - Size is valid (checked at creation and validation)
+    /// - Size is valid (checked at creation and validate_cpu_ptr)
+    /// - Bounds: slice covers [0..size], caller must bounds-check offset+len
     /// - Exclusive access via &mut self
-    ///
-    /// # DEEP DEBT EVOLUTION:
-    /// EVOLVED: Returns Result instead of panicking!
-    /// From: Panic on error (not composable)
-    /// To: Result (caller handles error)
     fn as_cpu_slice_mut(&mut self) -> ToadStoolResult<&mut [u8]> {
-        // DEEP DEBT: Validate before every use!
         self.validate_cpu_ptr()?;
 
+        debug_assert!(
+            self.size > 0,
+            "Buffer size must be > 0 (validated by validate_cpu_ptr)"
+        );
         // UNAVOIDABLE UNSAFE: from_raw_parts_mut - no safe alternative when wrapping
-        // backend-returned raw pointer for slice access. bytemuck::cast_slice is for
-        // type conversion, not ptr→slice.
+        // backend-returned raw pointer for slice access.
         //
         // SAFETY: (1) cpu_ptr NonNull, validated (alignment, allocation, not NULL page);
         // (2) size validated at creation and in validate_cpu_ptr; (3) exclusive &mut self;
-        // (4) ptr from backend allocation, valid for buffer lifetime; (5) u8 align=1.
+        // (4) ptr from backend allocation, valid for size bytes; (5) u8 align=1;
+        // (6) write_async/read_async/fill bounds-check before using subslice.
         Ok(unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) })
     }
 
@@ -163,23 +162,23 @@ impl UnifiedBuffer {
     ///
     /// # Guarantees
     /// - Pointer is validated (not null, properly aligned, allocation exists)
-    /// - Size is valid (checked at creation and validation)
+    /// - Size is valid (checked at creation and validate_cpu_ptr)
+    /// - Bounds: slice covers [0..size], caller must bounds-check offset+len
     /// - Shared access via &self (Rust ensures no concurrent writes)
-    ///
-    /// # DEEP DEBT EVOLUTION:
-    /// EVOLVED: Returns Result instead of panicking!
-    /// From: Panic on error (not composable)
-    /// To: Result (caller handles error)
     fn as_cpu_slice(&self) -> ToadStoolResult<&[u8]> {
-        // DEEP DEBT: Validate before every use!
         self.validate_cpu_ptr()?;
 
+        debug_assert!(
+            self.size > 0,
+            "Buffer size must be > 0 (validated by validate_cpu_ptr)"
+        );
         // UNAVOIDABLE UNSAFE: from_raw_parts - no safe alternative when wrapping
         // backend-returned raw pointer for slice access.
         //
         // SAFETY: (1) cpu_ptr NonNull, validated (alignment, allocation, not NULL page);
         // (2) size validated; (3) &self gives shared access, no concurrent mutation;
-        // (4) ptr from backend allocation, valid for buffer lifetime; (5) u8 align=1.
+        // (4) ptr from backend allocation, valid for size bytes; (5) u8 align=1;
+        // (6) read_async bounds-checks offset+len before using subslice.
         Ok(unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) })
     }
 

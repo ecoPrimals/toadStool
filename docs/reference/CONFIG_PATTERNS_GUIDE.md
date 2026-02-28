@@ -638,9 +638,9 @@ health_expected_status = 200
 ## Related Documents
 
 - `crates/core/common/src/config_bases.rs` - Base config implementations
-- `crates/core/config/src/defaults.rs` - Default constants
+- `crates/core/config/src/defaults/` - Default constants (module directory)
 - `crates/cli/src/network_config/types.rs` - Example usage
-- `📊_UNIFICATION_CONSOLIDATION_REPORT_NOV_8_2025.md` - Unification status
+- See CHANGELOG.md for configuration unification history
 
 ---
 

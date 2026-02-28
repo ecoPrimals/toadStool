@@ -40,7 +40,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Error handling
 thiserror = { workspace = true }
-anyhow = "1.0"
 
 # Memory management - Pure Rust Evolution (Feb 12, 2026)
 # OLD: libc = "0.2" (raw C bindings)

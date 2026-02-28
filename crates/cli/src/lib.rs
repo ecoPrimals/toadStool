@@ -5,7 +5,6 @@
 //! The gateway to SOVEREIGN SCIENCE and universal compute capabilities.
 //! Commands for managing biome.yaml manifests and orchestrating distributed workloads.
 
-use anyhow::{Context, Result};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -33,11 +32,66 @@ pub enum CliError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("YAML error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
+
     #[error("System error: {0}")]
     System(String),
 
     #[error("Other error: {0}")]
     Other(String),
+}
+
+impl From<base64::DecodeError> for CliError {
+    fn from(e: base64::DecodeError) -> Self {
+        CliError::Other(e.to_string())
+    }
+}
+
+impl From<std::string::FromUtf8Error> for CliError {
+    fn from(e: std::string::FromUtf8Error) -> Self {
+        CliError::Other(e.to_string())
+    }
+}
+
+impl From<std::net::AddrParseError> for CliError {
+    fn from(e: std::net::AddrParseError) -> Self {
+        CliError::Other(e.to_string())
+    }
+}
+
+impl From<ed25519_dalek::ed25519::Error> for CliError {
+    fn from(e: ed25519_dalek::ed25519::Error) -> Self {
+        CliError::Other(e.to_string())
+    }
+}
+
+impl From<toadstool::ToadStoolError> for CliError {
+    fn from(e: toadstool::ToadStoolError) -> Self {
+        CliError::Other(e.to_string())
+    }
+}
+
+/// CLI result type alias. Use `Result<T>` for CliError, or `Result<T, E>` for other errors (e.g. serde).
+pub type Result<T, E = CliError> = std::result::Result<T, E>;
+
+/// Add context to errors (replacement for anyhow::Context)
+pub trait CliContextExt<T> {
+    fn context<C>(self, context: C) -> Result<T>
+    where
+        C: std::fmt::Display + Send + Sync + 'static;
+}
+
+impl<T, E> CliContextExt<T> for std::result::Result<T, E>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    fn context<C>(self, context: C) -> Result<T>
+    where
+        C: std::fmt::Display + Send + Sync + 'static,
+    {
+        self.map_err(|e| CliError::Other(format!("{}: {}", context, e)))
+    }
 }
 
 pub use commands::{Commands, EcosystemCommands, UniversalCommands};
@@ -308,7 +362,7 @@ pub struct CliContext {
 }
 
 impl CliContext {
-    pub fn new(cli: &Cli) -> Result<Self> {
+    pub fn new(cli: &Cli) -> crate::Result<Self> {
         let working_dir = if let Some(dir) = &cli.directory {
             dir.clone()
         } else {
@@ -330,24 +384,26 @@ impl CliContext {
 /// - `.toml` → TOML parser (pure Rust, no C dependencies)
 /// - `.yaml`, `.yml` → YAML parser (legacy support)
 /// - Other → Try TOML first, fall back to YAML
-pub async fn load_biome_manifest(path: &PathBuf) -> Result<BiomeManifest> {
+pub async fn load_biome_manifest(path: &PathBuf) -> crate::Result<BiomeManifest> {
+    use crate::CliContextExt;
+
     let content = fs::read_to_string(path)
         .await
-        .with_context(|| format!("Failed to read manifest file: {}", path.display()))?;
+        .context(format!("Failed to read manifest file: {}", path.display()))?;
 
     // Determine format from extension (TOML preferred for ecoBin compliance)
     let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
     let manifest: BiomeManifest = match extension.to_lowercase().as_str() {
         "toml" => toml::from_str(&content)
-            .with_context(|| format!("Failed to parse TOML manifest: {}", path.display()))?,
+            .context(format!("Failed to parse TOML manifest: {}", path.display()))?,
         "yaml" | "yml" => serde_yaml::from_str(&content)
-            .with_context(|| format!("Failed to parse YAML manifest: {}", path.display()))?,
+            .context(format!("Failed to parse YAML manifest: {}", path.display()))?,
         _ => {
             // Unknown extension: try TOML first (ecoBin preferred), then YAML
             toml::from_str(&content).or_else(|_| {
                 serde_yaml::from_str(&content)
-                    .with_context(|| format!("Failed to parse manifest: {}", path.display()))
+                    .context(format!("Failed to parse manifest: {}", path.display()))
             })?
         }
     };
@@ -356,7 +412,7 @@ pub async fn load_biome_manifest(path: &PathBuf) -> Result<BiomeManifest> {
 }
 
 /// Validate biome manifest
-pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
+pub fn validate_manifest(manifest: &BiomeManifest) -> crate::Result<Vec<String>> {
     let mut warnings = Vec::new();
 
     // Check for required primals
@@ -389,6 +445,7 @@ pub mod ecosystem;
 pub mod executor;
 pub mod monitoring;
 pub mod network_config;
+pub mod setup;
 pub mod templates;
 pub mod universal;
 pub mod utils;

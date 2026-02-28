@@ -29,6 +29,16 @@ use crate::device::WgpuDevice;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
+// ── Probe tolerances ──────────────────────────────────────────────────────────
+//
+// All probes use f64. Tolerances vary by operation type:
+// - TIGHT: exact arithmetic (basic_f64, fma, abs_min_max)
+// - STANDARD: sqrt, exp2, log2, cos
+// - RELAXED: transcendental exp/log/sin (may be FP32-promoted on some hardware)
+const PROBE_F64_TOLERANCE_TIGHT: f64 = 1e-14;
+const PROBE_F64_TOLERANCE_STANDARD: f64 = 1e-10;
+const PROBE_F64_TOLERANCE_RELAXED: f64 = 1e-6;
+
 // ── Mutex helpers ────────────────────────────────────────────────────────────
 
 /// Acquire a mutex lock, recovering from poison by taking the poisoned data.
@@ -64,6 +74,10 @@ static F64_EXP_PROBE_CACHE: LazyLock<Mutex<HashMap<String, bool>>> =
 /// hardware instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct F64BuiltinCapabilities {
+    /// Can the device compile basic f64 WGSL at all? NAK and NVVM fail this
+    /// despite advertising `SHADER_F64`. When `false`, ALL other fields are
+    /// meaningless and should be treated as `false`.
+    pub basic_f64: bool,
     /// `exp(f64)` — transcendental, crashes on NVK ≤ Mesa 25.2
     pub exp: bool,
     /// `log(f64)` — transcendental, crashes on NVK ≤ Mesa 25.2
@@ -88,6 +102,7 @@ impl F64BuiltinCapabilities {
     /// Conservative fallback: no native builtins — software lib for everything.
     pub const fn none() -> Self {
         Self {
+            basic_f64: false,
             exp: false,
             log: false,
             exp2: false,
@@ -103,6 +118,7 @@ impl F64BuiltinCapabilities {
     /// Full native support (known-good proprietary drivers on FP64 hardware).
     pub const fn full() -> Self {
         Self {
+            basic_f64: true,
             exp: true,
             log: true,
             exp2: true,
@@ -115,13 +131,32 @@ impl F64BuiltinCapabilities {
         }
     }
 
-    /// Whether exp/log workarounds are needed (drives ShaderTemplate patching).
-    pub fn needs_exp_log_workaround(&self) -> bool {
-        !self.exp || !self.log
+    /// Whether the device can compile basic f64 WGSL at all.
+    /// When false, all f64 shaders must use DF64 (f32-pair) instead.
+    pub fn can_compile_f64(&self) -> bool {
+        self.basic_f64
     }
 
-    /// Total count of natively-supported functions.
+    /// Whether exp/log workarounds are needed (drives ShaderTemplate patching).
+    pub fn needs_exp_log_workaround(&self) -> bool {
+        !self.basic_f64 || !self.exp || !self.log
+    }
+
+    /// Whether sin(f64) needs software substitution.
+    pub fn needs_sin_f64_workaround(&self) -> bool {
+        !self.basic_f64 || !self.sin
+    }
+
+    /// Whether cos(f64) needs software substitution.
+    pub fn needs_cos_f64_workaround(&self) -> bool {
+        !self.basic_f64 || !self.cos
+    }
+
+    /// Total count of natively-supported functions (excluding basic_f64 gate).
     pub fn native_count(&self) -> u8 {
+        if !self.basic_f64 {
+            return 0;
+        }
         [
             self.exp,
             self.log,
@@ -143,6 +178,7 @@ impl std::fmt::Display for F64BuiltinCapabilities {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let sym = |b: bool| if b { "✓" } else { "✗" };
         writeln!(f, "  f64 builtin capabilities:")?;
+        writeln!(f, "    basic_f64={}", sym(self.basic_f64))?;
         writeln!(
             f,
             "    exp={} log={} exp2={} log2={}",
@@ -178,6 +214,19 @@ struct ProbeShader {
 
 const PROBES: &[ProbeShader] = &[
     ProbeShader {
+        name: "basic_f64",
+        wgsl: "enable f64;\n\
+               @group(0) @binding(0) var<storage, read_write> out: array<f64>;\n\
+               @compute @workgroup_size(1)\n\
+               fn probe(@builtin(global_invocation_id) _id: vec3<u32>) {\n\
+                   let x: f64 = f64(3.0);\n\
+                   let y: f64 = x * f64(2.0) + f64(1.0);\n\
+                   out[0] = y;\n\
+               }",
+        expected: 7.0,
+        tolerance: PROBE_F64_TOLERANCE_TIGHT,
+    },
+    ProbeShader {
         name: "exp",
         wgsl: "enable f64;\n\
                @group(0) @binding(0) var<storage, read_write> out: array<f64>;\n\
@@ -186,7 +235,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = exp(f64(1.0));\n\
                }",
         expected: std::f64::consts::E,
-        tolerance: 1e-6,
+        tolerance: PROBE_F64_TOLERANCE_RELAXED,
     },
     ProbeShader {
         name: "log",
@@ -197,7 +246,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = log(f64(2.718281828459045));\n\
                }",
         expected: 1.0,
-        tolerance: 1e-6,
+        tolerance: PROBE_F64_TOLERANCE_RELAXED,
     },
     ProbeShader {
         name: "exp2",
@@ -208,7 +257,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = exp2(f64(3.0));\n\
                }",
         expected: 8.0,
-        tolerance: 1e-10,
+        tolerance: PROBE_F64_TOLERANCE_STANDARD,
     },
     ProbeShader {
         name: "log2",
@@ -219,7 +268,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = log2(f64(8.0));\n\
                }",
         expected: 3.0,
-        tolerance: 1e-10,
+        tolerance: PROBE_F64_TOLERANCE_STANDARD,
     },
     ProbeShader {
         name: "sin",
@@ -230,7 +279,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = sin(f64(1.5707963267948966));\n\
                }",
         expected: 1.0,
-        tolerance: 1e-6,
+        tolerance: PROBE_F64_TOLERANCE_RELAXED,
     },
     ProbeShader {
         name: "cos",
@@ -241,7 +290,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = cos(f64(0.0));\n\
                }",
         expected: 1.0,
-        tolerance: 1e-10,
+        tolerance: PROBE_F64_TOLERANCE_STANDARD,
     },
     ProbeShader {
         name: "sqrt",
@@ -252,7 +301,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = sqrt(f64(2.0));\n\
                }",
         expected: std::f64::consts::SQRT_2,
-        tolerance: 1e-10,
+        tolerance: PROBE_F64_TOLERANCE_STANDARD,
     },
     ProbeShader {
         name: "fma",
@@ -263,7 +312,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = fma(f64(2.0), f64(3.0), f64(1.0));\n\
                }",
         expected: 7.0,
-        tolerance: 1e-14,
+        tolerance: PROBE_F64_TOLERANCE_TIGHT,
     },
     ProbeShader {
         name: "abs_min_max",
@@ -277,7 +326,7 @@ const PROBES: &[ProbeShader] = &[
                    out[0] = c;\n\
                }",
         expected: 3.5,
-        tolerance: 1e-14,
+        tolerance: PROBE_F64_TOLERANCE_TIGHT,
     },
 ];
 
@@ -298,6 +347,7 @@ pub async fn probe_f64_builtins(device: &WgpuDevice) -> F64BuiltinCapabilities {
     for probe in PROBES {
         let ok = run_single_probe(device.device(), device.queue(), probe).await;
         match probe.name {
+            "basic_f64" => caps.basic_f64 = ok,
             "exp" => caps.exp = ok,
             "log" => caps.log = ok,
             "exp2" => caps.exp2 = ok,
@@ -308,6 +358,11 @@ pub async fn probe_f64_builtins(device: &WgpuDevice) -> F64BuiltinCapabilities {
             "fma" => caps.fma = ok,
             "abs_min_max" => caps.abs_min_max = ok,
             _ => {}
+        }
+        // If basic f64 compilation fails, skip remaining probes
+        if probe.name == "basic_f64" && !ok {
+            tracing::warn!("Device cannot compile basic f64 WGSL — forcing DF64 for all shaders");
+            break;
         }
     }
 
@@ -371,17 +426,18 @@ pub fn seed_cache_from_heuristics(device: &WgpuDevice) {
     let key = adapter_key(device);
     let mut cache = lock_cache(&F64_CAPS_CACHE);
     cache.entry(key.clone()).or_insert_with(|| {
-        // Heuristic: NVK/RADV have broken transcendentals; proprietary is capable
+        // Heuristic: NVK/RADV have broken transcendentals; proprietary is capable.
+        // Assume basic f64 compiles on all drivers as heuristic -- async probe
+        // overrides with ground truth when it runs.
         let exp_log_works = !device.needs_f64_exp_log_workaround();
         F64BuiltinCapabilities {
+            basic_f64: true,
             exp: exp_log_works,
             log: exp_log_works,
-            // Conservative for transcendentals on open drivers — probe overrides
             exp2: exp_log_works,
             log2: exp_log_works,
             sin: exp_log_works,
             cos: exp_log_works,
-            // These map to non-transcendental hw instructions — assume always work
             sqrt: true,
             fma: true,
             abs_min_max: true,
@@ -558,13 +614,43 @@ mod tests {
     fn test_f64_caps_none() {
         let c = F64BuiltinCapabilities::none();
         assert_eq!(c.native_count(), 0);
+        assert!(!c.can_compile_f64());
         assert!(c.needs_exp_log_workaround());
+        assert!(c.needs_sin_f64_workaround());
+        assert!(c.needs_cos_f64_workaround());
     }
 
     #[test]
     fn test_f64_caps_full() {
         let c = F64BuiltinCapabilities::full();
         assert_eq!(c.native_count(), 9);
+        assert!(c.can_compile_f64());
         assert!(!c.needs_exp_log_workaround());
+        assert!(!c.needs_sin_f64_workaround());
+        assert!(!c.needs_cos_f64_workaround());
+    }
+
+    #[test]
+    fn test_basic_f64_false_forces_zero_native() {
+        let c = F64BuiltinCapabilities {
+            basic_f64: false,
+            exp: true,
+            log: true,
+            exp2: true,
+            log2: true,
+            sin: true,
+            cos: true,
+            sqrt: true,
+            fma: true,
+            abs_min_max: true,
+        };
+        assert_eq!(
+            c.native_count(),
+            0,
+            "basic_f64=false must force native_count to 0"
+        );
+        assert!(c.needs_exp_log_workaround());
+        assert!(c.needs_sin_f64_workaround());
+        assert!(c.needs_cos_f64_workaround());
     }
 }

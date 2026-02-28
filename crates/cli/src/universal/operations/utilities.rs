@@ -2,7 +2,7 @@
 //!
 //! Extension trait for utility helper methods.
 
-use anyhow::Result;
+use crate::Result;
 use std::collections::HashMap;
 use std::future::Future;
 use sysinfo::System;
@@ -278,6 +278,6 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
             }
         }
 
-        anyhow::bail!("No GPU detected")
+        Err(crate::CliError::Other("No GPU detected".to_string()))
     }
 }

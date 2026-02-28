@@ -5,18 +5,24 @@
 //! before dispatch, enabling both legacy `toadstool.*` names and the
 //! standard `{domain}.{operation}` naming convention.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use toadstool::semantic_methods::SemanticMethodRegistry;
 use tracing::{debug, error, info};
 
+use crate::cross_gate::JobRouter;
+use crate::gpu_job_queue::{GpuJobQueue, JobQueueConfig, JobQueueError};
+use crate::ollama::{OllamaClient, OllamaConfig};
+use crate::resource_estimator::ResourceEstimator;
+use crate::resource_optimizer::ResourceOptimizer;
+use crate::resource_validator::ResourceValidator;
 use crate::rpc_types::HealthStatus;
 
 use super::types::{
     JsonRpcError, JsonRpcRequest, JsonRpcResponse, JsonWorkloadSubmission, JSONRPC_VERSION,
 };
-use std::borrow::Cow;
 
 /// Pure Rust JSON-RPC Handler
 ///
@@ -30,6 +36,11 @@ pub struct JsonRpcHandler {
     error_count: Arc<AtomicU64>,
     /// Resolves semantic method names to implementation names for dispatch
     semantic_registry: SemanticMethodRegistry,
+    estimator: ResourceEstimator,
+    validator: ResourceValidator,
+    optimizer: ResourceOptimizer,
+    ollama: OllamaClient,
+    router: Arc<tokio::sync::RwLock<JobRouter>>,
 }
 
 impl JsonRpcHandler {
@@ -41,15 +52,22 @@ impl JsonRpcHandler {
         version: String,
         error_count: Option<Arc<AtomicU64>>,
     ) -> Self {
+        let local_gate_id = std::env::var("HOSTNAME")
+            .or_else(|_| std::env::var("TOADSTOOL_GATE_ID"))
+            .or_else(|_| std::fs::read_to_string("/etc/hostname").map(|h| h.trim().to_string()))
+            .unwrap_or_else(|_| "local".to_string());
         Self {
             executor,
             version,
             start_time: std::time::Instant::now(),
-            job_queue: crate::gpu_job_queue::GpuJobQueue::new(
-                crate::gpu_job_queue::JobQueueConfig::default(),
-            ),
+            job_queue: GpuJobQueue::new(JobQueueConfig::default()),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             semantic_registry: SemanticMethodRegistry::new(),
+            estimator: ResourceEstimator::new(),
+            validator: ResourceValidator::new(),
+            optimizer: ResourceOptimizer::new(),
+            ollama: OllamaClient::new(OllamaConfig::default()),
+            router: Arc::new(tokio::sync::RwLock::new(JobRouter::new(local_gate_id))),
         }
     }
 
@@ -119,12 +137,45 @@ impl JsonRpcHandler {
             "toadstool.health" => return self.health().await,
             "toadstool.version" => return self.version_info().await,
 
+            // Resource handlers (estimate, validate, optimize)
+            "toadstool.resources.estimate" | "resources.estimate" | "ai.local_inference" => {
+                return self.resources_estimate(params).await
+            }
+            "toadstool.resources.validate_availability"
+            | "resources.validate_availability"
+            | "ai.local_execute" => return self.resources_validate_availability(params).await,
+            "toadstool.resources.suggest_optimizations" | "resources.suggest_optimizations" => {
+                return self.resources_suggest_optimizations(params).await
+            }
+
+            // compute.* health/version/capabilities
+            "compute.health" => return self.health().await,
+            "compute.version" => return self.version_info().await,
+            "compute.capabilities" => return self.query_capabilities().await,
+            "compute.discover_capabilities" => return self.discover_capabilities().await,
+
             // GPU job-queue (`compute.*` namespace — distinct from workload executor)
             "compute.submit" => return self.compute_submit(params).await,
             "compute.status" => return self.compute_status(params).await,
             "compute.result" => return self.compute_result(params).await,
             "compute.cancel" => return self.compute_cancel(params).await,
             "compute.list" => return self.compute_list(params).await,
+
+            // GPU info handlers
+            "gpu.info" => return self.gpu_info().await,
+            "gpu.memory" => return self.gpu_memory().await,
+
+            // Ollama handlers
+            "ollama.list_models" => return self.ollama_list_models().await,
+            "ollama.inference" => return self.ollama_inference(params).await,
+            "ollama.load" => return self.ollama_load(params).await,
+            "ollama.unload" => return self.ollama_unload(params).await,
+
+            // Gate/cluster handlers
+            "gate.update" => return self.gate_update(params).await,
+            "gate.remove" => return self.gate_remove(params).await,
+            "gate.list" => return self.gate_list().await,
+            "gate.route" => return self.gate_route(params).await,
 
             _ => {}
         }
@@ -293,18 +344,38 @@ impl JsonRpcHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
 
-        let job_type: crate::gpu_job_queue::JobType = serde::Deserialize::deserialize(params)
-            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid job type: {e}")))?;
-
         let priority = params
             .get("priority")
             .and_then(serde_json::Value::as_u64)
             .and_then(|n| u32::try_from(n).ok())
             .unwrap_or(0);
+        let vram_hint = params
+            .get("vram_required_mb")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(4096);
+
+        let job_type: crate::gpu_job_queue::JobType = serde::Deserialize::deserialize(params)
+            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid job type: {e}")))?;
+
+        let routing = {
+            let router = self.router.read().await;
+            let model = match &job_type {
+                crate::gpu_job_queue::JobType::Inference { model, .. } => model.as_str(),
+                _ => "",
+            };
+            router.route(model, vram_hint)
+        };
 
         match self.job_queue.submit(job_type, priority).await {
-            Ok(job_id) => Ok(serde_json::json!({"job_id": job_id})),
-            Err(e) => Err(JsonRpcError::internal_error(e.to_string())),
+            Ok(job_id) => Ok(serde_json::json!({
+                "job_id": job_id,
+                "routing": {
+                    "gate_id": routing.gate_id,
+                    "reason": routing.reason,
+                    "estimated_wait_ms": routing.estimated_wait_ms,
+                }
+            })),
+            Err(e) => Err(self.job_queue_error(e)),
         }
     }
 
@@ -316,7 +387,7 @@ impl JsonRpcHandler {
         match self.job_queue.status(job_id).await {
             Ok(job) => serde_json::to_value(job)
                 .map_err(|e| JsonRpcError::internal_error(format!("Serialization: {e}"))),
-            Err(e) => Err(JsonRpcError::internal_error(e.to_string())),
+            Err(e) => Err(self.job_queue_error(e)),
         }
     }
 
@@ -328,7 +399,7 @@ impl JsonRpcHandler {
         self.job_queue
             .result(job_id)
             .await
-            .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+            .map_err(|e| self.job_queue_error(e))
     }
 
     async fn compute_cancel(
@@ -340,7 +411,225 @@ impl JsonRpcHandler {
             .cancel(job_id)
             .await
             .map(|()| serde_json::json!({"cancelled": true}))
+            .map_err(|e| self.job_queue_error(e))
+    }
+
+    fn job_queue_error(&self, err: JobQueueError) -> JsonRpcError {
+        let code = match &err {
+            JobQueueError::JobNotFound { .. } => JsonRpcError::METHOD_NOT_FOUND,
+            _ => JsonRpcError::INTERNAL_ERROR,
+        };
+        JsonRpcError {
+            code,
+            message: Cow::Owned(err.to_string()),
+            data: None,
+        }
+    }
+
+    fn extract_graph(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<crate::graph_types::ExecutionGraph, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+        let graph_value = params
+            .get("graph")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        serde_json::from_value(graph_value)
+            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid graph parameter: {e}")))
+    }
+
+    async fn resources_estimate(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let graph = self.extract_graph(params)?;
+        self.estimator
+            .estimate(&graph)
+            .map_err(|e| JsonRpcError::internal_error(format!("Estimation failed: {e}")))
+            .and_then(|estimate| {
+                serde_json::to_value(estimate)
+                    .map_err(|e| JsonRpcError::internal_error(format!("Serialization: {e}")))
+            })
+    }
+
+    async fn resources_validate_availability(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let graph = self.extract_graph(params)?;
+        self.validator
+            .validate_availability(&graph)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(format!("Validation failed: {e}")))
+            .and_then(|result| {
+                serde_json::to_value(result)
+                    .map_err(|e| JsonRpcError::internal_error(format!("Serialization: {e}")))
+            })
+    }
+
+    async fn resources_suggest_optimizations(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let graph = self.extract_graph(params)?;
+        self.optimizer
+            .suggest_optimizations(&graph)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(format!("Optimization failed: {e}")))
+            .and_then(|suggestions| {
+                serde_json::to_value(suggestions)
+                    .map_err(|e| JsonRpcError::internal_error(format!("Serialization: {e}")))
+            })
+    }
+
+    async fn discover_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
+        let capabilities = serde_json::json!({
+            "node_capabilities": [
+                "compute", "workload", "orchestration", "ai_local",
+                "gpu", "wasm", "container"
+            ],
+            "methods": [
+                "toadstool.health", "toadstool.version", "toadstool.query_capabilities",
+                "toadstool.resources.estimate", "toadstool.resources.validate_availability",
+                "toadstool.resources.suggest_optimizations",
+                "resources.estimate", "resources.validate_availability", "resources.suggest_optimizations",
+                "compute.health", "compute.version", "compute.capabilities",
+                "compute.discover_capabilities", "compute.submit", "compute.status",
+                "compute.result", "compute.cancel", "compute.list",
+                "ai.local_inference", "ai.local_execute",
+                "gpu.info", "gpu.memory",
+                "ollama.list_models", "ollama.inference", "ollama.load", "ollama.unload",
+                "gate.update", "gate.remove", "gate.list", "gate.route"
+            ],
+            "version": self.version,
+            "primal": toadstool_common::constants::PRIMAL_NAME
+        });
+        Ok(capabilities)
+    }
+
+    async fn gpu_info(&self) -> Result<serde_json::Value, JsonRpcError> {
+        Ok(serde_json::json!({
+            "devices": crate::gpu_system::query_gpu_devices(),
+            "driver": "wgpu",
+            "compute_backends": ["vulkan", "metal", "dx12"],
+        }))
+    }
+
+    async fn gpu_memory(&self) -> Result<serde_json::Value, JsonRpcError> {
+        Ok(serde_json::json!({
+            "devices": crate::gpu_system::query_gpu_memory(),
+        }))
+    }
+
+    async fn ollama_list_models(&self) -> Result<serde_json::Value, JsonRpcError> {
+        self.ollama
+            .list_models()
+            .await
             .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+            .map(|models| serde_json::json!({"models": models}))
+    }
+
+    async fn ollama_inference(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+        let model = params
+            .get("model")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'model' param"))?;
+        let prompt = params
+            .get("prompt")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'prompt' param"))?;
+        let extra_params = params
+            .get("params")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        self.ollama
+            .inference(model, prompt, &extra_params)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    }
+
+    async fn ollama_load(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let model = params
+            .and_then(|p| p.get("model"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'model' param"))?;
+        self.ollama
+            .load(model)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+            .map(|()| serde_json::json!({"loaded": true, "model": model}))
+    }
+
+    async fn ollama_unload(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let model = params
+            .and_then(|p| p.get("model"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'model' param"))?;
+        self.ollama
+            .unload(model)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+            .map(|()| serde_json::json!({"unloaded": true, "model": model}))
+    }
+
+    async fn gate_update(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+        let gate_info: crate::cross_gate::GateGpuInfo = serde_json::from_value(params.clone())
+            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid gate info: {e}")))?;
+        let gate_id = gate_info.gate_id.clone();
+        self.router.write().await.update_gate(gate_info);
+        Ok(serde_json::json!({"updated": true, "gate_id": gate_id}))
+    }
+
+    async fn gate_remove(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let gate_id = params
+            .and_then(|p| p.get("gate_id"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'gate_id' param"))?;
+        self.router.write().await.remove_gate(gate_id);
+        Ok(serde_json::json!({"removed": true, "gate_id": gate_id}))
+    }
+
+    async fn gate_list(&self) -> Result<serde_json::Value, JsonRpcError> {
+        let router = self.router.read().await;
+        let gates: Vec<&crate::cross_gate::GateGpuInfo> = router.gates().values().collect();
+        Ok(serde_json::json!({"gates": gates}))
+    }
+
+    async fn gate_route(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+        let model = params.get("model").and_then(|v| v.as_str()).unwrap_or("");
+        let vram = params
+            .get("vram_required_mb")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(4096);
+        let router = self.router.read().await;
+        let decision = router.route(model, vram);
+        Ok(serde_json::json!({
+            "gate_id": decision.gate_id,
+            "reason": decision.reason,
+            "estimated_wait_ms": decision.estimated_wait_ms,
+        }))
     }
 
     async fn compute_list(

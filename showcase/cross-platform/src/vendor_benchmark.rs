@@ -3,7 +3,6 @@
 //! Compares BarraCuda (wgpu/Vulkan) vs native CUDA vs CPU baseline
 //! to demonstrate vendor-free performance parity.
 
-use anyhow::Result;
 use barracuda::device::WgpuDevice;
 use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
 use barracuda::tensor::Tensor;
@@ -47,7 +46,7 @@ async fn bench_barracuda(
     name: &str,
     size: usize,
     iterations: usize,
-) -> Result<Vec<BenchResult>> {
+) -> std::result::Result<Vec<BenchResult>, Box<dyn std::error::Error + Send + Sync>> {
     let mut results = Vec::new();
 
     // Create test data
@@ -175,7 +174,10 @@ fn bench_cpu_baseline(size: usize, iterations: usize) -> Vec<BenchResult> {
 
 /// Try to run native CUDA benchmark (if available)
 #[cfg(feature = "cuda-comparison")]
-async fn bench_native_cuda(size: usize, iterations: usize) -> Result<Vec<BenchResult>> {
+async fn bench_native_cuda(
+    size: usize,
+    iterations: usize,
+) -> std::result::Result<Vec<BenchResult>, Box<dyn std::error::Error + Send + Sync>> {
     use cudarc::driver::*;
 
     let device = CudaDevice::new(0)?;
@@ -275,7 +277,7 @@ fn print_vendor_parity(results: &[BenchResult]) {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("info")
         .with_target(false)

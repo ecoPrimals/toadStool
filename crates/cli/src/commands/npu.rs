@@ -1,7 +1,7 @@
 // NPU management commands
 
+use crate::Result;
 use akida_driver::setup::NpuSetup;
-use anyhow::Result;
 use clap::Parser;
 
 #[derive(Parser)]

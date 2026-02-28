@@ -3,7 +3,6 @@
 //! Verifies that the same WGSL shader produces identical results on both GPUs.
 //! This is the core promise of BarraCuda: write once, run anywhere.
 
-use anyhow::Result;
 use barracuda::device::WgpuDevice;
 use barracuda::tensor::Tensor;
 use std::sync::Arc;
@@ -11,7 +10,7 @@ use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Initialize logging
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)

@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
@@ -189,7 +189,7 @@ pub async fn discover_service_by_capability(
 ///
 /// Used by capability-based service discovery when converting discovered
 /// service URLs into socket addresses for connection.
-#[allow(dead_code)]
+#[allow(dead_code)] // Reserved: used by discover_service_by_capability for capability routing
 fn parse_service_url(url: &str) -> Result<SocketAddr> {
     // Handle various URL formats
     let url = url.trim();
@@ -203,7 +203,7 @@ fn parse_service_url(url: &str) -> Result<SocketAddr> {
     // Parse as SocketAddr
     without_protocol
         .parse()
-        .with_context(|| format!("Failed to parse service URL: {}", url))
+        .context(format!("Failed to parse service URL: {}", url))
 }
 
 /// Discover service via mDNS/Bonjour
@@ -230,7 +230,7 @@ fn parse_service_url(url: &str) -> Result<SocketAddr> {
 ///
 /// Delegates to the production mDNS implementation in toadstool-core (uses mdns-sd).
 /// Discovery runs for 2 seconds, matching Bonjour browse behavior.
-#[allow(dead_code)]
+#[allow(dead_code)] // Reserved: mDNS discovery for capability routing
 #[allow(deprecated)]
 async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpoint>> {
     let mdns = match toadstool::discovery::MdnsDiscoveryService::new() {

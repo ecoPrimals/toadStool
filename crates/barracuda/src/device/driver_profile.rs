@@ -30,6 +30,10 @@
 use std::fmt;
 
 use crate::device::WgpuDevice;
+
+/// Conservative allocation limit for NVK (nouveau) to avoid kernel PTE fault.
+/// Observed on GV100/Titan V: nouveau driver faults above ~1.4 GB combined allocation.
+const NVK_MAX_SAFE_ALLOCATION_BYTES: u64 = 1_200_000_000;
 use crate::error::{BarracudaError, Result};
 
 // ── Driver identity ───────────────────────────────────────────────────────────
@@ -272,6 +276,37 @@ impl GpuDriverProfile {
         }
     }
 
+    /// Probe-informed FP64 strategy. Overrides heuristic when the runtime
+    /// probe shows f64 compilation actually fails (NAK, NVVM).
+    ///
+    /// groundSpring V35/V37 discovery: NAK and NVVM advertise `SHADER_F64`
+    /// but cannot compile f64 WGSL. The probe provides ground truth.
+    pub fn fp64_strategy_probed(
+        &self,
+        caps: &crate::device::probe::F64BuiltinCapabilities,
+    ) -> Fp64Strategy {
+        if !caps.can_compile_f64() {
+            return Fp64Strategy::Hybrid;
+        }
+        self.fp64_strategy()
+    }
+
+    /// Whether `sin(f64)` needs software substitution, considering probe results.
+    pub fn needs_sin_f64_workaround_probed(
+        &self,
+        caps: &crate::device::probe::F64BuiltinCapabilities,
+    ) -> bool {
+        caps.needs_sin_f64_workaround()
+    }
+
+    /// Whether `cos(f64)` needs software substitution, considering probe results.
+    pub fn needs_cos_f64_workaround_probed(
+        &self,
+        caps: &crate::device::probe::F64BuiltinCapabilities,
+    ) -> bool {
+        caps.needs_cos_f64_workaround()
+    }
+
     /// Whether this is an open-source driver (NVK or RADV).
     pub fn is_open_source(&self) -> bool {
         matches!(self.driver, DriverKind::Nvk | DriverKind::Radv)
@@ -300,7 +335,7 @@ impl GpuDriverProfile {
     #[must_use]
     pub fn max_safe_total_allocation(&self) -> Option<u64> {
         if self.workarounds.contains(&Workaround::NvkLargeBufferLimit) {
-            Some(1_200_000_000) // 1.2 GB
+            Some(NVK_MAX_SAFE_ALLOCATION_BYTES)
         } else {
             None
         }
@@ -527,6 +562,103 @@ mod tests {
         assert!(
             s.contains("FP64 Strategy: Native"),
             "display should show strategy"
+        );
+    }
+
+    #[test]
+    fn fp64_strategy_probed_overrides_when_basic_f64_fails() {
+        use crate::device::probe::F64BuiltinCapabilities;
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+        assert_eq!(p.fp64_strategy(), Fp64Strategy::Native);
+
+        let caps_no_f64 = F64BuiltinCapabilities::none();
+        assert_eq!(
+            p.fp64_strategy_probed(&caps_no_f64),
+            Fp64Strategy::Hybrid,
+            "probe failure must force Hybrid even on Full-rate hardware"
+        );
+
+        let caps_full = F64BuiltinCapabilities::full();
+        assert_eq!(
+            p.fp64_strategy_probed(&caps_full),
+            Fp64Strategy::Native,
+            "probe success on Full-rate should keep Native"
+        );
+    }
+
+    #[test]
+    fn fp64_strategy_probed_respects_rate_when_probe_passes() {
+        use crate::device::probe::F64BuiltinCapabilities;
+        let p = make_profile(Fp64Rate::Throttled, GpuArch::Ampere);
+        let caps_full = F64BuiltinCapabilities::full();
+        assert_eq!(
+            p.fp64_strategy_probed(&caps_full),
+            Fp64Strategy::Hybrid,
+            "Throttled hardware should stay Hybrid even when probe passes"
+        );
+    }
+
+    #[test]
+    fn sin_cos_workaround_probed() {
+        use crate::device::probe::F64BuiltinCapabilities;
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+
+        let caps_no_sin = F64BuiltinCapabilities {
+            basic_f64: true,
+            sin: false,
+            cos: true,
+            ..F64BuiltinCapabilities::full()
+        };
+        assert!(p.needs_sin_f64_workaround_probed(&caps_no_sin));
+        assert!(!p.needs_cos_f64_workaround_probed(&caps_no_sin));
+    }
+
+    #[test]
+    fn needs_cos_f64_workaround_probed_when_cos_fails() {
+        use crate::device::probe::F64BuiltinCapabilities;
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+
+        let caps_no_cos = F64BuiltinCapabilities {
+            basic_f64: true,
+            sin: true,
+            cos: false,
+            ..F64BuiltinCapabilities::full()
+        };
+        assert!(!p.needs_sin_f64_workaround_probed(&caps_no_cos));
+        assert!(p.needs_cos_f64_workaround_probed(&caps_no_cos));
+    }
+
+    #[test]
+    fn needs_sin_cos_workaround_probed_both_fail() {
+        use crate::device::probe::F64BuiltinCapabilities;
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+
+        let caps_none = F64BuiltinCapabilities::none();
+        assert!(p.needs_sin_f64_workaround_probed(&caps_none));
+        assert!(p.needs_cos_f64_workaround_probed(&caps_none));
+    }
+
+    #[test]
+    fn needs_sin_cos_workaround_probed_both_ok() {
+        use crate::device::probe::F64BuiltinCapabilities;
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+
+        let caps_full = F64BuiltinCapabilities::full();
+        assert!(!p.needs_sin_f64_workaround_probed(&caps_full));
+        assert!(!p.needs_cos_f64_workaround_probed(&caps_full));
+    }
+
+    #[test]
+    fn fp64_strategy_probed_hybrid_when_probe_fails_on_full_rate() {
+        use crate::device::probe::F64BuiltinCapabilities;
+        let p = make_profile(Fp64Rate::Full, GpuArch::Cdna2);
+        assert_eq!(p.fp64_strategy(), Fp64Strategy::Native);
+
+        let caps_fail = F64BuiltinCapabilities::none();
+        assert_eq!(
+            p.fp64_strategy_probed(&caps_fail),
+            Fp64Strategy::Hybrid,
+            "Probe failure must override Full rate to Hybrid"
         );
     }
 }

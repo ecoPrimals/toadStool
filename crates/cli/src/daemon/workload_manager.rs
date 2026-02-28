@@ -7,7 +7,7 @@
 //! - Managing concurrent workloads
 //! - Stop/restart/cancel operations
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, Semaphore};
@@ -299,7 +299,10 @@ impl WorkloadManager {
             info!("✅ Workload cancelled: {}", workload_id);
             Ok(())
         } else {
-            anyhow::bail!("Workload {} not found", workload_id)
+            Err(crate::CliError::Other(format!(
+                "Workload {} not found",
+                workload_id
+            )))
         }
     }
 

@@ -16,11 +16,11 @@
 
 //! Performance test manager and execution logic
 
-use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use toadstool::ToadStoolError;
+use toadstool::ToadStoolResult as Result;
 use tokio::sync::RwLock;
 
 use super::context::BenchmarkContext;

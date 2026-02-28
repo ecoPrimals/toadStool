@@ -9,7 +9,6 @@
 //! 3. Elements per thread (1, 4, 8)
 //! 4. FMA vs separate ops
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
 use std::time::Instant;
 use wgpu::util::DeviceExt;
@@ -118,7 +117,7 @@ async fn run_benchmark(
     size: usize,
     iterations: usize,
     is_vectorized: bool,
-) -> Result<f64> {
+) -> std::result::Result<f64, Box<dyn std::error::Error + Send + Sync>> {
     // Create data
     let data_a: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
     let data_b: Vec<f32> = (0..size)
@@ -304,7 +303,7 @@ async fn run_benchmark(
     Ok(elapsed.as_secs_f64() * 1e6 / iterations as f64)
 }
 
-async fn run_all_benchmarks() -> Result<()> {
+async fn run_all_benchmarks() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║     SHADER OPTIMIZATION BENCHMARK                                             ║");
     println!("║     Finding optimal wgpu settings for NVIDIA vs AMD                           ║");
@@ -335,7 +334,7 @@ async fn run_all_benchmarks() -> Result<()> {
         // Get raw wgpu device
         let wgpu_device = pool
             .device(idx)
-            .ok_or_else(|| anyhow::anyhow!("No device"))?;
+            .ok_or_else(|| std::io::Error::other("No device"))?;
         let device = wgpu_device.device();
         let queue = wgpu_device.queue();
 
@@ -459,7 +458,7 @@ async fn run_all_benchmarks() -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

@@ -3,7 +3,6 @@
 //! AMD RADV achieves 77% theoretical bandwidth, NVIDIA only 8%.
 //! This benchmark investigates where NVIDIA's wgpu/Vulkan overhead comes from.
 
-use anyhow::Result;
 use barracuda::device::{warmup_pool, WarmupConfig};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
@@ -15,7 +14,7 @@ async fn benchmark_raw_compute(
     device: &Arc<WgpuDevice>,
     size: usize,
     iterations: usize,
-) -> Result<f64> {
+) -> std::result::Result<f64, Box<dyn std::error::Error + Send + Sync>> {
     let shader_source = format!(
         r#"
         @group(0) @binding(0) var<storage, read> a: array<f32>;
@@ -178,7 +177,10 @@ async fn benchmark_raw_compute(
 }
 
 /// Measure individual overhead components
-async fn measure_overheads(device: &Arc<WgpuDevice>, size: usize) -> Result<()> {
+async fn measure_overheads(
+    device: &Arc<WgpuDevice>,
+    size: usize,
+) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let wgpu_device = device.device();
 
     let shader_source = format!(
@@ -432,7 +434,7 @@ async fn measure_overheads(device: &Arc<WgpuDevice>, size: usize) -> Result<()> 
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

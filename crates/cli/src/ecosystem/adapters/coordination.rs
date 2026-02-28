@@ -14,7 +14,7 @@
 //! let token = coordination.register_service(service_info).await?;
 //! ```
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -88,7 +88,7 @@ impl CoordinationAdapter {
         let token = data
             .get("token")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing token in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing token in response".to_string()))?;
 
         Ok(RegistrationToken {
             token: token.to_string(),
@@ -141,7 +141,7 @@ impl CoordinationAdapter {
         let peers = data
             .get("peers")
             .and_then(|v| v.as_array())
-            .ok_or_else(|| anyhow::anyhow!("Missing peers in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing peers in response".to_string()))?;
 
         let mut result = Vec::new();
         for peer in peers {
@@ -259,7 +259,7 @@ impl CoordinationAdapter {
         let value = data
             .get("value")
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Missing value in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing value in response".to_string()))?;
 
         Ok(value)
     }
@@ -320,7 +320,7 @@ impl CoordinationAdapter {
         let lock_id = data
             .get("lock_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing lock_id in response"))?;
+            .ok_or_else(|| crate::CliError::Other("Missing lock_id in response".to_string()))?;
 
         Ok(LockHandle {
             lock_name: lock_name.to_string(),

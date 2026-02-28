@@ -1,6 +1,6 @@
 //! System and ecosystem discovery functionality
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use std::future::Future;
 // use std::time::Duration;  // Unused after HTTP removal
 use tokio::process::Command;

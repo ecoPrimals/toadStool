@@ -33,7 +33,7 @@
 //! use toadstool_runtime_orchestration::*;
 //!
 //! #[tokio::main]
-//! async fn main() -> anyhow::Result<()> {
+//! async fn main() -> Result<(), OrchestrationError> {
 //!     // Discover all available substrates
 //!     let orchestrator = WorkloadOrchestrator::discover().await?;
 //!     
@@ -54,11 +54,13 @@
 //! }
 //! ```
 
+pub mod error;
 pub mod load_balancer;
 pub mod orchestrator;
 pub mod policy;
 pub mod scheduler;
 
+pub use error::OrchestrationError;
 pub use load_balancer::*;
 pub use orchestrator::*;
 pub use policy::*;

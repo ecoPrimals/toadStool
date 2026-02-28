@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use toadstool_common::constants::network::DEFAULT_HOSTNAME;
+use toadstool_common::constants::network::{BIND_ALL_IPV4, DEFAULT_HOSTNAME};
 
 use crate::ports;
 
@@ -63,7 +63,7 @@ impl std::str::FromStr for BindMode {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             x if x == DEFAULT_HOSTNAME || x == "local" => Ok(Self::Localhost),
-            "all" | "allinterfaces" | "0.0.0.0" => Ok(Self::AllInterfaces),
+            "all" | "allinterfaces" | BIND_ALL_IPV4 => Ok(Self::AllInterfaces),
             "specific" => Ok(Self::Specific),
             _ => Err(format!("Invalid bind mode: {s}")),
         }
@@ -258,7 +258,7 @@ impl EndpointBuilder {
             BindMode::Localhost => DEFAULT_HOSTNAME.to_string(),
             BindMode::AllInterfaces => std::env::var("HOSTNAME")
                 .or_else(|_| std::env::var("HOST"))
-                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+                .unwrap_or_else(|_| BIND_ALL_IPV4.to_string()),
             BindMode::Specific => match self.config.listen_address {
                 IpAddr::V4(addr) => {
                     if addr.is_loopback() {

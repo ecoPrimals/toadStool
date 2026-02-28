@@ -4,10 +4,16 @@
 // No scripts, no sudo needed on fresh systems
 // Self-evolves and adapts to hardware changes
 
-use anyhow::{bail, Result};
 use std::fs;
 use std::path::Path;
 use tracing::{info, warn};
+
+/// Typed errors for hardware operations
+#[derive(Debug, thiserror::Error)]
+pub enum HardwareError {
+    #[error("NPU device not found: {address}")]
+    NpuNotFound { address: String },
+}
 
 /// Hardware types that ToadStool can discover and manage
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,7 +56,7 @@ impl HardwareManager {
     ///
     /// # Errors
     /// Returns error if unable to scan hardware directories
-    pub fn discover() -> Result<Self> {
+    pub fn discover() -> Result<Self, HardwareError> {
         info!("ToadStool discovering hardware...");
 
         let mut devices = Vec::new();
@@ -218,7 +224,7 @@ impl HardwareManager {
     /// Re-scan hardware (for hot-plug events)
     ///
     /// Deep Debt: ToadStool adapts to hardware changes
-    pub fn rescan(&mut self) -> Result<()> {
+    pub fn rescan(&mut self) -> Result<(), HardwareError> {
         info!("ToadStool re-scanning hardware...");
         let new_manager = Self::discover()?;
         self.devices = new_manager.devices;
@@ -231,11 +237,13 @@ impl HardwareManager {
     ///
     /// # Errors
     /// Returns error if device not found or cannot enable `PCIe` device
-    pub fn enable_npu_userspace(&self, pcie_address: &str) -> Result<()> {
+    pub fn enable_npu_userspace(&self, pcie_address: &str) -> Result<(), HardwareError> {
         let device_path = Path::new("/sys/bus/pci/devices").join(pcie_address);
 
         if !device_path.exists() {
-            bail!("NPU device not found: {pcie_address}");
+            return Err(HardwareError::NpuNotFound {
+                address: pcie_address.to_string(),
+            });
         }
 
         // Enable PCIe device

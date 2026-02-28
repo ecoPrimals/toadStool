@@ -47,7 +47,7 @@
 //! ```
 
 // S66: Blanket #![allow(dead_code)] removed. Individual items annotated where
-// genuinely pending implementation. See DEBT.md R-S66-xxx entries.
+// genuinely pending implementation.
 
 // Re-export core types
 pub use config::{HardwarePreference, NetworkConfig};

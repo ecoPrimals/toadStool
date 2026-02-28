@@ -2,9 +2,9 @@
 //!
 //! These tests exercise the Squirrel MCP AI integration code paths.
 
-use anyhow::Result;
 use std::collections::HashMap;
 use std::time::SystemTime;
+use toadstool::ToadStoolResult as Result;
 use uuid::Uuid;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

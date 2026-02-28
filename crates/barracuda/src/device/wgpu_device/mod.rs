@@ -14,74 +14,14 @@
 mod buffers;
 mod capabilities;
 mod creation;
+mod dispatch;
+
+pub(crate) use dispatch::{concurrency_budget, DispatchPermit, DispatchSemaphore};
 
 use super::autotune::{GpuCalibration, GLOBAL_TUNER};
 use crate::error::Result;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-
-/// Sync counting semaphore — gates concurrent dispatch volume.
-///
-/// The device knows its own concurrency budget: CPU/software backends
-/// get 2 permits (llvmpipe is effectively single-threaded), discrete
-/// GPUs get 8, integrated GPUs get 4. This prevents driver overload
-/// without requiring callers to manage thread counts.
-#[derive(Debug)]
-struct DispatchSemaphore {
-    state: std::sync::Mutex<usize>,
-    available: std::sync::Condvar,
-    max_permits: usize,
-}
-
-impl DispatchSemaphore {
-    fn new(max_permits: usize) -> Self {
-        Self {
-            state: std::sync::Mutex::new(max_permits),
-            available: std::sync::Condvar::new(),
-            max_permits,
-        }
-    }
-
-    fn acquire(&self) -> DispatchPermit<'_> {
-        let mut count = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        while *count == 0 {
-            count = self
-                .available
-                .wait(count)
-                .unwrap_or_else(|e| e.into_inner());
-        }
-        *count -= 1;
-        DispatchPermit(self)
-    }
-}
-
-impl Clone for DispatchSemaphore {
-    fn clone(&self) -> Self {
-        Self::new(self.max_permits)
-    }
-}
-
-/// RAII guard — holds one dispatch permit. Released on drop.
-pub struct DispatchPermit<'a>(&'a DispatchSemaphore);
-
-impl Drop for DispatchPermit<'_> {
-    fn drop(&mut self) {
-        let mut count = self.0.state.lock().unwrap_or_else(|e| e.into_inner());
-        *count += 1;
-        self.0.available.notify_one();
-    }
-}
-
-/// Determine concurrency budget from adapter type.
-fn concurrency_budget(device_type: wgpu::DeviceType) -> usize {
-    match device_type {
-        wgpu::DeviceType::Cpu => 2,
-        wgpu::DeviceType::IntegratedGpu => 4,
-        wgpu::DeviceType::DiscreteGpu => 8,
-        wgpu::DeviceType::VirtualGpu => 4,
-        _ => 4,
-    }
-}
 
 /// WebGPU device - executes WGSL on any hardware
 ///
@@ -486,7 +426,7 @@ impl WgpuDevice {
 
     /// The device's concurrency budget (max simultaneous dispatches).
     pub fn max_concurrent_dispatches(&self) -> usize {
-        self.dispatch_semaphore.max_permits
+        self.dispatch_semaphore.max_permits()
     }
 
     /// Execute WGSL compute shader

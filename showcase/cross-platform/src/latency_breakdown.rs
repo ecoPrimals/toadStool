@@ -8,7 +8,6 @@
 //! 5. Queue submission
 //! 6. GPU execution + sync
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use std::time::Instant;
 use wgpu::util::DeviceExt;
@@ -27,7 +26,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 "#;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)
@@ -52,7 +51,7 @@ async fn main() -> Result<()> {
     for idx in 0..pool.devices().len() {
         let wgpu_device = pool
             .device(idx)
-            .ok_or_else(|| anyhow::anyhow!("No device"))?;
+            .ok_or_else(|| std::io::Error::other("No device"))?;
         let device = wgpu_device.device();
         let queue = wgpu_device.queue();
         let name = wgpu_device.name();

@@ -18,8 +18,8 @@
 
 use crate::error::{AkidaError, Result};
 use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
-use std::fs::File;
-use std::os::unix::io::{AsFd, AsRawFd};
+use std::os::fd::AsFd;
+use std::os::unix::io::AsRawFd;
 
 /// AKD1000 BAR regions
 #[derive(Debug, Clone, Copy)]
@@ -152,7 +152,7 @@ impl MappedRegion {
     /// Returns an error if:
     /// - The VFIO ioctl to get region info fails
     /// - Memory mapping the BAR region fails
-    pub fn map(device_fd: &File, bar: Bar) -> Result<Self> {
+    pub fn map(device_fd: &impl AsFd, bar: Bar) -> Result<Self> {
         // Query region info
         #[allow(clippy::cast_possible_truncation)]
         let mut region_info = VfioRegionInfo {
@@ -170,7 +170,7 @@ impl MappedRegion {
         // kernel. Caller guarantees: device fd from VFIO, bar is valid BAR index.
         let ret = unsafe {
             libc::ioctl(
-                device_fd.as_raw_fd(),
+                device_fd.as_fd().as_raw_fd(),
                 VFIO_DEVICE_GET_REGION_INFO,
                 &raw mut region_info,
             )

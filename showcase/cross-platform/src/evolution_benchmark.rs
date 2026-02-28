@@ -6,7 +6,6 @@
 //! 3. TensorSession batching (amortize submit overhead)
 //! 4. Shader warmup (mise en place)
 
-use anyhow::Result;
 use barracuda::device::pipeline_cache::GLOBAL_CACHE;
 use barracuda::device::{get_device_context, warmup_pool, WarmupConfig};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
@@ -66,7 +65,7 @@ async fn benchmark_batched_ops(
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

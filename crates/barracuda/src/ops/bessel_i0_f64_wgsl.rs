@@ -4,7 +4,7 @@
 //!
 //! Applications: Kaiser windows, cylindrical heat conduction, neutron diffusion
 
-use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
@@ -105,124 +105,16 @@ impl BesselI0F64 {
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
 
-        let shader_module = self
-            .device
-            .compile_shader_f64(Self::wgsl_shader(), Some("Bessel I0 f64"));
+        ComputeDispatch::new(self.device.as_ref(), "Bessel I0 f64")
+            .shader(Self::wgsl_shader(), "main")
+            .f64()
+            .storage_read(0, &input_buf)
+            .storage_rw(1, &output_buf)
+            .uniform(2, &metadata_buf)
+            .dispatch_1d(size as u32)
+            .submit();
 
-        let bind_group_layout =
-            self.device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Bessel I0 f64 BGL"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let bind_group = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Bessel I0 f64 BG"),
-                layout: &bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: metadata_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        let pipeline_layout =
-            self.device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Bessel I0 f64 PL"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline =
-            self.device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Bessel I0 f64 Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Bessel I0 f64 Encoder"),
-                });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Bessel I0 f64 Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32).div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-        }
-
-        let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Bessel I0 f64 Staging"),
-            size: std::mem::size_of_val(x) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        encoder.copy_buffer_to_buffer(
-            &output_buf,
-            0,
-            &staging_buf,
-            0,
-            std::mem::size_of_val(x) as u64,
-        );
-        self.device.submit_and_poll(Some(encoder.finish()));
-
-        let result: Vec<f64> = self.device.map_staging_buffer(&staging_buf, size)?;
+        let result: Vec<f64> = self.device.read_buffer_f64(&output_buf, size)?;
         Ok(result)
     }
 }

@@ -275,6 +275,94 @@ impl StatefulPipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool;
+    use std::sync::Arc;
+
+    const MINIMAL_WGSL: &str = r#"
+@group(0) @binding(0) var<storage, read> input: array<f32>;
+@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    output[gid.x] = input[gid.x];
+}
+"#;
+
+    fn create_minimal_kernel_dispatch(workgroups: (u32, u32, u32)) -> KernelDispatch {
+        let device = test_pool::get_test_device_sync();
+        let shader = device.compile_shader(MINIMAL_WGSL, Some("test_kernel"));
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("test_bgl"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+        let layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("test_pl"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("test_pipeline"),
+                layout: Some(&layout),
+                module: &shader,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
+        let size = 256 * 4;
+        let input_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("test_input"),
+            size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let output_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("test_output"),
+            size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("test_bg"),
+            layout: &bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buf.as_entire_binding(),
+                },
+            ],
+        });
+        KernelDispatch::new(Arc::new(pipeline), Arc::new(bind_group), workgroups)
+    }
 
     #[test]
     fn test_stateful_config_default() {
@@ -294,12 +382,32 @@ mod tests {
     }
 
     #[test]
+    fn test_stateful_config_labels() {
+        let cfg = StatefulConfig {
+            convergence_scalars: 1,
+            label: Some("SimulationX".into()),
+        };
+        assert_eq!(cfg.label.as_deref(), Some("SimulationX"));
+        let cfg_none = StatefulConfig {
+            convergence_scalars: 1,
+            label: None,
+        };
+        assert!(cfg_none.label.is_none());
+    }
+
+    #[test]
     fn test_kernel_dispatch_new() {
-        // Verify KernelDispatch stores workgroup dimensions correctly.
-        // (Cannot instantiate wgpu types without a device — pure field check via
-        //  Default/clone is not available; just verify the constructor signature compiles.)
         let wg = (64u32, 1u32, 1u32);
         assert_eq!(wg, (64, 1, 1));
+    }
+
+    #[test]
+    fn test_kernel_dispatch_workgroups() {
+        let workgroups = (8u32, 4u32, 2u32);
+        let k = create_minimal_kernel_dispatch(workgroups);
+        assert_eq!(k.workgroups.0, 8);
+        assert_eq!(k.workgroups.1, 4);
+        assert_eq!(k.workgroups.2, 2);
     }
 
     #[test]

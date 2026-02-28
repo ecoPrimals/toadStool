@@ -64,8 +64,9 @@ pub use cache_hierarchy::{
     CacheAwareTiler, CacheLevel, CacheResidency, MainMemory, SubstrateMemoryHierarchy, TileConfig,
 };
 pub use capabilities::{
-    CompilerKind, DeviceCapabilities, DriverKind, EigensolveStrategy, Fp64Rate, Fp64Strategy,
-    GpuArch, GpuDriverProfile, Workaround, WorkloadType,
+    optimal_workgroup_size_arch, workgroup_size_2d_for_arch, workgroup_size_for_arch, CompilerKind,
+    DeviceCapabilities, DriverKind, EigensolveStrategy, Fp64Rate, Fp64Strategy, GpuArch,
+    GpuDriverProfile, Workaround, WorkloadType,
 };
 pub use compute_pipeline::{storage_bgl_entry, uniform_bgl_entry, ComputeDispatch};
 pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};

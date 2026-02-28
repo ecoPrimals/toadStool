@@ -376,6 +376,20 @@ impl LuGpu {
 mod tests {
     use super::*;
 
+    #[test]
+    fn lu_gpu_shader_f32_source_valid() {
+        let src = LuGpu::wgsl_shader_f32();
+        assert!(!src.is_empty());
+        assert!(src.contains("fn main") || src.contains("@compute"));
+    }
+
+    #[test]
+    fn lu_gpu_shader_f64_source_valid() {
+        let src = LuGpu::wgsl_shader_f64();
+        assert!(!src.is_empty());
+        assert!(src.contains("fn main") || src.contains("@compute"));
+    }
+
     fn approx_eq(a: f32, b: f32, tol: f32) -> bool {
         (a - b).abs() < tol
     }

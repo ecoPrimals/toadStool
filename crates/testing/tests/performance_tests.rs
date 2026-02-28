@@ -119,7 +119,7 @@ async fn test_benchmark_with_failures() {
             async move {
                 let count = call_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 if count % 2 == 0 {
-                    Err(anyhow::anyhow!("Simulated failure"))
+                    Err(toadstool::ToadStoolError::runtime("Simulated failure"))
                 } else {
                     Ok(())
                 }
@@ -337,7 +337,7 @@ async fn test_load_test_with_failures() {
             async move {
                 let count = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 if count % 3 == 0 {
-                    Err(anyhow::anyhow!("Simulated failure"))
+                    Err(toadstool::ToadStoolError::runtime("Simulated failure"))
                 } else {
                     Ok(())
                 }

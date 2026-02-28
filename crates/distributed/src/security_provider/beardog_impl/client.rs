@@ -24,7 +24,7 @@ pub struct BearDogSecurityProvider {
     client: Arc<RwLock<Option<Arc<BearDogClient>>>>,
 
     /// Discovery mechanism (for future reconnection logic)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Reserved: future reconnection logic
     discovery: BearDogDiscovery,
 
     /// Provider metadata

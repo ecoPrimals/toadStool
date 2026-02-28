@@ -2,8 +2,8 @@
 //!
 //! These tests exercise the intelligent configuration code paths.
 
-use anyhow::Result;
 use std::collections::HashMap;
+use toadstool::ToadStoolResult as Result;
 use toadstool_config::ToadStoolConfig;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -306,7 +306,7 @@ async fn test_boolean_logic_optimization() -> Result<()> {
 async fn test_error_result_handling() -> Result<()> {
     // Test Result handling patterns
     let success: Result<i32> = Ok(42);
-    let failure: Result<i32> = Err(anyhow::anyhow!("error"));
+    let failure: Result<i32> = Err(toadstool::ToadStoolError::runtime("error"));
 
     assert!(success.is_ok());
     assert!(failure.is_err());

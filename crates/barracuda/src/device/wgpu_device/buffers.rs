@@ -158,6 +158,18 @@ impl WgpuDevice {
         }))
     }
 
+    /// Create storage buffer initialized with u32 data.
+    pub fn create_buffer_u32_init(&self, label: &str, data: &[u32]) -> wgpu::Buffer {
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            })
+    }
+
     /// Allocate buffer for u32 data
     pub fn create_buffer_u32(&self, size: usize) -> Result<wgpu::Buffer> {
         Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -225,5 +237,46 @@ impl WgpuDevice {
                 | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         }))
+    }
+
+    // ── f32 buffer ergonomic helpers (hotSpring ESN GPU dispatch absorption) ───
+
+    /// Create an f32 read-write storage buffer (GPU shader ↔ CPU).
+    ///
+    /// Equivalent to `create_buffer_f32` with a descriptive label.
+    /// For ESN and other f32 GPU pipelines.
+    pub fn create_f32_rw_buffer(&self, label: &str, count: usize) -> Result<wgpu::Buffer> {
+        Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size: (count * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        }))
+    }
+
+    /// Create an f32 output buffer (GPU write → CPU read).
+    ///
+    /// Like `create_f32_rw_buffer` but labelled for clarity in GPU dispatch
+    /// pipelines where the buffer is only written by the shader and read back
+    /// to the host.
+    pub fn create_f32_output_buffer(&self, label: &str, count: usize) -> Result<wgpu::Buffer> {
+        self.create_f32_rw_buffer(label, count)
+    }
+
+    /// Upload f32 data to a new GPU buffer in one call.
+    ///
+    /// Creates and initializes a labeled storage buffer. For ESN weight
+    /// uploads and similar patterns.
+    pub fn upload_f32(&self, label: &str, data: &[f32]) -> wgpu::Buffer {
+        self.create_buffer_f32_init(label, data)
+    }
+
+    /// Read back f32 data from a GPU buffer (GPU → CPU).
+    ///
+    /// Ergonomic alias for `read_buffer_f32`.
+    pub fn read_back_f32(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f32>> {
+        self.read_buffer_f32(buffer, count)
     }
 }

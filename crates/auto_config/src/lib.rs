@@ -93,6 +93,7 @@ pub mod ai_mcp_interface;
 pub mod capability_traits;
 pub mod ecosystem;
 pub mod hardware;
+pub mod installer;
 pub mod intelligent;
 pub mod natural_language;
 
@@ -110,6 +111,7 @@ pub use hardware::{
     CpuInfo, GpuInfo, HardwareDetector, MemoryInfo, PerformanceClass, StorageInfo, StorageType,
     SystemCapabilities,
 };
+pub use installer::{ConfigManager, InstallationConfig, InstallationResult, SmartInstaller};
 pub use intelligent::{
     ConfigSnapshot, IntelligentAutoConfig, PlatformConfig, PlatformOptimizer, UsageHints,
     UsageLearner,

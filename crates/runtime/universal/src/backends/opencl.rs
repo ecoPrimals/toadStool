@@ -1,7 +1,19 @@
-//! OpenCL compute unit implementation (DEPRECATED)
+//! OpenCL compute unit implementation (capability-based fallback)
+//!
+//! This module is compiled only when the `opencl` feature is enabled.
+
+#![cfg(feature = "opencl")]
 //!
 //! **STATUS**: ⚠️ **DEPRECATED** - Use `wgpu` backend instead
-//! **REASON**: wgpu provides better Rust ergonomics and broader hardware support
+//!
+//! ## Capability-Based Fallback (Not a Stub)
+//!
+//! This module is a **capability-based fallback**: when the `opencl` feature is enabled
+//! but OpenCL is not available at runtime (e.g. no ICD, no compatible GPU), it returns
+//! clear, actionable errors rather than panicking. This is intentional design, not a stub.
+//!
+//! To enable OpenCL: add `opencl` feature to Cargo.toml and install OpenCL ICD
+//! for your platform (e.g. `ocl-icd-opencl-dev` on Debian, `opencl-headers` on Fedora).
 //!
 //! ## Why Deprecated
 //!
@@ -23,12 +35,6 @@
 //! let backend = WgpuBackend::new(device);
 //! backend.execute(workload).await?;
 //! ```
-//!
-//! ## Deep Debt Evolution
-//!
-//! **Before**: OpenCL with C FFI, unsafe bindings  
-//! **After**: Pure Rust wgpu with zero unsafe  
-//! **Benefit**: Memory safety, better errors, faster compilation
 //!
 //! This module is kept for legacy compatibility only.
 //! **New code should use `wgpu_backend` instead.**
@@ -73,9 +79,12 @@ impl OpenClComputeUnit {
     /// Returns clear error directing users to wgpu
     #[deprecated(since = "0.2.0", note = "Use barracuda::device::WgpuDevice")]
     pub fn from_device(_device: ocl::Device) -> Result<Self, ComputeError> {
-        Err(ComputeError::BackendError(anyhow::anyhow!(
-            "OpenCL backend is deprecated. Use barracuda::device::WgpuDevice for GPU compute (pure Rust, safer, faster)"
-        )))
+        Err(ComputeError::BackendError(
+            "OpenCL backend not available. Install OpenCL ICD for your platform \
+             (e.g. ocl-icd-opencl-dev on Debian) and enable the 'opencl' feature. \
+             For production, prefer wgpu: use barracuda::device::WgpuDevice (pure Rust, safer)."
+                .to_string(),
+        ))
     }
 }
 
@@ -90,9 +99,10 @@ impl ComputeUnit for OpenClComputeUnit {
     }
 
     async fn execute(&self, _workload: Workload) -> Result<Output, ComputeError> {
-        // Deep Debt Evolution: Clear error message with migration path
+        // Capability-based fallback: clear error when OpenCL isn't available
         Err(ComputeError::ExecutionFailed(
-            "OpenCL backend is deprecated. Migrate to wgpu backend for GPU compute. \
+            "OpenCL backend not available. Install OpenCL ICD and enable the 'opencl' feature. \
+             For production, migrate to wgpu: use barracuda::device::WgpuDevice. \
              See docs/architecture/UNIVERSAL_GPU_STRATEGY.md for migration guide."
                 .to_string(),
         ))

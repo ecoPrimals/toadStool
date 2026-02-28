@@ -517,6 +517,21 @@ impl QrGpu {
 mod tests {
     use super::*;
 
+    const QR_F32_SHADER: &str = include_str!("../../shaders/linalg/qr_decomp.wgsl");
+    const QR_F64_SHADER: &str = include_str!("../../shaders/linalg/qr_decomp_f64.wgsl");
+
+    #[test]
+    fn qr_f32_shader_source_valid() {
+        assert!(!QR_F32_SHADER.is_empty());
+        assert!(QR_F32_SHADER.contains("fn ") || QR_F32_SHADER.contains("@compute"));
+    }
+
+    #[test]
+    fn qr_f64_shader_source_valid() {
+        assert!(!QR_F64_SHADER.is_empty());
+        assert!(QR_F64_SHADER.contains("fn ") || QR_F64_SHADER.contains("@compute"));
+    }
+
     #[tokio::test]
     async fn test_qr_gpu_identity() {
         let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await

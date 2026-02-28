@@ -1,6 +1,6 @@
 //! Permission management
 
-use anyhow::{Context, Result};
+use crate::error::{Result, SetupError};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -21,7 +21,8 @@ pub fn setup_udev_rules() -> Result<()> {
     let rules_path = "/etc/udev/rules.d/99-akida-pcie.rules";
 
     // Write rules file
-    fs::write(rules_path, UDEV_RULES_CONTENT).context("Failed to write udev rules")?;
+    fs::write(rules_path, UDEV_RULES_CONTENT)
+        .map_err(|e| SetupError::Setup(format!("Failed to write udev rules: {e}")))?;
 
     tracing::info!("Wrote udev rules to {}", rules_path);
 
@@ -29,13 +30,13 @@ pub fn setup_udev_rules() -> Result<()> {
     std::process::Command::new("udevadm")
         .args(["control", "--reload-rules"])
         .output()
-        .context("Failed to reload udev rules")?;
+        .map_err(|e| SetupError::Setup(format!("Failed to reload udev rules: {e}")))?;
 
     // Trigger udev
     std::process::Command::new("udevadm")
         .arg("trigger")
         .output()
-        .context("Failed to trigger udev")?;
+        .map_err(|e| SetupError::Setup(format!("Failed to trigger udev: {e}")))?;
 
     Ok(())
 }

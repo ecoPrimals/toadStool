@@ -31,8 +31,10 @@ use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
-const VACF_BATCH_SHADER: &str = include_str!("vacf_batch_f64.wgsl");
-const STRESS_VIRIAL_SHADER: &str = include_str!("stress_virial_f64.wgsl");
+const VACF_BATCH_SHADER: &str =
+    include_str!("../../../shaders/md/vacf_batch_per_particle_f64.wgsl");
+const STRESS_VIRIAL_SHADER: &str =
+    include_str!("../../../shaders/md/stress_virial_per_particle_f64.wgsl");
 const WG: u32 = 64;
 
 // ─── Batched VACF ────────────────────────────────────────────────────────────

@@ -30,7 +30,7 @@
 //! ```rust,ignore
 //! use toadstool_display::{DisplayServer, WindowManager};
 //!
-//! # async fn example() -> anyhow::Result<()> {
+//! # async fn example() -> Result<()> {
 //! let manager = WindowManager::new().await?;
 //! let server = DisplayServer::new(manager)
 //!     .bind("/run/user/1000/toadstool/display.sock")
@@ -47,7 +47,7 @@
 //! use toadstool_display::ipc::DisplayClient;
 //! use toadstool_display::window::CreateWindowRequest;
 //!
-//! # async fn example() -> anyhow::Result<()> {
+//! # async fn example() -> Result<()> {
 //! let mut client = DisplayClient::connect("/run/user/1000/toadstool/display.sock").await?;
 //!
 //! let window_id = client.create_window(CreateWindowRequest::default()).await?;

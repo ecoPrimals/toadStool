@@ -3,11 +3,10 @@
 //! Demonstrates ToadStool's runtime cache discovery and intelligent workload tiling.
 //! NO VENDOR HARDCODING — the silicon tells us what it can do.
 
-use anyhow::Result;
 use barracuda::device::{CacheAwareTiler, CacheResidency, SubstrateMemoryHierarchy, WgpuDevice};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║  ToadStool Universal Cache Awareness                                         ║");
     println!("║  Runtime discovery, not vendor hardcoding                                    ║");

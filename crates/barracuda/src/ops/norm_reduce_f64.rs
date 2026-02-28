@@ -18,6 +18,7 @@
 //! - Full f64 precision via SPIR-V/Vulkan
 //! - Safe Rust wrapper (no unsafe code)
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -104,65 +105,6 @@ impl NormReduceF64 {
             return Ok(data[0].abs());
         }
 
-        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("Norm Reduce f64"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("NormReduce BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("NormReduce PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(entry_point),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point,
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
         let n = data.len();
         let wg_size = 256;
         let n_workgroups = n.div_ceil(wg_size);
@@ -195,43 +137,14 @@ impl NormReduceF64 {
         };
         let params_buffer = device.create_uniform_buffer("NormReduce params", &params);
 
-        let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("NormReduce BG pass 1"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: partial_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        {
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("NormReduce pass 1"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("NormReduce pass 1"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bg, &[]);
-                pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
-            }
-            device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(&*device, "norm_reduce_pass1")
+            .shader(Self::wgsl_shader(), entry_point)
+            .f64()
+            .storage_read(0, &input_buffer)
+            .storage_rw(1, &partial_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch(n_workgroups as u32, 1, 1)
+            .submit();
 
         if n_workgroups <= 1 {
             return Self::read_f64_scalar(&device, &partial_buffer);
@@ -243,18 +156,6 @@ impl NormReduceF64 {
         } else {
             "norm_l1_f64" // L1 is just sum for second pass
         };
-
-        let second_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("NormReduce pass 2"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: second_entry,
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
 
         let final_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("NormReduce final"),
@@ -272,43 +173,14 @@ impl NormReduceF64 {
         let params2_buffer = device.create_uniform_buffer("NormReduce params 2", &params2);
 
         let n_workgroups2 = n_workgroups.div_ceil(wg_size);
-        let bg2 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("NormReduce BG pass 2"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: partial_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: final_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params2_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        {
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("NormReduce pass 2"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("NormReduce pass 2"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&second_pipeline);
-                pass.set_bind_group(0, &bg2, &[]);
-                pass.dispatch_workgroups(n_workgroups2 as u32, 1, 1);
-            }
-            device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(&*device, "norm_reduce_pass2")
+            .shader(Self::wgsl_shader(), second_entry)
+            .f64()
+            .storage_read(0, &partial_buffer)
+            .storage_rw(1, &final_buffer)
+            .uniform(2, &params2_buffer)
+            .dispatch(n_workgroups2 as u32, 1, 1)
+            .submit();
 
         if n_workgroups2 > 1 {
             let partials = device.read_f64_buffer(&final_buffer, n_workgroups2)?;

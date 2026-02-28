@@ -22,7 +22,9 @@ impl BiomeExecutor {
         // Load WASM module from source
         let module_data = if source.starts_with("http://") || source.starts_with("https://") {
             // Download from URL
-            bail!("HTTP WASM loading not yet implemented");
+            return Err(crate::CliError::Other(
+                "HTTP WASM loading not yet implemented".to_string(),
+            ));
         } else {
             // Load from local file
             fs::read(source).await?
@@ -35,11 +37,10 @@ impl BiomeExecutor {
             let actual_checksum = format!("{:x}", hasher.finalize());
 
             if &actual_checksum != expected {
-                bail!(
+                return Err(crate::CliError::Other(format!(
                     "WASM module checksum mismatch: expected {}, got {}",
-                    expected,
-                    actual_checksum
-                );
+                    expected, actual_checksum
+                )));
             }
             info!("✅ WASM module checksum verified");
         }
@@ -47,7 +48,7 @@ impl BiomeExecutor {
         Ok(module_data)
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Reserved: WASM execution; used when feature "wasm" enabled
     pub(super) async fn execute_wasm_module(
         &self,
         module_data: &[u8],
@@ -74,7 +75,7 @@ impl BiomeExecutor {
             let _output = executor
                 .load_and_execute(&source, entry_point, args)
                 .await
-                .map_err(|e| anyhow::anyhow!("WASM execution failed: {}", e))?;
+                .map_err(|e| crate::CliError::Other(format!("WASM execution failed: {}", e)))?;
 
             info!("✅ WASM module execution completed");
             Ok(())

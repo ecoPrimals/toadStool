@@ -42,7 +42,7 @@
 //! 6. Start API server
 //! 7. Begin heartbeat reporting
 
-use anyhow::Result;
+use crate::Result;
 use std::path::PathBuf;
 use tracing::info;
 

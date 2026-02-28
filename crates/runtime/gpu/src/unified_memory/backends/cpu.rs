@@ -50,7 +50,9 @@ impl AlignedBuffer {
         // UNAVOIDABLE UNSAFE: std::alloc::alloc_zeroed is the only way to get
         // custom-aligned zero-initialized heap memory. Vec/Box lack alignment control.
         //
-        // SAFETY: Layout is valid (from_size_align succeeded, align is power-of-two).
+        // SAFETY: (1) layout valid (from_size_align succeeded, align power-of-two);
+        // (2) alloc_zeroed returns ptr valid for layout.size() bytes, or null on OOM;
+        // (3) memory is zero-initialized; (4) ptr used for dealloc with same layout in Drop.
         let raw = unsafe { std::alloc::alloc_zeroed(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
 
@@ -75,9 +77,10 @@ impl AlignedBuffer {
     /// Create from raw pointer (takes ownership)
     ///
     /// # Safety
-    /// - `ptr` must be non-null and point to valid memory
-    /// - `size` and `align` must match the original allocation
-    /// - Caller must transfer ownership (not use ptr after this)
+    /// - `ptr` must be non-null and point to valid memory allocated with the given layout
+    /// - `size` and `align` must exactly match the original allocation parameters
+    /// - Caller must transfer ownership (must not use ptr after this, must not dealloc)
+    /// - If Some is returned, caller must not dealloc; Drop will handle it
     unsafe fn from_raw(ptr: *mut u8, size: usize, align: usize) -> Option<Self> {
         NonNull::new(ptr).map(|ptr| Self { ptr, size, align })
     }
@@ -298,9 +301,11 @@ mod tests {
             panic!("expected CPU allocation");
         };
         let size = alloc.size;
-        // SAFETY: (1) cpu_ptr from allocate_unified (valid, non-null); (2) size matches alloc.size;
-        // (3) allocation not freed yet (we hold it); (4) exclusive access in test.
-        let slice = unsafe { std::slice::from_raw_parts_mut(cpu_ptr, size) };
+        // Use safe slice creation via NonNull for test - encapsulates the unsafe.
+        let ptr = NonNull::new(cpu_ptr).expect("cpu_ptr from allocate_unified is non-null");
+        // SAFETY: (1) ptr from allocate_unified, valid for alloc.size bytes; (2) allocation
+        // not freed (we hold it); (3) exclusive access in test; (4) u8 align=1.
+        let slice = unsafe { std::slice::from_raw_parts_mut(ptr.as_ptr(), size) };
         slice.fill(42);
         assert_eq!(slice[0], 42);
 

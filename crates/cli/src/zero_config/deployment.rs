@@ -6,7 +6,7 @@
 //! - Ready for concurrent execution
 //! - Production-grade patterns
 
-use anyhow::Result;
+use crate::Result;
 use std::future::Future;
 use tracing::{debug, info, warn};
 

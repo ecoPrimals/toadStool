@@ -13,6 +13,7 @@
 //! - Full f64 precision for scientific computing
 //! - Safe Rust wrapper (no unsafe code)
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -109,9 +110,8 @@ impl WeightedDotF64 {
 
     fn weighted_dot_gpu(&self, weights: &[f64], a: &[f64], b: &[f64]) -> Result<f64> {
         let n = weights.len();
-        let shader = self
-            .device
-            .compile_shader_f64(Self::wgsl_shader(), Some("Weighted Dot f64"));
+        let workgroup_size = 256;
+        let n_workgroups = n.div_ceil(workgroup_size);
 
         // Create buffers
         let weights_buf =
@@ -141,10 +141,6 @@ impl WeightedDotF64 {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        // For parallel reduction, we need partial sums from each workgroup
-        let workgroup_size = 256;
-        let n_workgroups = n.div_ceil(workgroup_size);
-
         let result_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Partial Sums"),
             size: (n_workgroups * 8) as u64, // f64 = 8 bytes
@@ -168,155 +164,18 @@ impl WeightedDotF64 {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        // Create bind group layout and pipeline
-        let bgl = self
-            .device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Weighted Dot BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        ComputeDispatch::new(self.device.as_ref(), "Weighted Dot f64")
+            .shader(Self::wgsl_shader(), "weighted_dot_parallel")
+            .f64()
+            .uniform(0, &params_buf)
+            .storage_read(1, &weights_buf)
+            .storage_read(2, &a_buf)
+            .storage_read(3, &b_buf)
+            .storage_rw(4, &result_buf)
+            .dispatch(n_workgroups as u32, 1, 1)
+            .submit();
 
-        let pl = self
-            .device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Weighted Dot PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline =
-            self.device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Weighted Dot Pipeline"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "weighted_dot_parallel",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Weighted Dot BG"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: weights_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: a_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: b_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: result_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        // Dispatch
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Weighted Dot Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Weighted Dot Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
-        }
-
-        self.device.submit_and_poll(Some(encoder.finish()));
-
-        // Read back partial sums and sum on CPU
-        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Staging"),
-            size: (n_workgroups * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder2 =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Copy Encoder"),
-                });
-        encoder2.copy_buffer_to_buffer(&result_buf, 0, &staging, 0, (n_workgroups * 8) as u64);
-        self.device.submit_and_poll(Some(encoder2.finish()));
-
-        let partial_sums: Vec<f64> = self.device.map_staging_buffer(&staging, n_workgroups)?;
+        let partial_sums: Vec<f64> = self.device.read_buffer_f64(&result_buf, n_workgroups)?;
         let result: f64 = partial_sums.iter().sum();
         Ok(result)
     }

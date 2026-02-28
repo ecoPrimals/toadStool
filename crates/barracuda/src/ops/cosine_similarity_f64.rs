@@ -16,6 +16,7 @@
 //! - Full f64 precision for science-grade accuracy
 //! - Safe Rust wrapper (no unsafe code)
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -158,10 +159,6 @@ impl CosineSimilarityF64 {
         let a_flat: Vec<f64> = vectors_a.iter().flat_map(|v| v.iter().cloned()).collect();
         let b_flat: Vec<f64> = vectors_b.iter().flat_map(|v| v.iter().cloned()).collect();
 
-        let shader = self
-            .device
-            .compile_shader_f64(Self::wgsl_shader(), Some("Cosine Similarity f64"));
-
         // Create buffers
         let a_buf = self
             .device
@@ -205,143 +202,20 @@ impl CosineSimilarityF64 {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        // Create bind group layout
-        let bgl = self
-            .device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Cosine BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        let wg_x = num_a.div_ceil(16);
+        let wg_y = num_b.div_ceil(16);
 
-        let pl = self
-            .device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Cosine PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
+        ComputeDispatch::new(self.device.as_ref(), "Cosine Similarity f64")
+            .shader(Self::wgsl_shader(), "main")
+            .f64()
+            .storage_read(0, &a_buf)
+            .storage_read(1, &b_buf)
+            .storage_rw(2, &output_buf)
+            .uniform(3, &params_buf)
+            .dispatch(wg_x as u32, wg_y as u32, 1)
+            .submit();
 
-        let pipeline =
-            self.device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Cosine Pipeline"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Cosine BG"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: a_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: b_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        // Dispatch: workgroup size is 16x16
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Cosine Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Cosine Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            let wg_x = num_a.div_ceil(16);
-            let wg_y = num_b.div_ceil(16);
-            pass.dispatch_workgroups(wg_x as u32, wg_y as u32, 1);
-        }
-
-        self.device.submit_and_poll(Some(encoder.finish()));
-
-        // Read back results
-        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Staging"),
-            size: (output_size * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder2 =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Copy Encoder"),
-                });
-        encoder2.copy_buffer_to_buffer(&output_buf, 0, &staging, 0, (output_size * 8) as u64);
-        self.device.submit_and_poll(Some(encoder2.finish()));
-
-        let results: Vec<f64> = self.device.map_staging_buffer(&staging, output_size)?;
+        let results: Vec<f64> = self.device.read_buffer_f64(&output_buf, output_size)?;
         Ok(results)
     }
 }

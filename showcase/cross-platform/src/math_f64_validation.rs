@@ -7,7 +7,6 @@
 // used in the WGSL shaders for proper validation
 #![allow(clippy::approx_constant)]
 
-use anyhow::Result;
 use barracuda::shaders::ShaderTemplate;
 
 /// Test values for validation
@@ -341,7 +340,7 @@ fn cpu_pow_two_thirds(x: f64) -> f64 {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║  math_f64.wgsl Validation                                                    ║");
     println!("║  Testing pure-GPU f64 transcendental functions                               ║");

@@ -13,7 +13,7 @@
 //! - 2D/3D harmonic oscillator basis
 //! - Molecular dynamics radial basis
 
-use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
@@ -139,129 +139,16 @@ impl LaguerreF64 {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        let bgl = self
-            .device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Laguerre f64 BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        ComputeDispatch::new(self.device.as_ref(), "Laguerre f64")
+            .shader(Self::wgsl_shader(), "main")
+            .f64()
+            .storage_read(0, &input_buf)
+            .storage_rw(1, &output_buf)
+            .uniform(2, &params_buf)
+            .dispatch_1d(size as u32)
+            .submit();
 
-        let bind_group = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Laguerre f64 Bind Group"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        let shader = self
-            .device
-            .compile_shader_f64(Self::wgsl_shader(), Some("Laguerre f64"));
-
-        let pipeline_layout =
-            self.device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Laguerre f64 Pipeline Layout"),
-                    bind_group_layouts: &[&bgl],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline =
-            self.device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Laguerre f64 Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Laguerre f64 Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Laguerre f64 Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (size as u32).div_ceil(WORKGROUP_SIZE_1D);
-            pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        // Read back results
-        let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Laguerre f64 Staging"),
-            size: std::mem::size_of_val(x) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        encoder.copy_buffer_to_buffer(
-            &output_buf,
-            0,
-            &staging_buf,
-            0,
-            std::mem::size_of_val(x) as u64,
-        );
-
-        self.device.submit_and_poll(Some(encoder.finish()));
-
-        let result: Vec<f64> = self.device.map_staging_buffer(&staging_buf, size)?;
+        let result: Vec<f64> = self.device.read_buffer_f64(&output_buf, size)?;
         Ok(result)
     }
 }

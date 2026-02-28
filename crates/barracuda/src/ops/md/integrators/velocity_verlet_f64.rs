@@ -8,6 +8,7 @@
 //! - N-body simulations
 //! - Long-time energy conservation
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -32,64 +33,11 @@ struct VvParams {
 /// 2. v(t+Δt) = v(t) + ½[a(t) + a(t+Δt)]Δt
 pub struct VelocityVerletF64 {
     device: Arc<WgpuDevice>,
-    step_pipeline: wgpu::ComputePipeline,
-    half_vel_pipeline: wgpu::ComputePipeline,
-    pos_update_pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
 }
 
 impl VelocityVerletF64 {
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let module = device.compile_shader_f64(SHADER, Some("velocity_verlet_f64"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("VV:bgl"),
-                entries: &[
-                    storage_ro(0), // positions
-                    storage_ro(1), // velocities
-                    storage_ro(2), // forces_old
-                    storage_ro(3), // forces_new
-                    storage_ro(4), // masses
-                    storage_rw(5), // positions_new
-                    storage_rw(6), // velocities_new
-                    uniform(7),    // params
-                ],
-            });
-
-        let layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("VV:layout"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let make_pipe = |entry: &str, label: &str| {
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: entry,
-                    compilation_options: Default::default(),
-                    cache: None,
-                })
-        };
-
-        let step_pipeline = make_pipe("main", "VV:step");
-        let half_vel_pipeline = make_pipe("velocity_half_step", "VV:half_vel");
-        let pos_update_pipeline = make_pipe("position_update", "VV:pos_update");
-
-        Ok(Self {
-            device,
-            step_pipeline,
-            half_vel_pipeline,
-            pos_update_pipeline,
-            bgl,
-        })
+        Ok(Self { device })
     }
 
     /// Full Velocity-Verlet step on GPU.
@@ -106,7 +54,6 @@ impl VelocityVerletF64 {
         let n3 = n * 3;
 
         let d = &self.device.device;
-        let q = &self.device.queue;
 
         let buf = |label, data: &[f64]| {
             d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -145,35 +92,27 @@ impl VelocityVerletF64 {
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("VV:bg"),
-            layout: &self.bgl,
-            entries: &[
-                entry(0, &pos_buf),
-                entry(1, &vel_buf),
-                entry(2, &fo_buf),
-                entry(3, &fn_buf),
-                entry(4, &mass_buf),
-                entry(5, &pos_out),
-                entry(6, &vel_out),
-                entry(7, &params_buf),
-            ],
-        });
-
         let wg_count = (n as u32).div_ceil(WG);
-        let mut enc = d.create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.step_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(wg_count, 1, 1);
-        }
+        ComputeDispatch::new(&*self.device, "VV:step")
+            .shader(SHADER, "main")
+            .f64()
+            .storage_read(0, &pos_buf)
+            .storage_read(1, &vel_buf)
+            .storage_read(2, &fo_buf)
+            .storage_read(3, &fn_buf)
+            .storage_read(4, &mass_buf)
+            .storage_rw(5, &pos_out)
+            .storage_rw(6, &vel_out)
+            .uniform(7, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
 
         let rb_pos = readback_buf(d, out_size);
         let rb_vel = readback_buf(d, out_size);
+        let mut enc = d.create_command_encoder(&Default::default());
         enc.copy_buffer_to_buffer(&pos_out, 0, &rb_pos, 0, out_size);
         enc.copy_buffer_to_buffer(&vel_out, 0, &rb_vel, 0, out_size);
-        q.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
 
         let new_pos = self.device.map_staging_buffer::<f64>(&rb_pos, n3)?;
         let new_vel = self.device.map_staging_buffer::<f64>(&rb_vel, n3)?;
@@ -192,7 +131,6 @@ impl VelocityVerletF64 {
         let n = velocities.len() / 3;
         let n3 = n * 3;
         let d = &self.device.device;
-        let q = &self.device.queue;
 
         let vel_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("VV:hv_vel"),
@@ -239,31 +177,25 @@ impl VelocityVerletF64 {
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("VV:hv_bg"),
-            layout: &self.bgl,
-            entries: &[
-                entry(0, &dummy_ro),   // positions (unused by half_step)
-                entry(1, &vel_buf),    // velocities
-                entry(2, &forces_buf), // forces_old (used for forces)
-                entry(3, &dummy_ro),   // forces_new (unused)
-                entry(4, &mass_buf),   // masses
-                entry(5, &dummy_rw),   // positions_new (unused, RW binding)
-                entry(6, &vel_out),    // velocities_new (output)
-                entry(7, &params_buf),
-            ],
-        });
+        let wg_count = (n as u32).div_ceil(WG);
+        ComputeDispatch::new(&*self.device, "VV:half_vel")
+            .shader(SHADER, "velocity_half_step")
+            .f64()
+            .storage_read(0, &dummy_ro)
+            .storage_read(1, &vel_buf)
+            .storage_read(2, &forces_buf)
+            .storage_read(3, &dummy_ro)
+            .storage_read(4, &mass_buf)
+            .storage_rw(5, &dummy_rw)
+            .storage_rw(6, &vel_out)
+            .uniform(7, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
 
-        let mut enc = d.create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.half_vel_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups((n as u32).div_ceil(WG), 1, 1);
-        }
         let rb = readback_buf(d, out_size);
+        let mut enc = d.create_command_encoder(&Default::default());
         enc.copy_buffer_to_buffer(&vel_out, 0, &rb, 0, out_size);
-        q.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
 
         self.device.map_staging_buffer::<f64>(&rb, n3)
     }
@@ -278,7 +210,6 @@ impl VelocityVerletF64 {
         let n = positions.len() / 3;
         let n3 = n * 3;
         let d = &self.device.device;
-        let q = &self.device.queue;
 
         let pos_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("VV:pu_pos"),
@@ -327,79 +258,27 @@ impl VelocityVerletF64 {
             mapped_at_creation: false,
         });
 
-        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("VV:pu_bg"),
-            layout: &self.bgl,
-            entries: &[
-                entry(0, &pos_buf),    // positions
-                entry(1, &vel_buf),    // velocities (half-step)
-                entry(2, &dummy_ro),   // forces_old (unused)
-                entry(3, &dummy_ro),   // forces_new (unused)
-                entry(4, &mass_dummy), // masses (unused)
-                entry(5, &pos_out),    // positions_new (output)
-                entry(6, &dummy_rw),   // velocities_new (unused, RW binding)
-                entry(7, &params_buf),
-            ],
-        });
+        let wg_count = (n as u32).div_ceil(WG);
+        ComputeDispatch::new(&*self.device, "VV:pos_update")
+            .shader(SHADER, "position_update")
+            .f64()
+            .storage_read(0, &pos_buf)
+            .storage_read(1, &vel_buf)
+            .storage_read(2, &dummy_ro)
+            .storage_read(3, &dummy_ro)
+            .storage_read(4, &mass_dummy)
+            .storage_rw(5, &pos_out)
+            .storage_rw(6, &dummy_rw)
+            .uniform(7, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
 
-        let mut enc = d.create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.pos_update_pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups((n as u32).div_ceil(WG), 1, 1);
-        }
         let rb = readback_buf(d, out_size);
+        let mut enc = d.create_command_encoder(&Default::default());
         enc.copy_buffer_to_buffer(&pos_out, 0, &rb, 0, out_size);
-        q.submit(Some(enc.finish()));
+        self.device.submit_and_poll(Some(enc.finish()));
 
         self.device.map_staging_buffer::<f64>(&rb, n3)
-    }
-}
-
-fn entry(binding: u32, buf: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
-    wgpu::BindGroupEntry {
-        binding,
-        resource: buf.as_entire_binding(),
-    }
-}
-
-fn storage_ro(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn storage_rw(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only: false },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn uniform(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
     }
 }
 

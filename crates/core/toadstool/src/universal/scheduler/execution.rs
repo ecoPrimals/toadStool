@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT;
 use tracing::{debug, info, warn};
 
 /// Discovers the primal's own IP/host for `PrimalContext.network_location`.
@@ -47,7 +48,7 @@ fn discover_self_ip_address() -> String {
         }
     }
     // 6. Fallback: any interface (not loopback-only)
-    "0.0.0.0".to_string()
+    BIND_ADDRESS_DEFAULT.to_string()
 }
 use uuid::Uuid;
 

@@ -30,6 +30,8 @@ use uuid::Uuid;
 
 use toadstool_common::primal_identity::{Capability, StorageCapability};
 use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
+#[allow(deprecated)]
+use toadstool_config::constants::primals::NESTGATE;
 
 use crate::config::NestGateConfig;
 use crate::pipeline::{PipelineConfig, PipelineStatus};
@@ -173,9 +175,10 @@ impl StorageClient {
     ) -> NestGateResult<Self> {
         // ✅ TRUE PRIMAL: Use discovered service name or fallback
         let service_name = service_name.unwrap_or_else(|| {
-            // Fallback to "nestgate" for backward compatibility
+            // Fallback for backward compatibility
             // In production, prefer using discover() which provides the service name
-            "nestgate".to_string()
+            #[allow(deprecated)]
+            NESTGATE.to_string()
         });
 
         // ✅ Generic socket path resolution (works with ANY storage service!)

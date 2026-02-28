@@ -1,6 +1,6 @@
 //! Configuration generation functionality
 
-use anyhow::Result;
+use crate::Result;
 use std::future::Future;
 use tracing::{debug, info};
 

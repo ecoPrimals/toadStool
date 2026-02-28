@@ -3,7 +3,7 @@
 //! This factory reduces boilerplate when creating adapters by handling the
 //! common initialization pattern: discovery → registry → resolver → adapter.
 
-use anyhow::Result;
+use crate::Result;
 use std::sync::Arc;
 
 use super::{

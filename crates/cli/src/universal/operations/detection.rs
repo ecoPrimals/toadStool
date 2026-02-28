@@ -2,7 +2,7 @@
 //!
 //! Extension trait for platform detection and capability testing operations.
 
-use anyhow::Result;
+use crate::Result;
 use std::future::Future;
 use tracing::warn;
 

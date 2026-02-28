@@ -123,3 +123,22 @@ pub fn wgsl_symmetrize() -> &'static str {
 pub fn wgsl_laplacian() -> &'static str {
     &WGSL_LAPLACIAN
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn symmetrize_shader_source_valid() {
+        let source = wgsl_symmetrize();
+        assert!(!source.is_empty());
+        assert!(source.contains("fn main") || source.contains("@compute"));
+    }
+
+    #[test]
+    fn laplacian_shader_source_valid() {
+        let source = wgsl_laplacian();
+        assert!(!source.is_empty());
+        assert!(source.contains("fn main") || source.contains("@compute"));
+    }
+}

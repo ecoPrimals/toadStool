@@ -2,14 +2,14 @@
 //!
 //! This module provides Unix signal handling for graceful shutdown and process control.
 
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 use tracing::info;
 
 /// Signal manager for Unix signal handling
-#[allow(dead_code)]
+#[allow(dead_code)] // Phase 2+: biome daemon graceful shutdown via wait_for_interrupt
 pub(super) struct SignalManager;
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Phase 2+: biome daemon graceful shutdown via wait_for_interrupt
 impl SignalManager {
     /// Wait for termination signal (SIGTERM or SIGINT)
     ///
@@ -64,10 +64,10 @@ impl SignalManager {
             .context("Failed to send signal")?;
 
         if !output.status.success() {
-            anyhow::bail!(
+            return Err(crate::CliError::Other(format!(
                 "Failed to send signal {signal} to PID {pid}: {}",
                 String::from_utf8_lossy(&output.stderr)
-            );
+            )));
         }
 
         Ok(())

@@ -665,7 +665,7 @@ async fn test_discovery_timeout_custom() {
 }
 
 // Helper functions
-async fn create_mock_coordinator() -> anyhow::Result<MockEcosystemCoordinator> {
+async fn create_mock_coordinator() -> toadstool::ToadStoolResult<MockEcosystemCoordinator> {
     Ok(MockEcosystemCoordinator {
         primals: Arc::new(RwLock::new(HashMap::new())),
         channels: Arc::new(RwLock::new(HashMap::new())),
@@ -685,7 +685,8 @@ async fn create_mock_coordinator() -> anyhow::Result<MockEcosystemCoordinator> {
     })
 }
 
-async fn create_mock_coordinator_with_endpoints() -> anyhow::Result<MockEcosystemCoordinator> {
+async fn create_mock_coordinator_with_endpoints(
+) -> toadstool::ToadStoolResult<MockEcosystemCoordinator> {
     let mut endpoints = HashMap::new();
     endpoints.insert("songbird".to_string(), "http://localhost:8080".to_string());
     endpoints.insert("nestgate".to_string(), "http://localhost:9000".to_string());
@@ -716,7 +717,7 @@ fn create_test_primal(name: &str, primal_type: MockPrimalType) -> MockPrimalInst
 
 async fn simulate_discover_primals(
     _coordinator: &MockEcosystemCoordinator,
-) -> anyhow::Result<Vec<MockPrimalInstance>> {
+) -> toadstool::ToadStoolResult<Vec<MockPrimalInstance>> {
     Ok(vec![])
 }
 
@@ -724,25 +725,25 @@ async fn simulate_connect_to_primal(
     _coordinator: &MockEcosystemCoordinator,
     _name: &str,
     _endpoint: &str,
-) -> anyhow::Result<()> {
+) -> toadstool::ToadStoolResult<()> {
     Ok(())
 }
 
 async fn simulate_discover_via_multicast(
     _coordinator: &MockEcosystemCoordinator,
-) -> anyhow::Result<Vec<MockPrimalInstance>> {
+) -> toadstool::ToadStoolResult<Vec<MockPrimalInstance>> {
     Ok(vec![])
 }
 
 async fn simulate_discover_via_dns(
     _coordinator: &MockEcosystemCoordinator,
-) -> anyhow::Result<Vec<MockPrimalInstance>> {
+) -> toadstool::ToadStoolResult<Vec<MockPrimalInstance>> {
     Ok(vec![])
 }
 
 async fn simulate_discover_via_local_scan(
     _coordinator: &MockEcosystemCoordinator,
-) -> anyhow::Result<Vec<MockPrimalInstance>> {
+) -> toadstool::ToadStoolResult<Vec<MockPrimalInstance>> {
     Ok(vec![])
 }
 
@@ -750,6 +751,6 @@ async fn simulate_discover_at_endpoint(
     _coordinator: &MockEcosystemCoordinator,
     _name: &str,
     _endpoint: &str,
-) -> anyhow::Result<MockPrimalInstance> {
+) -> toadstool::ToadStoolResult<MockPrimalInstance> {
     Ok(create_test_primal(_name, MockPrimalType::Songbird))
 }

@@ -16,7 +16,7 @@
 
 //! Core traits for property-based testing
 
-use anyhow::Result;
+use toadstool::ToadStoolResult as Result;
 
 /// Trait for generating test inputs
 pub trait Generator<T> {

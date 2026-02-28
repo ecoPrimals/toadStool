@@ -45,7 +45,6 @@ bytes = { workspace = true }
 # Utilities
 uuid = { version = "1.8", features = ["v4", "serde"] }
 tracing = "0.1"
-anyhow = "1.0"
 thiserror = { workspace = true }
 # Concurrency primitives (for unified memory)
 # dashmap removed: evolved to std::sync::RwLock<HashMap> (consistent with barracuda pattern)

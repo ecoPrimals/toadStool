@@ -37,6 +37,24 @@ use crate::device::{SubstrateType, WgpuDevice};
 use std::time::Instant;
 use wgpu::util::DeviceExt;
 
+// ── Device memory estimates (conservative defaults; probing refines) ─────────
+
+const DISCRETE_GPU_CACHE_ESTIMATE: u64 = 32 * 1024 * 1024;
+const DISCRETE_GPU_BW_GBS: f64 = 500.0;
+const DISCRETE_GPU_VRAM_ESTIMATE: u64 = 16 * 1024 * 1024 * 1024;
+
+const INTEGRATED_GPU_CACHE_ESTIMATE: u64 = 16 * 1024 * 1024;
+const INTEGRATED_GPU_BW_GBS: f64 = 100.0;
+const INTEGRATED_GPU_VRAM_ESTIMATE: u64 = 8 * 1024 * 1024 * 1024;
+
+const CPU_CACHE_ESTIMATE: u64 = 32 * 1024 * 1024;
+const CPU_BW_GBS: f64 = 50.0;
+const CPU_VRAM_ESTIMATE: u64 = 64 * 1024 * 1024 * 1024;
+
+const FALLBACK_CACHE_ESTIMATE: u64 = 8 * 1024 * 1024;
+const FALLBACK_BW_GBS: f64 = 100.0;
+const FALLBACK_VRAM_ESTIMATE: u64 = 8 * 1024 * 1024 * 1024;
+
 /// Bandwidth sample point for cache probing
 #[derive(Debug, Clone)]
 struct BandwidthSample {
@@ -110,19 +128,31 @@ impl SubstrateMemoryHierarchy {
                 // Discrete GPUs: conservative 32MB cache estimate
                 // Real sizes vary from 4MB (old) to 128MB (Infinity Cache)
                 // Probing will discover actual boundaries
-                (32 * 1024 * 1024, 500.0, 16 * 1024 * 1024 * 1024)
+                (
+                    DISCRETE_GPU_CACHE_ESTIMATE,
+                    DISCRETE_GPU_BW_GBS,
+                    DISCRETE_GPU_VRAM_ESTIMATE,
+                )
             }
             wgpu::DeviceType::IntegratedGpu => {
                 // iGPUs share system memory, smaller effective cache
-                (16 * 1024 * 1024, 100.0, 8 * 1024 * 1024 * 1024)
+                (
+                    INTEGRATED_GPU_CACHE_ESTIMATE,
+                    INTEGRATED_GPU_BW_GBS,
+                    INTEGRATED_GPU_VRAM_ESTIMATE,
+                )
             }
             wgpu::DeviceType::Cpu => {
                 // CPUs have L3 cache, typically 8-64MB
-                (32 * 1024 * 1024, 50.0, 64 * 1024 * 1024 * 1024)
+                (CPU_CACHE_ESTIMATE, CPU_BW_GBS, CPU_VRAM_ESTIMATE)
             }
             _ => {
                 // Unknown device type, use conservative defaults
-                (8 * 1024 * 1024, 100.0, 8 * 1024 * 1024 * 1024)
+                (
+                    FALLBACK_CACHE_ESTIMATE,
+                    FALLBACK_BW_GBS,
+                    FALLBACK_VRAM_ESTIMATE,
+                )
             }
         };
 

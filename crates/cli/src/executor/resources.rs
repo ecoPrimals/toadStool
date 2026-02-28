@@ -2,7 +2,7 @@
 //!
 //! This module handles resource cleanup, PID tracking, and data management.
 
-use anyhow::Result;
+use crate::Result;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::fs;
 use tracing::info;
@@ -11,12 +11,12 @@ use uuid::Uuid;
 use super::{BiomeExecutor, BiomeInfo};
 
 /// Resource manager for biome data and processes
-#[allow(dead_code)]
+#[allow(dead_code)] // Phase 2+: biome CLI purge/resource ops will use this
 pub(super) struct ResourceManager<'a> {
     executor: &'a BiomeExecutor,
 }
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Phase 2+: biome CLI purge/resource ops will use this
 impl<'a> ResourceManager<'a> {
     /// Create new resource manager
     pub fn new(executor: &'a BiomeExecutor) -> Self {
@@ -62,10 +62,14 @@ impl<'a> ResourceManager<'a> {
                     return Ok(pid);
                 }
             }
-            anyhow::bail!("No PIDs found for biome '{biome_name}'");
+            return Err(crate::CliError::Other(format!(
+                "No PIDs found for biome '{biome_name}'"
+            )));
         }
 
-        anyhow::bail!("Biome '{biome_name}' not found");
+        Err(crate::CliError::Other(format!(
+            "Biome '{biome_name}' not found"
+        )))
     }
 
     /// Find process by execution ID

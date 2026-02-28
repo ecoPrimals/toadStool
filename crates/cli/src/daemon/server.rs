@@ -6,7 +6,7 @@
 //! - Resource monitoring and reporting
 //! - Workload lifecycle management
 
-use anyhow::Result;
+use crate::Result;
 use std::sync::Arc;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::signal;

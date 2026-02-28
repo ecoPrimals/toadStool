@@ -16,8 +16,8 @@
 
 //! Property type implementations for common testing patterns
 
-use anyhow::Result;
 use std::fmt::Debug;
+use toadstool::ToadStoolResult as Result;
 
 use super::traits::Property;
 
@@ -95,9 +95,9 @@ where
         if *input == decoded {
             Ok(())
         } else {
-            Err(anyhow::anyhow!(
+            Err(toadstool::ToadStoolError::runtime(format!(
                 "Round-trip property failed: {input:?} != {decoded:?}"
-            ))
+            )))
         }
     }
 

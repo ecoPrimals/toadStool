@@ -8,7 +8,6 @@
 //! 3. Handle silicon lottery and generation differences
 //! 4. Work seamlessly with unknown/new hardware
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use wgpu::util::DeviceExt;
@@ -125,7 +124,7 @@ async fn measure_true_throughput(
     shader_source: &str,
     workgroup_size: u32,
     size: usize,
-) -> Result<(f64, f64)> {
+) -> std::result::Result<(f64, f64), Box<dyn std::error::Error + Send + Sync>> {
     // Returns (latency_us, bandwidth_gbps)
     // Create test data
     let data_a: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
@@ -309,7 +308,7 @@ async fn autotune_workgroup_size(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     device_name: &str,
-) -> Result<(u32, f64)> {
+) -> std::result::Result<(u32, f64), Box<dyn std::error::Error + Send + Sync>> {
     println!("  Auto-tuning workgroup size for {}...", device_name);
 
     let test_size = 4_000_000; // 4M elements (fits in dispatch limits for all WG sizes)
@@ -344,7 +343,7 @@ async fn autotune_batch_size(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     workgroup_size: u32,
-) -> Result<usize> {
+) -> std::result::Result<usize, Box<dyn std::error::Error + Send + Sync>> {
     println!("  Auto-tuning batch size...");
 
     let test_size = 1_000_000;
@@ -510,7 +509,7 @@ pub async fn calibrate_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     device_name: &str,
-) -> Result<GpuCalibration> {
+) -> std::result::Result<GpuCalibration, Box<dyn std::error::Error + Send + Sync>> {
     println!("\n╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║  CALIBRATING: {:<60} ║", device_name);
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
@@ -557,7 +556,7 @@ pub async fn calibrate_gpu(
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)
@@ -581,7 +580,7 @@ async fn main() -> Result<()> {
     for (idx, _gpu_info) in pool.devices().iter().enumerate() {
         let wgpu_device = pool
             .device(idx)
-            .ok_or_else(|| anyhow::anyhow!("No device"))?;
+            .ok_or_else(|| std::io::Error::other("No device"))?;
         let device = wgpu_device.device();
         let queue = wgpu_device.queue();
         let name = wgpu_device.name();

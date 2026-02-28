@@ -9,6 +9,7 @@
 //! Solves A·x = b using Gaussian elimination with partial pivoting.
 //! For systems where f32 precision is insufficient (condition number > 10⁶).
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -88,105 +89,18 @@ impl LinSolveF64 {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        let bgl = self
-            .device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("LinSolveF64 BGL"),
-                entries: &[
-                    bgl_entry(0, true),
-                    bgl_entry(1, true),
-                    bgl_entry(2, false),
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("LinSolveF64 BG"),
-                layout: &bgl,
-                entries: &[
-                    bg_entry(0, &matrix_buf),
-                    bg_entry(1, &rhs_buf),
-                    bg_entry(2, &output_buf),
-                    bg_entry(3, &params_buf),
-                ],
-            });
-
-        let shader = self.device.compile_shader_f64(SHADER, Some("LinSolveF64"));
-        let pl = self
-            .device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("LinSolveF64 PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline =
-            self.device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("LinSolveF64 Pipeline"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("LinSolveF64 Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("LinSolveF64 Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(1, 1, 1);
-        }
-
-        self.device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(self.device.as_ref(), "LinSolveF64")
+            .shader(SHADER, "main")
+            .f64()
+            .storage_read(0, &matrix_buf)
+            .storage_read(1, &rhs_buf)
+            .storage_rw(2, &output_buf)
+            .uniform(3, &params_buf)
+            .dispatch(1, 1, 1)
+            .submit();
 
         let full = self.device.read_buffer_f64(&output_buf, output_size)?;
         Ok(full[n * n..].to_vec())
-    }
-}
-
-fn bgl_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn bg_entry(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
-    wgpu::BindGroupEntry {
-        binding,
-        resource: buffer.as_entire_binding(),
     }
 }
 
@@ -194,6 +108,17 @@ fn bg_entry(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
 mod tests {
     use super::*;
     use crate::device::test_pool::get_test_device_if_gpu_available;
+
+    #[test]
+    fn linsolve_f64_params_layout() {
+        assert_eq!(std::mem::size_of::<Params>(), 16);
+    }
+
+    #[test]
+    fn linsolve_f64_shader_source_valid() {
+        assert!(!SHADER.is_empty());
+        assert!(SHADER.contains("fn main") || SHADER.contains("@compute"));
+    }
 
     #[tokio::test]
     async fn test_linsolve_f64_identity() {

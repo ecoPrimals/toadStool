@@ -6,13 +6,13 @@
 //!
 //! These are classic activation functions used in traditional neural networks and LSTMs.
 
-use anyhow::Result;
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Tanh & Sigmoid Demo                 ║");
     println!("║  barraCuda Phase 1 - Classic Activations                ║");

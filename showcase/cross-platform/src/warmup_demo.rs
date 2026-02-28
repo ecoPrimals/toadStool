@@ -3,7 +3,6 @@
 //! Demonstrates the difference between cold and warm shader cache
 //! and how ToadStool can intelligently pre-warm based on workload hints.
 
-use anyhow::Result;
 use barracuda::device::pipeline_cache::GLOBAL_CACHE;
 use barracuda::device::{warmup_pool, WarmupConfig, WarmupWorkloadHint};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
@@ -11,7 +10,9 @@ use barracuda::prelude::*;
 use std::sync::Arc;
 use std::time::Instant;
 
-async fn benchmark_cold_vs_warm(device: Arc<WgpuDevice>) -> Result<()> {
+async fn benchmark_cold_vs_warm(
+    device: Arc<WgpuDevice>,
+) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let name = device.name().to_string();
     let size = 1_000_000usize;
 
@@ -52,7 +53,7 @@ async fn benchmark_cold_vs_warm(device: Arc<WgpuDevice>) -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

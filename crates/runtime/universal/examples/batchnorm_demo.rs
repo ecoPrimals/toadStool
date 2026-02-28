@@ -8,13 +8,13 @@
 //!
 //! BatchNorm validates the 4-phase normalization template we discovered!
 
-use anyhow::Result;
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Batch Normalization Demo            ║");
     println!("║  barraCuda Phase 1 - 4th R→M→R→M Pattern Validation     ║");

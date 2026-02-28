@@ -10,7 +10,7 @@ mod collectors;
 mod display;
 mod types;
 
-use anyhow::Result;
+use crate::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

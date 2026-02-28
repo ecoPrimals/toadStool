@@ -4,7 +4,6 @@
 //! This allows running hotSpring's control experiments through ToadStool
 //! for cross-validation.
 
-use anyhow::Result;
 use barracuda::device::WgpuDevice;
 use std::sync::Arc;
 use tracing::{info, warn, Level};
@@ -14,7 +13,7 @@ use tracing_subscriber::FmtSubscriber;
 const HOTSPRING_PATH: &str = "../../../hotSpring";
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Initialize logging
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)

@@ -5,7 +5,6 @@
 //! - Stage 2: NPU inference (Akida AKD1000 - simulated)
 //! - Stage 3: CPU postprocessing
 
-use anyhow::Result;
 use barracuda::device::WgpuDevice;
 use std::sync::Arc;
 use tracing::{info, Level};
@@ -89,7 +88,7 @@ fn postprocess_cpu(probabilities: &[f32], k: usize) -> StageResult {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Initialize logging
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)

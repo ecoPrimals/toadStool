@@ -4,7 +4,8 @@
 
 use akida_driver::{AkidaDevice, DeviceManager};
 use akida_models::Model;
-use anyhow::{Context, Result};
+
+use crate::error::Result;
 use ndarray::Array1;
 use tracing::{debug, info};
 
@@ -45,11 +46,19 @@ impl DualChipEnsemble {
         info!("  Chip 2: {}", config.reservoir2_path);
 
         // Load models
-        let model1 = Model::from_file(&config.reservoir1_path)
-            .with_context(|| format!("Failed to load model 1: {}", config.reservoir1_path))?;
+        let model1 = Model::from_file(&config.reservoir1_path).map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!(
+                "Failed to load model 1: {}: {e}",
+                config.reservoir1_path
+            ))
+        })?;
 
-        let model2 = Model::from_file(&config.reservoir2_path)
-            .with_context(|| format!("Failed to load model 2: {}", config.reservoir2_path))?;
+        let model2 = Model::from_file(&config.reservoir2_path).map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!(
+                "Failed to load model 2: {}: {e}",
+                config.reservoir2_path
+            ))
+        })?;
 
         let extractor = StateExtractor::final_layer_only();
 
@@ -73,20 +82,28 @@ impl DualChipEnsemble {
     pub fn discover_and_create(config: EnsembleConfig) -> Result<Self> {
         info!("Discovering Akida devices for ensemble...");
 
-        let manager = DeviceManager::discover().context("Failed to discover Akida devices")?;
+        let manager = DeviceManager::discover().map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!(
+                "Failed to discover Akida devices: {e}"
+            ))
+        })?;
 
         if manager.device_count() < 2 {
-            anyhow::bail!(
+            return Err(crate::error::ReservoirError::InvalidState(format!(
                 "Ensemble requires 2 Akida devices, found {}",
                 manager.device_count()
-            );
+            )));
         }
 
         info!("Found {} Akida devices", manager.device_count());
 
         // Open first two devices
-        let device1 = manager.open(0).context("Failed to open device 0")?;
-        let device2 = manager.open(1).context("Failed to open device 1")?;
+        let device1 = manager.open(0).map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!("Failed to open device 0: {e}"))
+        })?;
+        let device2 = manager.open(1).map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!("Failed to open device 1: {e}"))
+        })?;
 
         Self::new(config, device1, device2)
     }
@@ -101,16 +118,16 @@ impl DualChipEnsemble {
 
         // Load to chip 1
         debug!("Loading to chip 1...");
-        self.model1
-            .load_to_device(&mut self.device1)
-            .context("Failed to load to device 1")?;
+        self.model1.load_to_device(&mut self.device1).map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!("Failed to load to device 1: {e}"))
+        })?;
         info!("  ✅ Chip 1 loaded");
 
         // Load to chip 2
         debug!("Loading to chip 2...");
-        self.model2
-            .load_to_device(&mut self.device2)
-            .context("Failed to load to device 2")?;
+        self.model2.load_to_device(&mut self.device2).map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!("Failed to load to device 2: {e}"))
+        })?;
         info!("  ✅ Chip 2 loaded");
 
         info!("✅ Both reservoirs loaded");
@@ -151,11 +168,19 @@ impl DualChipEnsemble {
         });
 
         let result1 = r1
-            .map_err(|_| anyhow::anyhow!("Chip 1 thread panicked"))?
-            .context("Chip 1 inference failed")?;
+            .map_err(|_| {
+                crate::error::ReservoirError::Thread("Chip 1 thread panicked".to_string())
+            })?
+            .map_err(|e| {
+                crate::error::ReservoirError::InvalidState(format!("Chip 1 inference failed: {e}"))
+            })?;
         let result2 = r2
-            .map_err(|_| anyhow::anyhow!("Chip 2 thread panicked"))?
-            .context("Chip 2 inference failed")?;
+            .map_err(|_| {
+                crate::error::ReservoirError::Thread("Chip 2 thread panicked".to_string())
+            })?
+            .map_err(|e| {
+                crate::error::ReservoirError::InvalidState(format!("Chip 2 inference failed: {e}"))
+            })?;
 
         let state1 = inference_to_state(&result1);
         let state2 = inference_to_state(&result2);
@@ -168,8 +193,9 @@ impl DualChipEnsemble {
             state1.len() + state2.len()
         );
 
-        let ensemble_state =
-            concatenate_states(&[state1, state2]).context("Failed to concatenate states")?;
+        let ensemble_state = concatenate_states(&[state1, state2]).map_err(|e| {
+            crate::error::ReservoirError::InvalidState(format!("Failed to concatenate states: {e}"))
+        })?;
 
         debug!("✅ Ensemble state: {} dimensions", ensemble_state.len());
         Ok(ensemble_state)

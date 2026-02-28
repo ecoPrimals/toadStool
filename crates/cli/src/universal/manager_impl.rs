@@ -227,10 +227,10 @@ impl UniversalComputeManager {
 
         // Validate source and target platforms
         if !self.platforms.contains_key(&source) {
-            bail!("Source platform not found: {source}");
+            return Err(crate::CliError::Other(format!("Source platform not found: {source}")));
         }
         if !self.platforms.contains_key(&target) {
-            bail!("Target platform not found: {target}");
+            return Err(crate::CliError::Other(format!("Target platform not found: {target}")));
         }
 
         // Create migration plan
@@ -275,7 +275,7 @@ impl UniversalComputeManager {
                 info!("✅ Migration verification successful");
             } else {
                 error!("❌ Migration verification failed");
-                return Err(anyhow::anyhow!("Migration verification failed"));
+                return Err(crate::CliError::Other("Migration verification failed".to_string()));
             }
         }
 
@@ -295,7 +295,7 @@ impl UniversalComputeManager {
         // Parse endpoint
         let peer_addr: SocketAddr = endpoint
             .parse()
-            .with_context(|| format!("Invalid federation endpoint: {endpoint}"))?;
+            .context(format!("Invalid federation endpoint: {endpoint}"))?;
 
         // Create federation request
         let federation_request = operations::federation::FederationRequest {

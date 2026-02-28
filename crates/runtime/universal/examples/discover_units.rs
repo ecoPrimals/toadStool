@@ -3,10 +3,12 @@
 //! This demonstrates the core principle: CPU, GPU, neuromorphic - all
 //! are just different orders of the same parallel compute architecture.
 
-use toadstool_runtime_universal::{OperationType, ParamValue, UniversalRuntime, WorkloadBuilder};
+use toadstool_runtime_universal::{
+    ComputeError, OperationType, ParamValue, UniversalRuntime, WorkloadBuilder,
+};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), ComputeError> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Compute Runtime - Discovery Demo             ║");
     println!("║  CPU, GPU, Neuromorphic: Different orders of same arch  ║");

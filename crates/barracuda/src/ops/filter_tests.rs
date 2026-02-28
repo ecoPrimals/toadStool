@@ -50,6 +50,38 @@ async fn test_filter_ge() {
 }
 
 #[tokio::test]
+async fn test_filter_empty_input() {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+        return;
+    };
+    let input = Tensor::from_data(&[] as &[f32], vec![0], device).unwrap();
+    let result = input.filter(FilterOperation::GreaterThan, 0.0).unwrap();
+    assert_eq!(result.count, 0);
+}
+
+#[tokio::test]
+async fn test_filter_single_element() {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+        return;
+    };
+    let input = Tensor::from_data(&[42.0f32], vec![1], device).unwrap();
+    let result = input.filter(FilterOperation::GreaterThan, 10.0).unwrap();
+    assert_eq!(result.count, 1);
+    let out = result.selected.to_vec().unwrap();
+    assert!((out[0] - 42.0).abs() < 1e-5);
+}
+
+#[tokio::test]
+async fn test_filter_single_element_none_pass() {
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+        return;
+    };
+    let input = Tensor::from_data(&[5.0f32], vec![1], device).unwrap();
+    let result = input.filter(FilterOperation::GreaterThan, 10.0).unwrap();
+    assert_eq!(result.count, 0);
+}
+
+#[tokio::test]
 async fn test_filter_large() {
     let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
         return;

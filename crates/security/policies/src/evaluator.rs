@@ -18,7 +18,7 @@ use crate::types::*;
 
 /// Condition evaluator for policy rules
 pub struct ConditionEvaluator {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Phase 2+: regex cache for Custom expression evaluation
     regex_cache: Arc<RwLock<HashMap<String, Regex>>>,
 }
 

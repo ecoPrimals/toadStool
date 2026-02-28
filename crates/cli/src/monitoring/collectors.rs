@@ -1,6 +1,6 @@
 //! Metrics collectors - system, process, and network data collection
 
-use anyhow::Result;
+use crate::Result;
 use std::collections::HashMap;
 use sysinfo::{Disks, Networks, System};
 

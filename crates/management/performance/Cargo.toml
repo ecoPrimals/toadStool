@@ -42,7 +42,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Error handling
-anyhow = "1.0"
 thiserror = { workspace = true }
 
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix

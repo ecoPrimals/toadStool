@@ -1,6 +1,6 @@
 //! Core orchestration logic for zero-configuration deployment
 
-use anyhow::Result;
+use crate::Result;
 use std::future::Future;
 use std::time::{Duration, Instant};
 use tracing::info;

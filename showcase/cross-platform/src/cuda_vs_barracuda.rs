@@ -6,8 +6,6 @@
 //!
 //! Goal: Show BarraCuda is competitive while being vendor-agnostic.
 
-use anyhow::Result;
-
 #[cfg(feature = "cuda")]
 mod cuda_bench {
     use cudarc::driver::*;
@@ -31,7 +29,10 @@ extern "C" __global__ void vector_mul(float* a, float* b, float* c, int n) {
 }
 "#;
 
-    pub fn run_cuda_benchmark(size: usize, iterations: usize) -> anyhow::Result<(f64, f64)> {
+    pub fn run_cuda_benchmark(
+        size: usize,
+        iterations: usize,
+    ) -> std::result::Result<(f64, f64), Box<dyn std::error::Error + Send + Sync>> {
         let device = CudaDevice::new(0)?;
 
         // Compile kernels
@@ -108,7 +109,7 @@ mod barracuda_bench {
     pub async fn run_barracuda_benchmark(
         size: usize,
         iterations: usize,
-    ) -> anyhow::Result<(String, f64, f64)> {
+    ) -> std::result::Result<(String, f64, f64), Box<dyn std::error::Error + Send + Sync>> {
         let config = WorkloadConfig {
             exclude_software: true,
             min_gflops: 100.0,
@@ -125,7 +126,7 @@ mod barracuda_bench {
         let device_idx = nvidia_idx.unwrap_or(0);
         let device = pool
             .device(device_idx)
-            .ok_or_else(|| anyhow::anyhow!("No GPU"))?;
+            .ok_or_else(|| std::io::Error::other("No GPU"))?;
         let device_name = pool.devices()[device_idx].name.clone();
 
         // Create test data (same as CUDA)
@@ -219,7 +220,7 @@ fn print_comparison_table(
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

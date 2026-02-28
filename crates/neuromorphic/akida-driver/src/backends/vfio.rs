@@ -58,7 +58,8 @@ use crate::capabilities::Capabilities;
 use crate::error::{AkidaError, Result};
 use crate::mmio::{regs, Bar, MappedRegion};
 use rustix::mm::{mlock, munlock};
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
+use std::os::fd::{AsFd, BorrowedFd, FromRawFd, OwnedFd};
 use std::os::unix::io::{AsRawFd, RawFd};
 
 /// Parameters for polling a status register.
@@ -131,6 +132,99 @@ mod ioctls {
     pub const VFIO_DMA_MAP_FLAG_WRITE: u32 = 1 << 1;
 }
 
+/// Safe wrapper for VFIO ioctls that return an int (no arg).
+///
+/// # Errors
+///
+/// Returns `Err` if the kernel returns a negative value (errno).
+#[inline]
+fn vfio_ioctl_int(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong) -> Result<i32> {
+    let ret = unsafe {
+        // SAFETY: VFIO ioctl with no arg. fd valid from caller; op is VFIO constant.
+        libc::ioctl(fd.as_raw_fd(), op as _, 0)
+    };
+    if ret < 0 {
+        Err(AkidaError::capability_query_failed(format!(
+            "ioctl failed: {}",
+            std::io::Error::last_os_error()
+        )))
+    } else {
+        Ok(ret)
+    }
+}
+
+/// Safe wrapper for VFIO ioctls that take a u32 arg and return int.
+#[inline]
+fn vfio_ioctl_int_arg(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: u32) -> Result<i32> {
+    let ret = unsafe {
+        // SAFETY: VFIO ioctl with u32 arg (e.g. CHECK_EXTENSION, SET_IOMMU). fd valid; arg is value.
+        libc::ioctl(fd.as_raw_fd(), op as _, arg)
+    };
+    if ret < 0 {
+        Err(AkidaError::capability_query_failed(format!(
+            "ioctl failed: {}",
+            std::io::Error::last_os_error()
+        )))
+    } else {
+        Ok(ret)
+    }
+}
+
+/// Safe wrapper for VFIO _IOWR ioctls (read/write struct).
+#[inline]
+fn vfio_ioctl_iowr<T>(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: &mut T) -> Result<()> {
+    let ret = unsafe {
+        // SAFETY: _IOWR ioctl reads/writes arg. fd valid; arg points to valid struct; layout matches kernel.
+        libc::ioctl(fd.as_raw_fd(), op as _, arg)
+    };
+    if ret < 0 {
+        Err(AkidaError::capability_query_failed(format!(
+            "ioctl failed: {}",
+            std::io::Error::last_os_error()
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+/// Safe wrapper for VFIO _IOW ioctls (write-only struct).
+#[inline]
+fn vfio_ioctl_iow<T>(fd: BorrowedFd<'_>, op: std::os::raw::c_ulong, arg: &T) -> Result<()> {
+    let ret = unsafe {
+        // SAFETY: _IOW ioctl reads arg. fd valid; arg points to valid struct; layout matches kernel.
+        libc::ioctl(fd.as_raw_fd(), op as _, arg)
+    };
+    if ret < 0 {
+        Err(AkidaError::capability_query_failed(format!(
+            "ioctl failed: {}",
+            std::io::Error::last_os_error()
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+/// Safe wrapper for VFIO ioctls that take a pointer arg and return int (e.g. fd).
+#[inline]
+fn vfio_ioctl_ptr_arg(
+    fd: BorrowedFd<'_>,
+    op: std::os::raw::c_ulong,
+    arg: *const std::ffi::c_void,
+) -> Result<i32> {
+    let ret = unsafe {
+        // SAFETY: ioctl with pointer arg. fd valid; arg valid for kernel to read (e.g. C string, fd ptr).
+        libc::ioctl(fd.as_raw_fd(), op as _, arg)
+    };
+    if ret < 0 {
+        Err(AkidaError::capability_query_failed(format!(
+            "ioctl failed: {}",
+            std::io::Error::last_os_error()
+        )))
+    } else {
+        Ok(ret)
+    }
+}
+
 /// VFIO device info structure
 #[repr(C)]
 #[derive(Debug, Default)]
@@ -199,6 +293,10 @@ pub struct DmaBuffer {
 impl DmaBuffer {
     /// Create a new DMA buffer
     fn new(container_fd: RawFd, size: usize, iova: u64) -> Result<Self> {
+        // Bounds check: size must be positive and page-aligned for DMA
+        if size == 0 {
+            return Err(AkidaError::transfer_failed("DMA buffer size must be > 0"));
+        }
         // Allocate page-aligned memory
         let layout = std::alloc::Layout::from_size_align(size, 4096)
             .map_err(|e| AkidaError::transfer_failed(format!("Invalid DMA buffer layout: {e}")))?;
@@ -243,31 +341,22 @@ impl DmaBuffer {
             dma_map.flags
         );
 
-        // SAFETY: VFIO_IOMMU_MAP_DMA ioctl necessary for DMA - kernel maps user buffer to IOVA.
-        // Invariants: (1) container_fd valid from VFIO container open; (2) dma_map has argsz,
-        // vaddr/iova/size from our allocation; (3) _IOW ioctl reads dma_map; (4) layout matches kernel.
-        // Caller guarantees: container_fd open, dma_map properly initialized.
-        let ret = unsafe {
-            libc::ioctl(
-                container_fd,
-                ioctls::VFIO_IOMMU_MAP_DMA as _,
-                &raw const dma_map,
-            )
+        // Use safe ioctl wrapper; validates return code
+        let container_borrowed = unsafe {
+            // SAFETY: container_fd valid from VFIO container open; caller guarantees it outlives this call.
+            BorrowedFd::borrow_raw(container_fd)
         };
-
-        if ret < 0 {
-            let err = std::io::Error::last_os_error();
-            tracing::warn!("DMA map failed: {} (ret={})", err, ret);
+        if let Err(e) = vfio_ioctl_iow(container_borrowed, ioctls::VFIO_IOMMU_MAP_DMA, &dma_map) {
+            tracing::warn!("DMA map failed: {e}");
             // Clean up allocated memory on failure
             // SAFETY: vaddr was allocated above with this exact layout and mlock'd
-            // successfully, so munlock and dealloc are valid cleanup operations
-            // Using rustix munlock (pure Rust)
+            // successfully, so munlock and dealloc are valid cleanup operations.
             unsafe {
                 let _ = munlock(vaddr.cast(), size);
                 std::alloc::dealloc(vaddr, layout);
             };
             return Err(AkidaError::transfer_failed(format!(
-                "Failed to map DMA: {err}"
+                "Failed to map DMA: {e}"
             )));
         }
 
@@ -282,14 +371,24 @@ impl DmaBuffer {
     }
 
     /// Get slice view of buffer for reading
-    pub const fn as_slice(&self) -> &[u8] {
+    pub fn as_slice(&self) -> &[u8] {
+        debug_assert!(
+            !self.vaddr.is_null(),
+            "DmaBuffer vaddr is null (invalid state)"
+        );
+        debug_assert!(self.size > 0, "DmaBuffer size is 0 (invalid state)");
         // SAFETY: (1) vaddr from alloc in new(), valid for size; (2) we own the allocation;
         // (3) &self ensures no concurrent mutation; (4) size unchanged since allocation.
         unsafe { std::slice::from_raw_parts(self.vaddr, self.size) }
     }
 
     /// Get mutable slice view of buffer for writing
-    pub const fn as_mut_slice(&mut self) -> &mut [u8] {
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        debug_assert!(
+            !self.vaddr.is_null(),
+            "DmaBuffer vaddr is null (invalid state)"
+        );
+        debug_assert!(self.size > 0, "DmaBuffer size is 0 (invalid state)");
         // SAFETY: (1) vaddr valid for size; (2) &mut self gives exclusive access;
         // (3) no aliasing; (4) size and alignment correct for [u8].
         unsafe { std::slice::from_raw_parts_mut(self.vaddr, self.size) }
@@ -321,16 +420,12 @@ impl Drop for DmaBuffer {
             size: self.size as u64,
         };
 
-        // SAFETY: VFIO_IOMMU_UNMAP_DMA ioctl necessary - kernel unmaps IOVA before dealloc.
-        // Invariants: (1) container_fd valid; (2) dma_unmap has iova/size from our mapping;
-        // (3) layout matches kernel VfioDmaUnmap; (4) called before dealloc.
-        unsafe {
-            libc::ioctl(
-                self.container_fd,
-                ioctls::VFIO_IOMMU_UNMAP_DMA as _,
-                &raw const dma_unmap,
-            );
-        }
+        // Use safe ioctl wrapper; ignore error in Drop (can't propagate)
+        let container_borrowed = unsafe {
+            // SAFETY: container_fd valid from VFIO container; DmaBuffer dropped before container.
+            BorrowedFd::borrow_raw(self.container_fd)
+        };
+        let _ = vfio_ioctl_iow(container_borrowed, ioctls::VFIO_IOMMU_UNMAP_DMA, &dma_unmap);
 
         // Deallocate memory (use safe Layout::from_size_align - eliminates one unsafe block)
         let layout = std::alloc::Layout::from_size_align(self.size, 4096)
@@ -356,13 +451,13 @@ pub struct VfioBackend {
     /// PCIe address
     pcie_address: String,
     /// VFIO container file descriptor
-    container: File,
+    container: std::fs::File,
     /// VFIO group file descriptor (kept open for lifetime)
     #[allow(dead_code)] // Needed for VFIO lifetime
-    group: File,
+    group: std::fs::File,
     /// VFIO device file descriptor (for MMIO access)
     #[allow(dead_code)] // Needed for VFIO device lifetime management
-    device: File,
+    device: OwnedFd,
     /// BAR0 control registers (MMIO mapped)
     control_regs: MappedRegion,
     /// Device capabilities
@@ -483,11 +578,7 @@ impl NpuBackend for VfioBackend {
                 AkidaError::capability_query_failed(format!("Cannot open /dev/vfio/vfio: {e}"))
             })?;
 
-        // SAFETY: VFIO_GET_API_VERSION ioctl necessary - queries kernel VFIO API version.
-        // Invariants: (1) container fd valid from open; (2) _IO(no arg) returns int; (3) kernel
-        // returns API version or -errno. Caller guarantees: container is /dev/vfio/vfio.
-        let api_version =
-            unsafe { libc::ioctl(container.as_raw_fd(), ioctls::VFIO_GET_API_VERSION as _) };
+        let api_version = vfio_ioctl_int(container.as_fd(), ioctls::VFIO_GET_API_VERSION)?;
 
         if api_version != ioctls::VFIO_API_VERSION {
             return Err(AkidaError::capability_query_failed(format!(
@@ -495,16 +586,11 @@ impl NpuBackend for VfioBackend {
             )));
         }
 
-        // SAFETY: VFIO_CHECK_EXTENSION ioctl necessary - queries kernel for Type1v2 IOMMU.
-        // Invariants: (1) container fd valid; (2) third arg is extension id (VFIO_TYPE1V2_IOMMU);
-        // (3) kernel returns 1 if supported, 0 otherwise. Caller guarantees: container open.
-        let has_type1 = unsafe {
-            libc::ioctl(
-                container.as_raw_fd(),
-                ioctls::VFIO_CHECK_EXTENSION as _,
-                ioctls::VFIO_TYPE1V2_IOMMU,
-            )
-        };
+        let has_type1 = vfio_ioctl_int_arg(
+            container.as_fd(),
+            ioctls::VFIO_CHECK_EXTENSION,
+            ioctls::VFIO_TYPE1V2_IOMMU,
+        )?;
 
         if has_type1 != 1 {
             return Err(AkidaError::capability_query_failed(
@@ -528,86 +614,48 @@ impl NpuBackend for VfioBackend {
             flags: 0,
         };
 
-        // SAFETY: VFIO_GROUP_GET_STATUS ioctl necessary - kernel fills group_status.
-        // Invariants: (1) group fd valid from open; (2) _IOWR reads/writes group_status;
-        // (3) layout matches kernel. Caller guarantees: group is /dev/vfio/N.
-        let ret = unsafe {
-            libc::ioctl(
-                group.as_raw_fd(),
-                ioctls::VFIO_GROUP_GET_STATUS as _,
-                &raw mut group_status,
-            )
-        };
+        vfio_ioctl_iowr(
+            group.as_fd(),
+            ioctls::VFIO_GROUP_GET_STATUS,
+            &mut group_status,
+        )?;
 
-        if ret < 0 || (group_status.flags & ioctls::VFIO_GROUP_FLAGS_VIABLE) == 0 {
+        if (group_status.flags & ioctls::VFIO_GROUP_FLAGS_VIABLE) == 0 {
             return Err(AkidaError::capability_query_failed(
                 "VFIO group not viable (all devices must be bound to vfio-pci)",
             ));
         }
 
-        // SAFETY: VFIO_GROUP_SET_CONTAINER ioctl necessary - attaches group to container.
-        // Invariants: (1) group fd valid; (2) third arg is ptr to container fd; (3) kernel
-        // reads fd. Caller guarantees: group viable, container open.
-        let ret = unsafe {
-            libc::ioctl(
-                group.as_raw_fd(),
-                ioctls::VFIO_GROUP_SET_CONTAINER as _,
-                std::ptr::from_ref(&container.as_raw_fd()),
-            )
-        };
+        let container_fd = container.as_raw_fd();
+        vfio_ioctl_ptr_arg(
+            group.as_fd(),
+            ioctls::VFIO_GROUP_SET_CONTAINER,
+            std::ptr::from_ref(&container_fd).cast(),
+        )?;
 
-        if ret < 0 {
-            return Err(AkidaError::capability_query_failed(format!(
-                "Failed to set container: {}",
-                std::io::Error::last_os_error()
-            )));
-        }
-
-        // SAFETY: VFIO_SET_IOMMU ioctl necessary - enables Type1v2 IOMMU in container.
-        // Invariants: (1) container fd valid; (2) third arg is IOMMU type; (3) kernel enables.
-        // Caller guarantees: group set, Type1v2 supported.
-        let ret = unsafe {
-            libc::ioctl(
-                container.as_raw_fd(),
-                ioctls::VFIO_SET_IOMMU as _,
-                ioctls::VFIO_TYPE1V2_IOMMU,
-            )
-        };
-
-        if ret < 0 {
-            return Err(AkidaError::capability_query_failed(format!(
-                "Failed to set IOMMU: {}",
-                std::io::Error::last_os_error()
-            )));
-        }
+        vfio_ioctl_int_arg(
+            container.as_fd(),
+            ioctls::VFIO_SET_IOMMU,
+            ioctls::VFIO_TYPE1V2_IOMMU,
+        )?;
 
         // Get device fd
         let pcie_address_cstr = std::ffi::CString::new(pcie_address).map_err(|e| {
             AkidaError::capability_query_failed(format!("Invalid PCIe address: {e}"))
         })?;
 
-        // SAFETY: VFIO_GROUP_GET_DEVICE_FD ioctl necessary - opens device fd by PCIe address.
-        // Invariants: (1) group fd valid; (2) pcie_address_cstr null-terminated; (3) kernel
-        // reads string, returns device fd or -1. Caller guarantees: device in group.
-        let device_fd = unsafe {
-            libc::ioctl(
-                group.as_raw_fd(),
-                ioctls::VFIO_GROUP_GET_DEVICE_FD as _,
-                pcie_address_cstr.as_ptr(),
-            )
+        let device_fd = vfio_ioctl_ptr_arg(
+            group.as_fd(),
+            ioctls::VFIO_GROUP_GET_DEVICE_FD,
+            pcie_address_cstr.as_ptr().cast(),
+        )?;
+
+        // Take ownership of the fd returned by the kernel
+        let device = unsafe {
+            // SAFETY: device_fd from successful VFIO_GROUP_GET_DEVICE_FD; kernel returns valid fd.
+            // We take ownership; OwnedFd will close it on drop.
+            OwnedFd::from_raw_fd(device_fd)
         };
-
-        if device_fd < 0 {
-            return Err(AkidaError::capability_query_failed(format!(
-                "Failed to get device fd: {}",
-                std::io::Error::last_os_error()
-            )));
-        }
-
-        // SAFETY: from_raw_fd necessary - device_fd from VFIO ioctl, ownership transferred.
-        // Invariants: (1) device_fd is valid open fd; (2) we take ownership, File will close it.
-        // Caller guarantees: device_fd >= 0 (checked above).
-        let device = unsafe { File::from_raw_fd(device_fd) };
 
         // Query device info
         let mut device_info = VfioDeviceInfo {
@@ -615,23 +663,11 @@ impl NpuBackend for VfioBackend {
             ..Default::default()
         };
 
-        // SAFETY: VFIO_DEVICE_GET_INFO ioctl necessary - kernel fills device_info (regions, IRQs).
-        // Invariants: (1) device fd valid; (2) _IOWR reads/writes device_info; (3) layout matches.
-        // Caller guarantees: device fd from VFIO_GROUP_GET_DEVICE_FD.
-        let ret = unsafe {
-            libc::ioctl(
-                device.as_raw_fd(),
-                ioctls::VFIO_DEVICE_GET_INFO as _,
-                &raw mut device_info,
-            )
-        };
-
-        if ret < 0 {
-            return Err(AkidaError::capability_query_failed(format!(
-                "Failed to get device info: {}",
-                std::io::Error::last_os_error()
-            )));
-        }
+        vfio_ioctl_iowr(
+            device.as_fd(),
+            ioctls::VFIO_DEVICE_GET_INFO,
+            &mut device_info,
+        )?;
 
         tracing::info!(
             "VFIO device: {} regions, {} IRQs",
@@ -868,8 +904,6 @@ impl NpuBackend for VfioBackend {
         ready && not_busy && no_error
     }
 }
-
-use std::os::unix::io::FromRawFd;
 
 #[cfg(test)]
 mod tests {

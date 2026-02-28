@@ -3,7 +3,6 @@
 //! Compares fused multiply-add (d = a * b + c) against separate mul + add.
 //! FMA should be ~2x faster due to single memory pass vs two.
 
-use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
 use std::sync::Arc;
@@ -68,7 +67,7 @@ async fn benchmark_separate(device: &Arc<WgpuDevice>, size: usize, iterations: u
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
         .with_env_filter("warn")
         .with_target(false)

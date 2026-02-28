@@ -4,11 +4,11 @@
 //! sleep-based synchronization in tests, making them faster, more reliable,
 //! and truly concurrent.
 
-use anyhow::{Context, Result};
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
+use toadstool::{ToadStoolError, ToadStoolResult as Result};
 use tokio::sync::{broadcast, mpsc, oneshot, Barrier};
 use uuid::Uuid;
 
@@ -22,7 +22,7 @@ use uuid::Uuid;
 /// use std::sync::Arc;
 /// use std::sync::atomic::{AtomicU32, Ordering};
 ///
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> Result<()> {
 /// let counter = Arc::new(AtomicU32::new(0));
 /// let counter_clone = counter.clone();
 /// wait_for_condition(
@@ -59,7 +59,10 @@ where
 
         let now = Instant::now();
         if now >= deadline {
-            return Err(anyhow::anyhow!("Condition not met within {:?}", timeout));
+            return Err(ToadStoolError::runtime(format!(
+                "Condition not met within {:?}",
+                timeout
+            )));
         }
 
         // Sleep for interval or remaining time, whichever is less
@@ -85,7 +88,7 @@ where
 {
     wait_for_condition(check, timeout, initial_interval)
         .await
-        .with_context(|| error_message.to_string())
+        .map_err(|e| ToadStoolError::runtime(format!("{}: {}", error_message, e)))
 }
 
 /// Wait for a service to become healthy
@@ -102,7 +105,7 @@ where
         Duration::from_millis(10),
     )
     .await
-    .context("Service did not become ready")
+    .map_err(|e| ToadStoolError::runtime(format!("Service did not become ready: {e}")))
 }
 
 /// Wait for multiple conditions concurrently
@@ -121,7 +124,8 @@ where
     }
 
     for task in tasks {
-        task.await??;
+        task.await
+            .map_err(|e| ToadStoolError::runtime(format!("Task panicked: {e}")))??;
     }
 
     Ok(())
@@ -231,7 +235,7 @@ impl TestBarrier {
 /// ```no_run
 /// use toadstool_testing::helpers::sync::EventCoordinator;
 ///
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn example() -> Result<()> {
 /// let coordinator = EventCoordinator::new();
 /// let mut rx = coordinator.subscribe();
 ///
@@ -282,12 +286,12 @@ impl EventCoordinator {
                 match rx.recv().await {
                     Ok(e) if e == target_event => return Ok(()),
                     Ok(_) => continue,
-                    Err(_) => return Err(anyhow::anyhow!("Event channel closed")),
+                    Err(_) => return Err(ToadStoolError::runtime("Event channel closed")),
                 }
             }
         })
         .await
-        .map_err(|_| anyhow::anyhow!("Timeout waiting for event: {}", event))?
+        .map_err(|_| ToadStoolError::runtime(format!("Timeout waiting for event: {}", event)))?
     }
 }
 

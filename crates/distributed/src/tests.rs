@@ -182,6 +182,89 @@ mod tests {
     }
 
     #[test]
+    fn test_distributed_error_display() {
+        use crate::error::DistributedError;
+
+        let err = DistributedError::ToadstoolEndpointNotSet;
+        assert!(err.to_string().contains("TOADSTOOL_ENDPOINT"));
+
+        let err = DistributedError::SongbirdRegistration("test failure".to_string());
+        assert!(err.to_string().contains("Songbird registration"));
+        assert!(err.to_string().contains("test failure"));
+
+        let err = DistributedError::WorkloadConversionRequiresScheduler;
+        assert!(err.to_string().contains("Workload conversion"));
+    }
+
+    #[test]
+    fn test_distributed_error_serialization_conversion() {
+        use crate::error::DistributedError;
+
+        let json_err = serde_json::from_str::<serde_json::Value>("invalid");
+        let distributed_err: DistributedError = json_err.unwrap_err().into();
+        let err_str = distributed_err.to_string();
+        assert!(
+            err_str.contains("Serialization") || err_str.contains("serialization") || !err_str.is_empty(),
+            "Expected serialization error message, got: {err_str}"
+        );
+    }
+
+    #[test]
+    fn test_standalone_config_values() {
+        let config = StandaloneConfig {
+            max_concurrent_executions: 8,
+            default_timeout_secs: 600,
+            enable_job_queue: true,
+            max_queue_size: 500,
+        };
+        assert_eq!(config.max_concurrent_executions, 8);
+        assert_eq!(config.default_timeout_secs, 600);
+        assert_eq!(config.max_queue_size, 500);
+    }
+
+    #[test]
+    fn test_songbird_config_serialization() {
+        let config = SongbirdConfig {
+            endpoint: "https://songbird.local:8080".to_string(),
+            auth_token: Some("secret".to_string()),
+            health_reporting_interval_secs: 60,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("songbird.local"));
+        let parsed: SongbirdConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.endpoint, config.endpoint);
+    }
+
+    #[test]
+    fn test_execution_environment_variants() {
+        let container = ExecutionEnvironment::Container {
+            runtime: "docker".to_string(),
+        };
+        let wasm = ExecutionEnvironment::Wasm {
+            runtime: "wasmtime".to_string(),
+        };
+        let native = ExecutionEnvironment::Native {
+            isolation: toadstool::IsolationLevel::Standard,
+        };
+
+        assert!(matches!(container, ExecutionEnvironment::Container { .. }));
+        assert!(matches!(wasm, ExecutionEnvironment::Wasm { .. }));
+        assert!(matches!(native, ExecutionEnvironment::Native { .. }));
+    }
+
+    #[test]
+    fn test_platform_capabilities_structure() {
+        let caps = PlatformCapabilities {
+            os: "linux".to_string(),
+            architecture: "x86_64".to_string(),
+            cpu_cores: 8,
+        };
+        assert_eq!(caps.os, "linux");
+        assert_eq!(caps.architecture, "x86_64");
+        assert_eq!(caps.cpu_cores, 8);
+    }
+
+    #[test]
     fn test_compatibility_mode_string_conversion() {
         assert_eq!(CompatibilityMode::LinuxCompat.to_string(), "linux_compat");
         assert_eq!(

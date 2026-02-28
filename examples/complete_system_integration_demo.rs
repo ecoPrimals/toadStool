@@ -7,7 +7,6 @@
 //! - Stable compilation with proper error handling
 //! - Universal compute platform integration
 
-use anyhow::Result;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -31,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
 /// Demo 1: Real System Monitoring
 #[allow(dead_code)]
-async fn demo_real_system_monitoring() -> Result<()> {
+async fn demo_real_system_monitoring() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("📊 Demo 1: Real System Monitoring");
     println!("  ├── Before: Hardcoded values (CPU: 45.2%, Memory: 62.8%)");
     println!("  └── After: Real sysinfo data");
@@ -55,7 +54,7 @@ async fn demo_real_system_monitoring() -> Result<()> {
 
 /// Demo 2: Comprehensive Mock Testing Framework
 #[allow(dead_code)]
-async fn demo_mock_testing_framework() -> Result<()> {
+async fn demo_mock_testing_framework() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("🧪 Demo 2: Comprehensive Mock Testing Framework");
     println!("  ├── Before: No testing infrastructure");
     println!("  └── After: Rich mock scenarios for all components");
@@ -77,7 +76,7 @@ async fn demo_mock_testing_framework() -> Result<()> {
 
 /// Demo 3: Centralized Runtime Defaults
 #[allow(dead_code)]
-async fn demo_centralized_configuration() -> Result<()> {
+async fn demo_centralized_configuration() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("⚙️  Demo 3: Centralized Runtime Defaults");
     println!("  ├── Before: Magic numbers scattered everywhere");
     println!("  └── After: All defaults in RUNTIME_DEFAULTS.rs");
@@ -113,7 +112,8 @@ async fn demo_centralized_configuration() -> Result<()> {
 
 /// Demo 4: Universal Compute Platform Integration
 #[allow(dead_code)]
-async fn demo_universal_compute_integration() -> Result<()> {
+async fn demo_universal_compute_integration() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+{
     println!("🌍 Demo 4: Universal Compute Platform Integration");
     println!("  ├── Architecture: Complete ecosystem integration");
     println!("  └── Status: Ready for massive job distribution");
@@ -149,7 +149,7 @@ async fn demo_universal_compute_integration() -> Result<()> {
 
 /// Demo 5: Production Readiness Features
 #[allow(dead_code)]
-async fn demo_production_readiness() -> Result<()> {
+async fn demo_production_readiness() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("🚀 Demo 5: Production Readiness Features");
     println!("  ├── Stability: Zero TODO calls, stable compilation");
     println!("  └── Reliability: Real monitoring, comprehensive testing");

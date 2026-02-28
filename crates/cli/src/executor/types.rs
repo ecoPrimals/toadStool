@@ -25,7 +25,7 @@ pub(super) struct BiomeProcess {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[allow(dead_code)] // Reserved: enum used by BiomeProcess; internal use only
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),

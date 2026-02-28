@@ -4,7 +4,7 @@
 //!
 //! **Zero-Copy Optimization** (Phase 2): Uses `Arc<str>` throughout.
 
-use anyhow::Result;
+use crate::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -132,8 +132,8 @@ impl FederationOps for crate::universal::UniversalComputeManager {
 
     async fn setup_websocket_federation(&self, endpoint: &url::Url, _mode: &str) -> Result<()> {
         let _ = endpoint;
-        Err(anyhow::anyhow!(
-            "WebSocket federation is deprecated, use JSON-RPC polling"
+        Err(crate::CliError::Other(
+            "WebSocket federation is deprecated, use JSON-RPC polling".to_string(),
         ))
     }
 }

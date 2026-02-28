@@ -7,7 +7,7 @@ use super::BiomeInfo;
 #[cfg(test)]
 use crate::BiomeStatus;
 #[cfg(test)]
-use anyhow::{Context, Result};
+use crate::{CliContextExt, Result};
 #[cfg(test)]
 use colored::Colorize;
 #[cfg(test)]
@@ -26,7 +26,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 pub(super) struct DisplayManager;
 
 #[cfg(test)]
-#[allow(dead_code)]
+#[allow(dead_code)] // Reserved: print_biomes_table for future biome list CLI
 impl DisplayManager {
     /// Print biomes in a formatted table
     ///

@@ -5,7 +5,8 @@
 
 use akida_driver::InferenceResult;
 use akida_models::Model;
-use anyhow::{Context, Result};
+
+use crate::error::Result;
 use ndarray::Array1;
 use tracing::{debug, info, warn};
 
@@ -190,14 +191,18 @@ pub fn inference_to_state(result: &InferenceResult) -> Array1<f32> {
 /// Returns an error if the states list is empty or if array slice conversion fails.
 pub fn concatenate_states(states: &[Array1<f32>]) -> Result<Array1<f32>> {
     if states.is_empty() {
-        anyhow::bail!("Cannot concatenate empty state list");
+        return Err(crate::error::ReservoirError::InvalidState(
+            "Cannot concatenate empty state list".to_string(),
+        ));
     }
 
     let total_size: usize = states.iter().map(ndarray::ArrayBase::len).sum();
     let mut concatenated = Vec::with_capacity(total_size);
 
     for state in states {
-        concatenated.extend_from_slice(state.as_slice().context("Failed to get state slice")?);
+        concatenated.extend_from_slice(state.as_slice().ok_or_else(|| {
+            crate::error::ReservoirError::InvalidState("Failed to get state slice".to_string())
+        })?);
     }
 
     Ok(Array1::from_vec(concatenated))

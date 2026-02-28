@@ -332,7 +332,7 @@ async fn test_compute_result_job_not_found() {
 
     assert!(response.result.is_none());
     let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+    assert_eq!(err.code, JsonRpcError::METHOD_NOT_FOUND);
 }
 
 #[tokio::test]
@@ -551,4 +551,93 @@ async fn test_semantic_method_dispatch_cancel() {
     if let Some(err) = response.error {
         assert_eq!(err.code, JsonRpcError::METHOD_NOT_FOUND);
     }
+}
+
+#[tokio::test]
+async fn test_gpu_info_handler() {
+    let handler = test_handler();
+    let request = mk_request("gpu.info", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result.get("devices").is_some());
+    assert!(result.get("driver").is_some());
+}
+
+#[tokio::test]
+async fn test_gpu_memory_handler() {
+    let handler = test_handler();
+    let request = mk_request("gpu.memory", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result.get("devices").is_some());
+}
+
+#[tokio::test]
+async fn test_ollama_list_models() {
+    let handler = test_handler();
+    let request = mk_request("ollama.list_models", None, 1);
+    let response = handler.handle_request(&request).await;
+    // Without ollama running, expect error (connection refused or similar)
+    if response.error.is_some() {
+        assert!(response.result.is_none());
+    } else {
+        let result = response.result.expect("result present");
+        assert!(result.get("models").is_some());
+    }
+}
+
+#[tokio::test]
+async fn test_gate_list() {
+    let handler = test_handler();
+    let request = mk_request("gate.list", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result.get("gates").is_some());
+    assert!(result["gates"].is_array());
+}
+
+#[tokio::test]
+async fn test_resources_estimate() {
+    let handler = test_handler();
+    let request = mk_request("toadstool.resources.estimate", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.result.is_none());
+    let err = response.error.expect("error present");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn test_compute_health() {
+    let handler = test_handler();
+    let request = mk_request("compute.health", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["healthy"].as_bool().unwrap());
+    assert!(result["uptime_secs"].as_u64().is_some());
+}
+
+#[tokio::test]
+async fn test_compute_version() {
+    let handler = test_handler();
+    let request = mk_request("compute.version", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["version"].as_str().is_some());
+    assert_eq!(result["protocol"], "JSON-RPC 2.0");
+}
+
+#[tokio::test]
+async fn test_compute_capabilities() {
+    let handler = test_handler();
+    let request = mk_request("compute.capabilities", None, 1);
+    let response = handler.handle_request(&request).await;
+    assert!(response.error.is_none());
+    let result = response.result.expect("result present");
+    assert!(result["service_id"].as_str().is_some());
+    assert!(result["compute_units"].is_array());
 }

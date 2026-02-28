@@ -1,18 +1,19 @@
 //! Server execution lifecycle: executor creation, server startup, shutdown
-//!
-//! ManualJsonRpcServer (deprecated) used here; see manual_jsonrpc/MIGRATION.md.
-
-#![allow(deprecated)]
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use tracing::{error, info, warn};
 
 use crate::errors::{ServerError, ServerResult};
+use crate::pure_jsonrpc::{serve_tcp, serve_unix, JsonRpcHandler};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
-use crate::{CoordinatorExecutor, ManualJsonRpcServer};
+use crate::CoordinatorExecutor;
 
 use super::capabilities;
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
+
+/// Bind to any interface with OS-assigned port (TCP fallback when Unix sockets unavailable)
+const BIND_ANY: &str = "0.0.0.0:0";
 
 /// Create executor with distributed or standalone mode
 pub async fn create_executor(
@@ -71,20 +72,20 @@ pub async fn create_executor(
 /// Start servers with Unix socket or TCP fallback
 pub async fn start_servers_with_fallback(
     server: ToadStoolTarpcServer,
-    jsonrpc_server: ManualJsonRpcServer,
+    jsonrpc_handler: Arc<JsonRpcHandler>,
     socket_path: PathBuf,
     jsonrpc_socket: PathBuf,
 ) -> ServerResult<()> {
     info!("   Trying Unix socket IPC (optimal)...");
 
-    match try_unix_servers(&server, &jsonrpc_server, &socket_path, &jsonrpc_socket).await {
+    match try_unix_servers(&server, &jsonrpc_handler, &socket_path, &jsonrpc_socket).await {
         Ok(()) => Ok(()),
         Err(e) => {
             let error_str = e.to_string();
             if is_platform_constraint_str(&error_str) {
                 warn!("⚠️  Unix sockets unavailable: {}", error_str);
                 warn!("   Detected platform constraint, adapting...");
-                start_tcp_servers(server, jsonrpc_server).await
+                start_tcp_servers(server, jsonrpc_handler).await
             } else {
                 error!("❌ Real error (not platform constraint): {}", error_str);
                 Err(e)
@@ -95,7 +96,7 @@ pub async fn start_servers_with_fallback(
 
 async fn try_unix_servers(
     server: &ToadStoolTarpcServer,
-    jsonrpc_server: &ManualJsonRpcServer,
+    jsonrpc_handler: &Arc<JsonRpcHandler>,
     socket_path: &PathBuf,
     jsonrpc_socket: &PathBuf,
 ) -> ServerResult<()> {
@@ -121,10 +122,10 @@ async fn try_unix_servers(
     info!("   Socket (JSON-RPC): {:?}", jsonrpc_socket);
     info!("   Socket (tarpc): {:?}", socket_path);
 
-    let jsonrpc_server_clone = jsonrpc_server.clone();
+    let jsonrpc_handler = Arc::clone(jsonrpc_handler);
     let jsonrpc_socket_clone = jsonrpc_socket.clone();
     tokio::spawn(async move {
-        if let Err(e) = jsonrpc_server_clone.serve(jsonrpc_socket_clone).await {
+        if let Err(e) = serve_unix(jsonrpc_handler, jsonrpc_socket_clone).await {
             error!("JSON-RPC server error: {}", e);
         }
     });
@@ -135,14 +136,14 @@ async fn try_unix_servers(
 
 async fn start_tcp_servers(
     server: ToadStoolTarpcServer,
-    jsonrpc_server: ManualJsonRpcServer,
+    jsonrpc_handler: Arc<JsonRpcHandler>,
 ) -> ServerResult<()> {
     use tokio::net::TcpListener;
 
     info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
 
     let bind_addr =
-        std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0:0".to_string());
+        std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| BIND_ANY.to_string());
 
     let tarpc_listener = TcpListener::bind(&bind_addr)
         .await
@@ -166,7 +167,7 @@ async fn start_tcp_servers(
     write_tcp_discovery_file("toadstool-jsonrpc-port", &jsonrpc_addr)?;
 
     tokio::spawn(async move {
-        if let Err(e) = jsonrpc_server.serve_tcp(jsonrpc_listener).await {
+        if let Err(e) = serve_tcp(jsonrpc_handler, jsonrpc_listener).await {
             error!("JSON-RPC TCP server error: {}", e);
         }
     });
