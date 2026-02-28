@@ -302,7 +302,7 @@ impl ServiceDiscovery {
                 debug!("Parsed mDNS A/AAAA record for {}: {}", capability_name, ip);
                 return Ok(Some(ServiceEndpoint {
                     name: capability_name.to_string(),
-                    endpoint: format!("http://{}:8084", ip),
+                    endpoint: format!("http://{}:{}", ip, toadstool_config::ports::daemon_port()),
                     version: "1.0.0".to_string(),
                     status: "discovered".to_string(),
                     auth_required: false,

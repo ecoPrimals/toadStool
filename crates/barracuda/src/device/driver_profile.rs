@@ -157,6 +157,9 @@ pub enum Fp64Strategy {
     Native,
     /// DF64 (f32-pair, ~14 digits) for bulk math, native f64 for reductions.
     Hybrid,
+    /// Run both DF64 and native f64 concurrently, cross-validate results.
+    /// Useful for validation harnesses and precision-sensitive pipelines.
+    Concurrent,
 }
 
 // ── GpuDriverProfile ──────────────────────────────────────────────────────────

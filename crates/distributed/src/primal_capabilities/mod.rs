@@ -164,21 +164,15 @@ impl CapabilityProvider {
         Ok(())
     }
 
-    /// Create appropriate adapter for a primal endpoint
+    /// Create appropriate adapter for a primal endpoint.
+    ///
+    /// Capability-based: all primals use the same JSON-RPC adapter.
+    /// Specific primal types are discovered at runtime, not hardcoded.
     async fn create_adapter_for_endpoint(
         &self,
         endpoint: &str,
     ) -> Result<Box<dyn PrimalAdapter>, DistributedError> {
-        // Auto-detect primal type from endpoint or use generic adapter
-        if endpoint.contains("songbird") || endpoint.contains("8080") {
-            Ok(Box::new(SongbirdAdapter::new(endpoint)?))
-        } else if endpoint.contains("squirrel") || endpoint.contains("8083") {
-            // Future: SquirrelAdapter
-            Ok(Box::new(SongbirdAdapter::new(endpoint)?)) // Generic for now
-        } else {
-            // Generic HTTP adapter for unknown primals
-            Ok(Box::new(SongbirdAdapter::new(endpoint)?)) // Generic for now
-        }
+        Ok(Box::new(SongbirdAdapter::new(endpoint)?))
     }
 }
 

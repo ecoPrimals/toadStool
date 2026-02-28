@@ -33,18 +33,51 @@ impl UniversalAdapter {
         Self { config }
     }
 
-    /// Adapt execution request for target environment
-    pub fn adapt_request(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionRequest> {
-        // Stub implementation - adapt request for target environment
+    /// Adapt execution request for the target environment.
+    ///
+    /// Validates that the requested runtime is supported by this adapter's
+    /// configured environments, and injects default timeout if missing.
+    pub fn adapt_request(
+        &self,
+        mut request: ExecutionRequest,
+    ) -> ToadStoolResult<ExecutionRequest> {
+        if !self.config.enabled {
+            return Err(toadstool::ToadStoolError::not_supported(
+                "Adapter is disabled",
+            ));
+        }
+
+        if let Some(ref hint) = request.runtime_hint {
+            let runtime_name = format!("{hint:?}").to_lowercase();
+            let is_supported = self
+                .config
+                .environments
+                .iter()
+                .any(|env| runtime_name.contains(env.as_str()) || env == "native");
+            if !is_supported {
+                tracing::warn!(
+                    runtime = %runtime_name,
+                    supported = ?self.config.environments,
+                    "Runtime not in adapter environments, proceeding with native fallback"
+                );
+            }
+        }
+
+        if request.timeout.is_none() {
+            request.timeout = Some(std::time::Duration::from_secs(300));
+        }
+
         Ok(request)
     }
 
-    /// Adapt execution response from target environment
+    /// Adapt execution response from the target environment.
+    ///
+    /// Passes through the response unchanged — adaptation is a request-side
+    /// concern. Response validation belongs at the caller boundary.
     pub fn adapt_response(
         &self,
         response: ExecutionResponse,
     ) -> ToadStoolResult<ExecutionResponse> {
-        // Stub implementation - adapt response from target environment
         Ok(response)
     }
 }

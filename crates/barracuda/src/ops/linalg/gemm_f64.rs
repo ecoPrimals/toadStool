@@ -75,7 +75,7 @@ impl GemmF64 {
         let strategy = profile.fp64_strategy();
         tracing::info!(?strategy, "GEMM: using {:?} FP64 strategy", strategy);
         match strategy {
-            Fp64Strategy::Native => Self::wgsl_shader().to_string(),
+            Fp64Strategy::Native | Fp64Strategy::Concurrent => Self::wgsl_shader().to_string(),
             Fp64Strategy::Hybrid => format!("{WGSL_DF64_CORE}\n{GEMM_SHADER_DF64}"),
         }
     }

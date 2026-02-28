@@ -138,7 +138,9 @@ impl YukawaForceF64 {
             strategy
         );
         let shader_src = match strategy {
-            Fp64Strategy::Native => include_str!("yukawa_f64.wgsl").to_string(),
+            Fp64Strategy::Native | Fp64Strategy::Concurrent => {
+                include_str!("yukawa_f64.wgsl").to_string()
+            }
             Fp64Strategy::Hybrid => {
                 format!("{WGSL_DF64_CORE}\n{WGSL_DF64_TRANSCENDENTALS}\n{YUKAWA_SHADER_DF64}")
             }

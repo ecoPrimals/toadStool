@@ -114,7 +114,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                             enabled: true,
                         },
                         DiscoveryBackend {
-                            backend_type: "songbird".to_string(),
+                            backend_type: "mdns".to_string(),
                             config: HashMap::new(),
                             priority: 2,
                             enabled: true,

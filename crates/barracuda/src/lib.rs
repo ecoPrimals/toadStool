@@ -161,9 +161,10 @@ pub mod workload;
 pub mod math {
     pub use crate::special::erf::{erf_batch, erfc_batch};
     pub use crate::special::{
-        beta, digamma, erf, erfc, gamma, ln_beta, ln_gamma, regularized_gamma_p,
-        regularized_gamma_q,
+        beta, digamma, erf, erfc, gamma, ln_beta, ln_gamma, lower_incomplete_gamma,
+        regularized_gamma_p, regularized_gamma_q,
     };
+    pub use crate::stats::normal::norm_cdf;
 }
 pub mod stats;
 
