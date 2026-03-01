@@ -25,7 +25,7 @@
 
 | Metric | Value |
 |--------|-------|
-| WGSL shaders | **671** (zero orphans, 29 DF64 + 200+ f64, all f64 canonical) |
+| WGSL shaders | **671** (zero orphans, 25 DF64 + 200+ f64, all f64 canonical) |
 | Rust version | **1.80+** (std::sync::LazyLock) |
 | `unsafe` blocks | **45** (all `// SAFETY:` documented; 2 barracuda SPIRV/cache, rest FFI/hardware/MMIO) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |

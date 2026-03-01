@@ -278,7 +278,7 @@ mod tests {
         let backend = CpuBackend::new().unwrap();
 
         // Allocate memory
-        let allocation = backend
+        let mut allocation = backend
             .allocate_unified(4096, MemoryFlags::default())
             .await
             .unwrap();

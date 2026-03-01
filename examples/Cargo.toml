@@ -38,10 +38,6 @@ name = "biomeos_substrate_demo"
 path = "biomeos_substrate_demo.rs"
 
 [[bin]]
-name = "complete_system_integration_demo"
-path = "complete_system_integration_demo.rs"
-
-[[bin]]
 name = "cooperative_network_demo"
 path = "cooperative_network_demo.rs"
 
@@ -78,18 +74,6 @@ name = "simplified_distributed_demo"
 path = "simplified_distributed_demo.rs"
 
 [[bin]]
-name = "sprint3_runtime_test"
-path = "sprint3_runtime_test.rs"
-
-[[bin]]
-name = "sprint4_distributed_orchestration_demo"
-path = "sprint4_distributed_orchestration_demo.rs"
-
-[[bin]]
-name = "sprint4_security_performance_demo"
-path = "sprint4_security_performance_demo.rs"
-
-[[bin]]
 name = "squirrel_mcp_coordination_demo"
 path = "squirrel_mcp_coordination_demo.rs"
 
@@ -108,10 +92,6 @@ path = "universal_compute_ecosystem_demo.rs"
 [[bin]]
 name = "universal_platform_test"
 path = "universal_platform_test.rs"
-
-[[bin]]
-name = "comprehensive_test_coverage_demo"
-path = "comprehensive_test_coverage_demo.rs"
 
 [[bin]]
 name = "config_management_demo"

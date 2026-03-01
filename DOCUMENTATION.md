@@ -37,8 +37,8 @@
 - **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero production stubs/mocks, 45 justified `unsafe` blocks, zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `dbg!()`. All env tests thread-safe via `temp_env`.
 - **Dual-layer universal precision** — Layer 1: `op_preamble`. Layer 2: naga-guided `df64_rewrite`. `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
-- **671 WGSL shaders** — zero orphans, 29 DF64 files, **zero f32-only**. All f64 canonical.
-- **2,773+ barracuda tests** + 4,700+ workspace lib tests | all quality gates green (0 warnings)
+- **671 WGSL shaders** — zero orphans, 25 DF64 files, **zero f32-only**. All f64 canonical.
+- **2,773+ barracuda tests** + 5,400+ workspace lib tests (8,200+ total) | all quality gates green (0 warnings)
 - **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU
 - **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory
 - **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields + DF64 variants

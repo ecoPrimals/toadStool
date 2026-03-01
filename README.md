@@ -34,7 +34,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 2,773+ barracuda + 4,700+ workspace lib + integration tests |
+| `cargo test --workspace` | 2,773+ barracuda + 5,400+ workspace lib + integration tests |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | Five springs validation | 4,000+ acceptance checks |
@@ -48,7 +48,7 @@ Nest    = Tower  + NestGate           <- storage
 | Hardcoded primal names | 0 inline strings -- all use `primals::*` constants or capability discovery |
 | Hardcoded ports/localhost | 0 inline literals -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| Orphan shaders | 0 -- all 671 WGSL shaders wired to Rust (29 DF64 files) |
+| Orphan shaders | 0 -- all 671 WGSL shaders wired to Rust (25 DF64 files) |
 | File size limit | All production files under 1000 lines |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
@@ -84,7 +84,7 @@ Pure-GPU double precision with `math_f64.wgsl` polyfill library (28 functions: e
 
 **DF64 transcendentals**: `df64_transcendentals.wgsl` provides `exp_df64`, `log_df64`, `sqrt_df64`, `sin_df64`, `cos_df64`, `pow_df64`, `tanh_df64` -- all at FP32 core speed, no vendor library dependency. Born-Mayer, Morse, Yukawa, Lennard-Jones force shaders evolved from hybrid to **full FP32 core streaming** (zero f64-unit transcendental calls).
 
-**DF64 coverage**: 26 DF64 WGSL files, auto-selected at runtime by `Fp64Strategy`:
+**DF64 coverage**: 25 DF64 WGSL files, auto-selected at runtime by `Fp64Strategy`:
 - `df64_core.wgsl` -- FMA-optimized core arithmetic (add, mul, div, scale)
 - `df64_transcendentals.wgsl` -- exp, log, sqrt, sin, cos, pow, tanh (Cody-Waite + Horner)
 - `gemm_df64.wgsl` -- batched dense GEMM with shared-memory tiling
@@ -141,7 +141,7 @@ BarraCUDA: 671 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
   downcast_f64_to_f32/f16/df64(): text-transform with sentinel protection
   SovereignCompiler: naga-IR → FMA fusion → DCE → df64 infix rewrite → SPIR-V passthrough
   Fp64Strategy: Native f64 (compute GPUs) | Hybrid DF64 (consumer GPUs) | Concurrent (dual validation)
-  26 DF64 files: core (FMA), transcendentals, GEMM, 4 force fields, SU(3), 5 lattice QCD, 5 ML (GELU/sigmoid/softmax/layernorm/SDPA)
+  25 DF64 files: core (FMA), transcendentals (15 functions complete), GEMM, 4 force fields, SU(3), 5 lattice QCD, 5 ML (GELU/sigmoid/softmax/layernorm/SDPA)
   ComputeDispatch builder: fluent pipeline creation, ~80→5 lines per op
   Zero orphan shaders — every WGSL file wired to Rust
   Linalg: solve, cholesky, QR, SVD, LU — all GPU-dispatched
@@ -282,7 +282,7 @@ toadStool/
 | Build warnings | 0 |
 | Unit tests (barracuda) | 2,773+ |
 | Shader-specific tests | 155 (unit + e2e + chaos + fault + naga validation) |
-| WGSL shaders (barracuda) | 671 (zero orphans, shader-first, 29 DF64 + 200+ f64 — zero f32-only, all f64 canonical) |
+| WGSL shaders (barracuda) | 671 (zero orphans, shader-first, 25 DF64 + 200+ f64 — zero f32-only, all f64 canonical) |
 | Lib tests (server) | 576 |
 | Lib tests (core toadstool) | 1,340 |
 | Lib tests (distributed) | 1,057 |
@@ -314,7 +314,7 @@ toadStool/
 - **DF64 as default path** -- df64_rewrite as default precision, not fallback (groundSpring V35)
 - **NpuDispatch trait** -- generic NPU interface (airSpring/wetSpring/groundSpring converge)
 - **Test coverage** -- pushing toward 90% target; major coverage gains in CLI, server, API, monitoring, distributed
-- **DF64 transcendental coverage** -- extend `asin_df64`, `acos_df64`, `atan_df64`, `sinh_df64`, `cosh_df64`, `gamma_df64`, `erf_df64`
+- **DF64 transcendental coverage** -- COMPLETE: 15 functions (exp, log, sin, cos, tan, sqrt, pow, asin, acos, atan, atan2, sinh, cosh, gamma, erf)
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
 ### Recently Completed
@@ -362,4 +362,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 1, 2026 -- 671 WGSL shaders (29 DF64, 15-function DF64 transcendental suite complete). 2,773+ barracuda tests. 4,700+ workspace lib tests. 66 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings, 0 test failures). Fully concurrent test suite (6m30s). Rust 1.80+. Zero anyhow. Zero chrono. Zero production stubs. 45 justified unsafe. All files < 1000 lines. External deps overwhelmingly pure Rust.
+**Last Updated**: March 1, 2026 -- 671 WGSL shaders (25 DF64, 15-function DF64 transcendental suite complete). 2,773+ barracuda tests. 5,400+ workspace lib tests (8,200+ total). 66 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings, 0 test failures). Fully concurrent test suite (6m30s). Rust 1.80+. Zero anyhow. Zero chrono. Zero production stubs. 45 justified unsafe. All files < 1000 lines. External deps overwhelmingly pure Rust.

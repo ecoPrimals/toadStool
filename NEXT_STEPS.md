@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: March 1, 2026 -- Session 71
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 671 WGSL shaders (29 DF64) | 2,773+ barracuda tests | 4,700+ workspace lib tests | Rust 1.80+
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 671 WGSL shaders (25 DF64) | 2,773+ barracuda tests | 5,400+ workspace lib tests (8,200+ total) | Rust 1.80+
 **Latest**: 4 orphaned shader constants wired to GPU dispatch. 3 CPU-only primitives evolved to GPU (kimura, jackknife, hargreaves). Hardcoded primal names evolved to constants. jsonrpc_server + types.rs smart-refactored.
 
 ---
