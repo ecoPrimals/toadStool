@@ -166,7 +166,6 @@ impl Default for LegacyCompatConfig {
     }
 }
 
-// Stub implementations
 impl Default for LinuxCompatibilityLayer {
     fn default() -> Self {
         Self::new()

@@ -3,6 +3,88 @@
 //!
 //! Provenance: groundSpring `drift.rs` / `quasispecies.rs` -> toadStool absorption (S70).
 
+#[cfg(feature = "gpu")]
+use crate::device::compute_pipeline::ComputeDispatch;
+#[cfg(feature = "gpu")]
+use crate::device::WgpuDevice;
+#[cfg(feature = "gpu")]
+use crate::error::Result;
+#[cfg(feature = "gpu")]
+use bytemuck::{Pod, Zeroable};
+#[cfg(feature = "gpu")]
+use std::sync::Arc;
+
+#[cfg(feature = "gpu")]
+const SHADER_KIMURA: &str = include_str!("../shaders/bio/kimura_fixation_f64.wgsl");
+
+#[cfg(feature = "gpu")]
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct KimuraParams {
+    n_elements: u32,
+    _pad: [u32; 3],
+}
+
+#[cfg(feature = "gpu")]
+/// GPU-parallel Kimura fixation probability batch.
+pub struct KimuraGpu {
+    device: Arc<WgpuDevice>,
+}
+
+#[cfg(feature = "gpu")]
+impl KimuraGpu {
+    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
+        Ok(Self { device })
+    }
+
+    /// Dispatch batch Kimura fixation over (pop_size, selection, initial_freq) triplets.
+    pub fn dispatch(
+        &self,
+        pop_sizes: &[f64],
+        selections: &[f64],
+        freqs: &[f64],
+    ) -> Result<Vec<f64>> {
+        let n = pop_sizes.len();
+        if n != selections.len() || n != freqs.len() {
+            return Err(crate::error::BarracudaError::InvalidInput {
+                message: "pop_sizes, selections, freqs must have same length".to_string(),
+            });
+        }
+        if n == 0 {
+            return Ok(Vec::new());
+        }
+
+        let pop_buf = self
+            .device
+            .create_buffer_f64_init("kimura:pop_sizes", pop_sizes);
+        let sel_buf = self
+            .device
+            .create_buffer_f64_init("kimura:selections", selections);
+        let freq_buf = self.device.create_buffer_f64_init("kimura:freqs", freqs);
+        let out_buf = self.device.create_buffer_f64(n)?;
+
+        let params = KimuraParams {
+            n_elements: n as u32,
+            _pad: [0, 0, 0],
+        };
+        let params_buf = self.device.create_uniform_buffer("kimura:params", &params);
+
+        let wg_count = (n as u32).div_ceil(256);
+        ComputeDispatch::new(&self.device, "kimura_fixation")
+            .shader(SHADER_KIMURA, "main")
+            .f64()
+            .storage_read(0, &pop_buf)
+            .storage_read(1, &sel_buf)
+            .storage_read(2, &freq_buf)
+            .storage_rw(3, &out_buf)
+            .uniform(4, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
+
+        self.device.read_f64_buffer(&out_buf, n)
+    }
+}
+
 /// Kimura (1962) fixation probability under selection.
 ///
 /// `P_fix = (1 - exp(-4Ns * p0)) / (1 - exp(-4Ns))`

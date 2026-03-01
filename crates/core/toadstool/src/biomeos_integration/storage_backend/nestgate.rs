@@ -6,6 +6,7 @@ use std::pin::Pin;
 use super::super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use super::VolumeStatus;
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_config::constants::primals;
 
 use super::StorageBackend;
 
@@ -67,7 +68,8 @@ impl NestGateBackend {
         replication_factor: u32,
     ) -> Self {
         // LEGACY: Uses primal name for backward compatibility
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("nestgate");
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_service(primals::NESTGATE);
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             storage_tier: storage_tier.into(),

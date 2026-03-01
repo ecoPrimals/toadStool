@@ -166,8 +166,8 @@ pub fn discover_encryption_service() -> DiscoveryResult {
 pub fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
     // Default to "beardog" — the primal's canonical filesystem directory name.
     // Override via TOADSTOOL_CRYPTO_SERVICE_SUBDIR for custom layouts.
-    let subdir =
-        std::env::var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR").unwrap_or_else(|_| "beardog".to_string());
+    let subdir = std::env::var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR")
+        .unwrap_or_else(|_| crate::constants::ecosystem::well_known::BEARDOG.to_string());
 
     discover_filesystem_service(base_path, &subdir)
 }
@@ -207,7 +207,7 @@ pub fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
     // Default to "nestgate" — the primal's canonical filesystem directory name.
     // Override via TOADSTOOL_STORAGE_SERVICE_SUBDIR for custom layouts.
     let subdir = std::env::var("TOADSTOOL_STORAGE_SERVICE_SUBDIR")
-        .unwrap_or_else(|_| "nestgate".to_string());
+        .unwrap_or_else(|_| crate::constants::ecosystem::well_known::NESTGATE.to_string());
 
     discover_filesystem_service(base_path, &subdir)
 }

@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: February 28, 2026
+**Date**: March 1, 2026
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -109,10 +109,15 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Recently Resolved (S70/S70+/S70++/S70+++)
+## Recently Resolved (S70–S71)
 
 | Item | Resolution |
 |------|-----------|
+| 4 orphaned shader constants | HMM_FORWARD_LOG_F32/F64, BOOTSTRAP_MEAN_F64, HISTOGRAM — all wired to GPU dispatch |
+| 3 CPU-only primitives → GPU | kimura_fixation, jackknife_mean, hargreaves_batch — GPU shaders + Rust dispatch |
+| Hardcoded primal strings | 6 production files evolved to `primals::*` constants |
+| jsonrpc_server.rs >900 lines | Refactored 904→628 via shared test helper |
+| network_config/types.rs >800 lines | Split 859→7 domain submodules |
 | builder.rs >1000 risk | Smart-refactored 975→mod.rs (129) + profiler.rs (531) + substrate.rs (338) |
 | EcosystemCaller dead code | Deleted entirely (deprecated since 2.0.0, zero references) |
 | Monitoring stub collectors | Evolved to real `sysinfo` (health thresholds, real metrics, session tracking) |

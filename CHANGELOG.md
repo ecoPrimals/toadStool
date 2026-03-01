@@ -5,7 +5,19 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 28, 2026 (Sessions 43-70+++ — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption)
+## [Unreleased] - March 1, 2026 (Sessions 43-71 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption)
+
+### Session 71 (Mar 1, 2026) — GPU Dispatch Wiring + Sovereignty + Smart Refactoring
+
+- **HMM log-domain dispatch wired**: `HmmForwardLogF32` and `HmmForwardLogF64` structs added — the two `WGSL_HMM_FORWARD_LOG_*` shaders now have proper GPU dispatch via `ComputeDispatch` builder. Uses max-subtract trick for numerical stability.
+- **Bootstrap GPU dispatch wired**: `BootstrapMeanGpu` struct dispatches `bootstrap_mean_f64.wgsl` — embarrassingly parallel resampling across B samples. Previously CPU-only.
+- **Histogram GPU dispatch wired**: `HistogramGpu` struct dispatches `histogram_f64.wgsl` with atomic binning. Dual-path: native f64 when supported, automatic f32 downcast fallback.
+- **3 new GPU shaders + dispatch**: `kimura_fixation_f64.wgsl` (Kimura 1962 fixation probability), `jackknife_mean_f64.wgsl` (leave-one-out parallel), `hargreaves_batch_f64.wgsl` (Hargreaves & Samani 1985 ET0). All with Rust dispatch structs: `KimuraGpu`, `JackknifeMeanGpu`, `HargreavesBatchGpu`.
+- **Hardcoded primal names evolved**: All production string literals (`"beardog"`, `"songbird"`, `"nestgate"`) replaced with `primals::*` constants or `well_known::*` in 6 files across cli, core, and distributed crates.
+- **jsonrpc_server.rs refactored**: 904→628 lines via `spawn_test_server` shared helper (eliminated ~300 lines of duplicated test setup).
+- **network_config/types.rs split**: 859-line monolith → 7 domain submodules (`service_mesh`, `dns_discovery`, `security`, `network_policies`, `traffic`, `load_balancing`, `reliability`). All 34 tests pass, all imports preserved via re-exports.
+- **Stale comment cleanup**: Removed misleading "Stub implementations" comment in `compat.rs`.
+- **Quality gates**: build clean, fmt 0 diffs, clippy 0 errors, 2,773+ barracuda tests (40 stats module tests added).
 
 ### Session 70+++ (Feb 28, 2026) — Builder Refactor + Dead Code + Monitoring Evolution
 

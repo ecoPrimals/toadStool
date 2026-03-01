@@ -198,6 +198,96 @@ pub fn hmm_viterbi(
     Ok(ViterbiResult { path, delta, psi })
 }
 
+// ── HMM Forward Log-Domain (metalForge / neuralSpring) ──────────────────────
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct HmmForwardLogParams {
+    n_states: u32,
+}
+
+/// Log-domain HMM forward pass (f32) — single step.
+///
+/// Uses max-subtract trick. One thread per destination state. Suitable for
+/// real-time inference where f32 precision suffices.
+pub struct HmmForwardLogF32 {
+    device: Arc<WgpuDevice>,
+}
+
+impl HmmForwardLogF32 {
+    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
+        Ok(Self { device })
+    }
+
+    /// Dispatch one forward step: alpha_curr = fwd_step(alpha_prev, log_trans, log_emit).
+    pub fn dispatch(
+        &self,
+        n_states: u32,
+        alpha_prev: &wgpu::Buffer,
+        log_trans: &wgpu::Buffer,
+        log_emit: &wgpu::Buffer,
+        alpha_curr: &wgpu::Buffer,
+    ) -> Result<()> {
+        let params = HmmForwardLogParams { n_states };
+        let params_buf = self
+            .device
+            .create_uniform_buffer("HmmForwardLogF32:params", &params);
+
+        let wg_count = n_states.div_ceil(256);
+        ComputeDispatch::new(&self.device, "hmm_forward_log_f32")
+            .shader(WGSL_HMM_FORWARD_LOG_F32, "hmm_forward_log")
+            .storage_read(0, alpha_prev)
+            .storage_read(1, log_trans)
+            .storage_read(2, log_emit)
+            .storage_rw(3, alpha_curr)
+            .uniform(4, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
+        Ok(())
+    }
+}
+
+/// Log-domain HMM forward pass (f64) — single step.
+///
+/// Uses max-subtract trick. One thread per destination state.
+pub struct HmmForwardLogF64 {
+    device: Arc<WgpuDevice>,
+}
+
+impl HmmForwardLogF64 {
+    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
+        Ok(Self { device })
+    }
+
+    /// Dispatch one forward step: alpha_curr = fwd_step(alpha_prev, log_trans, log_emit).
+    pub fn dispatch(
+        &self,
+        n_states: u32,
+        alpha_prev: &wgpu::Buffer,
+        log_trans: &wgpu::Buffer,
+        log_emit: &wgpu::Buffer,
+        alpha_curr: &wgpu::Buffer,
+    ) -> Result<()> {
+        let params = HmmForwardLogParams { n_states };
+        let params_buf = self
+            .device
+            .create_uniform_buffer("HmmForwardLogF64:params", &params);
+
+        let wg_count = n_states.div_ceil(256);
+        ComputeDispatch::new(&self.device, "hmm_forward_log_f64")
+            .shader(WGSL_HMM_FORWARD_LOG_F64, "hmm_forward_log")
+            .f64()
+            .storage_read(0, alpha_prev)
+            .storage_read(1, log_trans)
+            .storage_read(2, log_emit)
+            .storage_rw(3, alpha_curr)
+            .uniform(4, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,5 +328,24 @@ mod tests {
     #[test]
     fn params_layout_viterbi() {
         assert_eq!(std::mem::size_of::<HmmViterbiParams>(), 8);
+    }
+
+    #[test]
+    fn log_f32_shader_source_valid() {
+        assert!(WGSL_HMM_FORWARD_LOG_F32.contains("hmm_forward_log"));
+        assert!(WGSL_HMM_FORWARD_LOG_F32.contains("HmmParams"));
+        assert!(WGSL_HMM_FORWARD_LOG_F32.contains("alpha_prev"));
+    }
+
+    #[test]
+    fn log_f64_shader_source_valid() {
+        assert!(WGSL_HMM_FORWARD_LOG_F64.contains("hmm_forward_log"));
+        assert!(WGSL_HMM_FORWARD_LOG_F64.contains("HmmParams"));
+        assert!(WGSL_HMM_FORWARD_LOG_F64.contains("alpha_prev"));
+    }
+
+    #[test]
+    fn params_layout_forward_log() {
+        assert_eq!(std::mem::size_of::<HmmForwardLogParams>(), 4);
     }
 }

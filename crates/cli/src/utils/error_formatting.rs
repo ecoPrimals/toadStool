@@ -3,6 +3,7 @@
 //! Uses `Cow<'_, str>` for conditional allocation - only allocates when formatting is needed.
 
 use std::borrow::Cow;
+use toadstool_config::constants::primals;
 
 /// Get contextual error suggestion based on error content
 ///
@@ -87,19 +88,19 @@ pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static
     }
 
     // Ecosystem errors
-    if error_str.contains("songbird") {
+    if error_str.contains(primals::SONGBIRD) {
         return Some(Cow::Borrowed(
             "💡 Use 'toadstool ecosystem discover' to find Songbird instances or check network connectivity.",
         ));
     }
 
-    if error_str.contains("nestgate") {
+    if error_str.contains(primals::NESTGATE) {
         return Some(Cow::Borrowed(
             "💡 Verify NestGate endpoint and credentials. Use 'toadstool ecosystem storage --help' for options.",
         ));
     }
 
-    if error_str.contains("beardog") {
+    if error_str.contains(primals::BEARDOG) {
         return Some(Cow::Borrowed(
             "💡 Install BearDog permissions with 'toadstool ecosystem auth <permission-file>'.",
         ));

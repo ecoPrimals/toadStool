@@ -3,6 +3,101 @@
 //!
 //! Provenance: groundSpring `jackknife.rs` -> toadStool absorption (S70).
 
+#[cfg(feature = "gpu")]
+use crate::device::compute_pipeline::ComputeDispatch;
+#[cfg(feature = "gpu")]
+use crate::device::WgpuDevice;
+#[cfg(feature = "gpu")]
+use crate::error::Result;
+#[cfg(feature = "gpu")]
+use bytemuck::{Pod, Zeroable};
+#[cfg(feature = "gpu")]
+use std::sync::Arc;
+
+#[cfg(feature = "gpu")]
+const SHADER_JACKKNIFE: &str = include_str!("../shaders/stats/jackknife_mean_f64.wgsl");
+
+#[cfg(feature = "gpu")]
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct JackknifeParams {
+    n: u32,
+    full_sum_lo: u32,
+    full_sum_hi: u32,
+    _pad: u32,
+}
+
+#[cfg(feature = "gpu")]
+/// GPU-parallel leave-one-out jackknife for the mean.
+pub struct JackknifeMeanGpu {
+    device: Arc<WgpuDevice>,
+}
+
+#[cfg(feature = "gpu")]
+impl JackknifeMeanGpu {
+    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
+        Ok(Self { device })
+    }
+
+    /// Dispatch GPU to compute leave-out means, then compute variance on CPU.
+    pub fn dispatch(&self, data: &[f64]) -> Result<JackknifeResult> {
+        let n = data.len();
+        if n < 2 {
+            return Err(crate::error::BarracudaError::InvalidInput {
+                message: "jackknife requires at least 2 observations".to_string(),
+            });
+        }
+
+        let full_sum: f64 = data.iter().sum();
+        let full_mean = full_sum / (n as f64);
+
+        let bits = full_sum.to_bits();
+        let lo = bits as u32;
+        let hi = (bits >> 32) as u32;
+
+        let params = JackknifeParams {
+            n: n as u32,
+            full_sum_lo: lo,
+            full_sum_hi: hi,
+            _pad: 0,
+        };
+        let params_buf = self
+            .device
+            .create_uniform_buffer("jackknife_mean:params", &params);
+
+        let data_buf = self
+            .device
+            .create_buffer_f64_init("jackknife_mean:data", data);
+        let leave_means_buf = self.device.create_buffer_f64(n)?;
+
+        let wg_count = (n as u32).div_ceil(256);
+        ComputeDispatch::new(&self.device, "jackknife_mean")
+            .shader(SHADER_JACKKNIFE, "main")
+            .f64()
+            .storage_read(0, &data_buf)
+            .storage_rw(1, &leave_means_buf)
+            .uniform(2, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
+
+        let leave_means = self.device.read_f64_buffer(&leave_means_buf, n)?;
+
+        let n_f = n as f64;
+        let jk_grand_mean: f64 = leave_means.iter().sum::<f64>() / n_f;
+        let jk_var = (n_f - 1.0) / n_f
+            * leave_means
+                .iter()
+                .map(|&m| (m - jk_grand_mean).powi(2))
+                .sum::<f64>();
+
+        Ok(JackknifeResult {
+            estimate: full_mean,
+            variance: jk_var,
+            std_error: jk_var.sqrt(),
+        })
+    }
+}
+
 /// Result of a jackknife estimate.
 #[derive(Debug, Clone, Copy)]
 pub struct JackknifeResult {

@@ -16,6 +16,9 @@
 
 use crate::error::{BarracudaError, Result};
 
+#[cfg(feature = "gpu")]
+use crate::device::compute_pipeline::ComputeDispatch;
+
 /// Bootstrap confidence interval result.
 #[derive(Debug, Clone)]
 pub struct BootstrapCI {
@@ -356,6 +359,77 @@ pub fn bootstrap_std(
         confidence,
         seed,
     )
+}
+
+// ── GPU Bootstrap Mean (ComputeDispatch) ────────────────────────────────────
+
+#[cfg(feature = "gpu")]
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct BootstrapGpuParams {
+    n: u32,
+    n_bootstrap: u32,
+    seed: u32,
+    _pad: u32, // align to 16 bytes for uniform buffer
+}
+
+#[cfg(feature = "gpu")]
+pub struct BootstrapMeanGpu {
+    device: std::sync::Arc<crate::device::WgpuDevice>,
+}
+
+#[cfg(feature = "gpu")]
+impl BootstrapMeanGpu {
+    pub fn new(device: std::sync::Arc<crate::device::WgpuDevice>) -> crate::error::Result<Self> {
+        Ok(Self { device })
+    }
+
+    /// Dispatch GPU-parallel bootstrap mean estimation.
+    pub fn dispatch(
+        &self,
+        data: &[f64],
+        n_bootstrap: u32,
+        seed: u32,
+    ) -> crate::error::Result<Vec<f64>> {
+        let n = data.len() as u32;
+        if n == 0 {
+            return Err(BarracudaError::InvalidInput {
+                message: "data cannot be empty".to_string(),
+            });
+        }
+        if n_bootstrap == 0 {
+            return Err(BarracudaError::InvalidInput {
+                message: "n_bootstrap must be > 0".to_string(),
+            });
+        }
+
+        let params = BootstrapGpuParams {
+            n,
+            n_bootstrap,
+            seed,
+            _pad: 0,
+        };
+        let params_buf = self
+            .device
+            .create_uniform_buffer("bootstrap_mean:params", &params);
+
+        let data_buf = self
+            .device
+            .create_buffer_f64_init("bootstrap_mean:data", data);
+        let out_buf = self.device.create_buffer_f64(n_bootstrap as usize)?;
+
+        let wg_count = n_bootstrap.div_ceil(256);
+        ComputeDispatch::new(&self.device, "bootstrap_mean")
+            .shader(super::WGSL_BOOTSTRAP_MEAN_F64, "main")
+            .f64()
+            .storage_read(0, &data_buf)
+            .storage_rw(1, &out_buf)
+            .uniform(2, &params_buf)
+            .dispatch(wg_count, 1, 1)
+            .submit();
+
+        self.device.read_f64_buffer(&out_buf, n_bootstrap as usize)
+    }
 }
 
 #[cfg(test)]

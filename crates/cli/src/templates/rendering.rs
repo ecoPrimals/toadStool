@@ -3,6 +3,7 @@
 //! Supports both TOML (preferred, ecoBin compliant) and YAML formats.
 
 use crate::{CliContextExt, Result};
+use toadstool_config::constants::primals;
 use tracing::info;
 
 use super::types_mod::BiomeTemplate;
@@ -42,7 +43,7 @@ pub fn get_template_tags(template: &BiomeTemplate) -> Vec<String> {
         BiomeTemplate::Distributed => vec![
             "distributed".to_string(),
             "cluster".to_string(),
-            "songbird".to_string(),
+            primals::SONGBIRD.to_string(),
         ],
         BiomeTemplate::Sovereign => vec![
             "sovereign".to_string(),

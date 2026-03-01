@@ -148,6 +148,71 @@ pub fn fao56_et0(
     Some(numerator / denominator)
 }
 
+// ── Hargreaves batch GPU (stats module) ────────────────────────────────────
+
+#[cfg(feature = "gpu")]
+const SHADER_HARGREAVES: &str = include_str!("../shaders/science/hargreaves_batch_f64.wgsl");
+
+#[cfg(feature = "gpu")]
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct HargreavesGpuParams {
+    n_days: u32,
+    _pad: [u32; 3],
+}
+
+#[cfg(feature = "gpu")]
+pub struct HargreavesBatchGpu {
+    device: std::sync::Arc<crate::device::WgpuDevice>,
+}
+
+#[cfg(feature = "gpu")]
+impl HargreavesBatchGpu {
+    pub fn new(device: std::sync::Arc<crate::device::WgpuDevice>) -> crate::error::Result<Self> {
+        Ok(Self { device })
+    }
+
+    /// Dispatch batch Hargreaves ET0 on GPU.
+    pub fn dispatch(
+        &self,
+        ra: &[f64],
+        t_max: &[f64],
+        t_min: &[f64],
+    ) -> crate::error::Result<Vec<f64>> {
+        use crate::device::compute_pipeline::ComputeDispatch;
+
+        let n = ra.len();
+        assert_eq!(n, t_max.len());
+        assert_eq!(n, t_min.len());
+
+        let ra_buf = self.device.create_buffer_f64_init("hargreaves:ra", ra);
+        let tmax_buf = self.device.create_buffer_f64_init("hargreaves:tmax", t_max);
+        let tmin_buf = self.device.create_buffer_f64_init("hargreaves:tmin", t_min);
+        let out_buf = self.device.create_buffer_f64(n)?;
+        let params = HargreavesGpuParams {
+            n_days: n as u32,
+            _pad: [0; 3],
+        };
+        let params_buf = self
+            .device
+            .create_uniform_buffer("hargreaves:params", &params);
+
+        let wg = (n as u32).div_ceil(256);
+        ComputeDispatch::new(&self.device, "hargreaves_batch")
+            .shader(SHADER_HARGREAVES, "main")
+            .f64()
+            .storage_read(0, &ra_buf)
+            .storage_read(1, &tmax_buf)
+            .storage_read(2, &tmin_buf)
+            .storage_rw(3, &out_buf)
+            .uniform(4, &params_buf)
+            .dispatch(wg, 1, 1)
+            .submit();
+
+        self.device.read_f64_buffer(&out_buf, n)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,4 +1,4 @@
-# Status -- February 28, 2026
+# Status -- March 1, 2026
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,753+ tests** (5 pre-existing GPU device-loss flakes) |
+| `cargo test -p barracuda --lib` | PASS | **2,773+ tests** (5 pre-existing GPU device-loss flakes) |
 | `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
 | `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
 | `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
@@ -25,7 +25,7 @@
 
 | Metric | Value |
 |--------|-------|
-| WGSL shaders | **668** (zero orphans, 26 DF64 + 200+ f64, all f64 canonical) |
+| WGSL shaders | **671** (zero orphans, 29 DF64 + 200+ f64, all f64 canonical) |
 | Rust version | **1.80+** (std::sync::LazyLock) |
 | `unsafe` blocks | **45** (all `// SAFETY:` documented; 2 barracuda SPIRV/cache, rest FFI/hardware/MMIO) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
@@ -34,7 +34,7 @@
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors |
 | Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
-| File size limit | **All < 1000 lines** (17 large files smart-refactored to domain modules) |
+| File size limit | **All < 1000 lines** (19 large files smart-refactored to domain modules) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
 | ComputeDispatch adoption | **34 ops migrated** (~216 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
@@ -78,6 +78,15 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 71 (Mar 1, 2026) — GPU Dispatch Wiring + Sovereignty + Smart Refactoring
+- Wired 4 previously orphaned shader constants to GPU dispatch: `WGSL_HMM_FORWARD_LOG_F32/F64`, `WGSL_BOOTSTRAP_MEAN_F64`, `WGSL_HISTOGRAM`
+- 3 new GPU shaders: `kimura_fixation_f64.wgsl`, `jackknife_mean_f64.wgsl`, `hargreaves_batch_f64.wgsl`
+- 6 new GPU dispatch structs: `HmmForwardLogF32/F64`, `BootstrapMeanGpu`, `HistogramGpu`, `KimuraGpu`, `JackknifeMeanGpu`, `HargreavesBatchGpu`
+- Hardcoded primal names → `primals::*` constants in 6 production files
+- `jsonrpc_server.rs` refactored 904→628 lines via shared test helper
+- `network_config/types.rs` split 859→7 domain submodules (34/34 tests pass)
+- 2,773+ barracuda tests, 671 WGSL shaders, all quality gates green
 
 ### Session 70+++ (Feb 28, 2026) — Builder Refactor + Dead Code + Monitoring Evolution
 - `builder.rs` (975 lines) → `builder/` module: mod.rs (129) + profiler.rs (531) + substrate.rs (338)

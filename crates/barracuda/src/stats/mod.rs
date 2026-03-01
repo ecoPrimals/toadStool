@@ -62,9 +62,13 @@
 pub const WGSL_BOOTSTRAP_MEAN_F64: &str =
     include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
 
-/// WGSL kernel for parallel histogram via atomic binning.
+/// WGSL kernel for parallel histogram via atomic binning (f64 canonical).
 #[cfg(feature = "gpu")]
-pub static WGSL_HISTOGRAM: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+pub const WGSL_HISTOGRAM_F64: &str = include_str!("../shaders/stats/histogram_f64.wgsl");
+
+/// WGSL kernel for parallel histogram (f32 downcast for devices without f64).
+#[cfg(feature = "gpu")]
+pub static WGSL_HISTOGRAM_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
         "../shaders/stats/histogram_f64.wgsl"
     ))
@@ -75,6 +79,7 @@ pub mod chi2;
 pub mod correlation;
 pub mod diversity;
 pub mod evolution;
+pub mod histogram;
 pub mod hydrology;
 pub mod jackknife;
 pub mod metrics;
@@ -83,6 +88,8 @@ pub mod normal;
 pub mod regression;
 pub mod spectral_density;
 
+#[cfg(feature = "gpu")]
+pub use bootstrap::BootstrapMeanGpu;
 pub use bootstrap::{
     bootstrap_ci, bootstrap_mean, bootstrap_median, bootstrap_std, rawr_mean, BootstrapCI,
 };
@@ -95,10 +102,18 @@ pub use diversity::{
     condensed_index, observed_features, pielou_evenness, rarefaction_curve, shannon,
     shannon_from_frequencies, simpson, AlphaDiversity,
 };
+#[cfg(feature = "gpu")]
+pub use evolution::KimuraGpu;
 pub use evolution::{detection_power, detection_threshold, error_threshold, kimura_fixation_prob};
+#[cfg(feature = "gpu")]
+pub use histogram::HistogramGpu;
+#[cfg(feature = "gpu")]
+pub use hydrology::HargreavesBatchGpu;
 pub use hydrology::{
     crop_coefficient, fao56_et0, hargreaves_et0, hargreaves_et0_batch, soil_water_balance,
 };
+#[cfg(feature = "gpu")]
+pub use jackknife::JackknifeMeanGpu;
 pub use jackknife::{jackknife, jackknife_mean_variance, JackknifeResult};
 pub use metrics::{
     dot, hill, hit_rate, index_of_agreement, l2_norm, mae, mbe, mean, monod, nash_sutcliffe,
