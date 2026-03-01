@@ -73,17 +73,15 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| D-CD | ComputeDispatch migration | High | 34/250 ops migrated (~3,739 lines removed). ~216 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
+| D-CD | ComputeDispatch migration | High | 66/250 ops migrated (~9,000+ lines removed). ~184 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
 | D-COV | Test coverage → 90% | Medium | Major gains in S70/S70+: +187 tests across CLI, server, API, monitoring, distributed, config, barracuda stats/ops. Gap: barracuda GPU ops, neuromorphic drivers. |
 
-### DF64 Transcendental Coverage
+### DF64 Transcendental Coverage — COMPLETE (S71)
 
-Extend `df64_transcendentals.wgsl` to cover remaining functions:
-- `asin_df64`, `acos_df64`, `atan_df64`, `atan2_df64`
-- `sinh_df64`, `cosh_df64`
-- `gamma_df64`, `erf_df64` (Lanczos/Abramowitz at DF64 precision)
+All 15 DF64 transcendental functions implemented in `df64_transcendentals.wgsl`:
+exp, log, sin, cos, tan, sqrt, pow, asin, acos, atan, atan2, sinh, cosh, gamma (Lanczos g=7), erf (A&S 7.1.26).
 
 ### Sovereign Compiler Phase 4+
 
@@ -157,7 +155,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 | manual_jsonrpc → pure_jsonrpc | Full migration — all handlers, Unix/TCP, unibin migrated |
 | 4 production stubs | biome.rs (real validation), container benchmark (runtime detection), gRPC (deprecated), OpenCL (capability-based) |
 | 16 large files | Smart-refactored to domain modules (all < 1000 lines) |
-| 34 ComputeDispatch ops | 5 linalg + 15 special functions + 14 MD/bio/reduce (~3,739 lines removed) |
+| 66 ComputeDispatch ops | 5 linalg + 15 special + 14 MD/bio + 7 reduce + 6 attention + 5 tensor + 3 index + 4 FFT + 7 misc (~9,000+ lines removed) |
 | NAK workgroup tuning | `workgroup_size_for_arch()` — Volta 64, Ada 256, RDNA 64, Intel Arc 128 |
 | Hardcoded IPs | 6 production files → named constants |
 | anyhow elimination | Fully eliminated from all ~30 workspace crates |

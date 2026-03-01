@@ -7,7 +7,7 @@
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. Cloud cost estimation, compliance validation, and federation. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: **671 WGSL shaders** (zero orphans -- every shader wired to Rust, **zero f32-only** -- all f64 canonical with LazyLock downcast). **All math originates as WGSL** -- barracuda does not care about hardware; toadstool routes to the best substrate at runtime. CPU reference implementations gated behind `#[cfg(test)]`. f64 transcendentals (exp, log, pow, sin, cos, etc.) fully covered via `compile_shader_f64()` and `compile_shader_df64()` polyfill pipelines -- 28 functions, Cody-Waite range reduction, Horner polynomials, Lanczos gamma -- works on every GPU regardless of native f64 support. **No vendor math libraries** (libdevice/ocml) -- pure WGSL, ships with the crate, testable in CI without hardware. **Hybrid FP64 core streaming**: `Fp64Strategy` auto-selects between native f64 (compute-class GPUs) and DF64 double-float f32-pair arithmetic (~14 digits on FP32 cores) for consumer GPUs -- probe-informed via `fp64_strategy_probed()` with runtime f64 compile test. **Runtime f64 probe**: `basic_f64` compile probe catches NAK/NVVM that advertise `SHADER_F64` but cannot compile f64 WGSL -- forces DF64 fallback automatically. **AlphaFold2 primitives**: 17 Evoformer shaders (triangle updates, MSA attention, IPA, structure, FAPE loss, confidence). **HMM**: Forward + backward + Viterbi + log-domain f32/f64 dispatch. **Anderson coupling**: GPU-accelerated disorder Hamiltonian construction. **Grid search ops**: 2D surface fit, 3D brute-force minimum, band-edge extraction -- all wired via `ComputeDispatch` builder. **ESN multi-head**: 11-head constants, weight migration, f32 buffer system. **ODE universal precision**: `BatchedOdeRK4` template supports `Scalar`/`op_*` for f32/f64/df64/f16 compilation. **Sovereign Compiler**: naga-IR optimizer (FMA fusion, dead expression elimination) with SPIR-V passthrough -- end-to-end Rust compilation pipeline. **metalForge streaming**: `PipelineBuilder` → `StreamingPipeline` -- chained GPU dispatches without CPU readback. **ComputeDispatch builder**: fluent pipeline creation, 34 ops migrated (~3,739 lines boilerplate removed). **NAK workgroup tuning**: architecture-aware workgroup sizes (Volta 64, Ada 256, RDNA 64). **Nuclear physics**: HFB GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders. **Lattice QCD**: 14 GPU shaders + host orchestration. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, bio/genomics). All linalg GPU-dispatched: solve, cholesky, QR, SVD, LU. **25+ bio/evolution GPU ops**. **PDE solvers**: Crank-Nicolson, Richards unsaturated flow. **ESN GPU-train → NPU-deploy** pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: **671 WGSL shaders** (zero orphans -- every shader wired to Rust, **zero f32-only** -- all f64 canonical with LazyLock downcast). **All math originates as WGSL** -- barracuda does not care about hardware; toadstool routes to the best substrate at runtime. CPU reference implementations gated behind `#[cfg(test)]`. f64 transcendentals (exp, log, pow, sin, cos, etc.) fully covered via `compile_shader_f64()` and `compile_shader_df64()` polyfill pipelines -- 28 functions, Cody-Waite range reduction, Horner polynomials, Lanczos gamma -- works on every GPU regardless of native f64 support. **No vendor math libraries** (libdevice/ocml) -- pure WGSL, ships with the crate, testable in CI without hardware. **Hybrid FP64 core streaming**: `Fp64Strategy` auto-selects between native f64 (compute-class GPUs) and DF64 double-float f32-pair arithmetic (~14 digits on FP32 cores) for consumer GPUs -- probe-informed via `fp64_strategy_probed()` with runtime f64 compile test. **Runtime f64 probe**: `basic_f64` compile probe catches NAK/NVVM that advertise `SHADER_F64` but cannot compile f64 WGSL -- forces DF64 fallback automatically. **AlphaFold2 primitives**: 17 Evoformer shaders (triangle updates, MSA attention, IPA, structure, FAPE loss, confidence). **HMM**: Forward + backward + Viterbi + log-domain f32/f64 dispatch. **Anderson coupling**: GPU-accelerated disorder Hamiltonian construction. **Grid search ops**: 2D surface fit, 3D brute-force minimum, band-edge extraction -- all wired via `ComputeDispatch` builder. **ESN multi-head**: 11-head constants, weight migration, f32 buffer system. **ODE universal precision**: `BatchedOdeRK4` template supports `Scalar`/`op_*` for f32/f64/df64/f16 compilation. **Sovereign Compiler**: naga-IR optimizer (FMA fusion, dead expression elimination) with SPIR-V passthrough -- end-to-end Rust compilation pipeline. **metalForge streaming**: `PipelineBuilder` → `StreamingPipeline` -- chained GPU dispatches without CPU readback. **ComputeDispatch builder**: fluent pipeline creation, 66 ops migrated (~9,000+ lines boilerplate removed). **NAK workgroup tuning**: architecture-aware workgroup sizes (Volta 64, Ada 256, RDNA 64). **Nuclear physics**: HFB GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders. **Lattice QCD**: 14 GPU shaders + host orchestration. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, bio/genomics). All linalg GPU-dispatched: solve, cholesky, QR, SVD, LU. **25+ bio/evolution GPU ops**. **PDE solvers**: Crank-Nicolson, Richards unsaturated flow. **ESN GPU-train → NPU-deploy** pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
@@ -48,7 +48,7 @@ Nest    = Tower  + NestGate           <- storage
 | Hardcoded primal names | 0 inline strings -- all use `primals::*` constants or capability discovery |
 | Hardcoded ports/localhost | 0 inline literals -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| Orphan shaders | 0 -- all 668 WGSL shaders wired to Rust (26 DF64 files) |
+| Orphan shaders | 0 -- all 671 WGSL shaders wired to Rust (29 DF64 files) |
 | File size limit | All production files under 1000 lines |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
@@ -130,7 +130,7 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 668 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
+BarraCUDA: 671 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
   All math originates as WGSL — barracuda does not care about hardware
   Dual-layer universal precision:
     Layer 1 (source): op_preamble — op_add/op_mul/Scalar alias → all precisions
@@ -225,7 +225,7 @@ cargo llvm-cov --lib -p toadstool-common --json
 ```
 toadStool/
 +-- crates/                        43 crates
-|   +-- barracuda/                 668 WGSL shaders (shader-first, dual-layer universal precision), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
+|   +-- barracuda/                 671 WGSL shaders (shader-first, dual-layer universal precision), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
 |   +-- core/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config)
@@ -280,9 +280,9 @@ toadStool/
 | Clippy warnings (`-D warnings`) | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Unit tests (barracuda) | 2,753+ |
+| Unit tests (barracuda) | 2,773+ |
 | Shader-specific tests | 155 (unit + e2e + chaos + fault + naga validation) |
-| WGSL shaders (barracuda) | 668 (zero orphans, shader-first, 26 DF64 + 200+ f64 — zero f32-only, all f64 canonical) |
+| WGSL shaders (barracuda) | 671 (zero orphans, shader-first, 29 DF64 + 200+ f64 — zero f32-only, all f64 canonical) |
 | Lib tests (server) | 576 |
 | Lib tests (core toadstool) | 1,340 |
 | Lib tests (distributed) | 1,057 |
@@ -310,7 +310,7 @@ toadStool/
 **We are still evolving.** barracuda owns the math at all precisions. Springs migrate from local math to universal dispatch. All 5 spring handoffs absorbed. Remaining work is ComputeDispatch migration, DF64 architecture, and coverage.
 
 ### Active / Next
-- **ComputeDispatch migration** -- 34/250 ops migrated; ~216 legacy ops use manual BGL/BG boilerplate (incremental)
+- **ComputeDispatch migration** -- 66/250 ops migrated; ~184 legacy ops use manual BGL/BG boilerplate (incremental)
 - **DF64 as default path** -- df64_rewrite as default precision, not fallback (groundSpring V35)
 - **NpuDispatch trait** -- generic NPU interface (airSpring/wetSpring/groundSpring converge)
 - **Test coverage** -- pushing toward 90% target; major coverage gains in CLI, server, API, monitoring, distributed
@@ -322,6 +322,7 @@ toadStool/
 - **Session 70+/++: Cross-spring absorption + sovereignty + architecture** -- 7 new WGSL shaders (gelu/sigmoid/softmax/layernorm DF64, sdpa_df64, brent_f64 root-finding, seasonal_pipeline). 6 new GPU ops (batched_elementwise ops 5-8 from airSpring, SymmetrizeGpu, LaplacianGpu). 3 new stats modules (evolution: kimura_fixation; jackknife; hydrology: fao56_et0; diversity: chao1_classic). SimpleMLP with JSON weight serde. Non-consuming `matmul_ref` for recurrent architectures. `Fp64Strategy::Concurrent` for dual validation. `max_buffer_size` NVK sanity check. Architecture-aware `preferred_workgroup_size`. Sovereignty: port 8084→`daemon_port()`, songbird→mdns discovery, capability-based adapter. Monitoring split (1071→679 lines). Adapter stub evolved to real validation. +37 new tests.
 - **Session 70: Deep debt + test concurrency evolution** -- 15 production stubs evolved to real implementations (primals client JSON-RPC, orchestrator deploy, coordinator cancel with CancellationToken, deprecated HTTP caller returns errors). All `std::env::set_var` in tests migrated to `temp_env` (8 files). All sleeps removed from non-chaos tests. Default test timeouts reduced (30s→5s, 120s→30s). All doctests fixed. ChaosEngine metrics sync corrected. Storage benchmark race condition fixed. Nested runtime panics eliminated. Barracuda `#![allow(clippy::unused_async)]` with justification. Edge/embedded placeholders evolved to proper errors. Real mDNS response parser. +150 new tests across workspace. All files under 1000 lines confirmed. Full workspace test suite: 6m30s, 0 failures.
 - **Session 69++: Architecture evolution** -- metalForge streaming pipeline. manual_jsonrpc → pure_jsonrpc (full migration). 34 ops → ComputeDispatch (~3,739 lines removed). NAK workgroup tuning. 4 production stubs → real implementations. 16 large files smart-refactored. +100 new tests. rust-version 1.75→1.80.
+- **Session 71: Deep debt + GPU dispatch + ComputeDispatch acceleration** -- 6 GPU dispatch structs wired (HMM log, Bootstrap, Histogram, Kimura, Jackknife, Hargreaves). DF64 transcendental suite completed (15 functions). 32 ops migrated to ComputeDispatch (66 total). 6 large files smart-refactored. Hardcoded primal names → constants. 4 unsafe items reduced. External deps audited. Net -9,192 lines.
 - **Session 69/69+: Cross-spring absorption + deep debt** -- 5 spring handoffs absorbed (196 handoff files). 30+ new WGSL shaders (17 AlphaFold2, GPU Lanczos, airSpring batch ops, MD observables). anyhow fully eliminated from all ~30 crates. 13 S69 shaders → Rust dispatch via ComputeDispatch.
 - **Session 68+++: Deep debt sweep** -- chrono eliminated (28 crates, 200+ files → `std::time`). Unsafe 47→45. ~400 lines dead code removed.
 
@@ -333,7 +334,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-CD | ComputeDispatch migration (~216 legacy ops) | Active -- incremental, 34 done |
+| D-CD | ComputeDispatch migration (~184 legacy ops) | Active -- incremental, 66 done |
 | D-DF64 | DF64 as default path (not fallback) | Active -- architectural |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Active -- design phase |
 | D-COV | Test coverage → 90% | Active -- major gains in server, CLI, API, monitoring |
@@ -361,4 +362,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 28, 2026 -- 668 WGSL shaders (26 DF64). 2,753+ barracuda tests. 4,700+ workspace lib tests. 34 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings, 0 test failures). Fully concurrent test suite (6m30s). Rust 1.80+. Zero anyhow. Zero chrono. Zero production stubs. 45 justified unsafe. All files < 1000 lines.
+**Last Updated**: March 1, 2026 -- 671 WGSL shaders (29 DF64, 15-function DF64 transcendental suite complete). 2,773+ barracuda tests. 4,700+ workspace lib tests. 66 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings, 0 test failures). Fully concurrent test suite (6m30s). Rust 1.80+. Zero anyhow. Zero chrono. Zero production stubs. 45 justified unsafe. All files < 1000 lines. External deps overwhelmingly pure Rust.

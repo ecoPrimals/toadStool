@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 28, 2026 -- Session 70**
+**March 1, 2026 -- Session 71**
 
 ---
 
@@ -536,4 +536,4 @@ API reference: see [Scientific Computing Middleware API](#scientific-computing-m
 
 ---
 
-**Last Updated**: February 28, 2026 — Session 70
+**Last Updated**: March 1, 2026 — Session 71

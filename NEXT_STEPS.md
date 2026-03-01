@@ -81,7 +81,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **Chaos metrics sync** -- ChaosEngine recovery_count propagated to both SystemState and ChaosMetrics
 - [x] **Edge platform evolution** -- ESP32, Raspberry Pi, industrial, microcontroller return proper errors
 - [x] **Real mDNS parser** -- replaces placeholder `Ok(None)` in zero_config service discovery
-- [ ] **ComputeDispatch migration** -- 34/250 ops migrated; ~216 remaining (incremental)
+- [ ] **ComputeDispatch migration** -- 66/250 ops migrated; ~184 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
 - [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed
@@ -116,7 +116,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ### Session 69++: Architecture & Code Evolution
 
-**ComputeDispatch migration (34 ops)**: 5 linalg + 15 special functions + 14 MD/bio/reduce.
+**ComputeDispatch migration (66 ops)**: 5 linalg + 15 special + 14 MD/bio + 7 reduce + 6 attention + 5 tensor + 3 index + 4 FFT + 7 misc.
 ~3,739 lines of manual BGL/BG/pipeline boilerplate replaced with fluent builder pattern.
 
 **metalForge streaming pipeline**: `PipelineBuilder` → `StreamingPipeline` with chained
