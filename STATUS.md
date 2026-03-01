@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,726+ tests** (5 pre-existing GPU device-loss flakes) |
+| `cargo test -p barracuda --lib` | PASS | **2,753+ tests** (5 pre-existing GPU device-loss flakes) |
 | `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
 | `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
 | `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
@@ -25,7 +25,7 @@
 
 | Metric | Value |
 |--------|-------|
-| WGSL shaders | **661** (zero orphans, 21 DF64 + 200+ f64, all f64 canonical) |
+| WGSL shaders | **668** (zero orphans, 26 DF64 + 200+ f64, all f64 canonical) |
 | Rust version | **1.80+** (std::sync::LazyLock) |
 | `unsafe` blocks | **45** (all `// SAFETY:` documented; 2 barracuda SPIRV/cache, rest FFI/hardware/MMIO) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
@@ -44,7 +44,7 @@
 ## Architecture Highlights
 
 ### GPU Compute
-- **Fp64Strategy**: Native/Hybrid with FMA-optimized DF64 + transcendentals
+- **Fp64Strategy**: Native/Hybrid/Concurrent with FMA-optimized DF64 + transcendentals
 - **Runtime f64 probe**: `basic_f64` compile-time probe detects NAK/NVVM f64 failures
 - **NAK workgroup tuning**: `workgroup_size_for_arch()` — Volta 64, Ada 256, RDNA 64, Intel Arc 128
 - **ComputeDispatch builder**: Eliminates ~80 lines of BGL/BG/pipeline boilerplate per op
@@ -66,13 +66,40 @@
 - **Reduced timeouts**: 5s default (was 30s), 2s unit (was 5s), 30s integration (was 120s)
 - **Chaos tests**: Allowed longer timeouts and sleeps (fault injection stabilization)
 
-### Cross-Spring Absorption (Session 69)
+### Cross-Spring Absorption (Session 69 + 70+)
 - All 5 spring handoffs reviewed and absorbed (196 handoff files)
 - 17 AlphaFold2 Evoformer shaders + dispatch
 - GPU Lanczos eigensolver + 4 airSpring batch ops + MD observables
 - HMM forward/backward/viterbi, stats ops, Anderson coupling
+- S70+: 4 new science ops (SensorCalibration, Hargreaves ET0, KcClimateAdjust, DualKcKe)
+- S70+: 5 new DF64 ML shaders (GELU, Sigmoid, Softmax, LayerNorm, SDPA)
+- S70+: Brent root-finding + seasonal pipeline fused shader
+- S70+: Evolution stats (kimura_fixation), jackknife resampling, fao56_et0, chao1_classic
+- S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 70++ (Feb 28, 2026) — Sovereignty + Architecture + Stub Evolution
+- Sovereignty: hardcoded port 8084 → `toadstool_config::ports::daemon_port()`
+- Sovereignty: hardcoded "songbird" discovery backend → "mdns" (capability-based)
+- Sovereignty: `create_adapter_for_endpoint` refactored from string-matching to universal adapter
+- Architecture: `Fp64Strategy::Concurrent` variant for dual-validation harnesses (9 dispatch arms updated)
+- Architecture: `barracuda::math` re-exports `lower_incomplete_gamma` + `norm_cdf`
+- Refactoring: monitoring `lib.rs` split 1071→679 lines (extracted process, thresholds, platform modules)
+- Stub evolution: `UniversalAdapter` now validates runtime hints and injects default timeouts
+- Clippy: 2 `manual_div_ceil` fixes in linalg GPU executors
+- All quality gates green: build, fmt, clippy, doc
+
+### Session 70+ (Feb 28, 2026) — Cross-Spring Absorption (airSpring/groundSpring/neuralSpring/wetSpring)
+- 7 new WGSL shaders: gelu_df64, sigmoid_df64, softmax_df64, layer_norm_df64, sdpa_df64, brent_f64, seasonal_pipeline
+- 6 new GPU ops: batched_elementwise ops 5-8 (SensorCalibration, HargreavesEt0, KcClimateAdjust, DualKcKe), SymmetrizeGpu, LaplacianGpu
+- 3 new stats modules: evolution (kimura_fixation_prob, detection_power/threshold), jackknife (leave-one-out + generalized), hydrology (fao56_et0)
+- Diversity: chao1_classic (Chao 1984 u64 formula) alongside existing chao1 (Chao & Chiu 2016 f64)
+- Neural network: SimpleMLP with JSON weight serde + forward inference
+- Tensor: non-consuming `matmul_ref` for recurrent architectures
+- GPU safety: `sanitize_max_buffer_size` (caps NVK absurd values to architectural limits)
+- GPU tuning: `preferred_workgroup_size()` (Volta 64, Ampere/Ada 256, RDNA 256, fallback 128)
+- +37 new tests across batched_elementwise, hydrology, diversity, evolution, jackknife, SimpleMLP
 
 ### Session 70 (Feb 28, 2026) — Deep Debt + Test Concurrency Evolution
 - 15 production stubs evolved to real implementations (primals client, orchestrator, coordinator cancel, edge platforms)

@@ -152,8 +152,9 @@ impl StorageClient {
     /// # Errors
     /// Returns an error if the client configuration is invalid or connection fails
     pub async fn connect(service_name: &str) -> NestGateResult<Self> {
+        let socket = toadstool_common::primal_sockets::get_socket_path_for_service(service_name);
         let config = NestGateConfig {
-            endpoint: format!("unix://{service_name}"), // Placeholder
+            endpoint: format!("unix://{}", socket.display()),
             ..Default::default()
         };
         Self::with_config(config, Some(service_name.to_string())).await

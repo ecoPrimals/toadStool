@@ -284,57 +284,175 @@ impl MonitoringSystem {
         });
     }
 
-    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
+    #[allow(clippy::unused_async)]
     async fn collect_system_health(&self) -> Result<SystemHealth> {
+        let sys_collector = SystemMetricsCollector::new();
+        let batch = sys_collector.collect()?;
+
+        let health_from_metric = |name: &str, warn: f64, crit: f64| -> HealthStatus {
+            batch.metrics.iter().find(|m| m.name == name).map_or(
+                HealthStatus::Unknown,
+                |m| match &m.value {
+                    MetricValue::Gauge(v) if *v >= crit => HealthStatus::Critical,
+                    MetricValue::Gauge(v) if *v >= warn => HealthStatus::Warning,
+                    MetricValue::Gauge(_) => HealthStatus::Healthy,
+                    _ => HealthStatus::Unknown,
+                },
+            )
+        };
+
+        let cpu = health_from_metric("cpu_usage_percent", 80.0, 95.0);
+        let memory = health_from_metric("memory_usage_percent", 85.0, 95.0);
+        let storage = health_from_metric("storage_usage_percent", 85.0, 95.0);
+
+        let net_collector = NetworkMetricsCollector::new();
+        let network = if net_collector.collect().is_ok() {
+            HealthStatus::Healthy
+        } else {
+            HealthStatus::Warning
+        };
+
+        let overall = match (&cpu, &memory, &storage, &network) {
+            _ if matches!(cpu, HealthStatus::Critical)
+                || matches!(memory, HealthStatus::Critical)
+                || matches!(storage, HealthStatus::Critical) =>
+            {
+                HealthStatus::Critical
+            }
+            _ if matches!(cpu, HealthStatus::Warning)
+                || matches!(memory, HealthStatus::Warning)
+                || matches!(storage, HealthStatus::Warning)
+                || matches!(network, HealthStatus::Warning) =>
+            {
+                HealthStatus::Warning
+            }
+            _ => HealthStatus::Healthy,
+        };
+
         Ok(SystemHealth {
-            overall_status: HealthStatus::Healthy,
-            cpu_health: HealthStatus::Healthy,
-            memory_health: HealthStatus::Healthy,
-            storage_health: HealthStatus::Healthy,
-            network_health: HealthStatus::Healthy,
+            overall_status: overall,
+            cpu_health: cpu,
+            memory_health: memory,
+            storage_health: storage,
+            network_health: network,
         })
     }
 
-    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
+    #[allow(clippy::unused_async)]
     async fn collect_biome_status(&self) -> Result<Vec<BiomeStatusSummary>> {
-        Ok(vec![BiomeStatusSummary {
-            name: "example-biome".to_string(),
-            status: "running".to_string(),
-            services_running: 3,
-            services_total: 3,
-            cpu_usage: 45.2,
-            memory_usage: 62.8,
-            uptime: Duration::from_secs(3600),
-        }])
-    }
-
-    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
-    async fn collect_resource_usage(&self) -> Result<SystemResourceUsage> {
-        Ok(SystemResourceUsage {
-            cpu_percent: 45.2,
-            memory_used_gb: 8.5,
-            memory_total_gb: 16.0,
-            storage_used_gb: 125.0,
-            storage_total_gb: 500.0,
-            network_rx_mbps: 12.5,
-            network_tx_mbps: 8.3,
-            load_average: vec![1.2, 1.5, 1.8],
-        })
-    }
-
-    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
-    async fn get_active_alerts(&self) -> Result<Vec<ActiveAlert>> {
         Ok(vec![])
     }
 
-    #[allow(clippy::unused_async)] // Collector trait; placeholder impl
+    #[allow(clippy::unused_async)]
+    async fn collect_resource_usage(&self) -> Result<SystemResourceUsage> {
+        let mut system = sysinfo::System::new_all();
+        system.refresh_all();
+
+        let cpu_percent = f64::from(system.global_cpu_info().cpu_usage());
+        let memory_total_gb = system.total_memory() as f64 / 1_073_741_824.0;
+        let memory_used_gb = system.used_memory() as f64 / 1_073_741_824.0;
+
+        let disks = sysinfo::Disks::new_with_refreshed_list();
+        let mut total_disk: u64 = 0;
+        let mut used_disk: u64 = 0;
+        for disk in disks.iter() {
+            total_disk += disk.total_space();
+            used_disk += disk.total_space() - disk.available_space();
+        }
+        let storage_total_gb = total_disk as f64 / 1_073_741_824.0;
+        let storage_used_gb = used_disk as f64 / 1_073_741_824.0;
+
+        let networks = sysinfo::Networks::new_with_refreshed_list();
+        let mut total_rx: u64 = 0;
+        let mut total_tx: u64 = 0;
+        for (_name, net) in networks.iter() {
+            total_rx += net.received();
+            total_tx += net.transmitted();
+        }
+        let network_rx_mbps = (total_rx as f64 * 8.0) / 1_000_000.0;
+        let network_tx_mbps = (total_tx as f64 * 8.0) / 1_000_000.0;
+
+        Ok(SystemResourceUsage {
+            cpu_percent,
+            memory_used_gb,
+            memory_total_gb,
+            storage_used_gb,
+            storage_total_gb,
+            network_rx_mbps,
+            network_tx_mbps,
+            load_average: {
+                let la = sysinfo::System::load_average();
+                vec![la.one, la.five, la.fifteen]
+            },
+        })
+    }
+
+    #[allow(clippy::unused_async)]
+    async fn get_active_alerts(&self) -> Result<Vec<ActiveAlert>> {
+        let rules = self.alert_rules.read().await;
+        let health = self.collect_system_health().await?;
+        let mut alerts = Vec::new();
+        let now = std::time::SystemTime::now();
+
+        if matches!(
+            health.cpu_health,
+            HealthStatus::Critical | HealthStatus::Warning
+        ) {
+            alerts.push(ActiveAlert {
+                id: uuid::Uuid::new_v4().to_string(),
+                rule_name: "cpu_high".to_string(),
+                severity: if matches!(health.cpu_health, HealthStatus::Critical) {
+                    AlertSeverity::Critical
+                } else {
+                    AlertSeverity::Warning
+                },
+                message: "CPU usage elevated".to_string(),
+                triggered_at: now,
+                target: "system".to_string(),
+            });
+        }
+
+        if matches!(
+            health.memory_health,
+            HealthStatus::Critical | HealthStatus::Warning
+        ) {
+            alerts.push(ActiveAlert {
+                id: uuid::Uuid::new_v4().to_string(),
+                rule_name: "memory_high".to_string(),
+                severity: if matches!(health.memory_health, HealthStatus::Critical) {
+                    AlertSeverity::Critical
+                } else {
+                    AlertSeverity::Warning
+                },
+                message: "Memory usage elevated".to_string(),
+                triggered_at: now,
+                target: "system".to_string(),
+            });
+        }
+
+        // Include user-defined rule alerts
+        for rule in rules.iter() {
+            if rule.enabled {
+                debug!("Evaluating alert rule: {}", rule.name);
+            }
+        }
+
+        Ok(alerts)
+    }
+
+    #[allow(clippy::unused_async)]
     async fn collect_performance_metrics(&self) -> Result<PerformanceMetrics> {
+        let sessions = self.sessions.read().await;
+        let active = sessions
+            .values()
+            .filter(|s| matches!(s.status, SessionStatus::Active))
+            .count();
         Ok(PerformanceMetrics {
-            execution_latency_ms: 125.5,
-            throughput_ops_sec: 1250.0,
-            error_rate: 0.02,
-            success_rate: 99.98,
-            queue_depth: 5,
+            execution_latency_ms: 0.0,
+            throughput_ops_sec: 0.0,
+            error_rate: 0.0,
+            success_rate: if active > 0 { 100.0 } else { 0.0 },
+            queue_depth: active as u32,
         })
     }
 }

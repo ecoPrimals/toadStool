@@ -76,7 +76,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-CD | ComputeDispatch migration | High | 34/250 ops migrated (~3,739 lines removed). ~216 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
-| D-COV | Test coverage → 90% | Medium | Major gains in S70: +150 tests across CLI, server, API, monitoring, distributed, config. Gap: barracuda GPU ops, neuromorphic drivers. |
+| D-COV | Test coverage → 90% | Medium | Major gains in S70/S70+: +187 tests across CLI, server, API, monitoring, distributed, config, barracuda stats/ops. Gap: barracuda GPU ops, neuromorphic drivers. |
 
 ### DF64 Transcendental Coverage
 
@@ -109,10 +109,24 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Recently Resolved (S70)
+## Recently Resolved (S70/S70+/S70++)
 
 | Item | Resolution |
 |------|-----------|
+| Sovereignty: port 8084 | `toadstool_config::ports::daemon_port()` — configurable, zero hardcoded |
+| Sovereignty: songbird discovery | `"mdns"` capability-based default (was hardcoded `"songbird"`) |
+| Sovereignty: adapter string-matching | Universal `SongbirdAdapter` for all JSON-RPC endpoints (capability-based) |
+| Monitoring >1000 lines | Split `lib.rs` 1071→679 lines + process.rs + thresholds.rs + platform.rs |
+| UniversalAdapter stub | Evolved to validate runtime hints, check adapter state, inject default timeout |
+| 7 new WGSL shaders | gelu_df64, sigmoid_df64, softmax_df64, layer_norm_df64, sdpa_df64, brent_f64, seasonal_pipeline |
+| 4 batched_elementwise ops | SensorCalibration, HargreavesEt0, KcClimateAdjust, DualKcKe (from airSpring) |
+| SymmetrizeGpu/LaplacianGpu | Previously unwired shaders → proper GPU pipeline executors |
+| 3 stats modules | evolution (kimura_fixation), jackknife (leave-one-out), fao56_et0, chao1_classic |
+| SimpleMLP | CPU MLP with JSON weight serde + forward inference |
+| Fp64Strategy::Concurrent | Dual-validation variant for running DF64 + native f64 side-by-side |
+| NVK max_buffer_size | `sanitize_max_buffer_size` caps absurd values to architectural limits |
+| preferred_workgroup_size | Architecture-aware 1D sizes (Volta 64, Ampere 256, RDNA 256) |
+| matmul_ref | Non-consuming matmul for recurrent architectures |
 | 15 production stubs | Primals client (real JSON-RPC), orchestrator deploy, coordinator cancel (CancellationToken), deprecated HTTP caller (returns error), edge platforms (proper errors) |
 | Test concurrency | All tests concurrent, zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All `std::env::set_var` in tests → `temp_env` (8 files migrated) |
@@ -122,7 +136,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 | Error codes | `WORKLOAD_NOT_FOUND` for job queue (was METHOD_NOT_FOUND) |
 | Storage benchmark | Race condition fixed (unique nanos-based temp files) |
 | Nested runtime | MockTask drop panic eliminated (AtomicUsize replaces RwLock) |
-| +150 new tests | lifecycle, dispatch, jsonrpc, monitoring, nestgate, display IPC, daemon servers, config validation |
+| +187 new tests | lifecycle, dispatch, jsonrpc, monitoring, nestgate, display IPC, daemon, config, barracuda stats/ops |
 | Real mDNS parser | Replaced placeholder `Ok(None)` in zero_config service discovery |
 | Barracuda unused_async | Crate-level `#![allow(clippy::unused_async)]` with documented justification |
 

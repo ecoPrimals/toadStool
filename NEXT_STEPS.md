@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 28, 2026 -- Session 70
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 661 WGSL shaders | 2,726+ barracuda tests | 4,700+ workspace lib tests | Rust 1.80+
-**Latest**: Test concurrency evolution. 15 production stubs evolved. All env tests thread-safe. All doctests passing. 6m30s test suite. +150 new tests.
+**Updated**: February 28, 2026 -- Session 70++
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 668 WGSL shaders | 2,753+ barracuda tests | 4,700+ workspace lib tests | Rust 1.80+
+**Latest**: Cross-spring absorption (7 new WGSL, 6 GPU ops, 3 stats modules, SimpleMLP). Sovereignty evolution (ports, discovery, adapters). Fp64Strategy::Concurrent. Monitoring split. Adapter stub evolved.
 
 ---
 

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - February 28, 2026 (Sessions 43-70 — Universal Precision + Sovereign Compiler + Deep Debt + Test Concurrency)
 
+### Session 70++ (Feb 28, 2026) — Sovereignty + Architecture + Stub Evolution
+
+- **Sovereignty evolution**: Hardcoded port `8084` in zero_config service discovery → `toadstool_config::ports::daemon_port()`. Hardcoded `"songbird"` discovery backend → `"mdns"` (capability-based). `create_adapter_for_endpoint` refactored from primal-name string-matching to universal `SongbirdAdapter` (capability-based addressing).
+- **Fp64Strategy::Concurrent**: New variant for running DF64 and native f64 side-by-side in validation harnesses. 9 dispatch match arms updated across MD forces, linalg GEMM, and lattice QCD ops.
+- **barracuda::math re-exports**: `lower_incomplete_gamma` (from `special`) and `norm_cdf` (from `stats::normal`) now accessible at `barracuda::math::*`.
+- **monitoring split**: `crates/management/monitoring/src/lib.rs` refactored from 1071→679 lines. Extracted `process.rs` (register/unregister/metrics), `thresholds.rs` (set/check), `platform.rs` (Linux /proc, macOS ps, Windows PowerShell).
+- **UniversalAdapter evolved**: From passthrough stub to real implementation — validates adapter enabled state, checks runtime hint support, warns on unsupported runtimes with native fallback, injects 300s default timeout.
+- **Clippy**: 2 `manual_div_ceil` fixes in `SymmetrizeGpu::execute` and `LaplacianGpu::execute`.
+- **Quality gates**: build, fmt, clippy, doc — all green.
+
+### Session 70+ (Feb 28, 2026) — Cross-Spring Absorption
+
+- **7 new WGSL shaders**: `gelu_df64.wgsl` (GELU activation), `sigmoid_df64.wgsl` (numerically stable sigmoid), `softmax_df64.wgsl` (3-phase single-workgroup), `layer_norm_df64.wgsl` (affine normalization), `sdpa_df64.wgsl` (scaled dot-product attention), `brent_f64.wgsl` (batched root-finding), `seasonal_pipeline.wgsl` (fused ET0→Kc→WaterBalance→Yield).
+- **4 new batched_elementwise ops**: `SensorCalibration` (SoilWatch 10, Dong et al. 2024), `HargreavesEt0` (temperature-based ET0), `KcClimateAdjust` (FAO-56 wind/humidity Kc), `DualKcKe` (dual crop coefficient with soil evaporation).
+- **GPU linalg executors**: `SymmetrizeGpu` and `LaplacianGpu` — proper GPU pipeline executors for previously unwired `symmetrize_f64.wgsl` and `laplacian_f64.wgsl` shaders.
+- **3 new stats modules**: `evolution` (kimura fixation prob, error_threshold, detection_power, detection_threshold), `jackknife` (leave-one-out + generalized resampling), `hydrology` gains `fao56_et0` (full Penman-Monteith scalar).
+- **chao1_classic**: Chao 1984 diversity estimator using `u64` counts, alongside existing Chao & Chiu 2016 `f64` version.
+- **SimpleMLP**: CPU multi-layer perceptron with JSON weight serialization/deserialization and forward inference.
+- **matmul_ref**: Non-consuming matrix multiplication for recurrent architectures (RNNs/ESNs).
+- **GPU safety**: `sanitize_max_buffer_size` caps absurd NVK-reported values (e.g., 256 GB) to sane architectural limits.
+- **preferred_workgroup_size**: Architecture-aware 1D workgroup size — Volta 64, Ampere/Ada 256, RDNA 256, fallback 128.
+- **+37 new tests**: CPU reference ops, hydrology, diversity, evolution, jackknife, SimpleMLP.
+
 ### Session 70 (Feb 28, 2026) — Deep Debt + Test Concurrency Evolution
 
 - **15 production stubs evolved**: Primals client (real JSON-RPC over Unix sockets), orchestrator deploy (validates + sends `biome.deploy`), coordinator cancel (CancellationToken-based), deprecated HTTP caller (returns proper error), registration token (`None`), ESP32 download (feature-gated HTTP), Raspberry Pi/industrial/microcontroller (return `PlatformNotAvailable`), OS compat layer (real `uname` on Linux).

@@ -1,12 +1,9 @@
-#![allow(deprecated)] // EcosystemCaller is deprecated; scheduler uses it until migrated to primal integrations
-
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use toadstool::ToadStoolResult;
 use toadstool_common::constants::timeouts;
 
-use crate::ecosystem::EcosystemCaller;
 use crate::hosting::RecursiveHostingManager;
 use crate::metrics::UniversalMetricsCollector;
 use crate::network::NetworkDistributor;
@@ -24,8 +21,6 @@ pub struct UniversalScheduler {
     local_queue: Arc<RwLock<UniversalJobQueue>>,
     /// Network-aware job distribution
     network_distributor: Arc<NetworkDistributor>,
-    /// Ecosystem caller for invoking other services
-    ecosystem_caller: Arc<EcosystemCaller>,
     /// Recursive hosting manager
     _recursive_hosting_manager: Arc<RecursiveHostingManager>,
     /// OS-layer manager
@@ -153,7 +148,6 @@ impl UniversalScheduler {
         };
         let network_distributor = Arc::new(NetworkDistributor::new(network_config));
 
-        let ecosystem_caller = Arc::new(EcosystemCaller::new());
         let recursive_hosting_manager =
             Arc::new(RecursiveHostingManager::new(config.recursive_hosting.clone()).await?);
 
@@ -173,7 +167,6 @@ impl UniversalScheduler {
             _config: config,
             local_queue,
             network_distributor,
-            ecosystem_caller,
             _recursive_hosting_manager: recursive_hosting_manager,
             _os_layer_manager: os_layer_manager,
             _metrics_collector: metrics_collector,
@@ -196,8 +189,9 @@ impl UniversalScheduler {
                 self.network_distributor.distribute_job(job.clone()).await?;
             }
             ExecutionTarget::EcosystemService { .. } => {
-                // Route to ecosystem service
-                self.ecosystem_caller.call_service(&job).await?;
+                return Err(toadstool::ToadStoolError::not_supported(
+                    "EcosystemService target: use Unix socket primal integrations instead of HTTP",
+                ));
             }
             ExecutionTarget::BestAvailable { .. } => {
                 // Find best available resource

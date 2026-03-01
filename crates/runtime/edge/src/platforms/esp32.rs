@@ -522,9 +522,8 @@ impl EdgeDevice for ESP32Device {
             });
         }
         
-        // ✅ MODERNIZED: Removed simulation sleep
-        // NOTE: Real ESP32 execution monitoring requires serial/JTAG integration
-        // This is a mock implementation for testing ESP32 workflow
+        // Real ESP32 execution monitoring requires serial/JTAG integration
+        // BLOCKED(hardware): Full monitoring needs physical device
         
         let output = self.send_command("RUN").await
             .unwrap_or_else(|_| "ESP32 execution completed".to_string());
