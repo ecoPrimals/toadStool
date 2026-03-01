@@ -24,6 +24,8 @@ const DF64_PI_HI: f32 = 3.1415927;
 const DF64_PI_LO: f32 = -8.742278e-8;
 const DF64_HALF_PI_HI: f32 = 1.5707964;
 const DF64_HALF_PI_LO: f32 = -4.371139e-8;
+const DF64_QUARTER_PI_HI: f32 = 0.7853982;
+const DF64_QUARTER_PI_LO: f32 = -3.660254e-8;
 
 fn df64_abs(a: Df64) -> Df64 {
     if a.hi < 0.0 {
@@ -226,4 +228,138 @@ fn tanh_df64(a: Df64) -> Df64 {
     let e2x = exp_df64(two_x);
     let one = df64_from_f32(1.0);
     return df64_div(df64_sub(e2x, one), df64_add(e2x, one));
+}
+
+// ── atan_df64: Taylor for |x| < 0.5, argument reduction for larger ──
+// atan(x) = x - x³/3 + x⁵/5 - ... for |x| < 0.5
+// atan(x) = π/2 - atan(1/x) for |x| > 1
+// atan(x) = π/4 + atan((x-1)/(x+1)) for 0.5 ≤ x ≤ 1
+fn atan_kernel_df64(x: Df64) -> Df64 {
+    // Taylor: atan(x) = x - x³/3 + x⁵/5 - x⁷/7 + ... (12 terms for ~14 digits at |x|=0.5)
+    let x2 = df64_mul(x, x);
+    let c3 = df64_from_f32(-0.33333333333333333);
+    let c5 = df64_from_f32(0.2);
+    let c7 = df64_from_f32(-0.14285714285714285);
+    let c9 = df64_from_f32(0.11111111111111111);
+    let c11 = df64_from_f32(-0.09090909090909091);
+    let c13 = df64_from_f32(0.07692307692307693);
+    let c15 = df64_from_f32(-0.06666666666666667);
+    let c17 = df64_from_f32(0.05882352941176471);
+    let c19 = df64_from_f32(-0.05263157894736842);
+    let c21 = df64_from_f32(0.04761904761904762);
+    let c23 = df64_from_f32(-0.04347826086956522);
+    let c25 = df64_from_f32(0.04);
+
+    var p = df64_mul(c25, x2);
+    p = df64_add(c23, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c21, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c19, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c17, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c15, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c13, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c11, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c9, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c7, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c5, p);
+    p = df64_mul(p, x2);
+    p = df64_add(c3, p);
+    p = df64_mul(p, df64_mul(x2, x));
+    return df64_add(x, p);
+}
+
+fn atan_df64(x: Df64) -> Df64 {
+    let half = df64_from_f32(0.5);
+    let one = df64_from_f32(1.0);
+    let pi_half = Df64(DF64_HALF_PI_HI, DF64_HALF_PI_LO);
+    let pi_quarter = Df64(DF64_QUARTER_PI_HI, DF64_QUARTER_PI_LO);
+
+    let ax = df64_abs(x);
+    if df64_gt(ax, one) {
+        // |x| > 1: atan(x) = π/2 - atan(1/x), sign preserved
+        let inv_x = df64_div(one, x);
+        let result = atan_kernel_df64(inv_x);
+        if x.hi >= 0.0 {
+            return df64_sub(pi_half, result);
+        } else {
+            return df64_sub(df64_neg(pi_half), result);
+        }
+    }
+    if df64_gt(ax, half) {
+        // 0.5 < |x| ≤ 1: atan(x) = π/4 + atan((x-1)/(x+1))
+        let t = df64_div(df64_sub(x, one), df64_add(x, one));
+        let result = atan_kernel_df64(t);
+        return df64_add(pi_quarter, result);
+    }
+    return atan_kernel_df64(x);
+}
+
+// ── asin_df64: atan identity for |x| < 0.5, recursive reduction for |x| ≥ 0.5 ──
+fn asin_df64(x: Df64) -> Df64 {
+    if x.hi < 0.0 {
+        return df64_neg(asin_df64(df64_neg(x)));
+    }
+    let half = df64_from_f32(0.5);
+    let one = df64_from_f32(1.0);
+    let pi_half = Df64(DF64_HALF_PI_HI, DF64_HALF_PI_LO);
+
+    if df64_gt(x, half) {
+        // x > 0.5: asin(x) = π/2 - 2*asin(sqrt((1-x)/2))
+        let inner = df64_scale_f32(df64_sub(one, x), 0.5);
+        let s = sqrt_df64(inner);
+        return df64_sub(pi_half, df64_scale_f32(asin_df64(s), 2.0));
+    }
+    // |x| ≤ 0.5: asin(x) = atan(x / sqrt(1 - x²))
+    let one_minus_x2 = df64_sub(one, df64_mul(x, x));
+    return atan_df64(df64_div(x, sqrt_df64(one_minus_x2)));
+}
+
+// ── acos_df64: acos(x) = π/2 - asin(x) ──
+fn acos_df64(x: Df64) -> Df64 {
+    let pi_half = Df64(DF64_HALF_PI_HI, DF64_HALF_PI_LO);
+    return df64_sub(pi_half, asin_df64(x));
+}
+
+// ── atan2_df64: four-quadrant arctangent ──
+fn atan2_df64(y: Df64, x: Df64) -> Df64 {
+    let zero = df64_zero();
+    let pi = Df64(DF64_PI_HI, DF64_PI_LO);
+    let pi_half = Df64(DF64_HALF_PI_HI, DF64_HALF_PI_LO);
+
+    if x.hi == 0.0 && x.lo == 0.0 {
+        if y.hi == 0.0 && y.lo == 0.0 { return zero; }
+        if y.hi >= 0.0 { return pi_half; }
+        return df64_neg(pi_half);
+    }
+    let q = df64_div(y, x);
+    let at = atan_df64(q);
+    if df64_gt(x, zero) {
+        return at;
+    }
+    if df64_lt(y, zero) {
+        return df64_sub(at, pi);
+    }
+    return df64_add(at, pi);
+}
+
+// ── sinh_df64: sinh(x) = (exp(x) - exp(-x)) / 2 ──
+fn sinh_df64(x: Df64) -> Df64 {
+    let ex = exp_df64(x);
+    let emx = exp_df64(df64_neg(x));
+    return df64_scale_f32(df64_sub(ex, emx), 0.5);
+}
+
+// ── cosh_df64: cosh(x) = (exp(x) + exp(-x)) / 2 ──
+fn cosh_df64(x: Df64) -> Df64 {
+    let ex = exp_df64(x);
+    let emx = exp_df64(df64_neg(x));
+    return df64_scale_f32(df64_add(ex, emx), 0.5);
 }

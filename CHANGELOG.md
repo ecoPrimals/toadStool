@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **network_config/types.rs split**: 859-line monolith → 7 domain submodules (`service_mesh`, `dns_discovery`, `security`, `network_policies`, `traffic`, `load_balancing`, `reliability`). All 34 tests pass, all imports preserved via re-exports.
 - **Stale comment cleanup**: Removed misleading "Stub implementations" comment in `compat.rs`.
 - **Quality gates**: build clean, fmt 0 diffs, clippy 0 errors, 2,773+ barracuda tests (40 stats module tests added).
+- **3 large files smart-refactored**: `service_discovery/tests.rs` (969→744 via shared helpers), `layer_adaptation.rs` (842→module directory: mod.rs + detection.rs + adapters.rs + types.rs), `runtime_discovery.rs` (849→module directory: mod.rs + tests.rs).
+- **DF64 transcendental coverage expanded**: 6 new inverse trig + hyperbolic functions: `asin_df64`, `acos_df64`, `atan_df64`, `atan2_df64`, `sinh_df64`, `cosh_df64` — all in `df64_transcendentals.wgsl`.
+- **7 reduction ops migrated to ComputeDispatch**: `sum`, `prod`, `mean`, `norm`, `max`, `argmin`, `argmax` — eliminates ~500 lines of manual BGL/BG/pipeline boilerplate. 41 total ops migrated.
+- **Neuromorphic sleep evolution**: `akida-setup` verification delay evolved from fixed 2s sleep to condition-based polling (100ms intervals, 5s timeout). Hardware polling in `akida-driver` properly documented with `BLOCKED(hardware)` / `BLOCKED(udev)`.
 
 ### Session 70+++ (Feb 28, 2026) — Builder Refactor + Dead Code + Monitoring Evolution
 

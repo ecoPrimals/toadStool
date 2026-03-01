@@ -286,10 +286,16 @@ fn is_module_loaded() -> Result<bool> {
 }
 
 /// Verify device nodes exist (associated function, no self needed)
+///
+/// BLOCKED(udev): We must poll for device node creation because udev creates
+/// them asynchronously after the kernel module probes. There is no synchronous
+/// udev API to wait for node creation. Polling with 100ms intervals avoids
+/// busy-spinning while keeping latency reasonable. Future: inotify on /dev
+/// could provide event-driven notification.
 fn verify_device_nodes() -> Result<()> {
     info!("Verifying device nodes...");
 
-    // Wait up to 5 seconds for udev
+    // Wait up to 5 seconds for udev to create /dev/akida0
     for _ in 0..50 {
         if Path::new("/dev/akida0").exists() {
             info!("Device nodes created");

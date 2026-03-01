@@ -34,9 +34,9 @@
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors |
 | Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
-| File size limit | **All < 1000 lines** (19 large files smart-refactored to domain modules) |
+| File size limit | **All < 1000 lines** (22 large files smart-refactored to domain modules) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
-| ComputeDispatch adoption | **34 ops migrated** (~216 legacy ops remaining, incremental) |
+| ComputeDispatch adoption | **41 ops migrated** (~209 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
 | Default test timeout | **5s** (unit: 2s, integration: 30s, chaos: 20s) |

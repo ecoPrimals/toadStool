@@ -305,7 +305,9 @@ impl UserspaceBackend {
                 )));
             }
 
-            // Short sleep before retry
+            // BLOCKED(hardware): Backoff between status register reads. The NPU
+            // status register updates asynchronously; polling without delay would
+            // burn CPU and may stress PCIe. 100µs is a hardware-safe interval.
             std::thread::sleep(Duration::from_micros(100));
         }
     }

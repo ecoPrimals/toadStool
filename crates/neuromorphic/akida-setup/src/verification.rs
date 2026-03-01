@@ -2,16 +2,23 @@
 
 use crate::error::{Result, SetupError};
 use crate::pcie::AkidaDevice;
+use crate::permissions::list_device_nodes;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::thread;
 use std::time::Duration;
 
 /// Verify complete setup
 pub fn verify_setup(devices: &[AkidaDevice]) -> Result<()> {
-    // Wait for device nodes to appear
+    // Poll for device nodes (udev creates them asynchronously). Return as soon
+    // as they appear, or after 5s timeout. Replaces fixed 2s sleep with
+    // condition-based wait.
     tracing::info!("Waiting for device nodes...");
-    thread::sleep(Duration::from_secs(2));
+    for _ in 0..50 {
+        if list_device_nodes().map(|n| !n.is_empty()).unwrap_or(false) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
 
     // Check PCIe devices enabled
     for device in devices {

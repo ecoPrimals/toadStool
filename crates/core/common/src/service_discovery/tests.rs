@@ -1,6 +1,7 @@
 //! Service discovery tests
 
 use std::io::Write;
+use std::path::PathBuf;
 
 use crate::discovery_defaults::DiscoveryConfig;
 use crate::primal_identity::{Capability, CryptoCapability};
@@ -10,6 +11,62 @@ use super::service::ServiceDiscovery;
 use super::types::{DiscoveryError, DiscoveryMethod, ServiceDiscoveryTrait};
 
 use tempfile::NamedTempFile;
+
+// --- Helpers ---
+
+fn write_test_config(config_json: &str) -> (NamedTempFile, PathBuf) {
+    let mut tmp = NamedTempFile::new().expect("temp file");
+    tmp.write_all(config_json.as_bytes()).unwrap();
+    let path = tmp.path().to_path_buf();
+    (tmp, path)
+}
+
+async fn discovery_from_json(json: &str) -> (NamedTempFile, ServiceDiscovery) {
+    let (tmp, path) = write_test_config(json);
+    let path_str = path.to_string_lossy().to_string();
+    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path: path_str })
+        .await
+        .unwrap();
+    (tmp, disc)
+}
+
+async fn env_discovery() -> ServiceDiscovery {
+    ServiceDiscovery::new(DiscoveryMethod::Environment)
+        .await
+        .unwrap()
+}
+
+macro_rules! run_async_with_env {
+    ($vars:expr, $body:block) => {
+        temp_env::with_vars($vars, || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async $body);
+            })
+            .join()
+            .expect("test thread");
+        });
+    };
+}
+
+macro_rules! run_async_with_var {
+    ($name:expr, $value:expr, $body:block) => {
+        temp_env::with_var($name, $value, || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async $body);
+            })
+            .join()
+            .expect("test thread");
+        });
+    };
+}
 
 #[test]
 fn test_capability_from_str_known() {
@@ -87,11 +144,11 @@ async fn test_config_file_discovery() {
         ]
     }"#;
 
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let discovery = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path }).await;
+    let (_tmp, path) = write_test_config(config);
+    let discovery = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
+        path: path.to_string_lossy().to_string(),
+    })
+    .await;
     assert!(discovery.is_ok(), "Config file discovery should succeed");
 
     let disc = discovery.unwrap();
@@ -122,11 +179,10 @@ async fn test_config_file_missing() {
 
 #[tokio::test]
 async fn test_config_file_malformed_json() {
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(b"not valid json {{{").unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
+    let (_tmp, path) = write_test_config("not valid json {{{");
+    let path_str = path.to_string_lossy().to_string();
 
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
+    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path: path_str })
         .await
         .unwrap();
     let all = disc.discover_all().await;
@@ -135,22 +191,14 @@ async fn test_config_file_malformed_json() {
 
 #[tokio::test]
 async fn test_config_file_empty_services() {
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(b"{\"services\": []}").unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    let (_tmp, disc) = discovery_from_json(r#"{"services": []}"#).await;
     let all = disc.discover_all().await.unwrap();
     assert!(all.is_empty());
 }
 
 #[tokio::test]
 async fn test_parse_capabilities() {
-    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-        .await
-        .unwrap();
+    let disc = env_discovery().await;
     let caps = disc.parse_capabilities("coordination,storage,compute");
     assert_eq!(caps.len(), 3);
     assert!(caps
@@ -162,32 +210,16 @@ async fn test_parse_capabilities() {
 
 #[tokio::test]
 async fn test_parse_capabilities_empty() {
-    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-        .await
-        .unwrap();
+    let disc = env_discovery().await;
     let caps = disc.parse_capabilities("");
     assert!(caps.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_population_and_lookup() {
-    let config = r#"{
-        "services": [
-            {
-                "name": "cached-svc",
-                "capabilities": ["compute"],
-                "endpoints": ["http://localhost:7777/api"]
-            }
-        ]
-    }"#;
-
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    let (_tmp, disc) = discovery_from_json(r#"{
+        "services": [{"name": "cached-svc", "capabilities": ["compute"], "endpoints": ["http://localhost:7777/api"]}]
+    }"#).await;
 
     let compute_cap =
         Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution);
@@ -198,16 +230,9 @@ async fn test_cache_population_and_lookup() {
 
 #[tokio::test]
 async fn test_find_service_by_capability_not_found() {
-    let config = r#"{"services": [
+    let (_tmp, disc) = discovery_from_json(r#"{"services": [
         {"name": "storage-only", "capabilities": ["storage"], "endpoints": ["http://localhost:1234"]}
-    ]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    ]}"#).await;
 
     let result = disc
         .find_service_by_capability(Capability::Crypto(CryptoCapability::KeyManagement))
@@ -217,16 +242,12 @@ async fn test_find_service_by_capability_not_found() {
 
 #[tokio::test]
 async fn test_refresh_clears_cache() {
-    let config = r#"{"services": [
+    let (_tmp, disc) = discovery_from_json(
+        r#"{"services": [
         {"name": "refreshable", "capabilities": ["compute"], "endpoints": ["http://localhost:5555"]}
-    ]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    ]}"#,
+    )
+    .await;
 
     // Cache should be populated
     let cap = Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution);
@@ -253,113 +274,78 @@ async fn test_multi_method_discovery() {
 
 #[test]
 fn test_discover_from_env() {
-    temp_env::with_vars(
+    run_async_with_env!(
         [
             (
                 "TOADSTOOL_SERVICE_TESTCOMPUTE_URL",
-                Some("http://localhost:9090"),
+                Some("http://localhost:9090")
             ),
             (
                 "TOADSTOOL_SERVICE_TESTCOMPUTE_CAPABILITIES",
-                Some("compute,storage"),
+                Some("compute,storage")
             ),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-                        .await
-                        .unwrap();
-                    let services = disc.discover_from_env().unwrap();
-                    assert!(!services.is_empty(), "Should discover from env vars");
-                    let svc = services.iter().find(|s| s.name == "testcompute").unwrap();
-                    assert_eq!(svc.endpoints.len(), 1);
-                    assert!(svc.capabilities.len() >= 2);
-                });
-            })
-            .join()
-            .expect("test thread");
-        },
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
+                .await
+                .unwrap();
+            let services = disc.discover_from_env().unwrap();
+            assert!(!services.is_empty(), "Should discover from env vars");
+            let svc = services.iter().find(|s| s.name == "testcompute").unwrap();
+            assert_eq!(svc.endpoints.len(), 1);
+            assert!(svc.capabilities.len() >= 2);
+        }
     );
 }
 
 #[test]
 fn test_discover_from_env_invalid_url_returns_error() {
-    temp_env::with_vars(
+    run_async_with_env!(
         [(
             "TOADSTOOL_SERVICE_BAD_URL",
-            Some("not-a-valid-url://broken"),
+            Some("not-a-valid-url://broken")
         )],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-                        .await
-                        .unwrap();
-                    let result = disc.discover_from_env();
-                    assert!(result.is_ok() || result.is_err());
-                });
-            })
-            .join()
-            .expect("test thread");
-        },
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
+                .await
+                .unwrap();
+            let result = disc.discover_from_env();
+            assert!(result.is_ok() || result.is_err());
+        }
     );
 }
 
 #[test]
 fn test_config_path_resolution_via_env() {
-    let config = r#"{"services":[{"name":"env-svc","capabilities":["compute"],"endpoints":["http://localhost:7777"]}]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    temp_env::with_var("TOADSTOOL_DISCOVERY_CONFIG", Some(path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-                    path: "".to_string(),
-                })
-                .await
-                .unwrap();
-                let all = disc.discover_all().await.unwrap();
-                assert_eq!(all.len(), 1);
-                assert_eq!(all[0].name, "env-svc");
-            });
+    let (_tmp, path) = write_test_config(
+        r#"{"services":[{"name":"env-svc","capabilities":["compute"],"endpoints":["http://localhost:7777"]}]}"#,
+    );
+    let path_str = path.to_string_lossy().to_string();
+    run_async_with_var!("TOADSTOOL_DISCOVERY_CONFIG", Some(path_str.as_str()), {
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
+            path: "".to_string(),
         })
-        .join()
-        .expect("test thread");
+        .await
+        .unwrap();
+        let all = disc.discover_all().await.unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].name, "env-svc");
     });
 }
 
 #[tokio::test]
 async fn test_config_with_explicit_id() {
-    let config = r#"{
+    let (_tmp, disc) = discovery_from_json(
+        r#"{
         "services": [{
             "id": "custom-id-123",
             "name": "explicit-id-svc",
             "capabilities": ["storage"],
             "endpoints": ["http://localhost:8888"]
         }]
-    }"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    }"#,
+    )
+    .await;
     let all = disc.discover_all().await.unwrap();
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].id, "custom-id-123");
@@ -368,20 +354,16 @@ async fn test_config_with_explicit_id() {
 
 #[tokio::test]
 async fn test_config_skips_malformed_endpoint() {
-    let config = r#"{
+    let (_tmp, disc) = discovery_from_json(
+        r#"{
         "services": [{
             "name": "mixed-endpoints",
             "capabilities": ["compute"],
             "endpoints": ["http://localhost:9090", ":::invalid", "https://valid.com:443"]
         }]
-    }"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    }"#,
+    )
+    .await;
     let all = disc.discover_all().await.unwrap();
     assert_eq!(all.len(), 1);
     // Should have 2 valid endpoints (invalid one skipped)
@@ -390,9 +372,7 @@ async fn test_config_skips_malformed_endpoint() {
 
 #[tokio::test]
 async fn test_parse_capabilities_unknown_filtered() {
-    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-        .await
-        .unwrap();
+    let disc = env_discovery().await;
     let caps = disc.parse_capabilities("coordination,unknown_thing,storage,foo");
     assert_eq!(caps.len(), 2);
     assert!(caps
@@ -403,9 +383,7 @@ async fn test_parse_capabilities_unknown_filtered() {
 
 #[tokio::test]
 async fn test_parse_capabilities_whitespace() {
-    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-        .await
-        .unwrap();
+    let disc = env_discovery().await;
     let caps = disc.parse_capabilities("  coordination  ,  storage  ,  compute  ");
     assert_eq!(caps.len(), 3);
 }
@@ -427,9 +405,7 @@ async fn test_with_config_refresh_failure() {
 async fn test_announce_self() {
     use crate::primal_identity::ToadStoolIdentity;
 
-    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-        .await
-        .unwrap();
+    let disc = env_discovery().await;
     let identity = ToadStoolIdentity::new();
     let result = disc.announce_self(&identity).await;
     assert!(result.is_ok());
@@ -437,20 +413,9 @@ async fn test_announce_self() {
 
 #[tokio::test]
 async fn test_find_service_all_unhealthy_returns_first() {
-    let config = r#"{
-        "services": [{
-            "name": "only-svc",
-            "capabilities": ["compute"],
-            "endpoints": ["http://localhost:9999"]
-        }]
-    }"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    let (_tmp, disc) = discovery_from_json(r#"{
+        "services": [{"name": "only-svc", "capabilities": ["compute"], "endpoints": ["http://localhost:9999"]}]
+    }"#).await;
     let cap = Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution);
     let found = disc.find_service_by_capability(cap).await;
     assert!(found.is_ok());
@@ -459,41 +424,30 @@ async fn test_find_service_all_unhealthy_returns_first() {
 
 #[test]
 fn test_registry_empty_endpoint_returns_error() {
-    temp_env::with_vars([("TOADSTOOL_REGISTRY_ENDPOINT", None::<&str>)], || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let config = DiscoveryConfig::production();
-                let result = ServiceDiscovery::with_config(
-                    DiscoveryMethod::Registry {
-                        endpoint: "".to_string(),
-                    },
-                    config,
-                )
-                .await;
-                assert!(
-                    result.is_err(),
-                    "Empty registry endpoint should fail without env var"
-                );
-            });
-        })
-        .join()
-        .expect("test thread");
+    run_async_with_env!([("TOADSTOOL_REGISTRY_ENDPOINT", None::<&str>)], {
+        let config = DiscoveryConfig::production();
+        let result = ServiceDiscovery::with_config(
+            DiscoveryMethod::Registry {
+                endpoint: "".to_string(),
+            },
+            config,
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "Empty registry endpoint should fail without env var"
+        );
     });
 }
 
 #[tokio::test]
 async fn test_registry_file_path_delegates_to_config() {
-    let config_content = r#"{"services":[{"name":"file-reg","capabilities":["storage"],"endpoints":["http://localhost:6666"]}]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config_content.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
+    let (_tmp, path) = write_test_config(
+        r#"{"services":[{"name":"file-reg","capabilities":["storage"],"endpoints":["http://localhost:6666"]}]}"#,
+    );
+    let path_str = path.to_string_lossy().to_string();
     let disc = ServiceDiscovery::new(DiscoveryMethod::Registry {
-        endpoint: format!("file://{path}"),
+        endpoint: format!("file://{path_str}"),
     })
     .await
     .unwrap();
@@ -504,13 +458,12 @@ async fn test_registry_file_path_delegates_to_config() {
 
 #[tokio::test]
 async fn test_registry_unix_path_delegates_to_config() {
-    let config_content = r#"{"services":[{"name":"unix-reg","capabilities":["compute"],"endpoints":["http://localhost:7777"]}]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config_content.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
+    let (_tmp, path) = write_test_config(
+        r#"{"services":[{"name":"unix-reg","capabilities":["compute"],"endpoints":["http://localhost:7777"]}]}"#,
+    );
+    let path_str = path.to_string_lossy().to_string();
     let disc = ServiceDiscovery::new(DiscoveryMethod::Registry {
-        endpoint: format!("unix://{path}"),
+        endpoint: format!("unix://{path_str}"),
     })
     .await
     .unwrap();
@@ -521,13 +474,12 @@ async fn test_registry_unix_path_delegates_to_config() {
 
 #[tokio::test]
 async fn test_discover_multi_partial_success() {
-    let config = r#"{"services":[{"name":"cfg-svc","capabilities":["compute"],"endpoints":["http://localhost:5555"]}]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
+    let (_tmp, path) = write_test_config(
+        r#"{"services":[{"name":"cfg-svc","capabilities":["compute"],"endpoints":["http://localhost:5555"]}]}"#,
+    );
+    let path_str = path.to_string_lossy().to_string();
     let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
-        DiscoveryMethod::ConfigFile { path },
+        DiscoveryMethod::ConfigFile { path: path_str },
         DiscoveryMethod::Registry {
             endpoint: "".to_string(),
         },
@@ -542,35 +494,25 @@ async fn test_discover_multi_partial_success() {
 
 #[test]
 fn test_discover_fallback_when_nothing_found() {
-    temp_env::with_vars(
+    run_async_with_env!(
         [
             ("TOADSTOOL_ENV", Some("development")),
             ("TOADSTOOL_URL", Some("http://localhost:8084")),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
-                        DiscoveryMethod::ConfigFile {
-                            path: "/nonexistent/discovery.json".to_string(),
-                        },
-                        DiscoveryMethod::Registry {
-                            endpoint: "/nonexistent/reg".to_string(),
-                        },
-                    ]))
-                    .await
-                    .unwrap();
-                    let all = disc.discover_all().await.unwrap();
-                    assert!(!all.is_empty(), "Should use fallback when configured");
-                });
-            })
-            .join()
-            .expect("test thread");
-        },
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
+                DiscoveryMethod::ConfigFile {
+                    path: "/nonexistent/discovery.json".to_string(),
+                },
+                DiscoveryMethod::Registry {
+                    endpoint: "/nonexistent/reg".to_string(),
+                },
+            ]))
+            .await
+            .unwrap();
+            let all = disc.discover_all().await.unwrap();
+            assert!(!all.is_empty(), "Should use fallback when configured");
+        }
     );
 }
 
@@ -620,14 +562,7 @@ fn test_capability_from_str_whitespace() {
 
 #[tokio::test]
 async fn test_find_services_cache_hit() {
-    let config = r#"{"services":[{"name":"cache-svc","capabilities":["compute"],"endpoints":["http://localhost:2"]}]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    let (_tmp, disc) = discovery_from_json(r#"{"services":[{"name":"cache-svc","capabilities":["compute"],"endpoints":["http://localhost:2"]}]}"#).await;
     let cap = Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution);
     let first = disc.find_services_by_capability(&cap).await.unwrap();
     let second = disc.find_services_by_capability(&cap).await.unwrap();
@@ -637,16 +572,12 @@ async fn test_find_services_cache_hit() {
 
 #[tokio::test]
 async fn test_find_service_filter_capability_mismatch_returns_error() {
-    let config = r#"{"services":[
+    let (_tmp, disc) = discovery_from_json(
+        r#"{"services":[
         {"name":"compute-only","capabilities":["compute"],"endpoints":["http://localhost:3"]}
-    ]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    ]}"#,
+    )
+    .await;
     let crypto_cap = Capability::Crypto(CryptoCapability::KeyManagement);
     let found = disc.find_service_by_capability(crypto_cap).await;
     assert!(found.is_err());
@@ -659,95 +590,63 @@ async fn test_find_service_filter_capability_mismatch_returns_error() {
 
 #[tokio::test]
 async fn test_discover_from_env_key_strip_prefix_suffix() {
-    temp_env::with_vars(
+    run_async_with_env!(
         [
             ("TOADSTOOL_SERVICE_MYSVC_URL", Some("http://localhost:9999")),
             ("TOADSTOOL_SERVICE_MYSVC_CAPABILITIES", Some("compute")),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-                        .await
-                        .unwrap();
-                    let services = disc.discover_from_env().unwrap();
-                    let mysvc = services.iter().find(|s| s.name == "mysvc");
-                    assert!(
-                        mysvc.is_some(),
-                        "Should parse MY_SVC from TOADSTOOL_SERVICE_MYSVC_URL"
-                    );
-                });
-            })
-            .join()
-            .expect("test thread");
-        },
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
+                .await
+                .unwrap();
+            let services = disc.discover_from_env().unwrap();
+            let mysvc = services.iter().find(|s| s.name == "mysvc");
+            assert!(
+                mysvc.is_some(),
+                "Should parse MY_SVC from TOADSTOOL_SERVICE_MYSVC_URL"
+            );
+        }
     );
 }
 
 #[test]
 fn test_discover_from_env_invalid_url_propagates_error() {
-    temp_env::with_vars(
+    run_async_with_env!(
         [
             (
                 "TOADSTOOL_SERVICE_BADURL_URL",
-                Some(":::triple-colon-invalid"),
+                Some(":::triple-colon-invalid")
             ),
             ("TOADSTOOL_SERVICE_BADURL_CAPABILITIES", Some("compute")),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-                        .await
-                        .unwrap();
-                    let result = disc.discover_from_env();
-                    assert!(result.is_err());
-                });
-            })
-            .join()
-            .expect("test thread");
-        },
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
+                .await
+                .unwrap();
+            let result = disc.discover_from_env();
+            assert!(result.is_err());
+        }
     );
 }
 
 #[test]
 fn test_config_path_resolution_biomeos_runtime_dir() {
     let config = r#"{"services":[{"name":"rt-svc","capabilities":["storage"],"endpoints":["http://localhost:4"]}]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let parent = tmp.path().parent().unwrap().to_path_buf();
+    let (_tmp, path) = write_test_config(config);
+    let parent = path.parent().unwrap().to_path_buf();
     let runtime_dir = parent.join("biomeos_runtime");
     std::fs::create_dir_all(&runtime_dir).unwrap();
     std::fs::write(runtime_dir.join("discovery.json"), config).unwrap();
     let runtime_path = runtime_dir.to_str().unwrap().to_string();
-
-    temp_env::with_var("BIOMEOS_RUNTIME_DIR", Some(runtime_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-                    path: "".to_string(),
-                })
-                .await
-                .unwrap();
-                let all = disc.discover_all().await.unwrap();
-                assert_eq!(all.len(), 1);
-                assert_eq!(all[0].name, "rt-svc");
-            });
+    run_async_with_var!("BIOMEOS_RUNTIME_DIR", Some(runtime_path.as_str()), {
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
+            path: "".to_string(),
         })
-        .join()
-        .expect("test thread");
+        .await
+        .unwrap();
+        let all = disc.discover_all().await.unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].name, "rt-svc");
     });
     std::fs::remove_dir_all(&runtime_dir).ok();
 }
@@ -761,26 +660,15 @@ fn test_config_path_resolution_xdg_config_home() {
     std::fs::create_dir_all(&biomeos).unwrap();
     std::fs::write(biomeos.join("discovery.json"), config).unwrap();
     let xdg_path = xdg_config.to_str().unwrap().to_string();
-
-    temp_env::with_var("XDG_CONFIG_HOME", Some(xdg_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-                    path: "".to_string(),
-                })
-                .await
-                .unwrap();
-                let all = disc.discover_all().await.unwrap();
-                assert_eq!(all.len(), 1);
-                assert_eq!(all[0].name, "xdg-svc");
-            });
+    run_async_with_var!("XDG_CONFIG_HOME", Some(xdg_path.as_str()), {
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
+            path: "".to_string(),
         })
-        .join()
-        .expect("test thread");
+        .await
+        .unwrap();
+        let all = disc.discover_all().await.unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].name, "xdg-svc");
     });
     std::fs::remove_dir_all(&temp_dir).ok();
 }
@@ -794,47 +682,35 @@ fn test_config_path_resolution_home_fallback() {
     std::fs::create_dir_all(&config_dir).unwrap();
     std::fs::write(config_dir.join("discovery.json"), config).unwrap();
     let home_path = home.to_str().unwrap().to_string();
-
-    temp_env::with_vars(
+    run_async_with_env!(
         [
             ("TOADSTOOL_DISCOVERY_CONFIG", None::<&str>),
             ("BIOMEOS_RUNTIME_DIR", None::<&str>),
             ("XDG_CONFIG_HOME", None::<&str>),
             ("HOME", Some(home_path.as_str())),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-                        path: "".to_string(),
-                    })
-                    .await
-                    .unwrap();
-                    let all = disc.discover_all().await.unwrap();
-                    assert_eq!(all.len(), 1);
-                    assert_eq!(all[0].name, "home-svc");
-                });
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
+                path: "".to_string(),
             })
-            .join()
-            .expect("test thread");
-        },
+            .await
+            .unwrap();
+            let all = disc.discover_all().await.unwrap();
+            assert_eq!(all.len(), 1);
+            assert_eq!(all[0].name, "home-svc");
+        }
     );
     std::fs::remove_dir_all(&temp_dir).ok();
 }
 
 #[tokio::test]
 async fn test_registry_http_path_parsing() {
-    let config = r#"{"services":[{"name":"path-svc","capabilities":["compute"],"endpoints":["http://localhost:7"]}]}"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
+    let (_tmp, path) = write_test_config(
+        r#"{"services":[{"name":"path-svc","capabilities":["compute"],"endpoints":["http://localhost:7"]}]}"#,
+    );
+    let path_str = path.to_string_lossy().to_string();
     let disc = ServiceDiscovery::new(DiscoveryMethod::Registry {
-        endpoint: format!("file://{path}"),
+        endpoint: format!("file://{path_str}"),
     })
     .await
     .unwrap();
@@ -845,87 +721,63 @@ async fn test_registry_http_path_parsing() {
 
 #[tokio::test]
 async fn test_discover_from_fallbacks_disabled_when_production() {
-    temp_env::with_vars(
+    run_async_with_env!(
         [
             ("TOADSTOOL_ENV", Some("production")),
             ("TOADSTOOL_URL", Some("http://localhost:8084")),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
-                        DiscoveryMethod::ConfigFile {
-                            path: "/nonexistent/discovery.json".to_string(),
-                        },
-                        DiscoveryMethod::Registry {
-                            endpoint: "".to_string(),
-                        },
-                    ]))
-                    .await
-                    .unwrap();
-                    let all = disc.discover_all().await.unwrap();
-                    assert!(all.is_empty(), "Production should not use fallbacks");
-                });
-            })
-            .join()
-            .expect("test thread");
-        },
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
+                DiscoveryMethod::ConfigFile {
+                    path: "/nonexistent/discovery.json".to_string(),
+                },
+                DiscoveryMethod::Registry {
+                    endpoint: "".to_string(),
+                },
+            ]))
+            .await
+            .unwrap();
+            let all = disc.discover_all().await.unwrap();
+            assert!(all.is_empty(), "Production should not use fallbacks");
+        }
     );
 }
 
 #[tokio::test]
 async fn test_discover_multi_all_fail_no_fallback() {
-    temp_env::with_vars(
+    run_async_with_env!(
         [
             ("TOADSTOOL_ENV", Some("production")),
             ("TOADSTOOL_REGISTRY_ENDPOINT", None::<&str>),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
-                        DiscoveryMethod::ConfigFile {
-                            path: "/nonexistent/x.json".to_string(),
-                        },
-                        DiscoveryMethod::Registry {
-                            endpoint: "".to_string(),
-                        },
-                    ]))
-                    .await
-                    .unwrap();
-                    let all = disc.discover_all().await.unwrap();
-                    assert!(all.is_empty());
-                });
-            })
-            .join()
-            .expect("test thread");
-        },
+        {
+            let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
+                DiscoveryMethod::ConfigFile {
+                    path: "/nonexistent/x.json".to_string(),
+                },
+                DiscoveryMethod::Registry {
+                    endpoint: "".to_string(),
+                },
+            ]))
+            .await
+            .unwrap();
+            let all = disc.discover_all().await.unwrap();
+            assert!(all.is_empty());
+        }
     );
 }
 
 #[tokio::test]
 async fn test_find_service_prefers_healthy() {
-    let config = r#"{
+    let (_tmp, disc) = discovery_from_json(
+        r#"{
         "services": [
             {"name":"unhealthy-svc","capabilities":["compute"],"endpoints":["http://localhost:8"]},
             {"name":"healthy-svc","capabilities":["compute"],"endpoints":["http://localhost:9"]}
         ]
-    }"#;
-    let mut tmp = NamedTempFile::new().expect("temp file");
-    tmp.write_all(config.as_bytes()).unwrap();
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
-        .await
-        .unwrap();
+    }"#,
+    )
+    .await;
     let cap = Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution);
     let found = disc.find_service_by_capability(cap).await.unwrap();
     assert!(found.healthy);
@@ -961,9 +813,7 @@ fn test_discovery_method_debug() {
 
 #[tokio::test]
 async fn test_parse_capabilities_ignores_unknown() {
-    let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
-        .await
-        .unwrap();
+    let disc = env_discovery().await;
     let caps = disc.parse_capabilities("foo,bar,compute,baz,storage");
     assert_eq!(caps.len(), 2);
 }

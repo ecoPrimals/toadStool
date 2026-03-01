@@ -10,13 +10,14 @@
 
 ### P0: ComputeDispatch Migration (Incremental)
 
-34 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
-~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~216 ops remaining.
+41 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
+~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~209 ops remaining.
 
 Migrated so far:
 - 5 linalg (cholesky f32/f64, eigh, inverse_f64, linsolve f32/f64)
 - 15 special functions (hermite, bessel, digamma, legendre, laguerre, spherical_harmonics, beta — all f64)
 - 14 MD/bio/reduce (morse, born_mayer, lennard_jones, yukawa, velocity_verlet, kinetic_energy, rdf, pairwise_l2, hmm_forward, sum/norm/variance/prod_reduce, max_abs_diff — all f64)
+- 7 reduction ops (sum, prod, mean, norm, max, argmin, argmax — S71)
 
 ### P1: DF64 Default Path (Architecture)
 
@@ -27,8 +28,8 @@ DF64 should be the primary path with native f64 reserved for reductions/converge
 ### P1: DF64 Transcendental Coverage
 
 Extend `df64_transcendentals.wgsl`:
-- [ ] `asin_df64`, `acos_df64`, `atan_df64`, `atan2_df64`
-- [ ] `sinh_df64`, `cosh_df64`
+- [x] `asin_df64`, `acos_df64`, `atan_df64`, `atan2_df64` (S71)
+- [x] `sinh_df64`, `cosh_df64` (S71)
 - [ ] `gamma_df64`, `erf_df64` (Lanczos/Abramowitz at DF64 precision)
 
 ### P2: Architecture-Specific Polynomial Selection (Q3 2026)
