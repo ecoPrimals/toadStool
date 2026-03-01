@@ -4,10 +4,10 @@
 //! supporting both global reduction and dimension-wise reduction.
 
 use super::Std;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 
 pub(super) fn execute(op: Std) -> Result<Tensor> {
     let device = op.input.device();
@@ -39,116 +39,15 @@ pub(super) fn execute(op: Std) -> Result<Tensor> {
             }
 
             let params = Params { size: size as u32 };
+            let params_buffer = device.create_uniform_buffer("Std Mean Params", &params);
 
-            let params_buffer =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("Std Mean Params"),
-                        contents: bytemuck::cast_slice(&[params]),
-                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    });
-
-            let shader_module =
-                device.compile_shader(Std::wgsl_shader_reduce(), Some("Std Reduce Shader"));
-
-            let bind_group_layout =
-                device
-                    .device
-                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                        label: Some("Std Reduce Bind Group Layout"),
-                        entries: &[
-                            wgpu::BindGroupLayoutEntry {
-                                binding: 0,
-                                visibility: wgpu::ShaderStages::COMPUTE,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                            wgpu::BindGroupLayoutEntry {
-                                binding: 1,
-                                visibility: wgpu::ShaderStages::COMPUTE,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                            wgpu::BindGroupLayoutEntry {
-                                binding: 2,
-                                visibility: wgpu::ShaderStages::COMPUTE,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Uniform,
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                        ],
-                    });
-
-            let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Std Mean Bind Group"),
-                layout: &bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: mean_output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            let pipeline_layout =
-                device
-                    .device
-                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("Std Reduce Pipeline Layout"),
-                        bind_group_layouts: &[&bind_group_layout],
-                        push_constant_ranges: &[],
-                    });
-
-            let compute_pipeline =
-                device
-                    .device
-                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some("Std Reduce Pipeline"),
-                        layout: Some(&pipeline_layout),
-                        module: &shader_module,
-                        entry_point: "main",
-                        cache: None,
-                        compilation_options: Default::default(),
-                    });
-
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Std Reduce Encoder"),
-                    });
-
-            {
-                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Std Mean Pass"),
-                    timestamp_writes: None,
-                });
-                compute_pass.set_pipeline(&compute_pipeline);
-                compute_pass.set_bind_group(0, &bind_group, &[]);
-                compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
-            }
-
-            device.submit_and_poll(Some(encoder.finish()));
+            ComputeDispatch::new(device, "std_mean")
+                .shader(Std::wgsl_shader_reduce(), "main")
+                .storage_read(0, input_buffer)
+                .storage_rw(1, &mean_output_buffer)
+                .uniform(2, &params_buffer)
+                .dispatch(num_workgroups, 1, 1)
+                .submit();
 
             // Read back partial sums and compute mean
             let partial_sums =
@@ -188,43 +87,13 @@ pub(super) fn execute(op: Std) -> Result<Tensor> {
                 mapped_at_creation: false,
             });
 
-            let variance_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Std Variance Bind Group"),
-                layout: &bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: diff_squared_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: variance_output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            let mut encoder2 =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Std Encoder 2"),
-                    });
-
-            {
-                let mut compute_pass = encoder2.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Std Variance Pass"),
-                    timestamp_writes: None,
-                });
-                compute_pass.set_pipeline(&compute_pipeline);
-                compute_pass.set_bind_group(0, &variance_bind_group, &[]);
-                compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
-            }
-
-            device.submit_and_poll(Some(encoder2.finish()));
+            ComputeDispatch::new(device, "std_variance")
+                .shader(Std::wgsl_shader_reduce(), "main")
+                .storage_read(0, &diff_squared_buffer)
+                .storage_rw(1, &variance_output_buffer)
+                .uniform(2, &params_buffer)
+                .dispatch(num_workgroups, 1, 1)
+                .submit();
 
             // Read back partial variance results
             let partial_variances =
@@ -272,124 +141,19 @@ pub(super) fn execute(op: Std) -> Result<Tensor> {
                 inner_size: inner_size as u32,
             };
 
-            let params_buffer =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("Std Dim Params"),
-                        contents: bytemuck::cast_slice(&[params]),
-                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    });
+            let params_buffer = device.create_uniform_buffer("Std Dim Params", &params);
 
-            // Compile shader
-            let shader_module =
-                device.compile_shader(Std::wgsl_shader_dim(), Some("Std Dim Shader"));
+            let caps = DeviceCapabilities::from_device(device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
 
-            // Create bind group layout
-            let bind_group_layout =
-                device
-                    .device
-                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                        label: Some("Std Dim Bind Group Layout"),
-                        entries: &[
-                            wgpu::BindGroupLayoutEntry {
-                                binding: 0,
-                                visibility: wgpu::ShaderStages::COMPUTE,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                            wgpu::BindGroupLayoutEntry {
-                                binding: 1,
-                                visibility: wgpu::ShaderStages::COMPUTE,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                            wgpu::BindGroupLayoutEntry {
-                                binding: 2,
-                                visibility: wgpu::ShaderStages::COMPUTE,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Uniform,
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                        ],
-                    });
-
-            // Create bind group
-            let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Std Dim Bind Group"),
-                layout: &bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            // Create compute pipeline
-            let pipeline_layout =
-                device
-                    .device
-                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("Std Dim Pipeline Layout"),
-                        bind_group_layouts: &[&bind_group_layout],
-                        push_constant_ranges: &[],
-                    });
-
-            let compute_pipeline =
-                device
-                    .device
-                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some("Std Dim Pipeline"),
-                        layout: Some(&pipeline_layout),
-                        module: &shader_module,
-                        entry_point: "main",
-                        cache: None,
-                        compilation_options: Default::default(),
-                    });
-
-            // Execute compute shader
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Std Dim Encoder"),
-                    });
-
-            {
-                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Std Dim Pass"),
-                    timestamp_writes: None,
-                });
-                compute_pass.set_pipeline(&compute_pipeline);
-                compute_pass.set_bind_group(0, &bind_group, &[]);
-                // Deep Debt Evolution: Capability-based dispatch
-                let caps = DeviceCapabilities::from_device(device);
-                let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
-                compute_pass.dispatch_workgroups(workgroups, 1, 1);
-            }
-
-            device.submit_and_poll(Some(encoder.finish()));
+            ComputeDispatch::new(device, "std_dim")
+                .shader(Std::wgsl_shader_dim(), "main")
+                .storage_read(0, input_buffer)
+                .storage_rw(1, &output_buffer)
+                .uniform(2, &params_buffer)
+                .dispatch(workgroups.max(1), 1, 1)
+                .submit();
 
             // Read back results
             let output_data = device.read_buffer_f32(&output_buffer, output_size)?;

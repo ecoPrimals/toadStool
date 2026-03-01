@@ -7,13 +7,23 @@
 //! 4. Pass 4: Compact unique values (parallel)
 
 use super::Unique;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
 const WG: u32 = 256;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct ScanConfig {
+    n: u32,
+    n_groups: u32,
+    _pad0: u32,
+    _pad1: u32,
+}
 
 /// Compute GPU prefix sum for boolean mask.
 /// Returns (prefix_sum_buffer, total_count).
@@ -32,162 +42,35 @@ fn compute_prefix_sum_gpu(
     let n_groups = (size as u32).div_ceil(WG);
     let scratch_buffer = device.create_buffer_u32(n_groups as usize)?;
 
-    #[repr(C)]
-    #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-    struct ScanConfig {
-        n: u32,
-        n_groups: u32,
-        _pad0: u32,
-        _pad1: u32,
-    }
-
     let params = ScanConfig {
         n: size as u32,
         n_groups,
         _pad0: 0,
         _pad1: 0,
     };
+    let params_buffer = device.create_uniform_buffer("PrefixSum Params", &params);
 
-    let params_buffer = device
-        .device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("PrefixSum Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+    // Pass 1: intra-workgroup scan
+    ComputeDispatch::new(device, "unique_prefix_local_scan")
+        .shader(Unique::prefix_sum_shader(), "local_scan")
+        .uniform(0, &params_buffer)
+        .storage_read(1, mask_buffer)
+        .storage_rw(2, &prefix_sum_buffer)
+        .storage_rw(3, &scratch_buffer)
+        .dispatch(n_groups.max(1), 1, 1)
+        .submit();
 
-    let bind_group_layout =
-        device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("PrefixSum Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-    let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("PrefixSum Bind Group"),
-        layout: &bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: params_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: mask_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: prefix_sum_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: scratch_buffer.as_entire_binding(),
-            },
-        ],
-    });
-
-    let shader = device.compile_shader(Unique::prefix_sum_shader(), Some("PrefixSum"));
-    let pipeline_layout = device
-        .device
-        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("PrefixSum Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
-
-    let local_scan_pipeline =
-        device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("PrefixSum Local Scan Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "local_scan",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-    let add_wg_offsets_pipeline =
-        device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("PrefixSum Add WG Offsets Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "add_wg_offsets",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-    let mut encoder = device
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("PrefixSum Encoder"),
-        });
-
-    {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("PrefixSum Pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&local_scan_pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        pass.dispatch_workgroups(n_groups.max(1), 1, 1);
-    }
-
+    // Pass 2: add workgroup offsets (only when n_groups > 1)
     if n_groups > 1 {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("PrefixSum Add WG Offsets Pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&add_wg_offsets_pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        pass.dispatch_workgroups(1, 1, 1);
+        ComputeDispatch::new(device, "unique_prefix_add_offsets")
+            .shader(Unique::prefix_sum_shader(), "add_wg_offsets")
+            .uniform(0, &params_buffer)
+            .storage_read(1, mask_buffer)
+            .storage_rw(2, &prefix_sum_buffer)
+            .storage_rw(3, &scratch_buffer)
+            .dispatch(1, 1, 1)
+            .submit();
     }
-
-    device.submit_and_poll(Some(encoder.finish()));
 
     // Total = scan_out[N-1] + flags_in[N-1] (exclusive scan + last flag)
     let scan_last = read_buffer_u32_last(device, &prefix_sum_buffer, size)?;
@@ -264,127 +147,20 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
         _pad2: 0,
     };
 
-    let params_buffer = device
-        .device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Unique Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+    let params_buffer = device.create_uniform_buffer("Unique Params", &params);
 
     // Step 1: Mark unique values
-    let bind_group_layout =
-        device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Unique Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+    let caps = DeviceCapabilities::from_device(device);
+    let workgroups = caps.dispatch_1d(input_size as u32);
 
-    let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("Unique Bind Group"),
-        layout: &bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: params_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: unique.input().buffer().as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: hash_table_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: unique_flags_buffer.as_entire_binding(),
-            },
-        ],
-    });
-
-    let shader = device.compile_shader(Unique::wgsl_shader(), Some("Unique"));
-    let pipeline_layout = device
-        .device
-        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Unique Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
-
-    let pipeline = device
-        .device
-        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Unique Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "mark_unique",
-            cache: None,
-            compilation_options: Default::default(),
-        });
-
-    let mut encoder = device
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Unique Encoder"),
-        });
-
-    {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("Unique Mark Pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        // Dispatch using standard 1D shader workgroup size (256)
-        let caps = DeviceCapabilities::from_device(device);
-        let workgroups = caps.dispatch_1d(input_size as u32);
-        pass.dispatch_workgroups(workgroups, 1, 1);
-    }
-
-    device.submit_and_poll(Some(encoder.finish()));
+    ComputeDispatch::new(device, "unique_mark")
+        .shader(Unique::wgsl_shader(), "mark_unique")
+        .uniform(0, &params_buffer)
+        .storage_read(1, unique.input().buffer())
+        .storage_rw(2, &hash_table_buffer)
+        .storage_rw(3, &unique_flags_buffer)
+        .dispatch(workgroups, 1, 1)
+        .submit();
 
     // Step 2: Compute prefix sum of unique flags to determine output positions
     let (prefix_sum_buffer, unique_count) =
@@ -398,151 +174,18 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     // Step 4: Compact unique values using GPU shader
     let output_buffer = device.create_buffer_f32(unique_count)?;
 
-    // Update bind group for compaction pass
-    let compact_bind_group_layout =
-        device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Unique Compact Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            // Must match WGSL: hash_table is atomic<u32> (read_write)
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            // Must match WGSL: unique_flags is read_write
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+    let workgroups = caps.dispatch_1d(input_size as u32);
 
-    let compact_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("Unique Compact Bind Group"),
-        layout: &compact_bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: params_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: unique.input().buffer().as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: hash_table_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: unique_flags_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 4,
-                resource: prefix_sum_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 5,
-                resource: output_buffer.as_entire_binding(),
-            },
-        ],
-    });
-
-    let compact_pipeline_layout =
-        device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Unique Compact Pipeline Layout"),
-                bind_group_layouts: &[&compact_bind_group_layout],
-                push_constant_ranges: &[],
-            });
-
-    let compact_pipeline =
-        device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Unique Compact Pipeline"),
-                layout: Some(&compact_pipeline_layout),
-                module: &shader,
-                entry_point: "compact_unique",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-    let mut compact_encoder =
-        device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Unique Compact Encoder"),
-            });
-
-    {
-        let mut pass = compact_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("Unique Compact Pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&compact_pipeline);
-        pass.set_bind_group(0, &compact_bind_group, &[]);
-        // Dispatch using standard 1D shader workgroup size (256)
-        let caps = DeviceCapabilities::from_device(device);
-        let workgroups = caps.dispatch_1d(input_size as u32);
-        pass.dispatch_workgroups(workgroups, 1, 1);
-    }
-
-    device.submit_and_poll(Some(compact_encoder.finish()));
+    ComputeDispatch::new(device, "unique_compact")
+        .shader(Unique::wgsl_shader(), "compact_unique")
+        .uniform(0, &params_buffer)
+        .storage_read(1, unique.input().buffer())
+        .storage_rw(2, &hash_table_buffer)
+        .storage_rw(3, &unique_flags_buffer)
+        .storage_read(4, &prefix_sum_buffer)
+        .storage_rw(5, &output_buffer)
+        .dispatch(workgroups, 1, 1)
+        .submit();
 
     let output_data = crate::utils::read_buffer(device, &output_buffer, unique_count)?;
     Ok(Tensor::new(output_data, vec![unique_count], device.clone()))

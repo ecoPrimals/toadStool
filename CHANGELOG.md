@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **DF64 transcendental suite complete**: `gamma_df64` (Lanczos g=7, reflection formula) and `erf_df64` (Abramowitz & Stegun 7.1.26) added. DF64 now covers: exp, log, sin, cos, tan, sqrt, pow, asin, acos, atan, atan2, sinh, cosh, gamma, erf.
 - **11 more ComputeDispatch migrations**: 6 attention ops (cross/sparse/local/causal/grouped_query/scaled_dot_product) + 5 tensor ops (filter, transpose, scatter, cdist, fused_map_reduce_f64). 52 total migrated, ~198 remaining.
 - **Unsafe code evolution**: 4 reducible items addressed — narrowed `#[allow(unsafe_code)]` scope in wgpu creation/SPIR-V, added `CpuAllocation::as_mut_slice()` safe wrapper, consolidated `// SAFETY:` docs for Send/Sync impls.
+- **14 more ComputeDispatch migrations**: nonzero, unique, masked_select (index ops) + fft_1d, ifft_1d, fft_1d_f64, fft_3d_f64 (FFT) + qr_gpu, nms, variance, std, perceptual_loss, filter_response_norm, iou_loss. 66 total migrated, ~184 remaining.
+- **External deps audit**: Workspace is overwhelmingly pure Rust. Only `libc` in akida-driver (VFIO ioctls) identified as medium-priority for rustix evolution. All optional FFI deps (cudarc, vulkano, ocl, pyo3) are justified by hardware/platform needs.
 
 ### Session 70+++ (Feb 28, 2026) — Builder Refactor + Dead Code + Monitoring Evolution
 

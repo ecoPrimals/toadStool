@@ -6,37 +6,19 @@
 //! readback), this implementation:
 //!
 //! 1. Uploads the full 3D complex array to the GPU **once**
-//! 2. Pre-compiles the shader and pipelines **once** in `new()`
-//! 3. For each axis (Z → Y → X): dispatches `1 + log₂(N)` compute passes
+//! 2. For each axis (Z → Y → X): dispatches `1 + log₂(N)` compute passes
 //!    that process **all** pencils simultaneously via strided addressing
-//! 4. Reads back the result **once**
+//! 3. Reads back the result **once**
 //!
-//! For an 8×8×8 mesh this is **~12 dispatches in one command buffer**
-//! vs the previous **192 individual GPU round-trips**.
+//! For an 8×8×8 mesh this is **~12 dispatches** (via ComputeDispatch)
+//! with buffer copies between passes for ping-pong.
 
-use crate::device::WgpuDevice;
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
-
-const WORKGROUP_SIZE: u32 = 256;
-
-/// 3D Complex FFT operation (f64 precision) — batched GPU dispatch
-///
-/// Shader compilation and pipeline creation happen once at construction.
-/// Each `forward`/`inverse` call submits a single command buffer containing
-/// all axis passes, with one GPU readback at the end.
-pub struct Fft3DF64 {
-    device: Arc<WgpuDevice>,
-    nx: usize,
-    ny: usize,
-    nz: usize,
-    pipeline_butterfly: wgpu::ComputePipeline,
-    pipeline_bit_reverse: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
-    twiddles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer)>,
-}
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -60,76 +42,37 @@ struct AxisConfig {
     dim2_count: usize,
 }
 
+/// 3D Complex FFT operation (f64 precision) — batched GPU dispatch
+///
+/// Shader compilation happens per-dispatch via ComputeDispatch.
+/// Each `forward`/`inverse` call runs compute passes and buffer copies
+/// for each axis, with one GPU readback at the end.
+pub struct Fft3DF64 {
+    device: Arc<crate::device::WgpuDevice>,
+    nx: usize,
+    ny: usize,
+    nz: usize,
+    shader_source: &'static str,
+    twiddles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer)>,
+}
+
 impl Fft3DF64 {
     /// Create a new 3D FFT operation.
     ///
-    /// Pre-compiles the batched shader, creates pipelines, and precomputes
-    /// twiddle factor GPU buffers for each unique axis length.
-    pub fn new(device: Arc<WgpuDevice>, nx: usize, ny: usize, nz: usize) -> Result<Self> {
+    /// Precomputes twiddle factor GPU buffers for each unique axis length.
+    pub fn new(
+        device: Arc<crate::device::WgpuDevice>,
+        nx: usize,
+        ny: usize,
+        nz: usize,
+    ) -> Result<Self> {
         if !nx.is_power_of_two() || !ny.is_power_of_two() || !nz.is_power_of_two() {
             return Err(BarracudaError::InvalidInput {
                 message: format!("FFT 3D dimensions must be powers of 2, got ({nx}, {ny}, {nz})"),
             });
         }
 
-        let shader_src = include_str!("fft_3d_batched_f64.wgsl");
-        let shader = device.compile_shader_f64(shader_src, Some("FFT 3D Batched f64"));
-
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("FFT 3D Batched BGL"),
-                    entries: &[
-                        bgl_entry(0, true),
-                        bgl_entry(1, false),
-                        bgl_entry(2, true),
-                        bgl_entry(3, true),
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 4,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("FFT 3D Batched PL"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline_butterfly =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("FFT 3D Butterfly"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "main",
-                    cache: device.pipeline_cache(),
-                    compilation_options: Default::default(),
-                });
-
-        let pipeline_bit_reverse =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("FFT 3D Bit Reverse"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "bit_reverse",
-                    cache: device.pipeline_cache(),
-                    compilation_options: Default::default(),
-                });
+        let shader_source = include_str!("fft_3d_batched_f64.wgsl");
 
         let mut twiddles = HashMap::new();
         for &n in &[nx, ny, nz] {
@@ -166,9 +109,7 @@ impl Fft3DF64 {
             nx,
             ny,
             nz,
-            pipeline_butterfly,
-            pipeline_bit_reverse,
-            bind_group_layout,
+            shader_source,
             twiddles,
         })
     }
@@ -220,12 +161,6 @@ impl Fft3DF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FFT3D Encoder"),
-            });
-
         let axes = [
             AxisConfig {
                 degree: self.nz,
@@ -254,17 +189,14 @@ impl Fft3DF64 {
         ];
 
         for axis in &axes {
-            self.encode_axis(&mut encoder, &buf_a, &buf_b, buffer_bytes, axis, inverse);
+            self.encode_axis(&buf_a, &buf_b, buffer_bytes, axis, inverse);
         }
-
-        dev.submit_and_poll(std::iter::once(encoder.finish()));
 
         dev.read_f64_buffer(&buf_a, expected_len)
     }
 
     fn encode_axis(
         &self,
-        encoder: &mut wgpu::CommandEncoder,
         buf_a: &wgpu::Buffer,
         buf_b: &wgpu::Buffer,
         buffer_bytes: u64,
@@ -290,54 +222,32 @@ impl Fft3DF64 {
             dim1_count: axis.dim1_count as u32,
             dim2_count: axis.dim2_count as u32,
         };
-        let br_params_buf = dev
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FFT3D BR Params"),
-                contents: bytemuck::bytes_of(&br_params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let br_params_buf = dev.create_uniform_buffer("FFT3D BR Params", &br_params);
 
-        let br_bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("FFT3D BR BG"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buf_a.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: buf_b.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: tw_re.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: tw_im.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: br_params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let total_invocations = num_pencils * n;
+        let workgroups = total_invocations.div_ceil(WORKGROUP_SIZE_1D);
 
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("FFT3D Bit Reverse"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline_bit_reverse);
-            pass.set_bind_group(0, &br_bg, &[]);
-            let total_invocations = num_pencils * n;
-            pass.dispatch_workgroups(total_invocations.div_ceil(WORKGROUP_SIZE), 1, 1);
-        }
+        ComputeDispatch::new(dev, "FFT3D Bit Reverse")
+            .shader(self.shader_source, "bit_reverse")
+            .f64()
+            .storage_read(0, buf_a)
+            .storage_rw(1, buf_b)
+            .storage_read(2, tw_re)
+            .storage_read(3, tw_im)
+            .uniform(4, &br_params_buf)
+            .dispatch(workgroups, 1, 1)
+            .submit();
 
         // Copy buf_b → buf_a (bit-reversed data into working buffer)
-        encoder.copy_buffer_to_buffer(buf_b, 0, buf_a, 0, buffer_bytes);
+        {
+            let mut encoder = dev
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("FFT3D Copy BR"),
+                });
+            encoder.copy_buffer_to_buffer(buf_b, 0, buf_a, 0, buffer_bytes);
+            dev.submit_and_poll(std::iter::once(encoder.finish()));
+        }
 
         // Butterfly stages
         for stage in 0..log_n {
@@ -351,77 +261,48 @@ impl Fft3DF64 {
                 dim1_count: axis.dim1_count as u32,
                 dim2_count: axis.dim2_count as u32,
             };
-            let s_params_buf = dev
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("FFT3D Stage Params"),
-                    contents: bytemuck::bytes_of(&s_params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+            let s_params_buf = dev.create_uniform_buffer("FFT3D Stage Params", &s_params);
 
-            let s_bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("FFT3D Stage BG"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: buf_a.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: buf_b.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: tw_re.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: tw_im.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: s_params_buf.as_entire_binding(),
-                    },
-                ],
-            });
+            let total = num_pencils * (n / 2);
+            let workgroups = total.div_ceil(WORKGROUP_SIZE_1D);
 
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("FFT3D Butterfly"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.pipeline_butterfly);
-                pass.set_bind_group(0, &s_bg, &[]);
-                let total = num_pencils * (n / 2);
-                pass.dispatch_workgroups(total.div_ceil(WORKGROUP_SIZE), 1, 1);
-            }
+            ComputeDispatch::new(dev, "FFT3D Butterfly")
+                .shader(self.shader_source, "main")
+                .f64()
+                .storage_read(0, buf_a)
+                .storage_rw(1, buf_b)
+                .storage_read(2, tw_re)
+                .storage_read(3, tw_im)
+                .uniform(4, &s_params_buf)
+                .dispatch(workgroups, 1, 1)
+                .submit();
 
             // Ping-pong: copy output to working for next stage
             if stage < log_n - 1 {
+                let mut encoder =
+                    dev.device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("FFT3D Copy Stage"),
+                        });
                 encoder.copy_buffer_to_buffer(buf_b, 0, buf_a, 0, buffer_bytes);
+                dev.submit_and_poll(std::iter::once(encoder.finish()));
             }
         }
 
         // After last butterfly, result is in buf_b. Copy back to buf_a for next axis.
-        encoder.copy_buffer_to_buffer(buf_b, 0, buf_a, 0, buffer_bytes);
+        {
+            let mut encoder = dev
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("FFT3D Copy Final"),
+                });
+            encoder.copy_buffer_to_buffer(buf_b, 0, buf_a, 0, buffer_bytes);
+            dev.submit_and_poll(std::iter::once(encoder.finish()));
+        }
     }
 
     pub fn dims(&self) -> (usize, usize, usize) {
         (self.nx, self.ny, self.nz)
-    }
-}
-
-fn bgl_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
     }
 }
 

@@ -4,6 +4,7 @@
 //! **Performance**: ~10x faster than NTT (native float vs U64 emulation)
 //! **CRITICAL**: Unblocks PPPM, structure factors, all wave physics
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -15,9 +16,6 @@ pub struct Fft1D {
     input: Tensor,
     degree: u32,
     twiddle_factors: Vec<f32>, // Precomputed exp(-2πik/N) as complex pairs
-    pipeline_butterfly: wgpu::ComputePipeline,
-    pipeline_bit_reverse: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Fft1D {
@@ -48,7 +46,7 @@ impl Fft1D {
             )));
         }
 
-        let device = input.device();
+        let _device = input.device();
 
         // ================================================================
         // PRECOMPUTE TWIDDLE FACTORS
@@ -67,120 +65,10 @@ impl Fft1D {
             twiddle_factors.push(imag);
         }
 
-        // ================================================================
-        // LOAD SHADERS
-        // ================================================================
-
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("FFT 1D Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("fft_1d.wgsl").into()),
-            });
-
-        // ================================================================
-        // CREATE BIND GROUP LAYOUT
-        // ================================================================
-
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("FFT 1D Bind Group Layout"),
-                    entries: &[
-                        // Binding 0: Input buffer (complex signal)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Binding 1: Output buffer (complex spectrum)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Binding 2: Twiddle factors
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Binding 3: Params (degree, stage, etc.)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // ================================================================
-        // CREATE PIPELINES
-        // ================================================================
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("FFT 1D Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        // Butterfly pipeline (main FFT kernel)
-        let pipeline_butterfly =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("FFT 1D Butterfly Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Bit-reversal pipeline (preprocessing)
-        let pipeline_bit_reverse =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("FFT 1D Bit Reverse Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "bit_reverse",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
         Ok(Self {
             input,
             degree,
             twiddle_factors,
-            pipeline_butterfly,
-            pipeline_bit_reverse,
-            bind_group_layout,
         })
     }
 
@@ -230,6 +118,8 @@ impl Fft1D {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
+        let shader_source = include_str!("fft_1d.wgsl");
+
         // Params struct
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -251,134 +141,41 @@ impl Fft1D {
         // Pass 1: Bit-reversal permutation
         // ============================================================
 
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FFT Command Encoder"),
-            });
+        let params_buffer = device.create_uniform_buffer("FFT Params (Bit Reverse)", &base_params);
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FFT Params (Bit Reverse)"),
-                contents: bytemuck::bytes_of(&base_params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("FFT Bit Reverse Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: intermediate_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: twiddle_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("FFT Bit Reverse Pass"),
-                timestamp_writes: None,
-            });
-
-            compute_pass.set_pipeline(&self.pipeline_bit_reverse);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            // Dispatch: one thread per coefficient
-            let workgroup_size = 256u32;
-            let num_workgroups = self.degree.div_ceil(workgroup_size);
-            compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
-        }
-
-        // Submit bit-reversal pass
-        device.submit_and_poll(std::iter::once(encoder.finish()));
+        ComputeDispatch::new(device, "FFT Bit Reverse")
+            .shader(shader_source, "bit_reverse")
+            .storage_read(0, self.input.buffer())
+            .storage_rw(1, &intermediate_buffer)
+            .storage_read(2, &twiddle_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch_1d(self.degree)
+            .submit();
 
         // ============================================================
         // Pass 2-N: Butterfly stages (log₂(N) stages)
         // ============================================================
 
         let num_stages = (self.degree as f32).log2() as u32;
-        let mut current_input = &intermediate_buffer;
-        let mut current_output = &output_buffer;
+        let mut current_input = intermediate_buffer;
+        let mut current_output = output_buffer;
 
-        // Submit each stage separately to ensure sequential execution
         for stage in 0..num_stages {
-            let mut stage_encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some(&format!("FFT Stage {stage} Encoder")),
-                    });
-
             let stage_params = FftParams {
                 stage,
                 ..base_params
             };
-
             let stage_params_buffer =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some(&format!("FFT Params (Stage {stage})")),
-                        contents: bytemuck::bytes_of(&stage_params),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
+                device.create_uniform_buffer(&format!("FFT Params (Stage {stage})"), &stage_params);
 
-            let stage_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("FFT Butterfly Bind Group (Stage {stage})")),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: current_input.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: current_output.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: twiddle_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: stage_params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            {
-                let mut compute_pass =
-                    stage_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some(&format!("FFT Butterfly Pass (Stage {stage})")),
-                        timestamp_writes: None,
-                    });
-
-                compute_pass.set_pipeline(&self.pipeline_butterfly);
-                compute_pass.set_bind_group(0, &stage_bind_group, &[]);
-
-                // Dispatch: one thread per butterfly (N/2 butterflies per stage)
-                let num_butterflies = self.degree / 2;
-                let workgroup_size = 256u32;
-                let num_workgroups = num_butterflies.div_ceil(workgroup_size);
-                compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
-            }
-
-            // Submit THIS stage before moving to next
-            device.submit_and_poll(std::iter::once(stage_encoder.finish()));
+            ComputeDispatch::new(device, &format!("FFT Butterfly Stage {stage}"))
+                .shader(shader_source, "main")
+                .storage_read(0, &current_input)
+                .storage_rw(1, &current_output)
+                .storage_read(2, &twiddle_buffer)
+                .uniform(3, &stage_params_buffer)
+                .dispatch_1d(self.degree / 2)
+                .submit();
 
             // Ping-pong buffers for next stage
             std::mem::swap(&mut current_input, &mut current_output);
@@ -386,9 +183,9 @@ impl Fft1D {
 
         // After all swaps, determine which buffer has the final result
         let final_buffer = if num_stages.is_multiple_of(2) {
-            intermediate_buffer
+            current_input
         } else {
-            output_buffer
+            current_output
         };
 
         // Create result tensor

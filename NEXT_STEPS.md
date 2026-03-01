@@ -10,8 +10,8 @@
 
 ### P0: ComputeDispatch Migration (Incremental)
 
-52 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
-~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~198 ops remaining.
+66 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
+~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~184 ops remaining.
 
 Migrated so far:
 - 5 linalg (cholesky f32/f64, eigh, inverse_f64, linsolve f32/f64)
@@ -20,6 +20,9 @@ Migrated so far:
 - 7 reduction ops (sum, prod, mean, norm, max, argmin, argmax — S71)
 - 6 attention ops (cross_attn, sparse_attn, local_attention, causal_attn, grouped_query, scaled_dot_product — S71+)
 - 5 tensor ops (filter, transpose, scatter, cdist, fused_map_reduce_f64 — S71++)
+- 3 index ops (nonzero, unique, masked_select — S71+++)
+- 4 FFT ops (fft_1d, ifft_1d, fft_1d_f64, fft_3d_f64 — S71+++)
+- 7 misc ops (qr_gpu, nms, variance, std, perceptual_loss, filter_response_norm, iou_loss — S71+++)
 
 ### P1: DF64 Default Path (Architecture)
 
