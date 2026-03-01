@@ -294,17 +294,11 @@ mod tests {
         assert!(!device_ptr.is_null());
         assert_eq!(cpu_ptr as *const u8, device_ptr); // Same pointer!
 
-        let BackendAllocation::Cpu(ref alloc) = allocation else {
+        let BackendAllocation::Cpu(ref mut alloc) = allocation else {
             panic!("expected CPU allocation");
         };
-        let size = alloc.size;
-        // Use safe slice creation via NonNull for test - encapsulates the unsafe.
-        let ptr = NonNull::new(cpu_ptr).expect("cpu_ptr from allocate_unified is non-null");
-        // SAFETY: ptr from allocate_unified, valid for alloc.size bytes. Allocation not freed (we
-        // hold it). Exclusive access in test. u8 has alignment 1.
-        let slice = unsafe { std::slice::from_raw_parts_mut(ptr.as_ptr(), size) };
-        slice.fill(42);
-        assert_eq!(slice[0], 42);
+        alloc.as_mut_slice().fill(42);
+        assert_eq!(alloc.as_mut_slice()[0], 42);
 
         // Free
         backend.free_unified(allocation).await.unwrap();

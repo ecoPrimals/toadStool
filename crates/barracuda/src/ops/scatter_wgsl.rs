@@ -7,6 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
@@ -92,174 +93,33 @@ impl Scatter {
             scatter_size: scatter_size as u32,
         };
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Scatter Params"),
-                contents: bytemuck::cast_slice(&[params]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+        let params_buffer = device.create_uniform_buffer("Scatter Params", &params);
 
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Scatter Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 4,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+        let caps = DeviceCapabilities::from_device(device);
+        let workgroups_copy = caps.dispatch_1d(size as u32);
+        let workgroups_scatter = caps.dispatch_1d(values_size as u32);
 
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Scatter Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: indices_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: values_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        // First pass: copy input to output
+        ComputeDispatch::new(device, "scatter_copy")
+            .shader(Self::wgsl_shader(), "main")
+            .storage_read(0, input_buffer)
+            .storage_read(1, &indices_buffer)
+            .storage_read(2, values_buffer)
+            .storage_rw(3, &output_buffer)
+            .uniform(4, &params_buffer)
+            .dispatch(workgroups_copy.max(1), 1, 1)
+            .submit();
 
-        // Create compute pipeline
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Shader"));
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Scatter Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let copy_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Scatter Copy Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let scatter_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Scatter Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "scatter",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Execute compute shader (two passes)
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Scatter Encoder"),
-            });
-
-        {
-            // First pass: copy input to output
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Scatter Copy Pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&copy_pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Dispatch using standard shader workgroup size (256)
-            let caps = DeviceCapabilities::from_device(device);
-            let workgroups = caps.dispatch_1d(size as u32);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        {
-            // Second pass: scatter values
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Scatter Pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&scatter_pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Dispatch using standard shader workgroup size (256)
-            let caps = DeviceCapabilities::from_device(device);
-            let workgroups = caps.dispatch_1d(values_size as u32);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        // Second pass: scatter values
+        ComputeDispatch::new(device, "scatter")
+            .shader(Self::wgsl_shader(), "scatter")
+            .storage_read(0, input_buffer)
+            .storage_read(1, &indices_buffer)
+            .storage_read(2, values_buffer)
+            .storage_rw(3, &output_buffer)
+            .uniform(4, &params_buffer)
+            .dispatch(workgroups_scatter.max(1), 1, 1)
+            .submit();
 
         // Read back results
         let output_data = crate::utils::read_buffer(device, &output_buffer, size)?;

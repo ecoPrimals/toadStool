@@ -35,6 +35,7 @@
 //! let simpson = fmr.execute(&counts, total, MapOp::Simpson, ReduceOp::Sum)?;
 //! ```
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -95,47 +96,14 @@ struct Params {
 /// GPU dispatch, minimizing memory bandwidth and dispatch overhead.
 pub struct FusedMapReduceF64 {
     device: Arc<WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-    pipeline_partials: wgpu::ComputePipeline,
 }
 
 impl FusedMapReduceF64 {
+    const SHADER: &'static str = include_str!("../shaders/reduce/fused_map_reduce_f64.wgsl");
+
     /// Create a new fused map-reduce executor
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let shader_source = include_str!("../shaders/reduce/fused_map_reduce_f64.wgsl");
-        let shader_module =
-            device.compile_shader_f64(shader_source, Some("FusedMapReduceF64 Shader"));
-
-        // Pipeline for main map-reduce pass
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FusedMapReduceF64 Pipeline"),
-                layout: None,
-                module: &shader_module,
-                entry_point: "fused_map_reduce",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        // Pipeline for reducing partials
-        let pipeline_partials =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("FusedMapReduceF64 Partials Pipeline"),
-                    layout: None,
-                    module: &shader_module,
-                    entry_point: "reduce_partials",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        Ok(Self {
-            device,
-            pipeline,
-            pipeline_partials,
-        })
+        Ok(Self { device })
     }
 
     /// Execute fused map-reduce on input data
@@ -194,58 +162,17 @@ impl FusedMapReduceF64 {
             map_op: map_op as u32,
             reduce_op: reduce_op as u32,
         };
-        let params_buffer =
-            self.device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("FMR Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self.device.create_uniform_buffer("FMR Params", &params);
 
-        // Create bind group for pass 1
-        let bind_group_layout = self.pipeline.get_bind_group_layout(0);
-        let bind_group = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("FMR Bind Group"),
-                layout: &bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-        // Single command encoder for all passes — ensures proper GPU synchronization
-        // between the map-reduce pass and the partials reduction pass. Using separate
-        // submissions caused buffer conflicts on some drivers (TS-004).
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("FMR Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("FMR Pass 1"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
-        }
+        // Pass 1: fused map-reduce
+        ComputeDispatch::new(&self.device, "FMR Pass 1")
+            .f64()
+            .shader(Self::SHADER, "fused_map_reduce")
+            .storage_read(0, &input_buffer)
+            .storage_rw(1, &output_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch(n_workgroups as u32, 1, 1)
+            .submit();
 
         if n_workgroups > 1 && n_workgroups <= FMR_MAX_SINGLE_PASS_WORKGROUPS {
             // TS-004: Use separate partials_buffer for pass 2 input to avoid buffer conflict.
@@ -265,13 +192,20 @@ impl FusedMapReduceF64 {
             });
 
             // Copy pass 1 output to partials_buffer so pass 2 reads from a distinct buffer
-            encoder.copy_buffer_to_buffer(
+            let mut copy_enc =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("FMR Copy"),
+                    });
+            copy_enc.copy_buffer_to_buffer(
                 &output_buffer,
                 0,
                 &partials_buffer,
                 0,
                 (n_workgroups * 8) as u64,
             );
+            self.device.submit_and_poll(Some(copy_enc.finish()));
 
             let pass2_params = Params {
                 n: n_workgroups as u32,
@@ -280,60 +214,28 @@ impl FusedMapReduceF64 {
                 map_op: MapOp::Identity as u32,
                 reduce_op: reduce_op as u32,
             };
-            let pass2_params_buffer =
-                self.device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("FMR Params Pass2"),
-                        contents: bytemuck::bytes_of(&pass2_params),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
+            let pass2_params_buffer = self
+                .device
+                .create_uniform_buffer("FMR Params Pass2", &pass2_params);
 
-            let pass2_layout = self.pipeline_partials.get_bind_group_layout(0);
-            let pass2_bind_group =
-                self.device
-                    .device
-                    .create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("FMR Bind Group Pass2"),
-                        layout: &pass2_layout,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: partials_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: final_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 2,
-                                resource: pass2_params_buffer.as_entire_binding(),
-                            },
-                        ],
-                    });
+            // Pass 2: reduce partials
+            ComputeDispatch::new(&self.device, "FMR Pass 2")
+                .f64()
+                .shader(Self::SHADER, "reduce_partials")
+                .storage_read(0, &partials_buffer)
+                .storage_rw(1, &final_buffer)
+                .uniform(2, &pass2_params_buffer)
+                .dispatch(1, 1, 1)
+                .submit();
 
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("FMR Pass 2"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.pipeline_partials);
-                pass.set_bind_group(0, &pass2_bind_group, &[]);
-                pass.dispatch_workgroups(1, 1, 1);
-            }
-
-            self.device.submit_and_poll(Some(encoder.finish()));
             return self.read_result(&final_buffer);
         }
 
         if n_workgroups > FMR_MAX_SINGLE_PASS_WORKGROUPS {
-            // Submit pass 1, then fall back to CPU-side reduction of partials
-            self.device.submit_and_poll(Some(encoder.finish()));
             return self.reduce_partials_recursive(&output_buffer, n_workgroups, reduce_op);
         }
 
-        // Single workgroup — just submit and read
-        self.device.submit_and_poll(Some(encoder.finish()));
+        // Single workgroup — just read
         self.read_result(&output_buffer)
     }
 

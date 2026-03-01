@@ -96,7 +96,6 @@ impl WgpuDevice {
     /// The SPIR-V binary is passed to the driver as-is. The caller must
     /// ensure the binary was produced by a trusted source (our own naga
     /// backend) and has been validated by `naga::valid::Validator`.
-    #[allow(unsafe_code)]
     pub fn compile_shader_spirv(
         &self,
         spirv_words: &[u32],
@@ -104,6 +103,7 @@ impl WgpuDevice {
     ) -> wgpu::ShaderModule {
         // SAFETY: SPIR-V was emitted by naga::back::spv::Writer from a
         // naga::valid::Validator-approved module. No external/untrusted data.
+        #[allow(unsafe_code)]
         unsafe {
             self.device
                 .create_shader_module_spirv(&wgpu::ShaderModuleDescriptorSpirV {

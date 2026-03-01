@@ -6,6 +6,7 @@
 //! 3. Pass 3: Apply weights to values - reused from attention
 
 use super::{SparseAttention, SparseAttentionParams};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
@@ -53,353 +54,52 @@ impl SparseAttention {
         let output_size = batch_size * num_heads * seq_len * head_dim;
         let output_buffer = device.create_buffer_f32(output_size)?;
 
+        // Deep Debt Evolution: Capability-based dispatch
+        let caps = DeviceCapabilities::from_device(device);
+
         // ═══════════════════════════════════════════════════════════
         // PASS 1: Compute QK^T scores (REUSED from attention ✅)
         // ═══════════════════════════════════════════════════════════
+        let matmul_workgroups = ((batch_size * num_heads * seq_len * seq_len) as u32)
+            .div_ceil(caps.optimal_workgroup_size(WorkloadType::MatMul));
 
-        let shader_matmul =
-            device.compile_shader(Self::shader_matmul(), Some("SparseAttentionMatmul"));
-
-        let bgl_matmul = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Sparse Attention Matmul BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let bg_matmul = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sparse Attention Matmul BG"),
-            layout: &bgl_matmul,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.query().buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.key().buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: scores_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let pipeline_layout_matmul =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Sparse Attention Matmul Pipeline Layout"),
-                    bind_group_layouts: &[&bgl_matmul],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline_matmul =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Sparse Attention Matmul Pipeline"),
-                    layout: Some(&pipeline_layout_matmul),
-                    module: &shader_matmul,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
+        ComputeDispatch::new(device, "sparse_attn_matmul")
+            .shader(Self::shader_matmul(), "main")
+            .storage_read(0, self.query().buffer())
+            .storage_read(1, self.key().buffer())
+            .storage_rw(2, &scores_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch(matmul_workgroups.max(1), 1, 1)
+            .submit();
 
         // ═══════════════════════════════════════════════════════════
         // PASS 2: Apply softmax with sparse mask (NEW shader!)
         // ═══════════════════════════════════════════════════════════
+        let softmax_workgroups = ((batch_size * num_heads * seq_len) as u32)
+            .div_ceil(caps.optimal_workgroup_size(WorkloadType::ElementWise));
 
-        let shader_softmax = device.compile_shader(
-            Self::shader_sparse_softmax(),
-            Some("SparseAttentionSoftmax"),
-        );
-
-        let bgl_softmax =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Sparse Attention Softmax BGL"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let bg_softmax = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sparse Attention Softmax BG"),
-            layout: &bgl_softmax,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: scores_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: weights_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let pipeline_layout_softmax =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Sparse Attention Softmax Pipeline Layout"),
-                    bind_group_layouts: &[&bgl_softmax],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline_softmax =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Sparse Attention Softmax Pipeline"),
-                    layout: Some(&pipeline_layout_softmax),
-                    module: &shader_softmax,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
+        ComputeDispatch::new(device, "sparse_attn_softmax")
+            .shader(Self::shader_sparse_softmax(), "main")
+            .storage_read(0, &scores_buffer)
+            .storage_rw(1, &weights_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch(softmax_workgroups.max(1), 1, 1)
+            .submit();
 
         // ═══════════════════════════════════════════════════════════
         // PASS 3: Apply weights to values (REUSED from attention ✅)
         // ═══════════════════════════════════════════════════════════
+        let apply_workgroups = ((batch_size * num_heads * seq_len * head_dim) as u32)
+            .div_ceil(caps.optimal_workgroup_size(WorkloadType::ElementWise));
 
-        let shader_apply =
-            device.compile_shader(Self::shader_apply(), Some("SparseAttentionApply"));
-
-        let bgl_apply = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Sparse Attention Apply BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let bg_apply = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sparse Attention Apply BG"),
-            layout: &bgl_apply,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: weights_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.value().buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let pipeline_layout_apply =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Sparse Attention Apply Pipeline Layout"),
-                    bind_group_layouts: &[&bgl_apply],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline_apply =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Sparse Attention Apply Pipeline"),
-                    layout: Some(&pipeline_layout_apply),
-                    module: &shader_apply,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // ═══════════════════════════════════════════════════════════
-        // EXECUTE ALL 3 PASSES
-        // ═══════════════════════════════════════════════════════════
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Sparse Attention Encoder"),
-            });
-
-        // Pass 1: Matmul
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Sparse Attention Matmul Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline_matmul);
-            pass.set_bind_group(0, &bg_matmul, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            // MatMul is element-wise per score element
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups =
-                ((batch_size * num_heads * seq_len * seq_len) as u32).div_ceil(optimal_wg_size);
-            pass.dispatch_workgroups(workgroups.max(1), 1, 1);
-        }
-
-        // Pass 2: Sparse Softmax
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Sparse Attention Softmax Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline_softmax);
-            pass.set_bind_group(0, &bg_softmax, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            // Softmax is element-wise per [batch, head, query_pos]
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((batch_size * num_heads * seq_len) as u32).div_ceil(optimal_wg_size);
-            pass.dispatch_workgroups(workgroups.max(1), 1, 1);
-        }
-
-        // Pass 3: Apply
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Sparse Attention Apply Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline_apply);
-            pass.set_bind_group(0, &bg_apply, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            // Apply is element-wise per output element
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups =
-                ((batch_size * num_heads * seq_len * head_dim) as u32).div_ceil(optimal_wg_size);
-            pass.dispatch_workgroups(workgroups.max(1), 1, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "sparse_attn_apply")
+            .shader(Self::shader_apply(), "main")
+            .storage_read(0, &weights_buffer)
+            .storage_read(1, self.value().buffer())
+            .storage_rw(2, &output_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch(apply_workgroups.max(1), 1, 1)
+            .submit();
 
         // Return output tensor
         Ok(Tensor::from_buffer(

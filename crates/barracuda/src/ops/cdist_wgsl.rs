@@ -17,6 +17,7 @@
 //! Supports: Euclidean (L2), Manhattan (L1), Cosine
 //! ```
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
@@ -83,123 +84,19 @@ impl Cdist {
         let params_data = [m as u32, n as u32, d as u32, self.metric as u32];
         let params_buffer = device.create_uniform_buffer("Params", &params_data);
 
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Cdist BGL"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+        let caps = DeviceCapabilities::from_device(device);
+        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
+        let workgroups_x = (m as u32).div_ceil(optimal_wg_size);
+        let workgroups_y = (n as u32).div_ceil(optimal_wg_size);
 
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Cdist BG"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input_a.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.input_b.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let shader = device.compile_shader(Self::WGSL_CDIST_F32, Some("Cdist"));
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Cdist PL"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Cdist Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Cdist Encoder"),
-            });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Cdist Pass"),
-                timestamp_writes: None,
-            });
-
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups_x = (m as u32).div_ceil(optimal_wg_size);
-            let workgroups_y = (n as u32).div_ceil(optimal_wg_size);
-            pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "cdist")
+            .shader(Self::WGSL_CDIST_F32, "main")
+            .storage_read(0, self.input_a.buffer())
+            .storage_read(1, self.input_b.buffer())
+            .storage_rw(2, &output_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch(workgroups_x.max(1), workgroups_y.max(1), 1)
+            .submit();
 
         Ok(Tensor::from_buffer(
             output_buffer,
@@ -242,9 +139,7 @@ pub fn compute_distances_f64_gpu(
         metric: u32,
     }
 
-    let module = device.compile_shader_f64(Cdist::wgsl_shader_f64(), Some("cdist_f64"));
     let d = device.device();
-
     let a_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("cdist:a"),
         contents: bytemuck::cast_slice(x1),
@@ -268,71 +163,17 @@ pub fn compute_distances_f64_gpu(
         d: n_dim as u32,
         metric: metric as u32,
     };
-    let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("cdist:params"),
-        contents: bytemuck::bytes_of(&params),
-        usage: wgpu::BufferUsages::UNIFORM,
-    });
+    let params_buf = device.create_uniform_buffer("cdist:params", &params);
 
-    let bgl = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("cdist_f64:bgl"),
-        entries: &[
-            bgl_storage(0, true),
-            bgl_storage(1, true),
-            bgl_storage(2, false),
-            bgl_uniform(3),
-        ],
-    });
-
-    let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("cdist_f64:bg"),
-        layout: &bgl,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: a_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: b_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: out_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: params_buf.as_entire_binding(),
-            },
-        ],
-    });
-
-    let pl = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("cdist_f64:pl"),
-        bind_group_layouts: &[&bgl],
-        push_constant_ranges: &[],
-    });
-    let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("cdist_f64:pipeline"),
-        layout: Some(&pl),
-        module: &module,
-        entry_point: "main",
-        compilation_options: Default::default(),
-        cache: None,
-    });
-
-    let mut enc = d.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("cdist_f64:enc"),
-    });
-    {
-        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("cdist_f64:pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&pipeline);
-        pass.set_bind_group(0, &bg, &[]);
-        pass.dispatch_workgroups((n1 as u32).div_ceil(16), (n2 as u32).div_ceil(16), 1);
-    }
+    ComputeDispatch::new(device, "cdist_f64")
+        .f64()
+        .shader(Cdist::wgsl_shader_f64(), "main")
+        .storage_read(0, &a_buf)
+        .storage_read(1, &b_buf)
+        .storage_rw(2, &out_buf)
+        .uniform(3, &params_buf)
+        .dispatch((n1 as u32).div_ceil(16), (n2 as u32).div_ceil(16), 1)
+        .submit();
 
     let readback = d.create_buffer(&wgpu::BufferDescriptor {
         label: Some("cdist_f64:rb"),
@@ -340,37 +181,14 @@ pub fn compute_distances_f64_gpu(
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
+    let mut enc = d.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("cdist_f64:copy"),
+    });
     enc.copy_buffer_to_buffer(&out_buf, 0, &readback, 0, out_size);
     device.submit_and_poll(Some(enc.finish()));
 
     let result: Vec<f64> = device.map_staging_buffer(&readback, n1 * n2)?;
     Ok(result)
-}
-
-fn bgl_storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn bgl_uniform(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
 }
 
 #[cfg(test)]

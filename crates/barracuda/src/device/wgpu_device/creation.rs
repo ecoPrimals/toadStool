@@ -33,13 +33,13 @@ impl WgpuDevice {
         }));
     }
 
-    #[allow(unsafe_code)]
     fn make_pipeline_cache(device: &wgpu::Device) -> Option<Arc<wgpu::PipelineCache>> {
         if !device.features().contains(wgpu::Features::PIPELINE_CACHE) {
             return None;
         }
         // SAFETY: `data: None` means empty initial cache — no previous blob to validate.
         // The unsafe contract is solely about corrupted serialized cache data.
+        #[allow(unsafe_code)]
         Some(Arc::new(unsafe {
             device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
                 label: Some("barraCuda pipeline cache"),

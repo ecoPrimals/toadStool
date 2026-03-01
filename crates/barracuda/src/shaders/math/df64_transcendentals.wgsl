@@ -363,3 +363,107 @@ fn cosh_df64(x: Df64) -> Df64 {
     let emx = exp_df64(df64_neg(x));
     return df64_scale_f32(df64_add(ex, emx), 0.5);
 }
+
+// ── gamma_df64: Lanczos approximation ──
+// Γ(z) = √(2π) · (z + g - 0.5)^(z-0.5) · e^(-(z+g-0.5)) · A_g(z)
+// For x < 0.5: reflection Γ(z) = π / (sin(πz) · Γ(1-z))
+const DF64_SQRT_2PI: f32 = 2.5066282746310002;
+const DF64_LANCZOS_G: f32 = 7.0;
+
+fn gamma_lanczos_df64(z: Df64) -> Df64 {
+    // Lanczos coefficients p[0]..p[8]
+    let p0 = df64_from_f32(0.99999999999980993);
+    let p1 = df64_from_f32(676.5203681218851);
+    let p2 = df64_from_f32(-1259.1392167224028);
+    let p3 = df64_from_f32(771.32342877765313);
+    let p4 = df64_from_f32(-176.61502916214059);
+    let p5 = df64_from_f32(12.507343278686905);
+    let p6 = df64_from_f32(-0.13857109526572012);
+    let p7 = df64_from_f32(9.9843695780195716e-6);
+    let p8 = df64_from_f32(1.5056327351493116e-7);
+
+    let g = df64_from_f32(DF64_LANCZOS_G);
+    let half = df64_from_f32(0.5);
+
+    // z_plus = z + g - 0.5
+    let z_plus = df64_sub(df64_add(z, g), half);
+
+    // A_g(z) = p0 + p1/(z+1) + p2/(z+2) + ... + p8/(z+8)
+    var ag = df64_div(p1, df64_add(z, df64_from_f32(1.0)));
+    ag = df64_add(ag, df64_div(p2, df64_add(z, df64_from_f32(2.0))));
+    ag = df64_add(ag, df64_div(p3, df64_add(z, df64_from_f32(3.0))));
+    ag = df64_add(ag, df64_div(p4, df64_add(z, df64_from_f32(4.0))));
+    ag = df64_add(ag, df64_div(p5, df64_add(z, df64_from_f32(5.0))));
+    ag = df64_add(ag, df64_div(p6, df64_add(z, df64_from_f32(6.0))));
+    ag = df64_add(ag, df64_div(p7, df64_add(z, df64_from_f32(7.0))));
+    ag = df64_add(ag, df64_div(p8, df64_add(z, df64_from_f32(8.0))));
+    ag = df64_add(p0, ag);
+
+    // Γ(z) = √(2π) · z_plus^(z-0.5) · e^(-z_plus) · A_g(z)
+    let exp_z_minus_half = df64_sub(z, half);
+    let base_pow = pow_df64(z_plus, exp_z_minus_half);
+    let exp_neg = exp_df64(df64_neg(z_plus));
+
+    var result = df64_mul(df64_from_f32(DF64_SQRT_2PI), base_pow);
+    result = df64_mul(result, exp_neg);
+    result = df64_mul(result, ag);
+    return result;
+}
+
+fn gamma_df64(x: Df64) -> Df64 {
+    let half = df64_from_f32(0.5);
+    let one = df64_from_f32(1.0);
+    let pi = Df64(DF64_PI_HI, DF64_PI_LO);
+
+    if df64_lt(x, half) {
+        // Reflection: Γ(x) = π / (sin(πx) · Γ(1-x))
+        let one_minus_x = df64_sub(one, x);
+        let gamma_1_minus_x = gamma_lanczos_df64(one_minus_x);
+        let pi_x = df64_mul(pi, x);
+        let sin_pi_x = sin_df64(pi_x);
+        return df64_div(pi, df64_mul(sin_pi_x, gamma_1_minus_x));
+    }
+    return gamma_lanczos_df64(x);
+}
+
+// ── erf_df64: Abramowitz & Stegun 7.1.26 rational approximation ──
+// erf(x) = 1 - (a₁t + a₂t² + a₃t³ + a₄t⁴ + a₅t⁵) · exp(-x²), t = 1/(1 + 0.3275911·|x|)
+// For negative x: erf(-x) = -erf(x) — handle via |x| then negate result
+fn erf_df64(x: Df64) -> Df64 {
+    let one = df64_from_f32(1.0);
+    let negate = x.hi < 0.0;
+    let ax = df64_abs(x);
+
+    // t = 1 / (1 + 0.3275911 * x)
+    let t_denom = df64_add(one, df64_scale_f32(ax, 0.3275911));
+    let t = df64_div(one, t_denom);
+
+    // Horner: a₁t + a₂t² + a₃t³ + a₄t⁴ + a₅t⁵
+    let a1 = df64_from_f32(0.254829592);
+    let a2 = df64_from_f32(-0.284496736);
+    let a3 = df64_from_f32(1.421413741);
+    let a4 = df64_from_f32(-1.453152027);
+    let a5 = df64_from_f32(1.061405429);
+
+    let t2 = df64_mul(t, t);
+    let t3 = df64_mul(t2, t);
+    let t4 = df64_mul(t3, t);
+    let t5 = df64_mul(t4, t);
+
+    var p = df64_mul(a5, t5);
+    p = df64_add(df64_mul(a4, t4), p);
+    p = df64_add(df64_mul(a3, t3), p);
+    p = df64_add(df64_mul(a2, t2), p);
+    p = df64_add(df64_mul(a1, t), p);
+
+    // exp(-x²)
+    let x2 = df64_mul(ax, ax);
+    let exp_neg_x2 = exp_df64(df64_neg(x2));
+
+    // erf(x) = 1 - p · exp(-x²)
+    var result = df64_sub(one, df64_mul(p, exp_neg_x2));
+    if negate {
+        result = df64_neg(result);
+    }
+    return result;
+}

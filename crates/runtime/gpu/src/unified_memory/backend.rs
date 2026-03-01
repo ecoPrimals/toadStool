@@ -36,7 +36,10 @@ pub struct VulkanAllocation {
     pub cpu_ptr: *mut u8,
 }
 
-// SAFETY: VulkanAllocation is Send as long as the Vulkan device is thread-safe
+// SAFETY: VulkanAllocation is Send/Sync because:
+// - The inner allocation (memory, cpu_ptr) is heap-allocated and owned exclusively.
+// - Vulkan device/context handles are thread-safe per Vulkan spec.
+// - No interior mutability; shared access requires external synchronization.
 unsafe impl Send for VulkanAllocation {}
 unsafe impl Sync for VulkanAllocation {}
 
@@ -53,7 +56,10 @@ pub struct OpenClAllocation {
     pub context_handle: u64,
 }
 
-// SAFETY: OpenClAllocation is Send as long as OpenCL context is thread-safe
+// SAFETY: OpenClAllocation is Send/Sync because:
+// - The SVM pointer is heap-allocated and owned exclusively; not shared without synchronization.
+// - OpenCL context handles are thread-safe per OpenCL spec.
+// - No interior mutability; shared access requires external synchronization.
 unsafe impl Send for OpenClAllocation {}
 unsafe impl Sync for OpenClAllocation {}
 
@@ -80,7 +86,10 @@ impl std::fmt::Debug for WebGpuAllocation {
     }
 }
 
-// SAFETY: WebGpuAllocation is Send as long as wgpu::Buffer is thread-safe
+// SAFETY: WebGpuAllocation is Send/Sync because:
+// - wgpu::Buffer is Send+Sync; mapped_ptr is only set when buffer is mapped and used
+//   under proper synchronization (map_async + get_mapped_range).
+// - Inner allocation is owned exclusively; not shared without synchronization.
 unsafe impl Send for WebGpuAllocation {}
 unsafe impl Sync for WebGpuAllocation {}
 
@@ -94,7 +103,22 @@ pub struct CpuAllocation {
     pub size: usize,
 }
 
-// SAFETY: CpuAllocation is Send/Sync - it's just a pointer to heap memory
+impl CpuAllocation {
+    /// Return a mutable slice over the allocation.
+    ///
+    /// The allocation must be constructed by a backend (e.g. `CpuBackend`) which
+    /// guarantees `ptr` is valid for `size` bytes and properly aligned.
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        // SAFETY: ptr is valid for self.size bytes, properly aligned, and
+        // exclusively borrowed via &mut self.
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.size) }
+    }
+}
+
+// SAFETY: CpuAllocation is Send/Sync because:
+// - ptr points to heap-allocated memory owned exclusively by this allocation.
+// - No interior mutability; not shared without synchronization.
+// - Raw pointer is not dereferenced across threads without exclusive access.
 unsafe impl Send for CpuAllocation {}
 unsafe impl Sync for CpuAllocation {}
 

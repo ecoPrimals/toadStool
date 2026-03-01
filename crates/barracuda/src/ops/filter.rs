@@ -31,11 +31,10 @@
 //! - GPU-resident — no intermediate CPU readbacks
 //! - Capability-based dispatch — workgroup size from `DeviceCapabilities`
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
-use wgpu::util::DeviceExt;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -100,50 +99,6 @@ struct ScanConfig {
     n_groups: u32,
     _pad0: u32,
     _pad1: u32,
-}
-
-// ─── GPU pipeline helpers ────────────────────────────────────────────────────
-
-fn bgl_entry(idx: u32, ty: wgpu::BufferBindingType) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding: idx,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn compile(device: &wgpu::Device, src: &str, label: &str) -> wgpu::ShaderModule {
-    device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(label),
-        source: wgpu::ShaderSource::Wgsl(src.into()),
-    })
-}
-
-fn pipeline(
-    device: &wgpu::Device,
-    shader: &wgpu::ShaderModule,
-    bgl: &wgpu::BindGroupLayout,
-    entry: &str,
-    label: &str,
-) -> wgpu::ComputePipeline {
-    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(label),
-        bind_group_layouts: &[bgl],
-        push_constant_ranges: &[],
-    });
-    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some(label),
-        layout: Some(&pl),
-        module: shader,
-        entry_point: entry,
-        cache: None,
-        compilation_options: Default::default(),
-    })
 }
 
 const DEFAULT_FILTER_EPSILON: f32 = 1e-5;
@@ -251,200 +206,61 @@ impl Filter {
         });
 
         // ── Filter params uniform ─────────────────────────────────────────────
-        let filter_params_buf =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Filter Params"),
-                    contents: bytemuck::bytes_of(&FilterParams {
-                        size: n_u32,
-                        operation: self.operation.to_u32(),
-                        n_groups,
-                        _pad: 0,
-                        threshold: self.threshold,
-                        epsilon: self.epsilon,
-                        _pad2: 0.0,
-                        _pad3: 0.0,
-                    }),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let filter_params = FilterParams {
+            size: n_u32,
+            operation: self.operation.to_u32(),
+            n_groups,
+            _pad: 0,
+            threshold: self.threshold,
+            epsilon: self.epsilon,
+            _pad2: 0.0,
+            _pad3: 0.0,
+        };
+        let filter_params_buf = device.create_uniform_buffer("Filter Params", &filter_params);
 
         // ── Scan config uniform (level 0: n elements, n_groups groups) ────────
-        let scan_cfg_buf = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Scan Config L0"),
-                contents: bytemuck::bytes_of(&ScanConfig {
-                    n: n_u32,
-                    n_groups,
-                    _pad0: 0,
-                    _pad1: 0,
-                }),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        // ── BGLs and pipelines ────────────────────────────────────────────────
-        let caps = DeviceCapabilities::from_device(device);
-        let _ = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-
-        let filter_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Filter BGL"),
-                entries: &[
-                    bgl_entry(0, wgpu::BufferBindingType::Storage { read_only: true }),
-                    bgl_entry(1, wgpu::BufferBindingType::Storage { read_only: false }),
-                    bgl_entry(2, wgpu::BufferBindingType::Storage { read_only: false }),
-                    bgl_entry(3, wgpu::BufferBindingType::Storage { read_only: false }),
-                    bgl_entry(4, wgpu::BufferBindingType::Storage { read_only: false }),
-                    bgl_entry(5, wgpu::BufferBindingType::Uniform),
-                ],
-            });
-
-        let filter_shader = compile(device.device(), Self::filter_shader(), "filter.wgsl");
-        let pred_pipeline = pipeline(
-            &device.device,
-            &filter_shader,
-            &filter_bgl,
-            "evaluate_predicate",
-            "Filter Predicate",
-        );
-        let scatter_pipeline = pipeline(
-            &device.device,
-            &filter_shader,
-            &filter_bgl,
-            "scatter",
-            "Filter Scatter",
-        );
-
-        let filter_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Filter BG"),
-            layout: &filter_bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: flags_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: scan_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: output_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: total_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: filter_params_buf.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Scan BGL: config, flags_in, scan_out, wg_sums
-        let scan_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Scan BGL"),
-                entries: &[
-                    bgl_entry(0, wgpu::BufferBindingType::Uniform),
-                    bgl_entry(1, wgpu::BufferBindingType::Storage { read_only: true }),
-                    bgl_entry(2, wgpu::BufferBindingType::Storage { read_only: false }),
-                    bgl_entry(3, wgpu::BufferBindingType::Storage { read_only: false }),
-                ],
-            });
-
-        let scan_shader = compile(device.device(), Self::scan_shader(), "prefix_sum.wgsl");
-        let local_scan_pipeline = pipeline(
-            &device.device,
-            &scan_shader,
-            &scan_bgl,
-            "local_scan",
-            "Scan Local",
-        );
-        let add_offsets_pipeline = pipeline(
-            &device.device,
-            &scan_shader,
-            &scan_bgl,
-            "add_wg_offsets",
-            "Scan Offsets",
-        );
-
-        // Level-0 bind group (scan flags → scan_buf, wg_sums_buf)
-        let scan_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Scan BG L0"),
-            layout: &scan_bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: scan_cfg_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: flags_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: scan_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wg_sums_buf.as_entire_binding(),
-                },
-            ],
-        });
-
-        let filter_workgroups = n_groups;
-
-        // ── Encode passes ─────────────────────────────────────────────────────
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Filter Encoder"),
-            });
+        let scan_cfg = ScanConfig {
+            n: n_u32,
+            n_groups,
+            _pad0: 0,
+            _pad1: 0,
+        };
+        let scan_cfg_buf = device.create_uniform_buffer("Scan Config L0", &scan_cfg);
 
         // Pass 1: predicate
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Filter Predicate"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pred_pipeline);
-            pass.set_bind_group(0, &filter_bg, &[]);
-            pass.dispatch_workgroups(filter_workgroups, 1, 1);
-        }
+        ComputeDispatch::new(device, "filter_predicate")
+            .shader(Self::filter_shader(), "evaluate_predicate")
+            .storage_read(0, self.input.buffer())
+            .storage_rw(1, &flags_buf)
+            .storage_rw(2, &scan_buf)
+            .storage_rw(3, &output_buf)
+            .storage_rw(4, &total_buf)
+            .uniform(5, &filter_params_buf)
+            .dispatch(n_groups, 1, 1)
+            .submit();
 
         // Pass 2a: intra-workgroup scan
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Scan L0 Local"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&local_scan_pipeline);
-            pass.set_bind_group(0, &scan_bg, &[]);
-            pass.dispatch_workgroups(n_groups, 1, 1);
-        }
+        ComputeDispatch::new(device, "scan_local")
+            .shader(Self::scan_shader(), "local_scan")
+            .uniform(0, &scan_cfg_buf)
+            .storage_read(1, &flags_buf)
+            .storage_rw(2, &scan_buf)
+            .storage_rw(3, &wg_sums_buf)
+            .dispatch(n_groups, 1, 1)
+            .submit();
 
         if n_groups <= SCAN_WG {
             // ── Single-level path (n ≤ 65,536) ───────────────────────────────
 
             // Pass 2b: single-workgroup scan of wg_sums + add offsets to scan_buf
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Scan Offsets L0"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&add_offsets_pipeline);
-                pass.set_bind_group(0, &scan_bg, &[]);
-                pass.dispatch_workgroups(1, 1, 1);
-            }
+            ComputeDispatch::new(device, "scan_offsets")
+                .shader(Self::scan_shader(), "add_wg_offsets")
+                .uniform(0, &scan_cfg_buf)
+                .storage_read(1, &flags_buf)
+                .storage_rw(2, &scan_buf)
+                .storage_rw(3, &wg_sums_buf)
+                .dispatch(1, 1, 1)
+                .submit();
         } else {
             // ── Two-level path (65,536 < n ≤ 16,777,216) ─────────────────────
             let n_groups2 = n_groups.div_ceil(SCAN_WG);
@@ -464,149 +280,56 @@ impl Filter {
             });
 
             // Level-1 config: treat wg_sums1 as the input array
-            let scan_l1_cfg_buf =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("Scan Config L1"),
-                        contents: bytemuck::bytes_of(&ScanConfig {
-                            n: n_groups,
-                            n_groups: n_groups2,
-                            _pad0: 0,
-                            _pad1: 0,
-                        }),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
-
-            // Level-1 bind group: scan wg_sums1 → wg_sums1_scan, wg_sums2
-            let scan_l1_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Scan BG L1"),
-                layout: &scan_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: scan_l1_cfg_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wg_sums_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wg_sums1_scan_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wg_sums2_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-            // add_wg_offsets bind group: scan wg_sums2, add into wg_sums1_scan
-            let add_l1_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Add Offsets L1 BG"),
-                layout: &scan_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: scan_l1_cfg_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wg_sums_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wg_sums1_scan_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wg_sums2_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-            // apply_l1_offsets bind group (same BGL, repurposed):
-            //   flags_in  → wg_sums1_scan (the globally-correct L1 offsets)
-            //   scan_out  → scan_buf (the L0 scan to correct)
-            //   wg_sums   → wg_sums_buf  (unused, but bound)
-            //   config.n  → n_u32 (original element count)
-            let apply_pipeline = pipeline(
-                &device.device,
-                &scan_shader,
-                &scan_bgl,
-                "apply_l1_offsets",
-                "Apply L1",
-            );
-            let apply_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Apply L1 BG"),
-                layout: &scan_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: scan_cfg_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wg_sums1_scan_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: scan_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wg_sums_buf.as_entire_binding(),
-                    },
-                ],
-            });
+            let scan_l1_cfg = ScanConfig {
+                n: n_groups,
+                n_groups: n_groups2,
+                _pad0: 0,
+                _pad1: 0,
+            };
+            let scan_l1_cfg_buf = device.create_uniform_buffer("Scan Config L1", &scan_l1_cfg);
 
             // Pass 2b (L1): intra-workgroup scan of wg_sums1
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Scan L1 Local"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&local_scan_pipeline);
-                pass.set_bind_group(0, &scan_l1_bg, &[]);
-                pass.dispatch_workgroups(n_groups2, 1, 1);
-            }
+            ComputeDispatch::new(device, "scan_l1_local")
+                .shader(Self::scan_shader(), "local_scan")
+                .uniform(0, &scan_l1_cfg_buf)
+                .storage_read(1, &wg_sums_buf)
+                .storage_rw(2, &wg_sums1_scan_buf)
+                .storage_rw(3, &wg_sums2_buf)
+                .dispatch(n_groups2, 1, 1)
+                .submit();
 
             // Pass 2c: single-workgroup scan of wg_sums2 → corrects wg_sums1_scan
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Scan Offsets L1"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&add_offsets_pipeline);
-                pass.set_bind_group(0, &add_l1_bg, &[]);
-                pass.dispatch_workgroups(1, 1, 1);
-            }
+            ComputeDispatch::new(device, "scan_offsets_l1")
+                .shader(Self::scan_shader(), "add_wg_offsets")
+                .uniform(0, &scan_l1_cfg_buf)
+                .storage_read(1, &wg_sums_buf)
+                .storage_rw(2, &wg_sums1_scan_buf)
+                .storage_rw(3, &wg_sums2_buf)
+                .dispatch(1, 1, 1)
+                .submit();
 
             // Pass 2d: apply L1 offsets (n_groups workgroups) → scan_buf globally correct
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Apply L1 Offsets"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&apply_pipeline);
-                pass.set_bind_group(0, &apply_bg, &[]);
-                pass.dispatch_workgroups(n_groups, 1, 1);
-            }
+            ComputeDispatch::new(device, "apply_l1_offsets")
+                .shader(Self::scan_shader(), "apply_l1_offsets")
+                .uniform(0, &scan_cfg_buf)
+                .storage_read(1, &wg_sums1_scan_buf)
+                .storage_rw(2, &scan_buf)
+                .storage_rw(3, &wg_sums_buf)
+                .dispatch(n_groups, 1, 1)
+                .submit();
         }
 
         // Pass 3: scatter
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Filter Scatter"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&scatter_pipeline);
-            pass.set_bind_group(0, &filter_bg, &[]);
-            pass.dispatch_workgroups(filter_workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "filter_scatter")
+            .shader(Self::filter_shader(), "scatter")
+            .storage_read(0, self.input.buffer())
+            .storage_rw(1, &flags_buf)
+            .storage_rw(2, &scan_buf)
+            .storage_rw(3, &output_buf)
+            .storage_rw(4, &total_buf)
+            .uniform(5, &filter_params_buf)
+            .dispatch(n_groups, 1, 1)
+            .submit();
 
         // ── 6. Read back count and build result ───────────────────────────────
         let count_vec = crate::utils::read_buffer_u32(device, &total_buf, 1)?;
