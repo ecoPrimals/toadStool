@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 28, 2026 -- Session 70++
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 668 WGSL shaders | 2,753+ barracuda tests | 4,700+ workspace lib tests | Rust 1.80+
-**Latest**: Cross-spring absorption (7 new WGSL, 6 GPU ops, 3 stats modules, SimpleMLP). Sovereignty evolution (ports, discovery, adapters). Fp64Strategy::Concurrent. Monitoring split. Adapter stub evolved.
+**Updated**: February 28, 2026 -- Session 70+++
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 668 WGSL shaders (26 DF64) | 2,753+ barracuda tests | 4,700+ workspace lib tests | Rust 1.80+
+**Latest**: Builder smart-refactor. EcosystemCaller dead code deleted. Monitoring collectors evolved to real sysinfo. NestGate connect evolved. All root docs cleaned.
 
 ---
 
@@ -87,37 +87,26 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session
+## Completed This Session (S70 through S70+++)
+
+### Session 70+++: Builder Refactor + Dead Code + Monitoring Evolution
+- `builder.rs` (975 lines) smart-refactored into `builder/` module (3 files, all <600 lines)
+- Deleted deprecated `EcosystemCaller` (95 lines dead code, zero references)
+- 5 monitoring collector stubs → real `sysinfo` implementations (health, resources, alerts, perf)
+- NestGate `connect()` → real socket path resolution
+- All root docs cleaned (7 files, all stale counts fixed)
+
+### Session 70+/++: Cross-Spring Absorption + Sovereignty + Architecture
+- 7 new WGSL shaders, 6 new GPU ops, 3 new stats modules, SimpleMLP
+- Sovereignty: port 8084→dynamic, songbird→mdns, capability-based adapter
+- `Fp64Strategy::Concurrent`, monitoring split (1071→679), `UniversalAdapter` evolved
+- +37 new tests
 
 ### Session 70: Deep Debt + Test Concurrency Evolution
-
-**Production stubs evolved (15+)**: Primals client (real JSON-RPC over Unix sockets), orchestrator
-(validates + deploys via `biome.deploy`), coordinator cancel (CancellationToken-based), deprecated
-HTTP caller (returns proper error), registration token (`None` instead of "dummy_token"), ESP32
-download (feature-gated HTTP or proper error), Raspberry Pi/industrial/microcontroller (return
-`PlatformNotAvailable`), OS compat layer (real `uname` on Linux).
-
-**Test concurrency evolution**: All `std::env::set_var` in tests migrated to `temp_env` (8 files).
-All sleeps removed from non-chaos tests (monitoring → polling, tarpc → yield, resilience → reduced
-intervals). Default test timeouts aggressively reduced (30s→5s, 120s→30s, 60s→20s, unit 5s→2s).
-Storage benchmark race condition fixed (nanos-based unique temp files). Nested runtime panics
-eliminated (MockTask drop uses AtomicUsize). All doctests fixed across 4 crates.
-
-**ChaosEngine fix**: `recovery_count` now correctly synced between `SystemState` and `ChaosMetrics`
-in both `inject_service_crash` and `inject_network_partition`.
-
-**Error code fix**: `job_queue_error` now returns `WORKLOAD_NOT_FOUND` (-32000) instead of
-`METHOD_NOT_FOUND` (-32601) for missing jobs.
-
-**Coverage expansion (+150 tests)**: lifecycle_ops, dispatch, api/jsonrpc, monitoring/lib,
-pure_jsonrpc/handler, unibin/mod, tarpc_server, nestgate/client, display/ipc/server,
-daemon/jsonrpc_server, daemon/http_server, service_discovery (real mDNS parser),
-distributed/adapter, config/builder, config/validation.
-
-**Barracuda**: Crate-level `#![allow(clippy::unused_async)]` with documented justification.
-
-**Infrastructure**: Killed 2 zombie barracuda processes (running since Feb 26 at 100% CPU).
-Full workspace test suite: 6m30s wall time, 0 failures, 0 warnings, 8 threads.
+- 15+ production stubs → real implementations, +150 new tests
+- All env tests → `temp_env`, all non-chaos sleeps removed, timeouts reduced
+- ChaosEngine fix, error codes, doctests, real mDNS parser
+- Full workspace: 6m30s, 0 failures, 0 warnings
 
 ### Session 69++: Architecture & Code Evolution
 

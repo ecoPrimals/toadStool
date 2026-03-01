@@ -34,7 +34,7 @@
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors |
 | Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
-| File size limit | **All < 1000 lines** (16 large files smart-refactored to domain modules) |
+| File size limit | **All < 1000 lines** (17 large files smart-refactored to domain modules) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
 | ComputeDispatch adoption | **34 ops migrated** (~216 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
@@ -78,6 +78,19 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 70+++ (Feb 28, 2026) — Builder Refactor + Dead Code + Monitoring Evolution
+- `builder.rs` (975 lines) → `builder/` module: mod.rs (129) + profiler.rs (531) + substrate.rs (338)
+- Deleted deprecated `EcosystemCaller` (95 lines dead code, zero references workspace-wide)
+- Monitoring collectors evolved from hardcoded stubs to real `sysinfo` metrics:
+  - `collect_system_health`: real CPU/memory/storage thresholds (80% warn, 95% critical)
+  - `collect_resource_usage`: real GB/Mbps from sysinfo + load_average
+  - `get_active_alerts`: generates alerts from health status (was empty vec)
+  - `collect_biome_status`: returns empty (was fake "example-biome" data)
+  - `collect_performance_metrics`: tracks active sessions (was hardcoded scores)
+- NestGate `connect()`: placeholder endpoint → `primal_sockets::get_socket_path_for_service()`
+- Root docs updated for S70+ through S70+++ (all stale counts fixed)
+- All quality gates green: build, fmt, clippy, doc
 
 ### Session 70++ (Feb 28, 2026) — Sovereignty + Architecture + Stub Evolution
 - Sovereignty: hardcoded port 8084 → `toadstool_config::ports::daemon_port()`

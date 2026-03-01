@@ -48,7 +48,7 @@ Nest    = Tower  + NestGate           <- storage
 | Hardcoded primal names | 0 -- capability-based, `get_primal_default_port()` pattern |
 | Hardcoded ports/localhost | 0 inline literals -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| Orphan shaders | 0 -- all 661 WGSL shaders wired to Rust (21 DF64 files) |
+| Orphan shaders | 0 -- all 668 WGSL shaders wired to Rust (26 DF64 files) |
 | File size limit | All production files under 1000 lines |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
@@ -84,7 +84,7 @@ Pure-GPU double precision with `math_f64.wgsl` polyfill library (28 functions: e
 
 **DF64 transcendentals**: `df64_transcendentals.wgsl` provides `exp_df64`, `log_df64`, `sqrt_df64`, `sin_df64`, `cos_df64`, `pow_df64`, `tanh_df64` -- all at FP32 core speed, no vendor library dependency. Born-Mayer, Morse, Yukawa, Lennard-Jones force shaders evolved from hybrid to **full FP32 core streaming** (zero f64-unit transcendental calls).
 
-**DF64 coverage**: 21 DF64 WGSL files, auto-selected at runtime by `Fp64Strategy`:
+**DF64 coverage**: 26 DF64 WGSL files, auto-selected at runtime by `Fp64Strategy`:
 - `df64_core.wgsl` -- FMA-optimized core arithmetic (add, mul, div, scale)
 - `df64_transcendentals.wgsl` -- exp, log, sqrt, sin, cos, pow, tanh (Cody-Waite + Horner)
 - `gemm_df64.wgsl` -- batched dense GEMM with shared-memory tiling
@@ -130,7 +130,7 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 661 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
+BarraCUDA: 668 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
   All math originates as WGSL — barracuda does not care about hardware
   Dual-layer universal precision:
     Layer 1 (source): op_preamble — op_add/op_mul/Scalar alias → all precisions
@@ -140,8 +140,8 @@ BarraCUDA: 661 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
   compile_shader_f64() / compile_shader_df64() polyfill 28 transcendentals (no libdevice/ocml)
   downcast_f64_to_f32/f16/df64(): text-transform with sentinel protection
   SovereignCompiler: naga-IR → FMA fusion → DCE → df64 infix rewrite → SPIR-V passthrough
-  Fp64Strategy: Native f64 (compute GPUs) | Hybrid DF64 (consumer GPUs)
-  21 DF64 files: core (FMA), transcendentals, GEMM, 4 force fields, SU(3), 5 lattice QCD
+  Fp64Strategy: Native f64 (compute GPUs) | Hybrid DF64 (consumer GPUs) | Concurrent (dual validation)
+  26 DF64 files: core (FMA), transcendentals, GEMM, 4 force fields, SU(3), 5 lattice QCD, 5 ML (GELU/sigmoid/softmax/layernorm/SDPA)
   ComputeDispatch builder: fluent pipeline creation, ~80→5 lines per op
   Zero orphan shaders — every WGSL file wired to Rust
   Linalg: solve, cholesky, QR, SVD, LU — all GPU-dispatched
@@ -225,7 +225,7 @@ cargo llvm-cov --lib -p toadstool-common --json
 ```
 toadStool/
 +-- crates/                        43 crates
-|   +-- barracuda/                 661 WGSL shaders (shader-first, dual-layer universal precision), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
+|   +-- barracuda/                 668 WGSL shaders (shader-first, dual-layer universal precision), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
 |   +-- core/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config)
@@ -280,9 +280,9 @@ toadStool/
 | Clippy warnings (`-D warnings`) | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Unit tests (barracuda) | 2,726+ |
+| Unit tests (barracuda) | 2,753+ |
 | Shader-specific tests | 155 (unit + e2e + chaos + fault + naga validation) |
-| WGSL shaders (barracuda) | 661 (zero orphans, shader-first, 21 DF64 + 200+ f64 — zero f32-only, all f64 canonical) |
+| WGSL shaders (barracuda) | 668 (zero orphans, shader-first, 26 DF64 + 200+ f64 — zero f32-only, all f64 canonical) |
 | Lib tests (server) | 576 |
 | Lib tests (core toadstool) | 1,340 |
 | Lib tests (distributed) | 1,057 |
@@ -318,6 +318,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
 ### Recently Completed
+- **Session 70+++: Builder refactor + dead code removal + monitoring evolution** -- `builder.rs` (975 lines) smart-refactored into `builder/` module (mod.rs + profiler.rs + substrate.rs). Deleted deprecated `EcosystemCaller` (dead code, zero references). Monitoring collectors evolved from hardcoded stubs to real `sysinfo` (health thresholds, real CPU/memory/storage/network, session-aware performance metrics). NestGate `connect()` evolved from placeholder to real socket path resolution. Updated all root docs for S70+ through S70+++.
 - **Session 70+/++: Cross-spring absorption + sovereignty + architecture** -- 7 new WGSL shaders (gelu/sigmoid/softmax/layernorm DF64, sdpa_df64, brent_f64 root-finding, seasonal_pipeline). 6 new GPU ops (batched_elementwise ops 5-8 from airSpring, SymmetrizeGpu, LaplacianGpu). 3 new stats modules (evolution: kimura_fixation; jackknife; hydrology: fao56_et0; diversity: chao1_classic). SimpleMLP with JSON weight serde. Non-consuming `matmul_ref` for recurrent architectures. `Fp64Strategy::Concurrent` for dual validation. `max_buffer_size` NVK sanity check. Architecture-aware `preferred_workgroup_size`. Sovereignty: port 8084→`daemon_port()`, songbird→mdns discovery, capability-based adapter. Monitoring split (1071→679 lines). Adapter stub evolved to real validation. +37 new tests.
 - **Session 70: Deep debt + test concurrency evolution** -- 15 production stubs evolved to real implementations (primals client JSON-RPC, orchestrator deploy, coordinator cancel with CancellationToken, deprecated HTTP caller returns errors). All `std::env::set_var` in tests migrated to `temp_env` (8 files). All sleeps removed from non-chaos tests. Default test timeouts reduced (30s→5s, 120s→30s). All doctests fixed. ChaosEngine metrics sync corrected. Storage benchmark race condition fixed. Nested runtime panics eliminated. Barracuda `#![allow(clippy::unused_async)]` with justification. Edge/embedded placeholders evolved to proper errors. Real mDNS response parser. +150 new tests across workspace. All files under 1000 lines confirmed. Full workspace test suite: 6m30s, 0 failures.
 - **Session 69++: Architecture evolution** -- metalForge streaming pipeline. manual_jsonrpc → pure_jsonrpc (full migration). 34 ops → ComputeDispatch (~3,739 lines removed). NAK workgroup tuning. 4 production stubs → real implementations. 16 large files smart-refactored. +100 new tests. rust-version 1.75→1.80.
@@ -360,4 +361,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 28, 2026 -- 661 WGSL shaders. 2,726+ barracuda tests. 4,700+ workspace lib tests. 34 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings, 0 test failures). Fully concurrent test suite (6m30s). Rust 1.80+. Zero anyhow. Zero chrono. Zero production stubs. 45 justified unsafe. All files < 1000 lines.
+**Last Updated**: February 28, 2026 -- 668 WGSL shaders (26 DF64). 2,753+ barracuda tests. 4,700+ workspace lib tests. 34 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings, 0 test failures). Fully concurrent test suite (6m30s). Rust 1.80+. Zero anyhow. Zero chrono. Zero production stubs. 45 justified unsafe. All files < 1000 lines.

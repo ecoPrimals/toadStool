@@ -109,10 +109,14 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Recently Resolved (S70/S70+/S70++)
+## Recently Resolved (S70/S70+/S70++/S70+++)
 
 | Item | Resolution |
 |------|-----------|
+| builder.rs >1000 risk | Smart-refactored 975→mod.rs (129) + profiler.rs (531) + substrate.rs (338) |
+| EcosystemCaller dead code | Deleted entirely (deprecated since 2.0.0, zero references) |
+| Monitoring stub collectors | Evolved to real `sysinfo` (health thresholds, real metrics, session tracking) |
+| NestGate connect placeholder | Evolved to `primal_sockets::get_socket_path_for_service()` |
 | Sovereignty: port 8084 | `toadstool_config::ports::daemon_port()` — configurable, zero hardcoded |
 | Sovereignty: songbird discovery | `"mdns"` capability-based default (was hardcoded `"songbird"`) |
 | Sovereignty: adapter string-matching | Universal `SongbirdAdapter` for all JSON-RPC endpoints (capability-based) |

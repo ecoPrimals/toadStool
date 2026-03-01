@@ -1,8 +1,8 @@
 # ToadStool Types Reference Guide
 ## Canonical Type Definitions and Usage Patterns
 
-**Last Updated**: November 9, 2025  
-**Status**: Production-Ready ✅
+**Last Updated**: February 28, 2026  
+**Status**: Production-Ready
 
 ---
 

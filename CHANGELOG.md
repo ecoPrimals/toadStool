@@ -5,7 +5,15 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 28, 2026 (Sessions 43-70 — Universal Precision + Sovereign Compiler + Deep Debt + Test Concurrency)
+## [Unreleased] - February 28, 2026 (Sessions 43-70+++ — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption)
+
+### Session 70+++ (Feb 28, 2026) — Builder Refactor + Dead Code + Monitoring Evolution
+
+- **builder.rs smart refactor**: 975 lines → `builder/` module: `mod.rs` (129 lines, shared types/trait), `profiler.rs` (531 lines, ProfilerConfig + builder + tests), `substrate.rs` (338 lines, SubstrateConfig + enums + builder + tests). Zero test regressions (368/368 pass).
+- **EcosystemCaller deleted**: Fully deprecated since 2.0.0, zero references anywhere in workspace. 95 lines of dead code removed. Scheduler already returns proper `not_supported` error for `EcosystemService` target.
+- **Monitoring collectors evolved**: 5 stub methods replaced with real `sysinfo` implementations. `collect_system_health` uses CPU/memory/storage threshold classification (80% warn, 95% critical). `collect_resource_usage` returns real metrics via `sysinfo::System`, `Disks`, `Networks`, and `load_average()`. `get_active_alerts` generates alerts from health status. `collect_biome_status` returns empty instead of fake data. `collect_performance_metrics` tracks active monitoring sessions.
+- **NestGate connect evolved**: Placeholder `unix://{service_name}` endpoint → real socket path via `primal_sockets::get_socket_path_for_service()`.
+- **Root docs cleaned**: All stale counts fixed across 7 root docs (661→668 shaders, 21→26 DF64, 2726→2753 tests). Session history added.
 
 ### Session 70++ (Feb 28, 2026) — Sovereignty + Architecture + Stub Evolution
 
