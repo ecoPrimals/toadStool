@@ -344,8 +344,14 @@ impl ShaderTemplate {
     }
 
     pub fn for_driver_auto(shader_body: &str, needs_exp_log_workaround: bool) -> String {
+        // Strip `enable f64;` — naga handles f64 via capability flags, not directives.
+        let stripped = shader_body
+            .lines()
+            .filter(|l| l.trim() != "enable f64;")
+            .collect::<Vec<_>>()
+            .join("\n");
         // Upgrade any legacy fossil calls to native WGSL builtins first.
-        let substituted = polyfill::substitute_fossil_f64(shader_body);
+        let substituted = polyfill::substitute_fossil_f64(&stripped);
         let patched = if needs_exp_log_workaround {
             polyfill::apply_transcendental_workaround(&substituted)
         } else {

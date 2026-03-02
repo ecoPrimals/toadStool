@@ -181,12 +181,8 @@ impl Fft1D {
             std::mem::swap(&mut current_input, &mut current_output);
         }
 
-        // After all swaps, determine which buffer has the final result
-        let final_buffer = if num_stages.is_multiple_of(2) {
-            current_input
-        } else {
-            current_output
-        };
+        // After each stage we swap, so current_input always holds the last written buffer.
+        let final_buffer = current_input;
 
         // Create result tensor
         Ok(Tensor::from_buffer(
