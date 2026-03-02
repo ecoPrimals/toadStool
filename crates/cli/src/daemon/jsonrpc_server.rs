@@ -37,6 +37,17 @@
 //! - `daemon.get_workload` - Get workload status
 //! - `daemon.delete_workload` - Cancel/delete workload
 //! - `daemon.list_workloads` - List all workloads
+//!
+//! ### `ai.nautilus.*` (feature = "nautilus")
+//!
+//! - `ai.nautilus.status` - Brain status (observations, trained, drifting)
+//! - `ai.nautilus.observe` - Feed physics observation
+//! - `ai.nautilus.train` - Evolve shell on accumulated observations
+//! - `ai.nautilus.predict` - Predict dynamical observables for a beta value
+//! - `ai.nautilus.screen` - Score candidate beta values by information content
+//! - `ai.nautilus.edges` - Detect concept edges via LOO analysis
+//! - `ai.nautilus.shell.export` - Serialize shell to JSON
+//! - `ai.nautilus.shell.import` - Restore brain from serialized JSON
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -58,6 +69,10 @@ pub struct ServerState {
 
     /// Workload manager
     pub workload_manager: Arc<WorkloadManager>,
+
+    /// Nautilus evolutionary reservoir brain (CPU-only)
+    #[cfg(feature = "nautilus")]
+    pub nautilus_brain: super::nautilus_handlers::NautilusBrainState,
 }
 
 /// JSON-RPC 2.0 request
@@ -119,6 +134,8 @@ pub async fn start_jsonrpc_server(
     let state = ServerState {
         start_time: Instant::now(),
         workload_manager,
+        #[cfg(feature = "nautilus")]
+        nautilus_brain: super::nautilus_handlers::create_brain("toadstool"),
     };
 
     // Remove existing socket if present
@@ -134,13 +151,9 @@ pub async fn start_jsonrpc_server(
     // Bind Unix socket
     let listener = UnixListener::bind(socket_path)?;
     info!("🍄 JSON-RPC server listening on {}", socket_path.display());
-    info!("📊 Methods:");
-    info!("   daemon.health");
-    info!("   daemon.metrics");
-    info!("   daemon.submit_workload");
-    info!("   daemon.get_workload");
-    info!("   daemon.delete_workload");
-    info!("   daemon.list_workloads");
+    info!("📊 Methods: daemon.{{health,metrics,submit_workload,get_workload,delete_workload,list_workloads}}");
+    #[cfg(feature = "nautilus")]
+    info!("🐚 Methods: ai.nautilus.{{status,observe,train,predict,screen,edges,shell.export,shell.import}}");
 
     // Accept connections
     loop {
@@ -222,6 +235,10 @@ async fn handle_request(request: JsonRpcRequest, state: &ServerState) -> JsonRpc
         "daemon.get_workload" => handle_get_workload(request.params, state).await,
         "daemon.delete_workload" => handle_delete_workload(request.params, state).await,
         "daemon.list_workloads" => handle_list_workloads(state).await,
+        #[cfg(feature = "nautilus")]
+        method if method.starts_with("ai.nautilus.") => {
+            route_nautilus(method, &request.params, &state.nautilus_brain).await
+        }
         _ => Err(JsonRpcError {
             code: error_codes::METHOD_NOT_FOUND,
             message: format!("Method not found: {}", request.method),
@@ -380,6 +397,38 @@ async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcErro
     }))
 }
 
+/// Route `ai.nautilus.*` methods to their handlers.
+#[cfg(feature = "nautilus")]
+async fn route_nautilus(
+    method: &str,
+    params: &Value,
+    brain: &super::nautilus_handlers::NautilusBrainState,
+) -> Result<Value, JsonRpcError> {
+    use super::nautilus_handlers as nh;
+    let result = match method {
+        "ai.nautilus.status" => nh::handle_status(brain).await,
+        "ai.nautilus.observe" => nh::handle_observe(brain, params).await,
+        "ai.nautilus.train" => nh::handle_train(brain).await,
+        "ai.nautilus.predict" => nh::handle_predict(brain, params).await,
+        "ai.nautilus.screen" => nh::handle_screen(brain, params).await,
+        "ai.nautilus.edges" => nh::handle_edges(brain).await,
+        "ai.nautilus.shell.export" => nh::handle_shell_export(brain).await,
+        "ai.nautilus.shell.import" => nh::handle_shell_import(brain, params).await,
+        _ => {
+            return Err(JsonRpcError {
+                code: error_codes::METHOD_NOT_FOUND,
+                message: format!("Method not found: {method}"),
+                data: None,
+            })
+        }
+    };
+    result.map_err(|e| JsonRpcError {
+        code: e.code,
+        message: e.message,
+        data: None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -402,6 +451,8 @@ mod tests {
         let state = Arc::new(ServerState {
             start_time: Instant::now(),
             workload_manager,
+            #[cfg(feature = "nautilus")]
+            nautilus_brain: super::nautilus_handlers::create_brain("test"),
         });
 
         if socket_path.exists() {

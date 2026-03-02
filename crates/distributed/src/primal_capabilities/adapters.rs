@@ -1,6 +1,7 @@
 //! Primal Adapters
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
+#![allow(deprecated)] // get_songbird_socket_path: intentional use during capability-discovery migration
 
 use async_trait::async_trait;
 // No longer using reqwest - using unix sockets (pure Rust!)
@@ -67,17 +68,9 @@ impl SongbirdAdapter {
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
     pub fn new(songbird_endpoint: &str) -> Result<Self, DistributedError> {
-        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
-        // Note: This function is sync, so we use the tokio blocking bridge
-        let socket_path = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle
-                .block_on(toadstool_common::primal_sockets::discover_coordination_socket())
-                .unwrap_or_else(|_| {
-                    toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
-                })
-        } else {
-            toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
-        };
+        // CAPABILITY-BASED: Discover coordination service via shared primal_sockets
+        // (tries discover_coordination_socket, falls back to env-aware songbird path)
+        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
@@ -98,16 +91,8 @@ impl SongbirdAdapter {
         songbird_endpoint: &str,
         toadstool_endpoint: String,
     ) -> Result<Self, DistributedError> {
-        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
-        let socket_path = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle
-                .block_on(toadstool_common::primal_sockets::discover_coordination_socket())
-                .unwrap_or_else(|_| {
-                    toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
-                })
-        } else {
-            toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
-        };
+        // CAPABILITY-BASED: Discover coordination service via shared primal_sockets
+        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 

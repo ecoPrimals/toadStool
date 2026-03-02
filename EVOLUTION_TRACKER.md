@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 79
+**Date**: March 2, 2026 — Session 80
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -65,8 +65,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | Item | Source | Priority | Status |
 |------|--------|----------|--------|
-| NautilusBrain API (`ai.nautilus.*`) | hotSpring V0615 | HIGH | ☐ JSON-RPC methods for brain architecture |
-| bingoCube-nautilus workspace dep | hotSpring V0615 | HIGH | ☐ Workspace integration |
+| NautilusBrain API (`ai.nautilus.*`) | hotSpring V0615 | HIGH | ✅ S80: 8 JSON-RPC methods in daemon (nautilus feature) |
+| bingoCube standalone absorption | hotSpring V0615 | HIGH | ✅ S80: barracuda::nautilus module (7 files, 22 tests) |
 | IPC evolution (multi-transport) | wateringHole | MEDIUM | ☐ Abstract sockets + TCP fallback |
 | Batched encoder (fused pipeline) | neuralSpring V64 | MEDIUM | ☐ Per-op submit → batched encoder (46-78× speedup) |
 | NPU bandwidth model | neuralSpring V60 | LOW | ☐ Transfer cost tiers for metalForge |
@@ -95,7 +95,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-CD | ComputeDispatch migration (~174 legacy ops) | High | 76 done, incremental |
+| D-CD | ComputeDispatch migration (~168 legacy ops) | High | 82 done, incremental |
 | D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
 | D-COV | Test coverage → 90% | Medium | Major gains; gap in GPU ops, neuromorphic |

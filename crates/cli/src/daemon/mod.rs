@@ -49,7 +49,9 @@ use tracing::info;
 mod api_types;
 mod config;
 mod http_server;
-mod jsonrpc_server; // NEW: JSON-RPC over Unix sockets (evolved)
+mod jsonrpc_server;
+#[cfg(feature = "nautilus")]
+mod nautilus_handlers;
 mod server;
 mod workload_manager;
 

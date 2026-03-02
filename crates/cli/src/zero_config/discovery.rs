@@ -427,7 +427,7 @@ impl ZeroConfigDeployment {
         capability_name: &str,
     ) -> Result<Option<ServiceEndpoint>> {
         use toadstool_common::constants::ecosystem::well_known;
-        use toadstool_common::primal_sockets::get_biomeos_dir;
+        use toadstool_common::primal_sockets::get_socket_path_for_service;
 
         let primal_name = match capability_name {
             "orchestration" => well_known::SONGBIRD,
@@ -438,8 +438,7 @@ impl ZeroConfigDeployment {
             _ => return Ok(None),
         };
 
-        let biomeos_dir = get_biomeos_dir();
-        let socket_path = biomeos_dir.join(format!("{primal_name}.sock"));
+        let socket_path = get_socket_path_for_service(primal_name);
 
         self.check_unix_socket_endpoint(&socket_path, capability_name)
             .await

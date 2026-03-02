@@ -111,6 +111,9 @@ base64 = "0.22"
 sha2 = "0.10"
 hex = "0.4"
 
+# Evolutionary reservoir computing (CPU-only, no GPU dep)
+barracuda = { path = "../barracuda", default-features = false, optional = true }
+
 # Template engine
 handlebars = "4.5"
 
@@ -142,7 +145,7 @@ rustix = { version = "0.38", features = ["process"] }
 
 [features]
 default = ["full"]
-full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm"]
+full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm", "nautilus"]
 ecosystem = []
 universal = []
 monitoring = []
@@ -157,6 +160,9 @@ gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibilit
 
 # NPU FEATURES: Neuromorphic accelerator support
 npu = []  # Enables Akida NPU commands
+
+# Nautilus evolutionary reservoir (CPU-only barracuda)
+nautilus = ["dep:barracuda"]
 
 # PURE RUST: Build without C dependencies (no WASM, minimal features)
 pure-rust = ["ecosystem", "universal", "monitoring"]

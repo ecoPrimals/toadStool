@@ -1,6 +1,6 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 2, 2026 — Session 79  
+**Date**: March 2, 2026 — Session 80  
 **Sources**: hotSpring (S68+V0615), neuralSpring (V64+V69), wetSpring (V82+V87), airSpring (V039+V044), groundSpring (V54+V60), wateringHole (updated MAR01)
 
 ## S72 Execution Log
@@ -390,4 +390,41 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 
 ---
 
-- **ComputeDispatch migration**: 76/250 ops migrated, ~174 remaining
+- **ComputeDispatch migration**: 82/250 ops migrated, ~168 remaining
+
+---
+
+## S80 Spring Absorption Execution Log
+
+### bingoCube Nautilus Absorption (standalone)
+- ✅ `barracuda::nautilus` module: 7 files (board, evolution, population, readout, shell, brain, mod)
+- ✅ Board: L×L grid, column-range constraints, discrete/continuous `ReservoirInput`, BLAKE3 projection
+- ✅ Evolution: column-swap crossover, mutation preserving column-range + no-duplicate invariants
+- ✅ Population: Pearson correlation fitness per board vs targets
+- ✅ Readout: Ridge regression via `solve_f64_cpu` (gpu) / `ridge_regression` (cpu-only)
+- ✅ Shell: Layered history, `GenerationRecord`, `InstanceId`, lineage tracking, merge
+- ✅ Brain: `NautilusBrain` — observe, train, predict, screen, detect concept edges, drift monitor
+- ✅ 22 unit tests passing (board 6, evolution 4, population 3, shell 5, brain 4)
+
+### `ai.nautilus.*` JSON-RPC Namespace
+- ✅ 8 methods wired into daemon's Unix socket server: status, observe, train, predict, screen, edges, shell.export, shell.import
+- ✅ `barracuda` added as optional CLI dep (CPU-only, `default-features = false`)
+- ✅ Feature-gated: `nautilus = ["dep:barracuda"]`, included in `full`
+- ✅ `NautilusBrainState = Arc<RwLock<NautilusBrain>>` in `ServerState`
+
+### ComputeDispatch Migration (batch 2)
+- ✅ 6 more ops migrated: elastic_transform, gillespie, tree_inference, mixup, random_affine, random_perspective
+- ✅ Total: 82/250 (was 76)
+- ✅ Loop-based dispatches (smith_waterman, felsenstein) deferred — multi-dispatch in single encoder
+
+### Socket Resolution Consolidation
+- ✅ `cli/zero_config/discovery.rs`: manual `biomeos_dir.join(...)` → `get_socket_path_for_service()`
+- ✅ `cli/zero_config/service_discovery.rs`: same consolidation
+- ✅ `distributed/primal_capabilities/adapters.rs`: hardcoded `"songbird.sock"` → `get_songbird_socket_path()`
+- ✅ `core/toadstool/launcher.rs`: manual path construction → `get_toadstool_socket_path()`
+
+### Quality Gates
+- ✅ `cargo fmt --all -- --check`: 0 diffs
+- ✅ `cargo clippy --workspace -- -D warnings`: 0 warnings
+- ✅ `cargo doc --no-deps --workspace`: 0 warnings
+- ✅ `cargo build --workspace`: clean

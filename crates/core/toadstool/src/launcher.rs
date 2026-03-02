@@ -119,26 +119,21 @@ pub async fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
 
 /// Get candidate Unix socket paths for toadstool
 ///
-/// **XDG-compliant**: Follows standard directory hierarchy
+/// **XDG-compliant**: Uses shared primal_sockets for biomeOS path, plus display-specific paths.
 fn get_toadstool_socket_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
-    // 1. XDG_RUNTIME_DIR (preferred)
+    // 1. biomeOS socket (shared module - env overrides, XDG-compliant)
+    paths.push(toadstool_common::primal_sockets::get_toadstool_socket_path());
+
+    // 2. Display-specific paths (XDG-compliant)
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
         paths.push(PathBuf::from(&runtime_dir).join("toadstool/display.sock"));
-        paths.push(PathBuf::from(runtime_dir).join("biomeos/toadstool.sock"));
     }
-
-    // 2. HOME/.local/share (secondary)
     if let Ok(home) = std::env::var("HOME") {
         paths.push(PathBuf::from(&home).join(".local/share/toadstool/display.sock"));
-        paths.push(PathBuf::from(home).join(".local/share/biomeos/toadstool.sock"));
     }
-
-    // 3. Temp dir (fallback - platform agnostic)
-    let temp = std::env::temp_dir();
-    paths.push(temp.join("toadstool/display.sock"));
-    paths.push(temp.join("biomeos/toadstool.sock"));
+    paths.push(std::env::temp_dir().join("toadstool/display.sock"));
 
     paths
 }

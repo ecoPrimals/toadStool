@@ -16,7 +16,7 @@ use tracing::debug;
 
 use super::types::ServiceEndpoint;
 use toadstool_common::constants::ecosystem::well_known;
-use toadstool_common::primal_sockets::get_biomeos_dir;
+use toadstool_common::primal_sockets::get_socket_path_for_service;
 
 /// Bind to any interface with OS-assigned port (mDNS socket)
 const BIND_ANY: &str = "0.0.0.0:0";
@@ -98,8 +98,7 @@ impl ServiceDiscovery {
             }
         };
 
-        let biomeos_dir = get_biomeos_dir();
-        let socket_path = biomeos_dir.join(format!("{primal_name}.sock"));
+        let socket_path = get_socket_path_for_service(primal_name);
 
         if socket_path.exists() {
             let endpoint = format!("unix://{}", socket_path.display());

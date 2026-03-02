@@ -45,6 +45,7 @@ serde_json = "1.0"
 # dashmap removed: evolved to std::sync::RwLock<HashMap> — zero external dep, read-heavy access ideal fit
 rand = "0.8"
 rayon = "1.8"
+blake3 = "1.5"
 num-traits = "0.2"  # Generic numeric traits for CPU precision implementations
 half = "2.4"        # f16 support for quantized inference (GGUF/safetensors)
 # num_cpus removed: evolved to std::thread::available_parallelism() (pure Rust, no FFI)

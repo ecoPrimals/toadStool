@@ -21,6 +21,7 @@
 //! wetSpring handoff §Shader Design 2 (Feb 2026) — validated on sklearn
 //! export: 65 nodes × 28 features, 744 samples, 100% prediction parity.
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -183,81 +184,25 @@ impl TreeInferenceGpu {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        // ── Compile + dispatch (f64-aware for threshold comparisons) ──────────
-        let module = dev.compile_shader_f64(
-            include_str!("../../shaders/bio/tree_inference_f64.wgsl"),
-            Some("TreeInferenceF64"),
-        );
-        let pipeline = dev
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("TreeInferenceF64"),
-                layout: None,
-                module: &module,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let bg = {
-            let bgl = pipeline.get_bind_group_layout(0);
-            dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: None,
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: samples_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: feat_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: thresh_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: left_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: right_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 6,
-                        resource: pred_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 7,
-                        resource: offsets_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 8,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                ],
-            })
-        };
-
+        // ── Dispatch (f64-aware for threshold comparisons) ───────────────────
         let total_threads = (n_samples * n_trees) as u32;
-        let mut encoder = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("TreeInference"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(total_threads.div_ceil(256), 1, 1);
-        }
-        dev.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(dev, "tree_inference")
+            .shader(
+                include_str!("../../shaders/bio/tree_inference_f64.wgsl"),
+                "main",
+            )
+            .f64()
+            .uniform(0, &params_buf)
+            .storage_read(1, &samples_buf)
+            .storage_read(2, &feat_buf)
+            .storage_read(3, &thresh_buf)
+            .storage_read(4, &left_buf)
+            .storage_read(5, &right_buf)
+            .storage_read(6, &pred_buf)
+            .storage_read(7, &offsets_buf)
+            .storage_rw(8, &output_buf)
+            .dispatch(total_threads.div_ceil(256), 1, 1)
+            .submit();
 
         dev.read_buffer_u32(&output_buf, n_samples * n_trees)
     }

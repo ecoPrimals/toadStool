@@ -23,6 +23,7 @@
 //! Building blocks (`PrngXoshiro`, `SumReduceF64`) already present;
 //! this shader composes them into a complete single-kernel SSA.
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -217,77 +218,24 @@ impl GillespieGpu {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        // ── Compile + dispatch (f64-aware: exp/log patching + ILP optimizer) ───
-        let module = dev.compile_shader_f64(
-            include_str!("../../shaders/bio/gillespie_ssa_f64.wgsl"),
-            Some("GillespieSSAF64"),
-        );
-        let pipeline = dev
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("GillespieSSAF64"),
-                layout: None,
-                module: &module,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let bg = {
-            let bgl = pipeline.get_bind_group_layout(0);
-            dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: None,
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: rate_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: sreact_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: snet_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: states_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: prng_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 6,
-                        resource: times_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 7,
-                        resource: prop_buf.as_entire_binding(),
-                    },
-                ],
-            })
-        };
-
-        let mut encoder = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("GillespieSSA"),
-            });
-        {
-            let wg = (n_t as u32).div_ceil(256);
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(wg, 1, 1);
-        }
-        dev.submit_and_poll(Some(encoder.finish()));
+        // ── Dispatch (f64-aware: exp/log patching + ILP optimizer) ─────────────
+        let wg = (n_t as u32).div_ceil(256);
+        ComputeDispatch::new(dev, "gillespie_ssa")
+            .shader(
+                include_str!("../../shaders/bio/gillespie_ssa_f64.wgsl"),
+                "main",
+            )
+            .f64()
+            .storage_read(0, &params_buf)
+            .storage_read(1, &rate_buf)
+            .storage_read(2, &sreact_buf)
+            .storage_read(3, &snet_buf)
+            .storage_rw(4, &states_buf)
+            .storage_rw(5, &prng_buf)
+            .storage_rw(6, &times_buf)
+            .storage_rw(7, &prop_buf)
+            .dispatch(wg, 1, 1)
+            .submit();
 
         // ── Read back results ─────────────────────────────────────────────────
         let states = dev.read_buffer_f64(&states_buf, n_t * n_s)?;
