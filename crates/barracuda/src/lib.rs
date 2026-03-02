@@ -132,7 +132,6 @@ pub mod pipeline;
 pub mod provenance;
 #[cfg(feature = "gpu")]
 pub mod resource_quota;
-#[cfg(feature = "gpu")]
 pub mod sample;
 #[cfg(feature = "gpu")]
 pub mod scheduler;
@@ -142,7 +141,6 @@ pub mod session;
 pub mod shaders;
 #[cfg(feature = "gpu")]
 pub mod snn;
-#[cfg(feature = "gpu")]
 pub mod spectral;
 #[cfg(feature = "gpu")]
 pub mod tensor;

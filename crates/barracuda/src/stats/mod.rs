@@ -112,11 +112,13 @@ pub use histogram::HistogramGpu;
 pub use hydrology::HargreavesBatchGpu;
 pub use hydrology::{
     crop_coefficient, fao56_et0, hamon_et0, hargreaves_et0, hargreaves_et0_batch, makkink_et0,
-    soil_water_balance, thornthwaite_et0, thornthwaite_heat_index, turc_et0, Fao56BaseInputs,
-    Fao56Uncertainties, SeasonalOutput,
+    soil_water_balance, thornthwaite_et0, thornthwaite_heat_index, turc_et0,
 };
 #[cfg(feature = "gpu")]
-pub use hydrology::{McEt0PropagateGpu, SeasonalGpuParams, SeasonalPipelineF64};
+pub use hydrology::{
+    Fao56BaseInputs, Fao56Uncertainties, McEt0PropagateGpu, SeasonalGpuParams, SeasonalOutput,
+    SeasonalPipelineF64,
+};
 #[cfg(feature = "gpu")]
 pub use jackknife::JackknifeMeanGpu;
 pub use jackknife::{jackknife, jackknife_mean_variance, JackknifeResult};

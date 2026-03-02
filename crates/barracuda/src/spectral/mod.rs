@@ -36,6 +36,7 @@
 //! Absorbed from hotSpring v0.6.0 (Kachkovskiy spectral theory extension)
 
 pub mod anderson;
+#[cfg(feature = "gpu")]
 pub mod batch_ipr;
 mod hofstadter;
 pub(crate) mod lanczos;
@@ -44,10 +45,11 @@ mod stats;
 mod tridiag;
 
 pub use anderson::{
-    anderson_2d, anderson_3d, anderson_3d_correlated, anderson_eigenvalues,
-    anderson_hamiltonian, anderson_potential, anderson_sweep_averaged, clean_2d_lattice,
-    clean_3d_lattice, find_w_c, lyapunov_averaged, lyapunov_exponent, AndersonSweepPoint,
+    anderson_2d, anderson_3d, anderson_3d_correlated, anderson_eigenvalues, anderson_hamiltonian,
+    anderson_potential, anderson_sweep_averaged, clean_2d_lattice, clean_3d_lattice, find_w_c,
+    lyapunov_averaged, lyapunov_exponent, AndersonSweepPoint,
 };
+#[cfg(feature = "gpu")]
 pub use batch_ipr::BatchIprGpu;
 pub use hofstadter::{almost_mathieu_hamiltonian, gcd, hofstadter_butterfly, GOLDEN_RATIO};
 pub use lanczos::{lanczos, lanczos_eigenvalues, LanczosTridiag};

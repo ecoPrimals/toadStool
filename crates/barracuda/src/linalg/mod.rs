@@ -76,7 +76,6 @@ pub mod cholesky;
 pub mod eigh;
 #[cfg(feature = "gpu")]
 pub mod gen_eigh;
-#[cfg(feature = "gpu")]
 pub mod graph;
 #[cfg(feature = "gpu")]
 pub mod solve;
@@ -99,7 +98,6 @@ pub use cholesky::cholesky_f64;
 pub use eigh::eigh_f64;
 #[cfg(feature = "gpu")]
 pub use gen_eigh::{gen_eigh_f64, gen_eigh_identity_b, GenEighDecomposition};
-#[cfg(feature = "gpu")]
 pub use graph::{belief_propagation_chain, disordered_laplacian, effective_rank, graph_laplacian};
 #[cfg(feature = "gpu")]
 pub use solve::{solve_f64, solve_f64_cpu};

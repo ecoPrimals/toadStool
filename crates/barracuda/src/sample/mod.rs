@@ -42,13 +42,16 @@
 //! // Points are more uniformly distributed than pseudo-random
 //! ```
 
+#[cfg(feature = "gpu")]
 pub mod direct;
 pub mod lhs;
 pub mod maximin;
 pub mod metropolis;
 pub mod sobol;
+#[cfg(feature = "gpu")]
 pub mod sparsity;
 
+#[cfg(feature = "gpu")]
 /// Latin hypercube sampling shader.
 pub static WGSL_LHS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
@@ -56,16 +59,20 @@ pub static WGSL_LHS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     ))
 });
 
+#[cfg(feature = "gpu")]
 /// f64 is the canonical source — math is universal, precision is silicon.
 static WGSL_METROPOLIS_F64: &str = include_str!("../shaders/sample/metropolis_f64.wgsl");
+#[cfg(feature = "gpu")]
 /// WGSL shader: parallel Metropolis-Hastings MCMC
 /// WGSL kernel for Metropolis-Hastings sampling.
 pub static WGSL_METROPOLIS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_METROPOLIS_F64)
 });
 
+#[cfg(feature = "gpu")]
 pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};
 pub use lhs::{latin_hypercube, random_uniform};
 pub use metropolis::{boltzmann_sampling, BoltzmannResult};
 pub use sobol::{sobol_scaled, sobol_sequence, SobolGenerator};
+#[cfg(feature = "gpu")]
 pub use sparsity::{PenaltyFilter, SparsitySamplerConfig};
