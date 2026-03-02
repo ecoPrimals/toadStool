@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 87
+**Date**: March 2, 2026 — Session 88
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -26,11 +26,11 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | Spring | Version | Status | Key Deliverables |
 |--------|---------|--------|-----------------|
-| neuralSpring | V64 | ✅ Core absorbed | 39/39 CPU↔GPU parity, AlphaFold2 17 shaders, HillGateGpu, SwarmNnGpu, DF64 ML primitives |
-| wetSpring | V82 | ✅ Core absorbed | 85 primitives, ValidationHarness, 42/42 Exp247 |
-| airSpring | V039/V052 | ✅ Core absorbed | Ops 0-8, seasonal pipeline, 57 experiments, 26/26 GPU rewire |
-| groundSpring | V54 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, DF64 default fallback |
-| hotSpring | V0615 | ✅ Core absorbed | NVK serialization, brain arch reviewed, device-creation documented |
+| neuralSpring | V75/S113 | ✅ Core absorbed | 39/39 CPU↔GPU parity, AlphaFold2 17 shaders, HillGateGpu, SwarmNnGpu, DF64 ML primitives |
+| wetSpring | V92F | ✅ Core absorbed | 144 primitives, ValidationHarness, 52 papers |
+| airSpring | V063 | ✅ Core absorbed | Ops 0-8, seasonal pipeline, 72 experiments, 25 Tier A GPU |
+| groundSpring | V68 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, tissue_anderson |
+| hotSpring | V0617 | ✅ Core absorbed | NVK serialization, brain arch, 31 experiments, NPU controlled params |
 | wateringHole | V69 | ✅ Core absorbed | Chi-squared batch, MC ET0 propagate |
 | groundSpring | V61 | ✅ S81 absorbed | InterconnectTopology, SubstratePipeline, BandwidthTier (PCIe P2P routing) |
 | neuralSpring | V70 | ✅ S81 absorbed | IFFT/NTT/INTT buffer fixes, `enable f64;` stripping |

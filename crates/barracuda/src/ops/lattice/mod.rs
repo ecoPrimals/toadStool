@@ -171,9 +171,26 @@ impl NeighborMode {
 
     /// Build a precomputed neighbor table for a 4D periodic lattice.
     ///
-    /// Uses t-major ordering (hotSpring convention): index = t*V3 + z*V2 + y*V1 + x
-    /// where V1=Nx, V2=Nx*Ny, V3=Nx*Ny*Nz.
-    /// 8 neighbors per site: +x, -x, +y, -y, +z, -z, +t, -t.
+    /// # Index Convention
+    ///
+    /// Uses **x-fastest** (row-major / C-order) with t as the outermost dimension:
+    ///
+    /// ```text
+    /// index = t * (Nz * Ny * Nx) + z * (Ny * Nx) + y * Nx + x
+    /// ```
+    ///
+    /// This matches the hotSpring lattice QCD convention. For a 4^4 lattice,
+    /// site (x=1, y=0, z=0, t=0) has index 1, and site (x=0, y=0, z=0, t=1)
+    /// has index 64.
+    ///
+    /// **Note for springs**: hotSpring and toadStool both use x-fastest.
+    /// If your physics uses z-fastest ordering, transpose your data before
+    /// passing to precomputed neighbor tables, or use `OnTheFly` mode.
+    ///
+    /// # Direction ordering
+    ///
+    /// 8 neighbors per site in this order: +x, -x, +y, -y, +z, -z, +t, -t.
+    /// `table[site * 8 + dir]` gives the neighbor index for direction `dir`.
     pub fn precompute_periodic_4d(dims: [u32; 4]) -> Self {
         let [nx, ny, nz, nt] = dims;
         let n_sites = (nx * ny * nz * nt) as usize;

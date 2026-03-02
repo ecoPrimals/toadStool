@@ -5,7 +5,22 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 2, 2026 (Sessions 43-87 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+## [Unreleased] - March 2, 2026 (Sessions 43-88 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+
+### Session 88 (Mar 2, 2026) — Cross-Spring Absorption + API Gaps + Shader Evolution
+
+- **Spring absorption tracker**: Created `SPRING_ABSORPTION_TRACKER.md` and `BREAKING_CHANGES.md` at root for cross-spring visibility
+- **`anderson_4d` + `wegner_block_4d` re-exported**: Added to `spectral/mod.rs` public API (groundSpring V68 request)
+- **`SeasonalGpuParams::new()`**: Constructor added — eliminates `bytemuck::zeroed()` workaround for private padding fields (groundSpring V68)
+- **`MultiHeadEsn::from_exported_weights()`**: New constructor for cross-device ESN deployment (hotSpring V0617 request — CPU→GPU migration)
+- **Cross-spring tolerances**: 10 new named constants — `HYDRO_ET0`, `HYDRO_SOIL_MOISTURE`, `HYDRO_WATER_BALANCE`, `HYDRO_CROP_COEFFICIENT`, `PHYSICS_ANDERSON_EIGENVALUE`, `PHYSICS_LATTICE_ACTION`, `PHYSICS_LYAPUNOV`, `BIO_DIVERSITY_SHANNON`, `BIO_DIVERSITY_SIMPSON`, `BIO_PHYLOGENETIC` (airSpring + wetSpring request)
+- **`NeighborMode` 4D docs**: Documented x-fastest index convention and direction ordering for lattice QCD (hotSpring request)
+- **`LbfgsGpu`**: Batched GPU L-BFGS optimizer with numerical gradient — solves N independent problems in parallel (groundSpring V68 request). WGSL shader `lbfgs_two_loop_f64.wgsl` for future full-GPU dispatch.
+- **`tridiag_eigenvectors()`**: Eigenvector solver via Sturm bisection + inverse iteration with LU factorization (groundSpring V68 — Sturm only gave eigenvalues, not eigenvectors)
+- **Feature-gate CI**: Added `cargo check --workspace --all-targets` (no features) to CI for feature-gate discipline (wetSpring, groundSpring request)
+- **SU(3) shader verification**: Confirmed toadStool has superset of hotSpring lattice shaders (14 vs 9)
+- **2,872 barracuda tests pass** (+6 new: tridiag eigenvectors, L-BFGS GPU, tolerances)
+- **BarraCUDA primal budding RFC**: Proposed extraction of BarraCUDA from ToadStool into standalone primal. Spec at `specs/BARRACUDA_PRIMAL_BUDDING.md`. Ecosystem handoff at `wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`. Key insight: BearDog (crypto) + BarraCUDA (FHE GPU) compose for sovereign encrypted compute; Springs become multi-primal evolution environments.
 
 ### Session 87 (Mar 2, 2026) — Deep Debt Resolution + Idiomatic Concurrent Rust + Code Quality
 

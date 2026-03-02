@@ -18,12 +18,12 @@ pub fn random_polynomial(degree: usize, modulus: u64) -> Vec<u64> {
 /// Format: (degree, modulus, root_of_unity)
 /// All satisfy: modulus ≡ 1 (mod 2*degree) and root^degree ≡ 1
 pub const KNOWN_ROOTS: &[(u32, u64, u64)] = &[
-    (4, 17, 4),    // 4^4 ≡ 1 mod 17, 17 ≡ 1 mod 8
-    (4, 97, 22),   // 22^4 ≡ 1 mod 97
-    (4, 257, 241),  // 241^4 ≡ 1 mod 257
+    (4, 17, 4),       // 4^4 ≡ 1 mod 17, 17 ≡ 1 mod 8
+    (4, 97, 22),      // 22^4 ≡ 1 mod 97
+    (4, 257, 241),    // 241^4 ≡ 1 mod 257
     (4, 12289, 1479), // 1479^4 ≡ 1 mod 12289
-    (8, 97, 64),    // 64^8 ≡ 1 mod 97 (was 10 - incorrect)
-    (16, 97, 8),   // 8^16 ≡ 1 mod 97 (was 92 - incorrect)
+    (8, 97, 64),      // 64^8 ≡ 1 mod 97 (was 10 - incorrect)
+    (16, 97, 8),      // 8^16 ≡ 1 mod 97 (was 92 - incorrect)
 ];
 
 /// Compute modular inverse: a^(-1) mod m

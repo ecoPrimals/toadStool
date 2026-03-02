@@ -64,7 +64,7 @@ impl SparseBindGroupLayouts {
                     Self::storage_ro(2), // row_ptr
                     Self::storage_ro(3), // x
                     Self::storage_rw(4), // y
-                    Self::uniform(5),   // params
+                    Self::uniform(5),    // params
                 ],
             })
     }
@@ -93,7 +93,7 @@ impl SparseBindGroupLayouts {
                 entries: &[
                     Self::storage_ro(0), // partial_sums
                     Self::storage_rw(1), // result
-                    Self::uniform(2),   // params
+                    Self::uniform(2),    // params
                 ],
             })
     }
@@ -107,7 +107,7 @@ impl SparseBindGroupLayouts {
                 entries: &[
                     Self::storage_ro(0), // x
                     Self::storage_rw(1), // y (y = y + alpha*x)
-                    Self::uniform(2),   // params (includes alpha)
+                    Self::uniform(2),    // params (includes alpha)
                 ],
             })
     }
@@ -124,7 +124,7 @@ impl SparseBindGroupLayouts {
                     Self::storage_rw(2), // p
                     Self::storage_rw(3), // Ap
                     Self::storage_rw(4), // alpha
-                    Self::uniform(5),   // params
+                    Self::uniform(5),    // params
                 ],
             })
     }
@@ -139,7 +139,7 @@ impl SparseBindGroupLayouts {
                     Self::storage_rw(0), // r (or z for preconditioned)
                     Self::storage_rw(1), // p
                     Self::storage_rw(2), // beta
-                    Self::uniform(3),   // params
+                    Self::uniform(3),    // params
                 ],
             })
     }
@@ -182,7 +182,7 @@ impl SparseBindGroupLayouts {
                     Self::storage_ro(0), // r
                     Self::storage_ro(1), // diag (M⁻¹)
                     Self::storage_rw(2), // z
-                    Self::uniform(3),   // params
+                    Self::uniform(3),    // params
                 ],
             })
     }

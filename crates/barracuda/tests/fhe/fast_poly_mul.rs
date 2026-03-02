@@ -15,8 +15,7 @@ fn naive_poly_multiply(a: &[u64], b: &[u64], degree: usize, modulus: u64) -> Vec
     for i in 0..degree {
         for j in 0..degree {
             let k = (i + j) % degree;
-            result[k] = ((result[k] as u128
-                + (a[i] as u128 * b[j] as u128 % modulus as u128))
+            result[k] = ((result[k] as u128 + (a[i] as u128 * b[j] as u128 % modulus as u128))
                 % modulus as u128) as u64;
         }
     }

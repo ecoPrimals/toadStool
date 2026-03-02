@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 2, 2026 -- Session 87
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 844 WGSL shaders (37 DF64, 15 folding) | 2,866+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
-**Latest**: S87 — Deep debt resolution. TODO(afit)→NOTE(async-dyn) (75 instances). gpu_helpers refactored. Unsafe audit complete. FHE shader fixes. hardware_verification 13/13 pass. hotspring fault tests fixed.
+**Updated**: March 2, 2026 -- Session 88
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,872+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU | L-BFGS GPU
+**Latest**: S88 — Cross-spring absorption. anderson_4d/wegner_block_4d re-exported. SeasonalGpuParams::new(). MultiHeadEsn::from_exported_weights(). 10 cross-spring tolerances. LbfgsGpu batched optimizer. tridiag_eigenvectors(). Feature-gate CI.
 
 ---
 
@@ -44,6 +44,27 @@ Different evaluation strategies per silicon family:
 
 Generic NPU interface — airSpring/wetSpring/groundSpring converge on a single
 dispatch trait for neuromorphic hardware (Akida, Coral, future NPUs).
+
+### P1: BarraCUDA Primal Budding (Architecture)
+
+BarraCUDA is budding from ToadStool into a standalone primal. See
+`specs/BARRACUDA_PRIMAL_BUDDING.md` and the ecosystem-wide RFC at
+`ecoPrimals/wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`.
+
+Phases:
+- [ ] Phase 0: Feature-gate toadstool-core dep in barracuda (decouple)
+- [ ] Phase 0: Standalone compilation CI (`cargo check -p barracuda` without toadstool-core)
+- [ ] Phase 0: API surface audit (re-exports, constructors, BREAKING_CHANGES)
+- [ ] Phase 1: Extract barracuda-types crate if needed
+- [ ] Phase 1: GPU validation binary (FHE + lattice QCD canary)
+- [ ] Phase 2: Repo extraction to ecoPrimals/barracuda/
+- [ ] Phase 2: SemVer 1.0.0 release
+- [ ] Phase 3: Springs rewire to direct barracuda dependency
+- [ ] Phase 4: Multi-primal Spring evolution (BearDog, NestGate in Springs)
+
+Key insight: BearDog (crypto scaffolding) + BarraCUDA (FHE GPU compute) compose
+at the IPC level for sovereign encrypted computation. Neither depends on the other
+at the crate level. This is the only cross-vendor FHE-on-GPU implementation.
 
 ### Sovereign Phase 4+ — naga-IR Optimizer Evolution
 

@@ -108,6 +108,86 @@ impl MultiHeadEsn {
         })
     }
 
+    /// Reconstruct a multi-head ESN from previously exported weights.
+    ///
+    /// This enables CPU-to-GPU migration and cross-device deployment:
+    /// train on one device, serialize via `export_weights()`, then
+    /// reconstruct on another device via this constructor.
+    ///
+    /// Provenance: hotSpring V0617 absorption request.
+    pub async fn from_exported_weights(
+        weights: &ExportedWeights,
+        heads: Vec<HeadConfig>,
+    ) -> BarracudaResult<Self> {
+        if heads.is_empty() {
+            return Err(BarracudaError::InvalidInput {
+                message: "At least one head required".to_string(),
+            });
+        }
+        if weights.reservoir_size == 0 || weights.input_size == 0 {
+            return Err(BarracudaError::InvalidInput {
+                message: "ExportedWeights must have non-zero reservoir_size and input_size"
+                    .to_string(),
+            });
+        }
+
+        let config = ESNConfig {
+            input_size: weights.input_size,
+            reservoir_size: weights.reservoir_size,
+            output_size: 1,
+            spectral_radius: 0.9,
+            leak_rate: weights.leak_rate,
+            connectivity: 0.1,
+            regularization: 1e-6,
+            seed: 0,
+        };
+        let mut reservoir = ESN::new(config).await?;
+        reservoir.import_weights(&weights.w_in, &weights.w_res, None)?;
+
+        let device = reservoir.state().device().clone();
+        let rs = weights.reservoir_size;
+
+        let mut head_readouts = Vec::with_capacity(heads.len());
+        if let Some(ref w_out_flat) = weights.w_out {
+            let mut offset = 0;
+            for (i, cfg) in heads.iter().enumerate() {
+                let chunk_len = rs * cfg.output_size;
+                if offset + chunk_len <= w_out_flat.len() {
+                    let chunk = &w_out_flat[offset..offset + chunk_len];
+                    let w = Tensor::from_data(chunk, vec![rs, cfg.output_size], device.clone())?;
+                    head_readouts.push(HeadReadout {
+                        w_out: Some(w),
+                        trained: true,
+                    });
+                    offset += chunk_len;
+                } else {
+                    head_readouts.push(HeadReadout {
+                        w_out: None,
+                        trained: false,
+                    });
+                    tracing::warn!(
+                        "Head {} ('{}') has no w_out data in exported weights",
+                        i,
+                        cfg.label
+                    );
+                }
+            }
+        } else {
+            for _ in &heads {
+                head_readouts.push(HeadReadout {
+                    w_out: None,
+                    trained: false,
+                });
+            }
+        }
+
+        Ok(Self {
+            reservoir,
+            heads: head_readouts,
+            head_configs: heads,
+        })
+    }
+
     /// Forward through shared reservoir; returns new state.
     pub async fn update(&mut self, input: &Tensor) -> BarracudaResult<Tensor> {
         self.reservoir.update(input).await

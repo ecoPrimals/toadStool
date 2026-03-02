@@ -199,11 +199,17 @@ async fn try_create_device(adapter_index: usize) -> Option<Arc<WgpuDevice>> {
     match result {
         Some(Ok(Ok(device))) => Some(Arc::new(device)),
         Some(Ok(Err(e))) => {
-            eprintln!("Adapter {}: skipped (unsupported features): {}", adapter_index, e);
+            eprintln!(
+                "Adapter {}: skipped (unsupported features): {}",
+                adapter_index, e
+            );
             None
         }
         Some(Err(_)) => {
-            eprintln!("Adapter {}: skipped (panic during device creation)", adapter_index);
+            eprintln!(
+                "Adapter {}: skipped (panic during device creation)",
+                adapter_index
+            );
             None
         }
         None => None,
@@ -540,11 +546,7 @@ fn test_kernel_router_small_workloads_to_cpu() {
     // Small workloads should prefer CPU (avoid GPU dispatch overhead).
     // Threshold: DenseMatmul uses m*n*k < 1000; Eigendecomp < 128; LinearSolve < 256.
     let small_workloads = vec![
-        ComputeWorkload::DenseMatmul {
-            m: 9,
-            n: 9,
-            k: 9,
-        }, // 729 < 1000
+        ComputeWorkload::DenseMatmul { m: 9, n: 9, k: 9 }, // 729 < 1000
         ComputeWorkload::Eigendecomp { matrix_size: 32 },
         ComputeWorkload::LinearSolve { system_size: 64 },
     ];

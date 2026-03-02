@@ -152,6 +152,98 @@ pub const SPECIAL_BESSEL: Tolerance = Tolerance {
     justification: "A&S 9.4.1-9.4.6; ~6 digits in f64",
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// hydrology tolerances (airSpring, wetSpring cross-spring)
+// ═══════════════════════════════════════════════════════════════════
+
+/// ET₀ reference evapotranspiration (Penman-Monteith / Hargreaves).
+pub const HYDRO_ET0: Tolerance = Tolerance {
+    name: "hydro_et0",
+    abs_tol: 0.05,
+    rel_tol: 1e-3,
+    justification: "FAO-56 PM: ~0.05 mm/day measurement uncertainty; GPU f64 chain",
+};
+
+/// Soil moisture (volumetric water content θ).
+pub const HYDRO_SOIL_MOISTURE: Tolerance = Tolerance {
+    name: "hydro_soil_moisture",
+    abs_tol: 1e-4,
+    rel_tol: 1e-3,
+    justification: "Richards/water balance: iterative solver convergence + sensor noise",
+};
+
+/// Water balance (daily depletion/surplus accounting).
+pub const HYDRO_WATER_BALANCE: Tolerance = Tolerance {
+    name: "hydro_water_balance",
+    abs_tol: 0.1,
+    rel_tol: 1e-3,
+    justification: "cascaded ET₀→Kc→WB accumulates rounding over seasonal pipeline",
+};
+
+/// Crop coefficient (Kc interpolation).
+pub const HYDRO_CROP_COEFFICIENT: Tolerance = Tolerance {
+    name: "hydro_crop_coefficient",
+    abs_tol: 1e-6,
+    rel_tol: 1e-6,
+    justification: "linear interpolation between Kc_prev and Kc_next; exact on f64",
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// physics tolerances (hotSpring, groundSpring cross-spring)
+// ═══════════════════════════════════════════════════════════════════
+
+/// Anderson eigenvalue (Sturm bisection or Lanczos).
+pub const PHYSICS_ANDERSON_EIGENVALUE: Tolerance = Tolerance {
+    name: "physics_anderson_eigenvalue",
+    abs_tol: 1e-10,
+    rel_tol: 1e-10,
+    justification: "Sturm bisection converges to machine precision for well-separated eigenvalues",
+};
+
+/// Lattice gauge action density.
+pub const PHYSICS_LATTICE_ACTION: Tolerance = Tolerance {
+    name: "physics_lattice_action",
+    abs_tol: 1e-6,
+    rel_tol: 1e-4,
+    justification: "plaquette trace accumulation over lattice volume; GPU f64 reduction order",
+};
+
+/// Lyapunov exponent from transfer matrix.
+pub const PHYSICS_LYAPUNOV: Tolerance = Tolerance {
+    name: "physics_lyapunov",
+    abs_tol: 1e-4,
+    rel_tol: 1e-3,
+    justification: "log(norm) accumulation over L steps; statistical averaging over disorder",
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// diversity tolerances (wetSpring cross-spring)
+// ═══════════════════════════════════════════════════════════════════
+
+/// Shannon diversity index H' = -Σ p_i ln(p_i).
+pub const BIO_DIVERSITY_SHANNON: Tolerance = Tolerance {
+    name: "bio_diversity_shannon",
+    abs_tol: 1e-8,
+    rel_tol: 1e-8,
+    justification: "log accumulation over S species; well-conditioned for p_i > 0",
+};
+
+/// Simpson diversity index 1 - Σ p_i².
+pub const BIO_DIVERSITY_SIMPSON: Tolerance = Tolerance {
+    name: "bio_diversity_simpson",
+    abs_tol: 1e-10,
+    rel_tol: 1e-10,
+    justification: "sum-of-squares; exact integer arithmetic when from counts",
+};
+
+/// Phylogenetic distance metrics (UniFrac, patristic).
+pub const BIO_PHYLOGENETIC: Tolerance = Tolerance {
+    name: "bio_phylogenetic",
+    abs_tol: 1e-6,
+    rel_tol: 1e-4,
+    justification: "branch-length accumulation over tree; float rounding per edge",
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,6 +292,16 @@ mod tests {
             SPECIAL_ERF,
             SPECIAL_GAMMA,
             SPECIAL_BESSEL,
+            HYDRO_ET0,
+            HYDRO_SOIL_MOISTURE,
+            HYDRO_WATER_BALANCE,
+            HYDRO_CROP_COEFFICIENT,
+            PHYSICS_ANDERSON_EIGENVALUE,
+            PHYSICS_LATTICE_ACTION,
+            PHYSICS_LYAPUNOV,
+            BIO_DIVERSITY_SHANNON,
+            BIO_DIVERSITY_SIMPSON,
+            BIO_PHYLOGENETIC,
         ];
         for t in &tols {
             assert!(t.abs_tol.is_finite(), "{} abs_tol must be finite", t.name);

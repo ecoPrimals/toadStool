@@ -89,6 +89,36 @@ pub struct SeasonalGpuParams {
     _pad1: u32,
 }
 
+impl SeasonalGpuParams {
+    /// Construct with all physical parameters; padding is set automatically.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        cell_count: u32,
+        day_of_year: u32,
+        stage_length: u32,
+        day_in_stage: u32,
+        kc_prev: f64,
+        kc_next: f64,
+        taw_default: f64,
+        raw_fraction: f64,
+        field_capacity: f64,
+    ) -> Self {
+        Self {
+            cell_count,
+            day_of_year,
+            stage_length,
+            day_in_stage,
+            kc_prev,
+            kc_next,
+            taw_default,
+            raw_fraction,
+            field_capacity,
+            _pad0: 0,
+            _pad1: 0,
+        }
+    }
+}
+
 /// Output from one cell of the seasonal pipeline.
 #[derive(Debug, Clone, Copy)]
 pub struct SeasonalOutput {

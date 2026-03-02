@@ -61,6 +61,7 @@
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
 | **[SOVEREIGN_COMPUTE_EVOLUTION.md](./SOVEREIGN_COMPUTE_EVOLUTION.md)** | WGSL optimizer, LatencyModel, mycelial ToadStool — master roadmap | **Feb 18** | 🔄 Active |
+| **[BARRACUDA_PRIMAL_BUDDING.md](./BARRACUDA_PRIMAL_BUDDING.md)** | BarraCUDA budding into standalone primal — decouple compute from orchestration | **Mar 2** | 📋 RFC |
 
 **Tracker**: [`../SOVEREIGN_COMPUTE.md`](../SOVEREIGN_COMPUTE.md) — root-level phase/status dashboard
 

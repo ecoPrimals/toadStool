@@ -1,4 +1,4 @@
-# Status -- March 2, 2026 (Session 87)
+# Status -- March 2, 2026 (Session 88)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,866+ tests** (hardware_verification 13/13 pass; GPU device-loss resilient via `catch_unwind`) |
+| `cargo test -p barracuda --lib` | PASS | **2,872+ tests** (S88: +6 new tests for tridiag eigenvectors, L-BFGS GPU batch, tolerances) |
 | `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
 | `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
 | `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
@@ -25,7 +25,7 @@
 
 | Metric | Value |
 |--------|-------|
-| WGSL shaders | **844** (zero orphans, 37 DF64 + 15 folding + 200+ f64, all f64 canonical) |
+| WGSL shaders | **845** (S88: +lbfgs_two_loop_f64.wgsl; zero orphans, 37 DF64 + 15 folding + 200+ f64, all f64 canonical) |
 | Rust version | **1.80+** (std::sync::LazyLock) |
 | `unsafe` blocks | **~60+** (all `// SAFETY:` documented; barracuda + runtime/gpu; GPU APIs, aligned alloc, FFI) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |

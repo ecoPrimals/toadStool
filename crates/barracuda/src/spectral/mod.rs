@@ -45,9 +45,10 @@ mod stats;
 mod tridiag;
 
 pub use anderson::{
-    anderson_2d, anderson_3d, anderson_3d_correlated, anderson_eigenvalues, anderson_hamiltonian,
-    anderson_potential, anderson_sweep_averaged, clean_2d_lattice, clean_3d_lattice, find_w_c,
-    lyapunov_averaged, lyapunov_exponent, AndersonSweepPoint,
+    anderson_2d, anderson_3d, anderson_3d_correlated, anderson_4d, anderson_eigenvalues,
+    anderson_hamiltonian, anderson_potential, anderson_sweep_averaged, clean_2d_lattice,
+    clean_3d_lattice, find_w_c, lyapunov_averaged, lyapunov_exponent, wegner_block_4d,
+    AndersonSweepPoint,
 };
 #[cfg(feature = "gpu")]
 pub use batch_ipr::BatchIprGpu;
@@ -58,4 +59,4 @@ pub use stats::{
     classify_spectral_phase, detect_bands, level_spacing_ratio, spectral_bandwidth,
     spectral_condition_number, SpectralAnalysis, SpectralPhase, GOE_R, POISSON_R,
 };
-pub use tridiag::{find_all_eigenvalues, sturm_count};
+pub use tridiag::{find_all_eigenvalues, sturm_count, tridiag_eigenvectors};

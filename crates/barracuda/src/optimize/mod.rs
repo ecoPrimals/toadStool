@@ -79,6 +79,7 @@ pub mod brent_gpu;
 pub mod diagnostics;
 pub mod eval_record;
 pub mod lbfgs;
+pub mod lbfgs_gpu;
 pub mod multi_start;
 pub mod nelder_mead;
 pub mod nelder_mead_gpu; // EVOLVED: GPU-resident optimizer (Feb 14, 2026)
@@ -99,6 +100,7 @@ pub use diagnostics::{
 };
 pub use eval_record::{EvaluationCache, EvaluationRecord};
 pub use lbfgs::{lbfgs, lbfgs_numerical, LbfgsConfig, LbfgsResult};
+pub use lbfgs_gpu::{LbfgsGpu, LbfgsGpuConfig, LbfgsGpuResult};
 pub use multi_start::{multi_start_nelder_mead, SolverResult};
 pub use nelder_mead::nelder_mead;
 pub use nelder_mead_gpu::{NelderMeadGpu, NelderMeadGpuResult}; // GPU-resident optimizer

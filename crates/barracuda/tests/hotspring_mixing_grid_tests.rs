@@ -263,7 +263,10 @@ mod grid_unit {
                 // Combined tolerance: absolute near x=0 (where expected ~ 0) and
                 // relative elsewhere. FD truncation error is O(dx^2) ≈ 0.0025.
                 let tol = 0.05 * expected.abs() + dx * dx * 10.0;
-                assert!(abs_error < tol, "At i={i}: abs_error={abs_error}, tol={tol}");
+                assert!(
+                    abs_error < tol,
+                    "At i={i}: abs_error={abs_error}, tol={tol}"
+                );
             }
         }) {
             return;
@@ -309,8 +312,10 @@ mod grid_unit {
             // Laplacian2D needs 5 storage buffers; some backends (llvmpipe) cap at 4.
             let limits = device.device().limits();
             if limits.max_storage_buffers_per_shader_stage < 5 {
-                println!("Skipping: device only supports {} storage buffers (need 5)",
-                    limits.max_storage_buffers_per_shader_stage);
+                println!(
+                    "Skipping: device only supports {} storage buffers (need 5)",
+                    limits.max_storage_buffers_per_shader_stage
+                );
                 return;
             }
             let lap = Laplacian2D::new(device, 100, 100, 0.05, 0.05).unwrap();

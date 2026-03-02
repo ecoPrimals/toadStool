@@ -74,7 +74,11 @@ async fn test_ntt_all_power_of_two_degrees() {
             let result_tensor = ntt.execute().unwrap();
             let result = read_poly_from_tensor(&result_tensor).await;
 
-            assert_eq!(result.len(), input.len(), "NTT should preserve element count");
+            assert_eq!(
+                result.len(),
+                input.len(),
+                "NTT should preserve element count"
+            );
             assert!(
                 result.iter().all(|&x| x < modulus),
                 "All coefficients should be < modulus"
