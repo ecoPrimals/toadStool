@@ -52,59 +52,21 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 validator = { version = "0.16", features = ["derive"] }
 
-# Authentication and security  
-# NOTE: jsonwebtoken removed - not actively used, had C dependency (ring)
-# If JWT needed in future, use jwt-simple (pure Rust alternative)
-bcrypt = "0.15"
-argon2 = "0.5"
-
-# Database with migrations - REMOVED: Unused, brings in ring via rustls
-# PURE RUST: sqlx removed - was unused and violated pure Rust principle
-# If database needed in future, use pure Rust alternatives (sled, redb) or feature-gate
-# sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
-
-# CLI interface with better UX
-clap = { version = "4.0", features = ["derive", "color"] }
-console = "0.15"
-indicatif = "0.17"
-dialoguer = "0.11"
-
 # Utilities
 uuid = { version = "1.0", features = ["v4", "serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-opentelemetry = "0.21"
-opentelemetry = "0.21"
 thiserror = { workspace = true }
 
-# Configuration and environment
+# Configuration
 config = "0.14"
-dotenvy = "0.15"
-
-# HTTP client for health checks
-# PURE RUST: reqwest removed - unix sockets only! ✅
-
-# Metrics and monitoring
-prometheus = "0.13"
-metrics = "0.21"
-metrics-exporter-prometheus = "0.12"
-
-# Rate limiting
-# tower_governor = "0.0.4"
-# governor = "0.6"
 
 # Caching
 moka = { version = "0.12", features = ["future"] }
 
-# Template engine for dashboard
-askama = "0.12"
-askama_axum = "0.4"
-
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }
-# num_cpus removed: use std::thread::available_parallelism() instead (pure Rust, no FFI)
 tokio-test = "0.4"
 axum-test = "14.0"
-wiremock = "0.5"
 tempfile = "3.8"
-proptest = "1.4" 
+proptest = "1.4"

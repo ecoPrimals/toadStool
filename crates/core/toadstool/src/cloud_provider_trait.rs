@@ -37,7 +37,7 @@ use std::collections::HashMap;
 /// Cloud provider trait
 ///
 /// All cloud providers (AWS, GCP, Azure, etc.) implement this trait.
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait CloudProvider: Send + Sync {
     /// Get provider name (e.g., "AWS", "GCP", "Azure")
@@ -286,7 +286,7 @@ mod tests {
         name: String,
     }
 
-    // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
     #[async_trait]
     impl CloudProvider for MockProvider {
         fn name(&self) -> &str {

@@ -230,7 +230,7 @@ mod tests {
 
         for &v in &r.activations {
             assert!(
-                v >= 0.0 && v <= 1.0,
+                (0.0..=1.0).contains(&v),
                 "continuous response should be in [0,1], got {v}"
             );
         }

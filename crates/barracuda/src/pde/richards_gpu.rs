@@ -108,7 +108,9 @@ impl RichardsGpu {
             _padf: 0.0,
         };
 
-        let params_buf = self.device.create_uniform_buffer("Richards params", &gpu_params);
+        let params_buf = self
+            .device
+            .create_uniform_buffer("Richards params", &gpu_params);
 
         let buf_size = (n * 8) as u64;
         let create_rw = |label: &str| {
@@ -131,16 +133,26 @@ impl RichardsGpu {
         };
 
         let h_bytes: Vec<u8> = h0.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let h_buf = self.device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Richards h"),
-            contents: &h_bytes,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        });
-        let h_old_buf = self.device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Richards h_old"),
-            contents: &h_bytes,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        });
+        let h_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Richards h"),
+                contents: &h_bytes,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
+        let h_old_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Richards h_old"),
+                contents: &h_bytes,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
 
         let k_buf = create_rw("Richards K");
         let c_buf = create_rw("Richards C");
@@ -157,9 +169,12 @@ impl RichardsGpu {
 
         for _step in 0..n_steps {
             // Copy h → h_old
-            let mut enc = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Richards copy h→h_old"),
-            });
+            let mut enc =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Richards copy h→h_old"),
+                    });
             enc.copy_buffer_to_buffer(&h_buf, 0, &h_old_buf, 0, buf_size);
             self.device.submit_and_poll(Some(enc.finish()));
 
@@ -240,10 +255,7 @@ impl RichardsGpu {
         }
 
         let h_final = self.device.read_f64_buffer(&h_buf, n)?;
-        let theta: Vec<f64> = h_final
-            .iter()
-            .map(|&hi| config.soil.theta(hi))
-            .collect();
+        let theta: Vec<f64> = h_final.iter().map(|&hi| config.soil.theta(hi)).collect();
 
         Ok(RichardsResult {
             h: h_final,

@@ -37,11 +37,11 @@
 //! - Capability-based device discovery
 //! - Proper error handling (Result types, no panics)
 
+pub mod interconnect;
+pub mod pipeline_dispatch;
 mod strategy;
 mod topology;
 mod types;
-pub mod interconnect;
-pub mod pipeline_dispatch;
 
 #[cfg(test)]
 mod tests;
@@ -54,8 +54,8 @@ pub use interconnect::{BandwidthTier, InterconnectTopology, Link};
 
 // Multi-stage pipeline dispatch across substrates
 pub use pipeline_dispatch::{
-    FallbackPolicy, PipelineStage, ResolvedPipeline, ResolvedStage, StageResolution,
-    StageWorkload, SubstratePipeline, TransferStrategy,
+    FallbackPolicy, PipelineStage, ResolvedPipeline, ResolvedStage, StageResolution, StageWorkload,
+    SubstratePipeline, TransferStrategy,
 };
 
 // Types and configuration

@@ -127,6 +127,7 @@ mod tests {
         assert!(resources.cpu_cores >= 1);
         assert!(resources.memory_gb >= 1);
         assert!(resources.storage_gb > 0);
-        assert!(resources.gpu_count >= 0);
+        // gpu_count is unsigned — always >= 0 by type definition
+        let _ = resources.gpu_count;
     }
 }

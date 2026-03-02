@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 //! Anderson localization models: 1D, 2D, 3D discrete Schrödinger operators
+//!
+//! **Why this file is large (~700 lines)**: Single coherent domain—Anderson
+//! localization. Contains Hamiltonian construction (1D–4D, correlated disorder),
+//! Lyapunov exponent (transfer matrix), level-spacing statistics, Wegner block
+//! renormalization, and LcgRng. All algorithms serve the same physics; splitting
+//! would fragment a well-defined algorithm family.
 //! with random potential, plus transfer-matrix Lyapunov exponent.
 //!
 //! 1D/2D: all states localized (Abrahams et al. 1979).
@@ -572,14 +578,18 @@ pub fn clean_4d_lattice(l: usize) -> SpectralCsrMatrix {
 /// # Panics
 /// Panics if `l` is not even.
 pub fn wegner_block_4d(original: &SpectralCsrMatrix, l: usize) -> SpectralCsrMatrix {
-    assert!(l >= 2 && l % 2 == 0, "L must be even and >= 2 for Wegner blocking");
+    assert!(
+        l >= 2 && l.is_multiple_of(2),
+        "L must be even and >= 2 for Wegner blocking"
+    );
     let l2 = l / 2;
     let n_coarse = l2 * l2 * l2 * l2;
 
     let fine_idx =
         |ix: usize, iy: usize, iz: usize, iw: usize| -> usize { ((ix * l + iy) * l + iz) * l + iw };
-    let coarse_idx =
-        |ix: usize, iy: usize, iz: usize, iw: usize| -> usize { ((ix * l2 + iy) * l2 + iz) * l2 + iw };
+    let coarse_idx = |ix: usize, iy: usize, iz: usize, iw: usize| -> usize {
+        ((ix * l2 + iy) * l2 + iz) * l2 + iw
+    };
 
     let mut block_diag = vec![0.0; n_coarse];
     for bx in 0..l2 {

@@ -108,11 +108,16 @@ impl CpuAllocation {
     ///
     /// The allocation must be constructed by a backend (e.g. `CpuBackend`) which
     /// guarantees `ptr` is valid for `size` bytes and properly aligned.
+    ///
+    /// No safe alternative: `from_raw_parts_mut` is required to create a slice from
+    /// the raw ptr+size returned by the allocator. CpuBackend uses AlignedBuffer
+    /// which guarantees valid, aligned, exclusive allocation.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr is valid for self.size bytes, properly aligned, and exclusively
-        // borrowed via &mut self. Caller (CpuBackend) constructs CpuAllocation from
-        // AlignedBuffer::into_raw() which guarantees valid allocation. Violation:
-        // invalid ptr/size or aliasing would cause UB.
+        // SAFETY: ptr valid for self.size bytes, properly aligned (64-byte from
+        // CpuBackend). &mut self gives exclusive access; no aliasing. CpuAllocation
+        // constructed by CpuBackend from AlignedBuffer::into_raw() — valid allocation.
+        // Invariants: ptr non-null; size matches allocation; exclusive borrow.
+        // Violation: invalid ptr/size or aliasing → UB.
         unsafe { std::slice::from_raw_parts_mut(self.ptr, self.size) }
     }
 }
@@ -129,7 +134,7 @@ unsafe impl Sync for CpuAllocation {}
 ///
 /// Implementations provide vendor-specific unified memory allocation
 /// and management via open standards (Vulkan, OpenCL, WebGPU).
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait UnifiedMemoryBackend: Send + Sync {
     /// Backend name (e.g., "Vulkan", "OpenCL", "WebGPU", "CPU")

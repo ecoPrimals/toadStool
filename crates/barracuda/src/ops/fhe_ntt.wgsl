@@ -81,6 +81,22 @@ fn u64_ge(a: U64, b: U64) -> bool {
 }
 
 fn u64_mod_simple(a: U64, m: U64) -> U64 {
+    // Fast path for 32-bit moduli (standard FHE case: q < 2^31).
+    // Processes the 64-bit value MSB-first, one bit at a time, maintaining
+    // acc = (bits seen so far) mod q.  Exact for all q that fit in u32.
+    if (m.hi == 0u) {
+        var acc = 0u;
+        for (var i = 31i; i >= 0i; i = i - 1i) {
+            acc = (acc << 1u) | ((a.hi >> u32(i)) & 1u);
+            if (acc >= m.lo) { acc -= m.lo; }
+        }
+        for (var i = 31i; i >= 0i; i = i - 1i) {
+            acc = (acc << 1u) | ((a.lo >> u32(i)) & 1u);
+            if (acc >= m.lo) { acc -= m.lo; }
+        }
+        return U64(acc, 0u);
+    }
+    // Fallback for 64-bit moduli: repeated subtraction.
     var result = a;
     for (var i = 0u; i < 128u; i = i + 1u) {
         if (u64_ge(result, m)) {

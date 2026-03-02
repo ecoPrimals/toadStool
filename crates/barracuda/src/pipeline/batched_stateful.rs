@@ -157,8 +157,7 @@ mod tests {
             return;
         };
         let initial = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        let stateful =
-            BatchedStatefulF64::new(device, 3, 2, &initial).unwrap();
+        let stateful = BatchedStatefulF64::new(device, 3, 2, &initial).unwrap();
 
         let readback = stateful.read_state().unwrap();
         assert_eq!(readback.len(), 6);

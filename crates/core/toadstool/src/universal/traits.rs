@@ -8,7 +8,7 @@ use super::requests::{PrimalEndpoints, PrimalRequest, PrimalResponse};
 use super::types::{PrimalCapability, PrimalContext, PrimalHealth, PrimalType};
 
 /// Universal primal provider trait
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait UniversalPrimalProvider: Send + Sync {
     /// Unique primal identifier

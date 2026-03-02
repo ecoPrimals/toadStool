@@ -1,5 +1,10 @@
 //! Cyclic Reduction for Tridiagonal Systems (WGSL GPU Implementation)
 //!
+//! **Why this file is large (~650 lines)**: Single algorithm—cyclic reduction
+//! for tridiagonal systems. Size comes from four code paths (single/batch ×
+//! small/large) sharing the same math but different dispatch patterns. Splitting
+//! would separate logically coupled variants.
+//!
 //! This is the SHADER-FIRST implementation of tridiagonal solvers.
 //! Uses cyclic reduction (odd-even elimination) for O(log n) parallel steps
 //! instead of O(n) sequential steps in the Thomas algorithm.

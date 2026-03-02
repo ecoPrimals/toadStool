@@ -144,7 +144,7 @@ impl BackendInitializer for WebGpuBackend {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl UnifiedMemoryBackend for WebGpuBackend {
     fn name(&self) -> &'static str {

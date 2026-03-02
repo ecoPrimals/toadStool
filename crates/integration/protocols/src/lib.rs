@@ -589,7 +589,7 @@ impl BearDogIntegration {
 /// Security service integration trait for dependency injection.
 ///
 /// Capability-based: any primal providing PKI/auth capabilities can implement this.
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait BearDogIntegrationTrait: Send + Sync {
     async fn authenticate(
@@ -613,7 +613,7 @@ pub trait BearDogIntegrationTrait: Send + Sync {
     ) -> ToadStoolResult<bool>;
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl BearDogIntegrationTrait for BearDogIntegration {
     async fn authenticate(

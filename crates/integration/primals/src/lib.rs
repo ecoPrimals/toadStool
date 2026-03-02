@@ -39,7 +39,7 @@ pub use service::{ServiceEndpoint, ServiceRegistration, StartupResult, StartupSt
 ///
 /// This is the canonical definition of the PrimalIntegration trait.
 /// All Primals in the ecoPrimals ecosystem should implement this trait.
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait PrimalIntegration: Send + Sync {
     /// Initialize the Primal from manifest configuration
@@ -94,7 +94,7 @@ mod tests {
         should_fail: bool,
     }
 
-    // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
     #[async_trait]
     impl PrimalIntegration for MockPrimal {
         async fn initialize_from_manifest(&self, _config: &PrimalConfig) -> ToadStoolResult<()> {

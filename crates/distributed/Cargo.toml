@@ -50,8 +50,6 @@ bytes = { workspace = true }
 # Networking and communication
 hyper = { version = "1.0", features = ["full"] }
 tower = "0.4"
-# PURE RUST: reqwest removed - unix sockets only! ✅
-http = "0.2"
 
 # Clustering and load balancing
 rand = "0.8"

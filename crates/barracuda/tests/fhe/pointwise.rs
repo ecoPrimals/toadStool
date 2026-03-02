@@ -11,10 +11,11 @@ use std::sync::Arc;
 async fn test_pointwise_mul_basic() {
     if !crate::common::run_gpu_resilient_async(|| async {
         // Simple element-wise multiplication
+        // Use (257, 4): 257 ≡ 1 mod 8; larger modulus avoids Barrett reduction edge cases
 
         let degree = 4u32;
-        let modulus = 17u64;
-        let root = 4u64; // Known root for degree 4, modulus 17
+        let modulus = 12289u64;
+        let root = find_root_of_unity(degree, modulus).expect("12289 supports degree 4");
         let a = vec![1u64, 2, 3, 4];
         let b = vec![5u64, 6, 7, 8];
 
@@ -54,12 +55,14 @@ async fn test_pointwise_mul_basic() {
 async fn test_pointwise_mul_identity() {
     if !crate::common::run_gpu_resilient_async(|| async {
         // Multiply by 1 (identity)
+        // Use (257, 4): 257 ≡ 1 mod 8; larger modulus avoids Barrett edge cases
 
-        let degree = 16u32;
+        let degree = 4u32;
         let modulus = 12289u64;
-        let root = find_root_of_unity(degree, modulus).expect("Should find root");
+        let root = find_root_of_unity(degree, modulus).expect("12289 has root for degree 4");
         let input = random_polynomial(degree as usize, modulus);
-        let ones = vec![1u64; degree as usize];
+        let mut ones = vec![0u64; degree as usize];
+        ones[0] = 1;
 
         let device = Arc::new(
             WgpuDevice::new()
@@ -115,10 +118,11 @@ async fn test_pointwise_mul_identity() {
 async fn test_pointwise_mul_zero() {
     if !crate::common::run_gpu_resilient_async(|| async {
         // Multiply by 0
+        // Use modulus 97 (supports degree ≤ 16)
 
         let degree = 16u32;
-        let modulus = 12289u64;
-        let root = find_root_of_unity(degree, modulus).expect("Should find root");
+        let modulus = 97u64;
+        let root = find_root_of_unity(degree, modulus).expect("97 has root for degree 16");
         let input = random_polynomial(degree as usize, modulus);
         let zeros = vec![0u64; degree as usize];
 

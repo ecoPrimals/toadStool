@@ -19,7 +19,7 @@ fn not_implemented(feature: &str) -> ToadStoolError {
 
 macro_rules! impl_programmer_stub {
     ($programmer:ty, $name:expr, $interface:expr) => {
-        // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl ProgrammerTrait for $programmer {
             fn name(&self) -> &str {

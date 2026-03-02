@@ -29,7 +29,7 @@ use super::types::*;
 /// - ✅ Runtime discovery: Universal Adapter finds best provider
 /// - ✅ Self-knowledge: Each provider knows only itself
 /// - ✅ Testable: Easy to mock for testing
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait SecurityProvider: Send + Sync {
     /// Get provider capabilities
@@ -290,7 +290,7 @@ impl MockSecurityProvider {
 }
 
 #[cfg(test)]
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl SecurityProvider for MockSecurityProvider {
     async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>> {

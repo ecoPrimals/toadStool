@@ -107,9 +107,9 @@ impl FheNtt {
             )));
         }
 
-        if !degree.is_power_of_two() {
+        if degree < 2 || !degree.is_power_of_two() {
             return Err(BarracudaError::Device(format!(
-                "Degree {degree} must be a power of 2 for NTT"
+                "Degree {degree} must be a power of 2 ≥ 2 for NTT"
             )));
         }
 

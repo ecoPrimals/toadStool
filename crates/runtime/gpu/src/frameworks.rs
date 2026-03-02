@@ -62,7 +62,7 @@ impl WebGpuFramework {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl ParallelComputeFramework for WebGpuFramework {
     fn framework_type(&self) -> GpuFramework {
@@ -334,7 +334,7 @@ impl FallbackFramework {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl ParallelComputeFramework for FallbackFramework {
     fn framework_type(&self) -> GpuFramework {

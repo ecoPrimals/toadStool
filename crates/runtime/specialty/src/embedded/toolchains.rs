@@ -46,7 +46,7 @@ impl Toolchain6502 {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EmbeddedToolchain for Toolchain6502 {
     fn name(&self) -> &str {
@@ -128,7 +128,7 @@ impl Toolchain68000 {
 
 macro_rules! impl_toolchain_stub {
     ($toolchain:ty, $name:expr, $arch:expr) => {
-        // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl EmbeddedToolchain for $toolchain {
             fn name(&self) -> &str {

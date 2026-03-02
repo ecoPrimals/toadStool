@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 86
+**Date**: March 2, 2026 — Session 87
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -15,7 +15,7 @@
 6. **Capability-based discovery** — primals discover each other at runtime by capability, not name
 7. **Self-knowledge** — primal code only knows its own identity; everything else is runtime discovery
 8. **Mocks isolated to testing** — `#[cfg(test)]` gated; production code has complete implementations
-9. **Concurrency-first** — no sleeps in non-chaos tests; test issues are production issues
+9. **Concurrency-first** — no sleeps in non-chaos tests; test issues are production issues (S87: validated by hardware_verification + hotspring fault test fixes)
 10. **Device resilience** — all GPU paths protected by catch_unwind; errors propagate as Result
 
 ---
@@ -37,6 +37,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Cross-spring S83 | All springs | ✅ S83 absorbed | BrentGpu, anderson_4d+Wegner, Omelyan, RichardsGpu, L-BFGS, BatchedStatefulF64, HeadKind generalization, SpectralBridge, ESN shape hardening |
 | Deep debt S84 | toadStool | ✅ S84 evolved | 9 ops → ComputeDispatch, hydrology god-file refactored, experimental.rs stub → real probes, frameworks.rs echo → proper error, mDNS constants extracted |
 | Deep debt S86 | toadStool | ✅ S86 evolved | 12 ops → ComputeDispatch (determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat); wgpu_backend.rs magic numbers → real device limits; deployment.rs stubs → capability-discovery docs |
+| Deep debt S87 | toadStool | ✅ S87 evolved | TODO(afit)→NOTE(async-dyn) (75 instances, 52 files); gpu_helpers 663L→3 submodules; unsafe audit (~60+ sites documented); FHE shader fixes; hardware_verification 13/13 pass; hotspring fault tests fixed |
 
 ---
 
@@ -124,7 +125,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | Dependency | Status | Path |
 |------------|--------|------|
-| `async-trait` | 5 crates migrated to AFIT | ~71 uses remain (all need dyn Trait; TODO(afit): trait_variant) |
+| `async-trait` | Required for dyn dispatch | ~75 uses; S87: TODO(afit)→NOTE(async-dyn) — reclassified as conscious architectural decision (Rust 1.92) |
 | `pollster` | ✅ Eliminated workspace-wide | — |
 | `serde_yaml` | ✅ Migrated to serde_yaml_ng | — |
 | `chrono` | ✅ Eliminated (std::time) | — |
@@ -154,7 +155,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | Status | Count | Notes |
 |--------|-------|-------|
-| Total `unsafe` blocks | 45 | All `// SAFETY:` documented (S77: comprehensive audit) |
+| Total `unsafe` blocks | ~60+ | All `// SAFETY:` documented (S77+S87: barracuda + runtime/gpu audit) |
 | Reducible | 0 | S77: All verified necessary (64-byte aligned alloc, wgpu FFI, CUDA FFI) |
 | `#![deny(unsafe_code)]` | 36 crates | 2 justified exceptions: gpu, secure_enclave |
 | SAFETY comments | ✅ | S77: Invariants, violation effects, and justification documented |
@@ -168,7 +169,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | `cargo check --workspace` | ✅ 0 errors |
 | `cargo clippy --workspace -- -D warnings` | ✅ S77: deprecated discovery calls removed |
 | `cargo fmt --all -- --check` | ✅ S77: 340 diffs fixed |
-| `cargo test -p barracuda --lib` | ✅ 2,866 passed, 13 ignored (S84: net -13 from refactoring; all passing) |
+| `cargo test -p barracuda --lib` | ✅ 2,866+ passed, hardware_verification 13/13 (S87: 3 pre-existing failures fixed) |
 | Workspace lib tests | ✅ 5,500+ passed |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |

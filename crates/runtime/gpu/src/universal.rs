@@ -386,7 +386,7 @@ impl Default for ComputeRequirements {
 }
 
 /// Universal compute resource trait - GPU, CPU, TPU, anything!
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait UniversalComputeResource: Send + Sync {
     /// Get capabilities of this resource
@@ -419,7 +419,7 @@ pub trait UniversalComputeResource: Send + Sync {
 }
 
 /// Compute execution context (session on a specific resource)
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait ComputeContext: Send + Sync {
     /// Get context ID

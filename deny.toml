@@ -86,7 +86,7 @@ deny = [
     { name = "tungstenite" },
     { name = "tokio-tungstenite" },
     # reqwest — migrated to pure Rust Unix IPC in production (R-008)
-    # reqwest still used in dev/test deps (integration-tests, ml-inference-showcase)
+    # reqwest still used in dev/test deps (integration-tests)
     # Commented out: dev-dep only, not in production binary
     #{ name = "reqwest", reason = "Use unix-jsonrpc-client instead of reqwest in core paths" },
 ]

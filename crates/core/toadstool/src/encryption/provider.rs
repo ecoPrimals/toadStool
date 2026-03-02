@@ -18,7 +18,7 @@ use super::{CryptoCapability, EncryptedPayload, EncryptionKey, EncryptionMetadat
 ///
 /// **Design**: Any primal implementing this can provide crypto
 /// (BearDog, external HSM, cloud KMS, etc.)
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait CryptoProvider: Send + Sync {
     /// Get provider identifier (discovered at runtime)
@@ -227,7 +227,7 @@ mod tests {
         capability: CryptoCapability,
     }
 
-    // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
     #[async_trait]
     impl CryptoProvider for MockProvider {
         fn provider_id(&self) -> &str {

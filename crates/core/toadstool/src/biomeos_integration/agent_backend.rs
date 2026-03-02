@@ -138,7 +138,7 @@ pub struct ModelPerformanceMetrics {
 /// This allows dependency injection of different agent deployment implementations
 /// (production Squirrel backend, in-memory test backend, etc.) without relying
 /// on feature flags or conditional compilation.
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait AgentBackend: Send + Sync {
     /// Initialize/test connection to agent backend
@@ -294,7 +294,7 @@ impl SquirrelBackend {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl AgentBackend for SquirrelBackend {
     async fn initialize(&self) -> ToadStoolResult<()> {
@@ -467,7 +467,7 @@ impl Default for InMemoryAgentBackend {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl AgentBackend for InMemoryAgentBackend {
     async fn deploy_agent(&self, config: &AgentConfig) -> ToadStoolResult<AgentInfo> {

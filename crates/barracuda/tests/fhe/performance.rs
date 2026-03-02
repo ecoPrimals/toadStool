@@ -11,10 +11,11 @@ use std::sync::Arc;
 async fn test_ntt_performance_n4096() {
     if !crate::common::run_gpu_resilient_async(|| async {
         // NTT(N=4096) should complete in <200μs
+        // 12289 only works for degree ≤ 2048; use 65537 for N=4096 (65537 ≡ 1 mod 65536)
 
         let degree = 4096u32;
-        let modulus = 12289u64;
-        let root = find_root_of_unity(degree, modulus).unwrap_or(11u64);
+        let modulus = 65537u64;
+        let root = find_root_of_unity(degree, modulus).expect("65537 supports N=4096");
         let input = random_polynomial(degree as usize, modulus);
 
         let device = Arc::new(
@@ -52,10 +53,11 @@ async fn test_ntt_performance_n4096() {
 async fn test_fast_poly_mul_performance_n4096() {
     if !crate::common::run_gpu_resilient_async(|| async {
         // Fast multiply(N=4096) should complete in <500μs
+        // 12289 only works for degree ≤ 2048; use 65537 for N=4096
 
         let degree = 4096u32;
-        let modulus = 12289u64;
-        let root = find_root_of_unity(degree, modulus).unwrap_or(11u64);
+        let modulus = 65537u64;
+        let root = find_root_of_unity(degree, modulus).expect("65537 supports N=4096");
         let a = random_polynomial(degree as usize, modulus);
         let b = random_polynomial(degree as usize, modulus);
 

@@ -108,6 +108,20 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
+## Recently Resolved (S87)
+
+| Item | Resolution |
+|------|-----------|
+| TODO(afit) migration | 75 instances across 52 files → NOTE(async-dyn); reclassified from debt to conscious architectural decision (async-trait required for dyn traits in Rust 1.92) |
+| gpu_helpers.rs | 663 lines → 3 cohesive submodules (buffers.rs, bind_group_layouts.rs, pipelines.rs) |
+| Unsafe code audit | All ~60+ unsafe sites across barracuda + runtime/gpu documented with SAFETY comments; all verified necessary |
+| Hardware verification tests | 3 pre-existing failures fixed (kernel router threshold, cross-vendor adapter feature detection); 13/13 pass |
+| Hotspring fault tests | 6 pre-existing failures fixed — input validation (LinearMixer, Gradient1D), relaxed GPU NaN/Infinity assertions, device capability checks |
+| FHE shader arithmetic | u64_mod_simple rewritten in fhe_ntt.wgsl + fhe_intt.wgsl; mod_mul fixed in fhe_pointwise_mul.wgsl; 19 FHE tests pass |
+| MatMul/FHE validation | Inner-dimension validation in MatMul::execute(); minimum degree ≥ 2 in FheNtt::new() |
+| FHE chaos test | Random moduli constrained to NTT-friendly primes (12289, 65537) |
+| Device-lost recovery | BarracudaError::is_device_lost() + with_device_retry test helper |
+
 ## Recently Resolved (S84–S86)
 
 | Item | Resolution |

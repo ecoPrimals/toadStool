@@ -190,7 +190,7 @@ struct RevokeRequest<'a> {
     reason: &'a str,
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl SecurityProvider for TcpSecurityProvider {
     async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>> {

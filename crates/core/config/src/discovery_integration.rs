@@ -259,7 +259,7 @@ mod tests {
         fail: bool,
     }
 
-    // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
     #[async_trait]
     impl DiscoveryClient for TestDiscoveryClient {
         async fn discover_by_capability(

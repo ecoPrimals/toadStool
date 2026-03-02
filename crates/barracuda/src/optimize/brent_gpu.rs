@@ -106,7 +106,16 @@ impl BrentGpu {
         upper: &[f64],
         targets: &[f64],
     ) -> Result<BrentGpuResult> {
-        self.solve(lower, upper, targets, BrentFunction::Polynomial, 0.0, 0.0, 0.0, 0.0)
+        self.solve(
+            lower,
+            upper,
+            targets,
+            BrentFunction::Polynomial,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        )
     }
 
     /// Solve van Genuchten inverse: find h where θ(h) = target.
@@ -237,9 +246,7 @@ impl BrentGpu {
             aux_c,
             aux_d,
         };
-        let params_buffer = self
-            .device
-            .create_uniform_buffer("Brent params", &params);
+        let params_buffer = self.device.create_uniform_buffer("Brent params", &params);
 
         ComputeDispatch::new(self.device.as_ref(), "brent_solve")
             .shader(Self::wgsl_shader(), "brent_solve")

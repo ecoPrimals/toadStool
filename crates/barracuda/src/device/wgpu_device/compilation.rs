@@ -26,11 +26,13 @@ impl WgpuDevice {
         spirv_words: &[u32],
         label: Option<&str>,
     ) -> wgpu::ShaderModule {
-        // SAFETY: SPIR-V was emitted by naga::back::spv::Writer from a
-        // naga::valid::Validator-approved module. No external/untrusted data.
-        // Invariant: caller must only pass SPIR-V produced by our sovereign compiler
-        // (SovereignCompiler) or equivalent trusted naga pipeline. Violation: untrusted
-        // or malformed SPIR-V could cause GPU driver UB, crashes, or security issues.
+        // SAFETY: create_shader_module_spirv is unsafe because it passes binary data
+        // to the backend as-is; malformed SPIR-V could cause driver crash or UB.
+        // Invariants: SPIR-V is produced by SovereignCompiler (naga IR → spv::Writer)
+        // from naga::valid::Validator-approved module. No external/untrusted input.
+        // Why not WGSL? Sovereign compiler bypasses NAK for NVK/Vulkan passthrough;
+        // SPIR-V is required for that optimization path. Violation: untrusted or
+        // malformed SPIR-V could cause GPU driver UB, crashes, or security issues.
         #[allow(unsafe_code)]
         unsafe {
             self.device

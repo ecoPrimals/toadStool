@@ -77,10 +77,7 @@ pub enum BarracudaError {
     },
 
     #[error("JSON error: {context}")]
-    Json {
-        context: String,
-        detail: String,
-    },
+    Json { context: String, detail: String },
 }
 
 impl BarracudaError {
@@ -148,6 +145,16 @@ impl BarracudaError {
             context: context.into(),
             detail: detail.into(),
         }
+    }
+
+    /// Returns `true` when this error indicates the GPU device was lost.
+    ///
+    /// Device loss is a transient hardware failure — the operation can be
+    /// retried on a fresh device. Callers (and the test infrastructure)
+    /// use this to distinguish retriable failures from logic bugs.
+    pub fn is_device_lost(&self) -> bool {
+        let msg = self.to_string();
+        msg.contains("device lost") || msg.contains("Device lost")
     }
 
     /// Wrap any `Display` error as a GPU error with contextual message.

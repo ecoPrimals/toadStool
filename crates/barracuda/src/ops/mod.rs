@@ -5,6 +5,12 @@
 //! - wgpu handles execution on any device
 //! - Single implementation per operation
 //! - Zero duplication
+//!
+//! **Why this file is large (~720 lines)**: This is a barrel/re-export module.
+//! It declares all op submodules and re-exports their public API. No logic lives
+//! here—only `pub mod` and `pub use`. Splitting would fragment the ops namespace
+//! without improving cohesion. The size reflects the breadth of operations, not
+//! mixed concerns.
 
 // Linear algebra operations (scientific computing)
 pub mod linalg;

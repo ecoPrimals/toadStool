@@ -184,8 +184,12 @@ impl ESN {
     pub async fn update(&mut self, input: &Tensor) -> BarracudaResult<Tensor> {
         let input = match input.shape() {
             [n, 1] if *n == self.config.input_size => input.clone(),
-            [1, n] if *n == self.config.input_size => input.reshape(vec![self.config.input_size, 1])?,
-            [n] if *n == self.config.input_size => input.reshape(vec![self.config.input_size, 1])?,
+            [1, n] if *n == self.config.input_size => {
+                input.reshape(vec![self.config.input_size, 1])?
+            }
+            [n] if *n == self.config.input_size => {
+                input.reshape(vec![self.config.input_size, 1])?
+            }
             other => {
                 return Err(BarracudaError::InvalidInput {
                     message: format!(

@@ -337,7 +337,10 @@ mod tests {
             name: "Test CPU".to_string(),
             backend: "native".to_string(),
             index: 0,
-            capabilities: vec![SubstrateCapability::F64Compute, SubstrateCapability::F32Compute],
+            capabilities: vec![
+                SubstrateCapability::F64Compute,
+                SubstrateCapability::F32Compute,
+            ],
         }
     }
 

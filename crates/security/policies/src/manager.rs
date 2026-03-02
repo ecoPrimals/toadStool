@@ -38,7 +38,7 @@ impl CachedPolicy {
 }
 
 /// Policy manager trait
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait PolicyManager: Send + Sync {
     /// Load policy from storage
@@ -227,7 +227,7 @@ impl FilePolicyManager {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl PolicyManager for FilePolicyManager {
     async fn load_policy(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {

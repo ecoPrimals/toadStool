@@ -1,4 +1,9 @@
 //! Device creation and adapter selection
+//!
+//! **Why this file is large (~640 lines)**: Single concern—"how do I obtain a
+//! WgpuDevice?" Many entry points (new, new_gpu, new_cpu, from_env,
+//! discover_best_adapter, from_physical_device, etc.) reflect different selection
+//! strategies, not mixed concerns. All logic serves device creation.
 
 use super::WgpuDevice;
 use crate::device::probe;
@@ -26,10 +31,7 @@ const DESIRED_FEATURES_EXTENDED: [wgpu::Features; 5] = [
 ];
 
 /// Negotiate features: request everything the adapter supports from `wanted`.
-fn negotiate_features(
-    adapter: &wgpu::Adapter,
-    wanted: &[wgpu::Features],
-) -> wgpu::Features {
+fn negotiate_features(adapter: &wgpu::Adapter, wanted: &[wgpu::Features]) -> wgpu::Features {
     let available = adapter.features();
     let mut required = wgpu::Features::empty();
     for &f in wanted {
@@ -75,10 +77,11 @@ impl WgpuDevice {
         if !device.features().contains(wgpu::Features::PIPELINE_CACHE) {
             return None;
         }
-        // SAFETY: `data: None` means empty initial cache — no previous blob to validate.
-        // The wgpu unsafe contract applies when `data: Some(...)` contains serialized
-        // cache from disk; corrupted data could cause driver UB. With `data: None`, we
-        // create a fresh cache with no untrusted input.
+        // SAFETY: wgpu::Device::create_pipeline_cache is unsafe because when `data` is
+        // `Some(...)`, it must have been returned from PipelineCache::get_data and match
+        // the adapter's pipeline_cache_key; corrupted or cross-version data could cause
+        // driver UB. We pass `data: None` — empty initial cache, no untrusted input.
+        // Invariants satisfied: no serialized blob to validate; fresh cache creation only.
         #[allow(unsafe_code)]
         Some(Arc::new(unsafe {
             device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
@@ -90,11 +93,7 @@ impl WgpuDevice {
     }
 
     /// Assemble a `WgpuDevice` from already-created wgpu primitives.
-    fn assemble(
-        device: wgpu::Device,
-        queue: wgpu::Queue,
-        adapter_info: wgpu::AdapterInfo,
-    ) -> Self {
+    fn assemble(device: wgpu::Device, queue: wgpu::Queue, adapter_info: wgpu::AdapterInfo) -> Self {
         let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
         Self::install_error_handler(&device, &lost);
         let pipeline_cache = Self::make_pipeline_cache(&device);

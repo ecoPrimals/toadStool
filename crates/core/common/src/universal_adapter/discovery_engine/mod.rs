@@ -105,7 +105,7 @@ impl DiscoveryEngine {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait DiscoverySource: Send + Sync {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>>;
@@ -177,7 +177,7 @@ impl MDnsSource {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl DiscoverySource for MDnsSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
@@ -294,7 +294,7 @@ impl EnvironmentSource {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl DiscoverySource for EnvironmentSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
@@ -445,7 +445,7 @@ impl LocalRegistrySource {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl DiscoverySource for LocalRegistrySource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {

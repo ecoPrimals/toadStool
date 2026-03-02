@@ -39,8 +39,9 @@ members = [
     "crates/neuromorphic/akida-driver",  # NEW: Pure Rust Akida driver (Jan 29, 2026) 🧠
     "crates/neuromorphic/akida-models",  # NEW: Model parser (Jan 29, 2026) 🧠
     
-    # ML inference
-    "crates/ml/burn-inference",  # NEW: Burn-based ML inference (Feb 12, 2026) 🔥
+    # ML inference — excluded: burn-wgpu pulls wgpu v23 (conflicts with workspace wgpu v22)
+    # Build individually: cargo build -p burn-inference
+    # "crates/ml/burn-inference",
     "crates/neuromorphic/akida-reservoir-research",  # NEW: Reservoir computing research (Jan 29, 2026) 🔬
     "crates/neuromorphic/akida-setup",  # NEW: Rust binary for NPU setup (Feb 8, 2026)
     "crates/neuromorphic/cross-substrate-validation",  # NEW: Cross-substrate benchmark (Jan 29, 2026) 🧠
@@ -53,13 +54,17 @@ members = [
     "crates/testing",
     "crates/integration-tests", # D-S16-004: Workspace orphan tests → proper crate (Feb 2026)
     "examples",
-    # Showcases - Core working demonstrations
-    "showcase/neuromorphic/01-akida-detection",  # Akida detection showcase
-    "showcase/neuromorphic/04-raytracing-comparison",  # NPU vs GPU raytracing (Feb 8, 2026)
-    "showcase/rbf-surrogate",  # RBF surrogate learning (Feb 8, 2026)
-    "showcase/gpu-universal/ml-inference",  # BarraCuda ML inference showcase
-    "showcase/cross-platform",  # NEW: Cross-platform compute showcase (Feb 12, 2026) 🌐
-    "showcase/homomorphic-computing",  # NPU-accelerated homomorphic encryption (Jan 31, 2026)
+]
+
+exclude = [
+    # Showcases: moved to biomeOS and springs (Mar 2, 2026)
+    # Build individually with: cargo build -p <showcase-name>
+    "showcase/neuromorphic/01-akida-detection",
+    "showcase/neuromorphic/04-raytracing-comparison",
+    "showcase/rbf-surrogate",
+    "showcase/gpu-universal/ml-inference",
+    "showcase/cross-platform",
+    "showcase/homomorphic-computing",
 ]
 
 [workspace.package]
@@ -131,8 +136,7 @@ tarpc = { version = "0.34", features = ["tokio1", "serde-transport", "serde-tran
 # See: crates/server/src/pure_jsonrpc.rs (BearDog pattern)
 
 # HTTP and networking - FALLBACK (enabled but not primary)
-# PURE RUST: reqwest removed - all primal communication uses unix sockets! ✅
-hyper = { version = "0.14", features = ["full"] }
+# PURE RUST: reqwest removed - all primal communication uses unix sockets!
 axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }

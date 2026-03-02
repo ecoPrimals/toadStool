@@ -12,11 +12,14 @@
 //!
 //! Run: `cargo test --test cross_spring_validation`
 
-use barracuda::spectral::anderson::{anderson_3d, anderson_4d, anderson_eigenvalues, lyapunov_exponent, anderson_potential};
-use barracuda::stats::hydrology::fao56_et0;
 use barracuda::optimize::{brent, lbfgs_numerical, LbfgsConfig};
+use barracuda::spectral::anderson::{
+    anderson_3d, anderson_4d, anderson_eigenvalues, anderson_potential, lyapunov_exponent,
+};
+use barracuda::stats::hydrology::fao56_et0;
 
 /// Tolerance registry by domain (mirrors wetSpring `tolerances/` structure).
+#[allow(dead_code)]
 mod tolerances {
     pub const SPECTRAL_R: f64 = 0.05;
     pub const LYAPUNOV_RELATIVE: f64 = 0.1;
@@ -79,7 +82,8 @@ fn check_anderson_eigenvalues_bounded() -> CheckResult {
     let max = eigs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     let clean_bw = 2.0;
     let disorder_half = 2.0;
-    let passed = min >= -(clean_bw + disorder_half + 1.0) && max <= (clean_bw + disorder_half + 1.0);
+    let passed =
+        min >= -(clean_bw + disorder_half + 1.0) && max <= (clean_bw + disorder_half + 1.0);
     CheckResult {
         name: "anderson_eigenvalues_bounded",
         origin: "hotSpring/wetSpring",
@@ -145,7 +149,10 @@ fn check_spectral_features() -> CheckResult {
         name: "spectral_nautilus_bridge",
         origin: "neuralSpring",
         passed,
-        detail: format!("r={:.3}, bw={:.3}, phase={:?}", feat.level_spacing_ratio, feat.bandwidth, feat.phase),
+        detail: format!(
+            "r={:.3}, bw={:.3}, phase={:?}",
+            feat.level_spacing_ratio, feat.bandwidth, feat.phase
+        ),
     }
 }
 
@@ -168,7 +175,10 @@ fn cross_spring_validation_harness() {
     println!("\n=== Cross-Spring Validation Harness ===");
     for c in &checks {
         let status = if c.passed { "PASS" } else { "FAIL" };
-        println!("[{status}] {} (origin: {}) — {}", c.name, c.origin, c.detail);
+        println!(
+            "[{status}] {} (origin: {}) — {}",
+            c.name, c.origin, c.detail
+        );
     }
     println!("=== {n_pass}/{n_total} PASS ===\n");
 

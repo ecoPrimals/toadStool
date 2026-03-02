@@ -26,7 +26,7 @@ pub struct SucceedingMockProvider {
     pub primal_type: PrimalType,
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl UniversalPrimalProvider for SucceedingMockProvider {
     fn primal_id(&self) -> &str {
@@ -91,7 +91,7 @@ pub struct FailingMockProvider {
     pub context: PrimalContext,
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl UniversalPrimalProvider for FailingMockProvider {
     fn primal_id(&self) -> &str {

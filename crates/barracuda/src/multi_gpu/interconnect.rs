@@ -109,7 +109,11 @@ impl InterconnectTopology {
                     continue;
                 }
                 let tier = infer_link_tier(src, dst);
-                links.push(Link { from: i, to: j, tier });
+                links.push(Link {
+                    from: i,
+                    to: j,
+                    tier,
+                });
             }
         }
         Self { links }
@@ -212,7 +216,10 @@ mod tests {
             name: name.to_string(),
             backend: "Vulkan".to_string(),
             index: 0,
-            capabilities: vec![SubstrateCapability::F64Compute, SubstrateCapability::ShaderDispatch],
+            capabilities: vec![
+                SubstrateCapability::F64Compute,
+                SubstrateCapability::ShaderDispatch,
+            ],
         }
     }
 
@@ -238,17 +245,26 @@ mod tests {
 
     #[test]
     fn gpu_to_npu_is_pcie_low_for_akd1000() {
-        assert_eq!(infer_link_tier(&gpu("TITAN V"), &npu()), BandwidthTier::PcieLow);
+        assert_eq!(
+            infer_link_tier(&gpu("TITAN V"), &npu()),
+            BandwidthTier::PcieLow
+        );
     }
 
     #[test]
     fn gpu_to_gpu_is_pcie_peer() {
-        assert_eq!(infer_link_tier(&gpu("TITAN V"), &gpu("RTX 4070")), BandwidthTier::PciePeer);
+        assert_eq!(
+            infer_link_tier(&gpu("TITAN V"), &gpu("RTX 4070")),
+            BandwidthTier::PciePeer
+        );
     }
 
     #[test]
     fn cpu_to_gpu_is_pcie_host() {
-        assert_eq!(infer_link_tier(&cpu(), &gpu("RTX 4070")), BandwidthTier::PcieHost);
+        assert_eq!(
+            infer_link_tier(&cpu(), &gpu("RTX 4070")),
+            BandwidthTier::PcieHost
+        );
     }
 
     #[test]

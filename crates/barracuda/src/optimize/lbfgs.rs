@@ -85,12 +85,7 @@ pub struct LbfgsResult {
 /// - The problem has thousands+ of parameters
 /// - Analytical or cheap numerical gradients are available
 /// - Memory is constrained (O(mn) vs O(n²) for full BFGS)
-pub fn lbfgs<F, G>(
-    f: F,
-    grad: G,
-    x0: &[f64],
-    config: &LbfgsConfig,
-) -> Result<LbfgsResult>
+pub fn lbfgs<F, G>(f: F, grad: G, x0: &[f64], config: &LbfgsConfig) -> Result<LbfgsResult>
 where
     F: Fn(&[f64]) -> f64,
     G: Fn(&[f64], &mut [f64]),
@@ -136,15 +131,8 @@ where
 
         let d = two_loop_recursion(n, &g, &s_history, &y_history, &rho_history);
 
-        let (alpha, f_new, evals) = backtracking_line_search(
-            &f,
-            &x,
-            &d,
-            f_val,
-            &g,
-            config.c1,
-            config.max_linesearch,
-        );
+        let (alpha, f_new, evals) =
+            backtracking_line_search(&f, &x, &d, f_val, &g, config.c1, config.max_linesearch);
         n_evals += evals;
 
         if (f_val - f_new).abs() < config.ftol * (1.0 + f_val.abs()) && iter > 0 {
@@ -201,11 +189,7 @@ where
 }
 
 /// L-BFGS with numerical gradient (central differences).
-pub fn lbfgs_numerical<F>(
-    f: F,
-    x0: &[f64],
-    config: &LbfgsConfig,
-) -> Result<LbfgsResult>
+pub fn lbfgs_numerical<F>(f: F, x0: &[f64], config: &LbfgsConfig) -> Result<LbfgsResult>
 where
     F: Fn(&[f64]) -> f64,
 {

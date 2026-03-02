@@ -51,7 +51,7 @@ use std::time::Duration;
 /// Simplified substrate trait for easier implementation
 ///
 /// **Deep Debt**: Agnostic substrate interface, discover at runtime
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait ComputeSubstrate: Send + Sync {
     /// Human-readable name
@@ -405,7 +405,7 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
     fn capabilities(&self) -> &Capabilities {
@@ -486,7 +486,7 @@ mod tests {
 
     struct MockSubstrate;
 
-    // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
     #[async_trait]
     impl ComputeSubstrate for MockSubstrate {
         fn name(&self) -> &str {

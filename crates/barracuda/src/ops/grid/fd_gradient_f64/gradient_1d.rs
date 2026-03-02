@@ -18,6 +18,12 @@ pub struct Gradient1D {
 impl Gradient1D {
     /// Create a new 1D gradient operator
     pub fn new(device: Arc<WgpuDevice>, n: usize, dx: f64) -> Result<Self> {
+        if n == 0 {
+            return Err(BarracudaError::invalid_op(
+                "Gradient1D",
+                "n must be > 0 (zero-length buffers are invalid for GPU compute)",
+            ));
+        }
         let (pipeline, bind_group_layout) = FdPipelineBuilder::new(device.device(), "gradient_1d")
             .with_uniform(0)
             .with_input(1)

@@ -98,8 +98,7 @@ impl IndexAdd {
         let values_buffer = self.values.buffer();
 
         // Create indices buffer
-        let indices_buffer =
-            device.create_buffer_u32_init("IndexAdd Indices", &self.indices);
+        let indices_buffer = device.create_buffer_u32_init("IndexAdd Indices", &self.indices);
 
         // Create uniform buffer for parameters
         #[repr(C)]

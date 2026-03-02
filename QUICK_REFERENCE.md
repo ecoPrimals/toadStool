@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 2, 2026 -- Session 86**
+**March 2, 2026 -- Session 87**
 
 ---
 
@@ -36,11 +36,8 @@ cargo build --release -p toadstool-cli
 ## Test
 
 ```bash
-# Full workspace (excludes GPU-dependent crates, runs concurrently)
-cargo test --workspace \
-  --exclude barracuda \
-  --exclude ml-inference-showcase \
-  -- --test-threads=8
+# Full workspace (excludes barracuda for GPU-optional runs; runs concurrently)
+cargo test --workspace --exclude barracuda -- --test-threads=8
 
 # Specific crate
 cargo test -p toadstool-common
@@ -55,9 +52,7 @@ cargo test -p barracuda --lib ops::linalg --release
 cargo test -p barracuda --lib linalg numerical special optimize surrogate --release
 
 # Coverage (requires cargo-llvm-cov)
-cargo llvm-cov --workspace --ignore-run-fail \
-  --exclude barracuda \
-  --exclude ml-inference-showcase
+cargo llvm-cov --workspace --ignore-run-fail --exclude barracuda
 
 # Coverage (core crates combined)
 cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toadstool-server -p toadstool-distributed --summary-only
@@ -71,8 +66,8 @@ cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toa
 # RBF surrogate learning
 cd showcase/rbf-surrogate && ./demo.sh
 
-# NPU detection
-cd showcase/neuromorphic/01-akida-detection && ./demo.sh
+# Cross-platform benchmarks (GPU parity, cache validation, etc.)
+cd showcase/cross-platform && cargo run --release
 ```
 
 ---
@@ -549,4 +544,4 @@ API reference: see [Scientific Computing Middleware API](#scientific-computing-m
 
 ---
 
-**Last Updated**: March 2, 2026 — Session 86
+**Last Updated**: March 2, 2026 — Session 87

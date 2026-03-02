@@ -452,7 +452,7 @@ mod tests {
             start_time: Instant::now(),
             workload_manager,
             #[cfg(feature = "nautilus")]
-            nautilus_brain: super::nautilus_handlers::create_brain("test"),
+            nautilus_brain: crate::daemon::nautilus_handlers::create_brain("test"),
         });
 
         if socket_path.exists() {

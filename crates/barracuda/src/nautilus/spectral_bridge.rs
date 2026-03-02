@@ -53,11 +53,11 @@ impl SpectralFeatures {
         let bandwidth = eigenvalues[n - 1] - eigenvalues[0];
         let lambda_min = eigenvalues[0];
 
-        let abs_min = eigenvalues.iter().map(|v| v.abs()).fold(f64::INFINITY, f64::min);
-        let abs_max = eigenvalues
+        let abs_min = eigenvalues
             .iter()
             .map(|v| v.abs())
-            .fold(0.0f64, f64::max);
+            .fold(f64::INFINITY, f64::min);
+        let abs_max = eigenvalues.iter().map(|v| v.abs()).fold(0.0f64, f64::max);
         let condition_number = if abs_min > 1e-15 {
             Some(abs_max / abs_min)
         } else {
@@ -156,7 +156,9 @@ mod tests {
 
     #[test]
     fn spectral_phase_classification() {
-        let extended_eigs: Vec<f64> = (0..100).map(|i| i as f64 + 0.5 * (i as f64).sin()).collect();
+        let extended_eigs: Vec<f64> = (0..100)
+            .map(|i| i as f64 + 0.5 * (i as f64).sin())
+            .collect();
         let feat = SpectralFeatures::from_eigenvalues(&extended_eigs);
         assert_ne!(feat.phase, SpectralPhase::Localized);
     }

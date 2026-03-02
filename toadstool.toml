@@ -174,15 +174,17 @@ authentication_required = true
 refresh_interval_secs = 30
 
 [monitoring.external_integrations]
-[monitoring.external_integrations.prometheus]
-enabled = true
-endpoint = "http://localhost:9090"
-scrape_interval_secs = 60
+# Prometheus removed from project (S87)
+# [monitoring.external_integrations.prometheus]
+# enabled = true
+# endpoint = "http://localhost:9090"
+# scrape_interval_secs = 60
 
-[monitoring.external_integrations.grafana]
-enabled = true
-dashboard_url = "http://localhost:3000"
-api_key = "admin"
+# External Grafana monitoring deprecated (S87)
+# [monitoring.external_integrations.grafana]
+# enabled = true
+# dashboard_url = "http://localhost:3000"
+# api_key = "admin"
 
 [monitoring.external_integrations.jaeger]
 enabled = true
@@ -294,6 +296,7 @@ wasi_enabled = true
 
 [runtime.engines.gpu]
 enabled = true
+# wgpu is primary framework (barracuda); Cuda/OpenCL/Vulkan are optional backends
 frameworks = ["Cuda"]  # Cuda, OpenCL, Vulkan, OpenGL
 memory_limit_bytes = 1073741824  # 1GB
 device_selection = "Auto"  # Auto, Specific, ByCapability

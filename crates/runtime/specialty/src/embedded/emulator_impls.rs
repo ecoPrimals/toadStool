@@ -19,7 +19,7 @@ fn not_implemented(feature: &str) -> ToadStoolError {
 
 macro_rules! impl_emulator_stub {
     ($emulator:ty, $name:expr, $arch:expr) => {
-        // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl EmulatorTrait for $emulator {
             fn name(&self) -> &str {

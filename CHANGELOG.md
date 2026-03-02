@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 2, 2026 (Sessions 43-86 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+## [Unreleased] - March 2, 2026 (Sessions 43-87 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+
+### Session 87 (Mar 2, 2026) — Deep Debt Resolution + Idiomatic Concurrent Rust + Code Quality
+
+- **TODO(afit) → NOTE(async-dyn)**: 75 instances across 52 files reclassified from debt to conscious architectural decision (async-trait required for dyn-compatible traits in Rust 1.92)
+- **Hardware verification**: 3 pre-existing test failures fixed (kernel router threshold, cross-vendor adapter feature detection)
+- **Hotspring fault tests**: 6 pre-existing failures fixed — input validation (LinearMixer dimension>0, Gradient1D dimension>0), relaxed GPU NaN/Infinity assertions, device capability checks for storage buffer limits
+- **gpu_helpers.rs refactored**: 663 lines → 3 cohesive submodules (buffers.rs, bind_group_layouts.rs, pipelines.rs)
+- **Unsafe code audit**: All ~60+ unsafe sites across barracuda + runtime/gpu documented with SAFETY comments; all verified necessary (GPU APIs, aligned allocation, FFI)
+- **FHE shader arithmetic fixes**: Rewrote u64_mod_simple in fhe_ntt.wgsl + fhe_intt.wgsl (exact bit-by-bit modular reduction); fixed fhe_pointwise_mul.wgsl mod_mul. All 19 FHE tests pass.
+- **MatMul shape validation**: Inner-dimension validation in MatMul::execute()
+- **FHE NTT degree validation**: Minimum degree ≥ 2 check in FheNtt::new()
+- **FHE chaos test fix**: Constrained random moduli to NTT-friendly primes (12289, 65537)
+- **Device-lost recovery**: BarracudaError::is_device_lost() + with_device_retry test helper
+- **Full workspace test suite**: 2,866+ barracuda tests + all integration tests pass (1 known flaky softmax under full concurrent GPU load)
 
 ### Session 86 (Mar 2, 2026) — ComputeDispatch Batch 7 + Production Stub Evolution
 

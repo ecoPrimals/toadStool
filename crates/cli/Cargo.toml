@@ -120,9 +120,6 @@ handlebars = "4.5"
 # Configuration management
 figment = { version = "0.10", features = ["toml", "yaml", "env"] }
 
-# Metrics and monitoring
-prometheus = { version = "0.13", default-features = false }
-
 # HTTP client
 url = "2.5"
 

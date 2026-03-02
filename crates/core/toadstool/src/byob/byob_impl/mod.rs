@@ -26,7 +26,7 @@ pub struct ByobComputeExecutor {
 }
 
 /// BYOB executor trait
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait ByobExecutor: Send + Sync {
     /// Deploy a team biome
@@ -507,7 +507,7 @@ impl ByobComputeExecutor {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl ByobExecutor for ByobComputeExecutor {
     async fn deploy_biome(

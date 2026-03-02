@@ -332,7 +332,7 @@ mod tests {
             availability: AvailabilityInfo,
         }
 
-        // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl CloudProviderInterface for MockCloudProvider {
             async fn deploy_job(
@@ -512,7 +512,7 @@ mod tests {
 
         struct MinimalMock;
 
-        // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl CloudProviderInterface for MinimalMock {
             async fn deploy_job(

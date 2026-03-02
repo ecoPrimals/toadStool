@@ -212,7 +212,7 @@ cargo clippy --workspace --all-targets
 cargo test --workspace --lib
 
 # Run RBF surrogate demo
-cd showcase/rbf-surrogate && ./demo.sh
+cd showcase/rbf-surrogate && cargo run --release
 
 # Cross-vendor GPU test (runs on any GPU)
 cargo test -p barracuda --lib ops::linalg --release

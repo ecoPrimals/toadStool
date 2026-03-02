@@ -104,13 +104,13 @@ mod tests {
     fn test_pagination_constants() {
         assert_eq!(DEFAULT_PAGE_SIZE, 50);
         assert_eq!(MAX_PAGE_SIZE, 1000);
-        assert!(DEFAULT_PAGE_SIZE < MAX_PAGE_SIZE);
+        const { assert!(DEFAULT_PAGE_SIZE < MAX_PAGE_SIZE) };
     }
 
     #[test]
     fn test_log_constants() {
         assert_eq!(DEFAULT_LOG_TAIL, 100);
         assert_eq!(MAX_LOG_TAIL, 10000);
-        assert!(DEFAULT_LOG_TAIL < MAX_LOG_TAIL);
+        const { assert!(DEFAULT_LOG_TAIL < MAX_LOG_TAIL) };
     }
 }

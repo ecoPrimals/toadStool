@@ -61,7 +61,6 @@ pub mod gpu_cg_resident;
 pub mod gpu_cg_solver;
 pub mod gpu_hmc_leapfrog;
 pub mod gpu_hmc_trajectory;
-pub mod omelyan_integrator;
 pub mod gpu_kinetic_energy;
 pub mod gpu_lattice_init;
 pub mod gpu_polyakov;
@@ -69,6 +68,7 @@ pub mod gpu_pseudofermion;
 pub mod gpu_wilson_action;
 pub mod higgs_u1;
 pub mod hmc_force_su3;
+pub mod omelyan_integrator;
 pub mod plaquette;
 
 // CPU reference implementations — test-only
@@ -271,10 +271,12 @@ mod neighbor_tests {
         };
         // Site 0 = (0,0): dirs [+x, -x, +y, -y]
         // +x -> (1,0) = 1, -x -> (3,0) = 3, +y -> (0,1) = 4, -y -> (0,3) = 12
-        let nbr_plus_x = table[0 * 4 + 0];
-        let nbr_minus_x = table[0 * 4 + 1];
-        let nbr_plus_y = table[0 * 4 + 2];
-        let nbr_minus_y = table[0 * 4 + 3];
+        const NEIGHBORS_2D: usize = 4;
+        let site = 0;
+        let nbr_plus_x = table[site * NEIGHBORS_2D];
+        let nbr_minus_x = table[site * NEIGHBORS_2D + 1];
+        let nbr_plus_y = table[site * NEIGHBORS_2D + 2];
+        let nbr_minus_y = table[site * NEIGHBORS_2D + 3];
         assert_eq!(nbr_plus_x, 1, "site (0,0) +x -> (1,0)");
         assert_eq!(nbr_minus_x, 3, "site (0,0) -x wraps to (3,0)");
         assert_eq!(nbr_plus_y, 4, "site (0,0) +y -> (0,1)");
@@ -302,9 +304,11 @@ mod neighbor_tests {
         };
         // idx = z*9 + y*3 + x; site (0,0,0) = 0
         // -x -> (2,0,0) = 2, -y -> (0,2,0) = 6, -z -> (0,0,2) = 18
-        let nbr_minus_x = table[0 * 6 + 1];
-        let nbr_minus_y = table[0 * 6 + 3];
-        let nbr_minus_z = table[0 * 6 + 5];
+        const NEIGHBORS_3D: usize = 6;
+        let site = 0;
+        let nbr_minus_x = table[site * NEIGHBORS_3D + 1];
+        let nbr_minus_y = table[site * NEIGHBORS_3D + 3];
+        let nbr_minus_z = table[site * NEIGHBORS_3D + 5];
         assert_eq!(nbr_minus_x, 2, "site (0,0,0) -x wraps to (2,0,0)");
         assert_eq!(nbr_minus_y, 6, "site (0,0,0) -y wraps to (0,2,0)");
         assert_eq!(nbr_minus_z, 18, "site (0,0,0) -z wraps to (0,0,2)");
@@ -330,8 +334,10 @@ mod neighbor_tests {
         };
         // Site (0,0,0,0): +x -> (1,0,0,0), -x wraps to (3,0,0,0)
         let idx = |x: u32, y: u32, z: u32, t: u32| -> u32 { t * 4 * 4 * 4 + z * 4 * 4 + y * 4 + x };
-        let nbr_plus_x = table[0 * 8 + 0];
-        let nbr_minus_x = table[0 * 8 + 1];
+        const NEIGHBORS_4D: usize = 8;
+        let site = 0;
+        let nbr_plus_x = table[site * NEIGHBORS_4D];
+        let nbr_minus_x = table[site * NEIGHBORS_4D + 1];
         assert_eq!(nbr_plus_x, idx(1, 0, 0, 0));
         assert_eq!(nbr_minus_x, idx(3, 0, 0, 0));
     }

@@ -123,11 +123,12 @@ impl Quantize {
         });
 
         // Copy output to staging buffer (compute completed via ComputeDispatch above)
-        let mut copy_encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Quantize Copy Encoder"),
-            });
+        let mut copy_encoder =
+            device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Quantize Copy Encoder"),
+                });
         copy_encoder.copy_buffer_to_buffer(
             &output_buffer,
             0,

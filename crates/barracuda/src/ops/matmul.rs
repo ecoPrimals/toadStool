@@ -110,10 +110,30 @@ impl<'a> MatMul<'a> {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.lhs.device();
 
+        if self.lhs.shape().len() < 2 || self.rhs.shape().len() < 2 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "matmul",
+                format!(
+                    "requires 2D+ tensors, got shapes {:?} and {:?}",
+                    self.lhs.shape(),
+                    self.rhs.shape()
+                ),
+            ));
+        }
+
         // lhs: [m, k], rhs: [k, n] → output: [m, n]
         let m = self.lhs.shape()[0];
         let k = self.lhs.shape()[1];
+        let k_rhs = self.rhs.shape()[0];
         let n = self.rhs.shape()[1];
+
+        if k != k_rhs {
+            return Err(crate::error::BarracudaError::shape_mismatch(
+                self.lhs.shape().to_vec(),
+                self.rhs.shape().to_vec(),
+            ));
+        }
+
         let output_size = m * n;
 
         let caps = DeviceCapabilities::from_device(device);

@@ -109,8 +109,7 @@ impl MoveDim {
         let output_buffer = device.create_buffer_f32(total_size)?;
 
         let input_shape_u32: Vec<u32> = shape.iter().map(|&s| s as u32).collect();
-        let output_shape_u32: Vec<u32> =
-            output_shape.iter().map(|&s| s as u32).collect();
+        let output_shape_u32: Vec<u32> = output_shape.iter().map(|&s| s as u32).collect();
 
         let input_shape_buffer =
             device.create_buffer_u32_init("MoveDim Input Shape", &input_shape_u32);
@@ -120,8 +119,7 @@ impl MoveDim {
             device.create_buffer_u32_init("MoveDim Input Strides", &input_strides);
         let output_strides_buffer =
             device.create_buffer_u32_init("MoveDim Output Strides", &output_strides);
-        let dim_mapping_buffer =
-            device.create_buffer_u32_init("MoveDim Dim Mapping", &dim_mapping);
+        let dim_mapping_buffer = device.create_buffer_u32_init("MoveDim Dim Mapping", &dim_mapping);
 
         let params = MoveDimParams {
             total_size: total_size as u32,

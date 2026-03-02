@@ -137,7 +137,9 @@ impl Covariance {
             stride: n as u32,
             ddof,
         };
-        let params_buf = self.device.create_uniform_buffer("Covariance Params", &params);
+        let params_buf = self
+            .device
+            .create_uniform_buffer("Covariance Params", &params);
 
         ComputeDispatch::new(&self.device, "Covariance")
             .shader(Self::wgsl_shader(), "main")

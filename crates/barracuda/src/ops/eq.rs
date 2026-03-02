@@ -160,33 +160,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_eq_precision() {
-        let Some(device) = get_test_device().await else {
-            return;
-        };
-        // Test exact equality with known values
-        let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
-            .await
-            .unwrap();
-        let b = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
-            .await
-            .unwrap();
+        use crate::device::test_pool::test_prelude::with_device_retry;
+        with_device_retry(|device| async move {
+            let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await?;
+            let b = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await?;
 
-        let result = a.eq(&b).unwrap().to_vec().unwrap();
-        // All should be equal
-        assert!(result.iter().all(|&x| (x - 1.0).abs() < 1e-5));
+            let result = a.eq(&b)?.to_vec()?;
+            assert!(result.iter().all(|&x| (x - 1.0).abs() < 1e-5));
 
-        // Test with clearly different values
-        let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
-            .await
-            .unwrap();
-        let b = Tensor::from_vec_on(vec![1.0, 5.0, 3.0], vec![3], device)
-            .await
-            .unwrap();
+            let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await?;
+            let b = Tensor::from_vec_on(vec![1.0, 5.0, 3.0], vec![3], device).await?;
 
-        let result = a.eq(&b).unwrap().to_vec().unwrap();
-        // First and third equal, second not equal
-        assert!((result[0] - 1.0).abs() < 1e-5);
-        assert!(result[1].abs() < 1e-5);
-        assert!((result[2] - 1.0).abs() < 1e-5);
+            let result = a.eq(&b)?.to_vec()?;
+            assert!((result[0] - 1.0).abs() < 1e-5);
+            assert!(result[1].abs() < 1e-5);
+            assert!((result[2] - 1.0).abs() < 1e-5);
+            Ok(())
+        })
+        .await;
     }
 }

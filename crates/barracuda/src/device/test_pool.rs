@@ -438,6 +438,54 @@ pub mod test_prelude {
             .await
             .expect("Failed to create rand tensor")
     }
+
+    /// Run a GPU test with automatic device-lost recovery.
+    ///
+    /// Production pattern: if the GPU device dies during the test, the pool
+    /// recreates the device and the test retries once. This is the same
+    /// recovery path production code follows under sustained concurrent load.
+    ///
+    /// The closure receives an `Arc<WgpuDevice>` and returns `Result<()>`.
+    /// - Device-lost errors → retry once with a fresh device
+    /// - Other errors → propagated (test fails)
+    /// - Second device-lost → propagated (avoids infinite loop)
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// #[tokio::test]
+    /// async fn test_my_op() {
+    ///     with_device_retry(|device| async move {
+    ///         let t = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device).await?;
+    ///         let result = t.erf()?.to_vec()?;
+    ///         assert!(result.iter().all(|x| x.is_finite()));
+    ///         Ok(())
+    ///     }).await;
+    /// }
+    /// ```
+    pub async fn with_device_retry<F, Fut>(f: F)
+    where
+        F: Fn(Arc<WgpuDevice>) -> Fut,
+        Fut: std::future::Future<Output = crate::error::Result<()>>,
+    {
+        let device = super::get_test_device_if_gpu_available().await;
+        let Some(device) = device else {
+            return;
+        };
+        match f(Arc::clone(&device)).await {
+            Ok(()) => {}
+            Err(e) if e.is_device_lost() => {
+                tracing::warn!("test: device lost during execution, retrying with fresh device");
+                drop(device);
+                let fresh = super::get_test_device_if_gpu_available()
+                    .await
+                    .expect("GPU unavailable on retry after device loss");
+                f(fresh)
+                    .await
+                    .expect("test failed on retry after device recovery");
+            }
+            Err(e) => panic!("test failed: {e}"),
+        }
+    }
 }
 
 #[cfg(test)]

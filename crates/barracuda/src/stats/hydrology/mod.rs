@@ -24,8 +24,8 @@ pub mod gpu;
 
 #[cfg(feature = "gpu")]
 pub use gpu::{
-    Fao56BaseInputs, Fao56Uncertainties, HargreavesBatchGpu, McEt0PropagateGpu,
-    SeasonalGpuParams, SeasonalOutput, SeasonalPipelineF64,
+    Fao56BaseInputs, Fao56Uncertainties, HargreavesBatchGpu, McEt0PropagateGpu, SeasonalGpuParams,
+    SeasonalOutput, SeasonalPipelineF64,
 };
 
 /// Hargreaves empirical coefficient (dimensionless).
@@ -107,12 +107,16 @@ pub fn soil_water_balance(
 /// Thornthwaite (1948) "An approach toward a rational classification of climate"
 /// Geographical Review 38(1):55-94.
 #[must_use]
-pub fn thornthwaite_et0(t_mean: f64, heat_index: f64, daylight_hours: f64, days_in_month: f64) -> Option<f64> {
+pub fn thornthwaite_et0(
+    t_mean: f64,
+    heat_index: f64,
+    daylight_hours: f64,
+    days_in_month: f64,
+) -> Option<f64> {
     if heat_index <= 0.0 || t_mean < 0.0 {
         return None;
     }
-    let a = 6.75e-7 * heat_index.powi(3)
-        - 7.71e-5 * heat_index.powi(2)
+    let a = 6.75e-7 * heat_index.powi(3) - 7.71e-5 * heat_index.powi(2)
         + 1.792e-2 * heat_index
         + 0.49239;
     let et_unadj = 16.0 * (10.0 * t_mean / heat_index).powf(a);
@@ -124,7 +128,8 @@ pub fn thornthwaite_et0(t_mean: f64, heat_index: f64, daylight_hours: f64, days_
 /// `I = Σ (t_i / 5)^1.514` for months where `t_i > 0`.
 #[must_use]
 pub fn thornthwaite_heat_index(monthly_temps: &[f64; 12]) -> f64 {
-    monthly_temps.iter()
+    monthly_temps
+        .iter()
         .filter(|&&t| t > 0.0)
         .map(|&t| (t / 5.0).powf(1.514))
         .sum()
@@ -379,11 +384,16 @@ mod tests {
 
     #[test]
     fn test_thornthwaite_typical() {
-        let monthly = [3.0, 4.0, 8.0, 12.0, 17.0, 21.0, 24.0, 23.0, 19.0, 13.0, 8.0, 4.0];
+        let monthly = [
+            3.0, 4.0, 8.0, 12.0, 17.0, 21.0, 24.0, 23.0, 19.0, 13.0, 8.0, 4.0,
+        ];
         let hi = thornthwaite_heat_index(&monthly);
         assert!(hi > 30.0 && hi < 80.0, "heat index {hi} out of range");
         let et0 = thornthwaite_et0(21.0, hi, 14.5, 30.0).unwrap();
-        assert!(et0 > 0.0 && et0 < 200.0, "Thornthwaite ET₀={et0} out of range");
+        assert!(
+            et0 > 0.0 && et0 < 200.0,
+            "Thornthwaite ET₀={et0} out of range"
+        );
     }
 
     #[test]
@@ -408,7 +418,10 @@ mod tests {
         let et0_humid = turc_et0(20.0, 18.0, 70.0).unwrap();
         let et0_dry = turc_et0(20.0, 18.0, 30.0).unwrap();
         assert!(et0_humid > 0.0, "Turc humid ET₀ should be positive");
-        assert!(et0_dry > et0_humid, "Turc dry should exceed humid at same T/Rs");
+        assert!(
+            et0_dry > et0_humid,
+            "Turc dry should exceed humid at same T/Rs"
+        );
     }
 
     #[test]
@@ -430,6 +443,9 @@ mod tests {
     #[test]
     fn test_hamon_cold() {
         let et0 = hamon_et0(0.0, 10.0).unwrap();
-        assert!(et0 >= 0.0 && et0 < 1.0, "Hamon cold ET₀={et0} should be near zero");
+        assert!(
+            (0.0..1.0).contains(&et0),
+            "Hamon cold ET₀={et0} should be near zero"
+        );
     }
 }

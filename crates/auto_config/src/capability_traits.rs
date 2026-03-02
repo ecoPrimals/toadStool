@@ -13,7 +13,7 @@ use crate::ToadStoolResult;
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of hardware detection.
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait HardwareCapabilityDetector: Send + Sync {
     /// Scan system hardware capabilities
@@ -24,7 +24,7 @@ pub trait HardwareCapabilityDetector: Send + Sync {
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of service discovery.
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait EcosystemServiceDiscoverer: Send + Sync {
     /// Discover available ecosystem services
@@ -36,7 +36,7 @@ pub trait EcosystemServiceDiscoverer: Send + Sync {
 // ============================================================================
 
 /// Adapter to make `HardwareDetector` implement the trait
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -45,7 +45,7 @@ impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
 }
 
 /// Adapter to make `EcosystemDiscoverer` implement the trait
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -109,7 +109,7 @@ impl Default for MockHardwareDetector {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl HardwareCapabilityDetector for MockHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -162,7 +162,7 @@ impl Default for MockEcosystemDiscoverer {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EcosystemServiceDiscoverer for MockEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -191,7 +191,7 @@ struct RealHardwareDetector {
     inner: crate::hardware::HardwareDetector,
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl HardwareCapabilityDetector for RealHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -204,7 +204,7 @@ struct RealEcosystemDiscoverer {
     inner: crate::ecosystem::EcosystemDiscoverer,
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EcosystemServiceDiscoverer for RealEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -258,10 +258,12 @@ mod tests {
     async fn test_mock_hardware_detector_with_custom_capabilities() {
         use crate::hardware::{PerformanceClass, SystemCapabilities};
 
-        let mut caps = SystemCapabilities::default();
-        caps.cpu_cores = 16.0;
-        caps.memory_gb = 32.0;
-        caps.performance_class = PerformanceClass::HighEnd;
+        let caps = SystemCapabilities {
+            cpu_cores: 16.0,
+            memory_gb: 32.0,
+            performance_class: PerformanceClass::HighEnd,
+            ..Default::default()
+        };
 
         let mut detector = MockHardwareDetector::with_capabilities(caps);
         let result = detector.scan_system().await;

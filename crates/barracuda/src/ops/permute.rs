@@ -86,10 +86,8 @@ impl Permute {
         // Create buffers for shape and stride data
         let input_shape_u32: Vec<u32> = input_shape.iter().map(|&x| x as u32).collect();
         let output_shape_u32: Vec<u32> = output_shape.iter().map(|&x| x as u32).collect();
-        let permutation_u32: Vec<u32> =
-            self.permutation.iter().map(|&x| x as u32).collect();
-        let input_strides_u32: Vec<u32> =
-            input_strides.iter().map(|&x| x as u32).collect();
+        let permutation_u32: Vec<u32> = self.permutation.iter().map(|&x| x as u32).collect();
+        let input_strides_u32: Vec<u32> = input_strides.iter().map(|&x| x as u32).collect();
 
         let input_shape_buffer =
             device.create_buffer_u32_init("Permute Input Shape", &input_shape_u32);

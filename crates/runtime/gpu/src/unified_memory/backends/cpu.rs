@@ -10,6 +10,8 @@
 //! **Why not `Vec<u8>`?** `Vec` uses default allocator alignment (typically 8–16 bytes).
 //! Unified memory backends require 64-byte (cache-line) alignment for DMA and coherent
 //! access. `std::alloc::alloc_zeroed` with a custom layout is the standard approach.
+//! External crates (e.g. `aligned-vec`) exist but use std::alloc internally; we avoid
+//! the dependency and document the unsafe invariants explicitly.
 
 use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, CpuAllocation, UnifiedMemoryBackend},
@@ -51,10 +53,11 @@ impl AlignedBuffer {
         let layout = Layout::from_size_align(size, align)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {e}")))?;
 
-        // SAFETY: Layout is valid (from_size_align succeeded, align is power-of-two). alloc_zeroed
-        // returns a pointer valid for layout.size() bytes, or null on OOM. Memory is
-        // zero-initialized. The pointer is used for dealloc with the same layout in Drop.
-        // Violation: invalid layout would cause UB; mismatched dealloc would cause use-after-free.
+        // SAFETY: Layout valid (from_size_align succeeded, align power-of-two). alloc_zeroed
+        // returns ptr valid for layout.size() bytes, or null on OOM. Memory zero-initialized.
+        // Pointer used for dealloc with same layout in Drop. Invariants: layout valid;
+        // dealloc matches alloc; no use-after-free. Violation: invalid layout → UB;
+        // mismatched dealloc → use-after-free.
         let raw = unsafe { std::alloc::alloc_zeroed(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
 
@@ -79,12 +82,13 @@ impl AlignedBuffer {
     /// Create from raw pointer (takes ownership)
     ///
     /// # Safety
-    /// - `ptr` must be non-null and point to valid memory allocated with the given layout
+    /// - `ptr` must be non-null and point to valid memory from alloc_zeroed with the
+    ///   given layout (size, align)
     /// - `size` and `align` must exactly match the original allocation parameters
-    /// - Caller must transfer ownership (must not use ptr after this, must not dealloc)
-    /// - If Some is returned, caller must not dealloc; Drop will handle it
+    /// - Caller transfers ownership: must not use ptr after this, must not dealloc
+    /// - If Some is returned, Drop deallocates; caller must not dealloc
     ///
-    /// Violation: mismatched layout causes UB on Drop; double-free if caller also deallocs.
+    /// Violation: mismatched layout → UB on Drop; double-free if caller also deallocs.
     unsafe fn from_raw(ptr: *mut u8, size: usize, align: usize) -> Option<Self> {
         NonNull::new(ptr).map(|ptr| Self { ptr, size, align })
     }
@@ -98,9 +102,10 @@ impl Drop for AlignedBuffer {
         // Drop cannot propagate errors, so expect is the correct choice.
         let layout = Layout::from_size_align(self.size, self.align)
             .expect("layout valid: matches original allocation");
-        // SAFETY: ptr comes from alloc_zeroed(layout) in new(); layout matches the allocation.
+        // SAFETY: ptr from alloc_zeroed(layout) in new(); layout matches allocation.
         // Drop runs exactly once; no references exist (self is being dropped).
-        // Violation: mismatched layout or double-free would cause UB.
+        // Invariants: layout.size/align match original alloc; single dealloc.
+        // Violation: mismatched layout or double-free → UB.
         unsafe { dealloc(self.ptr.as_ptr(), layout) };
     }
 }
@@ -167,9 +172,10 @@ impl CpuBackend {
     /// This function reconstructs the buffer and lets Drop handle deallocation.
     fn free_aligned_safe(ptr: *mut u8, size: usize, align: usize) {
         if !ptr.is_null() {
-            // SAFETY: ptr, size, and align come from allocate_aligned_safe; caller transfers
-            // ownership. from_raw takes ownership; Drop deallocates with matching layout.
-            // Violation: ptr from wrong allocator or mismatched size/align would cause UB.
+            // SAFETY: ptr, size, align from allocate_aligned_safe; caller transfers ownership.
+            // from_raw takes ownership; Drop deallocates with matching layout.
+            // Invariants: ptr from our alloc; size/align match original allocation.
+            // Violation: wrong allocator or mismatched params → UB.
             if let Some(buffer) = unsafe { AlignedBuffer::from_raw(ptr, size, align) } {
                 drop(buffer); // Explicit drop for clarity (would happen anyway)
             }
@@ -187,7 +193,7 @@ impl BackendInitializer for CpuBackend {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl UnifiedMemoryBackend for CpuBackend {
     fn name(&self) -> &'static str {

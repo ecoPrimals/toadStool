@@ -38,64 +38,104 @@ struct PointwiseMulParams {
 // Modular Arithmetic Helpers (64-bit using u32 pairs)
 // ═══════════════════════════════════════════════════════════════
 
-/// Multiply two 64-bit numbers modulo q using Barrett reduction
+/// Widening 32×32 → 64-bit multiply using 16-bit limbs.
+fn mul32_wide(a: u32, b: u32) -> vec2<u32> {
+    let a_lo = a & 0xFFFFu;
+    let a_hi = a >> 16u;
+    let b_lo = b & 0xFFFFu;
+    let b_hi = b >> 16u;
+
+    let p0 = a_lo * b_lo;
+    let p1 = a_lo * b_hi;
+    let p2 = a_hi * b_lo;
+    let p3 = a_hi * b_hi;
+
+    var lo = p0 + ((p1 & 0xFFFFu) << 16u);
+    let c1 = select(0u, 1u, lo < p0);
+    let mid1 = (p1 >> 16u) + c1;
+
+    let prev = lo;
+    lo = lo + ((p2 & 0xFFFFu) << 16u);
+    let c2 = select(0u, 1u, lo < prev);
+    let hi = p3 + (p2 >> 16u) + mid1 + c2;
+
+    return vec2<u32>(lo, hi);
+}
+
+/// Reduce a 64-bit value mod q (32-bit) using bit-by-bit shift-and-reduce.
 ///
-/// Barrett reduction: a * b mod q ≈ a * b - ⌊(a * b * μ) / 2^128⌋ * q
-/// where μ = ⌊2^128 / q⌋
-///
-/// This avoids expensive division by precomputing μ
-fn mod_mul(a_low: u32, a_high: u32, b_low: u32, b_high: u32) -> vec2<u32> {
-    // Reconstruct full 64-bit values
-    let a = vec2<u32>(a_low, a_high);
-    let b = vec2<u32>(b_low, b_high);
-    let modulus = vec2<u32>(params.modulus_low, params.modulus_high);
-    let barrett_mu = vec2<u32>(params.barrett_mu_low, params.barrett_mu_high);
-    
-    // Full 128-bit multiply: a * b
-    // We'll use 64-bit approximation for GPU efficiency
-    // For production, full 128-bit multiply needed
-    
-    // Low 64 bits of product (approximation)
-    let prod_low = a.x * b.x;
-    let prod_mid1 = a.x * b.y;
-    let prod_mid2 = a.y * b.x;
-    let prod_high_approx = a.y * b.y;
-    
-    // Combine into 64-bit result (with carry handling)
-    var carry: u32 = 0u;
-    let result_low = prod_low;
-    
-    // Add middle products (shifted by 32 bits)
-    let mid_sum = prod_mid1 + prod_mid2;
-    let result_mid = (result_low >> 16u) + (mid_sum & 0xFFFFu);
-    carry = (result_mid >> 16u) + (mid_sum >> 16u);
-    
-    let result_high = prod_high_approx + carry;
-    let product = vec2<u32>(result_low, result_high);
-    
-    // Barrett reduction: q_hat = ⌊(product * μ) / 2^128⌋
-    // Approximation: use upper 64 bits
-    let q_hat_approx = (product.y * barrett_mu.x) + (product.x * barrett_mu.y >> 32u);
-    
-    // r = product - q_hat * modulus
-    let q_times_modulus_low = q_hat_approx * modulus.x;
-    let q_times_modulus_high = q_hat_approx * modulus.y;
-    
-    var result = vec2<u32>(
-        product.x - q_times_modulus_low,
-        product.y - q_times_modulus_high
-    );
-    
-    // Final correction (if result >= modulus)
-    if (result.y > modulus.y || (result.y == modulus.y && result.x >= modulus.x)) {
-        // result -= modulus
-        if (result.x < modulus.x) {
-            result.y -= 1u;
-        }
-        result.x -= modulus.x;
-        result.y -= modulus.y;
+/// Processes the 64-bit value MSB-first, maintaining acc = (bits so far) mod q.
+/// Correct for all q < 2^31.  O(64) iterations — negligible on GPU.
+fn reduce64(val_lo: u32, val_hi: u32, q: u32) -> u32 {
+    var acc = 0u;
+    for (var i = 31i; i >= 0i; i = i - 1i) {
+        acc = (acc << 1u) | ((val_hi >> u32(i)) & 1u);
+        if (acc >= q) { acc -= q; }
     }
-    
+    for (var i = 31i; i >= 0i; i = i - 1i) {
+        acc = (acc << 1u) | ((val_lo >> u32(i)) & 1u);
+        if (acc >= q) { acc -= q; }
+    }
+    return acc;
+}
+
+/// Multiply two 64-bit numbers modulo q.
+///
+/// For typical FHE moduli (< 2^31), both inputs have high == 0.
+/// Computes the full 64-bit product then reduces with exact arithmetic.
+fn mod_mul(a_low: u32, a_high: u32, b_low: u32, b_high: u32) -> vec2<u32> {
+    let modulus = vec2<u32>(params.modulus_low, params.modulus_high);
+
+    // Fast path: both values and modulus fit in 32 bits (standard FHE case).
+    if (a_high == 0u && b_high == 0u && modulus.y == 0u) {
+        let product = mul32_wide(a_low, b_low);
+        let r = reduce64(product.x, product.y, modulus.x);
+        return vec2<u32>(r, 0u);
+    }
+
+    // Full 128-bit path for 64-bit moduli: 4 partial products → reduce.
+    let p0 = mul32_wide(a_low, b_low);
+    let p1 = mul32_wide(a_low, b_high);
+    let p2 = mul32_wide(a_high, b_low);
+    let p3 = mul32_wide(a_high, b_high);
+
+    let w0 = p0.x;
+    var w1 = p0.y;
+    var w2 = p3.x;
+    var w3 = p3.y;
+
+    let prev_w1 = w1;
+    w1 = w1 + p1.x;
+    let c1 = select(0u, 1u, w1 < prev_w1);
+
+    let prev2 = w1;
+    w1 = w1 + p2.x;
+    let c2 = select(0u, 1u, w1 < prev2);
+
+    let mid_carry = p1.y + p2.y + c1 + c2;
+    let prev_w2 = w2;
+    w2 = w2 + mid_carry;
+    w3 = w3 + select(0u, 1u, w2 < prev_w2);
+
+    let barrett_mu = vec2<u32>(params.barrett_mu_low, params.barrett_mu_high);
+    let product = vec2<u32>(w0, w1);
+    let q_hat_approx = (w1 * barrett_mu.x) + (w0 * barrett_mu.y >> 32u);
+    let q_times_mod_low = q_hat_approx * modulus.x;
+    let q_times_mod_high = q_hat_approx * modulus.y;
+
+    var result = vec2<u32>(
+        product.x - q_times_mod_low,
+        product.y - q_times_mod_high
+    );
+
+    for (var i = 0u; i < 3u; i = i + 1u) {
+        if (result.y > modulus.y || (result.y == modulus.y && result.x >= modulus.x)) {
+            if (result.x < modulus.x) { result.y -= 1u; }
+            result.x -= modulus.x;
+            result.y -= modulus.y;
+        }
+    }
+
     return result;
 }
 

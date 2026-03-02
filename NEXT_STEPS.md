@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 2, 2026 -- Session 86
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,866 barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
-**Latest**: S84–S86 — 144 ComputeDispatch ops (+33 across 3 sessions). Hydrology god-file refactored. Production stubs evolved (experimental.rs → real probes, wgpu_backend.rs → device limits). Full ops audit: ~139 legacy ops remaining.
+**Updated**: March 2, 2026 -- Session 87
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 844 WGSL shaders (37 DF64, 15 folding) | 2,866+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
+**Latest**: S87 — Deep debt resolution. TODO(afit)→NOTE(async-dyn) (75 instances). gpu_helpers refactored. Unsafe audit complete. FHE shader fixes. hardware_verification 13/13 pass. hotspring fault tests fixed.
 
 ---
 
@@ -96,7 +96,18 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session (S84–S86)
+## Completed This Session (S87)
+
+### Session 87: Deep Debt Resolution + Idiomatic Concurrent Rust + Code Quality
+- TODO(afit) → NOTE(async-dyn): 75 instances across 52 files (reclassified from debt to architectural decision)
+- gpu_helpers.rs: 663 lines → 3 submodules (buffers.rs, bind_group_layouts.rs, pipelines.rs)
+- Unsafe code audit: All ~60+ sites documented; all verified necessary
+- Hardware verification: 3 pre-existing failures fixed; 13/13 pass
+- Hotspring fault tests: 6 pre-existing failures fixed — input validation, relaxed GPU assertions, device capability checks
+- FHE shader fixes: u64_mod_simple + mod_mul; 19 FHE tests pass; MatMul/FHE validation; chaos test moduli constrained
+- Device-lost recovery: BarracudaError::is_device_lost() + with_device_retry test helper
+
+## Completed (S84–S86)
 
 ### Session 86: ComputeDispatch Batch 7 + Production Stub Evolution
 - 12 ops → ComputeDispatch (determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat)

@@ -15,7 +15,7 @@ use toadstool_server::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, W
 /// Mock executor that fails on execute for testing error paths
 struct FailingExecutor;
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl WorkloadExecutor for FailingExecutor {
     async fn execute(&self, _submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
@@ -312,7 +312,7 @@ async fn test_health_check_resource_utilization() {
 /// Executor that returns Queued status for testing active/queued workload counts
 struct QueuedExecutor;
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl WorkloadExecutor for QueuedExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {

@@ -259,12 +259,11 @@ mod grid_unit {
             for (i, &val) in result.iter().enumerate().take(n - 2).skip(2) {
                 let x = i as f64 * dx;
                 let expected = 3.0 * x * x;
-                let rel_error = if expected.abs() > 1e-10 {
-                    (val - expected).abs() / expected.abs()
-                } else {
-                    (val - expected).abs()
-                };
-                assert!(rel_error < 0.05, "At i={i}: rel_error={rel_error}");
+                let abs_error = (val - expected).abs();
+                // Combined tolerance: absolute near x=0 (where expected ~ 0) and
+                // relative elsewhere. FD truncation error is O(dx^2) ≈ 0.0025.
+                let tol = 0.05 * expected.abs() + dx * dx * 10.0;
+                assert!(abs_error < tol, "At i={i}: abs_error={abs_error}, tol={tol}");
             }
         }) {
             return;
@@ -307,9 +306,15 @@ mod grid_unit {
     async fn test_laplacian_2d_creation() {
         if !super::common::run_gpu_resilient_async(|| async {
             let device = barracuda::device::test_pool::get_test_device().await;
-            let lap = Laplacian2D::new(device, 100, 100, 0.05, 0.05);
-            assert!(lap.is_ok());
-            assert_eq!(lap.unwrap().shape(), (100, 100));
+            // Laplacian2D needs 5 storage buffers; some backends (llvmpipe) cap at 4.
+            let limits = device.device().limits();
+            if limits.max_storage_buffers_per_shader_stage < 5 {
+                println!("Skipping: device only supports {} storage buffers (need 5)",
+                    limits.max_storage_buffers_per_shader_stage);
+                return;
+            }
+            let lap = Laplacian2D::new(device, 100, 100, 0.05, 0.05).unwrap();
+            assert_eq!(lap.shape(), (100, 100));
         }) {
             return;
         }

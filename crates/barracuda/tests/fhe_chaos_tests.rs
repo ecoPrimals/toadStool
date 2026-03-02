@@ -75,8 +75,9 @@ async fn chaos_random_polynomials_1000_cases() {
             let random_log = (hasher_builder.hash_one(test_id) % 10) as u32; // log2(degree) in [0, 9]
             let degree = 1 << random_log.clamp(2, 12); // degree in [4, 4096]
 
-            // Random modulus (from standard FHE primes)
-            let primes = vec![17u64, 97, 12289, 65537];
+            // NTT-friendly primes: q ≡ 1 (mod 2*degree) is required.
+            // 12289 = 1 + 3*2^12, 65537 = 1 + 2^16: both satisfy for degree ≤ 4096.
+            let primes = vec![12289u64, 65537];
             let modulus_idx = test_id % primes.len();
             let modulus = primes[modulus_idx];
 

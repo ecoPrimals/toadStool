@@ -1,6 +1,5 @@
 //! Error handling tests for FHE validation.
 
-use super::helpers::*;
 use barracuda::device::WgpuDevice;
 use barracuda::ops::fhe_ntt::FheNtt;
 use barracuda::ops::fhe_poly_add::create_fhe_poly_tensor;

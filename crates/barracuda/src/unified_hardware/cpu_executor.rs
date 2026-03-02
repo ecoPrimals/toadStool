@@ -96,7 +96,7 @@ impl CpuExecutor {
     }
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl ComputeExecutor for CpuExecutor {
     fn name(&self) -> &str {
@@ -158,7 +158,7 @@ pub(crate) struct CpuTensorStorageSimple {
     data: Vec<u8>,
 }
 
-// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
+// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl TensorStorage for CpuTensorStorageSimple {
     fn descriptor(&self) -> &TensorDescriptor {

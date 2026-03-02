@@ -113,12 +113,10 @@ pub fn is_npu_available() -> bool {
 /// Falls back to conservative defaults if detection fails.
 #[must_use]
 pub fn estimate_system_memory() -> usize {
-    detect_system_memory_gb().unwrap_or_else(|| {
-        if cfg!(target_pointer_width = "64") {
-            FALLBACK_SYSTEM_MEMORY_GB_64BIT
-        } else {
-            FALLBACK_SYSTEM_MEMORY_GB_32BIT
-        }
+    detect_system_memory_gb().unwrap_or(if cfg!(target_pointer_width = "64") {
+        FALLBACK_SYSTEM_MEMORY_GB_64BIT
+    } else {
+        FALLBACK_SYSTEM_MEMORY_GB_32BIT
     })
 }
 

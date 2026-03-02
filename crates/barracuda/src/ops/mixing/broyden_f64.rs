@@ -47,6 +47,12 @@ pub struct LinearMixer {
 impl LinearMixer {
     /// Create a new linear mixer
     pub fn new(device: Arc<WgpuDevice>, vec_dim: usize, params: MixingParams) -> Result<Self> {
+        if vec_dim == 0 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "LinearMixer",
+                "vec_dim must be > 0 (zero-length buffers are invalid for GPU compute)",
+            ));
+        }
         let shader_source = include_str!("../../shaders/mixing/broyden_f64.wgsl");
         let shader_module = device.compile_shader_f64(shader_source, Some("linear_mixer_shader"));
 

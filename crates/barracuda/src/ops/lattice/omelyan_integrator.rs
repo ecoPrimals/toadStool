@@ -75,32 +75,40 @@ impl OmelyanIntegrator {
 
         // Step 1: half-kick with λε
         self.leapfrog.momentum_kick(
-            links_buf, momenta_buf, force_buf, rng_buf,
-            volume, lam * dt,
+            links_buf,
+            momenta_buf,
+            force_buf,
+            rng_buf,
+            volume,
+            lam * dt,
         )?;
 
         // Step 2: full position update with ε/2
-        self.leapfrog.link_update(
-            links_buf, momenta_buf, force_buf, rng_buf,
-            volume, dt * 0.5,
-        )?;
+        self.leapfrog
+            .link_update(links_buf, momenta_buf, force_buf, rng_buf, volume, dt * 0.5)?;
 
         // Step 3: central kick with (1-2λ)ε
         self.leapfrog.momentum_kick(
-            links_buf, momenta_buf, force_buf, rng_buf,
-            volume, (1.0 - 2.0 * lam) * dt,
+            links_buf,
+            momenta_buf,
+            force_buf,
+            rng_buf,
+            volume,
+            (1.0 - 2.0 * lam) * dt,
         )?;
 
         // Step 4: full position update with ε/2
-        self.leapfrog.link_update(
-            links_buf, momenta_buf, force_buf, rng_buf,
-            volume, dt * 0.5,
-        )?;
+        self.leapfrog
+            .link_update(links_buf, momenta_buf, force_buf, rng_buf, volume, dt * 0.5)?;
 
         // Step 5: half-kick with λε
         self.leapfrog.momentum_kick(
-            links_buf, momenta_buf, force_buf, rng_buf,
-            volume, lam * dt,
+            links_buf,
+            momenta_buf,
+            force_buf,
+            rng_buf,
+            volume,
+            lam * dt,
         )?;
 
         Ok(())

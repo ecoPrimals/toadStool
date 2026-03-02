@@ -1,5 +1,6 @@
 //! Test data generators and helpers for FHE shader unit tests.
 
+use barracuda::ops::fhe_ntt::compute_primitive_root;
 use barracuda::tensor::Tensor;
 
 /// Generate random polynomial with coefficients in [0, modulus)
@@ -15,11 +16,14 @@ pub fn random_polynomial(degree: usize, modulus: u64) -> Vec<u64> {
 
 /// Known primitive roots for testing
 /// Format: (degree, modulus, root_of_unity)
+/// All satisfy: modulus ≡ 1 (mod 2*degree) and root^degree ≡ 1
 pub const KNOWN_ROOTS: &[(u32, u64, u64)] = &[
-    (4, 17, 4),   // 4^4 ≡ 1 mod 17
-    (4, 97, 22),  // 22^4 ≡ 1 mod 97
-    (8, 97, 10),  // 10^8 ≡ 1 mod 97
-    (16, 97, 92), // 92^16 ≡ 1 mod 97
+    (4, 17, 4),    // 4^4 ≡ 1 mod 17, 17 ≡ 1 mod 8
+    (4, 97, 22),   // 22^4 ≡ 1 mod 97
+    (4, 257, 241),  // 241^4 ≡ 1 mod 257
+    (4, 12289, 1479), // 1479^4 ≡ 1 mod 12289
+    (8, 97, 64),    // 64^8 ≡ 1 mod 97 (was 10 - incorrect)
+    (16, 97, 8),   // 8^16 ≡ 1 mod 97 (was 92 - incorrect)
 ];
 
 /// Compute modular inverse: a^(-1) mod m
@@ -41,8 +45,9 @@ pub fn mod_inverse(a: u64, m: u64) -> u64 {
     }
 }
 
-/// Find a primitive root of unity for given degree and modulus
-/// For testing, we use known roots or compute a simple one
+/// Find a primitive N-th root of unity for given degree and modulus.
+/// NTT requires: modulus ≡ 1 (mod 2*degree).
+/// Uses barracuda's compute_primitive_root when the modulus satisfies this constraint.
 pub fn find_root_of_unity(degree: u32, modulus: u64) -> Option<u64> {
     // Check known roots first
     for &(d, m, root) in KNOWN_ROOTS {
@@ -51,28 +56,27 @@ pub fn find_root_of_unity(degree: u32, modulus: u64) -> Option<u64> {
         }
     }
 
-    // For modulus 12289, try common roots
-    if modulus == 12289 {
-        // Try root = 11 (known to work for 12289)
-        let test_root = 11u64;
-        // Verify: root^degree ≡ 1 mod modulus
+    // NTT requires q ≡ 1 (mod 2*degree). If satisfied, use compute_primitive_root.
+    let two_n = 2u64 * degree as u64;
+    if (modulus - 1) % two_n == 0 {
+        let root = compute_primitive_root(degree, modulus);
+        // Verify it's a valid primitive N-th root (omega^N = 1, omega^(N/2) != 1)
         let mut power = 1u64;
         for _ in 0..degree {
-            power = (power as u128 * test_root as u128 % modulus as u128) as u64;
+            power = (power as u128 * root as u128 % modulus as u128) as u64;
         }
-        if power == 1 {
-            return Some(test_root);
+        if power == 1 && root != 1 {
+            return Some(root);
         }
     }
 
-    // For other cases, try small values
+    // Fallback: try small candidates
     for candidate in 2..modulus.min(100) {
         let mut power = 1u64;
         for _ in 0..degree {
             power = (power as u128 * candidate as u128 % modulus as u128) as u64;
         }
         if power == 1 {
-            // Check it's primitive (no smaller power equals 1)
             let mut is_primitive = true;
             for k in 1..degree {
                 let mut p = 1u64;
@@ -91,6 +95,13 @@ pub fn find_root_of_unity(degree: u32, modulus: u64) -> Option<u64> {
     }
 
     None
+}
+
+/// Modulus/degree pairs that satisfy NTT constraint q ≡ 1 (mod 2*degree).
+/// Use these for tests to avoid invalid combinations.
+pub fn modulus_supports_degree(modulus: u64, degree: u32) -> bool {
+    let two_n = 2u64 * degree as u64;
+    (modulus - 1) % two_n == 0
 }
 
 /// Helper to read tensor back as u64 polynomial
