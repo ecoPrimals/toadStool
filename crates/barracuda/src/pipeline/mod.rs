@@ -59,7 +59,10 @@
 //! - Capability-based buffer management
 
 pub mod reduce;
+pub mod stateful;
+
 pub use reduce::ReduceScalarPipeline;
+pub use stateful::{PipelineStage, StatefulPipeline, WaterBalanceState};
 
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};

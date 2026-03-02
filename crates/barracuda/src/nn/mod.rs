@@ -57,6 +57,7 @@ pub use metrics::{EvalMetrics, TrainHistory, TrainingMetrics};
 pub use optimizer::Optimizer;
 
 pub mod esn_classifier;
+pub mod fused_mlp;
 pub mod lstm_reservoir;
 pub mod simple_mlp;
 
@@ -67,5 +68,6 @@ mod metrics;
 mod optimizer;
 
 pub use esn_classifier::{EsnClassifier, EsnConfig};
+pub use fused_mlp::{fused_mlp, Activation};
 pub use lstm_reservoir::{LstmReservoir, LstmReservoirConfig, LstmState};
 pub use simple_mlp::SimpleMlp;

@@ -53,9 +53,9 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | 15 sovereign folding DF64 shaders | neuralSpring V60 | HIGH | ✅ S76: All 15 + FoldingOp + compile_folding_shader() |
 | `fused_chi_squared_f64` | neuralSpring V24 | MEDIUM | ✅ S76: FusedChiSquaredGpu + shader |
 | `fused_kl_divergence_f64` | neuralSpring V24 | MEDIUM | ✅ S76: FusedKlDivergenceGpu + shader |
-| `BatchReconcileGpu` | wetSpring V61 | MEDIUM | ☐ reconciliation_gpu passthrough |
+| `BatchReconcileGpu` | wetSpring V61 | MEDIUM | ☐ Deferred — full DTL reconciliation, no existing primitives |
 | RAWR weighted resampling kernel | groundSpring V10/V54 | MEDIUM | ✅ S76: RawrWeightedMeanGpu + shader |
-| Batch Nelder-Mead | airSpring V039 | MEDIUM | ☐ Multi-start parallel shader for isotherm fitting |
+| Batch Nelder-Mead | airSpring V039 | MEDIUM | ✅ S80: `batched_nelder_mead_gpu` + batched simplex shaders |
 | Pedotransfer polynomial | airSpring V039 | MEDIUM | ✅ S76: Op 13 in batched_elementwise_f64 |
 | VG θ/K, Thornthwaite, GDD | airSpring V039 | MEDIUM | ✅ S76: Ops 9-12 in batched_elementwise_f64 |
 | Boltzmann sampling dispatch | wateringHole V69 | MEDIUM | ✅ S76: BoltzmannSamplingGpu + shader |
@@ -67,7 +67,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 |------|--------|----------|--------|
 | NautilusBrain API (`ai.nautilus.*`) | hotSpring V0615 | HIGH | ✅ S80: 8 JSON-RPC methods in daemon (nautilus feature) |
 | bingoCube standalone absorption | hotSpring V0615 | HIGH | ✅ S80: barracuda::nautilus module (7 files, 22 tests) |
-| IPC evolution (multi-transport) | wateringHole | MEDIUM | ☐ Abstract sockets + TCP fallback |
+| IPC evolution (multi-transport) | wateringHole | MEDIUM | ✅ Already exists: Unix/Abstract/TCP in ipc/platform |
 | Batched encoder (fused pipeline) | neuralSpring V64 | MEDIUM | ✅ S80: `BatchedEncoder` (194 lines, 2 tests) |
 | NPU bandwidth model | neuralSpring V60 | LOW | ☐ Transfer cost tiers for metalForge |
 | `PipelineBuilder` CPU-only mode | wetSpring V82 | LOW | ☐ Topology analysis without GPU context |
@@ -77,15 +77,15 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | Item | Source | Status |
 |------|--------|--------|
-| SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ☐ |
+| SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ✅ Already exists: sparse_gemm_f64.rs + spmm_f64.wgsl |
 | ESN 36-head MultiHeadEsn + ExportedWeights alignment | hotSpring V0615 | ✅ S79 |
-| StatefulPipeline (water balance state) | airSpring V039 | ☐ |
+| StatefulPipeline (water balance state) | airSpring V039 | ✅ S80: StatefulPipeline<S> + WaterBalanceState |
 | NPU substrate kind in metalForge | neuralSpring V60 | ☐ |
 | Streaming FASTQ/mzML/MS2 (bio I/O) | wateringHole V69 | ☐ |
 | Pseudofermion HMC (477 lines) | wateringHole V69 | ☐ |
 | Omelyan integrator | wateringHole V69 | ☐ |
 | Richards PDE (12 USDA textures) | wateringHole V69 | ☐ |
-| `TensorSession::fused_mlp` | wateringHole V69 | ☐ |
+| `TensorSession::fused_mlp` | wateringHole V69 | ✅ S80: fused_mlp via BatchedEncoder |
 
 ---
 
@@ -95,7 +95,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-CD | ComputeDispatch migration (~161 legacy ops) | High | 89 done, incremental |
+| D-CD | ComputeDispatch migration (~155 legacy ops) | High | 95 done, incremental |
 | D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
 | D-COV | Test coverage → 90% | Medium | Major gains; gap in GPU ops, neuromorphic |

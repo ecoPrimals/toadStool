@@ -70,6 +70,8 @@
 //! ```
 
 pub mod batched_bisection_gpu; // EVOLVED: GPU batched root-finding (Feb 16, 2026)
+pub mod batched_nelder_mead_gpu;
+mod batched_nelder_mead_pipeline;
 pub mod bfgs;
 pub mod bisect;
 pub mod brent;
@@ -83,6 +85,9 @@ pub mod penalty;
 pub mod solver_state;
 
 pub use batched_bisection_gpu::{BatchedBisectionGpu, BisectionResult};
+pub use batched_nelder_mead_gpu::{
+    batched_nelder_mead_gpu, BatchNelderMeadConfig, NelderMeadResult,
+};
 pub use bfgs::{bfgs, bfgs_numerical, numerical_gradient, BfgsConfig, BfgsResult};
 pub use bisect::bisect;
 pub use brent::{brent, brent_minimize, BrentResult};

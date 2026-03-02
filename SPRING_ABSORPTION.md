@@ -67,7 +67,7 @@
 | Item | Source | Description | Status |
 |------|--------|-------------|--------|
 | **RAWR weighted resampling kernel** | groundSpring V10/V54 | `rawr_weighted_mean_f64.wgsl` — CPU ref exists | ✅ S76 |
-| **Batch Nelder-Mead** | airSpring V039 | Multi-start parallel shader for isotherm fitting | ☐ |
+| **Batch Nelder-Mead** | airSpring V039 | Multi-start parallel shader for isotherm fitting | ✅ S80 |
 | **Pedotransfer** | airSpring V039 | Polynomial evaluation shader | ✅ S76 |
 | **15 sovereign folding DF64 shaders** | neuralSpring V60 | Protein structure folding + `compile_shader_df64_streaming` | ✅ S76 |
 | **VG θ/K, Thornthwaite, GDD** | airSpring V039 | New op codes in `batched_elementwise_f64` framework | ✅ S76 |
@@ -83,7 +83,7 @@
 | **IPC evolution (multi-transport)** | wateringHole | Abstract sockets + TCP fallback; currently Unix-only ~300 lines | ☐ |
 | **Batched encoder (fused pipeline)** | neuralSpring V64 | Per-op `queue.submit()` → batched encoder; 46-78× for MLP/Transformer | ✅ S80 |
 | **`Fp64Strategy::Concurrent`** | wetSpring V82, hotSpring | Dual-run DF64 + native f64 for validation | ✅ S70++ |
-| **`PipelineBuilder` CPU-only mode** | wetSpring V82 | Topology analysis without GPU context | ☐ |
+| **`PipelineBuilder` CPU-only mode** | wetSpring V82 | Topology analysis without GPU context | ✅ S80: StatefulPipeline<S> |
 | **Bio signature alignment** | groundSpring V37 | `BatchedMultinomialGpu` `cumulative_probs + seed` | ✅ S80 |
 | **metalForge Stage/Pipeline topology** | hotSpring, wateringHole V69 | `Stage<In,Out>`, Chain/FanIn/FanOut/Graph | ☐ |
 
@@ -93,15 +93,15 @@
 
 | Item | Source | Status |
 |------|--------|--------|
-| SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ☐ |
+| SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ✅ Exists |
 | ESN 36-head MultiHeadEsn + ExportedWeights | hotSpring V0615 | ✅ S79 |
-| StatefulPipeline (water balance day-over-day state) | airSpring V039 | ☐ |
+| StatefulPipeline (water balance day-over-day state) | airSpring V039 | ✅ S80 |
 | NPU substrate kind in metalForge | neuralSpring V60 | ☐ |
 | Streaming FASTQ/mzML/MS2 (bio I/O) | wateringHole V69 | ☐ |
 | Pseudofermion HMC (477 lines) | wateringHole V69 | ☐ |
 | Omelyan integrator | wateringHole V69 | ☐ |
 | Richards PDE (12 USDA textures) | wateringHole V69 | ☐ |
-| `TensorSession::fused_mlp` | wateringHole V69 | ☐ |
+| `TensorSession::fused_mlp` | wateringHole V69 | ✅ S80 |
 
 ---
 
@@ -390,7 +390,7 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 
 ---
 
-- **ComputeDispatch migration**: 89/250 ops migrated, ~161 remaining
+- **ComputeDispatch migration**: 95/250 ops migrated, ~155 remaining
 
 ---
 
@@ -456,6 +456,32 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 - ✅ `BatchedPassBuilder` — per-pass builder (storage_read, storage_rw, uniform, f64, workgroups)
 - ✅ Single `queue.submit()` for all passes (46-78× potential speedup for MLP/Transformer)
 - ✅ 194 lines, 2 tests (empty submit, two-pass execution)
+
+### Quality Gates
+- ✅ `cargo fmt --all -- --check`: 0 diffs
+- ✅ `cargo clippy --workspace -- -D warnings`: 0 warnings
+- ✅ `cargo build --workspace`: clean
+
+## S80 Spring Absorption Execution Log (final)
+
+### Batch Nelder-Mead GPU
+- ✅ `batched_nelder_mead_gpu` — N independent Nelder-Mead in parallel
+- ✅ Batched simplex shader ops (centroid, reflect, expand, contract, shrink)
+- ✅ `batched_nelder_mead_pipeline.rs` helper module
+- ✅ Rosenbrock 2D test (4 parallel problems)
+
+### ComputeDispatch Migration Batch 4 (89→95)
+- ✅ 6 ops: global_maxpool, adaptive_avgpool2d, adaptive_maxpool2d, reduce, scan, embedding_wgsl
+
+### P4 Completions
+- ✅ `fused_mlp` — MLP forward pass via BatchedEncoder (single submit across all layers)
+- ✅ `StatefulPipeline<S>` + `WaterBalanceState` — day-over-day state tracking for water balance
+- ✅ `SparseGemmF64` — confirmed already exists (CSR×dense SpMM + spmm_f64.wgsl)
+- ✅ IPC multi-transport — confirmed already exists (Unix/Abstract/TCP in ipc/platform)
+
+### Tracker Reconciliation
+- ✅ Marked existing implementations as complete (SparseGemmF64, IPC multi-transport)
+- ✅ Deferred BatchReconcileGpu (large, no existing primitives)
 
 ### Quality Gates
 - ✅ `cargo fmt --all -- --check`: 0 diffs
