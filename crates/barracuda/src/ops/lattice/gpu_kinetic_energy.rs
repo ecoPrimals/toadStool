@@ -1,5 +1,6 @@
 //! GPU per-link kinetic energy from HMC momenta.
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
@@ -24,8 +25,7 @@ struct KineticParams {
 pub struct GpuKineticEnergy {
     device: Arc<WgpuDevice>,
     n_links: u32,
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
+    shader_src: String,
     params: wgpu::Buffer,
 }
 
@@ -35,7 +35,7 @@ impl GpuKineticEnergy {
 
         let profile = GpuDriverProfile::from_device(&device);
         let strategy = profile.fp64_strategy();
-        let src = match strategy {
+        let shader_src = match strategy {
             Fp64Strategy::Native | Fp64Strategy::Concurrent => {
                 format!("{}{}", su3_preamble(), SHADER_BODY)
             }
@@ -46,38 +46,6 @@ impl GpuKineticEnergy {
             "GpuKineticEnergy: compiled with {:?} FP64 strategy",
             strategy
         );
-
-        let module = device.compile_shader_f64(&src, Some("kinetic_energy"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("GpuKineticEnergy:bgl"),
-                entries: &[
-                    uniform_bgl(0),
-                    storage_bgl(1, true),  // momenta
-                    storage_bgl(2, false), // energy
-                ],
-            });
-
-        let layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("GpuKineticEnergy:layout"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("GpuKineticEnergy:pipeline"),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: "kinetic_energy_kernel",
-                compilation_options: Default::default(),
-                cache: None,
-            });
 
         let params_data = KineticParams {
             n_links,
@@ -98,8 +66,7 @@ impl GpuKineticEnergy {
         Ok(Self {
             device,
             n_links,
-            pipeline,
-            bgl,
+            shader_src,
             params,
         })
     }
@@ -109,75 +76,19 @@ impl GpuKineticEnergy {
     /// * `momenta_buf` — `[V × 4 × 18]` f64 (conjugate momenta)
     /// * `energy_buf`  — `[V × 4]` f64 (per-link kinetic energy)
     pub fn compute(&self, momenta_buf: &wgpu::Buffer, energy_buf: &wgpu::Buffer) -> Result<()> {
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("GpuKineticEnergy:bg"),
-                layout: &self.bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.params.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: momenta_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: energy_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        let mut enc = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("GpuKineticEnergy:enc"),
-            });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("GpuKineticEnergy:pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(self.n_links.div_ceil(WG), 1, 1);
-        }
-        self.device.submit_and_poll(Some(enc.finish()));
+        ComputeDispatch::new(self.device.as_ref(), "GpuKineticEnergy")
+            .shader(&self.shader_src, "kinetic_energy_kernel")
+            .f64()
+            .uniform(0, &self.params)
+            .storage_read(1, momenta_buf)
+            .storage_rw(2, energy_buf)
+            .dispatch(self.n_links.div_ceil(WG), 1, 1)
+            .submit();
         Ok(())
     }
 
     pub fn n_links(&self) -> u32 {
         self.n_links
-    }
-}
-
-fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
     }
 }
 

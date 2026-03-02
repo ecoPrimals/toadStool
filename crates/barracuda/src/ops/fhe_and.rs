@@ -9,11 +9,10 @@
 //! - ✅ Production-ready (full error handling)
 //! - ✅ Canonical pattern: Tensor inputs/outputs, device from runtime
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
 /// FHE AND gate operation
 ///
@@ -22,8 +21,6 @@ use wgpu::util::DeviceExt;
 pub struct FheAnd {
     poly_a: Tensor,
     poly_b: Tensor,
-    pipeline: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
     degree: u32,
     modulus: u64,
 }
@@ -58,89 +55,9 @@ impl FheAnd {
             ));
         }
 
-        let device = poly_a.device();
-
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("FHE AND Gate Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("fhe_and.wgsl").into()),
-            });
-
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("FHE AND Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("FHE AND Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FHE AND Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
         Ok(Self {
             poly_a,
             poly_b,
-            pipeline,
-            bind_group_layout,
             degree,
             modulus,
         })
@@ -157,64 +74,30 @@ impl FheAnd {
             mapped_at_creation: false,
         });
 
-        let params = [
-            self.degree,
-            (self.modulus & 0xFFFF_FFFF) as u32,
-            (self.modulus >> 32) as u32,
-            0u32,
-        ];
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE AND Params"),
-                contents: bytemuck::cast_slice(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("FHE AND Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.poly_a.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.poly_b.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: result_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FHE AND Encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("FHE AND Compute Pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let workgroups = self.degree.div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            degree: u32,
+            modulus_lo: u32,
+            modulus_hi: u32,
+            _pad: u32,
         }
+        let params = Params {
+            degree: self.degree,
+            modulus_lo: (self.modulus & 0xFFFF_FFFF) as u32,
+            modulus_hi: (self.modulus >> 32) as u32,
+            _pad: 0,
+        };
+        let params_buffer = device.create_uniform_buffer("FHE AND Params", &params);
 
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device.as_ref(), "FHE AND")
+            .shader(include_str!("fhe_and.wgsl"), "main")
+            .storage_read(0, self.poly_a.buffer())
+            .storage_read(1, self.poly_b.buffer())
+            .storage_rw(2, &result_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch_1d(self.degree)
+            .submit();
 
         Ok(Tensor::from_buffer(
             result_buffer,

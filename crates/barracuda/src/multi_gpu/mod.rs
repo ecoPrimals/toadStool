@@ -40,12 +40,23 @@
 mod strategy;
 mod topology;
 mod types;
+pub mod interconnect;
+pub mod pipeline_dispatch;
 
 #[cfg(test)]
 mod tests;
 
 // Topology (vendor, driver, workload types)
 pub use topology::{GpuDriver, GpuInfo, GpuVendor, WorkloadType};
+
+// Interconnect topology (PCIe bus links, bandwidth tiers, P2P routing)
+pub use interconnect::{BandwidthTier, InterconnectTopology, Link};
+
+// Multi-stage pipeline dispatch across substrates
+pub use pipeline_dispatch::{
+    FallbackPolicy, PipelineStage, ResolvedPipeline, ResolvedStage, StageResolution,
+    StageWorkload, SubstratePipeline, TransferStrategy,
+};
 
 // Types and configuration
 pub use types::{DeviceInfo, DeviceRequirements, WorkloadConfig};

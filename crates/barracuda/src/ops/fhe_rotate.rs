@@ -56,10 +56,9 @@
 //! # }
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 
 /// FHE Rotation operation for CKKS scheme
 ///
@@ -69,8 +68,6 @@ pub struct FheRotate {
     degree: u32,
     rotation: i32, // Can be negative for right rotation
     modulus: u64,
-    pipeline: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl FheRotate {
@@ -123,88 +120,11 @@ impl FheRotate {
             });
         }
 
-        let device = input.device();
-
-        // Load WGSL shader
-        let shader_source = include_str!("fhe_rotate.wgsl");
-        let shader_module = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("FHE Rotate Shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
-
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("FHE Rotate Bind Group Layout"),
-                    entries: &[
-                        // Input buffer
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Output buffer
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Parameters buffer
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("FHE Rotate Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FHE Rotate Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "rotate_automorphism",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
         Ok(Self {
             input,
             degree,
             rotation,
             modulus,
-            pipeline,
-            bind_group_layout,
         })
     }
 
@@ -234,75 +154,29 @@ impl FheRotate {
             self.rotation as u32
         };
 
-        // Create parameters buffer
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
         struct RotateParams {
             degree: u32,
-            rotation: u32, // Normalized to [0, degree)
+            rotation: u32,
             modulus_lo: u32,
             modulus_hi: u32,
         }
-
         let params = RotateParams {
             degree: self.degree,
             rotation: rotation_normalized,
             modulus_lo: (self.modulus & 0xFFFF_FFFF) as u32,
             modulus_hi: (self.modulus >> 32) as u32,
         };
+        let params_buffer = device.create_uniform_buffer("FHE Rotate Params", &params);
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Rotate Params"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("FHE Rotate Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // ✅ GPU EXECUTION: Parallel Galois automorphism
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FHE Rotate Encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("FHE Rotate Pass"),
-                timestamp_writes: None,
-            });
-
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let num_workgroups = self.degree.div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(std::iter::once(encoder.finish()));
+        ComputeDispatch::new(device.as_ref(), "FHE Rotate")
+            .shader(include_str!("fhe_rotate.wgsl"), "rotate_automorphism")
+            .storage_read(0, self.input.buffer())
+            .storage_rw(1, &output_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch_1d(self.degree)
+            .submit();
 
         // Return result tensor
         Ok(Tensor::from_buffer(

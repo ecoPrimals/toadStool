@@ -227,17 +227,10 @@ impl FheNtt {
             std::mem::swap(&mut current_input, &mut current_output);
         }
 
-        // After all swaps, current_input points to the buffer that was last written to
-        // Since we swap AFTER each stage:
-        // - Start: current_input=intermediate, current_output=output
-        // - Stage 0 writes to output, then swap → current_input=output, current_output=intermediate
-        // - Stage 1 writes to intermediate, then swap → current_input=intermediate, current_output=output
-        // So after even stages, result is in intermediate; after odd stages, in output
-        let final_buffer = if num_stages.is_multiple_of(2) {
-            // Even stages: result in intermediate_buffer
+        // After each stage we swap, so current_input always references the last written buffer.
+        let final_buffer = if std::ptr::eq(current_input, &intermediate_buffer) {
             intermediate_buffer
         } else {
-            // Odd stages: result in output_buffer
             output_buffer
         };
 

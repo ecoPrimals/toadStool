@@ -460,6 +460,15 @@ pub fn find_w_c(sweep: &[AndersonSweepPoint], midpoint: f64) -> Option<f64> {
     last
 }
 
+/// Convenience: build a 1D Anderson Hamiltonian and return all eigenvalues.
+///
+/// Combines `anderson_hamiltonian` + `find_all_eigenvalues` into a single call
+/// for the common case of studying spectral statistics.
+pub fn anderson_eigenvalues(n: usize, disorder: f64, seed: u64) -> Vec<f64> {
+    let (diag, off) = anderson_hamiltonian(n, disorder, seed);
+    super::tridiag::find_all_eigenvalues(&diag, &off)
+}
+
 /// LCG RNG for reproducible disorder; used by Anderson models and Lanczos.
 pub(crate) struct LcgRng(u64);
 

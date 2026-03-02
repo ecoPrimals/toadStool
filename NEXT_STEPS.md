@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 2, 2026 -- Session 80
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,800+ barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
-**Latest**: S80 — 95 ComputeDispatch ops. barracuda::nautilus (7 files, 22 tests). ai.nautilus.* (8 JSON-RPC methods). BatchedEncoder + fused_mlp. Batch Nelder-Mead GPU. StatefulPipeline. GpuDriverProfile sin/cos workarounds. NeighborMode::PrecomputedBuffer.
+**Updated**: March 2, 2026 -- Session 82
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,858+ barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
+**Latest**: S81+S82 — 111 ComputeDispatch ops. barracuda::nautilus (7 files, 22 tests). ai.nautilus.* (8 JSON-RPC methods). BatchedEncoder + fused_mlp. Batch Nelder-Mead GPU. StatefulPipeline. GpuDriverProfile sin/cos workarounds. NeighborMode::PrecomputedBuffer. 16 more ops migrated (fhe_xor, fhe_or, fhe_and, fhe_rotate, fhe_modulus_switch, fhe_pointwise_mul, plaquette, hmc_force_su3, gpu_wilson_action, gpu_kinetic_energy, mel_scale, pitch_shift, smith_waterman, felsenstein, batched_bisection_gpu, cubic_spline).
 
 ---
 
@@ -10,8 +10,8 @@
 
 ### P0: ComputeDispatch Migration (Incremental)
 
-95 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
-~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~155 ops remaining.
+111 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
+~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~139 ops remaining.
 
 Migrated so far:
 - 5 linalg (cholesky f32/f64, eigh, inverse_f64, linsolve f32/f64)
@@ -27,6 +27,7 @@ Migrated so far:
 - 6 more (elastic_transform, gillespie, tree_inference, mixup, random_affine, random_perspective — S80)
 - 7 more (lennard_jones_f64, cumsum_f64, label_smoothing, slice_assign, random_crop, lp_pool2d, unfold — S80)
 - 6 more (global_maxpool, adaptive_avgpool2d, adaptive_maxpool2d, reduce, scan, embedding_wgsl — S80)
+- 16 more (fhe_xor, fhe_or, fhe_and, fhe_rotate, fhe_modulus_switch, fhe_pointwise_mul, plaquette, hmc_force_su3, gpu_wilson_action, gpu_kinetic_energy, mel_scale, pitch_shift, smith_waterman, felsenstein, batched_bisection_gpu, cubic_spline — S82)
 
 ### P1: DF64 Default Path (Architecture)
 
@@ -92,7 +93,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
 - [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
-- [ ] **ComputeDispatch migration** -- 95/250 ops migrated; ~155 remaining (incremental)
+- [ ] **ComputeDispatch migration** -- 111/250 ops migrated; ~139 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
 - [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed

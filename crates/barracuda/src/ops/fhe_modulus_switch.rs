@@ -52,10 +52,9 @@
 //! # }
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 
 /// FHE Modulus Switching operation
 ///
@@ -65,8 +64,6 @@ pub struct FheModulusSwitch {
     degree: u32,
     modulus_old: u64,
     modulus_new: u64,
-    pipeline: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl FheModulusSwitch {
@@ -114,88 +111,11 @@ impl FheModulusSwitch {
             });
         }
 
-        let device = input.device();
-
-        // Load WGSL shader
-        let shader_source = include_str!("fhe_modulus_switch.wgsl");
-        let shader_module = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("FHE Modulus Switch Shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
-
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("FHE Modulus Switch Bind Group Layout"),
-                    entries: &[
-                        // Input buffer
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Output buffer
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Parameters buffer
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("FHE Modulus Switch Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FHE Modulus Switch Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "modulus_switch",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
         Ok(Self {
             input,
             degree,
             modulus_old,
             modulus_new,
-            pipeline,
-            bind_group_layout,
         })
     }
 
@@ -215,7 +135,6 @@ impl FheModulusSwitch {
             mapped_at_creation: false,
         });
 
-        // Create parameters buffer
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
         struct SwitchParams {
@@ -224,9 +143,8 @@ impl FheModulusSwitch {
             modulus_old_hi: u32,
             modulus_new_lo: u32,
             modulus_new_hi: u32,
-            _padding: [u32; 3], // Align to 16 bytes
+            _padding: [u32; 3],
         }
-
         let params = SwitchParams {
             degree: self.degree,
             modulus_old_lo: (self.modulus_old & 0xFFFF_FFFF) as u32,
@@ -235,59 +153,15 @@ impl FheModulusSwitch {
             modulus_new_hi: (self.modulus_new >> 32) as u32,
             _padding: [0; 3],
         };
+        let params_buffer = device.create_uniform_buffer("FHE Modulus Switch Params", &params);
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Modulus Switch Params"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("FHE Modulus Switch Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // ✅ GPU EXECUTION: Parallel modulus switching
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FHE Modulus Switch Encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("FHE Modulus Switch Pass"),
-                timestamp_writes: None,
-            });
-
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let workgroups = self.degree.div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(std::iter::once(encoder.finish()));
+        ComputeDispatch::new(device.as_ref(), "FHE Modulus Switch")
+            .shader(include_str!("fhe_modulus_switch.wgsl"), "modulus_switch")
+            .storage_read(0, self.input.buffer())
+            .storage_rw(1, &output_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch_1d(self.degree)
+            .submit();
 
         // Return result tensor
         Ok(Tensor::from_buffer(

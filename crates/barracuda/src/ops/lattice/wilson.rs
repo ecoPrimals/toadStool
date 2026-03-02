@@ -185,6 +185,30 @@ impl Lattice {
         }
         prod.trace().scale(1.0 / 3.0)
     }
+
+    /// Volume-averaged Polyakov loop returning (Re, Im) components.
+    ///
+    /// Averages Tr P(x) / 3 over all spatial sites, returning both the real
+    /// and imaginary parts. A nonzero ⟨Re P⟩ signals deconfinement; the
+    /// imaginary part serves as a Z(3) symmetry diagnostic.
+    #[must_use]
+    pub fn complex_polyakov_average(&self) -> (f64, f64) {
+        let (nx, ny, nz) = (self.dims[0], self.dims[1], self.dims[2]);
+        let mut sum_re = 0.0;
+        let mut sum_im = 0.0;
+        let spatial_vol = nx * ny * nz;
+        for ix in 0..nx {
+            for iy in 0..ny {
+                for iz in 0..nz {
+                    let p = self.polyakov_loop([ix, iy, iz]);
+                    sum_re += p.re;
+                    sum_im += p.im;
+                }
+            }
+        }
+        let inv_vol = 1.0 / spatial_vol as f64;
+        (sum_re * inv_vol, sum_im * inv_vol)
+    }
 }
 
 #[cfg(test)]

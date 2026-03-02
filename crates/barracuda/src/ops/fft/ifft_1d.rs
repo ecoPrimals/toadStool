@@ -145,11 +145,8 @@ impl Ifft1D {
             std::mem::swap(&mut current_input, &mut current_output);
         }
 
-        let butterfly_result_buffer = if num_stages.is_multiple_of(2) {
-            current_input
-        } else {
-            current_output
-        };
+        // After each stage we swap, so current_input always holds the last written buffer.
+        let butterfly_result_buffer = current_input;
 
         // Pass N+1: Normalize by 1/N
         let final_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {

@@ -322,22 +322,38 @@ pub struct LocalhostDiscoveryClient {
 }
 
 impl LocalhostDiscoveryClient {
-    /// Create a new localhost discovery client with common defaults
+    /// Create a new localhost discovery client.
+    ///
+    /// Starts with an empty service list. Register services via `add_service()`
+    /// or use `with_local_compute()` to seed a local compute endpoint.
     #[must_use]
     pub fn new() -> Self {
-        // Add common localhost services with typical ports
-        // Note: These are discovered dynamically in production
-        let services = vec![DiscoveredService {
-            id: Some("localhost-compute".to_string()),
-            capabilities: vec![Capability::Compute(
-                crate::primal_identity::ComputeCapability::NativeExecution,
-            )],
-            endpoints: vec![ServiceEndpoint::http("localhost", 8080)],
-            healthy: true,
-            metadata: HashMap::new(),
-        }];
+        Self {
+            services: Vec::new(),
+        }
+    }
 
-        Self { services }
+    /// Seed a local compute endpoint discovered from the environment.
+    ///
+    /// Reads `TOADSTOOL_LOCAL_PORT` (default: OS-assigned) to avoid hardcoded ports.
+    #[must_use]
+    pub fn with_local_compute(mut self) -> Self {
+        let port: u16 = std::env::var("TOADSTOOL_LOCAL_PORT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        if port > 0 {
+            self.services.push(DiscoveredService {
+                id: Some("localhost-compute".to_string()),
+                capabilities: vec![Capability::Compute(
+                    crate::primal_identity::ComputeCapability::NativeExecution,
+                )],
+                endpoints: vec![ServiceEndpoint::http("localhost", port)],
+                healthy: true,
+                metadata: HashMap::new(),
+            });
+        }
+        self
     }
 
     /// Add a service to the localhost registry

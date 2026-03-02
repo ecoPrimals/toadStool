@@ -211,13 +211,8 @@ impl FheIntt {
             std::mem::swap(&mut current_input, &mut current_output);
         }
 
-        // Determine which buffer has the result after butterfly stages
-        // Same swapping logic as NTT: after even stages, result in intermediate; odd in output
-        let butterfly_result_buffer = if num_stages.is_multiple_of(2) {
-            &intermediate_buffer
-        } else {
-            &output_buffer
-        };
+        // After each stage we swap, so current_input always references the last written buffer.
+        let butterfly_result_buffer = current_input;
 
         // ============================================================
         // Pass N+1: Scaling by N^(-1) mod q

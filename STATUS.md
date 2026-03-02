@@ -1,4 +1,4 @@
-# Status -- March 2, 2026 (Session 80)
+# Status -- March 2, 2026 (Session 82)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,800+ tests** (GPU device-loss resilient via `catch_unwind`) |
+| `cargo test -p barracuda --lib` | PASS | **2,858+ tests** (GPU device-loss resilient via `catch_unwind`) |
 | `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
 | `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
 | `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
@@ -32,13 +32,13 @@
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
-| Production mocks/stubs | **0** — all evolved to real implementations or proper errors |
+| Production mocks/stubs | **0** — all evolved to real implementations or proper errors (S82 memory detection evolution) |
 | Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (32+ large files smart-refactored to domain modules) |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
-| ComputeDispatch adoption | **95 ops migrated** (~155 legacy ops remaining, incremental) |
+| ComputeDispatch adoption | **111 ops migrated** (~139 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
 | Default test timeout | **5s** (unit: 2s, integration: 30s, chaos: 20s) |

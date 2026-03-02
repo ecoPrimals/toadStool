@@ -34,6 +34,7 @@
 //! wetSpring handoff §Shader Design 3 (Feb 2026) — targets Exp019 PhyloNet-HMM
 //! and Liu 2014 maximum-likelihood phylogenetics.
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -206,29 +207,9 @@ impl FelsensteinGpu {
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             });
 
-        // ── Compile shader once (f64-aware: exp/log patching + ILP optimizer) ──
-        let module = dev.compile_shader_f64(
-            include_str!("../../shaders/bio/felsenstein_f64.wgsl"),
-            Some("FelsensteinF64"),
-        );
-        let pipeline = dev
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FelsensteinF64"),
-                layout: None,
-                module: &module,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
+        const SHADER: &str = include_str!("../../shaders/bio/felsenstein_f64.wgsl");
 
         // ── One dispatch per tree level (bottom-up) ───────────────────────────
-        let mut encoder = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Felsenstein sweep"),
-            });
-
         for level_nodes in &tree.levels {
             if level_nodes.is_empty() {
                 continue;
@@ -262,46 +243,19 @@ impl FelsensteinGpu {
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
 
-            let bgl = pipeline.get_bind_group_layout(0);
-            let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: None,
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: node_ids_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: left_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: right_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: tp_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: lik_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
             let total = (level_nodes.len() * n_sites) as u32;
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(total.div_ceil(256), 1, 1);
+            ComputeDispatch::new(dev, "FelsensteinF64")
+                .shader(SHADER, "main")
+                .f64()
+                .uniform(0, &params_buf)
+                .storage_read(1, &node_ids_buf)
+                .storage_read(2, &left_buf)
+                .storage_read(3, &right_buf)
+                .storage_read(4, &tp_buf)
+                .storage_rw(5, &lik_buf)
+                .dispatch(total.div_ceil(256), 1, 1)
+                .submit();
         }
-
-        dev.submit_and_poll(Some(encoder.finish()));
 
         let likelihoods = dev.read_buffer_f64(&lik_buf, n_nodes * n_sites * n_states)?;
 

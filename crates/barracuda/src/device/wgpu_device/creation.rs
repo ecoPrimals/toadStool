@@ -8,15 +8,53 @@ use std::sync::Arc;
 /// Environment variable for adapter selection
 pub const ADAPTER_ENV_VAR: &str = "BARRACUDA_GPU_ADAPTER";
 
+/// Desired features to negotiate with any adapter.
+const DESIRED_FEATURES: [wgpu::Features; 4] = [
+    wgpu::Features::SHADER_F64,
+    wgpu::Features::SHADER_F16,
+    wgpu::Features::PIPELINE_CACHE,
+    wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
+];
+
+/// Extended feature set that also includes TIMESTAMP_QUERY (for benchmarks).
+const DESIRED_FEATURES_EXTENDED: [wgpu::Features; 5] = [
+    wgpu::Features::SHADER_F64,
+    wgpu::Features::SHADER_F16,
+    wgpu::Features::TIMESTAMP_QUERY,
+    wgpu::Features::PIPELINE_CACHE,
+    wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
+];
+
+/// Negotiate features: request everything the adapter supports from `wanted`.
+fn negotiate_features(
+    adapter: &wgpu::Adapter,
+    wanted: &[wgpu::Features],
+) -> wgpu::Features {
+    let available = adapter.features();
+    let mut required = wgpu::Features::empty();
+    for &f in wanted {
+        if available.contains(f) {
+            required |= f;
+        }
+    }
+    required
+}
+
+/// Score a physical device for capability-based selection.
+fn score_physical_device(device: &super::super::registry::PhysicalDevice) -> u32 {
+    let mut score: u32 = match device.device_type {
+        wgpu::DeviceType::DiscreteGpu => 100,
+        wgpu::DeviceType::IntegratedGpu => 50,
+        wgpu::DeviceType::Cpu => 10,
+        _ => 5,
+    };
+    if device.capabilities.f64_shaders {
+        score += 30;
+    }
+    score
+}
+
 impl WgpuDevice {
-    /// Install error handler that flags device-lost without panicking.
-    ///
-    /// Device-lost is a recoverable condition: the test pool recreates the
-    /// device and subsequent operations continue. Panicking on device-lost
-    /// kills test threads under parallel load, causing false failures on
-    /// machines with real GPUs.
-    ///
-    /// Non-lost errors still panic — they indicate real bugs.
     fn install_error_handler(
         device: &wgpu::Device,
         lost_flag: &Arc<std::sync::atomic::AtomicBool>,
@@ -40,8 +78,7 @@ impl WgpuDevice {
         // SAFETY: `data: None` means empty initial cache — no previous blob to validate.
         // The wgpu unsafe contract applies when `data: Some(...)` contains serialized
         // cache from disk; corrupted data could cause driver UB. With `data: None`, we
-        // create a fresh cache with no untrusted input. Violation: if we ever passed
-        // `data: Some(blob)` from untrusted source, malformed blob could cause UB.
+        // create a fresh cache with no untrusted input.
         #[allow(unsafe_code)]
         Some(Arc::new(unsafe {
             device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
@@ -52,7 +89,31 @@ impl WgpuDevice {
         }))
     }
 
-    /// Create new WebGPU device with auto-discovery
+    /// Assemble a `WgpuDevice` from already-created wgpu primitives.
+    fn assemble(
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        adapter_info: wgpu::AdapterInfo,
+    ) -> Self {
+        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        Self::install_error_handler(&device, &lost);
+        let pipeline_cache = Self::make_pipeline_cache(&device);
+        let budget = super::concurrency_budget(adapter_info.device_type);
+        let wgpu_device = Self {
+            device: Arc::new(device),
+            queue: Arc::new(queue),
+            adapter_info,
+            calibration: None,
+            pipeline_cache,
+            lost,
+            gpu_lock: Arc::new(std::sync::Mutex::new(())),
+            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
+        };
+        probe::seed_cache_from_heuristics(&wgpu_device);
+        wgpu_device
+    }
+
+    /// Create new WebGPU device with auto-discovery.
     ///
     /// Prefers discrete GPU via `HighPerformance` power preference.
     /// Falls back to integrated GPU, then software rasterizer.
@@ -61,7 +122,6 @@ impl WgpuDevice {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -70,7 +130,6 @@ impl WgpuDevice {
             })
             .await
             .ok_or_else(|| BarracudaError::device("No WGPU adapter found"))?;
-
         Self::from_adapter(adapter).await
     }
 
@@ -108,7 +167,6 @@ impl WgpuDevice {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-
         let adapters = instance.enumerate_adapters(wgpu::Backends::all());
         let adapter = adapters
             .into_iter()
@@ -122,19 +180,7 @@ impl WgpuDevice {
             adapter_info.device_type
         );
 
-        let adapter_features = adapter.features();
-        let mut required_features = wgpu::Features::empty();
-        for feature in [
-            wgpu::Features::SHADER_F64,
-            wgpu::Features::SHADER_F16,
-            wgpu::Features::PIPELINE_CACHE,
-            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
-        ] {
-            if adapter_features.contains(feature) {
-                required_features |= feature;
-            }
-        }
-
+        let required_features = negotiate_features(&adapter, &DESIRED_FEATURES);
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -148,23 +194,7 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create CPU device: {e}")))?;
 
-        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        Self::install_error_handler(&device, &lost);
-
-        let pipeline_cache = Self::make_pipeline_cache(&device);
-        let budget = super::concurrency_budget(adapter_info.device_type);
-        let wgpu_device = Self {
-            device: Arc::new(device),
-            queue: Arc::new(queue),
-            adapter_info,
-            calibration: None,
-            pipeline_cache,
-            lost,
-            gpu_lock: Arc::new(std::sync::Mutex::new(())),
-            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
-        };
-        probe::seed_cache_from_heuristics(&wgpu_device);
-        Ok(wgpu_device)
+        Ok(Self::assemble(device, queue, adapter_info))
     }
 
     /// Create device with high-capacity limits (1GB+ buffers)
@@ -178,7 +208,6 @@ impl WgpuDevice {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -190,29 +219,16 @@ impl WgpuDevice {
 
         let info = adapter.get_info();
         tracing::info!(
-            "BarraCuda (high-capacity): {} ({:?})",
+            "BarraCuda (custom-limits): {} ({:?})",
             info.name,
             info.device_type
         );
 
-        let adapter_features = adapter.features();
-        let mut required_features = wgpu::Features::empty();
-        for feature in [
-            wgpu::Features::SHADER_F64,
-            wgpu::Features::SHADER_F16,
-            wgpu::Features::TIMESTAMP_QUERY,
-            wgpu::Features::PIPELINE_CACHE,
-            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
-        ] {
-            if adapter_features.contains(feature) {
-                required_features |= feature;
-            }
-        }
-
+        let required_features = negotiate_features(&adapter, &DESIRED_FEATURES_EXTENDED);
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    label: Some("BarraCuda high-capacity device"),
+                    label: Some("BarraCuda custom-limits device"),
                     required_features,
                     required_limits: limits,
                     memory_hints: Default::default(),
@@ -229,23 +245,7 @@ impl WgpuDevice {
             actual_limits.max_buffer_size / (1 << 20),
         );
 
-        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        Self::install_error_handler(&device, &lost);
-
-        let pipeline_cache = Self::make_pipeline_cache(&device);
-        let budget = super::concurrency_budget(info.device_type);
-        let wgpu_device = Self {
-            device: Arc::new(device),
-            queue: Arc::new(queue),
-            adapter_info: info,
-            calibration: None,
-            pipeline_cache,
-            lost,
-            gpu_lock: Arc::new(std::sync::Mutex::new(())),
-            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
-        };
-        probe::seed_cache_from_heuristics(&wgpu_device);
-        Ok(wgpu_device)
+        Ok(Self::assemble(device, queue, info))
     }
 
     /// Create device from ToadStool hardware selection
@@ -263,6 +263,69 @@ impl WgpuDevice {
                 Self::new().await
             }
         }
+    }
+
+    /// Capability-scored adapter discovery.
+    ///
+    /// Scores all available adapters by hardware capabilities (discrete > integrated,
+    /// f64 support, memory limits) and returns the best one. Respects the
+    /// `BARRACUDA_GPU_ADAPTER` env var override when set.
+    pub async fn discover_best_adapter() -> Result<Self> {
+        if let Ok(selector) = std::env::var(ADAPTER_ENV_VAR) {
+            if !selector.is_empty() && selector.to_lowercase() != "auto" {
+                tracing::info!("discover_best_adapter: env override → {selector}");
+                return Self::with_adapter_selector(&selector).await;
+            }
+        }
+
+        let registry = super::super::registry::DeviceRegistry::global();
+        let best = registry
+            .physical_devices()
+            .enumerate()
+            .map(|(idx, dev)| (idx, score_physical_device(dev)))
+            .max_by_key(|&(_, s)| s);
+
+        if let Some((idx, score)) = best {
+            tracing::info!("discover_best_adapter: physical device {idx} (score {score})");
+            Self::from_physical_device(idx).await
+        } else {
+            Self::new().await
+        }
+    }
+
+    /// Discover primary and optional secondary adapters for multi-GPU workloads.
+    ///
+    /// Returns `(primary, Option<secondary>)`. The primary is always the
+    /// highest-scoring adapter; the secondary is the next best *different*
+    /// physical device (if one exists).
+    pub async fn discover_primary_and_secondary_adapters() -> Result<(Self, Option<Self>)> {
+        let registry = super::super::registry::DeviceRegistry::global();
+        let mut scored: Vec<(usize, u32)> = registry
+            .physical_devices()
+            .enumerate()
+            .map(|(idx, dev)| (idx, score_physical_device(dev)))
+            .collect();
+        scored.sort_by(|a, b| b.1.cmp(&a.1));
+
+        let primary = if let Some(&(idx, _)) = scored.first() {
+            Self::from_physical_device(idx).await?
+        } else {
+            Self::new().await?
+        };
+
+        let secondary = if scored.len() > 1 {
+            match Self::from_physical_device(scored[1].0).await {
+                Ok(dev) => Some(dev),
+                Err(e) => {
+                    tracing::debug!("secondary adapter unavailable: {e}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        Ok((primary, secondary))
     }
 
     /// List all available WGPU adapters (raw, may include duplicates)
@@ -428,9 +491,7 @@ impl WgpuDevice {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-
         let adapters: Vec<wgpu::Adapter> = instance.enumerate_adapters(wgpu::Backends::all());
-
         if index >= adapters.len() {
             return Err(BarracudaError::device(format!(
                 "Adapter index {index} out of bounds (only {} adapters available)",
@@ -446,20 +507,7 @@ impl WgpuDevice {
             info.device_type
         );
 
-        let adapter_features = adapter.features();
-        let mut required_features = wgpu::Features::empty();
-        for feature in [
-            wgpu::Features::SHADER_F64,
-            wgpu::Features::SHADER_F16,
-            wgpu::Features::TIMESTAMP_QUERY,
-            wgpu::Features::PIPELINE_CACHE,
-            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
-        ] {
-            if adapter_features.contains(feature) {
-                required_features |= feature;
-            }
-        }
-
+        let required_features = negotiate_features(adapter, &DESIRED_FEATURES_EXTENDED);
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -473,23 +521,7 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
-        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        Self::install_error_handler(&device, &lost);
-
-        let pipeline_cache = Self::make_pipeline_cache(&device);
-        let budget = super::concurrency_budget(info.device_type);
-        let wgpu_device = Self {
-            device: Arc::new(device),
-            queue: Arc::new(queue),
-            adapter_info: info,
-            calibration: None,
-            pipeline_cache,
-            lost,
-            gpu_lock: Arc::new(std::sync::Mutex::new(())),
-            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
-        };
-        probe::seed_cache_from_heuristics(&wgpu_device);
-        Ok(wgpu_device)
+        Ok(Self::assemble(device, queue, info))
     }
 
     /// Create with custom filter (for specific GPU selection)
@@ -517,7 +549,7 @@ impl WgpuDevice {
         Self::from_adapter(adapter).await
     }
 
-    /// Create device from a pre-selected adapter (shared helper)
+    /// Create device from a pre-selected adapter (shared helper).
     async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self> {
         let adapter_info = adapter.get_info();
         tracing::info!(
@@ -526,19 +558,7 @@ impl WgpuDevice {
             adapter_info.device_type
         );
 
-        let adapter_features = adapter.features();
-        let mut required_features = wgpu::Features::empty();
-        for feature in [
-            wgpu::Features::SHADER_F64,
-            wgpu::Features::SHADER_F16,
-            wgpu::Features::TIMESTAMP_QUERY,
-            wgpu::Features::PIPELINE_CACHE,
-            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
-        ] {
-            if adapter_features.contains(feature) {
-                required_features |= feature;
-            }
-        }
+        let required_features = negotiate_features(&adapter, &DESIRED_FEATURES_EXTENDED);
         if required_features.contains(wgpu::Features::SHADER_F64) {
             tracing::info!("  SHADER_F64: enabled");
         }
@@ -559,23 +579,7 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
-        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        Self::install_error_handler(&device, &lost);
-
-        let pipeline_cache = Self::make_pipeline_cache(&device);
-        let budget = super::concurrency_budget(adapter_info.device_type);
-
-        let wgpu_device = Self {
-            device: Arc::new(device),
-            queue: Arc::new(queue),
-            adapter_info,
-            calibration: None,
-            pipeline_cache,
-            lost,
-            gpu_lock: Arc::new(std::sync::Mutex::new(())),
-            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
-        };
-        probe::seed_cache_from_heuristics(&wgpu_device);
+        let wgpu_device = Self::assemble(device, queue, adapter_info);
 
         if wgpu_device
             .device
@@ -601,6 +605,8 @@ impl WgpuDevice {
         queue: Arc<wgpu::Queue>,
         adapter_info: wgpu::AdapterInfo,
     ) -> Self {
+        let lost = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        Self::install_error_handler(&device, &lost);
         let pipeline_cache = Self::make_pipeline_cache(&device);
         let budget = super::concurrency_budget(adapter_info.device_type);
         let wgpu_device = Self {
@@ -609,7 +615,7 @@ impl WgpuDevice {
             adapter_info,
             calibration: None,
             pipeline_cache,
-            lost: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            lost,
             gpu_lock: Arc::new(std::sync::Mutex::new(())),
             dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
@@ -617,41 +623,23 @@ impl WgpuDevice {
         wgpu_device
     }
 
-    /// Create WgpuDevice from existing device/queue with synthetic adapter info.
-    ///
-    /// # Deprecated
-    ///
-    /// Use [`from_existing`](Self::from_existing) instead and pass the real
-    /// `AdapterInfo` from the adapter that created the device. Synthetic
-    /// `AdapterInfo` with `DeviceType::Other` breaks Ada Lovelace (RTX 40xx)
-    /// capability detection and f64 feature probing.
     #[deprecated(
         since = "0.3.0",
         note = "Use from_existing() with real AdapterInfo; synthetic info breaks driver detection"
     )]
     pub fn from_existing_simple(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Self {
-        let pipeline_cache = Self::make_pipeline_cache(&device);
-        let device_type = wgpu::DeviceType::Other;
-        let budget = super::concurrency_budget(device_type);
-        let wgpu_device = Self {
+        Self::from_existing(
             device,
             queue,
-            adapter_info: wgpu::AdapterInfo {
+            wgpu::AdapterInfo {
                 name: "External Device".to_string(),
                 vendor: 0,
                 device: 0,
-                device_type,
+                device_type: wgpu::DeviceType::Other,
                 driver: "external".to_string(),
                 driver_info: "wrapped from existing wgpu resources".to_string(),
                 backend: wgpu::Backend::Vulkan,
             },
-            calibration: None,
-            pipeline_cache,
-            lost: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            gpu_lock: Arc::new(std::sync::Mutex::new(())),
-            dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
-        };
-        probe::seed_cache_from_heuristics(&wgpu_device);
-        wgpu_device
+        )
     }
 }

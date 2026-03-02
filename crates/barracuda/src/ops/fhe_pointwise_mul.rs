@@ -1,7 +1,7 @@
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
-use wgpu::util::DeviceExt;
 
 /// Point-wise multiplication of two polynomials in NTT domain
 ///
@@ -36,8 +36,6 @@ pub struct FhePointwiseMul {
     degree: u32,
     modulus: u64,
     barrett_mu: u64,
-    pipeline: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 /// Parameters passed to GPU shader
@@ -101,98 +99,12 @@ impl FhePointwiseMul {
         // For 64-bit approximation: μ ≈ u64::MAX / q
         let barrett_mu = if modulus > 0 { u64::MAX / modulus } else { 0 };
 
-        // Get device from input tensors
-        let device = input_a.device();
-
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("FHE Point-wise Multiply Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("fhe_pointwise_mul.wgsl").into()),
-            });
-
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("FHE Point-wise Multiply Bind Group Layout"),
-                    entries: &[
-                        // Input A
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Input B
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Output
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Parameters
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("FHE Point-wise Multiply Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FHE Point-wise Multiply Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
         Ok(Self {
             input_a,
             input_b,
             degree,
             modulus,
             barrett_mu,
-            pipeline,
-            bind_group_layout,
         })
     }
 
@@ -210,7 +122,6 @@ impl FhePointwiseMul {
             mapped_at_creation: false,
         });
 
-        // Create parameter buffer
         let params = PointwiseMulParams {
             degree: self.degree,
             modulus_low: (self.modulus & 0xFFFF_FFFF) as u32,
@@ -219,63 +130,16 @@ impl FhePointwiseMul {
             barrett_mu_high: (self.barrett_mu >> 32) as u32,
             _padding: [0; 3],
         };
+        let params_buffer = device.create_uniform_buffer("FHE Pointwise Mul Params", &params);
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Point-wise Multiply Params"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Point-wise Multiply Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input_a.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.input_b.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: result_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Create command encoder
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Point-wise Multiply Command Encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Point-wise Multiply Pass"),
-                timestamp_writes: None,
-            });
-
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            // Dispatch: one thread per coefficient
-            let workgroup_size = 256;
-            let num_workgroups = self.degree.div_ceil(workgroup_size);
-            compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
-        }
-
-        // Submit command buffer
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device.as_ref(), "FHE Pointwise Mul")
+            .shader(include_str!("fhe_pointwise_mul.wgsl"), "main")
+            .storage_read(0, self.input_a.buffer())
+            .storage_read(1, self.input_b.buffer())
+            .storage_rw(2, &result_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch_1d(self.degree)
+            .submit();
 
         // Return tensor (data stays on GPU)
         Ok(Tensor::from_buffer(

@@ -107,16 +107,67 @@ pub fn is_npu_available() -> bool {
     false
 }
 
-/// Estimate system memory (GB).
+/// Estimate system memory (GB) via OS-level detection.
 ///
-/// Platform-specific — for now, conservative estimate.
+/// On Linux: reads `/proc/meminfo`. On macOS: `sysctl hw.memsize`.
+/// Falls back to conservative defaults if detection fails.
 #[must_use]
 pub fn estimate_system_memory() -> usize {
-    if cfg!(target_pointer_width = "64") {
-        FALLBACK_SYSTEM_MEMORY_GB_64BIT
-    } else {
-        FALLBACK_SYSTEM_MEMORY_GB_32BIT
+    detect_system_memory_gb().unwrap_or_else(|| {
+        if cfg!(target_pointer_width = "64") {
+            FALLBACK_SYSTEM_MEMORY_GB_64BIT
+        } else {
+            FALLBACK_SYSTEM_MEMORY_GB_32BIT
+        }
+    })
+}
+
+/// Detect total physical memory in bytes. Returns `None` on unsupported platforms.
+#[must_use]
+pub fn detect_system_memory_bytes() -> Option<u64> {
+    #[cfg(target_os = "linux")]
+    {
+        detect_memory_linux()
     }
+    #[cfg(target_os = "macos")]
+    {
+        detect_memory_macos()
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        None
+    }
+}
+
+fn detect_system_memory_gb() -> Option<usize> {
+    detect_system_memory_bytes().map(|bytes| (bytes / (1024 * 1024 * 1024)) as usize)
+}
+
+#[cfg(target_os = "linux")]
+fn detect_memory_linux() -> Option<u64> {
+    let contents = std::fs::read_to_string("/proc/meminfo").ok()?;
+    for line in contents.lines() {
+        if let Some(rest) = line.strip_prefix("MemTotal:") {
+            let kb_str = rest.trim().strip_suffix("kB")?.trim();
+            let kb: u64 = kb_str.parse().ok()?;
+            return Some(kb * 1024);
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn detect_memory_macos() -> Option<u64> {
+    let output = std::process::Command::new("sysctl")
+        .arg("-n")
+        .arg("hw.memsize")
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&output.stdout);
+    s.trim().parse::<u64>().ok()
 }
 
 /// Build DeviceInfo for a given Device.

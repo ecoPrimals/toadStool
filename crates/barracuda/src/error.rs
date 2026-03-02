@@ -68,6 +68,19 @@ pub enum BarracudaError {
 
     #[error("Not implemented: {feature}")]
     NotImplemented { feature: String },
+
+    #[error("IO error: {context}")]
+    Io {
+        context: String,
+        #[source]
+        source: std::sync::Arc<std::io::Error>,
+    },
+
+    #[error("JSON error: {context}")]
+    Json {
+        context: String,
+        detail: String,
+    },
 }
 
 impl BarracudaError {
@@ -123,6 +136,20 @@ impl BarracudaError {
         Self::ResourceExhausted(msg.into())
     }
 
+    pub fn io(context: impl Into<String>, source: std::io::Error) -> Self {
+        Self::Io {
+            context: context.into(),
+            source: std::sync::Arc::new(source),
+        }
+    }
+
+    pub fn json(context: impl Into<String>, detail: impl Into<String>) -> Self {
+        Self::Json {
+            context: context.into(),
+            detail: detail.into(),
+        }
+    }
+
     /// Wrap any `Display` error as a GPU error with contextual message.
     ///
     /// Replaces the verbose `map_err(|e| BarracudaError::Gpu(format!("ctx: {e}")))`
@@ -135,6 +162,12 @@ impl BarracudaError {
     /// ```
     pub fn gpu_ctx(context: &str, err: impl std::fmt::Display) -> Self {
         Self::Gpu(format!("{context}: {err}"))
+    }
+}
+
+impl From<std::io::Error> for BarracudaError {
+    fn from(e: std::io::Error) -> Self {
+        Self::io("IO operation failed", e)
     }
 }
 

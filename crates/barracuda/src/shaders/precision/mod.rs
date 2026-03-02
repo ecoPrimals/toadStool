@@ -372,9 +372,15 @@ impl ShaderTemplate {
         needs_exp_log_workaround: bool,
         profile: &crate::device::capabilities::GpuDriverProfile,
     ) -> String {
+        // Strip `enable f64;` — naga handles f64 via capability flags, not directives.
+        let stripped = shader_body
+            .lines()
+            .filter(|l| l.trim() != "enable f64;")
+            .collect::<Vec<_>>()
+            .join("\n");
         let use_sin_cos_taylor =
             profile.needs_sin_f64_workaround() || profile.needs_cos_f64_workaround();
-        let substituted = polyfill::substitute_fossil_f64(shader_body);
+        let substituted = polyfill::substitute_fossil_f64(&stripped);
         let patched = polyfill::apply_transcendental_workaround_with_sin_cos(
             &substituted,
             needs_exp_log_workaround,

@@ -28,6 +28,7 @@
 //! // roots ≈ [1.414, 1.732, 2.236]
 //! ```
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -295,107 +296,6 @@ impl BatchedBisectionGpu {
             });
         }
 
-        let shader = self
-            .device
-            .compile_shader_f64(Self::wgsl_shader(), Some("Batched Bisection f64"));
-
-        // Create bind group layout
-        let bgl = self
-            .device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("BatchedBisection BGL"),
-                entries: &[
-                    // lower [batch]
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // upper [batch]
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // params [batch, params_per_problem]
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // roots [batch]
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // iterations [batch]
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // config
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = self
-            .device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("BatchedBisection PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline =
-            self.device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(entry_point),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point,
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
         // Create buffers
         let lower_bytes: Vec<u8> = lower.iter().flat_map(|v| v.to_le_bytes()).collect();
         let lower_buffer =
@@ -452,61 +352,18 @@ impl BatchedBisectionGpu {
             .device
             .create_uniform_buffer("BatchedBisection config", &config);
 
-        // Create bind group
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("BatchedBisection BG"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: lower_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: upper_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: roots_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: iterations_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: config_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-        // Execute
         let n_workgroups = batch_size.div_ceil(64);
-        {
-            let mut encoder =
-                self.device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("BatchedBisection encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("BatchedBisection pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bg, &[]);
-                pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
-            }
-            self.device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(self.device.as_ref(), entry_point)
+            .shader(Self::wgsl_shader(), entry_point)
+            .f64()
+            .storage_read(0, &lower_buffer)
+            .storage_read(1, &upper_buffer)
+            .storage_read(2, &params_buffer)
+            .storage_rw(3, &roots_buffer)
+            .storage_rw(4, &iterations_buffer)
+            .uniform(5, &config_buffer)
+            .dispatch(n_workgroups as u32, 1, 1)
+            .submit();
 
         // Read back results
         let roots = self.device.read_f64_buffer(&roots_buffer, batch_size)?;

@@ -1,7 +1,7 @@
 //! CPU executor core and op dispatch
 
 mod defaults {
-    pub const DEFAULT_MEMORY_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+    pub const FALLBACK_MEMORY_BYTES: u64 = 16 * 1024 * 1024 * 1024;
     pub const SMALL_TENSOR_THRESHOLD: usize = 1_000;
     pub const MEDIUM_TENSOR_THRESHOLD: usize = 10_000;
     pub const LARGE_TENSOR_THRESHOLD: usize = 1_000_000;
@@ -48,9 +48,10 @@ impl CpuExecutor {
         }
     }
 
-    /// Detect CPU capabilities at runtime
+    /// Detect CPU capabilities at runtime via OS-level probing.
     fn detect_capabilities(num_threads: usize) -> HardwareCapabilities {
-        let total_memory = defaults::DEFAULT_MEMORY_BYTES;
+        let total_memory = crate::device::capabilities::detect_system_memory_bytes()
+            .unwrap_or(defaults::FALLBACK_MEMORY_BYTES);
 
         HardwareCapabilities {
             hardware_type: HardwareType::CPU,

@@ -3,6 +3,7 @@
 //! Per-site action contribution dispatched on GPU; host-side reduction
 //! via `ReduceScalarPipeline` yields the total Wilson action.
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
@@ -31,8 +32,7 @@ struct ActionParams {
 pub struct GpuWilsonAction {
     device: Arc<WgpuDevice>,
     volume: u32,
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
+    shader_src: String,
     params: wgpu::Buffer,
 }
 
@@ -46,7 +46,7 @@ impl GpuWilsonAction {
 
         let profile = GpuDriverProfile::from_device(&device);
         let strategy = profile.fp64_strategy();
-        let src = match strategy {
+        let shader_src = match strategy {
             Fp64Strategy::Native | Fp64Strategy::Concurrent => {
                 format!("{}{}", su3_preamble(), SHADER_BODY)
             }
@@ -57,38 +57,6 @@ impl GpuWilsonAction {
             "GpuWilsonAction: compiled with {:?} FP64 strategy",
             strategy
         );
-
-        let module = device.compile_shader_f64(&src, Some("wilson_action"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("GpuWilsonAction:bgl"),
-                entries: &[
-                    uniform_bgl(0),
-                    storage_bgl(1, true),  // links
-                    storage_bgl(2, false), // action
-                ],
-            });
-
-        let layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("GpuWilsonAction:layout"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("GpuWilsonAction:pipeline"),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: "wilson_action_kernel",
-                compilation_options: Default::default(),
-                cache: None,
-            });
 
         let params_data = ActionParams {
             nt,
@@ -113,8 +81,7 @@ impl GpuWilsonAction {
         Ok(Self {
             device,
             volume,
-            pipeline,
-            bgl,
+            shader_src,
             params,
         })
     }
@@ -126,75 +93,19 @@ impl GpuWilsonAction {
     ///
     /// Multiply total sum by β for the full Wilson action.
     pub fn compute(&self, links_buf: &wgpu::Buffer, action_buf: &wgpu::Buffer) -> Result<()> {
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("GpuWilsonAction:bg"),
-                layout: &self.bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.params.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: links_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: action_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        let mut enc = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("GpuWilsonAction:enc"),
-            });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("GpuWilsonAction:pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(self.volume.div_ceil(WG), 1, 1);
-        }
-        self.device.submit_and_poll(Some(enc.finish()));
+        ComputeDispatch::new(self.device.as_ref(), "GpuWilsonAction")
+            .shader(&self.shader_src, "wilson_action_kernel")
+            .f64()
+            .uniform(0, &self.params)
+            .storage_read(1, links_buf)
+            .storage_rw(2, action_buf)
+            .dispatch(self.volume.div_ceil(WG), 1, 1)
+            .submit();
         Ok(())
     }
 
     pub fn volume(&self) -> u32 {
         self.volume
-    }
-}
-
-fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
     }
 }
 

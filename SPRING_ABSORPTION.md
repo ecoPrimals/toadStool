@@ -1,7 +1,62 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 2, 2026 — Session 80  
-**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V69), wetSpring (V82+V87), airSpring (V039+V044), groundSpring (V54+V60), wateringHole (updated MAR01)
+**Date**: March 2, 2026 — Session 82  
+**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V70), wetSpring (V82+V88), airSpring (V039+V045), groundSpring (V54+V61), wateringHole (updated MAR02)
+
+## S82 Execution Log — Deep Debt & Modernization
+
+### ComputeDispatch Migration (+16 ops)
+- ✅ **FHE boolean gates** (6 ops): `fhe_xor`, `fhe_or`, `fhe_and`, `fhe_rotate`, `fhe_modulus_switch`, `fhe_pointwise_mul` — removed pipeline/bgl fields, execute() uses ComputeDispatch builder
+- ✅ **Lattice ops** (4 ops): `plaquette`, `hmc_force_su3`, `gpu_wilson_action`, `gpu_kinetic_energy` — all with `.f64()` dispatch
+- ✅ **Audio/signal** (2 ops): `mel_scale`, `pitch_shift` — dropped DeviceCapabilities/WorkloadType imports
+- ✅ **Bio ops** (2 ops): `smith_waterman`, `felsenstein` — per-diagonal/per-level sequential dispatch
+- ✅ **Optimization** (1 op): `batched_bisection_gpu` — `.f64()` dispatch
+- ✅ **Interpolation** (1 op): `cubic_spline` — `.f64()` eval_many_gpu migration
+
+### Production Stub Evolution
+- ✅ **`estimate_system_memory()`** — Evolved from hardcoded 8GB/2GB to real OS detection: reads `/proc/meminfo` (Linux), `sysctl hw.memsize` (macOS), with fallback
+- ✅ **`detect_system_memory_bytes()`** — New public API returning `Option<u64>` for exact byte-level memory
+- ✅ **`CpuExecutor::detect_capabilities()`** — Uses `detect_system_memory_bytes()` instead of hardcoded `DEFAULT_MEMORY_BYTES` (16GB)
+- ✅ **`LocalhostDiscoveryClient::new()`** — Evolved from hardcoded `localhost:8080` to empty-by-default; new `with_local_compute()` builder reads `TOADSTOOL_LOCAL_PORT` env var
+
+### Hardcoding → Capability-Based
+- ✅ **AMQP port** — Extracted `storage::AMQP_PORT = 5672` constant; `get_message_broker_url()` uses it
+- ✅ **`FALLBACK_MEMORY_BYTES`** — Renamed from `DEFAULT_MEMORY_BYTES` to reflect actual semantics
+
+### God File Refactoring
+- ✅ **`creation.rs`** (744 → 645 lines, -13%) — Extracted 3 shared helpers:
+  - `negotiate_features()` — deduplicates 4 identical feature negotiation blocks
+  - `score_physical_device()` — deduplicates scoring in discover_best_adapter + discover_primary_and_secondary
+  - `assemble()` — deduplicates 6 identical device construction blocks (error handler + pipeline cache + probe seeding)
+
+### Audit Results (informational, for tracking)
+- **36 legacy dispatch files remaining** (15 simple, 10 medium, 6 complex — complex ones need ComputeDispatch multi-stage API)
+- **Unsafe code**: 45 blocks total, all necessary (wgpu FFI, aligned alloc, CUDA), none reducible
+- **God files**: 28 files >600 lines identified (barracuda: 7, cli: 3, core: 10, runtime: 8)
+- **External deps**: Nearly all pure Rust; `notify` (inotify C FFI) and `pyo3` (Python) are only C deps
+
+---
+
+## S81 Execution Log
+
+- ✅ **P0: IFFT buffer fix** — `ifft_1d.rs` used `is_multiple_of(2)` which failed for odd stage counts; replaced with `current_input` (matches FFT pattern)
+- ✅ **P0: FHE NTT/INTT buffer fix** — `fhe_ntt/compute.rs` and `fhe_intt/compute.rs` replaced fragile `is_multiple_of(2)` with `std::ptr::eq(current_input, ...)` / direct `current_input`
+- ✅ **P0: `enable f64;` stripping** — Added to `for_driver_profile()` and `compile_shader_df64()` (defense-in-depth; `for_driver_auto` already had it)
+- ✅ **P1: `BarracudaError::Io` + `BarracudaError::Json`** — New error variants with `#[source]` for IO, context+detail for JSON; `From<std::io::Error>` impl
+- ✅ **P1: `complex_polyakov_average()`** — Returns `(f64, f64)` (Re, Im) averaged over spatial volume; deconfinement diagnostic
+- ✅ **P1: `anderson_eigenvalues()`** — Convenience wrapper: build Hamiltonian + find all eigenvalues in one call
+- ✅ **P1: `FitResult` named accessors** — `slope()`, `intercept()`, `coefficients()` for model-aware parameter access
+- ✅ **P1: `discover_best_adapter()`** — Capability-scored device selection (discrete>integrated, f64 bonus); env var override
+- ✅ **P1: `discover_primary_and_secondary_adapters()`** — Multi-GPU pair discovery for cross-device workloads
+- ✅ **P2: Thornthwaite ET₀** — Monthly temperature-only method + heat index computation (Thornthwaite 1948)
+- ✅ **P2: Makkink ET₀** — Radiation-based method (Makkink 1957)
+- ✅ **P2: Turc ET₀** — Radiation-temperature method with humidity correction (Turc 1961)
+- ✅ **P2: Hamon ET₀** — Temperature + daylight hours method (Hamon 1963)
+- ✅ **P2: `InterconnectTopology`** — PCIe bus topology: BandwidthTier (Local/NvLink/PciePeer/PcieHost/PcieLow/Network), Link, infer(), best_link(), has_p2p(), transfer_time_us()
+- ✅ **P2: `SubstratePipeline`** — Multi-stage pipeline dispatch: PipelineStage, FallbackPolicy (Degrade/Skip/Fail), capability-based routing, transfer cost modeling
+- ✅ 64 new tests pass, 0 failures
+
+---
 
 ## S72 Execution Log
 
@@ -85,7 +140,7 @@
 | **`Fp64Strategy::Concurrent`** | wetSpring V82, hotSpring | Dual-run DF64 + native f64 for validation | ✅ S70++ |
 | **`PipelineBuilder` CPU-only mode** | wetSpring V82 | Topology analysis without GPU context | ✅ S80: StatefulPipeline<S> |
 | **Bio signature alignment** | groundSpring V37 | `BatchedMultinomialGpu` `cumulative_probs + seed` | ✅ S80 |
-| **metalForge Stage/Pipeline topology** | hotSpring, wateringHole V69 | `Stage<In,Out>`, Chain/FanIn/FanOut/Graph | ☐ |
+| **metalForge Stage/Pipeline topology** | groundSpring V61 | InterconnectTopology + SubstratePipeline (capability-based routing) | ✅ S81 |
 
 ---
 

@@ -32,10 +32,11 @@
 //!
 //! - **Linear, Quadratic, Exponential, Logarithmic**: Closed-form least-squares
 //!
-//! # Hydrology (S66+S70 absorption from airSpring/groundSpring)
+//! # Hydrology (S66+S70+S81 absorption from airSpring/groundSpring)
 //!
 //! - **FAO-56 Penman-Monteith ET₀** (scalar, full equation)
-//! - **Hargreaves ET₀, Crop coefficient, Soil water balance**: FAO-56 reference
+//! - **Hargreaves, Thornthwaite, Makkink, Turc, Hamon ET₀**: Tier A GPU-ready primitives
+//! - **Crop coefficient, Soil water balance**: FAO-56 reference
 //!
 //! # Population Genetics (S70 absorption from groundSpring)
 //!
@@ -110,8 +111,9 @@ pub use histogram::HistogramGpu;
 #[cfg(feature = "gpu")]
 pub use hydrology::HargreavesBatchGpu;
 pub use hydrology::{
-    crop_coefficient, fao56_et0, hargreaves_et0, hargreaves_et0_batch, soil_water_balance,
-    Fao56BaseInputs, Fao56Uncertainties, SeasonalOutput,
+    crop_coefficient, fao56_et0, hamon_et0, hargreaves_et0, hargreaves_et0_batch, makkink_et0,
+    soil_water_balance, thornthwaite_et0, thornthwaite_heat_index, turc_et0, Fao56BaseInputs,
+    Fao56Uncertainties, SeasonalOutput,
 };
 #[cfg(feature = "gpu")]
 pub use hydrology::{McEt0PropagateGpu, SeasonalGpuParams, SeasonalPipelineF64};

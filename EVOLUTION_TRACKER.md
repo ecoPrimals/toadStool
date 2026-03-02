@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 80 (continued)
+**Date**: March 2, 2026 — Session 82
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -32,6 +32,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | groundSpring | V54 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, DF64 default fallback |
 | hotSpring | V0615 | ✅ Core absorbed | NVK serialization, brain arch reviewed, device-creation documented |
 | wateringHole | V69 | ✅ Core absorbed | Chi-squared batch, MC ET0 propagate |
+| groundSpring | V61 | ✅ S81 absorbed | InterconnectTopology, SubstratePipeline, BandwidthTier (PCIe P2P routing) |
+| neuralSpring | V70 | ✅ S81 absorbed | IFFT/NTT/INTT buffer fixes, `enable f64;` stripping |
 
 ---
 
@@ -69,9 +71,9 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | bingoCube standalone absorption | hotSpring V0615 | HIGH | ✅ S80: barracuda::nautilus module (7 files, 22 tests) |
 | IPC evolution (multi-transport) | wateringHole | MEDIUM | ✅ Already exists: Unix/Abstract/TCP in ipc/platform |
 | Batched encoder (fused pipeline) | neuralSpring V64 | MEDIUM | ✅ S80: `BatchedEncoder` (194 lines, 2 tests) |
-| NPU bandwidth model | neuralSpring V60 | LOW | ☐ Transfer cost tiers for metalForge |
-| `PipelineBuilder` CPU-only mode | wetSpring V82 | LOW | ☐ Topology analysis without GPU context |
-| metalForge Stage/Pipeline topology | hotSpring/wateringHole | LOW | ☐ Stage<In,Out>, Chain/FanIn/FanOut/Graph |
+| NPU bandwidth model | neuralSpring V60 | LOW | ✅ S81: BandwidthTier::PcieLow for AKD1000 in InterconnectTopology |
+| `PipelineBuilder` CPU-only mode | wetSpring V82 | LOW | ✅ S80: StatefulPipeline<S> |
+| metalForge Stage/Pipeline topology | groundSpring V61 | LOW | ✅ S81: SubstratePipeline + InterconnectTopology (capability-based routing) |
 
 ### P4: Lower Priority (Carried)
 
@@ -95,7 +97,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-CD | ComputeDispatch migration (~155 legacy ops) | High | 95 done, incremental |
+| D-CD | ComputeDispatch migration (~155 legacy ops) | High | 111 done (+16 S82: FHE gates, lattice, audio, bio, bisection, spline), incremental |
 | D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
 | D-COV | Test coverage → 90% | Medium | Major gains; gap in GPU ops, neuromorphic |
@@ -140,8 +142,10 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Discovery functions | ✅ Real mDNS/k8s/docker/registry probing |
 | Deprecated name-based discovery | ✅ S77: `discover_beardog_at`/`discover_nestgate_at` removed |
 | K8s/Docker port hardcoding | ✅ S77: Configurable via `TOADSTOOL_DISCOVERY_HTTP_PORT` |
-| Production stubs/mocks | ✅ S77: TCP provider, EMA prediction, proper error returns |
+| Production stubs/mocks | ✅ S77+S82: TCP provider, EMA prediction, detect_capabilities→OS probing, LocalhostDiscovery→env-based |
 | `legacy_primal_to_capabilities` / `legacy_primal_primary_capability` | ✅ S78: Removed (no callers); primal_capabilities now clean capability-to-primal mapping |
+| CPU memory detection | ✅ S82: `estimate_system_memory()` reads `/proc/meminfo` (Linux) / `sysctl hw.memsize` (macOS) |
+| AMQP port hardcoding | ✅ S82: Extracted `storage::AMQP_PORT` constant |
 
 ### Unsafe Code
 
@@ -161,13 +165,13 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | `cargo check --workspace` | ✅ 0 errors |
 | `cargo clippy --workspace -- -D warnings` | ✅ S77: deprecated discovery calls removed |
 | `cargo fmt --all -- --check` | ✅ S77: 340 diffs fixed |
-| `cargo test -p barracuda --lib` | ✅ 2,781 passed, 13 ignored |
+| `cargo test -p barracuda --lib` | ✅ 2,858 passed, 13 ignored |
 | Workspace lib tests | ✅ 5,500+ passed |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 |
 | WGSL shaders | 844 (0 orphans, 0 f32-only, 37 DF64, 15 folding, 2 bitcast-fixed) |
-| God files refactored | 35+ (all <1000 lines, S77: +3) |
+| God files refactored | 36+ (S82: creation.rs 744→645, extracted negotiate_features/score_physical_device/assemble) |
 | `cargo doc` | ✅ S77/S78: private intra-doc links fixed (ToadStoolError in universal_adapter, discovery_integration) |
 | e2e runtime nesting | ✅ S77: `run_gpu_resilient_async` evolved to dedicated runtime |
 | Zero-copy anti-patterns | ✅ S77: All `cast_slice().to_vec()` verified necessary, documented |

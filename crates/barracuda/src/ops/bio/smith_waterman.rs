@@ -19,6 +19,7 @@
 //! wetSpring handoff §Shader Design 1 (Feb 2026) — used by `bio::sate_alignment`
 //! for phylogenetic multiple sequence alignment (Liu 2009 SATé).
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
@@ -174,29 +175,9 @@ impl SmithWatermanGpu {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        // ── Compile shader once (f64-aware: applies exp/log patching + ILP optimizer) ──
-        let module = dev.compile_shader_f64(
-            include_str!("../../shaders/bio/smith_waterman_banded_f64.wgsl"),
-            Some("SW BandedF64"),
-        );
-        let pipeline = dev
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("SW BandedF64"),
-                layout: None,
-                module: &module,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
+        const SHADER: &str = include_str!("../../shaders/bio/smith_waterman_banded_f64.wgsl");
 
         // ── Sweep anti-diagonals d = 2 .. n+m (inclusive) ─────────────────────
-        let mut encoder = dev
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("SW sweep"),
-            });
-
         for d in 2u32..=(n + m) as u32 {
             // Number of cells on this diagonal within [1..n] × [1..m]
             let i_lo = d.saturating_sub(m as u32).max(1);
@@ -223,53 +204,20 @@ impl SmithWatermanGpu {
                     usage: wgpu::BufferUsages::STORAGE,
                 });
 
-            let bgl = pipeline.get_bind_group_layout(0);
-            let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: None,
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: query_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: target_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: subst_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: h_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: e_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 6,
-                        resource: f_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
             let wg = cells.div_ceil(256);
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(wg, 1, 1);
+            ComputeDispatch::new(dev, "SW BandedF64")
+                .shader(SHADER, "main")
+                .f64()
+                .storage_read(0, &params_buf)
+                .storage_read(1, &query_buf)
+                .storage_read(2, &target_buf)
+                .storage_read(3, &subst_buf)
+                .storage_rw(4, &h_buf)
+                .storage_rw(5, &e_buf)
+                .storage_rw(6, &f_buf)
+                .dispatch(wg, 1, 1)
+                .submit();
         }
-
-        dev.submit_and_poll(Some(encoder.finish()));
 
         // ── Read back H matrix and find best score on CPU ─────────────────────
         let h_data = dev.read_buffer_f64(&h_buf, rows_cols)?;

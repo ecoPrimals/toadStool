@@ -113,6 +113,13 @@ impl WgpuDevice {
 
         let combined = format!("{DF64_CORE}\n{DF64_TRANSCENDENTALS}\n{source}");
 
+        // Strip `enable f64;` — naga handles f64 via capability flags, not directives.
+        let combined = combined
+            .lines()
+            .filter(|l| l.trim() != "enable f64;")
+            .collect::<Vec<_>>()
+            .join("\n");
+
         let profile = crate::device::driver_profile::GpuDriverProfile::from_device(self);
         let optimized = if combined.contains("@ilp_region") || combined.contains("@unroll_hint") {
             use crate::shaders::optimizer::WgslOptimizer;

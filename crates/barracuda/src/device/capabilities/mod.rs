@@ -23,7 +23,8 @@ pub use crate::device::driver_profile::{
 };
 
 pub use device_info::{
-    build_device_info, estimate_system_memory, is_gpu_available, is_npu_available,
+    build_device_info, detect_system_memory_bytes, estimate_system_memory, is_gpu_available,
+    is_npu_available,
 };
 pub use device_info::{Capability, DeviceInfo};
 pub use wgpu_caps::{

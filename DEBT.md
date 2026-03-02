@@ -73,7 +73,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| D-CD | ComputeDispatch migration | High | 95/250 ops migrated (~11,000+ lines removed). ~155 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
+| D-CD | ComputeDispatch migration | High | 111/250 ops migrated (~11,000+ lines removed). ~139 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
 | D-COV | Test coverage → 90% | Medium | Major gains in S70/S70+: +187 tests across CLI, server, API, monitoring, distributed, config, barracuda stats/ops. Gap: barracuda GPU ops, neuromorphic drivers. |

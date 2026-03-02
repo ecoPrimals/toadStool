@@ -29,6 +29,28 @@ pub struct FitResult {
 }
 
 impl FitResult {
+    /// Slope (first coefficient) — `a` in y = ax + b, y = ax² + bx + c, etc.
+    #[must_use]
+    pub fn slope(&self) -> Option<f64> {
+        self.params.first().copied()
+    }
+
+    /// Intercept (constant term) — `b` for linear, `c` for quadratic.
+    #[must_use]
+    pub fn intercept(&self) -> Option<f64> {
+        match self.model {
+            "linear" | "exponential" | "logarithmic" => self.params.get(1).copied(),
+            "quadratic" => self.params.get(2).copied(),
+            _ => None,
+        }
+    }
+
+    /// All model coefficients as a slice.
+    #[must_use]
+    pub fn coefficients(&self) -> &[f64] {
+        &self.params
+    }
+
     /// Evaluate the fitted model at a single x value.
     #[must_use]
     pub fn predict_one(&self, x: f64) -> Option<f64> {

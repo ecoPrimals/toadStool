@@ -4,12 +4,18 @@
 //! | Function | Reference | Use case |
 //! |----------|-----------|----------|
 //! | [`hargreaves_et0`] | Hargreaves & Samani (1985) | Temperature-only ET₀ |
+//! | [`thornthwaite_et0`] | Thornthwaite (1948) | Monthly temperature-only ET₀ |
+//! | [`makkink_et0`] | Makkink (1957) | Radiation-based ET₀ |
+//! | [`turc_et0`] | Turc (1961) | Radiation-temperature ET₀ |
+//! | [`hamon_et0`] | Hamon (1963) | Temperature + daylight ET₀ |
+//! | [`fao56_et0`] | FAO-56 (Allen 1998) | Full Penman-Monteith ET₀ |
 //! | [`crop_coefficient`] | FAO-56 Ch. 6 | Adjust ET₀ for crop stage |
 //! | [`soil_water_balance`] | FAO-56 Ch. 8 | Daily soil moisture bookkeeping |
 //!
 //! # Provenance
 //!
-//! Absorbed from airSpring `metalForge/forge/src/hydrology.rs` (V009).
+//! Core methods absorbed from airSpring `metalForge/forge/src/hydrology.rs` (V009).
+//! Tier A promotions (Thornthwaite, Makkink, Turc, Hamon) from spring handoffs (S81).
 //! Validated against FAO-56 (Allen et al. 1998), 918 station-days,
 //! cross-validated with Python `ETo` library within 1e-5 tolerance.
 
@@ -77,6 +83,119 @@ pub fn soil_water_balance(
 ) -> f64 {
     let raw = theta + precip + irrigation - et_c;
     raw.clamp(0.0, field_capacity)
+}
+
+/// Thornthwaite monthly ET₀ (mm/month).
+///
+/// Temperature-only method based on monthly mean temperature and
+/// an annual heat index. Simple but widely used for climate classification.
+///
+/// `ET₀ = 16 · (10 · t_mean / I)^a` where `I` = annual heat index, `a` = cubic in `I`.
+///
+/// Returns `None` if `heat_index <= 0` or `t_mean < 0`.
+///
+/// # Reference
+/// Thornthwaite (1948) "An approach toward a rational classification of climate"
+/// Geographical Review 38(1):55-94.
+#[must_use]
+pub fn thornthwaite_et0(t_mean: f64, heat_index: f64, daylight_hours: f64, days_in_month: f64) -> Option<f64> {
+    if heat_index <= 0.0 || t_mean < 0.0 {
+        return None;
+    }
+    let a = 6.75e-7 * heat_index.powi(3)
+        - 7.71e-5 * heat_index.powi(2)
+        + 1.792e-2 * heat_index
+        + 0.49239;
+    let et_unadj = 16.0 * (10.0 * t_mean / heat_index).powf(a);
+    Some(et_unadj * (daylight_hours / 12.0) * (days_in_month / 30.0))
+}
+
+/// Compute the Thornthwaite annual heat index from 12 monthly mean temperatures.
+///
+/// `I = Σ (t_i / 5)^1.514` for months where `t_i > 0`.
+#[must_use]
+pub fn thornthwaite_heat_index(monthly_temps: &[f64; 12]) -> f64 {
+    monthly_temps.iter()
+        .filter(|&&t| t > 0.0)
+        .map(|&t| (t / 5.0).powf(1.514))
+        .sum()
+}
+
+/// Makkink daily ET₀ (mm/day).
+///
+/// Radiation-based method requiring only solar radiation and temperature.
+/// Popular in the Netherlands and northern Europe.
+///
+/// `ET₀ = 0.61 · Δ/(Δ+γ) · Rs/λ − 0.012`
+///
+/// Returns `None` if `rs < 0`.
+///
+/// # Reference
+/// Makkink (1957) "Testing the Penman formula by means of lysimeters"
+/// J. Institution of Water Engineers 11:277-288.
+#[must_use]
+pub fn makkink_et0(t_mean: f64, rs: f64) -> Option<f64> {
+    if rs < 0.0 {
+        return None;
+    }
+    let e_tmean = 0.6108 * (17.27 * t_mean / (t_mean + 237.3)).exp();
+    let delta = 4098.0 * e_tmean / (t_mean + 237.3).powi(2);
+    let gamma = 0.0674; // kPa/°C at sea level (~101.3 kPa)
+    let lambda = 2.45; // MJ/kg at ~20°C
+    let et0 = 0.61 * (delta / (delta + gamma)) * (rs / lambda) - 0.012;
+    Some(et0.max(0.0))
+}
+
+/// Turc daily ET₀ (mm/day).
+///
+/// Simple radiation-temperature method requiring solar radiation, temperature,
+/// and relative humidity.
+///
+/// For `rh_mean ≥ 50`: `ET₀ = 0.013 · (t/(t+15)) · (Rs + 50) · 23.8856 / λ`
+/// For `rh_mean < 50`: multiply by `(1 + (50 − rh)/70)`
+///
+/// Returns `None` if `rs < 0`.
+///
+/// # Reference
+/// Turc (1961) "Estimation of irrigation water requirements"
+/// Annales Agronomiques 12(1):13-49.
+#[must_use]
+pub fn turc_et0(t_mean: f64, rs_mj: f64, rh_mean: f64) -> Option<f64> {
+    if rs_mj < 0.0 {
+        return None;
+    }
+    let rs_cal = rs_mj * 23.8846; // MJ/m²/day → cal/cm²/day
+    let base = 0.013 * (t_mean / (t_mean + 15.0)) * (rs_cal + 50.0);
+    let et0 = if rh_mean >= 50.0 {
+        base
+    } else {
+        base * (1.0 + (50.0 - rh_mean) / 70.0)
+    };
+    Some(et0.max(0.0))
+}
+
+/// Hamon daily ET₀ (mm/day).
+///
+/// Temperature-only method using mean temperature and possible daylight hours.
+///
+/// `ET₀ = 0.55 · D² · e_s(t) / 100`
+///
+/// where D = possible daylight hours / 12, e_s = saturated vapor pressure (mbar).
+///
+/// Returns `None` if `daylight_hours < 0`.
+///
+/// # Reference
+/// Hamon (1963) "Estimating potential evapotranspiration"
+/// J. Hydraulics Division ASCE 89:97-120.
+#[must_use]
+pub fn hamon_et0(t_mean: f64, daylight_hours: f64) -> Option<f64> {
+    if daylight_hours < 0.0 {
+        return None;
+    }
+    let d = daylight_hours / 12.0;
+    let es = 6.108 * (17.27 * t_mean / (t_mean + 237.3)).exp(); // mbar
+    let et0 = 0.55 * d * d * es / 100.0;
+    Some(et0.max(0.0))
 }
 
 /// FAO-56 Penman-Monteith scalar ET₀ (mm/day).
@@ -592,5 +711,61 @@ mod tests {
             (et0 - 12.35).abs() < 0.1,
             "Hargreaves: expected ~12.35, got {et0}"
         );
+    }
+
+    #[test]
+    fn test_thornthwaite_typical() {
+        let monthly = [3.0, 4.0, 8.0, 12.0, 17.0, 21.0, 24.0, 23.0, 19.0, 13.0, 8.0, 4.0];
+        let hi = thornthwaite_heat_index(&monthly);
+        assert!(hi > 30.0 && hi < 80.0, "heat index {hi} out of range");
+        let et0 = thornthwaite_et0(21.0, hi, 14.5, 30.0).unwrap();
+        assert!(et0 > 0.0 && et0 < 200.0, "Thornthwaite ET₀={et0} out of range");
+    }
+
+    #[test]
+    fn test_thornthwaite_invalid() {
+        assert!(thornthwaite_et0(-5.0, 50.0, 12.0, 30.0).is_none());
+        assert!(thornthwaite_et0(20.0, 0.0, 12.0, 30.0).is_none());
+    }
+
+    #[test]
+    fn test_makkink_typical() {
+        let et0 = makkink_et0(20.0, 18.0).unwrap();
+        assert!(et0 > 0.0 && et0 < 10.0, "Makkink ET₀={et0} out of range");
+    }
+
+    #[test]
+    fn test_makkink_invalid() {
+        assert!(makkink_et0(20.0, -1.0).is_none());
+    }
+
+    #[test]
+    fn test_turc_typical() {
+        let et0_humid = turc_et0(20.0, 18.0, 70.0).unwrap();
+        let et0_dry = turc_et0(20.0, 18.0, 30.0).unwrap();
+        assert!(et0_humid > 0.0, "Turc humid ET₀ should be positive");
+        assert!(et0_dry > et0_humid, "Turc dry should exceed humid at same T/Rs");
+    }
+
+    #[test]
+    fn test_turc_invalid() {
+        assert!(turc_et0(20.0, -1.0, 50.0).is_none());
+    }
+
+    #[test]
+    fn test_hamon_typical() {
+        let et0 = hamon_et0(20.0, 14.0).unwrap();
+        assert!(et0 > 0.0 && et0 < 10.0, "Hamon ET₀={et0} out of range");
+    }
+
+    #[test]
+    fn test_hamon_invalid() {
+        assert!(hamon_et0(20.0, -1.0).is_none());
+    }
+
+    #[test]
+    fn test_hamon_cold() {
+        let et0 = hamon_et0(0.0, 10.0).unwrap();
+        assert!(et0 >= 0.0 && et0 < 1.0, "Hamon cold ET₀={et0} should be near zero");
     }
 }

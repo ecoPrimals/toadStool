@@ -18,6 +18,7 @@
 //! CPU reference in hotSpring `lattice/wilson.rs`.  Expected average plaquette
 //! for a thermalized SU(3) config at β=6: ≈ 0.5937 (Wilson action).
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
@@ -33,8 +34,7 @@ const PLAQ_SHADER_DF64: &str = include_str!("../../shaders/lattice/wilson_plaque
 pub struct WilsonPlaquette {
     device: Arc<WgpuDevice>,
     volume: u32,
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
+    shader_src: String,
     params: wgpu::Buffer,
 }
 
@@ -61,7 +61,7 @@ impl WilsonPlaquette {
 
         let profile = GpuDriverProfile::from_device(&device);
         let strategy = profile.fp64_strategy();
-        let src = match strategy {
+        let shader_src = match strategy {
             Fp64Strategy::Native | Fp64Strategy::Concurrent => {
                 format!("{}{}", su3_preamble(), PLAQ_SHADER_BODY)
             }
@@ -72,38 +72,6 @@ impl WilsonPlaquette {
             "WilsonPlaquette: compiled with {:?} FP64 strategy",
             strategy
         );
-
-        let module = device.compile_shader_f64(&src, Some("wilson_plaquette"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("WilsonPlaquette:bgl"),
-                entries: &[
-                    uniform_bgl(0),        // params
-                    storage_bgl(1, true),  // links (read)
-                    storage_bgl(2, false), // plaq  (write)
-                ],
-            });
-
-        let layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("WilsonPlaquette:layout"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("WilsonPlaquette:pipeline"),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: "plaquette",
-                compilation_options: Default::default(),
-                cache: None,
-            });
 
         let params_data = PlaqParams {
             nt,
@@ -128,8 +96,7 @@ impl WilsonPlaquette {
         Ok(Self {
             device,
             volume,
-            pipeline,
-            bgl,
+            shader_src,
             params,
         })
     }
@@ -139,44 +106,14 @@ impl WilsonPlaquette {
     /// * `links_buf` — `[V × 4 × 18]` f64 storage buffer (GPU-resident)
     /// * `plaq_buf`  — `[V × 6]` f64 storage buffer (output, GPU-resident)
     pub fn compute(&self, links_buf: &wgpu::Buffer, plaq_buf: &wgpu::Buffer) -> Result<()> {
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("WilsonPlaquette:bg"),
-                layout: &self.bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.params.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: links_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: plaq_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        let mut enc = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("WilsonPlaquette:enc"),
-            });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("WilsonPlaquette:pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(self.volume.div_ceil(PLAQ_WG), 1, 1);
-        }
-        self.device.submit_and_poll(Some(enc.finish()));
+        ComputeDispatch::new(self.device.as_ref(), "WilsonPlaquette")
+            .shader(&self.shader_src, "plaquette")
+            .f64()
+            .uniform(0, &self.params)
+            .storage_read(1, links_buf)
+            .storage_rw(2, plaq_buf)
+            .dispatch(self.volume.div_ceil(PLAQ_WG), 1, 1)
+            .submit();
         Ok(())
     }
 
@@ -188,34 +125,6 @@ impl WilsonPlaquette {
     /// Total number of plaquette values in the output buffer (`volume × 6`).
     pub fn n_plaquettes(&self) -> u32 {
         self.volume * 6
-    }
-}
-
-// ── BGL helpers ──────────────────────────────────────────────────────────────
-
-fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
     }
 }
 

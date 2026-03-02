@@ -28,6 +28,7 @@
 //! - Numerical Recipes, 3rd Edition, Section 3.3
 //! - De Boor, "A Practical Guide to Splines"
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 
 const WGSL_CUBIC_SPLINE_EVAL_F64: &str = include_str!("../shaders/math/cubic_spline_eval_f64.wgsl");
@@ -207,7 +208,6 @@ impl CubicSpline {
             coefs.extend_from_slice(&[a, b, c, d_coef]);
         }
 
-        let module = device.compile_shader_f64(WGSL_CUBIC_SPLINE_EVAL_F64, Some("spline_eval_f64"));
         let d = &device.device;
         let q = &device.queue;
 
@@ -243,65 +243,18 @@ impl CubicSpline {
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        let bgl = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Spline:bgl"),
-            entries: &[
-                bgl_storage(0, true),
-                bgl_storage(1, true),
-                bgl_storage(2, true),
-                bgl_storage(3, false),
-                bgl_uniform(4),
-            ],
-        });
-        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Spline:bg"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: query_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: knots_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: coefs_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: result_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
-
-        let pl = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Spline:pl"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
-        let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Spline:pipeline"),
-            layout: Some(&pl),
-            module: &module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        ComputeDispatch::new(device, "Spline")
+            .shader(WGSL_CUBIC_SPLINE_EVAL_F64, "main")
+            .f64()
+            .storage_read(0, &query_buf)
+            .storage_read(1, &knots_buf)
+            .storage_read(2, &coefs_buf)
+            .storage_rw(3, &result_buf)
+            .uniform(4, &params_buf)
+            .dispatch((n_query as u32).div_ceil(256), 1, 1)
+            .submit();
 
         let mut enc = d.create_command_encoder(&Default::default());
-        {
-            let mut pass = enc.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups((n_query as u32).div_ceil(256), 1, 1);
-        }
-
         let rb = d.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Spline:rb"),
             size: out_size,
@@ -558,32 +511,6 @@ fn integrate_segment(x: &[f64], y: &[f64], y2: &[f64], i: usize, x0: f64, x1: f6
     let cubic_right = (term2(t1) - term2(t0)) * h * h * y2[i + 1] / 6.0;
 
     h * (linear_part + cubic_left + cubic_right)
-}
-
-fn bgl_storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn bgl_uniform(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    }
 }
 
 #[cfg(test)]

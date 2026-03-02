@@ -565,7 +565,10 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_message_broker_url() -> String {
         let loader = EnvConfigLoader::new();
-        loader.get_string("AMQP_URL", "amqp://localhost:5672")
+        loader.get_string(
+            "AMQP_URL",
+            &format!("amqp://localhost:{}", crate::defaults::storage::AMQP_PORT),
+        )
     }
 
     /// Get distributed storage URL from environment or default
