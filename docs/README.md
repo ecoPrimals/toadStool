@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: February 28, 2026 -- Session 70
+**Updated**: March 2, 2026 -- Session 80
 
 Old integration guides (biomeOS, error codes, collaborative intelligence examples) archived to `ecoPrimals/fossil/toadStool-archives/docs-archive-session68/`. Stale demos, showcase docs, orphaned examples, and superseded scripts archived to `ecoPrimals/fossil/toadStool/session68+++/`.
 
@@ -30,9 +30,6 @@ Primary documentation lives at the repository root. See [../DOCUMENTATION.md](..
 
 ### Planning
 - **[planning/](planning/)** -- GPU pipeline, NAK contribution, hardware routing
-
-### Audits
-- **[audits/](audits/)** -- Dependency evolution, WebSocket deprecation
 
 ### Debt
 - **[debt/](debt/)** -- Tracked debt items with evolution paths

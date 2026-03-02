@@ -80,7 +80,7 @@
 
 | Item | Source | Description | Status |
 |------|--------|-------------|--------|
-| **IPC evolution (multi-transport)** | wateringHole | Abstract sockets + TCP fallback; currently Unix-only ~300 lines | ☐ |
+| **IPC evolution (multi-transport)** | wateringHole | Unix/Abstract/TCP in ipc/platform | ✅ Already exists |
 | **Batched encoder (fused pipeline)** | neuralSpring V64 | Per-op `queue.submit()` → batched encoder; 46-78× for MLP/Transformer | ✅ S80 |
 | **`Fp64Strategy::Concurrent`** | wetSpring V82, hotSpring | Dual-run DF64 + native f64 for validation | ✅ S70++ |
 | **`PipelineBuilder` CPU-only mode** | wetSpring V82 | Topology analysis without GPU context | ✅ S80: StatefulPipeline<S> |

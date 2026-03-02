@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 2, 2026 -- Session 78
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,781+ barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 32+ god files refactored | Capability-based discovery | NVK GPU resilience | LstmReservoir + EsnClassifier
-**Latest**: S78 — 71 ComputeDispatch ops. 13 wildcard crates narrowed. libc→rustix in akida-driver. 5 crates on native AFIT. legacy_primal_* removed. ~40 new tests. Doc link fixes.
+**Updated**: March 2, 2026 -- Session 80
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,800+ barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
+**Latest**: S80 — 95 ComputeDispatch ops. barracuda::nautilus (7 files, 22 tests). ai.nautilus.* (8 JSON-RPC methods). BatchedEncoder + fused_mlp. Batch Nelder-Mead GPU. StatefulPipeline. GpuDriverProfile sin/cos workarounds. NeighborMode::PrecomputedBuffer.
 
 ---
 
@@ -10,8 +10,8 @@
 
 ### P0: ComputeDispatch Migration (Incremental)
 
-71 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
-~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~179 ops remaining.
+95 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
+~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~155 ops remaining.
 
 Migrated so far:
 - 5 linalg (cholesky f32/f64, eigh, inverse_f64, linsolve f32/f64)
@@ -24,6 +24,9 @@ Migrated so far:
 - 4 FFT ops (fft_1d, ifft_1d, fft_1d_f64, fft_3d_f64 — S71+++)
 - 7 misc ops (qr_gpu, nms, variance, std, perceptual_loss, filter_response_norm, iou_loss — S71+++)
 - 5 more (eq, map, dotproduct, dropout, split — S78)
+- 6 more (elastic_transform, gillespie, tree_inference, mixup, random_affine, random_perspective — S80)
+- 7 more (lennard_jones_f64, cumsum_f64, label_smoothing, slice_assign, random_crop, lp_pool2d, unfold — S80)
+- 6 more (global_maxpool, adaptive_avgpool2d, adaptive_maxpool2d, reduce, scan, embedding_wgsl — S80)
 
 ### P1: DF64 Default Path (Architecture)
 
@@ -89,7 +92,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
 - [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
-- [ ] **ComputeDispatch migration** -- 76/250 ops migrated; ~174 remaining (incremental)
+- [ ] **ComputeDispatch migration** -- 95/250 ops migrated; ~155 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
 - [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed
@@ -101,7 +104,30 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session (S78)
+## Completed This Session (S79–S80)
+
+### Session 80: Nautilus Absorption + BatchedEncoder + Nelder-Mead GPU
+- `barracuda::nautilus` module (7 files, 22 tests) — standalone bingoCube evolutionary reservoir computing
+- `ai.nautilus.*` 8 JSON-RPC methods wired into daemon (feature-gated `nautilus`)
+- `BatchedEncoder` — single `CommandEncoder` for multi-op GPU pipelines (2 tests)
+- `fused_mlp` — MLP forward pass via BatchedEncoder (single submit across layers)
+- Batch Nelder-Mead GPU — N parallel optimizations, batched simplex shader ops
+- `StatefulPipeline<S>` + `WaterBalanceState` — day-over-day state tracking
+- `GpuDriverProfile` sin/cos F64 workarounds (Taylor preamble for NVK, 4 tests)
+- `NeighborMode::PrecomputedBuffer` — 2D/3D/4D periodic lattice precomputation (6 tests)
+- `BatchedMultinomialGpu` alignment — `cumulative_probs` + `seed` (groundSpring V37)
+- ComputeDispatch: 76→95 ops (4 migration batches, 19 ops)
+- Socket resolution consolidated: 4 call sites → `toadstool_common::primal_sockets` API
+- Confirmed existing: `SparseGemmF64`, IPC multi-transport
+
+### Session 79: ESN MultiHeadEsn + ExportedWeights + SpectralAnalysis
+- 36-head `MultiHeadEsn` with 6 `HeadGroup` variants, `head_disagreement()` uncertainty
+- `ExportedWeights` aligned with hotSpring: input_size, reservoir_size, output_size, leak_rate, head_labels
+- `SpectralAnalysis` extensions: spectral_bandwidth, spectral_condition_number, classify_spectral_phase
+- ComputeDispatch: 5 more ops → 76 total
+- bitcast<f64> fixes in 2 WGSL shaders → storage buffer approach
+
+## Completed (S78)
 
 ### Session 78: Deep Debt + Dependency Evolution
 - Wildcard re-exports narrowed in 7 more crates (sandbox, wasm, edge discovery/toolchain/comms/deployment). Total: 13.

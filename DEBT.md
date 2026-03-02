@@ -73,7 +73,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| D-CD | ComputeDispatch migration | High | 76/250 ops migrated (~9,000+ lines removed). ~174 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
+| D-CD | ComputeDispatch migration | High | 95/250 ops migrated (~11,000+ lines removed). ~155 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
 | D-COV | Test coverage → 90% | Medium | Major gains in S70/S70+: +187 tests across CLI, server, API, monitoring, distributed, config, barracuda stats/ops. Gap: barracuda GPU ops, neuromorphic drivers. |
@@ -107,6 +107,25 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (S79–S80)
+
+| Item | Resolution |
+|------|-----------|
+| bingoCube Nautilus standalone absorption | `barracuda::nautilus` module — 7 files, 22 tests. Board, Evolution, Population, Readout, Shell, Brain. |
+| `ai.nautilus.*` JSON-RPC (8 methods) | status, observe, train, predict, screen, edges, shell.export, shell.import — feature-gated `nautilus` in CLI |
+| `BatchedEncoder` (fused pipeline) | Single `CommandEncoder` for multi-op GPU dispatches. `BatchedPassBuilder` API. 194 lines, 2 tests. |
+| `fused_mlp` | MLP forward pass via BatchedEncoder — single submit across layers |
+| Batch Nelder-Mead GPU | N independent optimizations in parallel, batched simplex shader ops |
+| `StatefulPipeline<S>` | Generic pipeline for day-over-day state tracking + `WaterBalanceState` |
+| `GpuDriverProfile` sin/cos F64 | Taylor-series preamble for NVK; `asin`/`acos` protected. 4 tests. |
+| `NeighborMode::PrecomputedBuffer` | 2D/3D/4D periodic lattice precomputation. 6 tests. |
+| `BatchedMultinomialGpu` alignment | `cumulative_probs` + `seed` config (groundSpring V37) |
+| ComputeDispatch 76→95 | 19 ops migrated in 4 batches |
+| Socket resolution consolidation | 4 scattered call sites → `toadstool_common::primal_sockets` API |
+| ESN MultiHeadEsn + ExportedWeights | 36-head, 6 HeadGroup variants, head_disagreement(), spectral extensions |
+| `SparseGemmF64` confirmation | Already exists: CSR×dense SpMM + spmm_f64.wgsl |
+| IPC multi-transport confirmation | Already exists: Unix/Abstract/TCP in ipc/platform |
 
 ## Recently Resolved (S78)
 

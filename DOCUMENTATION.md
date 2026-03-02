@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 2, 2026 -- Session 78
+**Last Updated**: March 2, 2026 -- Session 80
 
 ---
 
@@ -17,7 +17,7 @@
 | Roadmap and next steps | [NEXT_STEPS.md](NEXT_STEPS.md) |
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
-| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-36-total) |
+| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-44-total) |
 | Try GPU operations | [docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
 | Use scientific computing | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api) |
@@ -29,23 +29,27 @@
 
 ---
 
-## Current State (Session 78 — March 2, 2026)
+## Current State (Session 80 — March 2, 2026)
 
-**Still evolving.** Deep debt swept across 78 sessions. Module architecture clean — 28+ god files smart-refactored. Build streamlined with explicit re-exports and eliminated dependencies. GPU test resilience via NVK `catch_unwind` wrappers. Capability-based discovery replaces hardcoded primal names.
+**Still evolving.** Deep debt swept across 80 sessions. Module architecture clean — 35+ god files smart-refactored. Build streamlined with explicit re-exports and eliminated dependencies. GPU test resilience via NVK `catch_unwind` wrappers. Capability-based discovery replaces hardcoded primal names.
 
 - **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery via `poll_safe()`.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests. NVK GPU resilience wrappers on 40+ test files.
 - **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, 45 justified `unsafe` blocks, zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `dbg!()`. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
-- **Module architecture** — 28+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
+- **Module architecture** — 35+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
 - **Dual-layer universal precision** — Layer 1: `op_preamble`. Layer 2: naga-guided `df64_rewrite`. `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
 - **844 WGSL shaders** — zero orphans, 37 DF64, 15 folding, **zero f32-only**. All f64 canonical.
-- **2,761+ barracuda tests** + 5,500+ workspace lib tests (8,300+ total) | all quality gates green (0 warnings)
+- **2,800+ barracuda tests** + 5,500+ workspace lib tests (8,300+ total) | all quality gates green (0 warnings)
+- **barracuda::nautilus** — standalone evolutionary reservoir computing (7 files, 22 tests)
+- **44 JSON-RPC methods** across 9 domains (8 `ai.nautilus.*` methods for evolutionary AI)
+- **BatchedEncoder** — fused multi-op GPU pipelines (single `queue.submit()`)
+- **Batch Nelder-Mead GPU** — N parallel optimizations via batched simplex shaders
+- **GpuDriverProfile workarounds** — sin/cos F64 Taylor preamble for NVK
 - **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU
 - **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory
 - **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields + DF64 variants
-- **36 JSON-RPC methods** across 8 domains
 
 ---
 
@@ -90,12 +94,6 @@
 **[QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api)** -- API reference with usage examples for all middleware modules (linalg, numerical, special, stats, optimize, surrogate, sample, PDE, mixing, grids).
 
 Archived: `BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md` and `PHASE1_COMPLETION_REPORT.md` moved to `ecoPrimals/fossil/`.
-
----
-
-## Audits
-
-**[docs/audits/](docs/audits/)** -- Dependency audits, unsafe code audits, deep debt audits.
 
 ---
 

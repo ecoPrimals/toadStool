@@ -1,4 +1,4 @@
-# Status -- March 2, 2026
+# Status -- March 2, 2026 (Session 80)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,781+ tests** (GPU device-loss resilient via `catch_unwind`) |
+| `cargo test -p barracuda --lib` | PASS | **2,800+ tests** (GPU device-loss resilient via `catch_unwind`) |
 | `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
 | `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
 | `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
@@ -38,7 +38,7 @@
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
-| ComputeDispatch adoption | **76 ops migrated** (~174 legacy ops remaining, incremental) |
+| ComputeDispatch adoption | **95 ops migrated** (~155 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
 | Default test timeout | **5s** (unit: 2s, integration: 30s, chaos: 20s) |
@@ -80,6 +80,29 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 80 (Mar 2, 2026) — Nautilus Absorption + BatchedEncoder + Nelder-Mead GPU
+- `barracuda::nautilus` module (7 files, 22 tests): standalone bingoCube evolutionary reservoir computing — boards, evolution, population, readout, shell, brain
+- `ai.nautilus.*` JSON-RPC namespace: 8 methods wired into daemon (`status`, `observe`, `train`, `predict`, `screen`, `edges`, `shell.export`, `shell.import`). Feature-gated `nautilus` in CLI
+- `BatchedEncoder`: single `CommandEncoder` for multi-op GPU pipelines (46-78× speedup potential). `BatchedPassBuilder` API.
+- `fused_mlp`: MLP forward pass via BatchedEncoder (single submit across layers, ReLU activation)
+- Batch Nelder-Mead GPU: N independent optimizations in parallel via batched simplex shader ops
+- `StatefulPipeline<S>`: generic pipeline for day-over-day state tracking + `WaterBalanceState` example
+- `GpuDriverProfile` sin/cos F64 workarounds: Taylor-series preamble for NVK, `asin`/`acos` protected
+- `NeighborMode::PrecomputedBuffer`: 2D/3D/4D periodic lattice precomputation (6 tests)
+- `BatchedMultinomialGpu` alignment: `cumulative_probs` + `seed` config (groundSpring V37)
+- ComputeDispatch: 76→95 ops migrated (4 batches: elastic_transform, gillespie, tree_inference, mixup, random_affine, random_perspective, lennard_jones_f64, cumsum_f64, label_smoothing, slice_assign, random_crop, lp_pool2d, unfold, global_maxpool, adaptive_avgpool2d, adaptive_maxpool2d, reduce, scan, embedding_wgsl)
+- Socket resolution consolidated: 4 call sites → `toadstool_common::primal_sockets` API
+- Confirmed existing: `SparseGemmF64` (CSR×dense SpMM), IPC multi-transport (Unix/Abstract/TCP)
+- All quality gates green: clippy 0, fmt 0, doc 0
+
+### Session 79 (Mar 2, 2026) — ESN MultiHeadEsn + ExportedWeights + SpectralAnalysis
+- 36-head `MultiHeadEsn` with 6 `HeadGroup` variants (Anderson, Qcd, Potts, Steering, Brain, Meta)
+- `head_disagreement()` uncertainty metric, configurable per-head readout via `HeadConfig`
+- `ExportedWeights` aligned with hotSpring: `input_size`, `reservoir_size`, `output_size`, `leak_rate`, `head_labels`
+- `SpectralAnalysis` extensions: `spectral_bandwidth`, `spectral_condition_number`, `classify_spectral_phase` (Bulk/EdgeOfChaos/Chaotic)
+- ComputeDispatch: 5 more ops (boltzmann_sampling, batched_multinomial, diversity_fusion, batched_elementwise_f64, earth_mover_distance) → 76 total
+- bitcast<f64> fixes in 2 WGSL shaders (jackknife_mean_f64, boltzmann_sampling_f64) → storage buffer approach
 
 ### Session 78 (Mar 2, 2026) — Deep Debt + Dependency Evolution
 - Wildcard re-exports narrowed in 7 more crates (sandbox, wasm, edge discovery/toolchain/comms/deployment). Total: 13 crates.

@@ -184,7 +184,7 @@ ToadStool: Hardware Discovery + Orchestration + Dispatch
 - **BearDog**: security provider via capability-based discovery -- authenticated workload operations
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (36 total)
+### JSON-RPC Methods (44 total)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -193,6 +193,7 @@ ToadStool: Hardware Discovery + Orchestration + Dispatch
 | `resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` | biomeOS neural API routing aliases |
 | `compute.*` | `health`, `version`, `capabilities`, `discover_capabilities`, `submit`, `status`, `result`, `cancel`, `list` | biomeOS Node Atomic aliases + GPU queue |
 | `ai.*` | `local_inference`, `local_execute` | biomeOS ai_local capability |
+| `ai.nautilus.*` | `status`, `observe`, `train`, `predict`, `screen`, `edges`, `shell.export`, `shell.import` | Evolutionary reservoir computing (feature-gated `nautilus`) |
 | `gpu.*` | `info`, `memory` | Hardware info |
 | `ollama.*` | `list_models`, `inference`, `load`, `unload` | Local LLM lifecycle |
 | `gate.*` | `update`, `remove`, `list`, `route` | Distributed routing |
@@ -282,7 +283,7 @@ toadStool/
 | Clippy warnings (`-D warnings`) | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Unit tests (barracuda) | 2,781+ |
+| Unit tests (barracuda) | 2,800+ |
 | Shader-specific tests | 155 (unit + e2e + chaos + fault + naga validation) |
 | WGSL shaders (barracuda) | 844 (zero orphans, shader-first, 37 DF64 + 15 folding + 200+ f64 — zero f32-only, all f64 canonical) |
 | Lib tests (server) | 576 |
@@ -312,7 +313,7 @@ toadStool/
 **We are still evolving.** barracuda owns the math at all precisions. Springs migrate from local math to universal dispatch. All 5 spring handoffs absorbed. Remaining work is ComputeDispatch migration, DF64 architecture, and coverage.
 
 ### Active / Next
-- **ComputeDispatch migration** -- 76/250 ops migrated; ~174 legacy ops use manual BGL/BG boilerplate (incremental)
+- **ComputeDispatch migration** -- 95/250 ops migrated; ~155 legacy ops use manual BGL/BG boilerplate (incremental)
 - **DF64 as default path** -- df64_rewrite as default precision, not fallback (groundSpring V35)
 - **NpuDispatch trait** -- generic NPU interface (airSpring/wetSpring/groundSpring converge)
 - **Test coverage** -- pushing toward 90% target; major coverage gains in CLI, server, API, monitoring, distributed
@@ -320,6 +321,8 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
 ### Recently Completed
+- **Session 80: bingoCube Nautilus absorption + BatchedEncoder + Nelder-Mead GPU + fused_mlp** -- `barracuda::nautilus` module (7 files, 22 tests) — standalone evolutionary reservoir computing absorbed from bingoCube. `ai.nautilus.*` 8 JSON-RPC methods wired into daemon (feature-gated). `BatchedEncoder` for fused multi-op GPU pipelines (single `queue.submit()`). `fused_mlp` via BatchedEncoder. Batch Nelder-Mead GPU (N parallel optimizations). `StatefulPipeline<S>` for day-over-day state. `GpuDriverProfile` sin/cos F64 workarounds (Taylor preamble for NVK). `NeighborMode::PrecomputedBuffer` (2D/3D/4D lattice). `BatchedMultinomialGpu` alignment (cumulative_probs + seed). ComputeDispatch 76→95 ops (4 migration batches). Socket resolution consolidated.
+- **Session 79: ESN MultiHeadEsn + ExportedWeights + SpectralAnalysis** -- 36-head `MultiHeadEsn` with `HeadGroup` variants, `head_disagreement()` uncertainty, `SpectralAnalysis` extensions (`spectral_bandwidth`, `classify_spectral_phase`), `ExportedWeights` aligned with hotSpring.
 - **Session 75: Continued deep debt — module architecture + build streamlining** -- 6 god files smart-refactored: `primal_integration.rs` (1,163L→5 modules), `capability_provider.rs` (746L→5 modules), `primals/lib.rs` (580L→7 modules), `opencl_impl.rs` (831L→6 modules), `env_overrides.rs` (726L→9 modules), `os_layer/compat.rs` (766L→7 modules). Wildcard `pub use *` narrowed to explicit re-exports in 6 high-traffic crates (toadstool, distributed, server, gpu, universal, orchestration). `pollster` removed from toadstool + universal Cargo.toml. 3 evolved backends gated behind `#[cfg(test)]`. `TYPES_REFERENCE.md` updated with Module Structure Reference.
 - **Session 74: Deep debt evolution — dependency + capability + resilience** -- `serde_yaml` → `serde_yaml_ng`. `async-trait` → native AFIT in 4 crates (performance, analytics, wasm, gpu). `pollster` → `tokio_block_on` in barracuda (removed dependency). Hardcoded primal names → capability-based language in CLI templates, JSON-RPC, error messages. `AuthResponse::standalone()`. Type aliases for capability-based naming (`OrchestrationConfigurator`, `PkiSecurityConfig`). Edge platform stubs → genuine hardware probing. Discovery stubs → real mDNS/k8s/docker/registry probing. God files: `workload.rs` (829L→2 modules), `unified.rs` (613L→3 modules), `precision/mod.rs` (816L→3 modules). GPU test resilience: 11 barracuda + 29 ml-inference + homomorphic tests wrapped with `catch_unwind` for NVK driver panics. `WgpuDevice::poll_safe()` for device-lost resilience. Doctest fixes across barracuda and showcase. Net -3,828 lines.
 - **Session 71: Deep debt + GPU dispatch + ComputeDispatch acceleration** -- 6 GPU dispatch structs wired (HMM log, Bootstrap, Histogram, Kimura, Jackknife, Hargreaves). DF64 transcendental suite completed (15 functions). 32 ops migrated to ComputeDispatch (66 total). 6 large files smart-refactored. Hardcoded primal names → constants. 4 unsafe items reduced. External deps audited. Net -9,192 lines.
@@ -338,7 +341,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-CD | ComputeDispatch migration (~179 legacy ops) | Active -- incremental, 71 done |
+| D-CD | ComputeDispatch migration (~155 legacy ops) | Active -- incremental, 95 done |
 | D-DF64 | DF64 as default path (not fallback) | Active -- architectural |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Active -- design phase |
 | D-COV | Test coverage → 90% | Active -- major gains in server, CLI, API, monitoring |
@@ -366,4 +369,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 2, 2026 -- 844 WGSL shaders (37 DF64, 15 folding, 15-function DF64 transcendental suite). 2,781+ barracuda tests. 5,500+ workspace lib tests (8,300+ total). 76 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings). Fully concurrent test suite. Rust 1.80+. Zero anyhow. Zero chrono. Zero pollster. Zero serde_yaml. Zero libc (akida-driver). Zero production stubs. 45 justified unsafe. 32+ god files smart-refactored into domain modules. Capability-based discovery. NVK GPU resilience wrappers. LstmReservoir + EsnClassifier. 15 protein folding DF64 shaders. External deps overwhelmingly pure Rust.
+**Last Updated**: March 2, 2026 -- Session 80. 844 WGSL shaders (37 DF64, 15 folding, 15-function DF64 transcendental suite). 2,800+ barracuda tests. 5,500+ workspace lib tests (8,300+ total). 95 ops migrated to ComputeDispatch. 44 JSON-RPC methods (8 `ai.nautilus.*`). `barracuda::nautilus` (evolutionary reservoir computing, 22 tests). `BatchedEncoder` + `fused_mlp`. Batch Nelder-Mead GPU. `StatefulPipeline`. `GpuDriverProfile` sin/cos workarounds. All quality gates green. Fully concurrent test suite. Rust 1.80+. Zero anyhow. Zero chrono. Zero pollster. Zero serde_yaml. Zero libc (akida-driver). Zero production stubs. 45 justified unsafe. 35+ god files smart-refactored. Capability-based discovery.

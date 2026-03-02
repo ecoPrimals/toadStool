@@ -5,7 +5,42 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 1, 2026 (Sessions 43-76 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption)
+## [Unreleased] - March 2, 2026 (Sessions 43-80 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus)
+
+### Session 80 (Mar 2, 2026) — Nautilus Absorption + BatchedEncoder + Nelder-Mead GPU + fused_mlp
+
+- **barracuda::nautilus** (7 files, 22 tests): Standalone evolutionary reservoir computing absorbed from bingoCube. Boards (L×L grid, column-range constraints, discrete/continuous input, BLAKE3 projection), Evolution (column-swap crossover, mutation preserving invariants), Population (Pearson correlation fitness), Readout (ridge regression), Shell (layered history, instance transfer, merge), Brain (observe, train, predict, screen, detect edges, drift monitor).
+- **ai.nautilus.* JSON-RPC** (8 methods): `status`, `observe`, `train`, `predict`, `screen`, `edges`, `shell.export`, `shell.import` — wired into daemon's Unix socket server. Feature-gated `nautilus` in CLI. `barracuda` as optional CPU-only dep.
+- **BatchedEncoder**: Single `CommandEncoder` for multi-op GPU pipelines (46-78× potential speedup). `BatchedPassBuilder` for per-pass binding. 194 lines, 2 tests.
+- **fused_mlp**: MLP forward pass via BatchedEncoder — single `queue.submit()` across all layers. Supports linear + ReLU activation.
+- **Batch Nelder-Mead GPU**: `batched_nelder_mead_gpu` — N independent optimizations in parallel via batched simplex shader ops (centroid, reflect, expand, contract, shrink). Rosenbrock 2D test.
+- **StatefulPipeline<S>**: Generic pipeline for day-over-day state tracking. `PipelineStage<S>` trait. `WaterBalanceState` concrete example.
+- **GpuDriverProfile sin/cos F64 workarounds**: `NvkSinCosF64Imprecise` workaround, Taylor-series preamble (`sin_f64_safe`/`cos_f64_safe`), `asin`/`acos` protected from false replacement. 4 tests.
+- **NeighborMode::PrecomputedBuffer**: CPU precomputation for 2D/3D/4D periodic lattice neighbor tables. `create_gpu_buffer()` for upload. 6 tests.
+- **BatchedMultinomialGpu alignment**: `cumulative_probs` + `seed` config (groundSpring V37 signature).
+- **ComputeDispatch 76→95** (4 batches): elastic_transform, gillespie, tree_inference, mixup, random_affine, random_perspective, lennard_jones_f64, cumsum_f64, label_smoothing, slice_assign, random_crop, lp_pool2d, unfold, global_maxpool, adaptive_avgpool2d, adaptive_maxpool2d, reduce, scan, embedding_wgsl.
+- **Socket resolution**: 4 scattered call sites consolidated to `toadstool_common::primal_sockets` API.
+- **Confirmed existing**: `SparseGemmF64` (CSR×dense SpMM), IPC multi-transport (Unix/Abstract/TCP).
+
+### Session 79 (Mar 2, 2026) — ESN MultiHeadEsn + ExportedWeights + SpectralAnalysis
+
+- **MultiHeadEsn**: 36-head ESN with 6 `HeadGroup` variants (Anderson, Qcd, Potts, Steering, Brain, Meta). Configurable per-head readout via `HeadConfig`. `head_disagreement()` uncertainty metric. Ridge regression via `solve_f64_cpu`.
+- **ExportedWeights alignment**: Added `input_size`, `reservoir_size`, `output_size`, `leak_rate`, `head_labels` (all `#[serde(default)]` for backward compat) to match hotSpring conventions.
+- **SpectralAnalysis extensions**: `spectral_bandwidth`, `spectral_condition_number`, `classify_spectral_phase` (Bulk/EdgeOfChaos/Chaotic), `SpectralAnalysis::from_eigenvalues(gamma)`.
+- **ComputeDispatch**: 5 more ops (boltzmann_sampling, batched_multinomial, diversity_fusion, batched_elementwise_f64, earth_mover_distance) → 76 total.
+- **bitcast<f64> fixes**: `jackknife_mean_f64.wgsl` and `boltzmann_sampling_f64.wgsl` — replaced `bitcast<f64>(vec2<u32>())` with storage buffer approach (DF64 safe).
+- **Deep debt audit**: No files >1000 lines. All unsafe justified. All mocks `#[cfg(test)]`. No sovereignty violations.
+
+### Session 78 (Mar 2, 2026) — Deep Debt + Dependency Evolution
+
+- Wildcard re-exports narrowed in 7 more crates (sandbox, wasm, edge discovery/toolchain/comms/deployment). Total: 13 crates.
+- `legacy_primal_to_capabilities()` and `legacy_primal_primary_capability()` removed from primal_capabilities.rs (no callers).
+- `libc` fully removed from akida-driver — migrated to `rustix` for all VFIO ioctls (vfio.rs, mmio.rs). Custom `VfioIoctlReturn`/`VfioIoctlPtr` safe wrappers.
+- `async-trait` migration: 1 more crate (security/sandbox — `SandboxManager` trait). Total: 5 crates migrated to native AFIT.
+- ComputeDispatch: 5 more ops (eq, map, dotproduct, dropout, split). Total: 71 ops.
+- ~40 new tests: toadstool-api (~20), toadstool-auto-config (~9), toadstool-server (~11).
+- 5 broken `ToadStoolError` doc links fixed.
+- Compile bottleneck analysis: tfhe+tfhe-fft = 30.6% CPU (showcase); wgpu 22/23 duplication wastes ~90s.
 
 ### Session 76 (Mar 1, 2026) — Spring Absorption Execution + Folding Shaders + New GPU Ops
 
