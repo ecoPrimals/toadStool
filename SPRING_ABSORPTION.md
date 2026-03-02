@@ -55,7 +55,7 @@
 |------|--------|-------------|--------|
 | **`Dispatcher::mat_mul_rect(m, k, n)`** | neuralSpring V64 | Already supports (m,k,n) in dispatch + tensor API | ✅ |
 | **`eigh` symmetry guard** | neuralSpring V64 | Silent wrong results on non-symmetric input | ✅ |
-| **`NeighborMode::PrecomputedBuffer`** | hotSpring S68 | Precomputed neighbor table for lattice ops | ☐ |
+| **`NeighborMode::PrecomputedBuffer`** | hotSpring S68 | Precomputed neighbor table for lattice ops | ✅ S80 |
 | **DF64 as default fallback** | groundSpring V37 | Probe wired into device creation; `has_f64_shaders` consults cache | ✅ |
 | **`max_buffer_size` sanity check** | groundSpring V37 | `sanitize_max_buffer_size` in DeviceCapabilities | ✅ |
 | **NVK device-creation serialization** | hotSpring S68 | Documented on MultiDevicePool struct | ✅ |
@@ -72,7 +72,7 @@
 | **15 sovereign folding DF64 shaders** | neuralSpring V60 | Protein structure folding + `compile_shader_df64_streaming` | ✅ S76 |
 | **VG θ/K, Thornthwaite, GDD** | airSpring V039 | New op codes in `batched_elementwise_f64` framework | ✅ S76 |
 | **boltzmann sampling dispatch** | wateringHole V69 | GPU softmax/temperature sampling | ✅ S76 |
-| **`GpuDriverProfile` sin/cos workarounds** | hotSpring F64 | `needs_sin_f64_workaround()` / `needs_cos_f64_workaround()` for NVK | ☐ |
+| **`GpuDriverProfile` sin/cos workarounds** | hotSpring F64 | `needs_sin_f64_workaround()` / `needs_cos_f64_workaround()` for NVK | ✅ S80 |
 
 ---
 
@@ -81,10 +81,10 @@
 | Item | Source | Description | Status |
 |------|--------|-------------|--------|
 | **IPC evolution (multi-transport)** | wateringHole | Abstract sockets + TCP fallback; currently Unix-only ~300 lines | ☐ |
-| **Batched encoder (fused pipeline)** | neuralSpring V64 | Per-op `queue.submit()` → batched encoder; 46-78× for MLP/Transformer | ☐ |
+| **Batched encoder (fused pipeline)** | neuralSpring V64 | Per-op `queue.submit()` → batched encoder; 46-78× for MLP/Transformer | ✅ S80 |
 | **`Fp64Strategy::Concurrent`** | wetSpring V82, hotSpring | Dual-run DF64 + native f64 for validation | ✅ S70++ |
 | **`PipelineBuilder` CPU-only mode** | wetSpring V82 | Topology analysis without GPU context | ☐ |
-| **Bio signature alignment** | groundSpring V37 | `BatchedMultinomialGpu` needs `cumulative_probs + closure RNG` | ☐ |
+| **Bio signature alignment** | groundSpring V37 | `BatchedMultinomialGpu` `cumulative_probs + seed` | ✅ S80 |
 | **metalForge Stage/Pipeline topology** | hotSpring, wateringHole V69 | `Stage<In,Out>`, Chain/FanIn/FanOut/Graph | ☐ |
 
 ---
@@ -390,7 +390,7 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 
 ---
 
-- **ComputeDispatch migration**: 82/250 ops migrated, ~168 remaining
+- **ComputeDispatch migration**: 89/250 ops migrated, ~161 remaining
 
 ---
 
@@ -427,4 +427,37 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 - ✅ `cargo fmt --all -- --check`: 0 diffs
 - ✅ `cargo clippy --workspace -- -D warnings`: 0 warnings
 - ✅ `cargo doc --no-deps --workspace`: 0 warnings
+- ✅ `cargo build --workspace`: clean
+
+## S80 Spring Absorption Execution Log (continued)
+
+### GpuDriverProfile sin/cos F64 Workarounds
+- ✅ `NvkSinCosF64Imprecise` workaround added to `Workaround` enum and `detect_workarounds()`
+- ✅ `needs_sin_f64_workaround()` / `needs_cos_f64_workaround()` on `GpuDriverProfile`
+- ✅ Taylor-series preamble: `sin_f64_safe` (7-term) / `cos_f64_safe` in `polyfill.rs`
+- ✅ `asin`/`acos` protected from false replacement
+- ✅ 4 tests (NVK true, proprietary false, asin/acos protection)
+
+### BatchedMultinomialGpu Alignment
+- ✅ `BatchedMultinomialConfig { cumulative_probs, seed }` — groundSpring V37 signature aligned
+- ✅ `cumulative_probs: true` skips normalization/prefix-sum
+- ✅ `seed: Some(u64)` derives internal RNG seeds (no caller-provided buffer needed)
+
+### NeighborMode::PrecomputedBuffer
+- ✅ 2D/3D/4D periodic lattice precomputation: `precompute_periodic_2d/3d/4d`
+- ✅ `create_gpu_buffer(&self, device)` for GPU upload
+- ✅ 6 tests (size, periodic boundary wrapping for 2D/3D/4D)
+
+### ComputeDispatch Migration Batch 3 (82→89)
+- ✅ 7 ops: lennard_jones_f64, cumsum_f64, label_smoothing, slice_assign, random_crop, lp_pool2d, unfold
+
+### BatchedEncoder (Fused Pipeline)
+- ✅ `BatchedEncoder` — single `CommandEncoder` for multi-op pipelines
+- ✅ `BatchedPassBuilder` — per-pass builder (storage_read, storage_rw, uniform, f64, workgroups)
+- ✅ Single `queue.submit()` for all passes (46-78× potential speedup for MLP/Transformer)
+- ✅ 194 lines, 2 tests (empty submit, two-pass execution)
+
+### Quality Gates
+- ✅ `cargo fmt --all -- --check`: 0 diffs
+- ✅ `cargo clippy --workspace -- -D warnings`: 0 warnings
 - ✅ `cargo build --workspace`: clean

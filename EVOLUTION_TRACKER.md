@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 80
+**Date**: March 2, 2026 — Session 80 (continued)
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -43,8 +43,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 |------|--------|------------|-------------|
 | `barracuda::nn` completeness | neuralSpring V24 | ✅ SimpleMLP + LstmReservoir + EsnClassifier (S76) | — |
 | ESN full API | wetSpring V61 | ✅ EsnConfig/train/predict/reset/serde (S76) | — |
-| `BatchedMultinomialGpu` alignment | groundSpring V37 | Struct + shader | `cumulative_probs` + closure RNG signature |
-| `NeighborMode::PrecomputedBuffer` | hotSpring S68 | — | Precomputed neighbor table for lattice ops |
+| `BatchedMultinomialGpu` alignment | groundSpring V37 | ✅ S80: `BatchedMultinomialConfig` + cumulative_probs + seed | — |
+| `NeighborMode::PrecomputedBuffer` | hotSpring S68 | ✅ S80: 2D/3D/4D periodic lattice precompute (6 tests) | — |
 
 ### P2: New Shaders & Ops
 
@@ -59,7 +59,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Pedotransfer polynomial | airSpring V039 | MEDIUM | ✅ S76: Op 13 in batched_elementwise_f64 |
 | VG θ/K, Thornthwaite, GDD | airSpring V039 | MEDIUM | ✅ S76: Ops 9-12 in batched_elementwise_f64 |
 | Boltzmann sampling dispatch | wateringHole V69 | MEDIUM | ✅ S76: BoltzmannSamplingGpu + shader |
-| `GpuDriverProfile` sin/cos workarounds | hotSpring F64 | MEDIUM | ☐ `needs_sin_f64_workaround()` / `needs_cos_f64_workaround()` |
+| `GpuDriverProfile` sin/cos workarounds | hotSpring F64 | MEDIUM | ✅ S80: Taylor preamble + asin/acos protection (4 tests) |
 
 ### P3: Infrastructure & Architecture
 
@@ -68,7 +68,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | NautilusBrain API (`ai.nautilus.*`) | hotSpring V0615 | HIGH | ✅ S80: 8 JSON-RPC methods in daemon (nautilus feature) |
 | bingoCube standalone absorption | hotSpring V0615 | HIGH | ✅ S80: barracuda::nautilus module (7 files, 22 tests) |
 | IPC evolution (multi-transport) | wateringHole | MEDIUM | ☐ Abstract sockets + TCP fallback |
-| Batched encoder (fused pipeline) | neuralSpring V64 | MEDIUM | ☐ Per-op submit → batched encoder (46-78× speedup) |
+| Batched encoder (fused pipeline) | neuralSpring V64 | MEDIUM | ✅ S80: `BatchedEncoder` (194 lines, 2 tests) |
 | NPU bandwidth model | neuralSpring V60 | LOW | ☐ Transfer cost tiers for metalForge |
 | `PipelineBuilder` CPU-only mode | wetSpring V82 | LOW | ☐ Topology analysis without GPU context |
 | metalForge Stage/Pipeline topology | hotSpring/wateringHole | LOW | ☐ Stage<In,Out>, Chain/FanIn/FanOut/Graph |
@@ -95,7 +95,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-CD | ComputeDispatch migration (~168 legacy ops) | High | 82 done, incremental |
+| D-CD | ComputeDispatch migration (~161 legacy ops) | High | 89 done, incremental |
 | D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
 | D-COV | Test coverage → 90% | Medium | Major gains; gap in GPU ops, neuromorphic |

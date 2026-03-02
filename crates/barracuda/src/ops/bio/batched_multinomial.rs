@@ -9,6 +9,7 @@
 //! Uses xoshiro128** PRNG matching `barracuda::ops::prng_xoshiro_wgsl`.
 //!
 //! Provenance: groundSpring metalForge → toadStool absorption
+//! Signature alignment: groundSpring V37 (cumulative_probs + seed)
 
 use std::sync::Arc;
 
@@ -22,13 +23,28 @@ use crate::error::Result;
 pub const WGSL_BATCHED_MULTINOMIAL_F64: &str =
     include_str!("../../shaders/bio/batched_multinomial_f64.wgsl");
 
+/// Config for batched multinomial sampling (groundSpring V37 alignment).
+#[derive(Clone, Debug, Default)]
+pub struct BatchedMultinomialConfig {
+    /// When true, input probabilities are already cumulative (skip prefix sum).
+    /// When false, input is raw probabilities; normalization and prefix-sum are applied.
+    pub cumulative_probs: bool,
+
+    /// Optional seed for RNG. When `Some`, seeds are derived from this and the
+    /// caller need not provide a seeds buffer. When `None`, caller must pass seeds.
+    pub seed: Option<u64>,
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuParams {
     n_taxa: u32,
     depth: u32,
     n_reps: u32,
-    _pad: u32,
+    cumulative_probs: u32,
+    seed_lo: u32,
+    seed_hi: u32,
+    _pad: [u32; 2],
 }
 
 /// GPU-backed batched multinomial sampling for rarefaction.
@@ -44,27 +60,68 @@ impl BatchedMultinomialGpu {
 
     /// Draw `depth` multinomial samples for each of `n_reps` replicates.
     ///
-    /// `cumulative_probs` holds the cumulative probability for each taxon (length `n_taxa`).
+    /// `probs` holds either raw probabilities or cumulative probabilities per taxon
+    /// (length `n_taxa`), depending on `config.cumulative_probs`.
     /// `seeds` holds `n_reps * 4` u32 values (xoshiro128** state per replicate).
+    /// Required when `config.seed` is `None`; ignored when `config.seed` is `Some`.
     ///
     /// Returns `counts[n_reps][n_taxa]` flattened row-major.
     pub fn sample(
         &self,
-        cumulative_probs: &[f64],
-        seeds: &mut Vec<u32>,
+        probs: &[f64],
+        seeds: Option<&mut Vec<u32>>,
         depth: u32,
         n_reps: u32,
+        config: BatchedMultinomialConfig,
     ) -> Result<Vec<u32>> {
-        let n_taxa = cumulative_probs.len();
-        assert_eq!(seeds.len(), n_reps as usize * 4);
+        let n_taxa = probs.len();
+
+        let cumulative_probs: Vec<f64> = if config.cumulative_probs {
+            probs.to_vec()
+        } else {
+            let sum: f64 = probs.iter().sum();
+            let scale = if sum > 0.0 { 1.0 / sum } else { 0.0 };
+            let mut cumul = Vec::with_capacity(n_taxa);
+            let mut acc = 0.0_f64;
+            for &p in probs {
+                acc += p * scale;
+                cumul.push(acc);
+            }
+            if !cumul.is_empty() {
+                cumul[n_taxa - 1] = 1.0;
+            }
+            cumul
+        };
+
+        let seeds_data: Vec<u32> = match config.seed {
+            Some(seed) => (0..n_reps as usize * 4)
+                .map(|i| {
+                    let s = seed.wrapping_add(i as u64);
+                    (s ^ (s >> 32)) as u32
+                })
+                .collect(),
+            None => {
+                let s = seeds.expect("seeds required when config.seed is None");
+                assert_eq!(s.len(), n_reps as usize * 4);
+                s.clone()
+            }
+        };
 
         let d = self.device.device();
+
+        let (seed_lo, seed_hi) = config
+            .seed
+            .map(|s| ((s & 0xFFFF_FFFF) as u32, (s >> 32) as u32))
+            .unwrap_or((0, 0));
 
         let params = GpuParams {
             n_taxa: n_taxa as u32,
             depth,
             n_reps,
-            _pad: 0,
+            cumulative_probs: config.cumulative_probs as u32,
+            seed_lo,
+            seed_hi,
+            _pad: [0, 0],
         };
 
         let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -74,12 +131,12 @@ impl BatchedMultinomialGpu {
         });
         let cumul_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("BatchedMultinomial cumulative"),
-            contents: bytemuck::cast_slice(cumulative_probs),
+            contents: bytemuck::cast_slice(&cumulative_probs),
             usage: wgpu::BufferUsages::STORAGE,
         });
         let seeds_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("BatchedMultinomial seeds"),
-            contents: bytemuck::cast_slice(seeds.as_slice()),
+            contents: bytemuck::cast_slice(&seeds_data),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         });
         let counts_buf = d.create_buffer(&wgpu::BufferDescriptor {
@@ -178,8 +235,14 @@ mod tests {
         let n_reps = 8u32;
         let depth = 500u32;
         let mut seeds: Vec<u32> = (0..n_reps * 4).map(|i| 42 + i * 7).collect();
+        let config = BatchedMultinomialConfig {
+            cumulative_probs: true,
+            seed: None,
+        };
 
-        let counts = gpu.sample(&cumul, &mut seeds, depth, n_reps).unwrap();
+        let counts = gpu
+            .sample(&cumul, Some(&mut seeds), depth, n_reps, config)
+            .unwrap();
         assert_eq!(counts.len(), n_reps as usize * cumul.len());
 
         for rep in 0..n_reps as usize {
@@ -189,6 +252,67 @@ mod tests {
                 total, depth,
                 "replicate {rep}: sum={total}, expected {depth}"
             );
+        }
+    }
+
+    #[tokio::test]
+    async fn gpu_seed_path() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+
+        let gpu = match BatchedMultinomialGpu::new(device) {
+            Ok(g) => g,
+            Err(_) => return,
+        };
+
+        let cumul = vec![0.25, 0.50, 0.75, 1.0];
+        let n_reps = 4u32;
+        let depth = 200u32;
+        let config = BatchedMultinomialConfig {
+            cumulative_probs: true,
+            seed: Some(12345),
+        };
+
+        let counts = gpu.sample(&cumul, None, depth, n_reps, config).unwrap();
+        assert_eq!(counts.len(), n_reps as usize * cumul.len());
+
+        for rep in 0..n_reps as usize {
+            let row = &counts[rep * cumul.len()..(rep + 1) * cumul.len()];
+            let total: u32 = row.iter().sum();
+            assert_eq!(total, depth, "replicate {rep}: sum={total}");
+        }
+    }
+
+    #[tokio::test]
+    async fn gpu_raw_probs_path() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+
+        let gpu = match BatchedMultinomialGpu::new(device) {
+            Ok(g) => g,
+            Err(_) => return,
+        };
+
+        let raw_probs = vec![0.25, 0.25, 0.25, 0.25];
+        let n_reps = 4u32;
+        let depth = 100u32;
+        let mut seeds: Vec<u32> = (0..n_reps * 4).map(|i| 7 + i * 11).collect();
+        let config = BatchedMultinomialConfig {
+            cumulative_probs: false,
+            seed: None,
+        };
+
+        let counts = gpu
+            .sample(&raw_probs, Some(&mut seeds), depth, n_reps, config)
+            .unwrap();
+        assert_eq!(counts.len(), n_reps as usize * raw_probs.len());
+
+        for rep in 0..n_reps as usize {
+            let row = &counts[rep * raw_probs.len()..(rep + 1) * raw_probs.len()];
+            let total: u32 = row.iter().sum();
+            assert_eq!(total, depth, "replicate {rep}: sum={total}");
         }
     }
 }

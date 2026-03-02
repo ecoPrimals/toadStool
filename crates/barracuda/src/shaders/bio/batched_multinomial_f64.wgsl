@@ -9,7 +9,7 @@ enable f64;
 // how many reads land in each taxon.
 //
 // Binding layout:
-//   @group(0) @binding(0) params:      Params          {n_taxa, depth, n_reps, _pad}
+//   @group(0) @binding(0) params:      Params          {n_taxa, depth, n_reps, cumulative_probs, seed_lo, seed_hi, _pad}
 //   @group(0) @binding(1) cumulative:  array<f64>      cumulative probabilities [n_taxa]
 //   @group(0) @binding(2) seeds:       array<u32>      xoshiro state (4 × u32 per replicate)
 //   @group(0) @binding(3) counts:      array<u32>      output [n_reps × n_taxa]
@@ -22,10 +22,14 @@ enable f64;
 // Uses xoshiro128** matching barracuda::ops::prng_xoshiro_wgsl.
 
 struct Params {
-    n_taxa: u32,
-    depth:  u32,
-    n_reps: u32,
-    _pad:   u32,
+    n_taxa:          u32,
+    depth:            u32,
+    n_reps:           u32,
+    cumulative_probs: u32,
+    seed_lo:          u32,
+    seed_hi:          u32,
+    _pad0:            u32,
+    _pad1:            u32,
 }
 
 @group(0) @binding(0) var<uniform>             params:     Params;

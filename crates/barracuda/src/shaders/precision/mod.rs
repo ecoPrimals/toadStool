@@ -352,12 +352,12 @@ impl ShaderTemplate {
             .join("\n");
         // Upgrade any legacy fossil calls to native WGSL builtins first.
         let substituted = polyfill::substitute_fossil_f64(&stripped);
-        let patched = if needs_exp_log_workaround {
-            polyfill::apply_transcendental_workaround(&substituted)
-        } else {
-            substituted
-        };
-        let injected = polyfill::inject_f64_polyfills(&patched);
+        let patched = polyfill::apply_transcendental_workaround_with_sin_cos(
+            &substituted,
+            needs_exp_log_workaround,
+            false,
+        );
+        let injected = polyfill::inject_f64_polyfills(&patched, None);
         // ILP-reorders @ilp_region blocks and unrolls @unroll_hint loops.
         // ConservativeModel is used as the latency model (safe fallback when no driver profile).
         crate::shaders::optimizer::WgslOptimizer::default().optimize(&injected)
@@ -372,13 +372,22 @@ impl ShaderTemplate {
         needs_exp_log_workaround: bool,
         profile: &crate::device::capabilities::GpuDriverProfile,
     ) -> String {
+        let use_sin_cos_taylor =
+            profile.needs_sin_f64_workaround() || profile.needs_cos_f64_workaround();
         let substituted = polyfill::substitute_fossil_f64(shader_body);
-        let patched = if needs_exp_log_workaround {
-            polyfill::apply_transcendental_workaround(&substituted)
+        let patched = polyfill::apply_transcendental_workaround_with_sin_cos(
+            &substituted,
+            needs_exp_log_workaround,
+            use_sin_cos_taylor,
+        );
+        let extra_preamble = if use_sin_cos_taylor
+            && (patched.contains("sin_f64_safe(") || patched.contains("cos_f64_safe("))
+        {
+            Some(polyfill::SIN_COS_F64_SAFE_PREAMBLE)
         } else {
-            substituted
+            None
         };
-        let injected = polyfill::inject_f64_polyfills(&patched);
+        let injected = polyfill::inject_f64_polyfills(&patched, extra_preamble);
         crate::shaders::optimizer::WgslOptimizer::new(profile.latency_model()).optimize(&injected)
     }
 
@@ -418,11 +427,11 @@ impl ShaderTemplate {
     }
 
     pub fn with_math_f64_safe(shader_body: &str) -> String {
-        polyfill::inject_f64_polyfills(shader_body)
+        polyfill::inject_f64_polyfills(shader_body, None)
     }
 
     pub fn with_math_f64_auto_safe(shader_body: &str) -> String {
-        polyfill::inject_f64_polyfills(shader_body)
+        polyfill::inject_f64_polyfills(shader_body, None)
     }
 }
 

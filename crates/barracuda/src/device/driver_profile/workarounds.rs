@@ -23,6 +23,9 @@ pub enum Workaround {
     /// NVK (nouveau) PTE fault on large combined allocations (>~1.4 GB).
     /// Conservative limit of 1.2 GB total. File upstream bug in drm_gpuvm.
     NvkLargeBufferLimit,
+    /// NVK has broken or imprecise sin/cos/tan for f64. Use Taylor series
+    /// approximations (sin_f64_safe, cos_f64_safe) instead of native or polyfill.
+    NvkSinCosF64Imprecise,
 }
 
 /// Detect which workarounds apply for the given driver/arch combination.
@@ -32,6 +35,7 @@ pub(crate) fn detect_workarounds(driver: DriverKind, arch: GpuArch) -> Vec<Worka
         w.push(Workaround::NvkExpF64Crash);
         w.push(Workaround::NvkLogF64Crash);
         w.push(Workaround::NvkLargeBufferLimit);
+        w.push(Workaround::NvkSinCosF64Imprecise);
     }
     if driver == DriverKind::NvidiaProprietary && arch == GpuArch::Ada {
         w.push(Workaround::NvvmAdaF64Transcendentals);

@@ -189,6 +189,48 @@ fn test_substitute_fossil_f64() {
 }
 
 #[test]
+fn test_sin_cos_taylor_workaround_asin_acos_protected() {
+    use crate::device::capabilities::{
+        CompilerKind, DriverKind, Fp64Rate, GpuArch, GpuDriverProfile, Workaround,
+    };
+
+    // NVK profile with sin/cos workaround
+    let nvk_profile = GpuDriverProfile {
+        driver: DriverKind::Nvk,
+        compiler: CompilerKind::Nak,
+        arch: GpuArch::Volta,
+        fp64_rate: Fp64Rate::Full,
+        workarounds: vec![
+            Workaround::NvkExpF64Crash,
+            Workaround::NvkLogF64Crash,
+            Workaround::NvkSinCosF64Imprecise,
+        ],
+    };
+    let shader = "let a = sin(x); let b = cos(y); let c = asin(z); let d = acos(w);";
+    let result = ShaderTemplate::for_driver_profile(shader, true, &nvk_profile);
+    assert!(
+        result.contains("sin_f64_safe("),
+        "sin must become sin_f64_safe"
+    );
+    assert!(
+        result.contains("cos_f64_safe("),
+        "cos must become cos_f64_safe"
+    );
+    assert!(
+        result.contains("asin_f64("),
+        "asin must become asin_f64, not asin_f64_safe"
+    );
+    assert!(
+        result.contains("acos_f64("),
+        "acos must become acos_f64, not acos_f64_safe"
+    );
+    assert!(
+        result.contains("fn sin_f64_safe"),
+        "Taylor preamble must be injected"
+    );
+}
+
+#[test]
 fn test_for_driver_auto_applies_fossil_substitution() {
     // for_driver_auto should substitute fossils AND apply exp/log workaround
     let legacy_shader = r#"

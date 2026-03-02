@@ -67,7 +67,9 @@ pub mod wright_fisher;
 
 pub use ani::AniBatchF64;
 pub use batch_fitness::BatchFitnessGpu;
-pub use batched_multinomial::{multinomial_sample_cpu, BatchedMultinomialGpu};
+pub use batched_multinomial::{
+    multinomial_sample_cpu, BatchedMultinomialConfig, BatchedMultinomialGpu,
+};
 pub use dada2::Dada2EStepGpu;
 pub use diversity_fusion::{diversity_fusion_cpu, DiversityFusionGpu, DiversityResult};
 pub use dnds::DnDsBatchF64;

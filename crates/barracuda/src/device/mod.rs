@@ -21,6 +21,7 @@ pub mod akida;
 pub mod akida_executor;
 pub mod async_submit;
 pub mod autotune;
+pub mod batched_encoder;
 pub mod cache_hierarchy;
 pub mod capabilities;
 pub mod compute_pipeline;
@@ -62,6 +63,7 @@ pub use tensor_context::{
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
 pub use async_submit::{AsyncReadback, AsyncSubmitter};
+pub use batched_encoder::BatchedEncoder;
 pub use cache_hierarchy::{
     CacheAwareTiler, CacheLevel, CacheResidency, MainMemory, SubstrateMemoryHierarchy, TileConfig,
 };

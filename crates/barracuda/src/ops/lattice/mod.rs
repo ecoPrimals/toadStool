@@ -44,8 +44,8 @@
 //! # Neighbor Resolution
 //!
 //! Lattice shaders can resolve neighbor site indices in two ways via [`NeighborMode`]:
-//! - [`NeighborMode::Compute`]: on-the-fly from lattice dimensions (default, suitable for small lattices)
-//! - [`NeighborMode::PrecomputedBuffer`]: precomputed GPU buffer (faster for repeated HMC trajectories)
+//! - [`NeighborMode::OnTheFly`]: on-the-fly from lattice dimensions (default, suitable for small lattices)
+//! - [`NeighborMode::PrecomputedBuffer`]: precomputed table (faster for large lattices, Ising/Potts/lattice gas)
 
 // WGSL library preambles
 pub mod complex_f64;
@@ -91,14 +91,13 @@ use std::sync::Arc;
 /// How lattice shaders resolve neighbor site indices.
 #[derive(Debug, Clone)]
 pub enum NeighborMode {
-    /// Compute neighbors on-the-fly from lattice dimensions (current default).
+    /// Compute neighbors on-the-fly (modular arithmetic in shader).
     /// Suitable for small lattices or one-off calculations.
-    Compute,
-    /// Use a precomputed GPU buffer of neighbor indices.
-    /// `buffer[site * 8 + dir]` gives the neighbor in direction `dir`
-    /// (±x, ±y, ±z, ±t with periodic boundary conditions).
-    /// Optimal for repeated HMC trajectories on the same lattice.
-    PrecomputedBuffer(Arc<wgpu::Buffer>),
+    OnTheFly,
+    /// Precomputed neighbor index table passed as buffer.
+    /// Faster for large lattices (avoids recomputing modular arithmetic every step).
+    /// Layout: `table[site * neighbors_per_site + dir]` gives neighbor index.
+    PrecomputedBuffer(Vec<u32>),
 }
 
 /// SU(3) Wilson gauge action density from average plaquette.
@@ -114,13 +113,67 @@ pub fn action_density(avg_plaquette: f64) -> f64 {
 }
 
 impl NeighborMode {
+    /// Generate a precomputed neighbor table for a 2D L×L periodic lattice.
+    ///
+    /// 4 neighbors per site: +x, -x, +y, -y (up, down, left, right).
+    /// Row-major indexing: `idx = y * L + x`.
+    pub fn precompute_periodic_2d(l: usize) -> Self {
+        let n_sites = l * l;
+        let mut table = Vec::with_capacity(n_sites * 4);
+        let l_u = l as u32;
+
+        for y in 0..l {
+            for x in 0..l {
+                let idx = |x: u32, y: u32| -> u32 { y * l_u + x };
+                let x = x as u32;
+                let y = y as u32;
+                // +x, -x, +y, -y (periodic BC)
+                table.push(idx((x + 1) % l_u, y));
+                table.push(idx((x + l_u - 1) % l_u, y));
+                table.push(idx(x, (y + 1) % l_u));
+                table.push(idx(x, (y + l_u - 1) % l_u));
+            }
+        }
+
+        Self::PrecomputedBuffer(table)
+    }
+
+    /// Generate a precomputed neighbor table for a 3D L×L×L periodic lattice.
+    ///
+    /// 6 neighbors per site: +x, -x, +y, -y, +z, -z.
+    /// Indexing: `idx = z * L² + y * L + x`.
+    pub fn precompute_periodic_3d(l: usize) -> Self {
+        let n_sites = l * l * l;
+        let mut table = Vec::with_capacity(n_sites * 6);
+        let l_u = l as u32;
+
+        for z in 0..l {
+            for y in 0..l {
+                for x in 0..l {
+                    let idx = |x: u32, y: u32, z: u32| -> u32 { z * l_u * l_u + y * l_u + x };
+                    let x = x as u32;
+                    let y = y as u32;
+                    let z = z as u32;
+                    // +x, -x, +y, -y, +z, -z (periodic BC)
+                    table.push(idx((x + 1) % l_u, y, z));
+                    table.push(idx((x + l_u - 1) % l_u, y, z));
+                    table.push(idx(x, (y + 1) % l_u, z));
+                    table.push(idx(x, (y + l_u - 1) % l_u, z));
+                    table.push(idx(x, y, (z + 1) % l_u));
+                    table.push(idx(x, y, (z + l_u - 1) % l_u));
+                }
+            }
+        }
+
+        Self::PrecomputedBuffer(table)
+    }
+
     /// Build a precomputed neighbor table for a 4D periodic lattice.
     ///
     /// Uses t-major ordering (hotSpring convention): index = t*V3 + z*V2 + y*V1 + x
     /// where V1=Nx, V2=Nx*Ny, V3=Nx*Ny*Nz.
-    ///
-    /// Returns a buffer containing `n_sites * 8` u32 entries.
-    pub fn precompute(device: &crate::device::WgpuDevice, dims: [u32; 4]) -> Self {
+    /// 8 neighbors per site: +x, -x, +y, -y, +z, -z, +t, -t.
+    pub fn precompute_periodic_4d(dims: [u32; 4]) -> Self {
         let [nx, ny, nz, nt] = dims;
         let n_sites = (nx * ny * nz * nt) as usize;
         let mut table = Vec::with_capacity(n_sites * 8);
@@ -129,7 +182,6 @@ impl NeighborMode {
             for z in 0..nz {
                 for y in 0..ny {
                     for x in 0..nx {
-                        // +x, -x, +y, -y, +z, -z, +t, -t (periodic BC)
                         let idx = |x: u32, y: u32, z: u32, t: u32| -> u32 {
                             t * nz * ny * nx + z * ny * nx + y * nx + x
                         };
@@ -146,16 +198,28 @@ impl NeighborMode {
             }
         }
 
+        Self::PrecomputedBuffer(table)
+    }
+
+    /// Create a GPU buffer from the precomputed table (for `PrecomputedBuffer` variant).
+    /// Returns `None` for `OnTheFly`.
+    pub fn create_gpu_buffer(
+        &self,
+        device: &crate::device::WgpuDevice,
+    ) -> Option<Arc<wgpu::Buffer>> {
+        let table = match self {
+            Self::OnTheFly => return None,
+            Self::PrecomputedBuffer(t) => t,
+        };
         use wgpu::util::DeviceExt;
         let buffer = device
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Neighbor Table"),
-                contents: bytemuck::cast_slice(&table),
+                contents: bytemuck::cast_slice(table),
                 usage: wgpu::BufferUsages::STORAGE,
             });
-
-        Self::PrecomputedBuffer(Arc::new(buffer))
+        Some(Arc::new(buffer))
     }
 }
 
@@ -183,46 +247,91 @@ mod action_density_tests {
 
 #[cfg(test)]
 mod neighbor_tests {
+    use super::NeighborMode;
+
     #[test]
-    fn neighbor_table_size() {
-        // For a 4^4 lattice: 256 sites * 8 neighbors = 2048 entries
-        let dims = [4, 4, 4, 4];
-        let n_sites = 4u32.pow(4) as usize;
-        let mut table = Vec::with_capacity(n_sites * 8);
-        let [nx, ny, nz, nt] = dims;
-        for t in 0..nt {
-            for z in 0..nz {
-                for y in 0..ny {
-                    for x in 0..nx {
-                        let idx = |x: u32, y: u32, z: u32, t: u32| -> u32 {
-                            t * nz * ny * nx + z * ny * nx + y * nx + x
-                        };
-                        table.push(idx((x + 1) % nx, y, z, t));
-                        table.push(idx((x + nx - 1) % nx, y, z, t));
-                        table.push(idx(x, (y + 1) % ny, z, t));
-                        table.push(idx(x, (y + ny - 1) % ny, z, t));
-                        table.push(idx(x, y, (z + 1) % nz, t));
-                        table.push(idx(x, y, (z + nz - 1) % nz, t));
-                        table.push(idx(x, y, z, (t + 1) % nt));
-                        table.push(idx(x, y, z, (t + nt - 1) % nt));
-                    }
-                }
-            }
-        }
+    fn precompute_2d_table_size() {
+        // L×L lattice: N sites × 4 neighbors
+        let mode = NeighborMode::precompute_periodic_2d(8);
+        let table = match &mode {
+            NeighborMode::PrecomputedBuffer(t) => t,
+            _ => panic!("expected PrecomputedBuffer"),
+        };
+        assert_eq!(table.len(), 8 * 8 * 4, "8×8 lattice × 4 neighbors = 256");
+    }
+
+    #[test]
+    fn precompute_2d_periodic_boundary() {
+        // Site (0,0): -x wraps to (L-1,0), -y wraps to (0,L-1)
+        let mode = NeighborMode::precompute_periodic_2d(4);
+        let table = match &mode {
+            NeighborMode::PrecomputedBuffer(t) => t,
+            _ => panic!("expected PrecomputedBuffer"),
+        };
+        // Site 0 = (0,0): dirs [+x, -x, +y, -y]
+        // +x -> (1,0) = 1, -x -> (3,0) = 3, +y -> (0,1) = 4, -y -> (0,3) = 12
+        let nbr_plus_x = table[0 * 4 + 0];
+        let nbr_minus_x = table[0 * 4 + 1];
+        let nbr_plus_y = table[0 * 4 + 2];
+        let nbr_minus_y = table[0 * 4 + 3];
+        assert_eq!(nbr_plus_x, 1, "site (0,0) +x -> (1,0)");
+        assert_eq!(nbr_minus_x, 3, "site (0,0) -x wraps to (3,0)");
+        assert_eq!(nbr_plus_y, 4, "site (0,0) +y -> (0,1)");
+        assert_eq!(nbr_minus_y, 12, "site (0,0) -y wraps to (0,3)");
+    }
+
+    #[test]
+    fn precompute_3d_table_size() {
+        // L×L×L lattice: N sites × 6 neighbors
+        let mode = NeighborMode::precompute_periodic_3d(4);
+        let table = match &mode {
+            NeighborMode::PrecomputedBuffer(t) => t,
+            _ => panic!("expected PrecomputedBuffer"),
+        };
+        assert_eq!(table.len(), 4 * 4 * 4 * 6, "4³ lattice × 6 neighbors = 384");
+    }
+
+    #[test]
+    fn precompute_3d_periodic_wrap() {
+        // Site (0,0,0): -x -> (L-1,0,0), -y -> (0,L-1,0), -z -> (0,0,L-1)
+        let mode = NeighborMode::precompute_periodic_3d(3);
+        let table = match &mode {
+            NeighborMode::PrecomputedBuffer(t) => t,
+            _ => panic!("expected PrecomputedBuffer"),
+        };
+        // idx = z*9 + y*3 + x; site (0,0,0) = 0
+        // -x -> (2,0,0) = 2, -y -> (0,2,0) = 6, -z -> (0,0,2) = 18
+        let nbr_minus_x = table[0 * 6 + 1];
+        let nbr_minus_y = table[0 * 6 + 3];
+        let nbr_minus_z = table[0 * 6 + 5];
+        assert_eq!(nbr_minus_x, 2, "site (0,0,0) -x wraps to (2,0,0)");
+        assert_eq!(nbr_minus_y, 6, "site (0,0,0) -y wraps to (0,2,0)");
+        assert_eq!(nbr_minus_z, 18, "site (0,0,0) -z wraps to (0,0,2)");
+    }
+
+    #[test]
+    fn precompute_4d_table_size() {
+        // 4^4 lattice: 256 sites * 8 neighbors = 2048 entries
+        let mode = NeighborMode::precompute_periodic_4d([4, 4, 4, 4]);
+        let table = match &mode {
+            NeighborMode::PrecomputedBuffer(t) => t,
+            _ => panic!("expected PrecomputedBuffer"),
+        };
         assert_eq!(table.len(), 2048);
     }
 
     #[test]
-    fn neighbor_periodic_boundary() {
-        let [nx, ny, nz, _nt] = [4u32, 4, 4, 4];
-        let idx =
-            |x: u32, y: u32, z: u32, t: u32| -> u32 { t * nz * ny * nx + z * ny * nx + y * nx + x };
-        // Site (0,0,0,0): +x neighbor should be (1,0,0,0), -x should wrap to (3,0,0,0)
-        let site_000 = idx(0, 0, 0, 0);
-        assert_eq!(site_000, 0);
-        let plus_x = idx(1, 0, 0, 0);
-        let minus_x = idx(3, 0, 0, 0); // wraps
-        assert_eq!(plus_x, 1);
-        assert_eq!(minus_x, 3);
+    fn precompute_4d_periodic_boundary() {
+        let mode = NeighborMode::precompute_periodic_4d([4, 4, 4, 4]);
+        let table = match &mode {
+            NeighborMode::PrecomputedBuffer(t) => t,
+            _ => panic!("expected PrecomputedBuffer"),
+        };
+        // Site (0,0,0,0): +x -> (1,0,0,0), -x wraps to (3,0,0,0)
+        let idx = |x: u32, y: u32, z: u32, t: u32| -> u32 { t * 4 * 4 * 4 + z * 4 * 4 + y * 4 + x };
+        let nbr_plus_x = table[0 * 8 + 0];
+        let nbr_minus_x = table[0 * 8 + 1];
+        assert_eq!(nbr_plus_x, idx(1, 0, 0, 0));
+        assert_eq!(nbr_minus_x, idx(3, 0, 0, 0));
     }
 }

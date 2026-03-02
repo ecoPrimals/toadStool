@@ -211,6 +211,25 @@ impl GpuDriverProfile {
             .contains(&Workaround::NvvmAdaF64Transcendentals)
     }
 
+    /// Whether `sin(f64)` needs Taylor-series workaround on this driver.
+    ///
+    /// NVK (open-source NVIDIA Vulkan driver) has broken or imprecise native
+    /// sin/cos implementations for f64. Returns true for NVK and any driver
+    /// with the `NvkSinCosF64Imprecise` workaround.
+    pub fn needs_sin_f64_workaround(&self) -> bool {
+        self.workarounds
+            .contains(&Workaround::NvkSinCosF64Imprecise)
+    }
+
+    /// Whether `cos(f64)` needs Taylor-series workaround on this driver.
+    ///
+    /// NVK has broken or imprecise native cos for f64. Returns true for NVK
+    /// and any driver with the `NvkSinCosF64Imprecise` workaround.
+    pub fn needs_cos_f64_workaround(&self) -> bool {
+        self.workarounds
+            .contains(&Workaround::NvkSinCosF64Imprecise)
+    }
+
     /// Whether this driver supports f64 builtins (exp, log, pow) natively.
     ///
     /// Returns false for NVK, software renderers, and NVIDIA Ada Lovelace
@@ -563,6 +582,37 @@ mod tests {
         let caps_full = F64BuiltinCapabilities::full();
         assert!(!p.needs_sin_f64_workaround_probed(&caps_full));
         assert!(!p.needs_cos_f64_workaround_probed(&caps_full));
+    }
+
+    #[test]
+    fn needs_sin_f64_workaround_true_for_nvk() {
+        let p = GpuDriverProfile {
+            driver: DriverKind::Nvk,
+            compiler: CompilerKind::Nak,
+            arch: GpuArch::Volta,
+            fp64_rate: Fp64Rate::Full,
+            workarounds: vec![Workaround::NvkSinCosF64Imprecise],
+        };
+        assert!(p.needs_sin_f64_workaround());
+    }
+
+    #[test]
+    fn needs_cos_f64_workaround_true_for_nvk() {
+        let p = GpuDriverProfile {
+            driver: DriverKind::Nvk,
+            compiler: CompilerKind::Nak,
+            arch: GpuArch::Volta,
+            fp64_rate: Fp64Rate::Full,
+            workarounds: vec![Workaround::NvkSinCosF64Imprecise],
+        };
+        assert!(p.needs_cos_f64_workaround());
+    }
+
+    #[test]
+    fn needs_sin_cos_f64_workaround_false_for_proprietary_nvidia() {
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+        assert!(!p.needs_sin_f64_workaround());
+        assert!(!p.needs_cos_f64_workaround());
     }
 
     #[test]
