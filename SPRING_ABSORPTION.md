@@ -1,7 +1,7 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 2, 2026 — Session 78  
-**Sources**: hotSpring (S68+V0615), neuralSpring (V64), wetSpring (V82), airSpring (V039), groundSpring (V54), wateringHole (9 active handoffs)
+**Date**: March 2, 2026 — Session 79  
+**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V69), wetSpring (V82+V87), airSpring (V039+V044), groundSpring (V54+V60), wateringHole (updated MAR01)
 
 ## S72 Execution Log
 
@@ -94,7 +94,7 @@
 | Item | Source | Status |
 |------|--------|--------|
 | SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ☐ |
-| ESN 11-head constants + weight migration | hotSpring V0615 | ☐ |
+| ESN 36-head MultiHeadEsn + ExportedWeights | hotSpring V0615 | ✅ S79 |
 | StatefulPipeline (water balance day-over-day state) | airSpring V039 | ☐ |
 | NPU substrate kind in metalForge | neuralSpring V60 | ☐ |
 | Streaming FASTQ/mzML/MS2 (bio I/O) | wateringHole V69 | ☐ |
@@ -364,4 +364,30 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 - **Concurrency-first**: No sleeps in non-chaos tests; test issues are production issues
 - **Device resilience**: All device.poll() paths protected by catch_unwind; errors propagate as Result
 - **NAK sovereignty**: Pure Rust shader pipeline (naga → SPIR-V) bypasses NAK entirely
-- **ComputeDispatch migration**: 71/250 ops migrated, ~179 remaining
+## S79 Spring Absorption Execution Log
+
+### P0 Bugs Fixed
+- ✅ `esn_v2` readout shape bug: `set_readout_weights()` expected `[output_size, reservoir_size]` but `train()` stores `[reservoir_size, output_size]` — fixed both `set_readout_weights()` and `import_weights()` to match `train()` convention
+- ✅ `jackknife_mean_f64.wgsl`: Replaced `bitcast<f64>(vec2<u32>(params.full_sum_lo, params.full_sum_hi))` with storage buffer (binding 3) — DF64 emulation safe
+- ✅ `boltzmann_sampling_f64.wgsl`: Replaced `bitcast<f64>(vec2<u32>(params.temp_lo, params.temp_hi))` with storage buffer (binding 4) — DF64 emulation safe
+
+### P1 Absorption
+- ✅ `ExportedWeights` aligned with hotSpring: added `input_size`, `reservoir_size`, `output_size`, `leak_rate`, `head_labels` (all `#[serde(default)]` for backward compat)
+- ✅ `MultiHeadEsn` implemented: 6 `HeadGroup` variants (Anderson, Qcd, Potts, Steering, Brain, Meta), configurable per-head readout, `head_disagreement()` uncertainty metric, ridge regression via `solve_f64_cpu`
+- ✅ `SpectralAnalysis` extensions: `spectral_bandwidth`, `spectral_condition_number`, `classify_spectral_phase` (Bulk/EdgeOfChaos/Chaotic), `SpectralAnalysis::from_eigenvalues(gamma)`
+- ✅ ComputeDispatch migration: 5 more ops (boltzmann_sampling, batched_multinomial, diversity_fusion, batched_elementwise_f64, earth_mover_distance) → 76 total
+
+### Deep Debt Audit
+- ✅ No files >1000 lines (largest: vfio.rs at 962)
+- ✅ All unsafe blocks justified (FFI, aligned alloc); 0 removable
+- ✅ All mocks properly `#[cfg(test)]` or feature-gated
+- ✅ No sovereignty violations in hardcoding audit
+
+### Quality Gates
+- ✅ `cargo fmt --all -- --check`: 0 diffs
+- ✅ `cargo clippy --workspace -- -D warnings`: 0 warnings
+- ✅ `cargo doc --no-deps --workspace -D warnings`: 0 warnings
+
+---
+
+- **ComputeDispatch migration**: 76/250 ops migrated, ~174 remaining

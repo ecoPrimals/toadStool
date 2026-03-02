@@ -6,6 +6,98 @@
 //! (extended) statistics. Band detection groups eigenvalues by gaps.
 //!
 //! Provenance: hotSpring v0.6.0 (Kachkovskiy spectral theory)
+//! Spectral phase classification: neuralSpring V69 handoff
+
+use crate::stats::marchenko_pastur_bounds;
+
+/// Spectral phase based on outlier fraction beyond Marchenko-Pastur upper bound.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SpectralPhase {
+    /// < 5% outliers beyond MP upper bound
+    Bulk,
+    /// 5–20% outliers
+    EdgeOfChaos,
+    /// > 20% outliers
+    Chaotic,
+}
+
+/// Spectral bandwidth = max(eigenvalues) - min(eigenvalues). Returns 0.0 if empty.
+#[must_use]
+pub fn spectral_bandwidth(eigenvalues: &[f64]) -> f64 {
+    if eigenvalues.is_empty() {
+        return 0.0;
+    }
+    let (min, max) = eigenvalues
+        .iter()
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &x| {
+            (lo.min(x), hi.max(x))
+        });
+    max - min
+}
+
+/// Condition number = max(|eigenvalues|) / min(|eigenvalues|). Returns f64::INFINITY if min is zero.
+#[must_use]
+pub fn spectral_condition_number(eigenvalues: &[f64]) -> f64 {
+    if eigenvalues.is_empty() {
+        return f64::INFINITY;
+    }
+    let (min_abs, max_abs) = eigenvalues
+        .iter()
+        .fold((f64::INFINITY, 0.0_f64), |(lo, hi), &x| {
+            let a = x.abs();
+            (lo.min(a), hi.max(a))
+        });
+    if min_abs < 1e-300 {
+        f64::INFINITY
+    } else {
+        max_abs / min_abs
+    }
+}
+
+/// Classify spectral phase by outlier fraction beyond Marchenko-Pastur upper bound.
+#[must_use]
+pub fn classify_spectral_phase(eigenvalues: &[f64], marchenko_upper: f64) -> SpectralPhase {
+    if eigenvalues.is_empty() {
+        return SpectralPhase::Bulk;
+    }
+    let outliers = eigenvalues.iter().filter(|&&x| x > marchenko_upper).count();
+    let frac = outliers as f64 / eigenvalues.len() as f64;
+    if frac < 0.05 {
+        SpectralPhase::Bulk
+    } else if frac <= 0.20 {
+        SpectralPhase::EdgeOfChaos
+    } else {
+        SpectralPhase::Chaotic
+    }
+}
+
+/// Spectral analysis result with bandwidth, condition number, and phase.
+#[derive(Debug, Clone)]
+pub struct SpectralAnalysis {
+    pub eigenvalues: Vec<f64>,
+    pub bandwidth: f64,
+    pub condition_number: f64,
+    pub phase: SpectralPhase,
+    pub marchenko_upper: f64,
+}
+
+impl SpectralAnalysis {
+    /// Build from eigenvalues and aspect ratio γ = n/p for Marchenko-Pastur bounds.
+    #[must_use]
+    pub fn from_eigenvalues(eigenvalues: Vec<f64>, gamma: f64) -> Self {
+        let (_lo, marchenko_upper) = marchenko_pastur_bounds(gamma);
+        let bandwidth = spectral_bandwidth(&eigenvalues);
+        let condition_number = spectral_condition_number(&eigenvalues);
+        let phase = classify_spectral_phase(&eigenvalues, marchenko_upper);
+        Self {
+            eigenvalues,
+            bandwidth,
+            condition_number,
+            phase,
+            marchenko_upper,
+        }
+    }
+}
 
 /// Compute the mean level spacing ratio ⟨r⟩ from sorted eigenvalues.
 ///
@@ -130,5 +222,40 @@ mod tests {
         evals.extend((100..105).map(|i| i as f64));
         let bands = detect_bands(&evals, 2.0);
         assert!(bands.len() >= 2);
+    }
+
+    #[test]
+    fn spectral_bandwidth_basic() {
+        assert_eq!(spectral_bandwidth(&[1.0, 2.0, 5.0]), 4.0);
+        assert_eq!(spectral_bandwidth(&[]), 0.0);
+    }
+
+    #[test]
+    fn spectral_condition_number_basic() {
+        assert!((spectral_condition_number(&[0.5, 1.0, 2.0]) - 4.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn classify_spectral_phase_bulk() {
+        // All eigenvalues below MP upper (4.0 for γ=1) → Bulk
+        let evals: Vec<f64> = (0..20).map(|i| i as f64 * 0.1).collect();
+        assert_eq!(classify_spectral_phase(&evals, 4.0), SpectralPhase::Bulk);
+    }
+
+    #[test]
+    fn classify_spectral_phase_chaotic() {
+        // >20% above 4.0 → Chaotic (e.g. 5 of 20 = 25%)
+        let mut evals: Vec<f64> = (0..15).map(|i| i as f64 * 0.1).collect();
+        evals.extend([5.0, 6.0, 7.0, 8.0, 9.0]);
+        assert_eq!(classify_spectral_phase(&evals, 4.0), SpectralPhase::Chaotic);
+    }
+
+    #[test]
+    fn spectral_analysis_from_eigenvalues() {
+        let evals = vec![1.0, 2.0, 5.0];
+        let a = SpectralAnalysis::from_eigenvalues(evals.clone(), 1.0);
+        assert_eq!(a.bandwidth, 4.0);
+        assert!((a.condition_number - 5.0).abs() < 1e-10); // max=5, min=1
+        assert_eq!(a.eigenvalues, evals);
     }
 }

@@ -21,10 +21,12 @@
 
 mod config;
 mod model;
+mod multi_head;
 mod npu;
 
 pub use config::{expect_size, validate_config, ESNConfig};
 pub use model::{ExportedWeights, ESN};
+pub use multi_head::{HeadConfig, HeadGroup, MultiHeadEsn};
 pub use npu::{dequantize_affine_i8_f64, quantize_affine_i8_f64, NpuReadoutWeights};
 
 /// GPU shader for fused reservoir update: W_in·input + W_res·state → leaky tanh → new state.

@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 78
+**Date**: March 2, 2026 — Session 79
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -78,7 +78,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Item | Source | Status |
 |------|--------|--------|
 | SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ☐ |
-| ESN 11-head constants + weight migration | hotSpring V0615 | ☐ |
+| ESN 36-head MultiHeadEsn + ExportedWeights alignment | hotSpring V0615 | ✅ S79 |
 | StatefulPipeline (water balance state) | airSpring V039 | ☐ |
 | NPU substrate kind in metalForge | neuralSpring V60 | ☐ |
 | Streaming FASTQ/mzML/MS2 (bio I/O) | wateringHole V69 | ☐ |
@@ -95,7 +95,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-CD | ComputeDispatch migration (~179 legacy ops) | High | 71 done, incremental |
+| D-CD | ComputeDispatch migration (~174 legacy ops) | High | 76 done, incremental |
 | D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
 | D-COV | Test coverage → 90% | Medium | Major gains; gap in GPU ops, neuromorphic |
@@ -166,7 +166,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 |
-| WGSL shaders | 844 (0 orphans, 0 f32-only, 37 DF64, 15 folding) |
+| WGSL shaders | 844 (0 orphans, 0 f32-only, 37 DF64, 15 folding, 2 bitcast-fixed) |
 | God files refactored | 35+ (all <1000 lines, S77: +3) |
 | `cargo doc` | ✅ S77/S78: private intra-doc links fixed (ToadStoolError in universal_adapter, discovery_integration) |
 | e2e runtime nesting | ✅ S77: `run_gpu_resilient_async` evolved to dedicated runtime |

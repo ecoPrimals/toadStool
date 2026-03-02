@@ -4,14 +4,13 @@
 
 struct Params {
     n: u32,
-    full_sum_lo: u32,
-    full_sum_hi: u32,
     _pad: u32,
 }
 
 @group(0) @binding(0) var<storage, read> data: array<f64>;
 @group(0) @binding(1) var<storage, read_write> leave_means: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
+@group(0) @binding(3) var<storage, read> full_sum_buf: array<f64>;
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -20,7 +19,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
 
-    let full_sum = bitcast<f64>(vec2<u32>(params.full_sum_lo, params.full_sum_hi));
+    let full_sum = full_sum_buf[0];
     let n_f = f64(params.n);
     let leave_mean = (full_sum - data[idx]) / (n_f - 1.0);
     leave_means[idx] = leave_mean;

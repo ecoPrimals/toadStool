@@ -512,7 +512,7 @@ impl EdgeDevice for ArduinoDevice {
         // ✅ MODERNIZED: Removed simulation sleep
         // NOTE: Real Arduino execution monitoring requires serial port integration
         // Arduino runs continuously, read from serial buffer for actual monitoring
-        // This is a mock implementation for testing Arduino workflow
+        // Stub: simplified implementation until serial monitor integration is wired
         
         // Get output from serial monitor
         let output = self.send_command("STATUS").await.unwrap_or_else(|_| "Running".to_string());

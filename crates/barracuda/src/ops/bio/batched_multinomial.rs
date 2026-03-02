@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use wgpu::util::DeviceExt;
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 
@@ -32,84 +33,13 @@ struct GpuParams {
 
 /// GPU-backed batched multinomial sampling for rarefaction.
 pub struct BatchedMultinomialGpu {
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
     device: Arc<WgpuDevice>,
 }
 
 impl BatchedMultinomialGpu {
-    /// Compile the multinomial sampling shader.
+    /// Create a batched multinomial sampler.
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let d = device.device();
-        let module =
-            device.compile_shader_f64(WGSL_BATCHED_MULTINOMIAL_F64, Some("BatchedMultinomial"));
-
-        let bgl = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("BatchedMultinomial BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let layout = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("BatchedMultinomial Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
-
-        let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("BatchedMultinomial Pipeline"),
-            layout: Some(&layout),
-            module: &module,
-            entry_point: "main",
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            cache: None,
-        });
-
-        Ok(Self {
-            pipeline,
-            bgl,
-            device,
-        })
+        Ok(Self { device })
     }
 
     /// Draw `depth` multinomial samples for each of `n_reps` replicates.
@@ -159,42 +89,15 @@ impl BatchedMultinomialGpu {
             mapped_at_creation: false,
         });
 
-        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("BatchedMultinomial BG"),
-            layout: &self.bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: cumul_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: seeds_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: counts_buf.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = d.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("BatchedMultinomial Encoder"),
-        });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("BatchedMultinomial Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(n_reps.div_ceil(64), 1, 1);
-        }
-        self.device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(&self.device, "batched_multinomial")
+            .shader(WGSL_BATCHED_MULTINOMIAL_F64, "main")
+            .f64()
+            .uniform(0, &params_buf)
+            .storage_read(1, &cumul_buf)
+            .storage_rw(2, &seeds_buf)
+            .storage_rw(3, &counts_buf)
+            .dispatch(n_reps.div_ceil(64), 1, 1)
+            .submit();
 
         let counts = self
             .device

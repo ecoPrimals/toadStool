@@ -3,11 +3,15 @@
 #[cfg(test)]
 use super::cpu_ref;
 use super::op::{Op, StationDayInput, WaterBalanceInput};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
+
+const SHADER_BATCHED_ELEMENTWISE_F64: &str =
+    include_str!("../../shaders/science/batched_elementwise_f64.wgsl");
 
 /// Parameters for batched elementwise shader
 #[repr(C)]
@@ -26,81 +30,12 @@ struct Params {
 /// Useful for station-days (ET₀), field-cells (water balance), or samples (diversity).
 pub struct BatchedElementwiseF64 {
     device: Arc<WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl BatchedElementwiseF64 {
     /// Create a new batched elementwise executor
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        let shader_source = include_str!("../../shaders/science/batched_elementwise_f64.wgsl");
-        let shader_module =
-            device.compile_shader_f64(shader_source, Some("BatchedElementwiseF64 Shader"));
-
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("BatchedElementwiseF64 BGL"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("BatchedElementwiseF64 PipelineLayout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("BatchedElementwiseF64 Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "batched_compute",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        Ok(Self {
-            device,
-            pipeline,
-            bind_group_layout,
-        })
+        Ok(Self { device })
     }
 
     /// Execute batched computation
@@ -187,48 +122,14 @@ impl BatchedElementwiseF64 {
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
 
-        let bind_group = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("BatchedEW Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-        // Execute
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("BatchedEW Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("BatchedEW Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            // One workgroup per batch element (workgroup size = 64)
-            pass.dispatch_workgroups(batch_size as u32, 1, 1);
-        }
-
-        self.device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(&self.device, "batched_elementwise_f64")
+            .shader(SHADER_BATCHED_ELEMENTWISE_F64, "batched_compute")
+            .f64()
+            .storage_read(0, &input_buffer)
+            .storage_rw(1, &output_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch(batch_size as u32, 1, 1)
+            .submit();
 
         // Read results
         self.read_results(&output_buffer, batch_size)

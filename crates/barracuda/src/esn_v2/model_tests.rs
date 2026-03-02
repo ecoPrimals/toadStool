@@ -220,7 +220,7 @@ async fn test_esn_set_readout_weights() {
 
     let original = esn.predict(&[5.0]).await.unwrap();
 
-    let new_weights = Tensor::zeros_on(vec![1, 20], esn.device.clone())
+    let new_weights = Tensor::zeros_on(vec![20, 1], esn.device.clone())
         .await
         .unwrap();
     esn.set_readout_weights(new_weights).unwrap();
@@ -392,10 +392,16 @@ async fn test_esn_exported_weights_migrate_to_multi_head() {
         w_in: vec![0.0; 20],
         w_res: vec![0.0; 400],
         w_out: Some(vec![1.0; 20]),
+        input_size: 1,
+        reservoir_size: 20,
+        output_size: 1,
+        leak_rate: 0.3,
+        head_labels: Vec::new(),
     };
 
     let migrated = exported.migrate_to_multi_head(20, 11).unwrap();
     assert_eq!(migrated.w_out.as_ref().unwrap().len(), 11 * 20);
+    assert_eq!(migrated.output_size, 11);
 }
 
 #[tokio::test]

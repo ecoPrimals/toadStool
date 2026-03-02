@@ -16,6 +16,18 @@ pub struct ExportedWeights {
     pub w_in: Vec<f32>,
     pub w_res: Vec<f32>,
     pub w_out: Option<Vec<f32>>,
+    /// Metadata for cross-device/cross-run reconstruction
+    #[serde(default)]
+    pub input_size: usize,
+    #[serde(default)]
+    pub reservoir_size: usize,
+    #[serde(default)]
+    pub output_size: usize,
+    #[serde(default)]
+    pub leak_rate: f32,
+    /// Optional head labels for multi-head ESN
+    #[serde(default)]
+    pub head_labels: Vec<String>,
 }
 
 impl ExportedWeights {
@@ -32,6 +44,7 @@ impl ExportedWeights {
         new_output_size: usize,
     ) -> BarracudaResult<Self> {
         let mut migrated = self.clone();
+        migrated.output_size = new_output_size;
         if let Some(ref w_out) = self.w_out {
             let old_outputs = w_out.len() / reservoir_size;
             if old_outputs == 0 || w_out.len() % reservoir_size != 0 {
@@ -416,8 +429,12 @@ impl ESN {
     }
 
     /// Replace the readout weights without retraining the reservoir.
+    ///
+    /// Weights must have shape `[reservoir_size, output_size]` — the same
+    /// layout produced by `train()` and `train_ridge_regression()`.
+    /// Predict transposes internally: `output = W_out^T @ state`.
     pub fn set_readout_weights(&mut self, weights: Tensor) -> BarracudaResult<()> {
-        let expected = [self.config.output_size, self.config.reservoir_size];
+        let expected = [self.config.reservoir_size, self.config.output_size];
         if weights.shape() != expected {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
@@ -487,6 +504,11 @@ impl ESN {
             w_in: w_in_data,
             w_res: w_res_data,
             w_out: w_out_data,
+            input_size: self.config.input_size,
+            reservoir_size: self.config.reservoir_size,
+            output_size: self.config.output_size,
+            leak_rate: self.config.leak_rate,
+            head_labels: Vec::new(),
         })
     }
 
@@ -508,8 +530,8 @@ impl ESN {
         self.w_res = Tensor::from_data(w_res, vec![rs, rs], self.device.clone())?;
 
         if let Some(wo) = w_out {
-            expect_size("w_out", os * rs, wo.len())?;
-            self.w_out = Some(Tensor::from_data(wo, vec![os, rs], self.device.clone())?);
+            expect_size("w_out", rs * os, wo.len())?;
+            self.w_out = Some(Tensor::from_data(wo, vec![rs, os], self.device.clone())?);
             self.trained = true;
         }
         Ok(())

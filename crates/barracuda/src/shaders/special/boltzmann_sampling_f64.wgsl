@@ -12,14 +12,13 @@ enable f64;
 struct Params {
     batch_size: u32,
     n_classes: u32,
-    temp_lo: u32,
-    temp_hi: u32,
 }
 
 @group(0) @binding(0) var<storage, read> logits: array<f64>;
 @group(0) @binding(1) var<storage, read_write> seeds: array<u32>;
 @group(0) @binding(2) var<storage, read_write> output: array<u32>;
 @group(0) @binding(3) var<uniform> params: Params;
+@group(0) @binding(4) var<storage, read> temp_buf: array<f64>;
 
 fn rotl(x: u32, k: u32) -> u32 {
     return (x << k) | (x >> (32u - k));
@@ -89,7 +88,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         seeds[seed_base + 3u],
     );
 
-    let temp = bitcast<f64>(vec2<u32>(params.temp_lo, params.temp_hi));
+    let temp = temp_buf[0];
     let temp_safe = select(f64(1.0), temp, temp > f64(1e-10));
     var max_val: f64 = logits[base] / temp_safe + gumbel(&state);
     var argmax: u32 = 0u;

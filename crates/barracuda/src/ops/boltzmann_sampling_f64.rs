@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -18,8 +19,6 @@ pub const WGSL_BOLTZMANN_SAMPLING_F64: &str =
 struct GpuParams {
     batch_size: u32,
     n_classes: u32,
-    temp_lo: u32,
-    temp_hi: u32,
 }
 
 /// GPU-backed Boltzmann sampling.
@@ -68,9 +67,6 @@ impl BoltzmannSamplingGpu {
         } else {
             1.0
         };
-        let temp_bits = temp_safe.to_bits();
-        let temp_lo = temp_bits as u32;
-        let temp_hi = (temp_bits >> 32) as u32;
 
         let mut seeds: Vec<u32> = (0..batch_size * 4)
             .map(|i| {
@@ -100,119 +96,20 @@ impl BoltzmannSamplingGpu {
         let params = GpuParams {
             batch_size: batch_size as u32,
             n_classes: n_classes as u32,
-            temp_lo,
-            temp_hi,
         };
         let params_buf = device.create_uniform_buffer("boltzmann:params", &params);
+        let temp_buf = device.create_buffer_f64_init("boltzmann:temp", &[temp_safe]);
 
-        let module =
-            device.compile_shader_f64(WGSL_BOLTZMANN_SAMPLING_F64, Some("BoltzmannSampling"));
-
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Boltzmann BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Boltzmann PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("BoltzmannSampling"),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: "main",
-                cache: device.pipeline_cache(),
-                compilation_options: Default::default(),
-            });
-
-        let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Boltzmann BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: logits_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: seeds_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: out_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Boltzmann"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Boltzmann"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(batch_size.div_ceil(64) as u32, 1, 1);
-        }
-        device.submit_and_poll_inner(Some(encoder.finish()));
+        ComputeDispatch::new(&device, "boltzmann_sampling")
+            .shader(WGSL_BOLTZMANN_SAMPLING_F64, "main")
+            .f64()
+            .storage_read(0, &logits_buf)
+            .storage_rw(1, &seeds_buf)
+            .storage_rw(2, &out_buf)
+            .uniform(3, &params_buf)
+            .storage_read(4, &temp_buf)
+            .dispatch(batch_size.div_ceil(64) as u32, 1, 1)
+            .submit();
 
         let indices = device.read_buffer_u32(&out_buf, batch_size)?;
         Ok(indices)

@@ -38,7 +38,7 @@
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
-| ComputeDispatch adoption | **71 ops migrated** (~179 legacy ops remaining, incremental) |
+| ComputeDispatch adoption | **76 ops migrated** (~174 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
 | Default test timeout | **5s** (unit: 2s, integration: 30s, chaos: 20s) |
@@ -86,7 +86,7 @@
 - `legacy_primal_to_capabilities()` and `legacy_primal_primary_capability()` removed from primal_capabilities.rs (no callers). Module now clean capability-to-primal mapping.
 - `libc` fully removed from akida-driver — migrated to `rustix` for all VFIO ioctls (vfio.rs, mmio.rs). Custom `VfioIoctlReturn`/`VfioIoctlPtr` safe wrappers. 6 clippy `ref_as_ptr`/`borrow_as_ptr` fixes.
 - `async-trait` migration: 1 more crate (security/sandbox — `SandboxManager` trait). Total: 5 crates migrated to native AFIT.
-- ComputeDispatch: 5 more ops migrated (eq, map, dotproduct, dropout, split). Total: 71 ops, ~179 remaining.
+- ComputeDispatch: 5 more ops migrated (boltzmann_sampling, batched_multinomial, diversity_fusion, batched_elementwise_f64, earth_mover_distance). Total: 76 ops, ~174 remaining.
 - ~40 new tests: toadstool-api (~20), toadstool-auto-config (~9), toadstool-server (~11).
 - 5 broken `ToadStoolError` doc links fixed (universal_adapter/mod.rs, discovery_integration.rs).
 - Compile bottleneck analysis: tfhe+tfhe-fft = 30.6% CPU (showcase); wgpu 22/23 duplication wastes ~90s.

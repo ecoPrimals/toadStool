@@ -312,7 +312,7 @@ toadStool/
 **We are still evolving.** barracuda owns the math at all precisions. Springs migrate from local math to universal dispatch. All 5 spring handoffs absorbed. Remaining work is ComputeDispatch migration, DF64 architecture, and coverage.
 
 ### Active / Next
-- **ComputeDispatch migration** -- 71/250 ops migrated; ~179 legacy ops use manual BGL/BG boilerplate (incremental)
+- **ComputeDispatch migration** -- 76/250 ops migrated; ~174 legacy ops use manual BGL/BG boilerplate (incremental)
 - **DF64 as default path** -- df64_rewrite as default precision, not fallback (groundSpring V35)
 - **NpuDispatch trait** -- generic NPU interface (airSpring/wetSpring/groundSpring converge)
 - **Test coverage** -- pushing toward 90% target; major coverage gains in CLI, server, API, monitoring, distributed
@@ -366,4 +366,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 2, 2026 -- 844 WGSL shaders (37 DF64, 15 folding, 15-function DF64 transcendental suite). 2,781+ barracuda tests. 5,500+ workspace lib tests (8,300+ total). 71 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings). Fully concurrent test suite. Rust 1.80+. Zero anyhow. Zero chrono. Zero pollster. Zero serde_yaml. Zero libc (akida-driver). Zero production stubs. 45 justified unsafe. 32+ god files smart-refactored into domain modules. Capability-based discovery. NVK GPU resilience wrappers. LstmReservoir + EsnClassifier. 15 protein folding DF64 shaders. External deps overwhelmingly pure Rust.
+**Last Updated**: March 2, 2026 -- 844 WGSL shaders (37 DF64, 15 folding, 15-function DF64 transcendental suite). 2,781+ barracuda tests. 5,500+ workspace lib tests (8,300+ total). 76 ops migrated to ComputeDispatch. All quality gates green (0 clippy warnings, 0 doc warnings). Fully concurrent test suite. Rust 1.80+. Zero anyhow. Zero chrono. Zero pollster. Zero serde_yaml. Zero libc (akida-driver). Zero production stubs. 45 justified unsafe. 32+ god files smart-refactored into domain modules. Capability-based discovery. NVK GPU resilience wrappers. LstmReservoir + EsnClassifier. 15 protein folding DF64 shaders. External deps overwhelmingly pure Rust.

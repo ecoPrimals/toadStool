@@ -89,7 +89,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
 - [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
-- [ ] **ComputeDispatch migration** -- 71/250 ops migrated; ~179 remaining (incremental)
+- [ ] **ComputeDispatch migration** -- 76/250 ops migrated; ~174 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
 - [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed

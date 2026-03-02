@@ -124,7 +124,7 @@ pub fn grid_search_3d(
         .storage_rw(4, &out_min_buf)
         .storage_rw(5, &out_idx_buf)
         .uniform(6, &params_buf)
-        .dispatch_1d(total as u32)
+        .dispatch(1, 1, 1)
         .submit();
 
     let min_val = device.read_f64_buffer(&out_min_buf, 1)?;

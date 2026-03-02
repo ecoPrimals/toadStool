@@ -22,8 +22,6 @@ const SHADER_JACKKNIFE: &str = include_str!("../shaders/stats/jackknife_mean_f64
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct JackknifeParams {
     n: u32,
-    full_sum_lo: u32,
-    full_sum_hi: u32,
     _pad: u32,
 }
 
@@ -51,14 +49,8 @@ impl JackknifeMeanGpu {
         let full_sum: f64 = data.iter().sum();
         let full_mean = full_sum / (n as f64);
 
-        let bits = full_sum.to_bits();
-        let lo = bits as u32;
-        let hi = (bits >> 32) as u32;
-
         let params = JackknifeParams {
             n: n as u32,
-            full_sum_lo: lo,
-            full_sum_hi: hi,
             _pad: 0,
         };
         let params_buf = self
@@ -69,6 +61,9 @@ impl JackknifeMeanGpu {
             .device
             .create_buffer_f64_init("jackknife_mean:data", data);
         let leave_means_buf = self.device.create_buffer_f64(n)?;
+        let full_sum_buf = self
+            .device
+            .create_buffer_f64_init("jackknife_mean:full_sum", &[full_sum]);
 
         let wg_count = (n as u32).div_ceil(256);
         ComputeDispatch::new(&self.device, "jackknife_mean")
@@ -77,6 +72,7 @@ impl JackknifeMeanGpu {
             .storage_read(0, &data_buf)
             .storage_rw(1, &leave_means_buf)
             .uniform(2, &params_buf)
+            .storage_read(3, &full_sum_buf)
             .dispatch(wg_count, 1, 1)
             .submit();
 

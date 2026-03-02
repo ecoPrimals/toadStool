@@ -52,5 +52,8 @@ pub use batch_ipr::BatchIprGpu;
 pub use hofstadter::{almost_mathieu_hamiltonian, gcd, hofstadter_butterfly, GOLDEN_RATIO};
 pub use lanczos::{lanczos, lanczos_eigenvalues, LanczosTridiag};
 pub use sparse::{SpectralCsrMatrix, WGSL_SPMV_CSR_F64};
-pub use stats::{detect_bands, level_spacing_ratio, GOE_R, POISSON_R};
+pub use stats::{
+    classify_spectral_phase, detect_bands, level_spacing_ratio, spectral_bandwidth,
+    spectral_condition_number, SpectralAnalysis, SpectralPhase, GOE_R, POISSON_R,
+};
 pub use tridiag::{find_all_eigenvalues, sturm_count};
