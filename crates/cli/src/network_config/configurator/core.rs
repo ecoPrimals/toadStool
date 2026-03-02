@@ -11,6 +11,7 @@ use toadstool_common::config_bases::{
     CacheConfig, ConnectionPoolConfig, HealthCheckConfig, HttpHealthCheckConfig, RetryConfig,
     TelemetryConfig, TimeoutConfig,
 };
+#[allow(deprecated)]
 use toadstool_config::constants::primals;
 use tracing::info;
 
@@ -57,6 +58,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
         }
     }
 
+    #[allow(deprecated)]
     fn default_config() -> SongbirdNetworkConfig {
         SongbirdNetworkConfig {
             service_mesh: ServiceMeshConfig {

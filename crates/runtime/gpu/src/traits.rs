@@ -7,6 +7,7 @@ use toadstool::error::ToadStoolResult;
 use uuid::Uuid;
 
 /// Trait for parallel compute frameworks
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait ParallelComputeFramework: Send + Sync {
     /// Get framework type

@@ -1,3 +1,5 @@
+#![allow(async_fn_in_trait)]
+
 //! # `ToadStool` Universal GPU Compute Runtime
 //!
 //! **Philosophy**: "If it has parallel compute units, we can harness it"
@@ -36,12 +38,19 @@ pub mod backends;
 
 // Re-export main types and traits for convenience
 pub use compiler::UniversalKernelCompiler;
-pub use config::*;
+pub use config::{
+    AllocationStrategy, AsyncExecutionConfig, CachingConfig, CompilationConfig,
+    DeviceSelectionStrategy, ExecutionConfig, FaultToleranceConfig, GpuDiscoveryConfig,
+    LoadBalancingAlgorithm, LoadBalancingConfig, MonitoringConfig, OptimizationLevel,
+    RecursionConfig, RecursiveSchedulingStrategy, ResourceConfig, UniversalGpuConfig,
+    UniversalIrConfig, UniversalIrFormat,
+};
 pub use coordinator::ComputeResourceCoordinator;
 pub use engine::UniversalGpuEngine;
-pub use frameworks::*;
+pub use frameworks::{FallbackFramework, WebGPUAdapter, WebGpuFramework};
 pub use strategy::{BackendSelectionStrategy, EvolutionMetrics};
-pub use traits::*;
+pub use traits::{KernelOptimizer, LoadBalancer, ParallelComputeFramework};
+// types has 25+ public items; explicit re-export would be unwieldy
 pub use types::*;
 
 // Re-export the main engine as the default runtime

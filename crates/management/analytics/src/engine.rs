@@ -1,6 +1,5 @@
 //! Analytics engine trait definition
 
-use async_trait::async_trait;
 use toadstool::error::ToadStoolResult;
 use uuid::Uuid;
 
@@ -8,7 +7,6 @@ use crate::types::Dashboard;
 use crate::types::{Alert, AnalyticsDataPoint, PredictionPoint, TrendAnalysis};
 
 /// Main analytics engine trait
-#[async_trait]
 pub trait AnalyticsEngine: Send + Sync {
     /// Collect and store analytics data point
     async fn collect_data_point(&self, data_point: AnalyticsDataPoint) -> ToadStoolResult<()>;

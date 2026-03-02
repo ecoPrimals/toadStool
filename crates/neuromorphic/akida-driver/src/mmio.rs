@@ -3,10 +3,9 @@
 //! Provides safe abstractions for accessing Akida hardware registers.
 //! Based on VFIO region mapping.
 //!
-//! # Deep Debt Evolution (Feb 17, 2026)
+//! # Deep Debt Evolution (ecoBin compliant, Mar 2026)
 //!
-//! Evolved to use rustix for mmap/munmap while keeping libc only for VFIO ioctls.
-//! VFIO ioctls are kernel-specific and not covered by rustix's standard API.
+//! Evolved to use rustix for mmap/munmap and VFIO ioctls (pure Rust, no C deps).
 
 // Hardware register access requires exact type casts for mmap/ioctl APIs
 // MMIO registers are naturally aligned by hardware, so pointer casts are safe
@@ -17,9 +16,10 @@
 #![allow(clippy::items_after_statements)] // VFIO ioctl constants near usage
 
 use crate::error::{AkidaError, Result};
+use rustix::io::Result as IoResult;
+use rustix::ioctl::{opcode, Ioctl, IoctlOutput, Opcode};
 use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
 use std::os::fd::AsFd;
-use std::os::unix::io::AsRawFd;
 
 /// AKD1000 BAR regions
 #[derive(Debug, Clone, Copy)]
@@ -161,26 +161,49 @@ impl MappedRegion {
             ..Default::default()
         };
 
-        // VFIO_DEVICE_GET_REGION_INFO = _IOWR(';', 100 + 8, ...)
-        const VFIO_DEVICE_GET_REGION_INFO: libc::c_ulong = 0xc018_3b68;
+        // VFIO_DEVICE_GET_REGION_INFO = _IO(';', 100 + 8) — kernel uses _IO for extensibility
+        const OP_DEVICE_GET_REGION_INFO: Opcode = opcode::none(b';', 108);
 
         // SAFETY: VFIO_DEVICE_GET_REGION_INFO ioctl necessary for MMIO - kernel returns BAR size/offset.
         // Invariants: (1) device_fd valid from VFIO device open; (2) VfioRegionInfo initialized
-        // with argsz = size_of, index = bar; (3) _IOWR reads/writes region_info; (4) layout matches
+        // with argsz = size_of, index = bar; (3) _IO reads/writes region_info; (4) layout matches
         // kernel. Caller guarantees: device fd from VFIO, bar is valid BAR index.
-        let ret = unsafe {
-            libc::ioctl(
-                device_fd.as_fd().as_raw_fd(),
-                VFIO_DEVICE_GET_REGION_INFO,
-                &raw mut region_info,
-            )
+        struct RegionInfoIoctl<'a> {
+            opcode: Opcode,
+            ptr: *mut VfioRegionInfo,
+            _marker: std::marker::PhantomData<&'a mut VfioRegionInfo>,
+        }
+        unsafe impl Ioctl for RegionInfoIoctl<'_> {
+            type Output = ();
+
+            const IS_MUTATING: bool = true;
+
+            fn opcode(&self) -> Opcode {
+                self.opcode
+            }
+
+            fn as_ptr(&mut self) -> *mut std::ffi::c_void {
+                self.ptr.cast()
+            }
+
+            unsafe fn output_from_ptr(
+                _out: IoctlOutput,
+                _extract_output: *mut std::ffi::c_void,
+            ) -> IoResult<Self::Output> {
+                Ok(())
+            }
+        }
+
+        let ioctl = RegionInfoIoctl {
+            opcode: OP_DEVICE_GET_REGION_INFO,
+            ptr: &raw mut region_info,
+            _marker: std::marker::PhantomData,
         };
 
-        if ret < 0 {
+        if let Err(e) = unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) } {
             return Err(AkidaError::capability_query_failed(format!(
                 "Failed to get BAR{} info: {}",
-                bar as u32,
-                std::io::Error::last_os_error()
+                bar as u32, e
             )));
         }
 

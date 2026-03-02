@@ -236,6 +236,7 @@ impl ServiceDiscovery {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl ServiceDiscoveryTrait for ServiceDiscovery {
     async fn find_services_by_capability(

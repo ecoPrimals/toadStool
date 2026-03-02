@@ -2,7 +2,6 @@
 
 use crate::{CliContextExt, Result};
 use std::future::Future;
-// use std::time::Duration;  // Unused after HTTP removal
 use tokio::process::Command;
 use tracing::{debug, info};
 
@@ -422,6 +421,7 @@ impl ZeroConfigDeployment {
     ///
     /// Discovers primals by capability name using well-known socket paths.
     /// Replaces deprecated HTTP localhost discovery with proper Unix socket checks.
+    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
     async fn try_unix_socket_discovery(
         &self,
         capability_name: &str,

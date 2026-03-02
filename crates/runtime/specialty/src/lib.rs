@@ -51,7 +51,8 @@ pub mod cross_compilation;
 pub mod legacy_networking;  // Legacy protocol support (appropriate name for protocol compatibility)
 pub mod emulation;
 
-// Re-export types for backward compatibility
+// Re-export types for backward compatibility. types has 50+ items across systems, jobs,
+// requirements, configs, traits, cross_compilation, emulation; explicit re-export unwieldy.
 pub use types::*;
 
 // Import specific types needed in this module

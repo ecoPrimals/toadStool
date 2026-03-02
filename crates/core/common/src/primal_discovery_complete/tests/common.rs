@@ -11,6 +11,7 @@ pub(super) struct MockDiscoveryClient {
     pub error: std::sync::RwLock<Option<String>>,
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl crate::runtime_discovery::DiscoveryClient for MockDiscoveryClient {
     async fn discover_by_capability(

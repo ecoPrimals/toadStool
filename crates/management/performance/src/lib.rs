@@ -1,4 +1,5 @@
 #![deny(unsafe_code)]
+#![allow(async_fn_in_trait)]
 
 //! Performance Management and Optimization for `ToadStool`
 //!

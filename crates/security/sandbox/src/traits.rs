@@ -1,12 +1,10 @@
 //! Sandbox manager trait definitions
 
-use async_trait::async_trait;
 use toadstool::error::ToadStoolResult;
 use toadstool_security_policies::SecurityPolicy;
 
 use super::types::*;
 
-#[async_trait]
 pub trait SandboxManager: Send + Sync {
     /// Create a new sandbox
     async fn create_sandbox(&self, spec: SandboxSpec) -> ToadStoolResult<String>;

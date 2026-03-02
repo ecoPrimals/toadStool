@@ -289,6 +289,92 @@ fn batched_compute(
             if (ke < zero) { ke = zero; }
             output[batch_idx] = ke;
         }
+        case 9u: {
+            // VanGenuchtenTheta: θ(h) = θ_r + (θ_s - θ_r) / [1 + (α|h|)^n]^m, m = 1 - 1/n
+            // input: [theta_r, theta_s, alpha, n, h]
+            let theta_r = input[base + 0u];
+            let theta_s = input[base + 1u];
+            let alpha = input[base + 2u];
+            let n_vg = input[base + 3u];
+            let h = input[base + 4u];
+            let zero = h - h;
+            let one = zero + 1.0;
+
+            if (h >= zero) {
+                output[batch_idx] = theta_s;
+            } else {
+                let m = one - one / n_vg;
+                let alpha_h = alpha * (-h);
+                let alpha_h_n = pow_f64(alpha_h, n_vg);
+                let one_plus = one + alpha_h_n;
+                let se = pow_f64(one_plus, -m);
+                output[batch_idx] = theta_r + (theta_s - theta_r) * se;
+            }
+        }
+        case 10u: {
+            // VanGenuchtenK: K(h) = K_s * S_e^l * [1 - (1 - S_e^(1/m))^m]^2
+            // input: [K_s, theta_r, theta_s, alpha, n, l, h]
+            let k_s = input[base + 0u];
+            let theta_r = input[base + 1u];
+            let theta_s = input[base + 2u];
+            let alpha = input[base + 3u];
+            let n_vg = input[base + 4u];
+            let l_pore = input[base + 5u];
+            let h = input[base + 6u];
+            let zero = h - h;
+            let one = zero + 1.0;
+
+            if (h >= zero) {
+                output[batch_idx] = k_s;
+            } else {
+                let m = one - one / n_vg;
+                let alpha_h = alpha * (-h);
+                let alpha_h_n = pow_f64(alpha_h, n_vg);
+                let one_plus = one + alpha_h_n;
+                let se = pow_f64(one_plus, -m);
+                let se_1m = pow_f64(se, one / m);
+                let inner = one - pow_f64(one - se_1m, m);
+                output[batch_idx] = k_s * pow_f64(se, l_pore) * inner * inner;
+            }
+        }
+        case 11u: {
+            // ThornthwaiteEt0: ET₀ = 16 * (10*T_mean/I)^a * (N/12) * (d/30)
+            // input: [heat_index_I, exponent_a, daylight_hours_N, days_in_month_d, T_mean]
+            let heat_i = input[base + 0u];
+            let exp_a = input[base + 1u];
+            let daylight_n = input[base + 2u];
+            let days_d = input[base + 3u];
+            let t_mean = input[base + 4u];
+            let zero = t_mean - t_mean;
+
+            if (t_mean <= zero) {
+                output[batch_idx] = zero;
+            } else {
+                let heat_safe = select(zero + 0.001, heat_i, heat_i > (zero + 0.001));
+                output[batch_idx] = (zero + 16.0) * pow_f64((zero + 10.0) * t_mean / heat_safe, exp_a)
+                    * (daylight_n / (zero + 12.0)) * (days_d / (zero + 30.0));
+            }
+        }
+        case 12u: {
+            // GDD: max(0, T_mean - T_base), aux_param = T_base
+            let t_mean = input[base + 0u];
+            let t_base = params.aux_param;
+            var gdd = t_mean - t_base;
+            if (gdd < (t_mean - t_mean)) { gdd = t_mean - t_mean; }
+            output[batch_idx] = gdd;
+        }
+        case 13u: {
+            // PedotransferPolynomial: Horner form a0 + x*(a1 + x*(a2 + x*(a3 + x*(a4 + x*a5))))
+            // input: [a0, a1, a2, a3, a4, a5, x]
+            let a0 = input[base + 0u];
+            let a1 = input[base + 1u];
+            let a2 = input[base + 2u];
+            let a3 = input[base + 3u];
+            let a4 = input[base + 4u];
+            let a5 = input[base + 5u];
+            let x = input[base + 6u];
+            output[batch_idx] = ((((a5 * x + a4) * x + a3) * x + a2) * x + a1) * x + a0;
+        }
         default: {
             // Identity / passthrough first element
             output[batch_idx] = input[base];

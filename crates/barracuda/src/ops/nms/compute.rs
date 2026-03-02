@@ -9,13 +9,29 @@
 use super::NMS;
 use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::DeviceCapabilities;
+use crate::device::WgpuDevice;
 use crate::error::Result;
 use crate::tensor::Tensor;
+use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 impl NMS {
-    /// Execute NMS operation (Pure GPU)
-    /// Returns indices of boxes to keep
+    /// Execute NMS on a given GPU device.
+    pub fn execute_on(self, device: Arc<WgpuDevice>) -> Result<Vec<usize>> {
+        if self.boxes().is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let num_boxes = self.boxes().len();
+
+        if num_boxes == 1 {
+            return Ok(vec![0]);
+        }
+
+        self.execute_inner(device, num_boxes)
+    }
+
+    /// Execute NMS with automatic device discovery.
     pub fn execute(self) -> Result<Vec<usize>> {
         if self.boxes().is_empty() {
             return Ok(Vec::new());
@@ -23,25 +39,23 @@ impl NMS {
 
         let num_boxes = self.boxes().len();
 
-        // Edge case: single box
         if num_boxes == 1 {
             return Ok(vec![0]);
         }
 
-        // Create device (use test pool when available, skip when no GPU)
-        let device =
-            pollster::block_on(crate::device::test_pool::get_test_device_if_gpu_available())
-                .ok_or_else(|| crate::error::BarracudaError::device("No GPU available for NMS"))?;
+        let device = crate::device::test_pool::get_test_device_if_gpu_available_sync()
+            .ok_or_else(|| crate::error::BarracudaError::device("No GPU available for NMS"))?;
 
+        self.execute_inner(device, num_boxes)
+    }
+
+    fn execute_inner(self, device: Arc<WgpuDevice>, num_boxes: usize) -> Result<Vec<usize>> {
         // Convert boxes to tensor format [num_boxes, 5] where each box is [x1, y1, x2, y2, score]
-        let mut box_data = Vec::with_capacity(num_boxes * 5);
-        for box_ in self.boxes() {
-            box_data.push(box_.x1);
-            box_data.push(box_.y1);
-            box_data.push(box_.x2);
-            box_data.push(box_.y2);
-            box_data.push(box_.score);
-        }
+        let box_data: Vec<f32> = self
+            .boxes()
+            .iter()
+            .flat_map(|b| [b.x1, b.y1, b.x2, b.y2, b.score])
+            .collect();
 
         // Create box tensor on GPU
         let boxes_tensor = Tensor::from_vec_on_sync(box_data, vec![num_boxes, 5], device.clone())?;

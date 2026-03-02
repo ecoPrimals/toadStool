@@ -133,7 +133,6 @@ impl WebGpuBackend {
     }
 }
 
-#[async_trait]
 impl BackendInitializer for WebGpuBackend {
     async fn try_init() -> ToadStoolResult<Self> {
         let (device, queue) = Self::init_device().await?;
@@ -145,6 +144,7 @@ impl BackendInitializer for WebGpuBackend {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl UnifiedMemoryBackend for WebGpuBackend {
     fn name(&self) -> &'static str {

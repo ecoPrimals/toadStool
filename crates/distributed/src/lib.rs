@@ -67,10 +67,22 @@ pub use compatibility::{
     LinuxCompatibilityLayer, MacOSCompatConfig, MacOSCompatibilityLayer, WindowsCompatConfig,
     WindowsCompatibilityLayer,
 };
-pub use core::*;
-pub use ecosystem::*;
-pub use metrics::*;
-pub use network::*;
+pub use core::{
+    DistributedConfig, DistributedCoordinator, ExecutionEnvironment, PlatformCapabilities,
+    SongbirdConfig, StandaloneConfig, StandaloneExecutor, ToadStoolCapabilities,
+};
+pub use ecosystem::{
+    AuthToken, AuthenticationManager, Credentials, RegisteredService, ServiceRegistry,
+};
+pub use metrics::{
+    EcosystemMetrics, LocalMetrics, NetworkMetrics, RecursiveHostingMetrics,
+    UniversalMetricsCollector,
+};
+pub use network::{
+    CircuitBreaker, CircuitBreakerState, FaultToleranceManager, NetworkDistributor,
+    NetworkDistributorConfig, NetworkLoadBalancer, NetworkMetricsCollector, NetworkMetricsData,
+    NodeHealth, RetryManager,
+};
 
 // Specific exports to avoid ambiguous glob re-exports
 pub use hosting::{
@@ -121,7 +133,7 @@ pub use songbird_integration::{
     JobCoordinator, NetworkRequirements as SongbirdNetworkRequirements, SongbirdIntegrationConfig,
     SongbirdJobRequest, SongbirdJobResponse, SongbirdNetworkDiscovery,
 };
-pub use substrate_detection::*;
+pub use substrate_detection::{PlatformType, SubstrateCapabilities, SubstrateDetector};
 
 // Tests module
 #[cfg(test)]

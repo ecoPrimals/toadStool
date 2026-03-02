@@ -35,6 +35,7 @@ impl ToadStoolPrimalProvider {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl UniversalPrimalProvider for ToadStoolPrimalProvider {
     fn primal_id(&self) -> &'static str {

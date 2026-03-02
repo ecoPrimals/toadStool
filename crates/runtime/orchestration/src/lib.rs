@@ -61,7 +61,10 @@ pub mod policy;
 pub mod scheduler;
 
 pub use error::OrchestrationError;
-pub use load_balancer::*;
-pub use orchestrator::*;
-pub use policy::*;
-pub use scheduler::*;
+pub use load_balancer::{BalancingStrategy, LoadBalancer, Substrate};
+pub use orchestrator::{
+    OrchestratorStats, PerformanceHistory, PerformanceTarget, SubstrateHandle,
+    WorkloadOrchestrator, WorkloadRequest, WorkloadRequestBuilder, WorkloadResult,
+};
+pub use policy::SelectionPolicy;
+pub use scheduler::{ExecutionSchedule, ScheduledTask, SchedulingStrategy, WorkloadScheduler};

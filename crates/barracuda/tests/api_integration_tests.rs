@@ -5,8 +5,6 @@
 
 use barracuda::esn_v2::{ESNConfig, ESN};
 use barracuda::genomics::{SequenceAnalyzer, SequenceConfig};
-// NOTE: NeuralNetwork API was removed - use direct tensor ops instead
-// use barracuda::nn::{Layer, LossFunction, NeuralNetwork};
 use barracuda::snn::{SNNLayer, SpikingNetwork};
 use barracuda::timeseries::{TimeSeriesAnalyzer, TimeSeriesModel};
 use barracuda::vision::{ImageBatch, Transform, VisionPipeline};

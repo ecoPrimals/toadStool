@@ -25,7 +25,6 @@ toadstool-runtime-gpu = { path = "../gpu", optional = true }
 # GPU backends (all optional, capability-based discovery)
 ocl = { version = "0.19", optional = true }
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
-pollster = { version = "0.3", optional = true }
 bytemuck = { version = "1.14", features = ["derive", "extern_crate_alloc"], optional = true }
 futures-intrusive = { version = "0.5", optional = true }
 
@@ -36,7 +35,7 @@ rayon = "1.8"
 default = ["cpu", "wgpu-backend"]
 cpu = []
 opencl = ["ocl", "toadstool-runtime-gpu/opencl"]
-wgpu-backend = ["dep:wgpu", "pollster", "bytemuck", "futures-intrusive"]
+wgpu-backend = ["dep:wgpu", "bytemuck", "futures-intrusive"]
 all = ["cpu", "opencl", "wgpu-backend"]
 
 [dev-dependencies]

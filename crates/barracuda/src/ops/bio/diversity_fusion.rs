@@ -129,7 +129,6 @@ impl DiversityFusionGpu {
         );
 
         let d = self.device.device();
-        let q = self.device.queue();
 
         let params = GpuParams {
             n_samples: n_samples as u32,
@@ -184,8 +183,7 @@ impl DiversityFusionGpu {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(params.n_samples.div_ceil(64), 1, 1);
         }
-        q.submit(std::iter::once(encoder.finish()));
-        d.poll(wgpu::Maintain::Wait);
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let raw = self.device.read_buffer_f64(&results_buf, n_samples * 3)?;
 

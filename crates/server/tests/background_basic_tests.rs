@@ -137,4 +137,3 @@ async fn test_background_manager_shutdown() {
     }
     // No panic = success
 }
-

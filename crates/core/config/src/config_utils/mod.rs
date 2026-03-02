@@ -134,6 +134,22 @@ impl ConfigUtils {
         loader.get_u16("TOADSTOOL_PORT", crate::defaults::network::API_PORT)
     }
 
+    /// Resolve whether to use placeholder implementations for external services.
+    ///
+    /// Reads `TOADSTOOL_STUB_EXTERNAL_SERVICES` (1/true/yes = use stubs).
+    /// Falls back to environment-appropriate default (dev: true, prod: false).
+    #[must_use]
+    pub fn stub_external_services() -> bool {
+        let loader = EnvConfigLoader::new();
+        let env = loader.get_string("ENV", crate::app::DEFAULT_ENVIRONMENT);
+        let default = if env == crate::production::DEFAULT_PROD_ENVIRONMENT {
+            crate::production::DEFAULT_PROD_STUB_EXTERNAL
+        } else {
+            crate::development::DEFAULT_DEV_STUB_EXTERNAL
+        };
+        loader.get_bool("STUB_EXTERNAL_SERVICES", default)
+    }
+
     /// Get federation port from environment or default
     #[must_use]
     pub fn get_federation_port() -> u16 {

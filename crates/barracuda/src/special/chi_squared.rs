@@ -319,6 +319,66 @@ pub fn chi_squared_test(observed: &[f64], expected: &[f64]) -> Result<(f64, f64,
     Ok((chi2, p_value, df))
 }
 
+// ── Batched chi-squared PDF/CDF GPU dispatch ─────────────────────────────────
+
+/// GPU executor for batched chi-squared PDF + CDF evaluation.
+///
+/// Evaluates `chi2_pdf(x, k)` and `chi2_cdf(x, k)` for an array of x-values
+/// at fixed degrees of freedom `k`. Single dispatch produces both PDF and CDF.
+#[cfg(feature = "gpu")]
+pub struct ChiSquaredBatchGpu {
+    device: std::sync::Arc<crate::device::WgpuDevice>,
+}
+
+/// Results from batched chi-squared evaluation.
+#[derive(Debug, Clone)]
+pub struct ChiSquaredBatchResult {
+    pub pdf: Vec<f64>,
+    pub cdf: Vec<f64>,
+}
+
+#[cfg(feature = "gpu")]
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct Chi2GpuParams {
+    size: u32,
+    df: u32,
+}
+
+#[cfg(feature = "gpu")]
+impl ChiSquaredBatchGpu {
+    pub fn new(device: std::sync::Arc<crate::device::WgpuDevice>) -> Result<Self> {
+        Ok(Self { device })
+    }
+
+    /// Evaluate chi-squared PDF and CDF for `x_values` at `df` degrees of freedom.
+    pub fn dispatch(&self, x_values: &[f64], df: u32) -> Result<ChiSquaredBatchResult> {
+        use crate::device::compute_pipeline::ComputeDispatch;
+
+        let n = x_values.len();
+        let input_buf = self.device.create_buffer_f64_init("chi2:input", x_values);
+        let pdf_buf = self.device.create_buffer_f64(n)?;
+        let cdf_buf = self.device.create_buffer_f64(n)?;
+        let params = Chi2GpuParams { size: n as u32, df };
+        let params_buf = self.device.create_uniform_buffer("chi2:params", &params);
+
+        let wg = (n as u32).div_ceil(256);
+        ComputeDispatch::new(&self.device, "chi_squared_f64")
+            .shader(WGSL_CHI_SQUARED_F64, "main")
+            .f64()
+            .storage_read(0, &input_buf)
+            .storage_rw(1, &pdf_buf)
+            .uniform(2, &params_buf)
+            .storage_rw(3, &cdf_buf)
+            .dispatch(wg, 1, 1)
+            .submit();
+
+        let pdf = self.device.read_f64_buffer(&pdf_buf, n)?;
+        let cdf = self.device.read_f64_buffer(&cdf_buf, n)?;
+        Ok(ChiSquaredBatchResult { pdf, cdf })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

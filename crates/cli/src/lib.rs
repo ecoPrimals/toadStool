@@ -1,4 +1,5 @@
 #![deny(unsafe_code)]
+#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 
 //! `ToadStool` CLI - Universal Compute Command Center
 //!
@@ -33,7 +34,7 @@ pub enum CliError {
     Serialization(#[from] serde_json::Error),
 
     #[error("YAML error: {0}")]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] serde_yaml_ng::Error),
 
     #[error("System error: {0}")]
     System(String),
@@ -171,7 +172,7 @@ pub struct PrimalConfig {
     pub version: String,
     pub source: WorkloadSource,
     pub enabled: bool,
-    pub config: HashMap<String, serde_yaml::Value>,
+    pub config: HashMap<String, serde_yaml_ng::Value>,
     pub dependencies: Vec<String>,
     pub health_check: Option<HealthCheck>,
 }
@@ -203,7 +204,7 @@ pub enum WorkloadSource {
     Wasm {
         source: String,
         checksum: String,
-        wasi_config: Option<HashMap<String, serde_yaml::Value>>,
+        wasi_config: Option<HashMap<String, serde_yaml_ng::Value>>,
     },
     /// Git repository
     Git {
@@ -397,12 +398,12 @@ pub async fn load_biome_manifest(path: &PathBuf) -> crate::Result<BiomeManifest>
     let manifest: BiomeManifest = match extension.to_lowercase().as_str() {
         "toml" => toml::from_str(&content)
             .context(format!("Failed to parse TOML manifest: {}", path.display()))?,
-        "yaml" | "yml" => serde_yaml::from_str(&content)
+        "yaml" | "yml" => serde_yaml_ng::from_str(&content)
             .context(format!("Failed to parse YAML manifest: {}", path.display()))?,
         _ => {
             // Unknown extension: try TOML first (ecoBin preferred), then YAML
             toml::from_str(&content).or_else(|_| {
-                serde_yaml::from_str(&content)
+                serde_yaml_ng::from_str(&content)
                     .context(format!("Failed to parse manifest: {}", path.display()))
             })?
         }
@@ -412,6 +413,7 @@ pub async fn load_biome_manifest(path: &PathBuf) -> crate::Result<BiomeManifest>
 }
 
 /// Validate biome manifest
+#[allow(deprecated)] // Intentional: IPC addressing requires well-known names
 pub fn validate_manifest(manifest: &BiomeManifest) -> crate::Result<Vec<String>> {
     let mut warnings = Vec::new();
 

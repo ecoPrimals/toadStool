@@ -302,24 +302,38 @@ fn atan_df64(x: Df64) -> Df64 {
     return atan_kernel_df64(x);
 }
 
-// ── asin_df64: atan identity for |x| < 0.5, recursive reduction for |x| ≥ 0.5 ──
+// ── asin_df64: iterative (WGSL forbids recursion) ──
+// For |x| ≤ 0.5: asin(x) = atan(x / sqrt(1 - x²))
+// For |x| > 0.5: asin(x) = π/2 - 2·asin(sqrt((1-|x|)/2))
+//   The half-angle argument sqrt((1-|x|)/2) is always < 0.5, so the inner
+//   asin hits the base case directly — no further recursion needed.
 fn asin_df64(x: Df64) -> Df64 {
-    if x.hi < 0.0 {
-        return df64_neg(asin_df64(df64_neg(x)));
-    }
     let half = df64_from_f32(0.5);
     let one = df64_from_f32(1.0);
     let pi_half = Df64(DF64_HALF_PI_HI, DF64_HALF_PI_LO);
 
-    if df64_gt(x, half) {
-        // x > 0.5: asin(x) = π/2 - 2*asin(sqrt((1-x)/2))
-        let inner = df64_scale_f32(df64_sub(one, x), 0.5);
-        let s = sqrt_df64(inner);
-        return df64_sub(pi_half, df64_scale_f32(asin_df64(s), 2.0));
+    var ax = x;
+    var negate = false;
+    if x.hi < 0.0 {
+        ax = df64_neg(x);
+        negate = true;
     }
-    // |x| ≤ 0.5: asin(x) = atan(x / sqrt(1 - x²))
-    let one_minus_x2 = df64_sub(one, df64_mul(x, x));
-    return atan_df64(df64_div(x, sqrt_df64(one_minus_x2)));
+
+    var result: Df64;
+    if df64_gt(ax, half) {
+        let s = sqrt_df64(df64_scale_f32(df64_sub(one, ax), 0.5));
+        let s2 = df64_mul(s, s);
+        let base = atan_df64(df64_div(s, sqrt_df64(df64_sub(one, s2))));
+        result = df64_sub(pi_half, df64_scale_f32(base, 2.0));
+    } else {
+        let ax2 = df64_mul(ax, ax);
+        result = atan_df64(df64_div(ax, sqrt_df64(df64_sub(one, ax2))));
+    }
+
+    if negate {
+        return df64_neg(result);
+    }
+    return result;
 }
 
 // ── acos_df64: acos(x) = π/2 - asin(x) ──

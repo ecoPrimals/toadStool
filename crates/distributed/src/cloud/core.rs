@@ -113,6 +113,7 @@ impl Default for CloudProvider {
 // ============================================================================
 
 /// Cloud provider interface - every cloud must implement this
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait CloudProviderInterface: Send + Sync {
     /// Deploy a job to this cloud provider

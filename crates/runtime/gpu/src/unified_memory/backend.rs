@@ -36,10 +36,10 @@ pub struct VulkanAllocation {
     pub cpu_ptr: *mut u8,
 }
 
-// SAFETY: VulkanAllocation is Send/Sync because:
-// - The inner allocation (memory, cpu_ptr) is heap-allocated and owned exclusively.
-// - Vulkan device/context handles are thread-safe per Vulkan spec.
-// - No interior mutability; shared access requires external synchronization.
+// SAFETY: VulkanAllocation is Send/Sync because: (1) The inner allocation (memory, cpu_ptr)
+// is heap-allocated and owned exclusively; (2) Vulkan device/context handles are thread-safe
+// per Vulkan spec; (3) No interior mutability; shared access requires external sync.
+// Violation: moving while mapped or concurrent unsynchronized access could cause UB.
 unsafe impl Send for VulkanAllocation {}
 unsafe impl Sync for VulkanAllocation {}
 
@@ -56,10 +56,10 @@ pub struct OpenClAllocation {
     pub context_handle: u64,
 }
 
-// SAFETY: OpenClAllocation is Send/Sync because:
-// - The SVM pointer is heap-allocated and owned exclusively; not shared without synchronization.
-// - OpenCL context handles are thread-safe per OpenCL spec.
-// - No interior mutability; shared access requires external synchronization.
+// SAFETY: OpenClAllocation is Send/Sync because: (1) The SVM pointer is heap-allocated and
+// owned exclusively; not shared without synchronization; (2) OpenCL context handles are
+// thread-safe per OpenCL spec; (3) No interior mutability.
+// Violation: concurrent unsynchronized access to SVM region could cause data races.
 unsafe impl Send for OpenClAllocation {}
 unsafe impl Sync for OpenClAllocation {}
 
@@ -86,10 +86,10 @@ impl std::fmt::Debug for WebGpuAllocation {
     }
 }
 
-// SAFETY: WebGpuAllocation is Send/Sync because:
-// - wgpu::Buffer is Send+Sync; mapped_ptr is only set when buffer is mapped and used
-//   under proper synchronization (map_async + get_mapped_range).
-// - Inner allocation is owned exclusively; not shared without synchronization.
+// SAFETY: WebGpuAllocation is Send/Sync because: (1) wgpu::Buffer is Send+Sync; mapped_ptr
+// is only set when buffer is mapped and used under proper sync (map_async + get_mapped_range);
+// (2) Inner allocation is owned exclusively; not shared without synchronization.
+// Violation: accessing mapped_ptr after unmap or during concurrent map would cause UB.
 unsafe impl Send for WebGpuAllocation {}
 unsafe impl Sync for WebGpuAllocation {}
 
@@ -109,16 +109,19 @@ impl CpuAllocation {
     /// The allocation must be constructed by a backend (e.g. `CpuBackend`) which
     /// guarantees `ptr` is valid for `size` bytes and properly aligned.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr is valid for self.size bytes, properly aligned, and
-        // exclusively borrowed via &mut self.
+        // SAFETY: ptr is valid for self.size bytes, properly aligned, and exclusively
+        // borrowed via &mut self. Caller (CpuBackend) constructs CpuAllocation from
+        // AlignedBuffer::into_raw() which guarantees valid allocation. Violation:
+        // invalid ptr/size or aliasing would cause UB.
         unsafe { std::slice::from_raw_parts_mut(self.ptr, self.size) }
     }
 }
 
-// SAFETY: CpuAllocation is Send/Sync because:
-// - ptr points to heap-allocated memory owned exclusively by this allocation.
-// - No interior mutability; not shared without synchronization.
-// - Raw pointer is not dereferenced across threads without exclusive access.
+// SAFETY: CpuAllocation is Send/Sync because: (1) ptr points to heap-allocated memory
+// owned exclusively by this allocation; (2) No interior mutability; not shared without
+// synchronization; (3) Raw pointer is not dereferenced across threads without exclusive
+// access. Violation: use-after-free if allocation freed while in use; data races if
+// accessed concurrently without sync.
 unsafe impl Send for CpuAllocation {}
 unsafe impl Sync for CpuAllocation {}
 
@@ -126,6 +129,7 @@ unsafe impl Sync for CpuAllocation {}
 ///
 /// Implementations provide vendor-specific unified memory allocation
 /// and management via open standards (Vulkan, OpenCL, WebGPU).
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait UnifiedMemoryBackend: Send + Sync {
     /// Backend name (e.g., "Vulkan", "OpenCL", "WebGPU", "CPU")
@@ -263,7 +267,6 @@ pub trait UnifiedMemoryBackend: Send + Sync {
 }
 
 /// Helper trait for backend initialization
-#[async_trait]
 pub trait BackendInitializer: Sized {
     /// Try to initialize the backend
     ///

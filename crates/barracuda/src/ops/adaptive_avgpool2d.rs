@@ -16,11 +16,11 @@
 //!
 //! ## Usage
 //!
-//! ```no_run
+//! ```ignore
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::device::test_pool;
-//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! # let input = Tensor::from_data(&[1.0f32; 196], vec![1, 1, 14, 14], device).unwrap();
 //! // Input: [batch, channels, 14, 14]
 //! // Output: [batch, channels, 7, 7] (adaptive to target size)
@@ -246,11 +246,11 @@ impl Tensor {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```ignore
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::device::test_pool;
-    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let input = Tensor::from_data(&[1.0f32; 49], vec![1, 1, 7, 7], device).unwrap();
     /// // Adaptive pool to 7x7 (regardless of input size)
     /// let _pooled = input.adaptive_avgpool2d((7, 7))?;

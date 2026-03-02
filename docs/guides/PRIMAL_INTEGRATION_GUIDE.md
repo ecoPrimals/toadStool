@@ -38,11 +38,11 @@ Works optimally with available services, degrades gracefully without them.
 ```rust
 use toadstool_common::primal_integration::*;
 
-// Automatic runtime discovery
-let beardog = discover_encryption_service().await?;
+// Automatic runtime discovery (capability-based)
+let beardog = discover_encryption_service()?;
 
-// Or specify custom path (development)
-let beardog = discover_beardog_at("../beardog").await?;
+// Or discover by capability (development: set TOADSTOOL_ENCRYPTION_ENDPOINT or TOADSTOOL_CRYPTO_SERVICE_SUBDIR)
+let beardog = discover_service_by_capability("encryption")?;
 ```
 
 ### Environment Configuration
@@ -97,11 +97,11 @@ async fn store_sensitive_data(data: &[u8]) -> Result<()> {
 ```rust
 use toadstool_common::primal_integration::*;
 
-// Automatic runtime discovery
-let nestgate = discover_storage_service().await?;
+// Automatic runtime discovery (capability-based)
+let nestgate = discover_storage_service()?;
 
-// Or specify custom path (development)
-let nestgate = discover_nestgate_at("../nestgate").await?;
+// Or discover by capability (development: set TOADSTOOL_STORAGE_ENDPOINT or TOADSTOOL_STORAGE_SERVICE_SUBDIR)
+let nestgate = discover_service_by_capability("storage")?;
 ```
 
 ### Environment Configuration
@@ -332,8 +332,8 @@ Discovery attempts methods in this order:
    - Load balance across instances
 
 6. **Filesystem Discovery** (development)
-   - `../beardog/` relative path
-   - `../nestgate/` relative path
+   - Set `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` / `TOADSTOOL_STORAGE_SERVICE_SUBDIR` for custom paths
+   - Or use `TOADSTOOL_ENCRYPTION_ENDPOINT` / `TOADSTOOL_STORAGE_ENDPOINT` for direct URLs
 
 ---
 

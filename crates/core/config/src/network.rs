@@ -123,7 +123,7 @@ pub fn default_federation_address() -> std::net::SocketAddr {
 // 1. Old: `network::get_songbird_endpoint()` - Hardcoded service name
 // 2. New: `ServiceDiscovery::find_by_capability(Capability::Coordination)` - Capability-based
 //
-// See `docs/guides/SELF_KNOWLEDGE_MIGRATION.md` for migration guide.
+// See DOCUMENTATION.md for the self-knowledge migration path.
 
 /// Get Songbird port from environment or default
 ///

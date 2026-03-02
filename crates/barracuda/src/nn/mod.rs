@@ -56,6 +56,8 @@ pub use loss::LossFunction;
 pub use metrics::{EvalMetrics, TrainHistory, TrainingMetrics};
 pub use optimizer::Optimizer;
 
+pub mod esn_classifier;
+pub mod lstm_reservoir;
 pub mod simple_mlp;
 
 mod config;
@@ -64,4 +66,6 @@ mod loss;
 mod metrics;
 mod optimizer;
 
+pub use esn_classifier::{EsnClassifier, EsnConfig};
+pub use lstm_reservoir::{LstmReservoir, LstmReservoirConfig, LstmState};
 pub use simple_mlp::SimpleMlp;

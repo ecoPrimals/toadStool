@@ -1,6 +1,7 @@
 //! Internal Lifecycle Operations for Biome Management
 //!
 //! This module contains all internal biome lifecycle management:
+#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 //! - `start_biome_internal()` - Start biome with all components
 //! - `start_primal()` - Start individual primal
 //! - `start_service()` - Start individual service  
@@ -34,6 +35,7 @@ fn parse_env_vars(env_vars: &[String]) -> HashMap<String, String> {
 
 /// Internal lifecycle operation implementations
 impl BiomeExecutor {
+    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
     pub(super) async fn start_biome_internal(
         &self,
         biome_name: &str,

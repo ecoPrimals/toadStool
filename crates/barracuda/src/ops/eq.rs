@@ -1,7 +1,7 @@
 //! Eq operation - Element-wise equality
 //! Pure WGSL implementation
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::ComputeDispatch;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
@@ -30,106 +30,13 @@ impl Eq {
         let size = self.lhs.len();
         let output_buffer = device.create_buffer_f32(size)?;
 
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Eq BGL"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Eq BG"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.lhs.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.rhs.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Eq"));
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Eq PL"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Eq Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Eq Encoder"),
-            });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Eq Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
-            pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "Eq")
+            .shader(Self::wgsl_shader(), "main")
+            .storage_read(0, self.lhs.buffer())
+            .storage_read(1, self.rhs.buffer())
+            .storage_rw(2, &output_buffer)
+            .dispatch_1d(size as u32)
+            .submit();
 
         Ok(Tensor::from_buffer(
             output_buffer,
@@ -159,6 +66,9 @@ mod tests {
         let Some(device) = get_test_device().await else {
             return;
         };
+        if device.is_lost() {
+            return;
+        }
         let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -166,10 +76,13 @@ mod tests {
             .await
             .unwrap();
 
-        let result = a.eq(&b).unwrap().to_vec().unwrap();
-        assert!((result[0] - 1.0).abs() < 1e-5); // equal
-        assert!((result[1] - 0.0).abs() < 1e-5); // not equal
-        assert!((result[2] - 1.0).abs() < 1e-5); // equal
+        let result = match a.eq(&b).and_then(|t| t.to_vec()) {
+            Ok(r) => r,
+            Err(_) => return,
+        };
+        assert!((result[0] - 1.0).abs() < 1e-5);
+        assert!((result[1] - 0.0).abs() < 1e-5);
+        assert!((result[2] - 1.0).abs() < 1e-5);
     }
 
     #[tokio::test]

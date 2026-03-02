@@ -253,7 +253,6 @@ impl OpenClBackend {
     }
 }
 
-#[async_trait]
 impl BackendInitializer for OpenClBackend {
     async fn try_init() -> ToadStoolResult<Self> {
         if !Self::check_availability() {
@@ -271,6 +270,7 @@ impl BackendInitializer for OpenClBackend {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl UnifiedMemoryBackend for OpenClBackend {
     fn name(&self) -> &'static str {

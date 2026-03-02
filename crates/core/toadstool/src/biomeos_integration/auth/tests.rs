@@ -1,3 +1,6 @@
+//! Auth module tests - uses well_known for IPC addressing in test fixtures
+#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};

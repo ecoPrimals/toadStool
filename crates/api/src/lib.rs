@@ -33,7 +33,8 @@ use axum::Router;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
-// Public re-exports
+// Public re-exports. types has 30+ items (ExecutionStatus, WorkloadSpec, ApiError, etc.);
+// explicit re-export would be unwieldy.
 pub use types::*;
 
 // Internal modules

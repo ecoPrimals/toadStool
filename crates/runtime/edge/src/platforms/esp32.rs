@@ -472,6 +472,7 @@ impl ESP32Device {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl EdgeDevice for ESP32Device {
     fn get_id(&self) -> Uuid {

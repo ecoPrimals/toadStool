@@ -361,11 +361,10 @@ impl DistributedGpuScheduler {
 
     /// Execute on remote tower via biomeOS tower (static for spawning)
     ///
-    /// ## Deep Debt Status: Placeholder (Graceful Degradation)
+    /// ## Implementation Status
     ///
-    /// Currently returns a placeholder result to allow distributed scheduling
-    /// to be tested without network infrastructure. This is NOT a mock —
-    /// it's intentional graceful degradation for development.
+    /// Returns `Err(not_supported)` until biomeOS tower integration is complete.
+    /// Remote execution requires network infrastructure and JSON-RPC protocol.
     ///
     /// ## Evolution Path (Pure Rust via biomeOS Tower)
     ///
@@ -401,17 +400,11 @@ impl DistributedGpuScheduler {
         address: &str,
         _workload: UniversalWorkload,
     ) -> ToadStoolResult<WorkloadResult> {
-        tracing::info!(
-            "🌐 Remote execution to tower at {} (graceful degradation: returning placeholder)",
-            address
-        );
         tracing::debug!(
-            "   Production would POST workload to {}/api/v1/execute",
+            "Remote execution to {} not yet implemented; returning not_supported",
             address
         );
 
-        // Deep Debt: Return explicit error instead of fake success
-        // Remote execution requires biomeOS tower infrastructure
         Err(ToadStoolError::not_supported(format!(
             "Remote GPU execution to {address} not yet implemented. \
              Use local execution or await biomeOS tower integration."

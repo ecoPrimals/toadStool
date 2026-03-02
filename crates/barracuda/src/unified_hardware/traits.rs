@@ -11,6 +11,7 @@ use std::sync::Arc;
 use super::types::{HardwareCapabilities, HardwareType};
 
 /// Universal compute executor — any device that can execute mathematical operations.
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait ComputeExecutor: Send + Sync {
     fn name(&self) -> &str;
@@ -31,6 +32,7 @@ pub trait ComputeExecutor: Send + Sync {
 }
 
 /// Hardware-agnostic tensor storage — data can live on any device.
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait TensorStorage: Send + Sync {
     fn descriptor(&self) -> &TensorDescriptor;

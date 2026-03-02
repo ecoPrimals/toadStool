@@ -1,4 +1,5 @@
 #![deny(unsafe_code)]
+#![allow(async_fn_in_trait)]
 
 //! Cross-Platform Security Sandboxing for ToadStool
 //!
@@ -23,9 +24,13 @@ pub mod macos;
 pub mod windows;
 
 // Re-export public APIs
-pub use manager::*;
-pub use traits::*;
-pub use types::*;
+pub use manager::CrossPlatformSandboxManager;
+pub use traits::SandboxManager;
+pub use types::{
+    BandwidthLimits, FilesystemMount, MountType, NetworkConfig, NetworkIsolationMode,
+    ResourceLimits, ResourceUsage, SandboxConfig, SandboxInfo, SandboxLifetime, SandboxSpec,
+    SandboxStatus, SecurityViolation, ViolationSeverity,
+};
 
 // Re-export platform-specific managers
 #[cfg(target_os = "linux")]

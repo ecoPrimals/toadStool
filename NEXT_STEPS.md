@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 1, 2026 -- Session 71
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero production stubs | 45 justified unsafe | 671 WGSL shaders (25 DF64) | 2,773+ barracuda tests | 5,400+ workspace lib tests (8,200+ total) | Rust 1.80+
-**Latest**: 4 orphaned shader constants wired to GPU dispatch. 3 CPU-only primitives evolved to GPU (kimura, jackknife, hargreaves). Hardcoded primal names evolved to constants. jsonrpc_server + types.rs smart-refactored.
+**Updated**: March 2, 2026 -- Session 78
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,781+ barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 32+ god files refactored | Capability-based discovery | NVK GPU resilience | LstmReservoir + EsnClassifier
+**Latest**: S78 — 71 ComputeDispatch ops. 13 wildcard crates narrowed. libc→rustix in akida-driver. 5 crates on native AFIT. legacy_primal_* removed. ~40 new tests. Doc link fixes.
 
 ---
 
@@ -10,8 +10,8 @@
 
 ### P0: ComputeDispatch Migration (Incremental)
 
-66 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
-~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~184 ops remaining.
+71 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
+~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~179 ops remaining.
 
 Migrated so far:
 - 5 linalg (cholesky f32/f64, eigh, inverse_f64, linsolve f32/f64)
@@ -23,6 +23,7 @@ Migrated so far:
 - 3 index ops (nonzero, unique, masked_select — S71+++)
 - 4 FFT ops (fft_1d, ifft_1d, fft_1d_f64, fft_3d_f64 — S71+++)
 - 7 misc ops (qr_gpu, nms, variance, std, perceptual_loss, filter_response_norm, iou_loss — S71+++)
+- 5 more (eq, map, dotproduct, dropout, split — S78)
 
 ### P1: DF64 Default Path (Architecture)
 
@@ -81,7 +82,14 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **Chaos metrics sync** -- ChaosEngine recovery_count propagated to both SystemState and ChaosMetrics
 - [x] **Edge platform evolution** -- ESP32, Raspberry Pi, industrial, microcontroller return proper errors
 - [x] **Real mDNS parser** -- replaces placeholder `Ok(None)` in zero_config service discovery
-- [ ] **ComputeDispatch migration** -- 66/250 ops migrated; ~184 remaining (incremental)
+- [x] **pollster eliminated** -- removed from barracuda, toadstool, universal (→ tokio_block_on)
+- [x] **serde_yaml → serde_yaml_ng** -- across workspace
+- [x] **async-trait → AFIT** -- 5 crates migrated (performance, analytics, wasm, gpu, security/sandbox)
+- [x] **Capability-based naming** -- CLI/JSON-RPC/error messages use capability language, type aliases added
+- [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
+- [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
+- [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
+- [ ] **ComputeDispatch migration** -- 71/250 ops migrated; ~179 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
 - [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed
@@ -93,45 +101,47 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session (S70 through S70+++)
+## Completed This Session (S78)
 
-### Session 70+++: Builder Refactor + Dead Code + Monitoring Evolution
-- `builder.rs` (975 lines) smart-refactored into `builder/` module (3 files, all <600 lines)
-- Deleted deprecated `EcosystemCaller` (95 lines dead code, zero references)
-- 5 monitoring collector stubs → real `sysinfo` implementations (health, resources, alerts, perf)
-- NestGate `connect()` → real socket path resolution
-- All root docs cleaned (7 files, all stale counts fixed)
+### Session 78: Deep Debt + Dependency Evolution
+- Wildcard re-exports narrowed in 7 more crates (sandbox, wasm, edge discovery/toolchain/comms/deployment). Total: 13.
+- `legacy_primal_to_capabilities` / `legacy_primal_primary_capability` removed from primal_capabilities.rs (no callers).
+- `libc` fully removed from akida-driver — rustix for VFIO ioctls. Custom VfioIoctlReturn/VfioIoctlPtr wrappers.
+- async-trait → native AFIT in security/sandbox (SandboxManager). Total: 5 crates.
+- ComputeDispatch: 5 more ops (eq, map, dotproduct, dropout, split). Total: 71.
+- ~40 new tests (api ~20, auto-config ~9, server ~11).
+- 5 ToadStoolError doc links fixed.
+- Compile bottleneck analysis done.
 
-### Session 70+/++: Cross-Spring Absorption + Sovereignty + Architecture
-- 7 new WGSL shaders, 6 new GPU ops, 3 new stats modules, SimpleMLP
-- Sovereignty: port 8084→dynamic, songbird→mdns, capability-based adapter
-- `Fp64Strategy::Concurrent`, monitoring split (1071→679), `UniversalAdapter` evolved
-- +37 new tests
+## Completed (S74 through S75)
 
-### Session 70: Deep Debt + Test Concurrency Evolution
-- 15+ production stubs → real implementations, +150 new tests
-- All env tests → `temp_env`, all non-chaos sleeps removed, timeouts reduced
-- ChaosEngine fix, error codes, doctests, real mDNS parser
-- Full workspace: 6m30s, 0 failures, 0 warnings
+### Session 75: Module Architecture + Build Streamlining
+- 6 god files smart-refactored: primal_integration.rs (1,163L→5 modules), capability_provider.rs (746L→5 modules), primals/lib.rs (580L→7 modules), opencl_impl.rs (831L→6 modules), env_overrides.rs (726L→9 modules), os_layer/compat.rs (766L→7 modules)
+- Wildcard `pub use *` narrowed in 6 crates: toadstool, distributed, server, gpu, universal, orchestration
+- pollster removed from toadstool + universal
+- 3 evolved backends gated behind `#[cfg(test)]`
+- TYPES_REFERENCE.md updated with Module Structure Reference
 
-### Session 69++: Architecture & Code Evolution
+### Session 74: Deep Debt Evolution — Dependencies + Capabilities + Resilience
+- serde_yaml → serde_yaml_ng across workspace
+- async-trait → native AFIT in 4 crates
+- pollster → tokio_block_on in barracuda (dependency removed)
+- Hardcoded primal names → capability-based language + type aliases
+- Edge platform stubs → genuine hardware probing
+- Discovery stubs → real mDNS/k8s/docker/registry probing
+- 3 god files refactored: workload.rs, unified.rs, precision/mod.rs
+- GPU test resilience: catch_unwind wrappers for NVK driver panics
+- WgpuDevice::poll_safe() for device-lost recovery
+- Net -3,828 lines across 182 files
 
-**ComputeDispatch migration (66 ops)**: 5 linalg + 15 special + 14 MD/bio + 7 reduce + 6 attention + 5 tensor + 3 index + 4 FFT + 7 misc.
-~3,739 lines of manual BGL/BG/pipeline boilerplate replaced with fluent builder pattern.
-
-**metalForge streaming pipeline**: `PipelineBuilder` → `StreamingPipeline` with chained
-GPU dispatches, zero CPU readback.
-
-**manual_jsonrpc → pure_jsonrpc**: Full handler parity. Unix/TCP connection layer. Unibin migrated.
-
-### Session 69/69+: Cross-Spring Absorption + Deep Debt
-
-All 5 spring handoffs absorbed (196 handoff files). 30+ new WGSL shaders created + dispatch wired.
-anyhow fully eliminated. 6 large files refactored.
-
-### Session 68+++: Deep Debt Sweep
-
-chrono eliminated from 28 crates. Unsafe 47→45. ~400 lines dead code removed.
+### Previously Completed (S68–S71)
+- **S71**: 6 GPU dispatch structs, DF64 transcendental suite (15 functions), 32 ComputeDispatch migrations, 6 god files refactored, net -9,192 lines
+- **S70+++**: builder.rs refactored, EcosystemCaller deleted, monitoring evolved to real sysinfo
+- **S70+/++**: 7 WGSL shaders, sovereignty evolution, Fp64Strategy::Concurrent, +37 tests
+- **S70**: 15 stubs → real implementations, all env tests → temp_env, +150 tests
+- **S69++**: metalForge streaming, manual_jsonrpc → pure_jsonrpc, 34 ComputeDispatch ops
+- **S69/69+**: 5 spring handoffs absorbed, 30+ WGSL shaders, anyhow eliminated
+- **S68+++**: chrono eliminated (28 crates), unsafe 47→45, ~400 lines dead code
 
 ---
 

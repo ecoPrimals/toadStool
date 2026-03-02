@@ -111,11 +111,13 @@ impl MonitoringSystem {
     pub async fn get_dashboard_data(&self) -> Result<DashboardData> {
         let timestamp = std::time::SystemTime::now();
 
-        let system_health = self.collect_system_health().await?;
-        let biome_status = self.collect_biome_status().await?;
-        let resource_usage = self.collect_resource_usage().await?;
-        let alerts = self.get_active_alerts().await?;
-        let performance_metrics = self.collect_performance_metrics().await?;
+        let (system_health, biome_status, resource_usage, alerts, performance_metrics) = tokio::try_join!(
+            self.collect_system_health(),
+            self.collect_biome_status(),
+            self.collect_resource_usage(),
+            self.get_active_alerts(),
+            self.collect_performance_metrics(),
+        )?;
 
         Ok(DashboardData {
             timestamp,

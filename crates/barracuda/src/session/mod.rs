@@ -426,7 +426,7 @@ impl TensorSession {
         }
 
         self.device.submit_and_poll(Some(encoder.finish()));
-        self.device.device.poll(wgpu::Maintain::Wait);
+        self.device.poll_safe()?;
         self.executed = true;
         Ok(())
     }

@@ -3,6 +3,8 @@
 //! This module defines the trait interface for authentication backends and provides
 //! production and test implementations using proper dependency injection.
 
+#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -22,6 +24,7 @@ pub use super::auth::{AuthenticationToken, TokenRefreshRequest, TokenRequest};
 /// This allows dependency injection of different authentication implementations
 /// (production BearDog backend, in-memory test backend, etc.) without relying
 /// on feature flags or conditional compilation.
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait AuthBackend: Send + Sync {
     /// Initialize/test connection to authentication backend
@@ -134,6 +137,7 @@ impl BearDogBackend {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl AuthBackend for BearDogBackend {
     async fn initialize(&self) -> ToadStoolResult<()> {
@@ -227,6 +231,7 @@ impl Default for InMemoryAuthBackend {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl AuthBackend for InMemoryAuthBackend {
     async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken> {

@@ -255,6 +255,7 @@ impl MdnsDiscoveryClient {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl DiscoveryClient for MdnsDiscoveryClient {
     async fn discover_by_capability(

@@ -2,10 +2,10 @@
 
 //! # `ToadStool` Protocol Integration Layer
 //!
-//! This module provides integration with various ecosystem protocols and services,
-//! including `BearDog` security integration for authentication and authorization.
+//! Capability-based integration with ecosystem security services.
+//! ToadStool discovers PKI/auth capabilities at runtime — no baked-in primal names.
 //!
-//! EVOLVED: Pure Rust! Uses Unix sockets for inter-primal communication (no reqwest!)
+//! Pure Rust: Unix sockets for inter-primal communication (no reqwest!)
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -30,9 +30,10 @@ pub mod tarpc_service;
 pub mod transport;
 pub mod types;
 
-/// `BearDog` security integration configuration
+/// PKI security service configuration (legacy name: BearDog).
 ///
-/// EVOLVED: Pure Rust! Uses Unix socket paths instead of HTTP endpoints
+/// Prefer [`SecurityServiceConfig`] alias for new code.
+/// Pure Rust: Unix sockets for inter-primal communication.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogConfig {
     /// `BearDog` Unix socket path (Pure Rust communication!)
@@ -87,6 +88,27 @@ pub struct AuthResponse {
     pub scope: Vec<String>,
     pub security_level: String,
     pub policies: Vec<SecurityPolicy>,
+}
+
+impl AuthResponse {
+    /// Standalone-mode response when PKI security service is unreachable.
+    ///
+    /// ToadStool operates independently with standard security level;
+    /// capability discovery will reconnect when the service becomes available.
+    pub fn standalone() -> Self {
+        Self {
+            access_token: "standalone".to_string(),
+            token_type: "bearer".to_string(),
+            expires_in: 3600,
+            scope: vec!["standalone".to_string()],
+            security_level: "standard".to_string(),
+            policies: vec![],
+        }
+    }
+
+    pub fn is_standalone(&self) -> bool {
+        self.access_token == "standalone"
+    }
 }
 
 /// Authorization request to `BearDog`
@@ -146,9 +168,10 @@ pub struct SecurityAuditEvent {
     pub timestamp: std::time::SystemTime,
 }
 
-/// `BearDog` security integration client
+/// PKI security service client (legacy name: BearDog).
 ///
-/// EVOLVED: Pure Rust! Uses Unix sockets with JSON-RPC (no HTTP/reqwest!)
+/// Prefer [`SecurityServiceIntegration`] alias for new code.
+/// Pure Rust: Unix sockets with JSON-RPC.
 pub struct BearDogIntegration {
     config: BearDogConfig,
     // No reqwest Client! Pure Rust Unix sockets! ✅
@@ -185,7 +208,7 @@ impl BearDogIntegration {
         capabilities: Vec<String>,
         security_context: SecurityContext,
     ) -> ToadStoolResult<AuthResponse> {
-        info!("🐻 Authenticating with BearDog security service (Pure Rust!)");
+        info!("🔐 Authenticating with PKI security service (Pure Rust)");
 
         let auth_request = AuthRequest {
             service_id: service_id.to_string(),
@@ -214,23 +237,14 @@ impl BearDogIntegration {
                 let mut policies = self.active_policies.write().await;
                 *policies = auth_response.policies.clone();
 
-                info!("✅ Successfully authenticated with BearDog (Pure Rust!)");
+                info!("✅ Authenticated with PKI security service (Pure Rust)");
                 Ok(auth_response)
             }
             Err(e) => {
-                // Graceful degradation: BearDog not available
-                info!("⚠️  BearDog not available: {}", e);
-                info!("   Deep debt principle: ToadStool works standalone");
+                info!("⚠️  PKI security service not available: {}", e);
+                info!("   ToadStool operates standalone — capability discovery will retry");
 
-                // Return stub response for graceful degradation
-                Ok(AuthResponse {
-                    access_token: "standalone".to_string(),
-                    token_type: "bearer".to_string(),
-                    expires_in: 3600,
-                    scope: vec!["standalone".to_string()],
-                    security_level: "standard".to_string(),
-                    policies: vec![],
-                })
+                Ok(AuthResponse::standalone())
             }
         }
     }
@@ -245,7 +259,7 @@ impl BearDogIntegration {
         context: HashMap<String, serde_json::Value>,
     ) -> ToadStoolResult<AuthzResponse> {
         info!(
-            "🔒 Checking authorization with BearDog for {} on {}",
+            "🔒 Checking authorization via PKI security for {} on {}",
             action, resource
         );
 
@@ -290,14 +304,13 @@ impl BearDogIntegration {
                 Ok(authz_response)
             }
             Err(e) => {
-                // Graceful degradation: BearDog not available
-                info!("⚠️  BearDog not available for authorization: {}", e);
-                info!("   Deep debt principle: ToadStool works standalone");
+                info!("⚠️  PKI security not available for authorization: {}", e);
+                info!("   ToadStool operates standalone — capability discovery will retry");
 
                 // Return permissive response for graceful degradation
                 Ok(AuthzResponse {
                     allowed: true,
-                    reason: Some("Standalone mode - no BearDog".to_string()),
+                    reason: Some("Standalone mode — PKI security unavailable".to_string()),
                     policies_applied: vec![],
                     security_recommendations: vec![],
                     audit_id: uuid::Uuid::new_v4().to_string(),
@@ -313,7 +326,7 @@ impl BearDogIntegration {
         &self,
         security_context: &SecurityContext,
     ) -> ToadStoolResult<bool> {
-        info!("🛡️ Performing zero-trust validation with BearDog");
+        info!("🛡️ Performing zero-trust validation via PKI security");
 
         let validation_request = serde_json::json!({
             "timestamp": std::time::SystemTime::now()
@@ -348,9 +361,8 @@ impl BearDogIntegration {
                 Ok(is_valid)
             }
             Err(e) => {
-                // Graceful degradation: BearDog not available
-                info!("⚠️  BearDog not available for validation: {}", e);
-                info!("   Deep debt principle: ToadStool works standalone");
+                info!("⚠️  PKI security not available for validation: {}", e);
+                info!("   ToadStool operates standalone — capability discovery will retry");
 
                 // Return permissive for graceful degradation
                 Ok(true)
@@ -360,7 +372,7 @@ impl BearDogIntegration {
 
     /// Start background security monitoring tasks
     pub async fn start_background_tasks(self: Arc<Self>) -> ToadStoolResult<()> {
-        info!("🔄 Starting BearDog security background tasks");
+        info!("🔄 Starting security service background tasks");
 
         // Token refresh task
         let token_refresh_integration = Arc::clone(&self);
@@ -414,7 +426,7 @@ impl BearDogIntegration {
             }
         });
 
-        info!("✅ BearDog security background tasks started");
+        info!("✅ Security service background tasks started");
         Ok(())
     }
 
@@ -432,7 +444,7 @@ impl BearDogIntegration {
     }
 
     async fn refresh_token_if_needed(&self) -> ToadStoolResult<()> {
-        info!("🔄 Refreshing BearDog access token");
+        info!("🔄 Refreshing PKI security access token");
         // In a real implementation, this would refresh the token
         // For now, just log that it would happen
         Ok(())
@@ -506,12 +518,12 @@ impl BearDogIntegration {
         match self.make_request("audit.flush", &audit_payload).await {
             Ok(_) => {
                 info!(
-                    "✅ Successfully flushed {} audit events to BearDog (Pure Rust!)",
+                    "✅ Flushed {} audit events to PKI security (Pure Rust)",
                     events.len()
                 );
             }
             Err(e) => {
-                warn!("❌ Failed to flush audit events to BearDog: {}", e);
+                warn!("❌ Failed to flush audit events to PKI security: {}", e);
                 // Re-add events to buffer for retry
                 let mut buffer = self.audit_buffer.lock().await;
                 buffer.extend(events);
@@ -529,7 +541,9 @@ impl BearDogIntegration {
         // EVOLVED: Pure Rust JSON-RPC over Unix socket!
         let mut stream = UnixStream::connect(&self.config.socket_path)
             .await
-            .map_err(|e| ToadStoolError::security(format!("Failed to connect to BearDog: {e}")))?;
+            .map_err(|e| {
+                ToadStoolError::security(format!("Failed to connect to PKI security service: {e}"))
+            })?;
 
         // Create JSON-RPC 2.0 request
         let request = serde_json::json!({
@@ -560,7 +574,9 @@ impl BearDogIntegration {
             .map_err(|e| ToadStoolError::security(format!("Failed to parse response: {e}")))?;
 
         if let Some(error) = response_json.get("error") {
-            return Err(ToadStoolError::security(format!("BearDog error: {error}")));
+            return Err(ToadStoolError::security(format!(
+                "PKI security error: {error}"
+            )));
         }
 
         response_json
@@ -570,7 +586,10 @@ impl BearDogIntegration {
     }
 }
 
-/// `BearDog` integration trait for dependency injection
+/// Security service integration trait for dependency injection.
+///
+/// Capability-based: any primal providing PKI/auth capabilities can implement this.
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait BearDogIntegrationTrait: Send + Sync {
     async fn authenticate(
@@ -594,6 +613,7 @@ pub trait BearDogIntegrationTrait: Send + Sync {
     ) -> ToadStoolResult<bool>;
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl BearDogIntegrationTrait for BearDogIntegration {
     async fn authenticate(
@@ -623,3 +643,8 @@ impl BearDogIntegrationTrait for BearDogIntegration {
         self.zero_trust_validation(security_context).await
     }
 }
+
+/// Capability-based type aliases — migrate from primal-specific names
+pub type SecurityServiceConfig = BearDogConfig;
+pub type SecurityServiceIntegration = BearDogIntegration;
+pub type SecurityServiceTrait = dyn BearDogIntegrationTrait;

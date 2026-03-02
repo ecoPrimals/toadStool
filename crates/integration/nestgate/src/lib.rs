@@ -24,7 +24,10 @@
 //! // Or set NESTGATE_ENDPOINT / TOADSTOOL_STORAGE_ENDPOINT env var
 //! let client = NestGateClient::connect(
 //!     std::env::var("NESTGATE_ENDPOINT")
-//!         .unwrap_or_else(|_| "http://localhost:8082".to_string())
+//!         .unwrap_or_else(|_| toadstool_common::constants::network::http_url(
+//!             toadstool_common::constants::network::DEFAULT_HOSTNAME,
+//!             toadstool_common::constants::network::HEALTH_CHECK_PORT,
+//!         ))
 //! ).await?;
 //!
 //! // Store an artifact

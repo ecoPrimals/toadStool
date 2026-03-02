@@ -55,6 +55,7 @@ impl MockPrimalProvider {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl toadstool::universal::UniversalPrimalProvider for MockPrimalProvider {
     fn primal_id(&self) -> &str {

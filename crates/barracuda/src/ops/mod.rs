@@ -79,6 +79,8 @@ pub mod softplus_wgsl;
 pub mod swish_wgsl;
 // DF64 universal math shaders (f32-pair, ~48-bit mantissa, 9.9× f64 throughput)
 pub mod df64_shaders;
+// DF64 protein folding shaders (AlphaFold2-style, neuralSpring V60)
+pub mod folding_df64;
 
 // Element-wise operations
 pub mod abs_wgsl;
@@ -152,6 +154,12 @@ pub mod correlation_f64_wgsl; // f64 Pearson correlation (portfolio analysis)
 pub mod covariance_f64_wgsl; // f64 Covariance (PCA, Kalman)
 pub mod digamma_f64_wgsl; // f64 Digamma function (Fisher information)
 pub mod variance_f64_wgsl; // f64 Variance/StdDev (normalization)
+
+// Spring handoff ops (neuralSpring V24, groundSpring V10/V54, wateringHole V69)
+pub mod boltzmann_sampling_f64; // Boltzmann/softmax sampling (wateringHole V69)
+pub mod fused_chi_squared_f64; // Fused chi-squared test (neuralSpring V24)
+pub mod fused_kl_divergence_f64; // Fused KL divergence (neuralSpring V24)
+pub mod rawr_weighted_mean_f64; // RAWR weighted mean + bootstrap CI (groundSpring V10/V54)
 
 pub mod lgamma_wgsl;
 pub mod norm_cdf_wgsl;
@@ -246,6 +254,7 @@ pub use df64_shaders::{
     WGSL_ELEMENTWISE_ADD_DF64, WGSL_ELEMENTWISE_FMA_DF64, WGSL_ELEMENTWISE_MUL_DF64,
     WGSL_ELEMENTWISE_SUB_DF64, WGSL_MEAN_REDUCE_DF64, WGSL_SUM_REDUCE_DF64,
 };
+pub use folding_df64::{compile_folding_shader, FoldingOp};
 
 // Cosine similarity (f64)
 pub mod cosine_similarity_f64; // Spectral matching, small-batch queries

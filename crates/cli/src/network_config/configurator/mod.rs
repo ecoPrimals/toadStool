@@ -1,10 +1,13 @@
-//! Songbird Network Configurator
+//! Orchestration Network Configurator
 //!
-//! This module provides network configuration management for Songbird,
-//! including service mesh, DNS discovery, security, traffic management,
+//! Manages network configuration for the orchestration capability:
+//! service mesh, DNS discovery, security, traffic management,
 //! load balancing, and health monitoring.
 //!
-//! The configurator is organized using extension traits for better code organization:
+//! Primals discover the orchestration service at runtime via capability-based
+//! discovery. This configurator is hardware- and service-agnostic.
+//!
+//! The configurator is organized using extension traits:
 //! - `ConfiguratorCore`: Core construction and orchestration
 //! - `ServiceMeshExt`: Service mesh configuration
 //! - `DiscoveryExt`: DNS and service discovery
@@ -13,8 +16,6 @@
 //! - `ReliabilityExt`: Circuit breakers and health monitoring
 
 use super::types::*;
-// UNIBIN: reqwest removed - use Unix sockets!
-// use reqwest::Client;
 use toadstool::error::ToadStoolResult;
 
 // Internal modules
@@ -33,17 +34,20 @@ pub(crate) use security::SecurityExt;
 pub(crate) use service_mesh::ServiceMeshExt;
 pub(crate) use traffic::TrafficExt;
 
-/// Songbird network configurator
+/// Orchestration network configurator (legacy name: SongbirdNetworkConfigurator).
 ///
-/// Manages all aspects of Songbird network configuration including service mesh,
+/// Manages all aspects of network configuration including service mesh,
 /// DNS discovery, security policies, traffic management, and health monitoring.
+/// Agnostic to which primal provides orchestration — discovered at runtime.
+///
+/// Prefer [`OrchestrationConfigurator`] alias for new code.
 ///
 /// # Example
 ///
 /// ```ignore
-/// use toadstool_cli::network_config::SongbirdNetworkConfigurator;
+/// use toadstool_cli::network_config::OrchestrationConfigurator;
 ///
-/// let configurator = SongbirdNetworkConfigurator::new();
+/// let configurator = OrchestrationConfigurator::new();
 /// configurator.apply_configuration().await?;
 /// configurator.validate_configuration()?;
 /// ```
@@ -51,6 +55,9 @@ pub struct SongbirdNetworkConfigurator {
     /// Network configuration
     pub config: SongbirdNetworkConfig,
 }
+
+/// Capability-based alias — prefer for new code.
+pub type OrchestrationConfigurator = SongbirdNetworkConfigurator;
 
 // Public API re-exports
 impl SongbirdNetworkConfigurator {

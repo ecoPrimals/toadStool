@@ -24,6 +24,7 @@ pub mod autotune;
 pub mod cache_hierarchy;
 pub mod capabilities;
 pub mod compute_pipeline;
+mod device_types;
 pub mod driver_profile; // GPU driver/compiler identity + shader strategies (D-S17-002 refactor)
 pub mod kernel_router; // Unified Math → Hardware routing (Feb 15, 2026)
 pub mod latency; // LatencyModel trait + Sm70/Rdna2/AppleM/Conservative/Measured (SOVEREIGN Phase 2, Feb 2026)
@@ -31,6 +32,7 @@ pub mod pipeline_cache;
 pub mod probe; // Runtime f64 exp/log capability probing (W-001 evolution)
 pub mod probe_throughput; // f64 throughput ratio probing (metalForge discovery)
 pub mod registry; // Physical device tracking with backend preference (Feb 16, 2026)
+mod routing;
 pub mod substrate;
 pub mod tensor_context;
 pub mod toadstool_integration;

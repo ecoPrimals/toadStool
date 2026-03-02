@@ -44,108 +44,36 @@
 //! println!("CPU supports: {:?}", info.capabilities);
 //! ```
 
-use crate::device::{AkidaBoard, WgpuDevice};
+use crate::device::akida::AkidaBoard;
+use crate::device::capabilities::build_device_info;
+use crate::device::routing::{select_for_workload, select_with_preference};
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result as BarracudaResult};
-use std::fmt;
 
-/// Fallback system memory estimate (GB) when actual detection fails — 64-bit systems.
-const FALLBACK_SYSTEM_MEMORY_GB_64BIT: usize = 8;
-
-/// Fallback system memory estimate (GB) when actual detection fails — 32-bit systems.
-const FALLBACK_SYSTEM_MEMORY_GB_32BIT: usize = 2;
-
-/// Unified device abstraction
-///
-/// **Hardware-agnostic** - Represents ANY compute device!
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Device {
-    /// CPU execution (pure Rust)
-    CPU,
-
-    /// GPU execution (WGSL via wgpu)
-    GPU,
-
-    /// NPU execution (Akida neuromorphic)
-    NPU,
-
-    /// TPU execution (Tensor Processing Unit)
-    TPU,
-
-    /// Automatic selection based on workload
-    Auto,
-}
+// Re-export for backward compatibility (mod.rs and prelude use these)
+pub use crate::device::capabilities::{Capability, DeviceInfo};
+pub use crate::device::device_types::Device;
+pub use crate::device::routing::WorkloadHint;
 
 impl Device {
     /// Get device information and capabilities
     ///
-    /// **Runtime discovery** - No hardcoding!
+    /// **Runtime discovery** — No hardcoding!
+    #[must_use]
     pub fn info(&self) -> DeviceInfo {
-        match self {
-            Device::CPU => DeviceInfo {
-                device: *self,
-                name: "CPU".to_string(),
-                available: true, // Always available!
-                capabilities: vec![Capability::Compute, Capability::Memory],
-                memory_gb: estimate_system_memory(),
-                compute_units: std::thread::available_parallelism()
-                    .map(|n| n.get())
-                    .unwrap_or(4),
-            },
-
-            Device::GPU => DeviceInfo {
-                device: *self,
-                name: "GPU (wgpu)".to_string(),
-                available: is_gpu_available(),
-                capabilities: vec![
-                    Capability::Compute,
-                    Capability::WGSL,
-                    Capability::ParallelExecution,
-                ],
-                memory_gb: 0,     // Query at runtime
-                compute_units: 0, // Query at runtime
-            },
-
-            Device::NPU => DeviceInfo {
-                device: *self,
-                name: "NPU (Akida)".to_string(),
-                available: is_npu_available(),
-                capabilities: vec![
-                    Capability::Compute,
-                    Capability::SparseEvents,
-                    Capability::LowPower,
-                ],
-                memory_gb: 0,     // NPU-specific
-                compute_units: 0, // Query at runtime
-            },
-
-            Device::TPU => DeviceInfo {
-                device: *self,
-                name: "TPU".to_string(),
-                available: false, // Not yet implemented
-                capabilities: vec![Capability::Compute, Capability::MatrixOps],
-                memory_gb: 0,
-                compute_units: 0,
-            },
-
-            Device::Auto => DeviceInfo {
-                device: *self,
-                name: "Auto (smart selection)".to_string(),
-                available: true,
-                capabilities: vec![Capability::AutoSelection],
-                memory_gb: 0,
-                compute_units: 0,
-            },
-        }
+        build_device_info(*self)
     }
 
     /// Check if this device is available
+    #[must_use]
     pub fn is_available(&self) -> bool {
         self.info().available
     }
 
     /// List all available devices
     ///
-    /// **Runtime discovery** - No assumptions!
+    /// **Runtime discovery** — No assumptions!
+    #[must_use]
     pub fn available_devices() -> Vec<Device> {
         vec![
             Device::CPU,
@@ -166,192 +94,28 @@ impl Device {
     /// pre-compiled neural network models, CPUs handle everything else.
     ///
     /// This is BarraCuda's recommendation. To override, use
-    /// [`select_with_preference`] or construct a [`DeviceContext`] directly.
+    /// [`Device::select_with_preference`] or construct a [`DeviceContext`] directly.
+    #[must_use]
     pub fn select_for_workload(workload: &WorkloadHint) -> Device {
-        let gpu = Device::GPU.is_available();
-        let npu = Device::NPU.is_available();
-
-        match workload {
-            // === CPU-only workloads ===
-            WorkloadHint::SmallWorkload | WorkloadHint::StringOps => Device::CPU,
-
-            // === NPU-preferred (pre-compiled inference, ultra-low power) ===
-            WorkloadHint::SparseEvents if npu => Device::NPU,
-            WorkloadHint::EventProcessing if npu => Device::NPU,
-            WorkloadHint::PreScreen if npu => Device::NPU,
-            WorkloadHint::Inference if npu => Device::NPU,
-            WorkloadHint::Reservoir if npu => Device::NPU,
-
-            // === GPU-preferred (arbitrary parallel math) ===
-            WorkloadHint::LargeMatrices if gpu => Device::GPU,
-            WorkloadHint::PhysicsForce if gpu => Device::GPU,
-            WorkloadHint::FFT if gpu => Device::GPU,
-            WorkloadHint::EigenDecomp if gpu => Device::GPU,
-            WorkloadHint::LinearSolve if gpu => Device::GPU,
-            WorkloadHint::Training if gpu => Device::GPU,
-            WorkloadHint::SurrogateEval if gpu => Device::GPU,
-            WorkloadHint::MonteCarlo if gpu => Device::GPU,
-            WorkloadHint::SparseMath if gpu => Device::GPU,
-
-            // === Fallback chain: GPU → CPU ===
-            _ => {
-                if gpu {
-                    Device::GPU
-                } else {
-                    Device::CPU
-                }
-            }
-        }
+        select_for_workload(workload)
     }
 
     /// Select device with an explicit user preference.
     ///
     /// If the user requests a specific device and it is available, honour
     /// that choice regardless of what the auto-router would recommend.
-    /// This lets callers try workloads on hardware BarraCuda might not
-    /// consider optimal -- experimentation is always allowed.
     ///
     /// Fallback chain when the preferred device is unavailable:
     /// `preferred → auto-route recommendation → GPU → CPU`
+    #[must_use]
     pub fn select_with_preference(preferred: Option<Device>, workload: &WorkloadHint) -> Device {
-        match preferred {
-            // Explicit preference -- honour it if the hardware exists
-            Some(Device::Auto) | None => Self::select_for_workload(workload),
-            Some(dev) if dev.is_available() => dev,
-            // Requested device unavailable -- fall back to auto-routing
-            Some(_) => Self::select_for_workload(workload),
-        }
+        select_with_preference(preferred, workload)
     }
-}
-
-impl fmt::Display for Device {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Device::CPU => write!(f, "CPU"),
-            Device::GPU => write!(f, "GPU"),
-            Device::NPU => write!(f, "NPU"),
-            Device::TPU => write!(f, "TPU"),
-            Device::Auto => write!(f, "Auto"),
-        }
-    }
-}
-
-/// Device information and capabilities
-///
-/// **Runtime-discovered** - No hardcoding!
-#[derive(Debug, Clone)]
-pub struct DeviceInfo {
-    /// Device type
-    pub device: Device,
-
-    /// Human-readable name
-    pub name: String,
-
-    /// Is this device available?
-    pub available: bool,
-
-    /// Device capabilities
-    pub capabilities: Vec<Capability>,
-
-    /// Available memory (GB)
-    pub memory_gb: usize,
-
-    /// Number of compute units (cores, SMs, etc.)
-    pub compute_units: usize,
-}
-
-/// Device capabilities
-///
-/// **Capability-based** - Query at runtime!
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Capability {
-    /// General compute
-    Compute,
-
-    /// WGSL shader execution
-    WGSL,
-
-    /// Parallel execution
-    ParallelExecution,
-
-    /// Sparse event processing
-    SparseEvents,
-
-    /// Low power operation
-    LowPower,
-
-    /// Matrix operations
-    MatrixOps,
-
-    /// Memory operations
-    Memory,
-
-    /// Automatic device selection
-    AutoSelection,
-}
-
-/// Workload hints for automatic device selection
-///
-/// Carries enough metadata for the router to make intelligent decisions
-/// about data size, sparsity, and hardware affinity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WorkloadHint {
-    /// Large matrix operations (GPU-preferred)
-    LargeMatrices,
-
-    /// Small workload (CPU-preferred to avoid GPU dispatch overhead)
-    SmallWorkload,
-
-    /// Sparse event processing (NPU-preferred, ultra-low power)
-    SparseEvents,
-
-    /// Event-driven logic (CPU or NPU)
-    EventProcessing,
-
-    /// String operations (CPU-only)
-    StringOps,
-
-    /// General computation (Auto -- GPU if available, else CPU)
-    General,
-
-    // --- Science-aware hints (route physics/math to the right device) ---
-    /// Physics force computation (always GPU -- needs WGSL shaders for arbitrary math)
-    PhysicsForce,
-
-    /// FFT computation (always GPU -- butterfly stages are massively parallel)
-    FFT,
-
-    /// Eigenvalue decomposition (GPU for large, CPU for small)
-    EigenDecomp,
-
-    /// Linear system solve (GPU for large, CPU for small)
-    LinearSolve,
-
-    /// Training / gradient computation (always GPU -- needs gradient shaders)
-    Training,
-
-    /// Neural network inference with a pre-compiled model (NPU if available)
-    Inference,
-
-    /// Binary classification pre-screening (NPU ideal -- ultra-low power)
-    PreScreen,
-
-    /// Surrogate model evaluation (GPU for RBF kernel, NPU for pre-filter)
-    SurrogateEval,
-
-    /// Monte Carlo / random sampling (GPU -- parallel PRNG)
-    MonteCarlo,
-
-    /// Sparse linear algebra (GPU for large, CPU for small)
-    SparseMath,
-
-    /// Reservoir computing / ESN (NPU natural fit -- fixed random weights)
-    Reservoir,
 }
 
 /// Device context for execution
 ///
-/// **Lazy initialization** - Only create when needed!
+/// **Lazy initialization** — Only create when needed!
 pub enum DeviceContext {
     /// CPU context (always available)
     CPU,
@@ -369,7 +133,7 @@ pub enum DeviceContext {
 impl DeviceContext {
     /// Create context for device
     ///
-    /// **Lazy initialization** - Only when needed!
+    /// **Lazy initialization** — Only when needed!
     pub async fn for_device(device: Device) -> BarracudaResult<Self> {
         match device {
             Device::CPU => Ok(DeviceContext::CPU),
@@ -396,69 +160,16 @@ impl DeviceContext {
             }),
 
             Device::Auto => {
-                // Auto selects GPU if available, else CPU
-                // Use explicit match to avoid recursion
                 if Device::GPU.is_available() {
                     match WgpuDevice::new().await {
                         Ok(wgpu_device) => Ok(DeviceContext::GPU(wgpu_device)),
-                        Err(_) => Ok(DeviceContext::CPU), // Fallback to CPU
+                        Err(_) => Ok(DeviceContext::CPU),
                     }
                 } else {
                     Ok(DeviceContext::CPU)
                 }
             }
         }
-    }
-}
-
-// Runtime detection helpers
-
-/// Check if GPU is available
-fn is_gpu_available() -> bool {
-    // Optimistic - assume GPU might be available
-    // Full runtime check happens at DeviceContext creation
-    true
-}
-
-/// Check if NPU is available by scanning for Akida device nodes or VFIO groups
-fn is_npu_available() -> bool {
-    // Check for /dev/akida* devices (C kernel driver path)
-    for i in 0..16 {
-        if std::path::Path::new(&format!("/dev/akida{i}")).exists() {
-            return true;
-        }
-    }
-    // Check for VFIO-eligible devices (future pure Rust path)
-    // Scan IOMMU groups for BrainChip vendor 0x1e7c
-    let iommu_groups = std::path::Path::new("/sys/kernel/iommu_groups");
-    if iommu_groups.exists() {
-        if let Ok(entries) = std::fs::read_dir(iommu_groups) {
-            for entry in entries.flatten() {
-                let devices_dir = entry.path().join("devices");
-                if let Ok(devices) = std::fs::read_dir(devices_dir) {
-                    for dev in devices.flatten() {
-                        let vendor_path = dev.path().join("vendor");
-                        if let Ok(vendor) = std::fs::read_to_string(vendor_path) {
-                            // BrainChip vendor ID
-                            if vendor.trim() == "0x1e7c" {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    false
-}
-
-/// Estimate system memory (GB)
-fn estimate_system_memory() -> usize {
-    // Platform-specific - for now, conservative estimate
-    if cfg!(target_pointer_width = "64") {
-        FALLBACK_SYSTEM_MEMORY_GB_64BIT
-    } else {
-        FALLBACK_SYSTEM_MEMORY_GB_32BIT
     }
 }
 
@@ -503,12 +214,11 @@ mod tests {
     fn test_available_devices() {
         let devices = Device::available_devices();
         assert!(!devices.is_empty());
-        assert!(devices.contains(&Device::CPU)); // Always available!
+        assert!(devices.contains(&Device::CPU));
     }
 
     #[test]
     fn test_select_with_preference_none_uses_auto() {
-        // None preference should behave like auto-routing
         let auto = Device::select_for_workload(&WorkloadHint::SmallWorkload);
         let pref = Device::select_with_preference(None, &WorkloadHint::SmallWorkload);
         assert_eq!(auto, pref);
@@ -523,14 +233,12 @@ mod tests {
 
     #[test]
     fn test_select_with_preference_cpu_always_honoured() {
-        // CPU is always available, so explicit CPU preference is always honoured
         let dev = Device::select_with_preference(Some(Device::CPU), &WorkloadHint::LargeMatrices);
         assert_eq!(dev, Device::CPU);
     }
 
     #[test]
     fn test_select_with_preference_unavailable_falls_back() {
-        // TPU is never available, so requesting it should fall back to auto
         let auto = Device::select_for_workload(&WorkloadHint::General);
         let pref = Device::select_with_preference(Some(Device::TPU), &WorkloadHint::General);
         assert_eq!(auto, pref);
@@ -538,7 +246,6 @@ mod tests {
 
     #[test]
     fn test_science_workloads_route_to_gpu_or_cpu() {
-        // Science hints should never route to NPU (unless explicitly forced)
         let hints = [
             WorkloadHint::PhysicsForce,
             WorkloadHint::FFT,
@@ -560,7 +267,6 @@ mod tests {
 
     #[test]
     fn test_runtime_device_discovery_report() {
-        // Diagnostic: report what this machine actually sees
         let available = Device::available_devices();
         println!("=== Runtime Device Discovery ===");
         for dev in &available {
@@ -579,7 +285,6 @@ mod tests {
         println!("  NPU detected: {}", Device::NPU.is_available());
         println!("  TPU detected: {}", Device::TPU.is_available());
 
-        // Routing report for all workload hints
         let hints = [
             WorkloadHint::PhysicsForce,
             WorkloadHint::FFT,
@@ -606,7 +311,6 @@ mod tests {
             println!("  {:?}: auto={:?}, forced_cpu={:?}", hint, auto, forced_cpu);
         }
 
-        // CPU must always be present
         assert!(available.contains(&Device::CPU));
     }
 }

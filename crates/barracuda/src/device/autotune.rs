@@ -502,7 +502,9 @@ pub static GLOBAL_TUNER: std::sync::LazyLock<AutoTuner> = std::sync::LazyLock::n
                 .unwrap_or_else(|_| std::env::temp_dir())
         });
 
-    let cache_path = cache_dir.join("barracuda").join("gpu_calibrations.json");
+    let cache_path = cache_dir
+        .join(env!("CARGO_PKG_NAME"))
+        .join("gpu_calibrations.json");
 
     // Ensure directory exists
     if let Some(parent) = cache_path.parent() {

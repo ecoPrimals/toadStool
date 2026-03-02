@@ -54,7 +54,7 @@ pub fn create_basic_template() -> TemplateComponents {
                 let mut config = HashMap::new();
                 config.insert(
                     "capabilities".to_string(),
-                    serde_yaml::Value::String("pki,secrets,auth".to_string()),
+                    serde_yaml_ng::Value::String("pki,secrets,auth".to_string()),
                 );
                 config
             },

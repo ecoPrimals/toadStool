@@ -74,3 +74,43 @@ pub const DEFAULT_LOG_TAIL: usize = 100;
 
 /// Maximum log tail size (lines)
 pub const MAX_LOG_TAIL: usize = 10000;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_api_constants() {
+        assert_eq!(DEFAULT_NODE_ID, "node-1");
+        assert_eq!(DEFAULT_RUNTIME_TYPE, "native");
+        assert_eq!(EXECUTOR_SOURCE, "executor");
+        assert_eq!(MSG_EXECUTION_NOT_FOUND, "Execution not found");
+        assert_eq!(MSG_HEALTHY, "Service is healthy");
+        assert_eq!(MSG_DEGRADED, "Service is degraded");
+    }
+
+    #[test]
+    fn test_metric_constants() {
+        assert_eq!(METRIC_EXECUTION_DURATION, "execution_duration_ms");
+        assert_eq!(METRIC_CPU_USAGE, "cpu_usage");
+        assert_eq!(METRIC_MEMORY_USAGE, "memory_usage");
+        assert_eq!(METRIC_DISK_USAGE, "disk_usage");
+        assert_eq!(METRIC_NETWORK_RX, "network_rx");
+        assert_eq!(METRIC_NETWORK_TX, "network_tx");
+        assert_eq!(METRIC_EXECUTION_STATUS, "execution_status");
+    }
+
+    #[test]
+    fn test_pagination_constants() {
+        assert_eq!(DEFAULT_PAGE_SIZE, 50);
+        assert_eq!(MAX_PAGE_SIZE, 1000);
+        assert!(DEFAULT_PAGE_SIZE < MAX_PAGE_SIZE);
+    }
+
+    #[test]
+    fn test_log_constants() {
+        assert_eq!(DEFAULT_LOG_TAIL, 100);
+        assert_eq!(MAX_LOG_TAIL, 10000);
+        assert!(DEFAULT_LOG_TAIL < MAX_LOG_TAIL);
+    }
+}

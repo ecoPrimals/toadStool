@@ -450,6 +450,9 @@ impl StorageClient {
     }
 
     /// Clean up expired cache entries
+    ///
+    /// Intentionally a no-op: the cache uses TTL-based expiry managed by the runtime,
+    /// not explicit cleanup. Entries expire automatically; no manual cleanup is needed.
     pub fn cleanup_cache(&self) {
         if !self.config.cache.as_ref().is_some_and(|c| c.enabled) {
             return;

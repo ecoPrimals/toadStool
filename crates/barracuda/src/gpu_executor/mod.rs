@@ -173,6 +173,7 @@ impl GpuExecutor {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl ComputeExecutor for GpuExecutor {
     fn name(&self) -> &str {

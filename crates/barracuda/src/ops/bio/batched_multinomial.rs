@@ -129,7 +129,6 @@ impl BatchedMultinomialGpu {
         assert_eq!(seeds.len(), n_reps as usize * 4);
 
         let d = self.device.device();
-        let q = self.device.queue();
 
         let params = GpuParams {
             n_taxa: n_taxa as u32,
@@ -195,8 +194,7 @@ impl BatchedMultinomialGpu {
             pass.set_bind_group(0, &bg, &[]);
             pass.dispatch_workgroups(n_reps.div_ceil(64), 1, 1);
         }
-        q.submit(std::iter::once(encoder.finish()));
-        d.poll(wgpu::Maintain::Wait);
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let counts = self
             .device

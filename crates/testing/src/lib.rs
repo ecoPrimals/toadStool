@@ -40,7 +40,9 @@ pub mod properties;
 // Modern concurrent testing helpers
 pub mod helpers;
 
-// Re-export commonly used testing utilities
+// Re-export commonly used testing utilities.
+// Wildcards retained: test helper crates are designed for `use toadstool_testing::*` in tests;
+// explicit re-exports would be verbose and tests typically glob-import anyway.
 pub use assertions::*;
 pub use builders::*;
 pub use fixtures::*;
@@ -55,7 +57,7 @@ pub use helpers::timeout::*;
 pub use fake;
 pub use proptest;
 pub use serde_json;
-pub use serde_yaml;
+pub use serde_yaml_ng;
 pub use tempfile;
 pub use tokio_test;
 

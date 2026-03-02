@@ -2,6 +2,7 @@
 //!
 //! **UniBin Standard Compliant**: Diagnose ToadStool installation, runtime,
 //! and ecosystem connectivity.
+#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 //!
 //! # Checks Performed
 //!
@@ -292,6 +293,7 @@ async fn check_gpu_available() -> bool {
     }
 }
 
+#[allow(deprecated)] // Intentional: IPC addressing requires well-known names
 async fn check_ecosystem_health() -> EcosystemReport {
     let mut issues = vec![];
 

@@ -62,8 +62,6 @@
 //! - ✅ Capability-based dispatch
 //! - ✅ Composable operations
 
-use wgpu;
-
 pub mod batched_eigh_gpu;
 pub mod cholesky;
 pub mod eigh;
@@ -129,146 +127,35 @@ pub fn wgsl_laplacian() -> &'static str {
 /// GPU executor: symmetrize a square matrix at f64 precision.
 ///
 /// `out[i,j] = (A[i,j] + A[j,i]) / 2`
-///
-/// Uses `compile_shader_f64` for full-precision f64 dispatch.
 pub struct SymmetrizeGpu {
     device: std::sync::Arc<crate::device::WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
 }
 
 impl SymmetrizeGpu {
-    /// Create a new symmetrize executor.
     pub fn new(device: std::sync::Arc<crate::device::WgpuDevice>) -> crate::error::Result<Self> {
-        let module = device.compile_shader_f64(WGSL_SYMMETRIZE_F64, Some("Symmetrize"));
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Symmetrize BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Symmetrize PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Symmetrize Pipeline"),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: "symmetrize",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-        Ok(Self {
-            device,
-            pipeline,
-            bgl,
-        })
+        Ok(Self { device })
     }
 
     /// Symmetrize an `n x n` matrix. Returns the upper-triangle-averaged result.
     pub fn execute(&self, matrix: &[f64], n: usize) -> crate::error::Result<Vec<f64>> {
-        use wgpu::util::DeviceExt;
+        use crate::device::compute_pipeline::ComputeDispatch;
 
-        let input_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Sym Input"),
-                contents: bytemuck::cast_slice(matrix),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
-        let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Sym Output"),
-            size: (n * n * 8) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
+        let input_buf = self.device.create_buffer_f64_init("symmetrize:in", matrix);
+        let output_buf = self.device.create_buffer_f64(n * n)?;
         let dim = n as u32;
-        let params_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Sym Params"),
-                contents: bytemuck::bytes_of(&dim),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Sym BG"),
-                layout: &self.bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                ],
-            });
+        let params_buf = self.device.create_uniform_buffer("symmetrize:dim", &dim);
 
         let wg = (n as u32).div_ceil(16);
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Sym Encoder"),
-                });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Sym Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(wg, wg, 1);
-        }
-        self.device.submit_and_poll(Some(encoder.finish()));
-        self.device.read_buffer::<f64>(&output_buf, n * n)
+        ComputeDispatch::new(&self.device, "symmetrize")
+            .shader(WGSL_SYMMETRIZE_F64, "symmetrize")
+            .f64()
+            .storage_read(0, &input_buf)
+            .storage_rw(1, &output_buf)
+            .uniform(2, &params_buf)
+            .dispatch(wg, wg, 1)
+            .submit();
+
+        self.device.read_f64_buffer(&output_buf, n * n)
     }
 }
 
@@ -277,142 +164,35 @@ impl SymmetrizeGpu {
 /// Given adjacency matrix A, computes `L[i,j] = degree(i) if i==j else -A[i,j]`.
 pub struct LaplacianGpu {
     device: std::sync::Arc<crate::device::WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-    bgl: wgpu::BindGroupLayout,
 }
 
 impl LaplacianGpu {
-    /// Create a new graph Laplacian executor.
     pub fn new(device: std::sync::Arc<crate::device::WgpuDevice>) -> crate::error::Result<Self> {
-        let module = device.compile_shader_f64(WGSL_LAPLACIAN_F64, Some("Laplacian"));
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Laplacian BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Laplacian PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Laplacian Pipeline"),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: "graph_laplacian",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-        Ok(Self {
-            device,
-            pipeline,
-            bgl,
-        })
+        Ok(Self { device })
     }
 
     /// Compute the graph Laplacian of an `n x n` adjacency matrix.
     pub fn execute(&self, adjacency: &[f64], n: usize) -> crate::error::Result<Vec<f64>> {
-        use wgpu::util::DeviceExt;
+        use crate::device::compute_pipeline::ComputeDispatch;
 
         let input_buf = self
             .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Lap Input"),
-                contents: bytemuck::cast_slice(adjacency),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
-        let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Lap Output"),
-            size: (n * n * 8) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
+            .create_buffer_f64_init("laplacian:in", adjacency);
+        let output_buf = self.device.create_buffer_f64(n * n)?;
         let dim = n as u32;
-        let params_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Lap Params"),
-                contents: bytemuck::bytes_of(&dim),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Lap BG"),
-                layout: &self.bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                ],
-            });
+        let params_buf = self.device.create_uniform_buffer("laplacian:dim", &dim);
 
         let wg = (n as u32).div_ceil(16);
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Lap Encoder"),
-                });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Lap Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(wg, wg, 1);
-        }
-        self.device.submit_and_poll(Some(encoder.finish()));
-        self.device.read_buffer::<f64>(&output_buf, n * n)
+        ComputeDispatch::new(&self.device, "graph_laplacian")
+            .shader(WGSL_LAPLACIAN_F64, "graph_laplacian")
+            .f64()
+            .storage_read(0, &input_buf)
+            .storage_rw(1, &output_buf)
+            .uniform(2, &params_buf)
+            .dispatch(wg, wg, 1)
+            .submit();
+
+        self.device.read_f64_buffer(&output_buf, n * n)
     }
 }
 

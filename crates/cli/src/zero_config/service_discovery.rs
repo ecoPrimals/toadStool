@@ -1,6 +1,7 @@
 //! Service discovery implementations
 //!
 //! Provides multiple discovery mechanisms for finding ecosystem services:
+#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 //! - Filesystem (biomeOS runtime directory - primal socket files)
 //! - mDNS/Multicast DNS (local network)
 //! - DNS-SD/Service Discovery (DNS-based)
@@ -77,6 +78,7 @@ impl ServiceDiscovery {
     ///
     /// Scans the biomeOS runtime directory for primal socket files.
     /// Uses well_known constants to map capability names to primal socket names.
+    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
     #[allow(clippy::unused_async)] // Sync filesystem scan; async for API consistency
     async fn try_filesystem_discovery(
         &self,

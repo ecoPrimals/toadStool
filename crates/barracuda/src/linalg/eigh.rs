@@ -151,6 +151,24 @@ pub fn eigh_f64(a: &[f64], n: usize) -> Result<EighDecomposition> {
         });
     }
 
+    // Symmetry guard: non-symmetric input produces silently wrong results.
+    // Check upper vs lower triangle within machine epsilon tolerance.
+    let sym_tol = 1e-10 * a.iter().fold(0.0_f64, |mx, &v| mx.max(v.abs())).max(1e-15);
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let diff = (a[i * n + j] - a[j * n + i]).abs();
+            if diff > sym_tol {
+                return Err(BarracudaError::InvalidInput {
+                    message: format!(
+                        "Matrix is not symmetric: A[{i},{j}]={} vs A[{j},{i}]={} (diff={diff:.2e})",
+                        a[i * n + j],
+                        a[j * n + i],
+                    ),
+                });
+            }
+        }
+    }
+
     // Special case: 1×1
     if n == 1 {
         return Ok(EighDecomposition {

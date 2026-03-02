@@ -26,6 +26,7 @@ pub struct ByobComputeExecutor {
 }
 
 /// BYOB executor trait
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait ByobExecutor: Send + Sync {
     /// Deploy a team biome
@@ -506,6 +507,7 @@ impl ByobComputeExecutor {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl ByobExecutor for ByobComputeExecutor {
     async fn deploy_biome(

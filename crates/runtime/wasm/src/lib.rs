@@ -1,4 +1,5 @@
 #![deny(unsafe_code)]
+#![allow(async_fn_in_trait)]
 
 //! ToadStool - Universal Compute Platform  
 //! Copyright (C) 2025 ToadStool Development Team
@@ -65,4 +66,8 @@ pub use module_loader::ModuleLoader;
 pub use wasi_context::{create_wasi_context, WasiConfig};
 
 // EVOLVED: Component model always exported, capability detected at runtime
-pub use component_model::*;
+pub use component_model::{
+    ComponentInstance, ComponentInterface, ComponentLinker, ComponentModelConfig,
+    ComponentModelSupport, ComponentRegistry, ComponentResourceUsage, ComponentState,
+    ComponentStats, ComponentValue, InterfaceFunction, InterfaceType,
+};

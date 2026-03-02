@@ -13,6 +13,7 @@ use crate::ToadStoolResult;
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of hardware detection.
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait HardwareCapabilityDetector: Send + Sync {
     /// Scan system hardware capabilities
@@ -23,6 +24,7 @@ pub trait HardwareCapabilityDetector: Send + Sync {
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of service discovery.
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait EcosystemServiceDiscoverer: Send + Sync {
     /// Discover available ecosystem services
@@ -34,6 +36,7 @@ pub trait EcosystemServiceDiscoverer: Send + Sync {
 // ============================================================================
 
 /// Adapter to make `HardwareDetector` implement the trait
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -42,6 +45,7 @@ impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
 }
 
 /// Adapter to make `EcosystemDiscoverer` implement the trait
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -105,6 +109,7 @@ impl Default for MockHardwareDetector {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl HardwareCapabilityDetector for MockHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -157,6 +162,7 @@ impl Default for MockEcosystemDiscoverer {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl EcosystemServiceDiscoverer for MockEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -185,6 +191,7 @@ struct RealHardwareDetector {
     inner: crate::hardware::HardwareDetector,
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl HardwareCapabilityDetector for RealHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -197,6 +204,7 @@ struct RealEcosystemDiscoverer {
     inner: crate::ecosystem::EcosystemDiscoverer,
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl EcosystemServiceDiscoverer for RealEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -244,5 +252,61 @@ mod tests {
             "Mock should be fast but took {}ms",
             duration.as_millis()
         );
+    }
+
+    #[tokio::test]
+    async fn test_mock_hardware_detector_with_custom_capabilities() {
+        use crate::hardware::{PerformanceClass, SystemCapabilities};
+
+        let mut caps = SystemCapabilities::default();
+        caps.cpu_cores = 16.0;
+        caps.memory_gb = 32.0;
+        caps.performance_class = PerformanceClass::HighEnd;
+
+        let mut detector = MockHardwareDetector::with_capabilities(caps);
+        let result = detector.scan_system().await;
+
+        assert!(result.is_ok());
+        let capabilities = result.unwrap();
+        assert_eq!(capabilities.cpu_cores, 16.0);
+        assert_eq!(capabilities.memory_gb, 32.0);
+        assert!(matches!(
+            capabilities.performance_class,
+            PerformanceClass::HighEnd
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_mock_ecosystem_discoverer_with_services() {
+        use crate::ecosystem::{DiscoveredServices, DiscoverySummary};
+
+        let mut services = std::collections::HashMap::new();
+        services.insert(
+            "test-svc".to_string(),
+            crate::ecosystem::ServiceInfo {
+                name: "test-svc".to_string(),
+                endpoint: "http://localhost:8080".to_string(),
+                service_type: "Test".to_string(),
+                version: "1.0".to_string(),
+                capabilities: vec!["test".to_string()],
+                status: crate::ecosystem::ServiceStatus::Healthy,
+                discovered_via: "unit_test".to_string(),
+                response_time_ms: 0,
+            },
+        );
+
+        let discovered = DiscoveredServices {
+            discovered_services: services,
+            discovery_summary: DiscoverySummary::default(),
+            discovery_timestamp: std::time::SystemTime::now(),
+        };
+
+        let mut discoverer = MockEcosystemDiscoverer::with_services(discovered);
+        let result = discoverer.discover_services().await;
+
+        assert!(result.is_ok());
+        let services = result.unwrap();
+        assert_eq!(services.discovered_services.len(), 1);
+        assert!(services.discovered_services.contains_key("test-svc"));
     }
 }

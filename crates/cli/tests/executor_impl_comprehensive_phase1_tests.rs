@@ -645,7 +645,7 @@ async fn load_test_manifest(path: &PathBuf) -> Result<TestManifest> {
     }
 
     let content = fs::read_to_string(path).await?;
-    let value: serde_yaml::Value = serde_yaml::from_str(&content)?;
+    let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
 
     let name = value["metadata"]["name"]
         .as_str()
@@ -668,7 +668,7 @@ async fn validate_test_manifest(path: &PathBuf) -> Result<Vec<String>> {
     let content = fs::read_to_string(path).await?;
 
     // Try to parse as YAML
-    let result = serde_yaml::from_str::<serde_yaml::Value>(&content);
+    let result = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(&content);
 
     match result {
         Ok(value) => {

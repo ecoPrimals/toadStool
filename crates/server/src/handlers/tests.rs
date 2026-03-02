@@ -176,3 +176,65 @@ async fn test_dashboard_handler() {
     let response = dashboard_handler().await.into_response();
     assert_eq!(response.status(), StatusCode::OK);
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_cancel_execution_handler_already_completed() {
+    let state = create_test_state();
+    let execution_id = Uuid::new_v4();
+    {
+        let mut executions = state.active_executions.write().await;
+        executions.insert(
+            execution_id,
+            crate::ActiveExecution {
+                execution_id,
+                runtime_type: toadstool::RuntimeType::Native,
+                started_at: std::time::SystemTime::now(),
+                timeout: WORKLOAD_EXECUTION_TIMEOUT,
+                status: toadstool::ExecutionStatus::Success,
+                client_info: crate::ClientInfo {
+                    ip_address: None,
+                    user_agent: None,
+                    api_key: None,
+                    authenticated_user: None,
+                },
+            },
+        );
+    }
+    let response = cancel_execution_handler(State(state), Path(execution_id))
+        .await
+        .into_response();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_submit_execution_handler_invalid_json() {
+    let state = create_test_state();
+    let request = serde_json::json!({"runtime_type": "wasm", "workload": "test.wasm"});
+    let response = submit_execution_handler(State(state), Json(request))
+        .await
+        .into_response();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_readiness_check_handler_with_engines() {
+    let (event_broadcaster, _) = broadcast::channel(100);
+    let state = ServerState {
+        runtime_engines: Arc::new(RwLock::new(HashMap::new())),
+        active_executions: Arc::new(RwLock::new(HashMap::new())),
+        event_broadcaster,
+        config: crate::ServerConfig::default(),
+        resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
+        stats: Arc::new(RwLock::new(crate::ServerStatistics::default())),
+        capability_provider: None,
+    };
+    {
+        let mut engines = state.runtime_engines.write().await;
+        engines.insert(
+            toadstool::RuntimeType::Native,
+            Box::new(toadstool_testing::mocks::MockRuntimeEngine::new()),
+        );
+    }
+    let response = readiness_check_handler(State(state)).await.into_response();
+    assert_eq!(response.status(), StatusCode::OK);
+}

@@ -281,6 +281,7 @@ pub enum AuditEvent {
 }
 
 /// Security provider trait
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait SecurityProvider: Send + Sync {
     /// Create a security context

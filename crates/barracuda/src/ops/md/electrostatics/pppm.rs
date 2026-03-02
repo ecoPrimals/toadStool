@@ -152,7 +152,7 @@ impl Pppm {
     }
 
     /// Forward FFT: convert charge mesh to k-space (GPU)
-    fn forward_fft(&self, mesh: &ChargeMesh) -> Result<Vec<f64>, PppmError> {
+    async fn forward_fft_async(&self, mesh: &ChargeMesh) -> Result<Vec<f64>, PppmError> {
         let [kx, ky, kz] = self.params.mesh_dims;
 
         if !kx.is_power_of_two() || !ky.is_power_of_two() || !kz.is_power_of_two() {
@@ -163,7 +163,6 @@ impl Pppm {
 
         let size = kx * ky * kz;
 
-        // Convert real mesh to complex (imaginary = 0)
         let mut complex = vec![0.0f64; size * 2];
         for i in 0..size {
             complex[i * 2] = mesh.values[i];
@@ -172,14 +171,16 @@ impl Pppm {
         let fft = Fft3DF64::new(self.device.clone(), kx, ky, kz)
             .map_err(|e| PppmError::FftError(e.to_string()))?;
 
-        let result = pollster::block_on(fft.forward(&complex))
-            .map_err(|e| PppmError::FftError(e.to_string()))?;
-
-        Ok(result)
+        fft.forward(&complex)
+            .await
+            .map_err(|e| PppmError::FftError(e.to_string()))
     }
 
-    /// Backward FFT: convert k-space potential to real-space mesh (GPU)
-    fn backward_fft(&self, phi_k: &[f64]) -> Result<PotentialMesh, PppmError> {
+    fn forward_fft(&self, mesh: &ChargeMesh) -> Result<Vec<f64>, PppmError> {
+        crate::device::test_pool::tokio_block_on(self.forward_fft_async(mesh))
+    }
+
+    async fn backward_fft_async(&self, phi_k: &[f64]) -> Result<PotentialMesh, PppmError> {
         let [kx, ky, kz] = self.params.mesh_dims;
 
         if !kx.is_power_of_two() || !ky.is_power_of_two() || !kz.is_power_of_two() {
@@ -193,7 +194,9 @@ impl Pppm {
         let fft = Fft3DF64::new(self.device.clone(), kx, ky, kz)
             .map_err(|e| PppmError::FftError(e.to_string()))?;
 
-        let mut complex = pollster::block_on(fft.inverse(phi_k))
+        let mut complex = fft
+            .inverse(phi_k)
+            .await
             .map_err(|e| PppmError::FftError(e.to_string()))?;
 
         // Normalize for inverse FFT (Fft3DF64 doesn't normalize)
@@ -213,6 +216,10 @@ impl Pppm {
             values,
             self.params.box_dims,
         ))
+    }
+
+    fn backward_fft(&self, phi_k: &[f64]) -> Result<PotentialMesh, PppmError> {
+        crate::device::test_pool::tokio_block_on(self.backward_fft_async(phi_k))
     }
 
     /// CPU 3D FFT using dimension-wise 1D FFTs (test only)

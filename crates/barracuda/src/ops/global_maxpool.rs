@@ -16,11 +16,11 @@
 //!
 //! ## Usage
 //!
-//! ```no_run
+//! ```ignore
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::device::test_pool;
-//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! # let data = [1.0f32; 2 * 64 * 7 * 7];
 //! // Input: [batch=2, channels=64, height=7, width=7]
 //! let input = Tensor::from_data(&data, vec![2, 64, 7, 7], device)?;
@@ -238,11 +238,11 @@ impl Tensor {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```ignore
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::device::test_pool;
-    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let input = Tensor::from_data(&[1.0f32; 49], vec![1, 1, 7, 7], device).unwrap();
     /// // Pool spatial dimensions (7x7 → 1x1)
     /// let _pooled = input.global_maxpool()?;

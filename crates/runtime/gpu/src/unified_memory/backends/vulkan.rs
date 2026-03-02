@@ -238,7 +238,6 @@ impl VulkanBackend {
     }
 }
 
-#[async_trait]
 impl BackendInitializer for VulkanBackend {
     async fn try_init() -> ToadStoolResult<Self> {
         // Check if Vulkan is available
@@ -257,6 +256,7 @@ impl BackendInitializer for VulkanBackend {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl UnifiedMemoryBackend for VulkanBackend {
     fn name(&self) -> &'static str {

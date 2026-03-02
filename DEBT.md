@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 1, 2026
+**Date**: March 2, 2026
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -73,10 +73,11 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| D-CD | ComputeDispatch migration | High | 66/250 ops migrated (~9,000+ lines removed). ~184 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
+| D-CD | ComputeDispatch migration | High | 71/250 ops migrated (~9,000+ lines removed). ~179 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
 | D-COV | Test coverage → 90% | Medium | Major gains in S70/S70+: +187 tests across CLI, server, API, monitoring, distributed, config, barracuda stats/ops. Gap: barracuda GPU ops, neuromorphic drivers. |
+| D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
 
 ### DF64 Transcendental Coverage — COMPLETE (S71)
 
@@ -107,7 +108,79 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Recently Resolved (S70–S71)
+## Recently Resolved (S78)
+
+| Item | Resolution |
+|------|-----------|
+| `libc` in akida-driver | Fully removed — migrated to `rustix` for all VFIO ioctls (vfio.rs, mmio.rs). Custom `VfioIoctlReturn`/`VfioIoctlPtr` safe wrappers. |
+| `legacy_primal_to_capabilities` / `legacy_primal_primary_capability` | Removed from primal_capabilities.rs (no callers). Module evolved to clean capability-to-primal reference mapping. |
+| 5 broken `ToadStoolError` doc links | Fixed in universal_adapter/mod.rs, discovery_integration.rs |
+| Wildcard re-exports | 7 more crates narrowed (sandbox, wasm, edge discovery/toolchain/comms/deployment). Total: 13. |
+
+## Recently Resolved (S77)
+
+| Item | Resolution |
+|------|-----------|
+| `cargo fmt` 340 diffs | Formatted entire workspace |
+| `cargo clippy` deprecated discovery | `discover_beardog_at`/`discover_nestgate_at` removed; tests evolved to `discover_service_by_capability` |
+| `cargo doc` private link | Fixed `select_with_preference` doc link in `unified.rs` |
+| e2e runtime nesting | `run_gpu_resilient_async` evolved to spawn dedicated tokio runtime (no more nested `block_on`) |
+| `batched_elementwise_f64.rs` (967L) | Smart-refactored into 4-module directory: op, cpu_ref, executor, mod |
+| `capabilities.rs` (912L) | Smart-refactored into 3-module directory: wgpu, device_info, mod |
+| `fhe_shader_unit_tests.rs` (1028L) | Smart-refactored into 8-file `tests/fhe/` directory: ntt, intt, pointwise, fast_poly_mul, error_handling, performance, helpers |
+| TCP security provider stub | Implemented `TcpSecurityProvider` with JSON-RPC 2.0 over TCP |
+| Performance prediction placeholder | Implemented EMA-based `PredictionModel` with confidence scoring |
+| Embedded programmer/emulator stubs | Evolved to proper `Err(not_supported(...))` returns |
+| CPU resource placeholder | Implemented real byte-mixing compute operation |
+| Hardcoded K8s/Docker ports | Configurable via `TOADSTOOL_DISCOVERY_HTTP_PORT` |
+| Unsafe code SAFETY docs | All 45 unsafe blocks documented with invariants and violation effects |
+| Zero-copy anti-patterns | All `cast_slice().to_vec()` verified necessary, documented with rationale |
+
+## Recently Resolved (S74–S75)
+
+| Item | Resolution |
+|------|-----------|
+| 6 god files >700 lines | primal_integration.rs (1,163L→5 modules), capability_provider.rs (746L→5 modules), primals/lib.rs (580L→7 modules), opencl_impl.rs (831L→6 modules), env_overrides.rs (726L→9 modules), os_layer/compat.rs (766L→7 modules) |
+| 3 god files from S74 | workload.rs (829L→2 modules), unified.rs (613L→3 modules), precision/mod.rs (816L→3 modules) |
+| Wildcard re-exports | `pub use *` narrowed in 6 high-traffic crates (toadstool, distributed, server, gpu, universal, orchestration) |
+| `pollster` dependency | Removed from barracuda, toadstool, universal (→ tokio_block_on) |
+| `serde_yaml` dependency | Migrated to `serde_yaml_ng` across workspace |
+| `async-trait` dependency | Migrated to native AFIT in 4 crates (performance, analytics, wasm, gpu) |
+| Dead evolved backends | 3 modules gated behind `#[cfg(test)]` in biomeos_integration |
+| Hardcoded primal names | Evolved to capability-based language in CLI/JSON-RPC/errors + type aliases |
+| Edge platform stubs | Raspberry Pi, industrial, microcontroller → genuine hardware probing |
+| Discovery stubs | mDNS, Kubernetes, Docker Compose, Registry → real capability-probing |
+| GPU test resilience (NVK) | 11 barracuda + 29 ml-inference + homomorphic tests wrapped with catch_unwind |
+| WgpuDevice::poll_safe() | Device-lost recovery via catch_unwind on poll paths |
+| TYPES_REFERENCE.md | Updated with Module Structure Reference (Section 7) |
+
+## Recently Resolved (S70–S75)
+
+| Item | Resolution |
+|------|-----------|
+| `primal_integration.rs` god file (1,163L) | Smart-refactored into 5 domain modules (capabilities, socket, discovery, tests) |
+| `capability_provider.rs` god file (746L) | Smart-refactored into 5 domain modules (error, serialize, discovery, provider) |
+| `primals/lib.rs` god file (580L) | Smart-refactored into 7 domain modules (types, service, health, messaging, manifest, manager) |
+| `opencl_impl.rs` god file (831L) | Smart-refactored into 6 domain modules (backend, resource, context, kernels, tests) |
+| `env_overrides.rs` god file (726L) | Smart-refactored into 9 domain modules (parse, app, network, resources, features, runtime, security, logging, tests) |
+| `os_layer/compat.rs` god file (766L) | Smart-refactored into 7 domain modules (trait_def, linux, windows, macos, legacy, tests) |
+| Wildcard `pub use *` re-exports | Narrowed to explicit re-exports in 6 high-traffic crates |
+| `pollster` dependency | Removed from barracuda, toadstool, universal — replaced with tokio-native |
+| `serde_yaml` dependency | Replaced with maintained `serde_yaml_ng` across workspace |
+| `async-trait` in 4 crates | Migrated to native AFIT (performance, analytics, wasm, gpu) |
+| Evolved backends dead code | Gated behind `#[cfg(test)]` (agent, auth, storage backends) |
+| Hardcoded primal names in CLI/UI | Capability-based language: "PKI security service", "Orchestration service", "Storage capability" |
+| `AuthResponse` stub | Formalized `AuthResponse::standalone()` with `is_standalone()` |
+| Edge platform stubs | Genuine hardware probing (Raspberry Pi, industrial, microcontroller) |
+| Discovery stubs | Real mDNS/k8s/docker/registry capability probing |
+| GPU test resilience | 40+ test files wrapped with `catch_unwind` for NVK driver panics |
+| `WgpuDevice::poll()` panics | `poll_safe()` catches panics, sets device lost, returns `Err` |
+| Doctest compilation failures | Fixed across barracuda ops and ml-inference showcase |
+| `workload.rs` god file (829L) | Smart-refactored into 2 domain modules (types extracted) |
+| `unified.rs` god file (613L) | Smart-refactored into 3 domain modules (device_types, routing, capabilities extended) |
+| `precision/mod.rs` god file (816L) | Smart-refactored into 3 domain modules (compiler, polyfill) |
+
+### Resolved (S70–S71)
 
 | Item | Resolution |
 |------|-----------|

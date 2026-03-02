@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! # Songbird Network Configuration Module - Type Definitions
+//! # Orchestration Network Configuration — Type Definitions
 //!
-//! This module contains all type definitions for Songbird network configuration.
+//! Capability-based network configuration types. These are agnostic to which
+//! primal provides orchestration — discovered at runtime.
 //!
-//! Many of these types now use base configurations from `toadstool_common::config_bases`
+//! Many types use base configurations from `toadstool_common::config_bases`
 //! for consistency and code reuse.
 
 mod dns_discovery;
@@ -25,7 +26,9 @@ pub use traffic::*;
 
 use serde::{Deserialize, Serialize};
 
-/// Complete Songbird network configuration
+/// Orchestration network configuration (legacy name: SongbirdNetworkConfig).
+///
+/// Prefer [`OrchestrationNetworkConfig`] alias for new code.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SongbirdNetworkConfig {
     /// Service mesh configuration
@@ -45,3 +48,6 @@ pub struct SongbirdNetworkConfig {
     /// Health monitoring configuration
     pub health_monitoring: HealthMonitoringConfig,
 }
+
+/// Capability-based alias — prefer for new code.
+pub type OrchestrationNetworkConfig = SongbirdNetworkConfig;

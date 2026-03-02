@@ -105,6 +105,7 @@ impl CudaComputeResource {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl UniversalComputeResource for CudaComputeResource {
     fn capabilities(&self) -> &ComputeCapabilities {

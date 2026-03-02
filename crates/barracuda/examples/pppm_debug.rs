@@ -8,8 +8,10 @@ use barracuda::ops::md::electrostatics::{
 use std::sync::Arc;
 
 fn main() {
-    let device =
-        Arc::new(pollster::block_on(WgpuDevice::new()).expect("GPU required for PPPM example"));
+    let device = Arc::new(
+        barracuda::device::test_pool::tokio_block_on(WgpuDevice::new())
+            .expect("GPU required for PPPM example"),
+    );
     let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
     let positions = vec![[4.0, 5.0, 5.0], [6.0, 5.0, 5.0]];
     let charges = vec![1.0, -1.0];

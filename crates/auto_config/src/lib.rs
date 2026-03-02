@@ -523,6 +523,23 @@ mod tests {
     }
 
     #[test]
+    fn test_config_builder_discovery_timeout() {
+        let timeout = std::time::Duration::from_secs(10);
+        let builder = ConfigBuilder::new().with_discovery_timeout(timeout);
+        assert_eq!(builder.discovery_timeout, timeout);
+    }
+
+    #[test]
+    fn test_config_builder_default() {
+        let builder = ConfigBuilder::default();
+        assert!(builder.enable_hardware_detection);
+        assert_eq!(
+            builder.discovery_timeout,
+            std::time::Duration::from_secs(30)
+        );
+    }
+
+    #[test]
     fn test_error_creation() {
         let config_error = ToadStoolError::configuration("test config error");
         assert!(config_error.to_string().contains("Configuration error"));
@@ -534,6 +551,20 @@ mod tests {
 
         let network_error = ToadStoolError::network("test network error");
         assert!(network_error.to_string().contains("Network error"));
+
+        let ecosystem_error = ToadStoolError::ecosystem_discovery("discovery failed");
+        assert!(ecosystem_error
+            .to_string()
+            .contains("Ecosystem discovery error"));
+
+        let other_error = ToadStoolError::other("misc error");
+        assert!(other_error.to_string().contains("Other error"));
+    }
+
+    #[test]
+    fn test_external_http_error() {
+        let err = ToadStoolError::ExternalHttpNotSupported;
+        assert!(err.to_string().contains("External HTTP"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

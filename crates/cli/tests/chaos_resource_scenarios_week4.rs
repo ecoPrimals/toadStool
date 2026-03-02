@@ -199,17 +199,20 @@ async fn chaos_resource_leak_detection() {
 
     let counter = Arc::new(AtomicU64::new(0));
 
+    let mut handles = Vec::with_capacity(100);
     for _ in 0..100 {
         let c = Arc::clone(&counter);
-        tokio::spawn(async move {
+        handles.push(tokio::spawn(async move {
             c.fetch_add(1, Ordering::SeqCst);
-        });
+        }));
     }
 
-    sleep(Duration::from_millis(100)).await;
+    for handle in handles {
+        handle.await.unwrap();
+    }
 
     let count = counter.load(Ordering::SeqCst);
-    assert!(count > 0, "Tasks should have executed");
+    assert_eq!(count, 100, "All tasks should have executed");
 }
 
 #[tokio::test]

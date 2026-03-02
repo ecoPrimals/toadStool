@@ -303,4 +303,33 @@ mod tests {
         assert_eq!(config.max_concurrent_executions, 50);
         assert_eq!(config.default_timeout, Duration::from_secs(120));
     }
+
+    #[test]
+    fn test_server_config_default() {
+        let config = ServerConfig::default();
+        assert!(config.enable_api);
+        assert!(config.enable_cors);
+        assert_eq!(config.max_concurrent_executions, 100);
+        assert!(!config.bind_address.is_empty());
+    }
+
+    #[test]
+    fn test_server_config_auth() {
+        let auth = AuthenticationConfig::default();
+        let config = ServerConfig::default().auth(auth);
+        assert!(config.auth.is_some());
+    }
+
+    #[test]
+    fn test_rate_limiting_config_default_values() {
+        let config = RateLimitingConfig::default();
+        assert_eq!(config.requests_per_minute, 100);
+        assert_eq!(config.concurrent_executions_per_client, 10);
+    }
+
+    #[test]
+    fn test_primal_capabilities_config_default() {
+        let config = PrimalCapabilitiesConfig::default();
+        assert!(config.heartbeat_interval_secs >= 1);
+    }
 }

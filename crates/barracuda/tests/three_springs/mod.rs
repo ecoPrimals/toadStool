@@ -6,7 +6,7 @@ use barracuda::device::WgpuDevice;
 use std::sync::Arc;
 
 pub fn create_device_sync() -> Option<Arc<WgpuDevice>> {
-    pollster::block_on(async {
+    barracuda::device::test_pool::tokio_block_on(async {
         match WgpuDevice::new_f64_capable().await {
             Ok(d) => Some(Arc::new(d)),
             Err(_) => None,

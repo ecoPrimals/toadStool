@@ -192,13 +192,14 @@ impl OptimizationCache {
     /// - Windows: %LOCALAPPDATA%\barracuda\
     fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf, AdaptiveError> {
         use etcetera::{choose_base_strategy, BaseStrategy};
+        const GPU_CACHE_NAMESPACE: &str = "barracuda";
 
         let strategy = choose_base_strategy().map_err(|e| {
             AdaptiveError::Other(format!("Failed to determine base directory strategy: {e}"))
         })?;
         let cache_dir = strategy.cache_dir();
 
-        let barracuda_cache = cache_dir.join("barracuda");
+        let barracuda_cache = cache_dir.join(GPU_CACHE_NAMESPACE);
         let filename = format!("optimization_{}.json", gpu.cache_key());
 
         Ok(barracuda_cache.join(filename))

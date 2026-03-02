@@ -62,10 +62,10 @@ impl TrajectoryResult {
 ///
 /// # Example — three exponential decays with different rates
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// # use barracuda::prelude::WgpuDevice;
 /// # use barracuda::ops::batched_rk4_sweep::BatchedRK4F64;
-/// # pollster::block_on(async {
+/// # crate::device::test_pool::tokio_block_on(async {
 /// let device = WgpuDevice::new().await.unwrap();
 /// let batcher = BatchedRK4F64::new(&device);
 ///

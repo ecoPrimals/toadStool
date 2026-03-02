@@ -90,6 +90,8 @@ pub use chi_squared::{
     chi_squared_quantile, chi_squared_sf, chi_squared_statistic, chi_squared_test,
     chi_squared_variance,
 };
+#[cfg(feature = "gpu")]
+pub use chi_squared::{ChiSquaredBatchGpu, ChiSquaredBatchResult};
 pub use erf::{erf, erfc};
 pub use factorial::factorial;
 pub use gamma::{

@@ -197,7 +197,9 @@ impl BufferPool {
     /// non-blocking device poll confirms completed GPU work.
     /// Called automatically before every `acquire` / `acquire_pooled`.
     pub fn drain_pending(&self) {
-        self.inner.device.poll(wgpu::MaintainBase::Poll);
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.inner.device.poll(wgpu::MaintainBase::Poll);
+        }));
 
         let drained: Vec<(wgpu::Buffer, usize)> = {
             let mut pending = self.inner.pending.lock().expect("pending lock poisoned");

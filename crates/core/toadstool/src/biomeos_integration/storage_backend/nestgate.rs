@@ -6,6 +6,7 @@ use std::pin::Pin;
 use super::super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use super::VolumeStatus;
 use crate::{ToadStoolError, ToadStoolResult};
+#[allow(deprecated)]
 use toadstool_config::constants::primals;
 
 use super::StorageBackend;

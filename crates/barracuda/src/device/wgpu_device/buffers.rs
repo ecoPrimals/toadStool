@@ -77,10 +77,7 @@ impl WgpuDevice {
             let _ = sender.send(result);
         });
 
-        {
-            let _guard = self.lock();
-            self.device.poll(wgpu::Maintain::Wait);
-        }
+        self.poll_safe()?;
 
         receiver
             .recv()
@@ -88,6 +85,7 @@ impl WgpuDevice {
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
+        // Allocation required: mapped range is dropped before return; caller receives owned Vec
         let result: Vec<T> = bytemuck::cast_slice(&data).to_vec();
         drop(data);
         staging.unmap();

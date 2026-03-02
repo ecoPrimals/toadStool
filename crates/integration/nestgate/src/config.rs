@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use toadstool_common::constants::network::{http_url, HEALTH_CHECK_PORT};
+
 use crate::types::{CompressionType, EncryptionType, StorageTier};
 
 /// Storage client configuration
@@ -46,12 +48,12 @@ impl Default for NestGateConfig {
                     .ok()
                     .and_then(|p| p.parse().ok())
             })
-            .unwrap_or(8080); // Default port when discovery not available
+            .unwrap_or(HEALTH_CHECK_PORT);
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         let host = &config.network.bind_address;
 
         Self {
-            endpoint: format!("http://{host}:{port}"),
+            endpoint: http_url(host, port),
             timeout: Duration::from_secs(30),
             max_retries: 3,
             auth: None,

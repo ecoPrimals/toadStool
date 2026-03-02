@@ -1,5 +1,7 @@
 //! Discovery client - RPC-based node discovery via Songbird
 
+#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+
 use std::sync::Arc;
 use tracing::debug;
 

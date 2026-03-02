@@ -316,12 +316,13 @@ impl CubicSpline {
         slice.map_async(wgpu::MapMode::Read, move |r| {
             tx.send(r).ok();
         });
-        d.poll(wgpu::Maintain::Wait);
+        device.poll_safe()?;
         rx.recv()
             .map_err(|_| BarracudaError::Gpu("spline readback".into()))?
             .map_err(|e| BarracudaError::Gpu(format!("spline map: {e}")))?;
 
         let data = slice.get_mapped_range();
+        // Allocation required: mapped range is dropped before return; caller receives owned Vec
         let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
         drop(data);
         rb.unmap();

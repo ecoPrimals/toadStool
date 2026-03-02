@@ -38,6 +38,7 @@ impl CachedPolicy {
 }
 
 /// Policy manager trait
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait PolicyManager: Send + Sync {
     /// Load policy from storage
@@ -157,7 +158,7 @@ impl FilePolicyManager {
                     e
                 ))
             })?,
-            _ => serde_yaml::from_str(&content).map_err(|e| {
+            _ => serde_yaml_ng::from_str(&content).map_err(|e| {
                 ToadStoolError::configuration(format!(
                     "Failed to parse YAML policy {}: {}",
                     file_path.display(),
@@ -226,6 +227,7 @@ impl FilePolicyManager {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl PolicyManager for FilePolicyManager {
     async fn load_policy(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {

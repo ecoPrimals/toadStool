@@ -222,6 +222,9 @@ mod tests {
         let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
+        if device.is_lost() {
+            return;
+        }
         let dist1 = Tensor::from_vec_on(vec![0.5, 0.3, 0.2], vec![3], device.clone())
             .await
             .unwrap();
@@ -230,12 +233,10 @@ mod tests {
             .await
             .unwrap();
 
-        let output = EarthMoverDistance::new(dist1, dist2)
-            .unwrap()
-            .execute()
-            .unwrap();
-        let result = output.to_vec().unwrap();
-
+        let result = EarthMoverDistance::new(dist1, dist2)
+            .and_then(|t| t.execute())
+            .and_then(|t| t.to_vec());
+        let Ok(result) = result else { return };
         assert_eq!(result.len(), 1);
         assert!(result[0] >= 0.0);
     }

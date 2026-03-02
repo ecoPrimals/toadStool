@@ -310,4 +310,57 @@ mod tests {
         assert_eq!(info.ip_address.as_deref(), Some("127.0.0.1"));
         assert_eq!(info.authenticated_user.as_deref(), Some("alice"));
     }
+
+    #[test]
+    fn test_timestamp_to_unix_secs() {
+        let t = std::time::SystemTime::UNIX_EPOCH
+            .checked_add(std::time::Duration::from_secs(1000))
+            .unwrap();
+        let secs = timestamp_to_unix_secs(&t);
+        assert_eq!(secs, 1000);
+    }
+
+    #[test]
+    fn test_server_event_to_json_runtime_engine_registered() {
+        let event = ServerEvent::RuntimeEngineRegistered {
+            runtime_type: RuntimeType::Native,
+            timestamp: std::time::SystemTime::now(),
+        };
+        let json = event.to_json();
+        assert!(json.contains("runtime_engine_registered"));
+        assert!(json.contains("Native"));
+    }
+
+    #[test]
+    fn test_server_event_to_json_resource_usage_update() {
+        let event = ServerEvent::ResourceUsageUpdate {
+            cpu_usage_percent: 50.0,
+            memory_usage_percent: 60.0,
+            active_executions: 5,
+            timestamp: std::time::SystemTime::now(),
+        };
+        let json = event.to_json();
+        assert!(json.contains("resource_usage_update"));
+        assert!(json.contains("50"));
+        assert!(json.contains("60"));
+    }
+
+    #[test]
+    fn test_active_execution_structure() {
+        let execution = ActiveExecution {
+            execution_id: Uuid::new_v4(),
+            runtime_type: RuntimeType::Native,
+            started_at: std::time::SystemTime::now(),
+            timeout: Duration::from_secs(60),
+            status: ExecutionStatus::Running,
+            client_info: ClientInfo {
+                ip_address: None,
+                user_agent: None,
+                api_key: None,
+                authenticated_user: None,
+            },
+        };
+        assert!(matches!(execution.status, ExecutionStatus::Running));
+        assert_eq!(execution.timeout, Duration::from_secs(60));
+    }
 }

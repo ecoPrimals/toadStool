@@ -12,7 +12,6 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use async_trait::async_trait;
 use tokio::sync::RwLock;
 use tracing::debug;
 
@@ -24,7 +23,9 @@ use crate::optimizer::PerformanceOptimizer;
 use crate::scoring;
 use crate::types::*;
 
-use internal::{BaselineMetrics, PredictionModel, RuntimeSelector};
+use internal::{
+    update_prediction_models_from_history, BaselineMetrics, PredictionModel, RuntimeSelector,
+};
 use recommendations::generate_recommendations;
 use selection::select_runtime_by_strategy;
 use statistics::{cleanup_old_metrics, update_model_from_history, update_runtime_stats};
@@ -37,7 +38,6 @@ pub struct IntelligentPerformanceOptimizer {
     _runtime_metrics: Arc<RwLock<HashMap<RuntimeType, PerformanceMetrics>>>,
     _baseline_measurements: Arc<RwLock<HashMap<String, BaselineMetrics>>>,
     _runtime_selector: Arc<RwLock<RuntimeSelector>>,
-    #[allow(dead_code)] // For future ML-based runtime selection
     prediction_models: Arc<RwLock<HashMap<String, PredictionModel>>>,
     selection_strategy: RuntimeSelectionStrategy,
 }
@@ -60,7 +60,6 @@ impl IntelligentPerformanceOptimizer {
     }
 }
 
-#[async_trait]
 impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
     async fn select_runtime(
         &self,
@@ -123,13 +122,33 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         &self,
         _workload: &WorkloadSpec,
     ) -> ToadStoolResult<ResourcePrediction> {
+        let models = self.prediction_models.read().await;
+        let stats = self.runtime_stats.read().await;
+
+        if let Some((_, model)) = models.iter().max_by_key(|(_, m)| m.sample_count()) {
+            if model.sample_count() > 0 {
+                return Ok(model.predict());
+            }
+        }
+
+        if let Some((_, runtime_stats)) = stats.iter().next() {
+            return Ok(ResourcePrediction {
+                timestamp: SystemTime::now(),
+                execution_time: runtime_stats.avg_execution_time.max(Duration::from_secs(1)),
+                memory_mb: runtime_stats.avg_memory_usage.max(1.0),
+                cpu_percent: runtime_stats.avg_cpu_usage.clamp(0.0, 100.0),
+                confidence: 50.0,
+                model_type: "runtime_stats_fallback".to_string(),
+            });
+        }
+
         Ok(ResourcePrediction {
             timestamp: SystemTime::now(),
             execution_time: Duration::from_secs(10),
             memory_mb: 256.0,
             cpu_percent: 50.0,
-            confidence: 70.0,
-            model_type: "historical_average".to_string(),
+            confidence: 20.0,
+            model_type: "default_no_data".to_string(),
         })
     }
 
@@ -142,11 +161,17 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         let history = self.metrics_history.read().await;
         let mut stats = self.runtime_stats.write().await;
         let mut baselines = self._baseline_measurements.write().await;
+        let mut models = self.prediction_models.write().await;
 
         update_model_from_history(
             &history,
             &mut stats,
             &mut baselines,
+            self.config.min_prediction_samples,
+        );
+        update_prediction_models_from_history(
+            &history,
+            &mut models,
             self.config.min_prediction_samples,
         );
 

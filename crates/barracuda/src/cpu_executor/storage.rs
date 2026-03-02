@@ -21,6 +21,7 @@ impl CpuTensorStorage {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl TensorStorage for CpuTensorStorage {
     fn descriptor(&self) -> &TensorDescriptor {

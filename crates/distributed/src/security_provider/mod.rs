@@ -46,6 +46,7 @@ pub mod factory;
 pub mod local_keyring;
 pub mod provider;
 pub mod software_hsm;
+pub mod tcp_provider;
 pub mod types;
 pub mod unix_socket_provider;
 

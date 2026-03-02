@@ -255,7 +255,7 @@ async fn handle_health(state: &ServerState) -> Result<Value, JsonRpcError> {
         "version": env!("CARGO_PKG_VERSION"),
         "uptime_secs": uptime_secs,
         "active_workloads": active_workloads,
-        "biomeos_connected": false,
+        "ecosystem_connected": false,
     }))
 }
 
@@ -263,20 +263,21 @@ async fn handle_health(state: &ServerState) -> Result<Value, JsonRpcError> {
 async fn handle_metrics(state: &ServerState) -> Result<Value, JsonRpcError> {
     let workload_ids = state.workload_manager.list_workloads().await;
 
-    let mut queued = 0;
-    let mut running = 0;
-    let mut completed = 0;
-    let mut failed = 0;
+    let statuses = futures::future::join_all(
+        workload_ids
+            .iter()
+            .map(|id| state.workload_manager.get_workload_status(id)),
+    )
+    .await;
 
-    for id in &workload_ids {
-        if let Some(status_resp) = state.workload_manager.get_workload_status(id).await {
-            match status_resp.status {
-                WorkloadStatus::Queued => queued += 1,
-                WorkloadStatus::Running => running += 1,
-                WorkloadStatus::Completed => completed += 1,
-                WorkloadStatus::Failed => failed += 1,
-                WorkloadStatus::Cancelled => {}
-            }
+    let (mut queued, mut running, mut completed, mut failed) = (0, 0, 0, 0);
+    for status_resp in statuses.into_iter().flatten() {
+        match status_resp.status {
+            WorkloadStatus::Queued => queued += 1,
+            WorkloadStatus::Running => running += 1,
+            WorkloadStatus::Completed => completed += 1,
+            WorkloadStatus::Failed => failed += 1,
+            WorkloadStatus::Cancelled => {}
         }
     }
 
@@ -288,7 +289,7 @@ async fn handle_metrics(state: &ServerState) -> Result<Value, JsonRpcError> {
             "completed": completed,
             "failed": failed,
         },
-        "biomeos_connected": false,
+        "ecosystem_connected": false,
     }))
 }
 
@@ -363,12 +364,15 @@ async fn handle_delete_workload(params: Value, state: &ServerState) -> Result<Va
 async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcError> {
     let workload_ids = state.workload_manager.list_workloads().await;
 
-    let mut workloads = Vec::new();
-    for id in workload_ids {
-        if let Some(status) = state.workload_manager.get_workload_status(&id).await {
-            workloads.push(status);
-        }
-    }
+    let workloads: Vec<_> = futures::future::join_all(
+        workload_ids
+            .iter()
+            .map(|id| state.workload_manager.get_workload_status(id)),
+    )
+    .await
+    .into_iter()
+    .flatten()
+    .collect();
 
     Ok(json!({
         "workloads": workloads,

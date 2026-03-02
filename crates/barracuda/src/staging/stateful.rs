@@ -253,7 +253,7 @@ impl StatefulPipeline {
         slice.map_async(wgpu::MapMode::Read, move |r| {
             let _ = tx.send(r);
         });
-        self.device.device.poll(wgpu::Maintain::Wait);
+        self.device.poll_safe()?;
         rx.recv()
             .map_err(|_| {
                 BarracudaError::execution_failed("StatefulPipeline: staging channel closed")

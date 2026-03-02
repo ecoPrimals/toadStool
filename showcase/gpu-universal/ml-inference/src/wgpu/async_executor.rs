@@ -5,7 +5,7 @@
 //! ## Problem
 //!
 //! Current synchronous execution:
-//! ```
+//! ```text
 //! result1 = execute_op1().await;  // Wait 4-5ms (NVIDIA) or 0.8ms (AMD)
 //! result2 = execute_op2().await;  // Wait 4-5ms (NVIDIA) or 0.8ms (AMD)
 //! result3 = execute_op3().await;  // Wait 4-5ms (NVIDIA) or 0.8ms (AMD)
@@ -15,7 +15,7 @@
 //! ## Solution
 //!
 //! Async batched execution:
-//! ```
+//! ```text
 //! let batch = AsyncBatch::new();
 //! batch.submit_op1();  // Queue, don't wait
 //! batch.submit_op2();  // Queue, don't wait
@@ -53,7 +53,7 @@ impl<T> AsyncOp<T> {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```ignore
 /// # use ml_inference_showcase::wgpu::{WgpuExecutor, AsyncBatch};
 /// # async fn example(executor: &WgpuExecutor) -> anyhow::Result<()> {
 /// let mut batch = AsyncBatch::new(executor);

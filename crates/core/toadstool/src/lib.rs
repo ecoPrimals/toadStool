@@ -85,7 +85,11 @@ pub use encryption::{
     EncryptedPayload, EncryptionConfig, EncryptionContext, EncryptionContextBuilder, EncryptionKey,
     EncryptionMetadata, SecurityLevel as EncryptionSecurityLevel,
 };
-pub use error::*;
+pub use error::{
+    ConfigError, ConfigResult, ExecutionError, ExecutionResult, IntegrationError,
+    IntegrationResult, NetworkError, NetworkResult, ResourceError, ResourceResult, SecurityError,
+    SecurityResult, SystemError, SystemResult,
+};
 pub use execution::{
     CallbackConfig, CallbackEvent, ExecutionInput, ExecutionOutput, ExecutionRequest,
     ExecutionResponse, ExecutionStatus, LoggingConfig, RuntimeCapabilities,
@@ -102,7 +106,7 @@ pub use resources::{
     ResourceMonitor, ResourceRequirements, ResourceUsage, RuntimeMetrics, StorageRequirements,
     SystemResourceMonitor, SystemResources,
 };
-pub use runtime::*;
+pub use runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy};
 pub use security::{
     AuditEvent, AuditSettings, Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity,
     SecurityContext, SecurityPolicy as ToadStoolSecurityPolicy, SecuritySettings,
@@ -119,8 +123,14 @@ pub use workload::{
 // biomeOS integration types are now available through the ecosystem primal interface
 // No longer need hard integration re-exports - biomeOS interacts as a primal
 
-// Re-export common utilities
-pub use toadstool_common::*;
+// Re-export common utilities (targeted, not wildcard — keeps downstream recompilation minimal)
+pub use toadstool_common as common;
+pub use toadstool_common::{
+    auth::{AuthCredentials, AuthType, ServiceAuthConfig},
+    error_codes::{self, codes, ErrorCategory, ErrorCode},
+    ToadStoolError, ToadStoolErrorExt, ToadStoolErrorWithCode, ToadStoolResult,
+    ToadStoolResultWithCode,
+};
 pub use toadstool_config as config;
 
 /// `ToadStool` version information

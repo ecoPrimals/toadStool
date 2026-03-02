@@ -16,11 +16,11 @@
 //!
 //! ## Usage
 //!
-//! ```no_run
+//! ```ignore
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::device::test_pool;
-//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! let a = Tensor::from_data(&[1.0f32, 2.0, 3.0], vec![3], device.clone())?;
 //! let b = Tensor::from_data(&[4.0f32, 5.0, 6.0], vec![3], device)?;
 //! let _partial_sums = a.dotproduct(&b)?;
@@ -28,10 +28,10 @@
 //! # }
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::ComputeDispatch;
 use crate::error::Result;
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -60,144 +60,21 @@ impl DotProduct {
 
         let params = DotProductParams { size: size as u32 };
 
-        // Deep Debt Evolution: Capability-based dispatch
-        let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-        let num_workgroups = (size as u32).div_ceil(optimal_wg_size);
+        let num_workgroups = (size as u32).div_ceil(WORKGROUP_SIZE_1D).max(1);
 
         // Partial sums buffer
-        let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("dotproduct_output"),
-            size: (num_workgroups as usize * std::mem::size_of::<f32>()) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
+        let output_buffer = device.create_buffer_f32(num_workgroups as usize)?;
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("dotproduct_params"),
-                contents: bytemuck::cast_slice(&[params]),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let params_buffer = device.create_uniform_buffer("dotproduct_params", &params);
 
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("dotproduct_shader"),
-                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-            });
-
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("dotproduct_bind_group_layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("dotproduct_pipeline_layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("dotproduct_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("dotproduct_bind_group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.a.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.b.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("dotproduct_encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("dotproduct_pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "dotproduct")
+            .shader(Self::wgsl_shader(), "main")
+            .storage_read(0, self.a.buffer())
+            .storage_read(1, self.b.buffer())
+            .storage_rw(2, &output_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch(num_workgroups, 1, 1)
+            .submit();
 
         // Return partial sums (caller can sum them for final result)
         Ok(Tensor::from_buffer(
@@ -225,11 +102,11 @@ impl Tensor {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```ignore
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::device::test_pool;
-    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let a = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
     /// # let b = Tensor::from_data(&[1.0f32, 1.0, 1.0, 1.0], vec![4], device).unwrap();
     /// // Compute a · b

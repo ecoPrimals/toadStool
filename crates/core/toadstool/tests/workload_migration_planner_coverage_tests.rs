@@ -28,6 +28,7 @@ struct MockCloudProvider {
     supports_gpu: bool,
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl CloudProvider for MockCloudProvider {
     fn name(&self) -> &str {

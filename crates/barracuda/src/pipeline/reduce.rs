@@ -348,7 +348,7 @@ impl ReduceScalarPipeline {
         slice.map_async(wgpu::MapMode::Read, move |r| {
             let _ = tx.send(r);
         });
-        self.device.device.poll(wgpu::Maintain::Wait);
+        self.device.poll_safe()?;
         rx.recv()
             .map_err(|_| BarracudaError::execution_failed("ReduceScalarPipeline: channel closed"))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;

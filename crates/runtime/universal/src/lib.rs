@@ -59,9 +59,24 @@ pub mod runtime;
 pub mod substrate; // ✅ NEW: Simplified substrate abstraction
 pub mod types;
 
-pub use backends::*;
-pub use capabilities::*;
+#[cfg(feature = "cpu")]
+pub use backends::CpuComputeUnit;
+#[cfg(feature = "opencl")]
+pub use backends::OpenClComputeUnit;
+#[cfg(feature = "wgpu-backend")]
+pub use backends::WgpuComputeUnit;
+pub use capabilities::{
+    CapabilityDiscovery, LatencyRequirement, PowerConstraint, ThroughputRequirement,
+    WorkloadProfile, WorkloadSize,
+};
 pub use error::SubstrateError;
-pub use runtime::*;
-pub use substrate::*; // ✅ Export substrate traits
-pub use types::*;
+pub use runtime::{RuntimeStats, UniversalRuntime};
+pub use substrate::{
+    BufferMetadata, BufferOperation, BufferOutput, ComputeSubstrate, PerformanceMetrics,
+    PowerMeasurement, SubstrateAdapter, SubstrateCapabilities, SubstrateType, UnaryOp,
+};
+pub use types::{
+    Capabilities, ComputeError, ComputeUnit, ComputeUnitType, DataType, ExecutionModel,
+    LatencyProfile, OperationType, Output, OutputMetadata, Parallelism, ParamValue, PowerProfile,
+    Workload, WorkloadBuilder, WorkloadData, WorkloadParams,
+};

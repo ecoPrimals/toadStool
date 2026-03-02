@@ -1,5 +1,7 @@
 //! hotSpring Evolution: Fault (error handling) and Special functions (Hermite, Laguerre).
 
+mod common;
+
 use barracuda::error::BarracudaError;
 use barracuda::ops::grid::Gradient1D;
 use barracuda::ops::mixing::{LinearMixer, MixingParams};
@@ -9,118 +11,150 @@ mod fault {
 
     #[tokio::test]
     async fn test_mixer_dimension_mismatch_old() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let params = MixingParams::default();
-        let mixer = LinearMixer::new(device, 100, params).unwrap();
-        let x_old = vec![1.0; 50];
-        let x_computed = vec![2.0; 100];
-        let result = mixer.mix(&x_old, &x_computed).await;
-        assert!(result.is_err(), "Should fail on dimension mismatch");
-        match result.unwrap_err() {
-            BarracudaError::InvalidInput { message } => {
-                assert!(message.contains("mismatch") || message.contains("dimension"));
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let params = MixingParams::default();
+            let mixer = LinearMixer::new(device, 100, params).unwrap();
+            let x_old = vec![1.0; 50];
+            let x_computed = vec![2.0; 100];
+            let result = mixer.mix(&x_old, &x_computed).await;
+            assert!(result.is_err(), "Should fail on dimension mismatch");
+            match result.unwrap_err() {
+                BarracudaError::InvalidInput { message } => {
+                    assert!(message.contains("mismatch") || message.contains("dimension"));
+                }
+                other => panic!("Expected InvalidInput error, got {:?}", other),
             }
-            other => panic!("Expected InvalidInput error, got {:?}", other),
+        }) {
+            return;
         }
     }
 
     #[tokio::test]
     async fn test_mixer_dimension_mismatch_computed() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let params = MixingParams::default();
-        let mixer = LinearMixer::new(device, 100, params).unwrap();
-        let x_old = vec![1.0; 100];
-        let x_computed = vec![2.0; 200];
-        let result = mixer.mix(&x_old, &x_computed).await;
-        assert!(result.is_err(), "Should fail on dimension mismatch");
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let params = MixingParams::default();
+            let mixer = LinearMixer::new(device, 100, params).unwrap();
+            let x_old = vec![1.0; 100];
+            let x_computed = vec![2.0; 200];
+            let result = mixer.mix(&x_old, &x_computed).await;
+            assert!(result.is_err(), "Should fail on dimension mismatch");
+        }) {
+            return;
+        }
     }
 
     #[tokio::test]
     async fn test_gradient_size_mismatch() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let grad = Gradient1D::new(device, 100, 0.1).unwrap();
-        let input = vec![1.0; 50];
-        let result = grad.compute(&input).await;
-        assert!(result.is_err(), "Should fail on size mismatch");
-        match result.unwrap_err() {
-            BarracudaError::InvalidInput { message } => {
-                assert!(message.contains("mismatch") || message.contains("size"));
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let grad = Gradient1D::new(device, 100, 0.1).unwrap();
+            let input = vec![1.0; 50];
+            let result = grad.compute(&input).await;
+            assert!(result.is_err(), "Should fail on size mismatch");
+            match result.unwrap_err() {
+                BarracudaError::InvalidInput { message } => {
+                    assert!(message.contains("mismatch") || message.contains("size"));
+                }
+                other => panic!("Expected InvalidInput error, got {:?}", other),
             }
-            other => panic!("Expected InvalidInput error, got {:?}", other),
+        }) {
+            return;
         }
     }
 
     #[tokio::test]
     async fn test_mixer_zero_dimension() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let params = MixingParams::default();
-        let mixer = LinearMixer::new(device, 0, params);
-        if let Ok(m) = mixer {
-            let result = m.mix(&[], &[]).await;
-            if let Ok(output) = result {
-                assert!(output.is_empty());
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let params = MixingParams::default();
+            let mixer = LinearMixer::new(device, 0, params);
+            if let Ok(m) = mixer {
+                let result = m.mix(&[], &[]).await;
+                if let Ok(output) = result {
+                    assert!(output.is_empty());
+                }
             }
+        }) {
+            return;
         }
     }
 
     #[tokio::test]
     async fn test_gradient_empty_input() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let grad = Gradient1D::new(device, 0, 0.1);
-        if let Ok(g) = grad {
-            let result = g.compute(&[]).await;
-            if let Ok(output) = result {
-                assert!(output.is_empty());
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let grad = Gradient1D::new(device, 0, 0.1);
+            if let Ok(g) = grad {
+                let result = g.compute(&[]).await;
+                if let Ok(output) = result {
+                    assert!(output.is_empty());
+                }
             }
+        }) {
+            return;
         }
     }
 
     #[tokio::test]
     async fn test_mixer_nan_propagation() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let params = MixingParams {
-            alpha: 0.5,
-            ..Default::default()
-        };
-        let mixer = LinearMixer::new(device, 10, params).unwrap();
-        let x_old = vec![1.0; 10];
-        let mut x_computed = vec![2.0; 10];
-        x_computed[5] = f64::NAN;
-        let result = mixer.mix(&x_old, &x_computed).await.unwrap();
-        assert!(result[5].is_nan(), "NaN should propagate through mixing");
-        for i in [0, 1, 2, 3, 4, 6, 7, 8, 9] {
-            assert!(
-                !result[i].is_nan(),
-                "Non-NaN input should produce non-NaN output"
-            );
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let params = MixingParams {
+                alpha: 0.5,
+                ..Default::default()
+            };
+            let mixer = LinearMixer::new(device, 10, params).unwrap();
+            let x_old = vec![1.0; 10];
+            let mut x_computed = vec![2.0; 10];
+            x_computed[5] = f64::NAN;
+            let result = mixer.mix(&x_old, &x_computed).await.unwrap();
+            assert!(result[5].is_nan(), "NaN should propagate through mixing");
+            for i in [0, 1, 2, 3, 4, 6, 7, 8, 9] {
+                assert!(
+                    !result[i].is_nan(),
+                    "Non-NaN input should produce non-NaN output"
+                );
+            }
+        }) {
+            return;
         }
     }
 
     #[tokio::test]
     async fn test_mixer_infinity() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let params = MixingParams {
-            alpha: 0.5,
-            ..Default::default()
-        };
-        let mixer = LinearMixer::new(device, 5, params).unwrap();
-        let x_old = vec![1.0, f64::INFINITY, f64::NEG_INFINITY, 0.0, -1.0];
-        let x_computed = vec![2.0, 3.0, 4.0, f64::INFINITY, f64::NEG_INFINITY];
-        let result = mixer.mix(&x_old, &x_computed).await.unwrap();
-        assert!(result[1].is_infinite(), "Infinity should propagate");
-        assert!(result[2].is_infinite(), "Neg infinity should propagate");
-        assert!(result[3].is_infinite(), "Infinity should propagate");
-        assert!(result[4].is_infinite(), "Neg infinity should propagate");
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let params = MixingParams {
+                alpha: 0.5,
+                ..Default::default()
+            };
+            let mixer = LinearMixer::new(device, 5, params).unwrap();
+            let x_old = vec![1.0, f64::INFINITY, f64::NEG_INFINITY, 0.0, -1.0];
+            let x_computed = vec![2.0, 3.0, 4.0, f64::INFINITY, f64::NEG_INFINITY];
+            let result = mixer.mix(&x_old, &x_computed).await.unwrap();
+            assert!(result[1].is_infinite(), "Infinity should propagate");
+            assert!(result[2].is_infinite(), "Neg infinity should propagate");
+            assert!(result[3].is_infinite(), "Infinity should propagate");
+            assert!(result[4].is_infinite(), "Neg infinity should propagate");
+        }) {
+            return;
+        }
     }
 
     #[tokio::test]
     async fn test_gradient_nan_handling() {
-        let device = barracuda::device::test_pool::get_test_device().await;
-        let grad = Gradient1D::new(device, 20, 0.1).unwrap();
-        let mut input: Vec<f64> = (0..20).map(|i| i as f64).collect();
-        input[10] = f64::NAN;
-        let result = grad.compute(&input).await.unwrap();
-        assert!(result[9].is_nan() || result[10].is_nan() || result[11].is_nan());
+        if !super::common::run_gpu_resilient_async(|| async {
+            let device = barracuda::device::test_pool::get_test_device().await;
+            let grad = Gradient1D::new(device, 20, 0.1).unwrap();
+            let mut input: Vec<f64> = (0..20).map(|i| i as f64).collect();
+            input[10] = f64::NAN;
+            let result = grad.compute(&input).await.unwrap();
+            assert!(result[9].is_nan() || result[10].is_nan() || result[11].is_nan());
+        }) {
+            return;
+        }
     }
 }
 

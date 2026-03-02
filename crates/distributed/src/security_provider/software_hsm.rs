@@ -85,6 +85,7 @@ impl Default for SoftwareHsmProvider {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl SecurityProvider for SoftwareHsmProvider {
     async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>> {

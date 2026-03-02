@@ -7,10 +7,9 @@
 //! Used in: Multi-branch networks, Inception modules, ResNeXt
 //! Benefits: Enables parallel processing paths, modular architecture design
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::ComputeDispatch;
 use crate::error::Result;
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 
 /// f64 is the canonical source — f32 derived via downcast_f64_to_f32 when needed.
 const SHADER_F64: &str = include_str!("../shaders/tensor/split_f64.wgsl");
@@ -61,79 +60,16 @@ impl Split {
             _pad: 0,
             _pad2: 0,
         };
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Split Params"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let params_buffer = device.create_uniform_buffer("Split Params", &params);
 
-        // Create shader module
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("Split Shader"),
-                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-            });
-
-        // Create compute pipeline
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Split Pipeline"),
-                layout: None,
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        // Create bind group
-        let bind_group_layout = pipeline.get_bind_group_layout(0);
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Split Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output1_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output2_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Execute
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Split Encoder"),
-            });
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Split Pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (total_size as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "split")
+            .shader(Self::wgsl_shader(), "main")
+            .storage_read(0, self.input.buffer())
+            .storage_rw(1, &output1_buffer)
+            .storage_rw(2, &output2_buffer)
+            .uniform(3, &params_buffer)
+            .dispatch_1d(total_size as u32)
+            .submit();
 
         // Determine output shapes (split along last dimension for simplicity)
         let mut shape1 = shape.to_vec();

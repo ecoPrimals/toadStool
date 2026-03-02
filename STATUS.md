@@ -1,4 +1,4 @@
-# Status -- March 1, 2026
+# Status -- March 2, 2026
 
 ## Quality Gates
 
@@ -8,15 +8,15 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,773+ tests** (5 pre-existing GPU device-loss flakes) |
+| `cargo test -p barracuda --lib` | PASS | **2,781+ tests** (GPU device-loss resilient via `catch_unwind`) |
 | `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
 | `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
 | `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
-| `cargo test -p toadstool-common --lib` | PASS | **921 tests** |
+| `cargo test -p toadstool-common --lib` | PASS | **923 tests** |
 | `cargo test -p toadstool-distributed --lib` | PASS | **1,057 tests** |
 | `cargo test -p toadstool-config --lib` | PASS | **368 tests** |
 | `cargo test -p toadstool-api --lib` | PASS | **58 tests** |
-| `cargo test --workspace` (excl barracuda) | PASS | **6m30s wall time, 8 threads** |
+| `cargo test --workspace` (excl barracuda) | PASS | **6m30s wall time, 8 threads, NVK GPU resilience wrappers** |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | Pull to any machine, `cargo test` works — GPU-optional, CPU fallback |
 | License compliance | PASS | AGPL-3.0-or-later: root LICENSE + SPDX headers |
@@ -25,18 +25,20 @@
 
 | Metric | Value |
 |--------|-------|
-| WGSL shaders | **671** (zero orphans, 25 DF64 + 200+ f64, all f64 canonical) |
+| WGSL shaders | **844** (zero orphans, 37 DF64 + 15 folding + 200+ f64, all f64 canonical) |
 | Rust version | **1.80+** (std::sync::LazyLock) |
 | `unsafe` blocks | **45** (all `// SAFETY:` documented; 2 barracuda SPIRV/cache, rest FFI/hardware/MMIO) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
-| External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus** |
+| External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors |
 | Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
-| File size limit | **All < 1000 lines** (22 large files smart-refactored to domain modules) |
+| File size limit | **All < 1000 lines** (32+ large files smart-refactored to domain modules) |
+| Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
+| External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
-| ComputeDispatch adoption | **66 ops migrated** (~184 legacy ops remaining, incremental) |
+| ComputeDispatch adoption | **71 ops migrated** (~179 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
 | Default test timeout | **5s** (unit: 2s, integration: 30s, chaos: 20s) |
@@ -78,6 +80,51 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 78 (Mar 2, 2026) — Deep Debt + Dependency Evolution
+- Wildcard re-exports narrowed in 7 more crates (sandbox, wasm, edge discovery/toolchain/comms/deployment). Total: 13 crates.
+- `legacy_primal_to_capabilities()` and `legacy_primal_primary_capability()` removed from primal_capabilities.rs (no callers). Module now clean capability-to-primal mapping.
+- `libc` fully removed from akida-driver — migrated to `rustix` for all VFIO ioctls (vfio.rs, mmio.rs). Custom `VfioIoctlReturn`/`VfioIoctlPtr` safe wrappers. 6 clippy `ref_as_ptr`/`borrow_as_ptr` fixes.
+- `async-trait` migration: 1 more crate (security/sandbox — `SandboxManager` trait). Total: 5 crates migrated to native AFIT.
+- ComputeDispatch: 5 more ops migrated (eq, map, dotproduct, dropout, split). Total: 71 ops, ~179 remaining.
+- ~40 new tests: toadstool-api (~20), toadstool-auto-config (~9), toadstool-server (~11).
+- 5 broken `ToadStoolError` doc links fixed (universal_adapter/mod.rs, discovery_integration.rs).
+- Compile bottleneck analysis: tfhe+tfhe-fft = 30.6% CPU (showcase); wgpu 22/23 duplication wastes ~90s.
+- Quality gates: build, clippy (0 warnings), fmt (0 diffs), doc (toadstool-common) all PASS.
+
+### Session 76 (Mar 1, 2026) — Spring Absorption Execution + Folding Shaders + New GPU Ops
+- `EVOLUTION_TRACKER.md` created — root-level single source of truth for evolution status
+- `barracuda::nn` complete: LstmReservoir + EsnClassifier (12 nn tests pass)
+- 15 sovereign folding DF64 shaders: geometry (4), energy (4), refinement (4), prediction (3) + `FoldingOp` enum
+- 4 new GPU ops: `FusedChiSquaredGpu`, `FusedKlDivergenceGpu`, `RawrWeightedMeanGpu`, `BoltzmannSamplingGpu`
+- airSpring ops 9-13: VG θ(h), VG K(h), Thornthwaite ET₀, GDD, Pedotransfer polynomial
+- 4 god files refactored: wgpu_device/mod.rs (→compilation.rs), driver_profile (→directory), probe (→directory), jsonrpc (→directory)
+- Dependency analysis: async-trait 50+ uses all appropriate; libc FFI-only
+- Hardcoding audit: 2 production fixes (industrial/raspberry_pi DEFAULT_HOSTNAME)
+- Metrics: 844 shaders (+98), 37 DF64 (+12), 2,781 barracuda tests (+20), 32+ god files refactored (+4)
+
+### Session 75 (Feb 28, 2026) — Module Architecture + Build Streamlining
+- 6 god files smart-refactored: primal_integration.rs (1,163L→5 modules), capability_provider.rs (746L→5 modules), integration/primals/lib.rs (580L→7 modules), opencl_impl.rs (831L→6 modules), env_overrides.rs (726L→9 modules), os_layer/compat.rs (766L→7 modules)
+- Wildcard `pub use *` narrowed to explicit re-exports in 6 crates: toadstool, distributed, server, gpu, universal, orchestration
+- `pollster` removed from toadstool + universal Cargo.toml
+- 3 evolved backends gated behind `#[cfg(test)]` (biomeos_integration)
+- TYPES_REFERENCE.md updated with Section 7: Module Structure Reference
+- All quality gates green: build, fmt, clippy (0 warnings), doc
+
+### Session 74 (Feb 28, 2026) — Deep Debt Evolution: Dependencies + Capabilities + Resilience
+- `serde_yaml` → `serde_yaml_ng` across workspace
+- `async-trait` → native AFIT in 4 crates (performance, analytics, wasm, gpu)
+- `pollster` → `tokio_block_on` in barracuda; dependency removed
+- Hardcoded primal names → capability-based language in CLI templates, JSON-RPC, error messages
+- `AuthResponse::standalone()` + `is_standalone()` formalized
+- Type aliases: OrchestrationConfigurator, OrchestrationNetworkConfig, PkiSecurityConfig
+- Edge platform stubs → genuine hardware probing (Raspberry Pi, industrial, microcontroller)
+- Discovery stubs → real mDNS/k8s/docker/registry probing
+- God files: workload.rs (829L→2 modules), unified.rs (613L→3 modules), precision/mod.rs (816L→3 modules)
+- GPU test resilience: 11 barracuda + 29 ml-inference + homomorphic tests wrapped with catch_unwind
+- WgpuDevice::poll_safe() for device-lost recovery
+- Doctest fixes across barracuda and showcase crates
+- Net -3,828 lines across 182 files
 
 ### Session 71 (Mar 1, 2026) — GPU Dispatch Wiring + Sovereignty + Smart Refactoring
 - Wired 4 previously orphaned shader constants to GPU dispatch: `WGSL_HMM_FORWARD_LOG_F32/F64`, `WGSL_BOOTSTRAP_MEAN_F64`, `WGSL_HISTOGRAM`

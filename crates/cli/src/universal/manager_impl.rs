@@ -375,7 +375,7 @@ impl UniversalComputeManager {
                         .filter(|p| matches!(p.status, PlatformStatus::Available))
                         .count(),
                 };
-                println!("{}", serde_yaml::to_string(&capabilities)?);
+                println!("{}", serde_yaml_ng::to_string(&capabilities)?);
             }
             "table" => {
                 self.print_capabilities_table(detailed).await?;

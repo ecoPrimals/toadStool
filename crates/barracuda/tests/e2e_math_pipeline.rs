@@ -17,6 +17,8 @@
 //! - NPU1: Secondary NPU (if available)
 //! - CPU: Always available fallback
 
+mod common;
+
 use barracuda::device::{
     discover_devices, select_best_device, ComputeWorkload, DeviceSelection, HardwareWorkload,
     KernelRouter, KernelTarget, WgpuDevice,
@@ -103,84 +105,96 @@ async fn execute_matmul_pipeline(
 
 #[tokio::test]
 async fn test_e2e_identity_pipeline() {
-    println!("\n=== E2E Identity Pipeline ===\n");
+    if !common::run_gpu_resilient_async(|| async {
+        println!("\n=== E2E Identity Pipeline ===\n");
 
-    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-    let result = execute_pipeline(data.clone(), vec![2, 3], "identity").await;
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let result = execute_pipeline(data.clone(), vec![2, 3], "identity").await;
 
-    match result {
-        Ok(output) => {
-            assert_eq!(output, data);
-            println!("  ✓ Data round-trip through pipeline: PASS");
-        }
-        Err(e) => {
-            if e.contains("Device") || e.contains("connection") || e.contains("lost") {
-                println!("  SKIP: Device unavailable - {}", e);
-                return;
+        match result {
+            Ok(output) => {
+                assert_eq!(output, data);
+                println!("  ✓ Data round-trip through pipeline: PASS");
             }
-            panic!("Pipeline failed: {}", e);
+            Err(e) => {
+                if e.contains("Device") || e.contains("connection") || e.contains("lost") {
+                    println!("  SKIP: Device unavailable - {}", e);
+                    return;
+                }
+                panic!("Pipeline failed: {}", e);
+            }
         }
+    }) {
+        return;
     }
 }
 
 #[tokio::test]
 async fn test_e2e_softmax_pipeline() {
-    println!("\n=== E2E Softmax Pipeline ===\n");
+    if !common::run_gpu_resilient_async(|| async {
+        println!("\n=== E2E Softmax Pipeline ===\n");
 
-    let data = vec![1.0, 2.0, 3.0, 4.0];
-    let result = execute_pipeline(data, vec![4], "softmax").await;
+        let data = vec![1.0, 2.0, 3.0, 4.0];
+        let result = execute_pipeline(data, vec![4], "softmax").await;
 
-    match result {
-        Ok(output) => {
-            let sum: f32 = output.iter().sum();
-            assert!((sum - 1.0).abs() < 1e-4, "Softmax should sum to 1.0");
-            println!("  Softmax output: {:?}", output);
-            println!("  Sum: {:.6}", sum);
-            println!("  ✓ Softmax through pipeline: PASS");
-        }
-        Err(e) => {
-            if e.contains("Device") || e.contains("connection") || e.contains("lost") {
-                println!("  SKIP: Device unavailable - {}", e);
-                return;
+        match result {
+            Ok(output) => {
+                let sum: f32 = output.iter().sum();
+                assert!((sum - 1.0).abs() < 1e-4, "Softmax should sum to 1.0");
+                println!("  Softmax output: {:?}", output);
+                println!("  Sum: {:.6}", sum);
+                println!("  ✓ Softmax through pipeline: PASS");
             }
-            panic!("Pipeline failed: {}", e);
+            Err(e) => {
+                if e.contains("Device") || e.contains("connection") || e.contains("lost") {
+                    println!("  SKIP: Device unavailable - {}", e);
+                    return;
+                }
+                panic!("Pipeline failed: {}", e);
+            }
         }
+    }) {
+        return;
     }
 }
 
 #[tokio::test]
 async fn test_e2e_matmul_pipeline() {
-    println!("\n=== E2E Matmul Pipeline ===\n");
+    if !common::run_gpu_resilient_async(|| async {
+        println!("\n=== E2E Matmul Pipeline ===\n");
 
-    // 2x3 @ 3x2 = 2x2
-    let a = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-    let b = vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
+        // 2x3 @ 3x2 = 2x2
+        let a = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let b = vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
 
-    let result = execute_matmul_pipeline(a, vec![2, 3], b, vec![3, 2]).await;
+        let result = execute_matmul_pipeline(a, vec![2, 3], b, vec![3, 2]).await;
 
-    match result {
-        Ok(output) => {
-            println!("  Matmul result: {:?}", output);
-            // Expected: [[58, 64], [139, 154]]
-            let expected = vec![58.0, 64.0, 139.0, 154.0];
-            for (i, (got, exp)) in output.iter().zip(expected.iter()).enumerate() {
-                assert!(
-                    (got - exp).abs() < 1e-3,
-                    "Mismatch at {}: {} vs {}",
-                    i,
-                    got,
-                    exp
-                );
+        match result {
+            Ok(output) => {
+                println!("  Matmul result: {:?}", output);
+                // Expected: [[58, 64], [139, 154]]
+                let expected = vec![58.0, 64.0, 139.0, 154.0];
+                for (i, (got, exp)) in output.iter().zip(expected.iter()).enumerate() {
+                    assert!(
+                        (got - exp).abs() < 1e-3,
+                        "Mismatch at {}: {} vs {}",
+                        i,
+                        got,
+                        exp
+                    );
+                }
+                println!("  ✓ Matmul through pipeline: PASS");
             }
-            println!("  ✓ Matmul through pipeline: PASS");
-        }
-        Err(e) => {
-            if e.contains("Device") || e.contains("connection") || e.contains("lost") {
-                println!("  SKIP: Device unavailable - {}", e);
-                return;
+            Err(e) => {
+                if e.contains("Device") || e.contains("connection") || e.contains("lost") {
+                    println!("  SKIP: Device unavailable - {}", e);
+                    return;
+                }
+                panic!("Pipeline failed: {}", e);
             }
-            panic!("Pipeline failed: {}", e);
         }
+    }) {
+        return;
     }
 }
 
@@ -238,63 +252,69 @@ async fn test_e2e_router_guided_execution() {
 
 #[tokio::test]
 async fn test_e2e_complete_pipeline_with_router() {
-    println!("\n=== E2E Complete Pipeline with Router ===\n");
+    if !common::run_gpu_resilient_async(|| async {
+        println!("\n=== E2E Complete Pipeline with Router ===\n");
 
-    // 1. Define workload
-    let workload = ComputeWorkload::DenseMatmul {
-        m: 64,
-        n: 64,
-        k: 64,
-    };
+        // 1. Define workload
+        let workload = ComputeWorkload::DenseMatmul {
+            m: 64,
+            n: 64,
+            k: 64,
+        };
 
-    // 2. Router determines target
-    let router = KernelRouter::new().expect("Router failed");
-    let target = router.route(&workload).expect("Routing failed");
-    println!("  Workload: 64x64 matmul");
-    println!("  Router target: {:?}", target);
+        // 2. Router determines target
+        let router = KernelRouter::new().expect("Router failed");
+        let target = router.route(&workload).expect("Routing failed");
+        println!("  Workload: 64x64 matmul");
+        println!("  Router target: {:?}", target);
 
-    // 3. Create device based on router decision
-    let device = match &target {
-        KernelTarget::Wgsl { device, .. } => match device {
-            DeviceSelection::Gpu => WgpuDevice::new_gpu().await.ok().map(Arc::new),
-            DeviceSelection::Cpu => WgpuDevice::new_cpu().await.ok().map(Arc::new),
-            _ => Some(barracuda::device::test_pool::get_test_device().await),
-        },
-        KernelTarget::Npu { .. } => {
-            // Fallback to WGSL for now (NPU would use different path)
-            Some(barracuda::device::test_pool::get_test_device().await)
-        }
-        KernelTarget::Hybrid { .. } => Some(barracuda::device::test_pool::get_test_device().await),
-    };
+        // 3. Create device based on router decision
+        let device = match &target {
+            KernelTarget::Wgsl { device, .. } => match device {
+                DeviceSelection::Gpu => WgpuDevice::new_gpu().await.ok().map(Arc::new),
+                DeviceSelection::Cpu => WgpuDevice::new_cpu().await.ok().map(Arc::new),
+                _ => Some(barracuda::device::test_pool::get_test_device().await),
+            },
+            KernelTarget::Npu { .. } => {
+                // Fallback to WGSL for now (NPU would use different path)
+                Some(barracuda::device::test_pool::get_test_device().await)
+            }
+            KernelTarget::Hybrid { .. } => {
+                Some(barracuda::device::test_pool::get_test_device().await)
+            }
+        };
 
-    let device = match device {
-        Some(d) => d,
-        None => {
-            println!("  SKIP: No device available for target");
-            return;
-        }
-    };
+        let device = match device {
+            Some(d) => d,
+            None => {
+                println!("  SKIP: No device available for target");
+                return;
+            }
+        };
 
-    println!("  Executing on: {}", device.name());
+        println!("  Executing on: {}", device.name());
 
-    // 4. Execute operation
-    let size = 64;
-    let a_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01).collect();
-    let b_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01 + 0.5).collect();
+        // 4. Execute operation
+        let size = 64;
+        let a_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01).collect();
+        let b_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01 + 0.5).collect();
 
-    let tensor_a = Tensor::from_vec_on(a_data, vec![size, size], device.clone())
-        .await
-        .expect("Tensor A failed");
-    let tensor_b = Tensor::from_vec_on(b_data, vec![size, size], device)
-        .await
-        .expect("Tensor B failed");
+        let tensor_a = Tensor::from_vec_on(a_data, vec![size, size], device.clone())
+            .await
+            .expect("Tensor A failed");
+        let tensor_b = Tensor::from_vec_on(b_data, vec![size, size], device)
+            .await
+            .expect("Tensor B failed");
 
-    let result = tensor_a.matmul(&tensor_b).expect("Matmul failed");
-    let output = result.to_vec().expect("Read failed");
+        let result = tensor_a.matmul(&tensor_b).expect("Matmul failed");
+        let output = result.to_vec().expect("Read failed");
 
-    println!("  Result size: {} elements", output.len());
-    println!("  First 4 values: {:?}", &output[..4]);
-    println!("\n  ✓ Complete pipeline with router: PASS\n");
+        println!("  Result size: {} elements", output.len());
+        println!("  First 4 values: {:?}", &output[..4]);
+        println!("\n  ✓ Complete pipeline with router: PASS\n");
+    }) {
+        return;
+    }
 }
 
 // ============================================================================
@@ -303,83 +323,87 @@ async fn test_e2e_complete_pipeline_with_router() {
 
 #[tokio::test]
 async fn test_e2e_multi_device_same_computation() {
-    println!("\n=== E2E Multi-Device Same Computation ===\n");
+    if !common::run_gpu_resilient_async(|| async {
+        println!("\n=== E2E Multi-Device Same Computation ===\n");
 
-    let adapters = WgpuDevice::enumerate_adapters();
+        let adapters = WgpuDevice::enumerate_adapters();
 
-    // Get all discrete GPUs
-    let discrete_indices: Vec<_> = adapters
-        .iter()
-        .enumerate()
-        .filter(|(_, a)| {
-            matches!(
-                a.device_type,
-                wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
-            ) || (a.device_type == wgpu::DeviceType::Other
-                && (a.name.to_lowercase().contains("nvidia")
-                    || a.name.to_lowercase().contains("amd")))
-        })
-        .map(|(i, a)| (i, a.name.clone()))
-        .collect();
+        // Get all discrete GPUs
+        let discrete_indices: Vec<_> = adapters
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| {
+                matches!(
+                    a.device_type,
+                    wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
+                ) || (a.device_type == wgpu::DeviceType::Other
+                    && (a.name.to_lowercase().contains("nvidia")
+                        || a.name.to_lowercase().contains("amd")))
+            })
+            .map(|(i, a)| (i, a.name.clone()))
+            .collect();
 
-    if discrete_indices.len() < 2 {
-        println!("  SKIP: Need 2+ GPUs for multi-device test");
-        println!("  Found: {:?}", discrete_indices);
-        return;
-    }
+        if discrete_indices.len() < 2 {
+            println!("  SKIP: Need 2+ GPUs for multi-device test");
+            println!("  Found: {:?}", discrete_indices);
+            return;
+        }
 
-    // Same computation on each device
-    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
-    let shape = vec![3, 3];
+        // Same computation on each device
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let shape = vec![3, 3];
 
-    let mut results = Vec::new();
+        let mut results = Vec::new();
 
-    for (idx, name) in &discrete_indices {
-        match WgpuDevice::from_adapter_index(*idx).await {
-            Ok(device) => {
-                let device_arc = Arc::new(device);
-                match Tensor::from_vec_on(data.clone(), shape.clone(), device_arc).await {
-                    Ok(tensor) => match tensor.softmax() {
-                        Ok(result) => match result.to_vec() {
-                            Ok(output) => {
-                                println!("  {} softmax: {:?}", name, &output[..4]);
-                                results.push((name.clone(), output));
-                            }
-                            Err(e) => println!("  {} - read failed: {}", name, e),
+        for (idx, name) in &discrete_indices {
+            match WgpuDevice::from_adapter_index(*idx).await {
+                Ok(device) => {
+                    let device_arc = Arc::new(device);
+                    match Tensor::from_vec_on(data.clone(), shape.clone(), device_arc).await {
+                        Ok(tensor) => match tensor.softmax() {
+                            Ok(result) => match result.to_vec() {
+                                Ok(output) => {
+                                    println!("  {} softmax: {:?}", name, &output[..4]);
+                                    results.push((name.clone(), output));
+                                }
+                                Err(e) => println!("  {} - read failed: {}", name, e),
+                            },
+                            Err(e) => println!("  {} - softmax failed: {}", name, e),
                         },
-                        Err(e) => println!("  {} - softmax failed: {}", name, e),
-                    },
-                    Err(e) => println!("  {} - tensor creation failed: {}", name, e),
+                        Err(e) => println!("  {} - tensor creation failed: {}", name, e),
+                    }
+                }
+                Err(e) => {
+                    println!("  {} - device creation failed: {}", name, e);
                 }
             }
-            Err(e) => {
-                println!("  {} - device creation failed: {}", name, e);
+        }
+
+        // Verify all devices produce same result
+        if results.len() >= 2 {
+            for i in 1..results.len() {
+                let (name_a, result_a) = &results[0];
+                let (name_b, result_b) = &results[i];
+
+                for (j, (a, b)) in result_a.iter().zip(result_b.iter()).enumerate() {
+                    assert!(
+                        (a - b).abs() < 1e-4,
+                        "Mismatch between {} and {} at {}: {} vs {}",
+                        name_a,
+                        name_b,
+                        j,
+                        a,
+                        b
+                    );
+                }
+                println!("  ✓ {} matches {}", name_a, name_b);
             }
         }
+
+        println!("\n  Multi-device same computation: PASS\n");
+    }) {
+        return;
     }
-
-    // Verify all devices produce same result
-    if results.len() >= 2 {
-        for i in 1..results.len() {
-            let (name_a, result_a) = &results[0];
-            let (name_b, result_b) = &results[i];
-
-            for (j, (a, b)) in result_a.iter().zip(result_b.iter()).enumerate() {
-                assert!(
-                    (a - b).abs() < 1e-4,
-                    "Mismatch between {} and {} at {}: {} vs {}",
-                    name_a,
-                    name_b,
-                    j,
-                    a,
-                    b
-                );
-            }
-            println!("  ✓ {} matches {}", name_a, name_b);
-        }
-    }
-
-    println!("\n  Multi-device same computation: PASS\n");
 }
 
 // ============================================================================
@@ -388,56 +412,60 @@ async fn test_e2e_multi_device_same_computation() {
 
 #[tokio::test]
 async fn test_e2e_scientific_pipeline_cholesky() {
-    println!("\n=== E2E Scientific Pipeline: Cholesky ===\n");
+    if !common::run_gpu_resilient_async(|| async {
+        println!("\n=== E2E Scientific Pipeline: Cholesky ===\n");
 
-    // 1. ToadStool selects device for scientific compute
-    let selection =
-        select_best_device(HardwareWorkload::ScientificCompute).expect("Selection failed");
-    println!("  ToadStool selection: {:?}", selection);
+        // 1. ToadStool selects device for scientific compute
+        let selection =
+            select_best_device(HardwareWorkload::ScientificCompute).expect("Selection failed");
+        println!("  ToadStool selection: {:?}", selection);
 
-    // 2. Create device (with fallback)
-    let device = match WgpuDevice::from_selection(selection).await {
-        Ok(d) => Arc::new(d),
-        Err(e) => {
-            println!("  SKIP: Device unavailable: {}", e);
-            return;
-        }
-    };
-    println!("  Device: {}", device.name());
+        // 2. Create device (with fallback)
+        let device = match WgpuDevice::from_selection(selection).await {
+            Ok(d) => Arc::new(d),
+            Err(e) => {
+                println!("  SKIP: Device unavailable: {}", e);
+                return;
+            }
+        };
+        println!("  Device: {}", device.name());
 
-    // 3. Create SPD matrix
-    let spd = vec![4.0, 2.0, 2.0, 3.0]; // 2x2 SPD
+        // 3. Create SPD matrix
+        let spd = vec![4.0, 2.0, 2.0, 3.0]; // 2x2 SPD
 
-    let tensor = Tensor::from_vec_on(spd, vec![2, 2], device.clone())
-        .await
-        .expect("Tensor failed");
+        let tensor = Tensor::from_vec_on(spd, vec![2, 2], device.clone())
+            .await
+            .expect("Tensor failed");
 
-    // 4. Compute Cholesky decomposition
-    let l = tensor.cholesky().expect("Cholesky failed");
-    let l_data = l.to_vec().expect("Read failed");
+        // 4. Compute Cholesky decomposition
+        let l = tensor.cholesky().expect("Cholesky failed");
+        let l_data = l.to_vec().expect("Read failed");
 
-    println!("  Input A: [[4, 2], [2, 3]]");
-    println!("  Cholesky L: {:?}", l_data);
+        println!("  Input A: [[4, 2], [2, 3]]");
+        println!("  Cholesky L: {:?}", l_data);
 
-    // 5. Verify L * L^T = A
-    // For 2x2 lower triangular L:
-    // L[0,0] * L[0,0] should ≈ A[0,0] = 4
-    // L[1,0] * L[0,0] should ≈ A[1,0] = 2
-    // L[1,0]^2 + L[1,1]^2 should ≈ A[1,1] = 3
+        // 5. Verify L * L^T = A
+        // For 2x2 lower triangular L:
+        // L[0,0] * L[0,0] should ≈ A[0,0] = 4
+        // L[1,0] * L[0,0] should ≈ A[1,0] = 2
+        // L[1,0]^2 + L[1,1]^2 should ≈ A[1,1] = 3
 
-    let l00 = l_data[0];
-    let l10 = l_data[2];
-    let l11 = l_data[3];
+        let l00 = l_data[0];
+        let l10 = l_data[2];
+        let l11 = l_data[3];
 
-    assert!((l00 * l00 - 4.0).abs() < 1e-3, "L*L^T [0,0] mismatch");
-    assert!((l10 * l00 - 2.0).abs() < 1e-3, "L*L^T [1,0] mismatch");
-    assert!(
-        (l10 * l10 + l11 * l11 - 3.0).abs() < 1e-3,
-        "L*L^T [1,1] mismatch"
-    );
+        assert!((l00 * l00 - 4.0).abs() < 1e-3, "L*L^T [0,0] mismatch");
+        assert!((l10 * l00 - 2.0).abs() < 1e-3, "L*L^T [1,0] mismatch");
+        assert!(
+            (l10 * l10 + l11 * l11 - 3.0).abs() < 1e-3,
+            "L*L^T [1,1] mismatch"
+        );
 
-    println!("  ✓ Cholesky verified: L * L^T = A");
-    println!("\n  Scientific pipeline Cholesky: PASS\n");
+        println!("  ✓ Cholesky verified: L * L^T = A");
+        println!("\n  Scientific pipeline Cholesky: PASS\n");
+    }) {
+        return;
+    }
 }
 
 // ============================================================================
@@ -446,41 +474,45 @@ async fn test_e2e_scientific_pipeline_cholesky() {
 
 #[tokio::test]
 async fn test_e2e_f32_precision() {
-    println!("\n=== E2E f32 Precision Test ===\n");
+    if !common::run_gpu_resilient_async(|| async {
+        println!("\n=== E2E f32 Precision Test ===\n");
 
-    let device = barracuda::device::test_pool::get_test_device().await;
+        let device = barracuda::device::test_pool::get_test_device().await;
 
-    // Test precision with known values
-    let test_cases = vec![
-        ("Small values", vec![1e-6, 2e-6, 3e-6, 4e-6]),
-        ("Large values", vec![1e6, 2e6, 3e6, 4e6]),
-        ("Mixed", vec![1e-6, 1.0, 1e6, 0.0]),
-    ];
+        // Test precision with known values
+        let test_cases = vec![
+            ("Small values", vec![1e-6, 2e-6, 3e-6, 4e-6]),
+            ("Large values", vec![1e6, 2e6, 3e6, 4e6]),
+            ("Mixed", vec![1e-6, 1.0, 1e6, 0.0]),
+        ];
 
-    for (name, data) in test_cases {
-        let tensor = Tensor::from_vec_on(data.clone(), vec![4], device.clone())
-            .await
-            .expect("Tensor failed");
+        for (name, data) in test_cases {
+            let tensor = Tensor::from_vec_on(data.clone(), vec![4], device.clone())
+                .await
+                .expect("Tensor failed");
 
-        let result = tensor.to_vec().expect("Read failed");
+            let result = tensor.to_vec().expect("Read failed");
 
-        let mut max_rel_error = 0.0f32;
-        for (got, exp) in result.iter().zip(data.iter()) {
-            if *exp != 0.0 {
-                let rel_error = ((got - exp) / exp).abs();
-                max_rel_error = max_rel_error.max(rel_error);
+            let mut max_rel_error = 0.0f32;
+            for (got, exp) in result.iter().zip(data.iter()) {
+                if *exp != 0.0 {
+                    let rel_error = ((got - exp) / exp).abs();
+                    max_rel_error = max_rel_error.max(rel_error);
+                }
             }
+
+            println!("  {} - max relative error: {:.2e}", name, max_rel_error);
+            assert!(
+                max_rel_error < 1e-5,
+                "f32 precision loss too high: {}",
+                max_rel_error
+            );
         }
 
-        println!("  {} - max relative error: {:.2e}", name, max_rel_error);
-        assert!(
-            max_rel_error < 1e-5,
-            "f32 precision loss too high: {}",
-            max_rel_error
-        );
+        println!("\n  f32 precision: PASS\n");
+    }) {
+        return;
     }
-
-    println!("\n  f32 precision: PASS\n");
 }
 
 // ============================================================================

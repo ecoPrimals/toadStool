@@ -143,8 +143,9 @@ impl AsyncSubmitter {
     ///
     /// Note: This is approximate. For precise synchronization, use `wait_for()`.
     pub fn is_complete(&self, index: u64) -> bool {
-        // Poll the device to process completion callbacks
-        self.device.poll(wgpu::Maintain::Poll);
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.device.poll(wgpu::Maintain::Poll);
+        }));
         self.completed_index.load(Ordering::SeqCst) >= index
     }
 
@@ -152,13 +153,12 @@ impl AsyncSubmitter {
     ///
     /// Blocks until all GPU work up to and including the given index is done.
     pub fn wait_for(&self, index: u64) {
-        // If already complete, return immediately
         if self.completed_index.load(Ordering::SeqCst) >= index {
             return;
         }
-
-        // Poll until complete
-        self.device.poll(wgpu::Maintain::Wait);
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.device.poll(wgpu::Maintain::Wait);
+        }));
     }
 
     /// Wait for all pending work to complete
@@ -235,7 +235,9 @@ impl AsyncReadback {
 
     /// Poll the device and check if data is ready (non-blocking).
     pub fn poll(&self, device: &wgpu::Device) -> bool {
-        device.poll(wgpu::Maintain::Poll);
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            device.poll(wgpu::Maintain::Poll);
+        }));
         self.receiver.try_recv().is_ok()
     }
 
@@ -245,14 +247,20 @@ impl AsyncReadback {
     /// other tasks. Uses `mpsc::try_recv()` — no futures dependency needed.
     async fn poll_until_ready(&mut self, device: &wgpu::Device) -> Result<(), String> {
         loop {
-            device.poll(wgpu::Maintain::Poll);
+            let poll_ok = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                device.poll(wgpu::Maintain::Poll);
+            }))
+            .is_ok();
+
+            if !poll_ok {
+                return Err("GPU device lost during poll".to_string());
+            }
 
             match self.receiver.try_recv() {
                 Ok(result) => {
                     return result.map_err(|e| format!("Map error: {e:?}"));
                 }
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    // Not ready — yield to let the runtime drive other tasks.
                     tokio::task::yield_now().await;
                 }
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -270,6 +278,7 @@ impl AsyncReadback {
 
         // Read data
         let data = self.staging_buffer.slice(..).get_mapped_range();
+        // Allocation required: mapped range is dropped before return; caller receives owned Vec
         let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
 
         drop(data);
@@ -283,6 +292,7 @@ impl AsyncReadback {
         self.poll_until_ready(device).await?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
+        // Allocation required: mapped range is dropped before return; caller receives owned Vec
         let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
 
         drop(data);
@@ -296,6 +306,7 @@ impl AsyncReadback {
         self.poll_until_ready(device).await?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
+        // Allocation required: mapped range is dropped before return; caller receives owned Vec
         let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
 
         drop(data);
@@ -322,13 +333,18 @@ impl AsyncReadback {
     /// `device.poll(Wait)` guarantees the map callback has fired, so `recv()`
     /// returns immediately — no async runtime needed.
     pub fn read_f32_blocking(self, device: &wgpu::Device) -> Result<Vec<f32>, String> {
-        device.poll(wgpu::Maintain::Wait);
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            device.poll(wgpu::Maintain::Wait);
+        }))
+        .map_err(|_| "GPU device lost during blocking poll".to_string())?;
+
         self.receiver
             .recv()
             .map_err(|_| "Readback cancelled — sender dropped".to_string())?
             .map_err(|e| format!("Map error: {e:?}"))?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
+        // Allocation required: mapped range is dropped before return; caller receives owned Vec
         let result = bytemuck::cast_slice::<u8, f32>(&data).to_vec();
         drop(data);
         self.staging_buffer.unmap();
@@ -337,13 +353,18 @@ impl AsyncReadback {
 
     /// Blocking read as f64 (for sync contexts).
     pub fn read_f64_blocking(self, device: &wgpu::Device) -> Result<Vec<f64>, String> {
-        device.poll(wgpu::Maintain::Wait);
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            device.poll(wgpu::Maintain::Wait);
+        }))
+        .map_err(|_| "GPU device lost during blocking poll".to_string())?;
+
         self.receiver
             .recv()
             .map_err(|_| "Readback cancelled — sender dropped".to_string())?
             .map_err(|e| format!("Map error: {e:?}"))?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
+        // Allocation required: mapped range is dropped before return; caller receives owned Vec
         let result = bytemuck::cast_slice::<u8, f64>(&data).to_vec();
         drop(data);
         self.staging_buffer.unmap();

@@ -13,6 +13,7 @@ use crate::error::DistributedError;
 ///
 /// Implement this trait to add support for a new primal.
 /// Each primal can have its own communication protocol and registration format.
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait PrimalAdapter: Send + Sync {
     /// Get the primal name
@@ -118,6 +119,7 @@ impl SongbirdAdapter {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl PrimalAdapter for SongbirdAdapter {
     fn primal_name(&self) -> &str {

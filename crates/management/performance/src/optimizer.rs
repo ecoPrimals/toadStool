@@ -1,7 +1,5 @@
 //! Performance optimizer trait and core interfaces
 
-use async_trait::async_trait;
-
 use toadstool::error::ToadStoolResult;
 use toadstool::execution::{ExecutionRequest, RuntimeType};
 use toadstool::workload::WorkloadSpec;
@@ -15,7 +13,6 @@ use crate::types::{
 /// This trait defines the interface for intelligent performance optimization,
 /// including runtime selection, metrics collection, resource prediction,
 /// and recommendation generation.
-#[async_trait]
 pub trait PerformanceOptimizer: Send + Sync {
     /// Select optimal runtime for execution request
     ///

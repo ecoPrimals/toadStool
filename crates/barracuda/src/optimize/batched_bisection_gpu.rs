@@ -538,7 +538,7 @@ impl BatchedBisectionGpu {
             // Channel send should not fail since receiver is alive during poll
             let _ = sender.send(result);
         });
-        self.device.device.poll(wgpu::Maintain::Wait);
+        self.device.poll_safe()?;
         receiver
             .recv()
             .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?

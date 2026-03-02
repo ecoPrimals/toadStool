@@ -3,11 +3,16 @@
 //! Uses `Cow<'_, str>` for conditional allocation - only allocates when formatting is needed.
 
 use std::borrow::Cow;
+#[allow(deprecated)]
 use toadstool_config::constants::primals;
 
-/// Get contextual error suggestion based on error content
+/// Get contextual error suggestion based on error content.
 ///
 /// Returns `Cow::Borrowed` for static suggestions, `Cow::Owned` for dynamic ones.
+///
+/// Uses primal name constants for error string matching (UX hints) — not for
+/// service discovery or connection, so the deprecation doesn't apply.
+#[allow(deprecated)]
 pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static, str>> {
     let error_str = error.to_string().to_lowercase();
 
@@ -64,7 +69,7 @@ pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static
 
     if error_str.contains("security") {
         return Some(Cow::Borrowed(
-            "💡 Check BearDog permissions with 'toadstool ecosystem auth --validate-only' and security policies.",
+            "💡 Check PKI security permissions with 'toadstool ecosystem auth --validate-only' and security policies.",
         ));
     }
 
@@ -90,19 +95,19 @@ pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static
     // Ecosystem errors
     if error_str.contains(primals::SONGBIRD) {
         return Some(Cow::Borrowed(
-            "💡 Use 'toadstool ecosystem discover' to find Songbird instances or check network connectivity.",
+            "💡 Use 'toadstool ecosystem discover' to find orchestration instances or check network connectivity.",
         ));
     }
 
     if error_str.contains(primals::NESTGATE) {
         return Some(Cow::Borrowed(
-            "💡 Verify NestGate endpoint and credentials. Use 'toadstool ecosystem storage --help' for options.",
+            "💡 Verify storage endpoint and credentials. Use 'toadstool ecosystem storage --help' for options.",
         ));
     }
 
     if error_str.contains(primals::BEARDOG) {
         return Some(Cow::Borrowed(
-            "💡 Install BearDog permissions with 'toadstool ecosystem auth <permission-file>'.",
+            "💡 Install PKI security permissions with 'toadstool ecosystem auth <permission-file>'.",
         ));
     }
 

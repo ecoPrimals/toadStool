@@ -204,11 +204,11 @@ async fn test_graceful_shutdown_timeout() {
     // Test graceful shutdown timeout handling
 
     let slow_shutdown = async {
-        sleep(Duration::from_secs(10)).await; // Takes too long
+        sleep(Duration::from_millis(500)).await;
         "completed"
     };
 
-    let result = timeout(Duration::from_secs(2), slow_shutdown).await;
+    let result = timeout(Duration::from_millis(50), slow_shutdown).await;
 
     // Should timeout
     assert!(result.is_err());
@@ -219,11 +219,11 @@ async fn test_startup_timeout() {
     // Test startup timeout handling
 
     let slow_startup = async {
-        sleep(Duration::from_secs(60)).await; // Takes way too long
+        sleep(Duration::from_millis(500)).await;
         "started"
     };
 
-    let result = timeout(Duration::from_secs(5), slow_startup).await;
+    let result = timeout(Duration::from_millis(50), slow_startup).await;
 
     // Should timeout
     assert!(result.is_err());
@@ -234,11 +234,11 @@ async fn test_request_timeout() {
     // Test request timeout handling
 
     let slow_request = async {
-        sleep(Duration::from_secs(30)).await;
+        sleep(Duration::from_millis(500)).await;
         "response"
     };
 
-    let result = timeout(Duration::from_secs(1), slow_request).await;
+    let result = timeout(Duration::from_millis(50), slow_request).await;
 
     // Should timeout
     assert!(result.is_err());
@@ -503,13 +503,13 @@ async fn test_high_load_plus_random_failures() {
 async fn test_cascading_timeout_prevention() {
     // Test that timeouts don't cascade
 
-    let layer1 = timeout(Duration::from_secs(2), async {
-        sleep(Duration::from_secs(3)).await;
+    let layer1 = timeout(Duration::from_millis(100), async {
+        sleep(Duration::from_millis(300)).await;
         "layer1"
     });
 
-    let layer2 = timeout(Duration::from_secs(1), async {
-        sleep(Duration::from_secs(2)).await;
+    let layer2 = timeout(Duration::from_millis(50), async {
+        sleep(Duration::from_millis(200)).await;
         "layer2"
     });
 

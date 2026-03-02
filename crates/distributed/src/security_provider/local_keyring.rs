@@ -89,6 +89,7 @@ impl Default for LocalKeyringProvider {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl SecurityProvider for LocalKeyringProvider {
     async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>> {

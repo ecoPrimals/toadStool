@@ -7,8 +7,8 @@
 //!
 //! - **InProcess**: Direct provider instantiation (BearDog, etc.) - ✅ Working
 //! - **UnixSocket**: IPC via Unix domain sockets - ✅ Implemented
-//! - **TCP**: TCP socket connection - Stub (use UnixSocket for local, mDNS for remote)
-//! - **HTTP**: REST/JSON-RPC over HTTP - Stub (not ecoBin-compliant, prefer Unix sockets)
+//! - **TCP**: TCP socket connection - ✅ Implemented (JSON-RPC over TCP, cross-machine)
+//! - **HTTP**: REST/JSON-RPC over HTTP - Not supported (not ecoBin-compliant; use Unix/TCP)
 //!
 //! ## ecoBin Compliance
 //!
@@ -125,19 +125,25 @@ impl SecurityProviderFactory {
 
     /// Create provider from TCP endpoint
     ///
-    /// NOTE: TCP is supported but Unix sockets are preferred for local IPC.
-    /// TCP is useful for cross-machine communication when mDNS isn't available.
+    /// Connects to remote security service over TCP using JSON-RPC 2.0.
+    /// For local communication, Unix sockets are preferred (lower latency).
     async fn create_tcp_provider(
         host: &str,
         port: u16,
     ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
-        // TCP transport requires network stack - acceptable but not ideal
-        // For local communication, prefer Unix sockets
-        Err(ToadStoolError::runtime(format!(
-            "TCP security provider not yet implemented. \
-             For local communication, prefer Unix sockets. \
-             For remote, use mDNS discovery. Attempted: {host}:{port}",
-        )))
+        use crate::security_provider::tcp_provider::TcpSecurityProvider;
+
+        let provider = TcpSecurityProvider::new(host, port);
+
+        match provider.health_check().await {
+            Ok(_) => {
+                tracing::info!("Connected to security provider via TCP: {}:{}", host, port);
+                Ok(Arc::new(provider) as Arc<dyn SecurityProvider>)
+            }
+            Err(e) => Err(ToadStoolError::runtime(format!(
+                "Security provider at {host}:{port} not responding: {e}",
+            ))),
+        }
     }
 
     /// Create in-process provider
@@ -286,7 +292,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_tcp_provider_not_implemented() {
+    async fn test_tcp_provider_connection_failure_without_server() {
         let handle = CapabilityHandle::new(
             CapabilityInfo {
                 provider_id: "test".to_string(),
@@ -297,7 +303,7 @@ mod tests {
                 metadata: std::collections::HashMap::new(),
                 endpoint: ServiceEndpoint::Tcp {
                     host: "localhost".to_string(),
-                    port: 8443,
+                    port: 38443, // Unlikely to have security provider on this port
                 },
                 health: HealthStatus::Healthy,
             },
@@ -310,7 +316,12 @@ mod tests {
         let result = SecurityProviderFactory::create_from_handle(&handle).await;
         assert!(result.is_err());
         let err_msg = result.err().unwrap().to_string();
-        assert!(err_msg.contains("TCP security provider not yet implemented"));
+        assert!(
+            err_msg.contains("not responding")
+                || err_msg.contains("Failed to connect")
+                || err_msg.contains("timed out"),
+            "Expected connection failure, got: {err_msg}"
+        );
     }
 
     #[tokio::test]

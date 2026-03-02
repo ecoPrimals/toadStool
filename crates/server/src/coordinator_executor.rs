@@ -78,6 +78,7 @@ impl CoordinatorExecutor {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl WorkloadExecutor for CoordinatorExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {

@@ -12,6 +12,13 @@
 
 /// Well-known primal service names used in integration modules.
 /// Core logic should discover by capability, not by name.
+///
+/// Prefer `interned_strings::capabilities::*` for discovery.
+/// These exist only for protocol compatibility (parsing manifests, socket paths).
+#[deprecated(
+    since = "0.4.0",
+    note = "Use interned_strings::capabilities::* for discovery. These are for protocol compat only."
+)]
 pub mod well_known {
     pub const SONGBIRD: &str = "songbird";
     pub const BEARDOG: &str = "beardog";

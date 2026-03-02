@@ -12,7 +12,13 @@
 //! access penalties.
 //!
 //! ## Safety
-//! Pinned memory is a limited resource - use judiciously
+//!
+//! Pinned memory is a limited resource - use judiciously.
+//!
+//! **Why raw alloc instead of `Vec<u8>`?** `Vec` uses the default allocator alignment
+//! (typically 8–16 bytes). GPU DMA requires 64-byte (cache-line) alignment for optimal
+//! transfers. `std::alloc::alloc` with a custom layout is the standard way to obtain
+//! such alignment without adding external crates.
 
 use std::ptr::NonNull;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -31,10 +37,16 @@ pub struct PinnedMemory {
     size: usize,
 }
 
-// SAFETY: PinnedMemory owns its allocation exclusively. No interior mutability.
-// All access goes through &self (as_slice) or &mut self (as_mut_slice).
-// Drop deallocates with the same Layout used at allocation time.
+// SAFETY: Send — PinnedMemory owns its allocation exclusively with no interior mutability.
+// All access goes through &self (as_slice) or &mut self (as_mut_slice), and Drop
+// deallocates with the same Layout used at allocation time. If violated (e.g. shared
+// ownership): use-after-free or double-free when moved across threads.
 unsafe impl Send for PinnedMemory {}
+
+// SAFETY: Sync — PinnedMemory has no interior mutability. Concurrent &self access is
+// safe (as_slice returns shared references); mutable access requires &mut self
+// (exclusive). If violated: data races when accessing the same allocation from
+// multiple threads without synchronization.
 unsafe impl Sync for PinnedMemory {}
 
 impl PinnedMemory {
@@ -70,8 +82,9 @@ impl PinnedMemory {
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {}", e)))?;
 
         // SAFETY: Layout is valid (from_size_align succeeded, size>0, align=64 power-of-two).
-        // alloc returns a pointer valid for layout.size() bytes, or null on OOM. The pointer is
-        // used for dealloc with the same layout in Drop; size is stored for slice bounds.
+        // alloc returns a pointer valid for layout.size() bytes, or null on OOM. The pointer
+        // is used for dealloc with the same layout in Drop; size is stored for slice bounds.
+        // Violation: invalid layout would cause UB; mismatched dealloc would cause use-after-free.
         let raw = unsafe { std::alloc::alloc(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| {
             ToadStoolError::runtime(format!("Failed to allocate {size} bytes of pinned memory"))
@@ -97,7 +110,7 @@ impl PinnedMemory {
         debug_assert!(self.size > 0, "PinnedMemory size must be > 0 (guaranteed by new())");
         // SAFETY: ptr from alloc(layout) in new(), valid for self.size bytes. u8 has align 1.
         // Lifetime tied to &self; no concurrent mutation (Rust borrow rules). Size validated
-        // non-zero in new(), unchanged since.
+        // non-zero in new(), unchanged since. Violation: out-of-bounds size would cause UB.
         unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.size) }
     }
 
@@ -113,6 +126,7 @@ impl PinnedMemory {
         debug_assert!(self.size > 0, "PinnedMemory size must be > 0 (guaranteed by new())");
         // SAFETY: ptr from alloc(layout) in new(), valid for self.size bytes. &mut self gives
         // exclusive access, no aliasing. Size unchanged since allocation; validated non-zero in new().
+        // Violation: out-of-bounds size or aliasing would cause UB.
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.size) }
     }
 
@@ -147,6 +161,7 @@ impl Drop for PinnedMemory {
 
         // SAFETY: ptr from alloc(layout) in new(); layout matches (same size, PINNED_ALIGNMENT).
         // Drop runs at most once; no references exist (self is being dropped). ptr/size unchanged.
+        // Violation: mismatched layout or double-free would cause UB.
         unsafe { std::alloc::dealloc(self.ptr.as_ptr(), layout) }
 
         tracing::debug!("Freed {} bytes of pinned memory", self.size);

@@ -39,13 +39,13 @@ mod error_handling_tests {
     fn test_invalid_yaml_content() {
         // Test YAML parsing error handling
         let invalid_yaml = "invalid: yaml: content: [[[";
-        assert!(serde_yaml::from_str::<serde_yaml::Value>(invalid_yaml).is_err());
+        assert!(serde_yaml_ng::from_str::<serde_yaml_ng::Value>(invalid_yaml).is_err());
     }
 
     #[test]
     fn test_empty_manifest() {
         let empty_yaml = "";
-        let result = serde_yaml::from_str::<serde_yaml::Value>(empty_yaml);
+        let result = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(empty_yaml);
         // Empty YAML should be Null or error
         assert!(result.is_ok() || result.is_err());
     }

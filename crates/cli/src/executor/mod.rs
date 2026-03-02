@@ -18,7 +18,6 @@
 //! - `executor_impl`: BiomeExecutor implementation (all orchestration logic)
 
 // Submodules
-// mod log_management; // REMOVED: Functionality moved to display_ops.rs
 mod types;
 
 // Refactored domain modules

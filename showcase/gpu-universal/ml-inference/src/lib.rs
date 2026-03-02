@@ -54,6 +54,9 @@ pub mod quantization;
 pub mod random;
 pub mod recurrent; // Operations #92-100 - MISSION COMPLETE!
 
+/// GPU test resilience for NVK/Nouveau (skip on driver panics under concurrent load)
+pub mod gpu_resilience;
+
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

@@ -81,3 +81,52 @@ fn detect_system_memory_gb() -> Option<u32> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::HeaderMap;
+
+    #[test]
+    fn test_get_base_url_default() {
+        let headers = HeaderMap::new();
+        let url = get_base_url(&headers);
+        assert!(url.starts_with("http://"));
+        assert!(url.contains("127.0.0.1") || url.contains("localhost"));
+    }
+
+    #[test]
+    fn test_get_base_url_with_host() {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", "example.com:8080".parse().unwrap());
+        let url = get_base_url(&headers);
+        assert_eq!(url, "http://example.com:8080");
+    }
+
+    #[test]
+    fn test_get_base_url_with_host_and_proto() {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", "api.example.com".parse().unwrap());
+        headers.insert("x-forwarded-proto", "https".parse().unwrap());
+        let url = get_base_url(&headers);
+        assert_eq!(url, "https://api.example.com");
+    }
+
+    #[test]
+    fn test_get_base_url_invalid_host_header() {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", "example.com:8080".parse().unwrap());
+        let url = get_base_url(&headers);
+        assert!(url.starts_with("http"));
+        assert!(url.contains("example.com"));
+    }
+
+    #[tokio::test]
+    async fn test_get_local_node_resources() {
+        let resources = get_local_node_resources().await;
+        assert!(resources.cpu_cores >= 1);
+        assert!(resources.memory_gb >= 1);
+        assert!(resources.storage_gb > 0);
+        assert!(resources.gpu_count >= 0);
+    }
+}

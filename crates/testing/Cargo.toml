@@ -48,7 +48,7 @@ futures-util = "0.3"
 # Serialization for test data
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
+serde_yaml_ng = "0.10"
 bytes = { workspace = true }
 
 # Time and UUID for test data

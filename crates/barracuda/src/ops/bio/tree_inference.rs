@@ -96,10 +96,10 @@ impl FlatForest {
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// # use barracuda::prelude::WgpuDevice;
 /// # use barracuda::ops::bio::tree_inference::{TreeInferenceGpu, FlatForest};
-/// # pollster::block_on(async {
+/// # crate::device::test_pool::tokio_block_on(async {
 /// let device = WgpuDevice::new().await.unwrap();
 /// let infer = TreeInferenceGpu::new(&device);
 ///

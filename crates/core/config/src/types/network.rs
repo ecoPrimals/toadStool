@@ -81,7 +81,7 @@ impl Default for NetworkConfig {
 /// 1. Old: `config.endpoints.songbird` - Hardcoded primal name
 /// 2. New: `ServiceDiscovery::find_by_capability(Capability::Coordination).await?` - Capability-based
 ///
-/// See `docs/guides/SELF_KNOWLEDGE_MIGRATION.md` for details.
+/// See `DOCUMENTATION.md` for the self-knowledge migration path.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointConfig {
     /// Songbird coordination service endpoint (LEGACY - use discovery)

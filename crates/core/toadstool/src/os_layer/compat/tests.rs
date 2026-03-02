@@ -1,0 +1,297 @@
+//! Tests for OS compatibility layers.
+
+use crate::ExecutionRequest;
+
+use super::*;
+
+#[test]
+fn test_linux_config_default() {
+    let config = LinuxCompatConfig::default();
+
+    assert!(config.namespace_isolation);
+    assert!(config.cgroup_control);
+    assert!(config.seccomp_filtering);
+    assert!(config.capabilities_management);
+}
+
+#[test]
+fn test_windows_config_default() {
+    let config = WindowsCompatConfig::default();
+
+    assert!(config.job_object_control);
+    assert!(config.token_restriction);
+    assert!(config.app_container_isolation);
+    assert!(config.integrity_levels);
+}
+
+#[test]
+fn test_macos_config_default() {
+    let config = MacOSCompatConfig::default();
+
+    assert!(config.sandbox_profiles);
+    assert!(config.sip_integration);
+    assert!(config.tcc_integration);
+    assert!(config.code_signing);
+}
+
+#[test]
+fn test_legacy_config_default() {
+    let config = LegacyCompatConfig::default();
+
+    assert_eq!(config.target_system, "generic");
+    assert_eq!(config.emulation_mode, "basic");
+    assert!(config.resource_limits.is_empty());
+    assert!(config.compatibility_mappings.is_empty());
+}
+
+#[test]
+fn test_linux_layer_creation() {
+    let layer = LinuxCompatibilityLayer::new();
+    let config = layer.get_config();
+
+    assert!(config.namespace_isolation);
+}
+
+#[test]
+fn test_windows_layer_creation() {
+    let layer = WindowsCompatibilityLayer::new();
+    let config = layer.get_config();
+
+    assert!(config.job_object_control);
+}
+
+#[test]
+fn test_macos_layer_creation() {
+    let layer = MacOSCompatibilityLayer::new();
+    let config = layer.get_config();
+
+    assert!(config.sandbox_profiles);
+}
+
+#[test]
+fn test_legacy_layer_creation() {
+    let layer = LegacyCompatibilityLayer::new();
+    let config = layer.get_config();
+
+    assert_eq!(config.target_system, "generic");
+}
+
+#[test]
+fn test_linux_layer_default() {
+    let layer = LinuxCompatibilityLayer::default();
+    assert_eq!(layer.name(), "linux");
+}
+
+#[test]
+fn test_windows_layer_default() {
+    let layer = WindowsCompatibilityLayer::default();
+    assert_eq!(layer.name(), "windows");
+}
+
+#[test]
+fn test_macos_layer_default() {
+    let layer = MacOSCompatibilityLayer::default();
+    assert_eq!(layer.name(), "macos");
+}
+
+#[test]
+fn test_legacy_layer_default() {
+    let layer = LegacyCompatibilityLayer::default();
+    assert_eq!(layer.name(), "legacy");
+}
+
+#[test]
+fn test_linux_layer_features() {
+    let layer = LinuxCompatibilityLayer::new();
+    let features = layer.features();
+
+    assert!(features.contains(&"namespaces".to_string()));
+    assert!(features.contains(&"cgroups".to_string()));
+}
+
+#[test]
+fn test_windows_layer_features() {
+    let layer = WindowsCompatibilityLayer::new();
+    let features = layer.features();
+
+    assert!(features.contains(&"job_objects".to_string()));
+    assert!(features.contains(&"tokens".to_string()));
+}
+
+#[test]
+fn test_macos_layer_features() {
+    let layer = MacOSCompatibilityLayer::new();
+    let features = layer.features();
+
+    assert!(features.contains(&"sandbox_profiles".to_string()));
+    assert!(features.contains(&"sip".to_string()));
+}
+
+#[test]
+fn test_legacy_layer_features() {
+    let layer = LegacyCompatibilityLayer::new();
+    let features = layer.features();
+
+    assert!(features.contains(&"emulation".to_string()));
+    assert!(features.contains(&"compatibility".to_string()));
+}
+
+#[test]
+fn test_linux_can_handle() {
+    let layer = LinuxCompatibilityLayer::new();
+    let request = ExecutionRequest::default();
+    assert_eq!(
+        CompatibilityLayer::can_handle(&layer, &request),
+        cfg!(target_os = "linux")
+    );
+}
+
+#[test]
+fn test_windows_can_handle() {
+    let layer = WindowsCompatibilityLayer::new();
+    let request = ExecutionRequest::default();
+    assert_eq!(
+        CompatibilityLayer::can_handle(&layer, &request),
+        cfg!(target_os = "windows")
+    );
+}
+
+#[test]
+fn test_macos_can_handle() {
+    let layer = MacOSCompatibilityLayer::new();
+    let request = ExecutionRequest::default();
+    assert_eq!(
+        CompatibilityLayer::can_handle(&layer, &request),
+        cfg!(target_os = "macos")
+    );
+}
+
+#[test]
+fn test_legacy_can_handle() {
+    let layer = LegacyCompatibilityLayer::new();
+    let request = ExecutionRequest::default();
+    assert!(CompatibilityLayer::can_handle(&layer, &request));
+}
+
+#[test]
+fn test_config_serialization_linux() {
+    let config = LinuxCompatConfig::default();
+    let json = serde_json::to_string(&config).expect("Failed to serialize");
+    let deserialized: LinuxCompatConfig =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
+    assert_eq!(deserialized.namespace_isolation, config.namespace_isolation);
+}
+
+#[test]
+fn test_config_serialization_windows() {
+    let config = WindowsCompatConfig::default();
+    let json = serde_json::to_string(&config).expect("Failed to serialize");
+    let deserialized: WindowsCompatConfig =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
+    assert_eq!(deserialized.job_object_control, config.job_object_control);
+}
+
+#[test]
+fn test_config_serialization_macos() {
+    let config = MacOSCompatConfig::default();
+    let json = serde_json::to_string(&config).expect("Failed to serialize");
+    let deserialized: MacOSCompatConfig =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
+    assert_eq!(deserialized.sandbox_profiles, config.sandbox_profiles);
+}
+
+#[test]
+fn test_config_serialization_legacy() {
+    let config = LegacyCompatConfig::default();
+    let json = serde_json::to_string(&config).expect("Failed to serialize");
+    let deserialized: LegacyCompatConfig =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
+    assert_eq!(deserialized.target_system, config.target_system);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_linux_initialize() {
+    let mut layer = LinuxCompatibilityLayer::new();
+    let result = layer.initialize().await;
+
+    if cfg!(target_os = "linux") {
+        assert!(result.is_ok());
+        assert!(layer.uname_info().is_some());
+        let uname = layer.uname_info().unwrap();
+        assert!(!uname.is_empty());
+        assert!(!uname.contains("not_linux"));
+    } else {
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("linux"));
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_windows_initialize() {
+    let mut layer = WindowsCompatibilityLayer::new();
+    let result = layer.initialize().await;
+
+    if cfg!(target_os = "windows") {
+        assert!(result.is_ok());
+    } else {
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("windows"));
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_macos_initialize() {
+    let mut layer = MacOSCompatibilityLayer::new();
+    let result = layer.initialize().await;
+
+    if cfg!(target_os = "macos") {
+        assert!(result.is_ok());
+    } else {
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("macos"));
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_legacy_initialize() {
+    let mut layer = LegacyCompatibilityLayer::new();
+    let result = layer.initialize().await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_linux_shutdown() {
+    let mut layer = LinuxCompatibilityLayer::new();
+    let result = layer.shutdown().await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_windows_shutdown() {
+    let mut layer = WindowsCompatibilityLayer::new();
+    let result = layer.shutdown().await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_macos_shutdown() {
+    let mut layer = MacOSCompatibilityLayer::new();
+    let result = layer.shutdown().await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_legacy_shutdown() {
+    let mut layer = LegacyCompatibilityLayer::new();
+    let result = layer.shutdown().await;
+
+    assert!(result.is_ok());
+}

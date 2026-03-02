@@ -315,7 +315,14 @@ impl Drop for DeviceLease {
     }
 }
 
-/// Advanced device pool with quotas and requirements-based selection
+/// Advanced device pool with quotas and requirements-based selection.
+///
+/// # NVK device-creation serialization (hotSpring S68)
+///
+/// Device creation MUST remain sequential (not `join_all`). On NVK (nouveau),
+/// concurrent `wgpu::Adapter::request_device` calls race on the kernel DRM
+/// file descriptor and can trigger a mesa assertion or silent device loss.
+/// The current `for` loop in `with_config` serializes creation by design.
 pub struct MultiDevicePool {
     inner: Arc<MultiDevicePoolInner>,
 }

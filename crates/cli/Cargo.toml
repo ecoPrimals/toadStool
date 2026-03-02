@@ -66,6 +66,7 @@ clap = { version = "4.4", features = ["derive", "color", "suggestions"] }
 
 # Async runtime
 tokio = { workspace = true, features = ["full"] }
+futures = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
@@ -77,7 +78,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
+serde_yaml_ng = "0.10"
 toml = "0.8"
 bytes = { workspace = true }
 

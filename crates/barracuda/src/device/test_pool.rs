@@ -13,7 +13,25 @@
 //! runtime flaws that would appear in production under sustained load.
 
 use crate::device::WgpuDevice;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, OnceLock, RwLock};
+
+/// Block on a future, compatible with both sync and tokio contexts.
+///
+/// When called from within a Tokio runtime, uses `block_in_place` to avoid
+/// "Cannot start a runtime from within a runtime" panics. When called from
+/// sync code, uses a lazily-created static runtime.
+pub fn tokio_block_on<F: std::future::Future>(f: F) -> F::Output {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(f)),
+        Err(_) => {
+            static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+            let rt = RT.get_or_init(|| {
+                tokio::runtime::Runtime::new().expect("Failed to create tokio runtime")
+            });
+            rt.block_on(f)
+        }
+    }
+}
 
 // ============================================================================
 // Pool storage
@@ -114,33 +132,45 @@ fn is_device_healthy(device: &WgpuDevice) -> bool {
     !device.is_lost()
 }
 
-/// Get or create from a specific pool, with health-check and recreation.
-fn get_or_create_pool(
-    pool: &RwLock<Option<Arc<WgpuDevice>>>,
-    creator: impl FnOnce() -> Option<Arc<WgpuDevice>>,
-) -> Option<Arc<WgpuDevice>> {
-    // Fast path
-    {
-        let guard = pool.read().unwrap_or_else(|e| e.into_inner());
-        if let Some(ref dev) = *guard {
-            if is_device_healthy(dev) {
-                return Some(Arc::clone(dev));
-            }
-        }
-    }
-    // Slow path: create or recreate
-    let mut guard = pool.write().unwrap_or_else(|e| e.into_inner());
+/// Fast-path check: returns cached healthy device or None.
+fn try_get_cached(pool: &RwLock<Option<Arc<WgpuDevice>>>) -> Option<Arc<WgpuDevice>> {
+    let guard = pool.read().unwrap_or_else(|e| e.into_inner());
     if let Some(ref dev) = *guard {
         if is_device_healthy(dev) {
             return Some(Arc::clone(dev));
+        }
+    }
+    None
+}
+
+/// Insert a new device into the pool (double-checked locking).
+fn insert_into_pool(
+    pool: &RwLock<Option<Arc<WgpuDevice>>>,
+    device: Arc<WgpuDevice>,
+) -> Arc<WgpuDevice> {
+    let mut guard = pool.write().unwrap_or_else(|e| e.into_inner());
+    if let Some(ref dev) = *guard {
+        if is_device_healthy(dev) {
+            return Arc::clone(dev);
         }
         tracing::warn!("test_pool: device lost — recreating");
         crate::device::tensor_context::clear_global_contexts();
         crate::device::pipeline_cache::clear_global_cache();
     }
+    *guard = Some(Arc::clone(&device));
+    device
+}
+
+/// Get or create from a specific pool (sync version for non-async callers).
+fn get_or_create_pool(
+    pool: &RwLock<Option<Arc<WgpuDevice>>>,
+    creator: impl FnOnce() -> Option<Arc<WgpuDevice>>,
+) -> Option<Arc<WgpuDevice>> {
+    if let Some(dev) = try_get_cached(pool) {
+        return Some(dev);
+    }
     let new_device = creator()?;
-    *guard = Some(Arc::clone(&new_device));
-    Some(new_device)
+    Some(insert_into_pool(pool, new_device))
 }
 
 // ============================================================================
@@ -159,8 +189,13 @@ pub async fn get_test_device() -> Arc<WgpuDevice> {
             .expect("BARRACUDA_TEST_BACKEND=gpu but no GPU available");
     }
 
-    // Try CPU first
-    if let Some(dev) = get_test_cpu_device() {
+    // Try CPU first (check cache synchronously)
+    if let Some(dev) = try_get_cached(&CPU_POOL) {
+        return dev;
+    }
+
+    // Create CPU device asynchronously
+    if let Some(dev) = get_test_cpu_device_async().await {
         return dev;
     }
 
@@ -170,26 +205,40 @@ pub async fn get_test_device() -> Arc<WgpuDevice> {
         .expect("No test device available (neither CPU nor GPU)")
 }
 
-/// Get the CPU test device (llvmpipe/software).
+/// Get the CPU test device (llvmpipe/software) — async version.
+async fn get_test_cpu_device_async() -> Option<Arc<WgpuDevice>> {
+    if let Some(dev) = try_get_cached(&CPU_POOL) {
+        return Some(dev);
+    }
+    let new_dev = create_cpu_device().await?;
+    CPU_AVAILABLE.get_or_init(|| true);
+    Some(insert_into_pool(&CPU_POOL, new_dev))
+}
+
+/// Get the CPU test device (llvmpipe/software) — sync version.
 /// Returns None if no CPU backend is available.
 pub fn get_test_cpu_device() -> Option<Arc<WgpuDevice>> {
+    if let Some(dev) = try_get_cached(&CPU_POOL) {
+        return Some(dev);
+    }
     let available = *CPU_AVAILABLE
-        .get_or_init(|| pollster::block_on(async { create_cpu_device().await.is_some() }));
+        .get_or_init(|| tokio_block_on(async { create_cpu_device().await.is_some() }));
     if !available {
         return None;
     }
 
-    get_or_create_pool(&CPU_POOL, || pollster::block_on(create_cpu_device()))
+    get_or_create_pool(&CPU_POOL, || tokio_block_on(create_cpu_device()))
 }
 
 /// Get the GPU test device. Returns None if no real GPU is available.
 pub async fn get_test_gpu_device() -> Option<Arc<WgpuDevice>> {
-    get_or_create_pool(&GPU_POOL, || {
-        let dev = pollster::block_on(create_gpu_device());
-        GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
-        GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
-        Some(dev)
-    })
+    if let Some(dev) = try_get_cached(&GPU_POOL) {
+        return Some(dev);
+    }
+    let dev = create_gpu_device().await;
+    GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
+    GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
+    Some(insert_into_pool(&GPU_POOL, dev))
 }
 
 /// Get a GPU device only if it's real hardware (not software fallback).
@@ -219,7 +268,7 @@ pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
 fn get_test_device_sync_inner() -> Arc<WgpuDevice> {
     if prefer_gpu() {
         return get_or_create_pool(&GPU_POOL, || {
-            let dev = pollster::block_on(create_gpu_device());
+            let dev = tokio_block_on(create_gpu_device());
             GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
             GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
             Some(dev)
@@ -234,7 +283,7 @@ fn get_test_device_sync_inner() -> Arc<WgpuDevice> {
 
     // Fall back to GPU
     get_or_create_pool(&GPU_POOL, || {
-        let dev = pollster::block_on(create_gpu_device());
+        let dev = tokio_block_on(create_gpu_device());
         GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
         GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
         Some(dev)
@@ -258,7 +307,7 @@ pub fn get_test_device_sync() -> Arc<WgpuDevice> {
 /// Sync wrapper for `get_test_device_if_gpu_available`.
 pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
     let device = get_or_create_pool(&GPU_POOL, || {
-        let dev = pollster::block_on(create_gpu_device());
+        let dev = tokio_block_on(create_gpu_device());
         GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
         GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
         Some(dev)
@@ -273,7 +322,7 @@ pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
 /// Sync wrapper for `get_test_device_if_f64_gpu_available`.
 pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
     let device = get_or_create_pool(&GPU_POOL, || {
-        let dev = pollster::block_on(create_gpu_device());
+        let dev = tokio_block_on(create_gpu_device());
         GPU_IS_REAL.get_or_init(|| dev.adapter_info().device_type != wgpu::DeviceType::Cpu);
         GPU_HAS_F64.get_or_init(|| dev.has_f64_shaders());
         Some(dev)
@@ -342,7 +391,7 @@ pub mod test_prelude {
 
     /// Create test tensor (sync version)
     pub fn test_tensor_blocking(data: &[f32], shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
-        pollster::block_on(test_tensor(data, shape, device))
+        tokio_block_on(test_tensor(data, shape, device))
     }
 
     /// Create zeros tensor on shared device

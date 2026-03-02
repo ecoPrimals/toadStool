@@ -295,7 +295,8 @@ pub mod development {
     /// Default development watch file changes
     pub const DEFAULT_DEV_WATCH_FILES: bool = true;
 
-    /// Default development stub external services (use placeholder implementations when true)
+    /// Use placeholder implementations for external services when true.
+    /// Override via TOADSTOOL_STUB_EXTERNAL_SERVICES env var.
     pub const DEFAULT_DEV_STUB_EXTERNAL: bool = true;
 
     /// Default development disable auth
@@ -358,7 +359,8 @@ pub mod production {
     /// Default production watch file changes
     pub const DEFAULT_PROD_WATCH_FILES: bool = false;
 
-    /// Default production stub external services (use placeholder implementations when true)
+    /// Use placeholder implementations for external services when true.
+    /// Production default: false (use real services). Override via TOADSTOOL_STUB_EXTERNAL_SERVICES.
     pub const DEFAULT_PROD_STUB_EXTERNAL: bool = false;
 
     /// Default production disable auth

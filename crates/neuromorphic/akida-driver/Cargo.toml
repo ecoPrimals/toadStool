@@ -29,14 +29,11 @@ bytemuck = { version = "1", features = ["derive"] }
 # Async runtime (optional)
 tokio = { version = "1", features = ["fs", "io-util"], optional = true }
 
-# Unix-specific - Pure Rust Evolution (Feb 17, 2026)
+# Unix-specific - Pure Rust Evolution (ecoBin compliant, Mar 2026)
 # - mmap/munmap/mlock/munlock: rustix (pure Rust)
-# - VFIO ioctls: libc (kernel-specific, not in rustix)
+# - VFIO ioctls: rustix::ioctl (pure Rust, no C deps)
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1.0", features = ["fs", "mm"] }
-# libc only for VFIO ioctl() syscall - rustix doesn't cover kernel-specific ioctls
-# All other syscalls (mmap, mlock, etc.) use rustix
-libc = "0.2"
+rustix = { version = "1.1", features = ["fs", "mm"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }

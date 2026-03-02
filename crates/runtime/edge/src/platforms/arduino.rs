@@ -451,6 +451,7 @@ impl ArduinoDevice {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl EdgeDevice for ArduinoDevice {
     fn get_id(&self) -> Uuid {

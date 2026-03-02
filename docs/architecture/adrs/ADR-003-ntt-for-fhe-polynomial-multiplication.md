@@ -347,7 +347,7 @@ Speedup:    ~107x (excellent scaling!)
 ### Implementation
 - Shaders: `crates/barracuda/src/ops/fhe_ntt.wgsl`, `fhe_intt.wgsl`
 - Rust: `crates/barracuda/src/ops/fhe_ntt.rs`, `fhe_intt.rs`
-- Tests: `tests/fhe_shader_unit_tests.rs`
+- Tests: `tests/fhe/` (modular: ntt, intt, pointwise, fast_poly_mul, error_handling, performance)
 
 ### Benchmarks
 - `crates/barracuda/examples/fhe_ntt_validation.rs`

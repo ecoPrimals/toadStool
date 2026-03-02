@@ -18,7 +18,6 @@ thiserror = { workspace = true }
 # Optional: enable with the "gpu" feature for GPU acceleration.
 # Without GPU, barracuda provides CPU-only math (special, numerical, linalg).
 wgpu = { workspace = true, optional = true }
-pollster = { version = "0.3", optional = true }
 bytemuck = { version = "1.14", features = ["derive"], optional = true }
 
 # Sovereign compiler: naga as a library for WGSL parsing + SPIR-V emission.
@@ -66,7 +65,7 @@ unwrap_used = "warn"
 default = ["gpu"]
 
 # GPU acceleration via wgpu/WebGPU. Without this, only CPU math is available.
-gpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck", "dep:naga"]
+gpu = ["dep:wgpu", "dep:bytemuck", "dep:naga"]
 
 # Serialization support for calibration caching
 serde = []

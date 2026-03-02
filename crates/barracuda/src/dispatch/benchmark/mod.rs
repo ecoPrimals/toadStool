@@ -504,7 +504,7 @@ impl BenchmarkSuite {
 /// Uses `WgpuDevice::new()` for a consistent probe rather than duplicating
 /// low-level wgpu setup code.
 fn check_gpu() -> (bool, Option<String>, Option<Arc<crate::device::WgpuDevice>>) {
-    match pollster::block_on(crate::device::WgpuDevice::new()) {
+    match crate::device::test_pool::tokio_block_on(crate::device::WgpuDevice::new()) {
         Ok(device) => {
             let name = device.adapter_info().name.clone();
             (true, Some(name), Some(Arc::new(device)))

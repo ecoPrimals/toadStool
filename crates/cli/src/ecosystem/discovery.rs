@@ -177,8 +177,6 @@ pub async fn discover_service_by_capability(
     }
 
     // FUTURE: Service mesh integration (Consul, etcd, K8s) planned for v0.3.0
-    // This requires deploying to a service mesh environment first.
-    // See: docs/planning/SERVICE_MESH_INTEGRATION.md (to be created)
 
     // No service found
     warn!("No service found for capability: {}", capability_category);

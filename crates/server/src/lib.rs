@@ -57,10 +57,13 @@
 //! ```
 
 // Re-export public types
-pub use config::*;
-pub use errors::*;
+pub use config::{
+    AuthenticationConfig, HealthCheckConfig, LoggingConfig, PrimalCapabilitiesConfig,
+    RateLimitingConfig, ServerConfig,
+};
+pub use errors::{ServerError, ServerResult};
 pub use server::ToadStoolServer;
-pub use state::*;
+pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerStatistics};
 
 // Re-export server functions for daemon
 #[deprecated(
@@ -90,7 +93,7 @@ pub use tarpc_server::TestExecutor;
 
 // EVOLVED: Test exports properly isolated
 #[cfg(test)]
-pub use mocks::*;
+pub use mocks::{MockResourceMonitor, MockSystemResourcesWithUsage};
 
 // Module declarations
 pub mod background;
@@ -146,7 +149,12 @@ pub use background::start_background_services;
 pub use unibin::run_server_main;
 
 // Re-export pure RPC types (deep debt solution)
-pub use rpc_types::*;
+pub use rpc_types::semantic_methods;
+pub use rpc_types::{
+    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
+    ResourceRequirements, TarpcWorkloadSubmission, ToadStoolComputeRpc, ToadStoolComputeRpcClient,
+    WorkloadPriority, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+};
 
 // Re-export coordinator executor
 pub use coordinator_executor::CoordinatorExecutor;

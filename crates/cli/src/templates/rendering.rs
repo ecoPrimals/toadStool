@@ -3,13 +3,11 @@
 //! Supports both TOML (preferred, ecoBin compliant) and YAML formats.
 
 use crate::{CliContextExt, Result};
-use toadstool_config::constants::primals;
 use tracing::info;
 
 use super::types_mod::BiomeTemplate;
 use crate::BiomeManifest;
 
-/// Get template tags for categorization
 pub fn get_template_tags(template: &BiomeTemplate) -> Vec<String> {
     match template {
         BiomeTemplate::Basic => vec!["basic".to_string(), "essential".to_string()],
@@ -43,7 +41,7 @@ pub fn get_template_tags(template: &BiomeTemplate) -> Vec<String> {
         BiomeTemplate::Distributed => vec![
             "distributed".to_string(),
             "cluster".to_string(),
-            primals::SONGBIRD.to_string(),
+            "orchestration".to_string(),
         ],
         BiomeTemplate::Sovereign => vec![
             "sovereign".to_string(),
@@ -104,7 +102,7 @@ pub fn manifest_to_yaml(manifest: &BiomeManifest) -> Result<String> {
     yaml.push_str("# Note: Consider migrating to TOML format for ecoBin compliance\n\n");
 
     let yaml_content =
-        serde_yaml::to_string(manifest).context("Failed to serialize manifest to YAML")?;
+        serde_yaml_ng::to_string(manifest).context("Failed to serialize manifest to YAML")?;
 
     yaml.push_str(&yaml_content);
 
@@ -117,14 +115,14 @@ pub fn print_template_info(template: &BiomeTemplate) {
         BiomeTemplate::Basic => {
             info!("📦 Basic biome template generated");
             info!("   • Essential services for general computing");
-            info!("   • BearDog security by default");
+            info!("   • PKI security service by default");
             info!("   • Resource limits: 4 CPU, 8GB RAM, 50GB storage");
         }
         BiomeTemplate::Science => {
             info!("🔬 Science biome template generated");
             info!("   • Jupyter notebook for interactive analysis");
             info!("   • PostgreSQL database for data storage");
-            info!("   • NestGate integration for research data");
+            info!("   • Storage capability for research data");
             info!("   • Resource limits: 16 CPU, 32GB RAM, 500GB storage");
         }
         BiomeTemplate::AiResearch => {
@@ -144,7 +142,7 @@ pub fn print_template_info(template: &BiomeTemplate) {
             info!("🧬 Genomics biome template generated");
             info!("   • Bioinformatics pipeline tools");
             info!("   • Secure patient data handling");
-            info!("   • NestGate integration for datasets");
+            info!("   • Storage capability for datasets");
             info!("   • Resource limits: 32 CPU, 128GB RAM, 2TB storage");
         }
         BiomeTemplate::Vision => {
@@ -157,7 +155,7 @@ pub fn print_template_info(template: &BiomeTemplate) {
         BiomeTemplate::Distributed => {
             info!("🌐 Distributed Computing biome template generated");
             info!("   • Multi-node cluster configuration");
-            info!("   • Songbird orchestration");
+            info!("   • Orchestration service");
             info!("   • Auto-scaling capabilities");
             info!("   • Resource limits: Scalable across nodes");
         }

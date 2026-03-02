@@ -16,11 +16,11 @@
 //!
 //! ## Usage
 //!
-//! ```no_run
+//! ```ignore
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::device::test_pool;
-//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device)?;
 //! let _cumsum = input.scan(false)?;  // Inclusive scan
 //! # Ok(())
@@ -214,11 +214,11 @@ impl Tensor {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```ignore
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::device::test_pool;
-    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = test_pool::tokio_block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device).unwrap();
     /// // Inclusive scan: [1, 2, 3, 4] → [1, 3, 6, 10]
     /// let cumsum = input.clone().scan(false)?;

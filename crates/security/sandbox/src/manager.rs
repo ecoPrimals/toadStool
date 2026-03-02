@@ -1,6 +1,5 @@
 //! Cross-platform sandbox manager implementation
 
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -120,7 +119,6 @@ impl CrossPlatformSandboxManager {
     }
 }
 
-#[async_trait]
 impl SandboxManager for CrossPlatformSandboxManager {
     async fn create_sandbox(&self, mut spec: SandboxSpec) -> ToadStoolResult<String> {
         info!("Creating sandbox for workload: {:?}", spec.workload);

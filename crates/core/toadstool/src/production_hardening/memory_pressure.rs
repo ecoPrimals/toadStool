@@ -38,6 +38,7 @@ pub enum MemoryPressureLevel {
 }
 
 /// Memory pressure callback trait
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait MemoryPressureCallback: Send + Sync {
     async fn handle_pressure(&self, level: MemoryPressureLevel, usage_percent: f64);
@@ -98,6 +99,7 @@ impl MemoryPressureHandler {
 /// Default memory pressure callback
 pub struct DefaultMemoryPressureCallback;
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl MemoryPressureCallback for DefaultMemoryPressureCallback {
     async fn handle_pressure(&self, level: MemoryPressureLevel, usage_percent: f64) {

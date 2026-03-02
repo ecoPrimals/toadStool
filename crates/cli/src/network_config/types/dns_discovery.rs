@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! DNS service discovery configuration types.
+//!
+//! **Compatibility defaults**: The hardcoded primal service domains (songbird, beardog, nestgate,
+//! etc.) are compatibility defaults for legacy deployments. New discovery should use
+//! capability-based resolution (e.g., discover by ORCHESTRATION, PKI, STORAGE capabilities)
+//! rather than by primal name.
 
 use std::time::Duration;
 
@@ -50,6 +55,9 @@ pub struct ServiceDomainsConfig {
 impl ServiceDomainsConfig {
     /// Create service domains from environment or defaults
     ///
+    /// **Compatibility defaults**: These domain names are legacy compatibility defaults.
+    /// Discovery should prefer capability-based resolution over primal-name domains.
+    ///
     /// Reads TOADSTOOL_BASE_DOMAIN (default: "primal.local")
     /// and constructs service-specific domains.
     ///
@@ -81,6 +89,9 @@ impl ServiceDomainsConfig {
     }
 
     /// Create with a custom base domain
+    ///
+    /// **Compatibility defaults**: Primal-name subdomains (songbird, beardog, nestgate, etc.)
+    /// are for legacy compatibility. Prefer capability-based discovery.
     pub fn with_base_domain(base_domain: &str) -> Self {
         Self {
             toadstool: format!("toadstool.{base_domain}"),

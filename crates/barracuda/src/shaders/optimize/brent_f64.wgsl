@@ -46,7 +46,8 @@ fn vg_theta_residual(h: f64, tgt: f64) -> f64 {
 fn green_ampt_residual(f_val: f64, tgt: f64) -> f64 {
     let ks = params.aux_a;
     let psi_dt = params.aux_b;
-    let t_from_f = f_val / ks - psi_dt / ks * log_f64((h: f64 - h + 1.0) + f_val / psi_dt);
+    let one = f_val - f_val + 1.0;
+    let t_from_f = f_val / ks - psi_dt / ks * log_f64(one + f_val / psi_dt);
     return t_from_f - tgt;
 }
 

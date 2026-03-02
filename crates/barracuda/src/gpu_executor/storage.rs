@@ -83,6 +83,7 @@ impl GpuTensorStorage {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl TensorStorage for GpuTensorStorage {
     fn descriptor(&self) -> &TensorDescriptor {
@@ -127,7 +128,7 @@ impl TensorStorage for GpuTensorStorage {
         slice.map_async(wgpu::MapMode::Read, move |r| {
             let _ = tx.send(r);
         });
-        self.device.device.poll(wgpu::Maintain::Wait);
+        self.device.poll_safe()?;
         rx.recv()
             .map_err(|_| crate::error::BarracudaError::Gpu("map_async channel closed".to_string()))?
             .map_err(|e| crate::error::BarracudaError::Gpu(format!("Buffer map failed: {e:?}")))?;

@@ -388,6 +388,7 @@ mod tests {
         substrate_type: SubstrateType,
     }
 
+    // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
     #[async_trait]
     impl ComputeSubstrate for MockSubstrate {
         fn name(&self) -> &str {

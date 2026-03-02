@@ -75,6 +75,7 @@ impl DiscoveredService {
 }
 
 /// Service discovery trait
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait ServiceDiscoveryTrait: Send + Sync {
     async fn find_services_by_capability(

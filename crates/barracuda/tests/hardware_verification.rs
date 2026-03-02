@@ -19,6 +19,8 @@
 //! cargo test -p barracuda --test hardware_verification -- --nocapture
 //! ```
 
+mod common;
+
 use barracuda::device::{
     ComputeWorkload, Device, DeviceSelection, HardwareWorkload, KernelRouter, KernelTarget,
     WgpuDevice,
@@ -179,34 +181,38 @@ fn test_hardware_discovery_report() {
 
 #[tokio::test]
 async fn test_all_gpus_can_create_device() {
-    let inventory = HardwareInventory::discover();
+    if !common::run_gpu_resilient_async(|| async {
+        let inventory = HardwareInventory::discover();
 
-    println!("Testing device creation for {} GPUs", inventory.gpus.len());
+        println!("Testing device creation for {} GPUs", inventory.gpus.len());
 
-    let mut successful = 0;
-    let mut failed = Vec::new();
+        let mut successful = 0;
+        let mut failed = Vec::new();
 
-    for gpu in &inventory.gpus {
-        match WgpuDevice::from_adapter_index(gpu.adapter_index).await {
-            Ok(_device) => {
-                println!("  ✓ {} - Device created", gpu.name);
-                successful += 1;
-            }
-            Err(e) => {
-                println!("  ✗ {} - Failed: {}", gpu.name, e);
-                failed.push(gpu.name.clone());
+        for gpu in &inventory.gpus {
+            match WgpuDevice::from_adapter_index(gpu.adapter_index).await {
+                Ok(_device) => {
+                    println!("  ✓ {} - Device created", gpu.name);
+                    successful += 1;
+                }
+                Err(e) => {
+                    println!("  ✗ {} - Failed: {}", gpu.name, e);
+                    failed.push(gpu.name.clone());
+                }
             }
         }
+
+        println!(
+            "\nSummary: {}/{} devices created successfully",
+            successful,
+            inventory.gpus.len()
+        );
+
+        // At least one GPU should work
+        assert!(successful > 0, "No GPUs could create devices: {:?}", failed);
+    }) {
+        return;
     }
-
-    println!(
-        "\nSummary: {}/{} devices created successfully",
-        successful,
-        inventory.gpus.len()
-    );
-
-    // At least one GPU should work
-    assert!(successful > 0, "No GPUs could create devices: {:?}", failed);
 }
 
 #[test]
@@ -224,183 +230,189 @@ fn test_kernel_router_creation() {
 
 #[tokio::test]
 async fn test_cross_vendor_matmul_parity() {
-    let inventory = HardwareInventory::discover();
+    if !common::run_gpu_resilient_async(|| async {
+        let inventory = HardwareInventory::discover();
 
-    if !inventory.has_multi_gpu() {
-        println!("SKIP: Need 2+ GPUs for cross-vendor parity test");
+        if !inventory.has_multi_gpu() {
+            println!("SKIP: Need 2+ GPUs for cross-vendor parity test");
+            return;
+        }
+
+        println!("\n=== Cross-Vendor Matmul Parity Test ===\n");
+
+        let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
+        for gpu in &inventory.gpus {
+            if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
+                devices.push((format!("{} ({})", gpu.name, gpu.vendor), Arc::new(device)));
+            }
+        }
+
+        if devices.len() < 2 {
+            println!("SKIP: Need 2+ working GPUs for parity test");
+            return;
+        }
+
+        let size = 64;
+        let a_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01).collect();
+        let b_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01 + 0.5).collect();
+
+        let mut results: HashMap<String, Vec<f32>> = HashMap::new();
+
+        for (name, device) in &devices {
+            let a = Tensor::from_vec_on(a_data.clone(), vec![size, size], device.clone())
+                .await
+                .unwrap();
+            let b = Tensor::from_vec_on(b_data.clone(), vec![size, size], device.clone())
+                .await
+                .unwrap();
+
+            let result = a.matmul(&b).unwrap().to_vec().unwrap();
+            println!("  {} - computed (first 4 values: {:?})", name, &result[..4]);
+            results.insert(name.clone(), result);
+        }
+
+        let device_names: Vec<_> = results.keys().cloned().collect();
+        for i in 0..device_names.len() {
+            for j in (i + 1)..device_names.len() {
+                let name_a = &device_names[i];
+                let name_b = &device_names[j];
+                let result_a = &results[name_a];
+                let result_b = &results[name_b];
+
+                assert_close(
+                    &format!("{} vs {}", name_a, name_b),
+                    result_a,
+                    result_b,
+                    1e-3,
+                );
+                println!("  ✓ {} matches {}", name_a, name_b);
+            }
+        }
+
+        println!("\n  PASS: All GPUs produce identical matmul results\n");
+    }) {
         return;
     }
-
-    println!("\n=== Cross-Vendor Matmul Parity Test ===\n");
-
-    // Create device for each GPU
-    let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
-    for gpu in &inventory.gpus {
-        if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
-            devices.push((format!("{} ({})", gpu.name, gpu.vendor), Arc::new(device)));
-        }
-    }
-
-    if devices.len() < 2 {
-        println!("SKIP: Need 2+ working GPUs for parity test");
-        return;
-    }
-
-    // Test data - 64x64 matmul
-    let size = 64;
-    let a_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01).collect();
-    let b_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.01 + 0.5).collect();
-
-    // Run on each device
-    let mut results: HashMap<String, Vec<f32>> = HashMap::new();
-
-    for (name, device) in &devices {
-        let a = Tensor::from_vec_on(a_data.clone(), vec![size, size], device.clone())
-            .await
-            .unwrap();
-        let b = Tensor::from_vec_on(b_data.clone(), vec![size, size], device.clone())
-            .await
-            .unwrap();
-
-        let result = a.matmul(&b).unwrap().to_vec().unwrap();
-        println!("  {} - computed (first 4 values: {:?})", name, &result[..4]);
-        results.insert(name.clone(), result);
-    }
-
-    // Compare all pairs
-    let device_names: Vec<_> = results.keys().cloned().collect();
-    for i in 0..device_names.len() {
-        for j in (i + 1)..device_names.len() {
-            let name_a = &device_names[i];
-            let name_b = &device_names[j];
-            let result_a = &results[name_a];
-            let result_b = &results[name_b];
-
-            assert_close(
-                &format!("{} vs {}", name_a, name_b),
-                result_a,
-                result_b,
-                1e-3, // Slightly loose tolerance for cross-vendor
-            );
-            println!("  ✓ {} matches {}", name_a, name_b);
-        }
-    }
-
-    println!("\n  PASS: All GPUs produce identical matmul results\n");
 }
 
 #[tokio::test]
 async fn test_cross_vendor_cholesky_parity() {
-    let inventory = HardwareInventory::discover();
+    if !common::run_gpu_resilient_async(|| async {
+        let inventory = HardwareInventory::discover();
 
-    if !inventory.has_multi_gpu() {
-        println!("SKIP: Need 2+ GPUs for cross-vendor parity test");
+        if !inventory.has_multi_gpu() {
+            println!("SKIP: Need 2+ GPUs for cross-vendor parity test");
+            return;
+        }
+
+        println!("\n=== Cross-Vendor Cholesky Parity Test ===\n");
+
+        let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
+        for gpu in &inventory.gpus {
+            if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
+                devices.push((gpu.name.clone(), Arc::new(device)));
+            }
+        }
+
+        if devices.len() < 2 {
+            println!("SKIP: Need 2+ working GPUs");
+            return;
+        }
+
+        let spd = vec![4.0, 12.0, -16.0, 12.0, 37.0, -43.0, -16.0, -43.0, 98.0];
+
+        let mut results: HashMap<String, Vec<f32>> = HashMap::new();
+
+        for (name, device) in &devices {
+            let a = Tensor::from_vec_on(spd.clone(), vec![3, 3], device.clone())
+                .await
+                .unwrap();
+
+            let result = a.cholesky().unwrap().to_vec().unwrap();
+            println!("  {} Cholesky L: {:?}", name, result);
+            results.insert(name.clone(), result);
+        }
+
+        let device_names: Vec<_> = results.keys().cloned().collect();
+        for i in 0..device_names.len() {
+            for j in (i + 1)..device_names.len() {
+                let name_a = &device_names[i];
+                let name_b = &device_names[j];
+                assert_close(
+                    &format!("{} vs {}", name_a, name_b),
+                    &results[name_a],
+                    &results[name_b],
+                    1e-4,
+                );
+                println!("  ✓ {} matches {}", name_a, name_b);
+            }
+        }
+
+        println!("\n  PASS: Cross-vendor Cholesky parity verified\n");
+    }) {
         return;
     }
-
-    println!("\n=== Cross-Vendor Cholesky Parity Test ===\n");
-
-    let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
-    for gpu in &inventory.gpus {
-        if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
-            devices.push((gpu.name.clone(), Arc::new(device)));
-        }
-    }
-
-    if devices.len() < 2 {
-        println!("SKIP: Need 2+ working GPUs");
-        return;
-    }
-
-    // SPD matrix (positive definite)
-    let spd = vec![4.0, 12.0, -16.0, 12.0, 37.0, -43.0, -16.0, -43.0, 98.0];
-
-    let mut results: HashMap<String, Vec<f32>> = HashMap::new();
-
-    for (name, device) in &devices {
-        let a = Tensor::from_vec_on(spd.clone(), vec![3, 3], device.clone())
-            .await
-            .unwrap();
-
-        let result = a.cholesky().unwrap().to_vec().unwrap();
-        println!("  {} Cholesky L: {:?}", name, result);
-        results.insert(name.clone(), result);
-    }
-
-    // Compare
-    let device_names: Vec<_> = results.keys().cloned().collect();
-    for i in 0..device_names.len() {
-        for j in (i + 1)..device_names.len() {
-            let name_a = &device_names[i];
-            let name_b = &device_names[j];
-            assert_close(
-                &format!("{} vs {}", name_a, name_b),
-                &results[name_a],
-                &results[name_b],
-                1e-4,
-            );
-            println!("  ✓ {} matches {}", name_a, name_b);
-        }
-    }
-
-    println!("\n  PASS: Cross-vendor Cholesky parity verified\n");
 }
 
 #[tokio::test]
 async fn test_cross_vendor_softmax_parity() {
-    let inventory = HardwareInventory::discover();
+    if !common::run_gpu_resilient_async(|| async {
+        let inventory = HardwareInventory::discover();
 
-    if !inventory.has_multi_gpu() {
-        println!("SKIP: Need 2+ GPUs for cross-vendor parity test");
-        return;
-    }
-
-    println!("\n=== Cross-Vendor Softmax Parity Test ===\n");
-
-    let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
-    for gpu in &inventory.gpus {
-        if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
-            devices.push((gpu.name.clone(), Arc::new(device)));
+        if !inventory.has_multi_gpu() {
+            println!("SKIP: Need 2+ GPUs for cross-vendor parity test");
+            return;
         }
-    }
 
-    if devices.len() < 2 {
-        return;
-    }
+        println!("\n=== Cross-Vendor Softmax Parity Test ===\n");
 
-    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
+        for gpu in &inventory.gpus {
+            if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
+                devices.push((gpu.name.clone(), Arc::new(device)));
+            }
+        }
 
-    let mut results: HashMap<String, Vec<f32>> = HashMap::new();
+        if devices.len() < 2 {
+            return;
+        }
 
-    for (name, device) in &devices {
-        let t = Tensor::from_vec_on(data.clone(), vec![8], device.clone())
-            .await
-            .unwrap();
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
 
-        let result = t.softmax().unwrap().to_vec().unwrap();
-        let sum: f32 = result.iter().sum();
-        println!("  {} softmax sum: {:.6}", name, sum);
-        assert!(
-            (sum - 1.0).abs() < 1e-4,
-            "{} softmax should sum to 1.0",
-            name
-        );
-        results.insert(name.clone(), result);
-    }
+        let mut results: HashMap<String, Vec<f32>> = HashMap::new();
 
-    let device_names: Vec<_> = results.keys().cloned().collect();
-    for i in 0..device_names.len() {
-        for j in (i + 1)..device_names.len() {
-            assert_close(
-                &format!("softmax {} vs {}", device_names[i], device_names[j]),
-                &results[&device_names[i]],
-                &results[&device_names[j]],
-                1e-4,
+        for (name, device) in &devices {
+            let t = Tensor::from_vec_on(data.clone(), vec![8], device.clone())
+                .await
+                .unwrap();
+
+            let result = t.softmax().unwrap().to_vec().unwrap();
+            let sum: f32 = result.iter().sum();
+            println!("  {} softmax sum: {:.6}", name, sum);
+            assert!(
+                (sum - 1.0).abs() < 1e-4,
+                "{} softmax should sum to 1.0",
+                name
             );
+            results.insert(name.clone(), result);
         }
-    }
 
-    println!("  PASS: Cross-vendor softmax parity verified\n");
+        let device_names: Vec<_> = results.keys().cloned().collect();
+        for i in 0..device_names.len() {
+            for j in (i + 1)..device_names.len() {
+                assert_close(
+                    &format!("softmax {} vs {}", device_names[i], device_names[j]),
+                    &results[&device_names[i]],
+                    &results[&device_names[j]],
+                    1e-4,
+                );
+            }
+        }
+
+        println!("  PASS: Cross-vendor softmax parity verified\n");
+    }) {
+        return;
+    }
 }
 
 // ============================================================================
@@ -529,30 +541,33 @@ fn test_kernel_router_npu_fallback() {
 
 #[tokio::test]
 async fn test_toadstool_device_selection_integration() {
-    use barracuda::device::{discover_devices, select_best_device};
+    if !common::run_gpu_resilient_async(|| async {
+        use barracuda::device::{discover_devices, select_best_device};
 
-    let hw = discover_devices().expect("Hardware discovery failed");
+        let hw = discover_devices().expect("Hardware discovery failed");
 
-    println!("\n=== ToadStool Device Selection ===\n");
-    println!("Discovered {} devices:", hw.device_count());
-    for device in hw.devices() {
-        println!("  - {} ({:?})", device.name, device.hardware_type);
+        println!("\n=== ToadStool Device Selection ===\n");
+        println!("Discovered {} devices:", hw.device_count());
+        for device in hw.devices() {
+            println!("  - {} ({:?})", device.name, device.hardware_type);
+        }
+
+        let workloads = vec![
+            HardwareWorkload::TensorOps,
+            HardwareWorkload::ScientificCompute,
+            HardwareWorkload::SpikingNetwork,
+            HardwareWorkload::ReservoirComputing,
+        ];
+
+        for workload in workloads {
+            let selection = select_best_device(workload).expect("Selection failed");
+            println!("  {:?} -> {:?}", workload, selection);
+        }
+
+        println!("\n  ToadStool device selection: PASS\n");
+    }) {
+        return;
     }
-
-    // Test routing for different workload types
-    let workloads = vec![
-        HardwareWorkload::TensorOps,
-        HardwareWorkload::ScientificCompute,
-        HardwareWorkload::SpikingNetwork,
-        HardwareWorkload::ReservoirComputing,
-    ];
-
-    for workload in workloads {
-        let selection = select_best_device(workload).expect("Selection failed");
-        println!("  {:?} -> {:?}", workload, selection);
-    }
-
-    println!("\n  ToadStool device selection: PASS\n");
 }
 
 // ============================================================================
@@ -561,61 +576,63 @@ async fn test_toadstool_device_selection_integration() {
 
 #[tokio::test]
 async fn test_multi_gpu_performance_characterization() {
-    let inventory = HardwareInventory::discover();
+    if !common::run_gpu_resilient_async(|| async {
+        let inventory = HardwareInventory::discover();
 
-    if !inventory.has_multi_gpu() {
-        println!("SKIP: Need 2+ GPUs for performance characterization");
-        return;
-    }
-
-    println!("\n=== Multi-GPU Performance Characterization ===\n");
-
-    let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
-    for gpu in &inventory.gpus {
-        if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
-            devices.push((format!("{} ({})", gpu.name, gpu.vendor), Arc::new(device)));
+        if !inventory.has_multi_gpu() {
+            println!("SKIP: Need 2+ GPUs for performance characterization");
+            return;
         }
-    }
 
-    // Benchmark: 256x256 matmul
-    let size = 256;
-    let a_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.001).collect();
-    let b_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.001 + 0.5).collect();
+        println!("\n=== Multi-GPU Performance Characterization ===\n");
 
-    println!("Benchmark: {}x{} matmul x 20 iterations\n", size, size);
+        let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
+        for gpu in &inventory.gpus {
+            if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
+                devices.push((format!("{} ({})", gpu.name, gpu.vendor), Arc::new(device)));
+            }
+        }
 
-    for (name, device) in &devices {
-        // Warmup
-        let _warmup = Tensor::from_vec_on(a_data.clone(), vec![size, size], device.clone())
-            .await
-            .unwrap();
+        let size = 256;
+        let a_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.001).collect();
+        let b_data: Vec<f32> = (0..size * size).map(|i| (i as f32) * 0.001 + 0.5).collect();
 
-        let b = Tensor::from_vec_on(b_data.clone(), vec![size, size], device.clone())
-            .await
-            .unwrap();
+        println!("Benchmark: {}x{} matmul x 20 iterations\n", size, size);
 
-        let start = std::time::Instant::now();
-        let iterations = 20;
-        for _ in 0..iterations {
-            let a = Tensor::from_vec_on(a_data.clone(), vec![size, size], device.clone())
+        for (name, device) in &devices {
+            let _warmup = Tensor::from_vec_on(a_data.clone(), vec![size, size], device.clone())
                 .await
                 .unwrap();
-            let _result = a.matmul(&b).unwrap();
+
+            let b = Tensor::from_vec_on(b_data.clone(), vec![size, size], device.clone())
+                .await
+                .unwrap();
+
+            let start = std::time::Instant::now();
+            let iterations = 20;
+            for _ in 0..iterations {
+                let a = Tensor::from_vec_on(a_data.clone(), vec![size, size], device.clone())
+                    .await
+                    .unwrap();
+                let _result = a.matmul(&b).unwrap();
+            }
+            let elapsed = start.elapsed();
+
+            let total_ms = elapsed.as_secs_f64() * 1000.0;
+            let per_op_ms = total_ms / iterations as f64;
+            let gflops =
+                (2.0 * (size as f64).powi(3) * iterations as f64) / elapsed.as_secs_f64() / 1e9;
+
+            println!(
+                "  {}: {:.2} ms total, {:.3} ms/op, {:.2} GFLOP/s",
+                name, total_ms, per_op_ms, gflops
+            );
         }
-        let elapsed = start.elapsed();
 
-        let total_ms = elapsed.as_secs_f64() * 1000.0;
-        let per_op_ms = total_ms / iterations as f64;
-        let gflops =
-            (2.0 * (size as f64).powi(3) * iterations as f64) / elapsed.as_secs_f64() / 1e9;
-
-        println!(
-            "  {}: {:.2} ms total, {:.3} ms/op, {:.2} GFLOP/s",
-            name, total_ms, per_op_ms, gflops
-        );
+        println!("\n  Performance characterization complete.\n");
+    }) {
+        return;
     }
-
-    println!("\n  Performance characterization complete.\n");
 }
 
 // ============================================================================

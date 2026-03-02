@@ -34,7 +34,7 @@ impl NcbiCache {
             }
         };
         Ok(Self {
-            cache_dir: base.join("barracuda").join("ncbi"),
+            cache_dir: base.join(env!("CARGO_PKG_NAME")).join("ncbi"),
         })
     }
 

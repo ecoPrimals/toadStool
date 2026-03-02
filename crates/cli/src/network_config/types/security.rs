@@ -25,13 +25,13 @@ pub struct CrossPrimalSecurityConfig {
 /// Authentication configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthenticationConfig {
-    /// Authentication method (jwt, oauth2, mtls, beardog)
+    /// Authentication method (jwt, oauth2, mtls, pki)
     pub method: String,
     /// Token validation
     pub token_validation: TokenValidationConfig,
     /// Certificate validation
     pub certificate_validation: CertificateValidationConfig,
-    /// BearDog integration
+    /// PKI security service integration (legacy field name: beardog_integration)
     pub beardog_integration: BearDogIntegrationConfig,
 }
 
@@ -63,12 +63,14 @@ pub struct CertificateValidationConfig {
     pub trusted_cas: Vec<String>,
 }
 
-/// BearDog integration configuration
+/// PKI security service integration configuration (legacy name: BearDogIntegrationConfig).
+///
+/// Prefer [`PkiSecurityConfig`] alias for new code.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogIntegrationConfig {
-    /// Enable BearDog integration
+    /// Enable PKI security integration
     pub enabled: bool,
-    /// BearDog endpoint
+    /// PKI security service endpoint (discovered at runtime)
     pub endpoint: String,
     /// Authentication token
     pub auth_token: Option<String>,
@@ -77,6 +79,9 @@ pub struct BearDogIntegrationConfig {
     /// Crypto-lock integration
     pub crypto_lock: bool,
 }
+
+/// Capability-based alias — prefer for new code.
+pub type PkiSecurityConfig = BearDogIntegrationConfig;
 
 /// Authorization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

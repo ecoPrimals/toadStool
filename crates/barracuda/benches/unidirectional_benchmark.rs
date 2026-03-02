@@ -277,8 +277,9 @@ fn main() {
         (WORK_UNIT_COUNT * WORK_UNIT_SIZE) / (1024 * 1024)
     );
 
-    let device =
-        pollster::block_on(async { WgpuDevice::new().await.expect("Failed to create device") });
+    let device = tokio::runtime::Runtime::new()
+        .expect("runtime")
+        .block_on(async { WgpuDevice::new().await.expect("Failed to create device") });
 
     let device = Arc::new(device);
 

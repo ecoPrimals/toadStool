@@ -13,7 +13,6 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use async_trait::async_trait;
 use statrs::statistics::Statistics;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, error, info};
@@ -213,7 +212,6 @@ impl IntelligentAnalyticsEngine {
     }
 }
 
-#[async_trait]
 impl AnalyticsEngine for IntelligentAnalyticsEngine {
     async fn collect_data_point(&self, data_point: AnalyticsDataPoint) -> ToadStoolResult<()> {
         debug!(

@@ -12,7 +12,6 @@
 // See:
 // - `crates/cli/src/ecosystem/adapters/` - New capability-based API
 // - `specs/PRIMAL_CAPABILITY_SYSTEM.md` - Architecture documentation
-// - `docs/planning/PRIMAL_HARDCODING_ELIMINATION_PLAN.md` - Migration plan
 
 use self::discovery::*;
 

@@ -32,11 +32,19 @@ use toadstool::{
     security::SecurityContext,
 };
 
+// platforms: 30+ items (enums, structs, traits, device types); wildcard retained
 pub use platforms::*;
-pub use discovery::*;
-pub use toolchain::*;
-pub use communication::*;
-pub use deployment::*;
+pub use discovery::{
+    BluetoothDiscovery, DeviceDiscoveryService, DiscoveryMethod, MDNSDiscovery, NetworkDiscovery,
+    SerialPortDiscovery, USBDiscovery,
+};
+pub use toolchain::{
+    CompilationCache, CompilationTarget, CrossCompilationToolchain, OutputFormat, ToolchainInfo,
+};
+pub use communication::{CommunicationManager, CommunicationProtocol};
+pub use deployment::{
+    DeploymentCoordinator, DeploymentInfo, DeploymentStatus, DeploymentStrategy,
+};
 
 /// Edge/IoT Runtime Engine Configuration
 #[derive(Debug, Clone)]
@@ -273,6 +281,7 @@ impl EdgeRuntimeEngine {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl RuntimeEngine for EdgeRuntimeEngine {
     async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {

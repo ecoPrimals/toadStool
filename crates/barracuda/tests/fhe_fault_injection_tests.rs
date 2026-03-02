@@ -18,6 +18,8 @@
 //! - Recovery strategies
 //! - Comprehensive logging
 
+mod common;
+
 use barracuda::ops::fhe_ntt::FheNtt;
 use barracuda::ops::fhe_poly_add::create_fhe_poly_tensor;
 use barracuda::tensor::Tensor;
@@ -30,119 +32,123 @@ use tokio::task::JoinSet;
 
 #[tokio::test]
 async fn fault_ntt_non_power_of_two_degree() {
-    // Inject fault: Invalid degree (not power of 2)
+    if !common::run_gpu_resilient_async(|| async {
+        // Inject fault: Invalid degree (not power of 2)
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let modulus = 12289u64;
-    let root = 11u64;
-    let invalid_degrees = vec![0u32, 1, 3, 5, 6, 7, 9, 10, 15, 17, 100, 1000];
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let modulus = 12289u64;
+        let root = 11u64;
+        let invalid_degrees = vec![0u32, 1, 3, 5, 6, 7, 9, 10, 15, 17, 100, 1000];
 
-    for degree in invalid_degrees {
-        let input = vec![1u64; degree as usize];
-        let input_tensor = create_fhe_poly_tensor(&input, device.clone())
-            .await
-            .unwrap();
+        for degree in invalid_degrees {
+            let input = vec![1u64; degree as usize];
+            let input_tensor = create_fhe_poly_tensor(&input, device.clone())
+                .await
+                .unwrap();
 
-        // Should return specific error type
-        let result = FheNtt::new(input_tensor, degree, modulus, root);
+            // Should return specific error type
+            let result = FheNtt::new(input_tensor, degree, modulus, root);
 
-        // Verify error (not panic)
-        assert!(
-            result.is_err(),
-            "NTT should reject invalid degree {}",
-            degree
-        );
+            // Verify error (not panic)
+            assert!(
+                result.is_err(),
+                "NTT should reject invalid degree {}",
+                degree
+            );
 
-        println!("✅ Rejected invalid degree: {}", degree);
+            println!("✅ Rejected invalid degree: {}", degree);
+        }
+    }) {
+        return;
     }
 }
 
 #[tokio::test]
 async fn fault_ntt_mismatched_input_length() {
-    // Inject fault: Input length doesn't match degree
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let degree = 16u32;
+        let modulus = 12289u64;
+        let root = 11u64;
+        let wrong_lengths = vec![0, 1, 8, 15, 17, 32];
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let degree = 16u32;
-    let modulus = 12289u64;
-    let root = 11u64;
-    let wrong_lengths = vec![0, 1, 8, 15, 17, 32];
+        for length in wrong_lengths {
+            let input = vec![1u64; length];
+            let input_tensor = create_fhe_poly_tensor(&input, device.clone())
+                .await
+                .unwrap();
 
-    for length in wrong_lengths {
-        let input = vec![1u64; length];
-        let input_tensor = create_fhe_poly_tensor(&input, device.clone())
-            .await
-            .unwrap();
+            let result = FheNtt::new(input_tensor, degree, modulus, root);
+            assert!(
+                result.is_err(),
+                "NTT should reject mismatched length {} (expected {})",
+                length,
+                degree
+            );
 
-        // Should return length mismatch error
-        let result = FheNtt::new(input_tensor, degree, modulus, root);
-        assert!(
-            result.is_err(),
-            "NTT should reject mismatched length {} (expected {})",
-            length,
-            degree
-        );
-
-        println!(
-            "✅ Rejected mismatched length: {} (expected {})",
-            length, degree
-        );
+            println!(
+                "✅ Rejected mismatched length: {} (expected {})",
+                length, degree
+            );
+        }
+    }) {
+        return;
     }
 }
 
 #[tokio::test]
 async fn fault_ntt_coefficient_exceeds_modulus() {
-    // Inject fault: Coefficient >= modulus
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let degree = 8u32;
+        let modulus = 12289u64;
+        let root = 11u64;
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let degree = 8u32;
-    let modulus = 12289u64;
-    let root = 11u64;
+        let invalid_inputs = vec![
+            vec![modulus; degree as usize],     // All equal to modulus
+            vec![modulus + 1; degree as usize], // All exceed by 1
+            vec![u64::MAX; degree as usize],    // Large values
+        ];
 
-    let invalid_inputs = vec![
-        vec![modulus; degree as usize],     // All equal to modulus
-        vec![modulus + 1; degree as usize], // All exceed by 1
-        vec![u64::MAX; degree as usize],    // Large values
-    ];
+        for input in invalid_inputs {
+            let input_tensor = create_fhe_poly_tensor(&input, device.clone())
+                .await
+                .unwrap();
 
-    for input in invalid_inputs {
-        let input_tensor = create_fhe_poly_tensor(&input, device.clone())
-            .await
-            .unwrap();
+            let result = FheNtt::new(input_tensor, degree, modulus, root);
 
-        // Should either reduce mod q OR return error
-        let result = FheNtt::new(input_tensor, degree, modulus, root);
-
-        // Either works, just don't panic
-        if let Ok(ntt) = result {
-            // If it accepts, verify it handles correctly
-            let result_tensor = ntt.execute().unwrap();
-            let result_data = result_tensor.to_vec_u32().unwrap();
-            // Verify all results are < modulus
-            for chunk in result_data.chunks(2) {
-                let val = chunk[0] as u64 | ((chunk[1] as u64) << 32);
-                assert!(val < modulus || val % modulus < modulus);
+            if let Ok(ntt) = result {
+                let result_tensor = ntt.execute().unwrap();
+                let result_data = result_tensor.to_vec_u32().unwrap();
+                for chunk in result_data.chunks(2) {
+                    let val = chunk[0] as u64 | ((chunk[1] as u64) << 32);
+                    assert!(val < modulus || val % modulus < modulus);
+                }
             }
-        }
 
-        println!("✅ Handled coefficient >= modulus");
+            println!("✅ Handled coefficient >= modulus");
+        }
+    }) {
+        return;
     }
 }
 
 #[tokio::test]
 async fn fault_ntt_zero_modulus() {
-    // Inject fault: Modulus = 0 (would cause division by zero)
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let degree = 4u32;
+        let input = vec![1u64; degree as usize];
+        let root = 4u64;
+        let input_tensor = create_fhe_poly_tensor(&input, device).await.unwrap();
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let degree = 4u32;
-    let input = vec![1u64; degree as usize];
-    let root = 4u64;
-    let input_tensor = create_fhe_poly_tensor(&input, device).await.unwrap();
+        let result = FheNtt::new(input_tensor, degree, 0, root);
+        assert!(result.is_err(), "NTT should reject zero modulus");
 
-    // Should return error (not panic/divide by zero)
-    let result = FheNtt::new(input_tensor, degree, 0, root);
-    assert!(result.is_err(), "NTT should reject zero modulus");
-
-    println!("✅ Rejected zero modulus");
+        println!("✅ Rejected zero modulus");
+    }) {
+        return;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -151,52 +157,55 @@ async fn fault_ntt_zero_modulus() {
 
 #[tokio::test]
 async fn fault_gpu_unavailable() {
-    // Inject fault: No GPU available (force empty backend so no adapter exists)
-    let result =
-        barracuda::device::WgpuDevice::new_with_filter(wgpu::Backends::empty(), |_| true).await;
+    if !common::run_gpu_resilient_async(|| async {
+        let result =
+            barracuda::device::WgpuDevice::new_with_filter(wgpu::Backends::empty(), |_| true).await;
 
-    assert!(
-        result.is_err(),
-        "Should return error when no adapters available"
-    );
-    let err_msg = format!("{:?}", result.err().unwrap());
-    assert!(
-        err_msg.contains("adapter") || err_msg.contains("No "),
-        "Error should mention adapter/unavailability: {}",
-        err_msg
-    );
+        assert!(
+            result.is_err(),
+            "Should return error when no adapters available"
+        );
+        let err_msg = format!("{:?}", result.err().unwrap());
+        assert!(
+            err_msg.contains("adapter") || err_msg.contains("No "),
+            "Error should mention adapter/unavailability: {}",
+            err_msg
+        );
 
-    println!("✅ GPU unavailable returns clear error (no panic)");
+        println!("✅ GPU unavailable returns clear error (no panic)");
+    }) {
+        return;
+    }
 }
 
 #[tokio::test]
 async fn fault_out_of_gpu_memory() {
-    // Inject fault: GPU memory exhausted
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let mut tensors = Vec::new();
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let mut tensors = Vec::new();
+        for i in 0..10000 {
+            let size = 1024 * 1024; // 4MB per tensor
+            let data: Vec<u32> = vec![0; size];
 
-    // Allocate until failure
-    for i in 0..10000 {
-        let size = 1024 * 1024; // 4MB per tensor
-        let data: Vec<u32> = vec![0; size];
+            match Tensor::from_data_pod(&data, vec![size], device.clone()) {
+                Ok(t) => tensors.push(t),
+                Err(_e) => {
+                    println!("  OOM at iteration {} (expected)", i);
+                    break;
+                }
+            }
 
-        match Tensor::from_data_pod(&data, vec![size], device.clone()) {
-            Ok(t) => tensors.push(t),
-            Err(_e) => {
-                // Should be clear OOM error
-                println!("  OOM at iteration {} (expected)", i);
+            if i >= 9999 {
+                println!("  Allocated 10000 tensors without OOM (large GPU!)");
                 break;
             }
         }
 
-        if i >= 9999 {
-            println!("  Allocated 10000 tensors without OOM (large GPU!)");
-            break;
-        }
+        println!("✅ GPU OOM handled gracefully");
+    }) {
+        return;
     }
-
-    println!("✅ GPU OOM handled gracefully");
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -275,36 +284,36 @@ async fn fault_twiddle_factor_precision() {
 
 #[tokio::test]
 async fn fault_concurrent_tensor_access() {
-    // Inject fault: Multiple threads accessing same tensor
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let data: Vec<u32> = vec![1; 1024];
+        let tensor = Arc::new(Tensor::from_data_pod(&data, vec![1024], device.clone()).unwrap());
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let data: Vec<u32> = vec![1; 1024];
-    let tensor = Arc::new(Tensor::from_data_pod(&data, vec![1024], device.clone()).unwrap());
+        let mut set = JoinSet::new();
 
-    let mut set = JoinSet::new();
+        for i in 0..10 {
+            let t = tensor.clone();
+            let _dev = device.clone();
+            set.spawn(async move {
+                let _data = t.to_vec_u32();
+                Ok::<_, barracuda::error::BarracudaError>(i)
+            });
+        }
 
-    // 10 threads reading same tensor
-    for i in 0..10 {
-        let t = tensor.clone();
-        let _dev = device.clone();
-        set.spawn(async move {
-            // Read tensor data
-            let _data = t.to_vec_u32();
-            Ok::<_, barracuda::error::BarracudaError>(i)
-        });
-    }
-
-    let mut succeeded = 0;
-    while let Some(result) = set.join_next().await {
-        if let Ok(inner_result) = result {
-            if inner_result.is_ok() {
-                succeeded += 1;
+        let mut succeeded = 0;
+        while let Some(result) = set.join_next().await {
+            if let Ok(inner_result) = result {
+                if inner_result.is_ok() {
+                    succeeded += 1;
+                }
             }
         }
-    }
 
-    assert_eq!(succeeded, 10, "Concurrent reads should all succeed");
-    println!("✅ Concurrent tensor access safe");
+        assert_eq!(succeeded, 10, "Concurrent reads should all succeed");
+        println!("✅ Concurrent tensor access safe");
+    }) {
+        return;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -313,64 +322,63 @@ async fn fault_concurrent_tensor_access() {
 
 #[tokio::test]
 async fn fault_ntt_failure_recovery() {
-    // Verify system recovers from NTT failure
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let modulus = 12289u64;
+        let root = 11u64;
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let modulus = 12289u64;
-    let root = 11u64;
-
-    // Cause an error
-    let empty_tensor = create_fhe_poly_tensor(&[], device.clone()).await.unwrap();
-    let result = FheNtt::new(empty_tensor, 0, 0, root);
-    assert!(result.is_err(), "Should error on invalid input");
-
-    // Verify next operation succeeds (system recovered)
-    let degree = 16u32;
-    let input = vec![1u64; degree as usize];
-    let input_tensor = create_fhe_poly_tensor(&input, device.clone())
-        .await
-        .unwrap();
-
-    // Should succeed after previous failure
-    let result = FheNtt::new(input_tensor, degree, modulus, root);
-    assert!(
-        result.is_ok(),
-        "System should recover and allow valid operations"
-    );
-
-    println!("✅ System recovers from failures");
-}
-
-#[tokio::test]
-async fn fault_multiple_failures_in_sequence() {
-    // Multiple failures in a row should not corrupt state
-
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let modulus = 12289u64;
-    let root = 11u64;
-
-    for i in 0..10 {
-        // Each iteration tries an invalid operation
         let empty_tensor = create_fhe_poly_tensor(&[], device.clone()).await.unwrap();
         let result = FheNtt::new(empty_tensor, 0, 0, root);
         assert!(result.is_err(), "Should error on invalid input");
 
-        println!("  Failure {} handled", i);
+        let degree = 16u32;
+        let input = vec![1u64; degree as usize];
+        let input_tensor = create_fhe_poly_tensor(&input, device.clone())
+            .await
+            .unwrap();
+
+        let result = FheNtt::new(input_tensor, degree, modulus, root);
+        assert!(
+            result.is_ok(),
+            "System should recover and allow valid operations"
+        );
+
+        println!("✅ System recovers from failures");
+    }) {
+        return;
     }
+}
 
-    // Final valid operation should still work
-    let degree = 16u32;
-    let input = vec![1u64; degree as usize];
-    let input_tensor = create_fhe_poly_tensor(&input, device.clone())
-        .await
-        .unwrap();
-    let result = FheNtt::new(input_tensor, degree, modulus, root);
-    assert!(
-        result.is_ok(),
-        "Valid operation should work after multiple failures"
-    );
+#[tokio::test]
+async fn fault_multiple_failures_in_sequence() {
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let modulus = 12289u64;
+        let root = 11u64;
 
-    println!("✅ Multiple failures don't corrupt state");
+        for i in 0..10 {
+            let empty_tensor = create_fhe_poly_tensor(&[], device.clone()).await.unwrap();
+            let result = FheNtt::new(empty_tensor, 0, 0, root);
+            assert!(result.is_err(), "Should error on invalid input");
+
+            println!("  Failure {} handled", i);
+        }
+
+        let degree = 16u32;
+        let input = vec![1u64; degree as usize];
+        let input_tensor = create_fhe_poly_tensor(&input, device.clone())
+            .await
+            .unwrap();
+        let result = FheNtt::new(input_tensor, degree, modulus, root);
+        assert!(
+            result.is_ok(),
+            "Valid operation should work after multiple failures"
+        );
+
+        println!("✅ Multiple failures don't corrupt state");
+    }) {
+        return;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -379,38 +387,37 @@ async fn fault_multiple_failures_in_sequence() {
 
 #[tokio::test]
 async fn fault_error_messages_are_actionable() {
-    // Verify error messages tell user how to fix
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
+        let modulus = 12289u64;
+        let root = 11u64;
 
-    let device = barracuda::device::test_pool::get_test_device().await;
-    let modulus = 12289u64;
-    let root = 11u64;
+        let input_tensor = create_fhe_poly_tensor(&[1u64; 5], device.clone())
+            .await
+            .unwrap();
+        let result = FheNtt::new(input_tensor, 5, modulus, root);
+        assert!(result.is_err());
+        let error_msg = format!("{:?}", result.err().expect("expected Err"));
+        assert!(
+            error_msg.contains("power of 2") || error_msg.contains("degree"),
+            "Error message should mention degree issue"
+        );
 
-    // Test various error conditions
-    // Invalid degree
-    let input_tensor = create_fhe_poly_tensor(&[1u64; 5], device.clone())
-        .await
-        .unwrap();
-    let result = FheNtt::new(input_tensor, 5, modulus, root);
-    assert!(result.is_err());
-    let error_msg = format!("{:?}", result.err().expect("expected Err"));
-    assert!(
-        error_msg.contains("power of 2") || error_msg.contains("degree"),
-        "Error message should mention degree issue"
-    );
+        let input_tensor2 = create_fhe_poly_tensor(&[1u64; 4], device.clone())
+            .await
+            .unwrap();
+        let result2 = FheNtt::new(input_tensor2, 4, 0, root);
+        assert!(result2.is_err());
+        let error_msg2 = format!("{:?}", result2.err().expect("expected Err"));
+        assert!(
+            error_msg2.contains("zero") || error_msg2.contains("modulus") || !error_msg2.is_empty(),
+            "Error message should be informative"
+        );
 
-    // Zero modulus
-    let input_tensor2 = create_fhe_poly_tensor(&[1u64; 4], device.clone())
-        .await
-        .unwrap();
-    let result2 = FheNtt::new(input_tensor2, 4, 0, root);
-    assert!(result2.is_err());
-    let error_msg2 = format!("{:?}", result2.err().expect("expected Err"));
-    assert!(
-        error_msg2.contains("zero") || error_msg2.contains("modulus") || !error_msg2.is_empty(),
-        "Error message should be informative"
-    );
-
-    println!("✅ Error messages are actionable");
+        println!("✅ Error messages are actionable");
+    }) {
+        return;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════

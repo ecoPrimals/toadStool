@@ -204,6 +204,7 @@ impl CpuComputeResource {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl UniversalComputeResource for CpuComputeResource {
     fn capabilities(&self) -> &ComputeCapabilities {
@@ -255,6 +256,7 @@ struct CpuComputeContext {
     utilization: Arc<RwLock<f32>>,
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl ComputeContext for CpuComputeContext {
     fn context_id(&self) -> Uuid {
@@ -333,6 +335,15 @@ impl ComputeContext for CpuComputeContext {
     }
 }
 
+/// Mix a byte through a deterministic, CPU-intensive transform.
+/// Uses multiplication and XOR for diffusion (similar to hash finalizers).
+#[inline(always)]
+fn mix_byte(b: u8) -> u8 {
+    let x = b as u32;
+    let mixed = x.wrapping_mul(0x85ebca6b).wrapping_add(0xc2b2ae35) ^ (x << 8) ^ (x >> 4);
+    (mixed & 0xff) as u8
+}
+
 impl CpuComputeContext {
     /// Execute high-level operation
     async fn execute_operation(
@@ -367,18 +378,11 @@ impl CpuComputeContext {
         let mut outputs = std::collections::HashMap::new();
 
         for (idx, input) in workload.inputs.iter().enumerate() {
-            // Process data in parallel using Rayon
             let output_data: Vec<u8> = self.thread_pool.install(|| {
                 input
                     .data
-                    .par_chunks(1024) // Process in parallel chunks
-                    .flat_map(|chunk| {
-                        // Simple operation: increment each byte (placeholder)
-                        chunk
-                            .iter()
-                            .map(|&b| b.wrapping_add(1))
-                            .collect::<Vec<u8>>()
-                    })
+                    .par_chunks(1024)
+                    .flat_map(|chunk| chunk.iter().map(|&b| mix_byte(b)).collect::<Vec<u8>>())
                     .collect()
             });
 

@@ -257,9 +257,43 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_health_response_message() {
+        let response = health_check().await.unwrap();
+        assert!(response.message.contains("operational"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_api_error_conversion() {
         let error = ToadStoolError::not_found("test".to_string());
         let api_error = ApiError::from(error);
         assert_eq!(api_error.status, StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_api_error_new() {
+        let error = ApiError::new(StatusCode::BAD_REQUEST, "Invalid input");
+        assert_eq!(error.status, StatusCode::BAD_REQUEST);
+        assert_eq!(error.message, "Invalid input");
+    }
+
+    #[test]
+    fn test_stop_deployment_response_serialization() {
+        let response = StopDeploymentResponse {
+            deployment_id: Uuid::new_v4(),
+            message: "Stopped".to_string(),
+        };
+        let json = serde_json::to_string(&response).expect("serialize");
+        assert!(json.contains("Stopped"));
+    }
+
+    #[test]
+    fn test_health_response_serialization() {
+        let response = HealthResponse {
+            status: "healthy".to_string(),
+            message: "OK".to_string(),
+        };
+        let json = serde_json::to_string(&response).expect("serialize");
+        assert!(json.contains("healthy"));
+        assert!(json.contains("OK"));
     }
 }

@@ -28,29 +28,19 @@ pub const METRICS_PORT: u16 = 9090;
 /// Default health check port
 pub const HEALTH_CHECK_PORT: u16 = 8082;
 
+/// Default gRPC port (e.g., Songbird coordination)
+pub const DEFAULT_GRPC_PORT: u16 = 50051;
+
+/// Default coordination discovery fallback port
+/// Overridable via `TOADSTOOL_COORDINATION_ENDPOINT` env var
+pub const COORDINATION_FALLBACK_PORT: u16 = 50051;
+
 /// Default BYOB (Bring Your Own Biome) coordinator/daemon port
 pub const BYOB_DEFAULT_PORT: u16 = 8084;
 
-// ============================================================================
-// REMOVED: Primal-Specific Ports
-// ============================================================================
-//
-// **INFANT DISCOVERY PATTERN**: ToadStool knows only itself.
-// Other primals (songbird, nestgate, beardog, squirrel) are discovered at runtime
-// via capability-based discovery. No hardcoded ports for other services.
-//
-// See: `primal_identity.rs` for self-knowledge implementation
-// See: `discovery_defaults.rs` for runtime discovery fallbacks
-// See: `HARDCODING_ELIMINATION_PLAN_JAN9_2026.md` for full migration plan
-//
-// Migration:
-//   Before: let url = format!("http://localhost:{}", SONGBIRD_PORT);
-//   After:  let service = discovery.find_service_by_capability(
-//               Capability::Coordination(CoordinationCapability::ServiceDiscovery)
-//           ).await?;
-//           let url = service.endpoint();
-//
-// ============================================================================
+// Primal-specific ports were removed — ToadStool discovers other primals
+// at runtime via capability-based discovery (see `primal_identity.rs`,
+// `discovery_defaults.rs`).
 
 // ============================================================================
 // Vendor Service Fallback Defaults

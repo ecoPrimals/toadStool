@@ -38,7 +38,10 @@ impl WgpuDevice {
             return None;
         }
         // SAFETY: `data: None` means empty initial cache — no previous blob to validate.
-        // The unsafe contract is solely about corrupted serialized cache data.
+        // The wgpu unsafe contract applies when `data: Some(...)` contains serialized
+        // cache from disk; corrupted data could cause driver UB. With `data: None`, we
+        // create a fresh cache with no untrusted input. Violation: if we ever passed
+        // `data: Some(blob)` from untrusted source, malformed blob could cause UB.
         #[allow(unsafe_code)]
         Some(Arc::new(unsafe {
             device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
@@ -573,6 +576,22 @@ impl WgpuDevice {
             dispatch_semaphore: Arc::new(super::DispatchSemaphore::new(budget)),
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
+
+        if wgpu_device
+            .device
+            .features()
+            .contains(wgpu::Features::SHADER_F64)
+        {
+            let caps = probe::probe_f64_builtins(&wgpu_device).await;
+            if !caps.can_compile_f64() {
+                tracing::warn!(
+                    "SHADER_F64 advertised but basic f64 probe FAILED — all f64 shaders will use DF64 fallback"
+                );
+            } else {
+                tracing::info!("f64 probe: {}/{} builtins native", caps.native_count(), 9);
+            }
+        }
+
         Ok(wgpu_device)
     }
 

@@ -214,7 +214,7 @@ impl Default for LoadBalancingConfig {
 
 // Note: Using base RetryConfig from toadstool for consistency
 // If domain-specific retry logic is needed, use composition with base pattern
-pub use toadstool::config_bases::RetryConfig;
+pub use toadstool_common::config_bases::RetryConfig;
 
 // Base RetryConfig already has a Default implementation
 // Fields: max_retries, base_delay, max_delay, backoff_multiplier, jitter_percent

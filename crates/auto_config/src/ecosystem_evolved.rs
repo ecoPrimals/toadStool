@@ -134,6 +134,7 @@ impl EcosystemDiscoverer {
     /// Discover services from environment variables
     ///
     /// **EVOLVED**: Only checks Unix socket paths, no HTTP endpoints
+    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
     fn discover_from_environment(&mut self) -> ToadStoolResult<Vec<DiscoveredService>> {
         let mut services = Vec::new();
 
@@ -265,10 +266,10 @@ mod tests {
     #[tokio::test]
     async fn test_environment_discovery() {
         let mut discoverer = EcosystemDiscoverer::new();
-        
+
         // This will discover services if sockets exist
         let result = discoverer.discover_from_environment();
-        
+
         // Should not fail (may find 0 services)
         assert!(result.is_ok());
     }
@@ -276,7 +277,7 @@ mod tests {
     #[test]
     fn test_get_service_by_capability() {
         let mut discoverer = EcosystemDiscoverer::new();
-        
+
         // Add a mock service
         let service = DiscoveredService {
             name: "test_service".to_string(),
@@ -284,12 +285,50 @@ mod tests {
             capabilities: vec!["crypto".to_string()],
             available: true,
         };
-        
-        discoverer.discovered_services.insert("test_service".to_string(), service);
-        
+
+        discoverer
+            .discovered_services
+            .insert("test_service".to_string(), service);
+
         // Should find by capability
         let found = discoverer.get_service_by_capability("crypto");
         assert!(found.is_some());
         assert_eq!(found.unwrap().name, "test_service");
+    }
+
+    #[test]
+    fn test_discovered_service_serialization() {
+        let service = DiscoveredService {
+            name: "beardog".to_string(),
+            socket_path: Some("/primal/beardog".to_string()),
+            capabilities: vec!["crypto".to_string(), "security".to_string()],
+            available: true,
+        };
+        let json = serde_json::to_string(&service).expect("serialize");
+        assert!(json.contains("beardog"));
+        assert!(json.contains("crypto"));
+    }
+
+    #[test]
+    fn test_list_services() {
+        let mut discoverer = EcosystemDiscoverer::new();
+        let service = DiscoveredService {
+            name: "svc1".to_string(),
+            socket_path: None,
+            capabilities: vec![],
+            available: true,
+        };
+        discoverer
+            .discovered_services
+            .insert("svc1".to_string(), service);
+        let list = discoverer.list_services();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].name, "svc1");
+    }
+
+    #[test]
+    fn test_get_service_missing() {
+        let discoverer = EcosystemDiscoverer::new();
+        assert!(discoverer.get_service("nonexistent").is_none());
     }
 }

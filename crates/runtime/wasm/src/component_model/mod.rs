@@ -22,14 +22,12 @@ pub use instances::*;
 pub use linking::*;
 pub use registry::*;
 
-use async_trait::async_trait;
 use toadstool::ToadStoolResult;
 
 // Re-export for backwards compatibility
 pub use crate::WasmRuntimeEngine;
 
 /// Component model support trait
-#[async_trait]
 pub trait ComponentModelSupport: Send + Sync {
     /// Check if component model is supported
     fn supports_component_model(&self) -> bool;
@@ -52,7 +50,6 @@ pub trait ComponentModelSupport: Send + Sync {
     ) -> ToadStoolResult<ComponentValue>;
 }
 
-#[async_trait]
 impl ComponentModelSupport for WasmRuntimeEngine {
     /// Check if component model is supported
     /// EVOLVED: Returns true if config enables component model

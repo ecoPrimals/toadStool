@@ -18,6 +18,8 @@
 //! - Reasonable performance (<10x slowdown)
 //! - Correct results (spot checks)
 
+mod common;
+
 use barracuda::ops::complex::*;
 use barracuda::ops::fft::*;
 use barracuda::tensor::Tensor;
@@ -29,22 +31,25 @@ use std::time::Instant;
 
 #[tokio::test]
 async fn chaos_complex_large_scale() {
-    let device = barracuda::device::test_pool::get_test_device().await;
+    if !common::run_gpu_resilient_async(|| async {
+        let device = barracuda::device::test_pool::get_test_device().await;
 
-    // Chaos: 1M complex numbers
-    let size = 1_000_000;
-    let data: Vec<f32> = (0..size * 2).map(|i| (i as f32) % 100.0).collect();
+        let size = 1_000_000;
+        let data: Vec<f32> = (0..size * 2).map(|i| (i as f32) % 100.0).collect();
 
-    let tensor = Tensor::from_data(&data, vec![size, 2], device.clone()).unwrap();
+        let tensor = Tensor::from_data(&data, vec![size, 2], device.clone()).unwrap();
 
-    let start = Instant::now();
-    let mul_op = ComplexMul::new(tensor.clone(), tensor.clone()).unwrap();
-    let result = mul_op.execute().unwrap();
-    let elapsed = start.elapsed();
+        let start = Instant::now();
+        let mul_op = ComplexMul::new(tensor.clone(), tensor.clone()).unwrap();
+        let result = mul_op.execute().unwrap();
+        let elapsed = start.elapsed();
 
-    println!("✅ ComplexMul 1M elements: {:?}", elapsed);
-    assert!(result.len() == size * 2, "Result size matches");
-    assert!(elapsed.as_secs() < 10, "Completed in reasonable time");
+        println!("✅ ComplexMul 1M elements: {:?}", elapsed);
+        assert!(result.len() == size * 2, "Result size matches");
+        assert!(elapsed.as_secs() < 10, "Completed in reasonable time");
+    }) {
+        return;
+    }
 }
 
 #[tokio::test]

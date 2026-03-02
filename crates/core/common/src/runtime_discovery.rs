@@ -20,6 +20,7 @@ use crate::error::{IntegrationError, ToadStoolError, ToadStoolResult};
 use crate::primal_identity::{Capability, DiscoveredService, ServiceEndpoint};
 
 /// Discovery client trait - implement for different discovery mechanisms
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 pub trait DiscoveryClient: Send + Sync {
     /// Discover services by capability
@@ -351,6 +352,7 @@ impl Default for LocalhostDiscoveryClient {
     }
 }
 
+// TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
 #[async_trait]
 impl DiscoveryClient for LocalhostDiscoveryClient {
     async fn discover_by_capability(

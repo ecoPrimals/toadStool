@@ -56,12 +56,18 @@ use toadstool_common::ToadStoolResult;
 /// use toadstool_config::discovery_integration::discover_or_fallback;
 /// use toadstool_common::runtime_discovery::RuntimeDiscovery;
 /// use toadstool_common::primal_identity::Capability;
+/// use toadstool_common::constants::network;
 ///
 /// let discovery = RuntimeDiscovery::new()?;
+/// let fallback = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
+///     .unwrap_or_else(|_| network::http_url(
+///         network::DEFAULT_HOSTNAME,
+///         network::COORDINATION_FALLBACK_PORT,
+///     ));
 /// let coord_endpoint = discover_or_fallback(
 ///     &discovery,
 ///     Capability::Coordination,
-///     "http://localhost:50001"
+///     &fallback,
 /// ).await?;
 /// ```
 ///
@@ -131,7 +137,7 @@ pub async fn discover_or_fallback(
 ///
 /// # Errors
 ///
-/// Returns [`ToadStoolError`] if discovery fails.
+/// Returns `Err` if discovery fails.
 pub async fn discover_all_by_capability(
     discovery: &RuntimeDiscovery,
     capability: &Capability,
@@ -253,6 +259,7 @@ mod tests {
         fail: bool,
     }
 
+    // TODO(afit): Migrate when trait_variant stabilizes (used as dyn)
     #[async_trait]
     impl DiscoveryClient for TestDiscoveryClient {
         async fn discover_by_capability(

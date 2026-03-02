@@ -67,6 +67,21 @@ impl SparseBuffers {
         })
     }
 
+    /// Poll a raw wgpu::Device with device-lost protection.
+    fn poll_raw_safe(device: &wgpu::Device) -> Result<()> {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            device.poll(wgpu::Maintain::Wait);
+        }));
+        result.map_err(|payload| {
+            let msg = payload
+                .downcast_ref::<String>()
+                .map(|s| s.as_str())
+                .or_else(|| payload.downcast_ref::<&str>().copied())
+                .unwrap_or("unknown");
+            BarracudaError::device(format!("GPU device lost during poll: {msg}"))
+        })
+    }
+
     /// Read f64 data from GPU buffer (raw device/queue)
     pub fn read_f64_raw(
         device: &wgpu::Device,
@@ -92,14 +107,13 @@ impl SparseBuffers {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
-        device.poll(wgpu::Maintain::Wait);
+        Self::poll_raw_safe(device)?;
         receiver
             .recv()
             .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
-        // SAFETY: chunks_exact(8) guarantees exactly 8-byte chunks
         let result: Vec<f64> = data
             .chunks_exact(8)
             .map(|chunk| {
@@ -141,14 +155,13 @@ impl SparseBuffers {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
-        device.poll(wgpu::Maintain::Wait);
+        Self::poll_raw_safe(device)?;
         receiver
             .recv()
             .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
-        // SAFETY: chunks_exact(4) guarantees exactly 4-byte chunks
         let result: Vec<i32> = data
             .chunks_exact(4)
             .map(|chunk| {

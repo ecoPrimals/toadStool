@@ -483,7 +483,136 @@ Legacy (toadstool-runtime-legacy)
 
 ---
 
-## 7. See Also
+## 7. Module Structure Reference
+
+The following modules were refactored from single-file layouts into multi-file module structures. Use these paths when locating types or extending functionality.
+
+### 7.1 `toadstool_common::primal_integration`
+
+**Location**: `crates/core/common/src/primal_integration/`
+
+**Structure**:
+- `mod.rs` — Module root, re-exports, integration patterns
+- `capabilities.rs` — Capability definitions and discovery helpers
+- `socket.rs` — Unix socket / IPC primitives
+- `discovery.rs` — Runtime discovery of ecoPrimal services by capability
+- `tests.rs` — Integration tests
+
+**Purpose**: Inter-Primal integration discovery; capability-based runtime discovery of ecoPrimal services.
+
+---
+
+### 7.2 `toadstool_common::capability_provider`
+
+**Location**: `crates/core/common/src/capability_provider/`
+
+**Structure**:
+- `mod.rs` — Module root, re-exports (`discover_all`, `CapabilityError`, `CapabilityProvider`)
+- `error.rs` — `CapabilityError` and `Result` type
+- `serialize.rs` — Capability serialization/deserialization
+- `discovery.rs` — Capability discovery logic
+- `provider.rs` — `CapabilityProvider` implementation
+
+**Purpose**: Capability-based service discovery and invocation; primals discover each other by capability at runtime.
+
+---
+
+### 7.3 `integration::primals` (toadstool-primals)
+
+**Location**: `crates/integration/primals/src/`
+
+**Structure**:
+- `lib.rs` — Crate root, `PrimalIntegration` trait, re-exports
+- `primal_types.rs` — `PrimalType`, `PrimalConfig`, `PrimalResources`, `GpuAllocation`
+- `service.rs` — `ServiceEndpoint`, `ServiceRegistration`, `StartupResult`, `StartupStatus`
+- `health.rs` — `HealthCheck`, `HealthCheckStatus`, `HealthStatus`
+- `messaging.rs` — `PrimalMessage`, `PrimalMessageType`, `PrimalMetrics`
+- `integration_manifest.rs` — `BiomeManifest`, `BiomeMetadata`
+- `manager.rs` — `PrimalIntegrationManager`, `PrimalIntegrationConfig`, `BootstrapResult`, `PrimalBootstrapResult`
+
+**Purpose**: Universal Primal integration framework; consistent interface for integrating with all Primals in the ecoPrimals ecosystem.
+
+---
+
+### 7.4 `toadstool::workload`
+
+**Location**: `crates/core/toadstool/src/workload/`
+
+**Structure**:
+- `mod.rs` — Module root, workload orchestration
+- `types.rs` — Workload type definitions and related structures
+
+**Purpose**: Workload specification and orchestration types (refactored from single `workload.rs`).
+
+---
+
+### 7.5 `barracuda::device`
+
+**Location**: `crates/barracuda/src/device/`
+
+**Structure** (refactored from `unified.rs`):
+- `device_types.rs` — Device type definitions (new)
+- `routing.rs` — Device routing logic (new)
+- `capabilities.rs` — Extended device capabilities
+- `unified.rs` — Unified device interface (retained, delegates to above)
+- `mod.rs` — Module root, re-exports
+
+**Purpose**: GPU device abstraction; types, routing, and capabilities split from unified module for clarity.
+
+---
+
+### 7.6 `barracuda::shaders::precision`
+
+**Location**: `crates/barracuda/src/shaders/precision/`
+
+**Structure**:
+- `mod.rs` — Module root, precision types and re-exports
+- `compiler.rs` — Precision shader compilation (split from mod)
+- `polyfill.rs` — Precision polyfills for WGSL (split from mod)
+- `math_f64.rs`, `templates.rs`, `cpu.rs` — Supporting modules
+- `precision_tests.rs`, `precision_chaos_tests.rs` — Tests
+
+**Purpose**: Shader precision handling; compiler and polyfill logic extracted from monolithic mod.
+
+---
+
+### 7.7 `runtime::gpu::backends::opencl_impl`
+
+**Location**: `crates/runtime/gpu/src/backends/opencl_impl/`
+
+**Structure**:
+- `mod.rs` — Module root, re-exports
+- `backend.rs` — OpenCL backend implementation
+- `resource.rs` — Resource management
+- `context.rs` — Context handling
+- `kernels.rs` — Kernel dispatch and management
+- `tests.rs` — Backend tests
+
+**Purpose**: OpenCL backend for GPU runtime; split from single `opencl_impl.rs` for maintainability.
+
+---
+
+### 7.8 `core::config::runtime_defaults::env_overrides`
+
+**Location**: `crates/core/config/src/runtime_defaults/env_overrides/`
+
+**Structure**:
+- `mod.rs` — Module root, re-exports
+- `parse.rs` — Environment variable parsing
+- `app.rs` — Application-level overrides
+- `network.rs` — Network configuration overrides
+- `resources.rs` — Resource-related overrides
+- `features.rs` — Feature flags overrides
+- `runtime.rs` — Runtime configuration overrides
+- `security.rs` — Security-related overrides
+- `logging.rs` — Logging configuration overrides
+- `tests.rs` — Unit tests
+
+**Purpose**: Environment-based runtime configuration overrides; split by domain for clarity.
+
+---
+
+## 8. See Also
 
 - `CONFIG_PATTERNS_GUIDE.md` - Configuration composition patterns
 - `CONSTANTS_REFERENCE.md` - Default constants and thresholds
@@ -492,7 +621,7 @@ Legacy (toadstool-runtime-legacy)
 
 ---
 
-## 8. Feedback and Updates
+## 9. Feedback and Updates
 
 This reference is a living document. When types change:
 

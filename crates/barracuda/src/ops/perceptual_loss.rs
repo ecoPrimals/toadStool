@@ -78,13 +78,13 @@ impl PerceptualLoss {
             .map(|w| w.shape().iter().product::<usize>())
             .unwrap_or(0) as u32;
 
-        // Owned dummy buffer if weights are None (keeps it alive for bind group creation)
-        let dummy_buf;
+        // Sentinel buffer when weights are None (keeps it alive for bind group creation)
+        let sentinel_buf;
         let weights_buffer = if let Some(ref w) = self.weights {
             w.buffer()
         } else {
-            dummy_buf = device.create_buffer_f32(1)?;
-            &dummy_buf
+            sentinel_buf = device.create_buffer_f32(1)?;
+            &sentinel_buf
         };
 
         // Create uniform buffer for parameters

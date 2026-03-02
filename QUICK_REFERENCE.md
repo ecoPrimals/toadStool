@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 1, 2026 -- Session 71**
+**March 2, 2026 -- Session 78**
 
 ---
 
@@ -246,7 +246,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
 | `toadstool-api` | REST API, middleware (WebSocket removed; JSON-RPC polling) |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
-| `barracuda` | 671 WGSL shaders (25 DF64, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity |
+| `barracuda` | 844 WGSL shaders (37 DF64, 15 folding, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |
 | `toadstool-testing` | Chaos, fault, property, performance testing |
 
@@ -536,4 +536,4 @@ API reference: see [Scientific Computing Middleware API](#scientific-computing-m
 
 ---
 
-**Last Updated**: March 1, 2026 — Session 71
+**Last Updated**: March 2, 2026 — Session 78

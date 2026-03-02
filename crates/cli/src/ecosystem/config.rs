@@ -185,6 +185,7 @@ impl ServiceDiscoveryConfig {
     /// Uses capability-based endpoint discovery: Unix socket paths from
     /// biomeOS runtime directory. Services are discovered at runtime via
     /// well-known capability constants (primal_identity, ecosystem).
+    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
     pub fn create_example() -> Self {
         use toadstool_common::constants::ecosystem::well_known;
         use toadstool_common::primal_sockets::get_biomeos_dir;

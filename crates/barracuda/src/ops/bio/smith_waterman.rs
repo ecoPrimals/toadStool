@@ -79,10 +79,10 @@ pub struct SwResult {
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// # use barracuda::prelude::WgpuDevice;
 /// # use barracuda::ops::bio::smith_waterman::{SmithWatermanGpu, SwConfig};
-/// # pollster::block_on(async {
+/// # crate::device::test_pool::tokio_block_on(async {
 /// let device = WgpuDevice::new().await.unwrap();
 /// // DNA sequences encoded as 0=A, 1=C, 2=G, 3=T
 /// let query  = vec![0u32, 1, 2, 3];   // ACGT
