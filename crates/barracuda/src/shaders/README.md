@@ -341,7 +341,7 @@ cargo test -p barracuda --lib --release
 
 ---
 
-**Last Updated**: March 1, 2026 — Session 71  
+**Last Updated**: March 2, 2026 — Session 86  
 **Shader Count**: 671 (21 DF64, 577 f64, 2 f32-named — zero f32-only, all f64 canonical). 4 additional DF64 force-field shaders in `ops/md/forces/` (25 DF64 workspace-wide).  
 **Categories**: 41 directories  
 **Status**: Production — dual-layer universal precision operational, 15-function DF64 transcendental suite complete

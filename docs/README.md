@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: March 2, 2026 -- Session 80
+**Updated**: March 2, 2026 -- Session 86
 
 Old integration guides (biomeOS, error codes, collaborative intelligence examples) archived to `ecoPrimals/fossil/toadStool-archives/docs-archive-session68/`. Stale demos, showcase docs, orphaned examples, and superseded scripts archived to `ecoPrimals/fossil/toadStool/session68+++/`.
 

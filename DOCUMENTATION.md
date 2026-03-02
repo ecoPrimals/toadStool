@@ -41,7 +41,7 @@
 - **Dual-layer universal precision** — Layer 1: `op_preamble`. Layer 2: naga-guided `df64_rewrite`. `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
 - **844 WGSL shaders** — zero orphans, 37 DF64, 15 folding, **zero f32-only**. All f64 canonical.
-- **2,858+ barracuda tests** + 5,500+ workspace lib tests (8,300+ total) | all quality gates green (0 warnings)
+- **2,866 barracuda tests** + 5,500+ workspace lib tests (8,300+ total) | all quality gates green (0 warnings)
 - **barracuda::nautilus** — standalone evolutionary reservoir computing (7 files, 22 tests)
 - **44 JSON-RPC methods** across 9 domains (8 `ai.nautilus.*` methods for evolutionary AI)
 - **BatchedEncoder** — fused multi-op GPU pipelines (single `queue.submit()`)
