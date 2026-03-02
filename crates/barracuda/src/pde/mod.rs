@@ -25,9 +25,11 @@
 
 pub mod crank_nicolson;
 pub mod richards;
+pub mod richards_gpu;
 
 pub use crank_nicolson::{
     crank_nicolson_step, CrankNicolson1D, CrankNicolsonConfig, HeatEquation1D,
     WGSL_CRANK_NICOLSON_F64,
 };
 pub use richards::{solve_richards, RichardsBc, RichardsConfig, RichardsResult, SoilParams};
+pub use richards_gpu::RichardsGpu;

@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 2, 2026 -- Session 82**
+**March 2, 2026 -- Session 86**
 
 ---
 

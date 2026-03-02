@@ -10,6 +10,7 @@ pub mod evolution;
 pub mod population;
 pub mod readout;
 pub mod shell;
+pub mod spectral_bridge;
 
 pub use board::{Board, BoardConfig, ReservoirInput, ResponseVector};
 pub use brain::{BetaObservation, DriftMonitor, NautilusBrain, NautilusBrainConfig};
@@ -17,3 +18,4 @@ pub use evolution::{EvolutionConfig, SelectionMethod};
 pub use population::{FitnessRecord, Population};
 pub use readout::LinearReadout;
 pub use shell::{GenerationRecord, InstanceId, NautilusShell, ShellConfig};
+pub use spectral_bridge::{SpectralFeatures, SpectralPhase};

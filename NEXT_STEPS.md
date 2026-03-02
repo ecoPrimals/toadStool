@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 2, 2026 -- Session 82
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,858+ barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
-**Latest**: S81+S82 — 111 ComputeDispatch ops. barracuda::nautilus (7 files, 22 tests). ai.nautilus.* (8 JSON-RPC methods). BatchedEncoder + fused_mlp. Batch Nelder-Mead GPU. StatefulPipeline. GpuDriverProfile sin/cos workarounds. NeighborMode::PrecomputedBuffer. 16 more ops migrated (fhe_xor, fhe_or, fhe_and, fhe_rotate, fhe_modulus_switch, fhe_pointwise_mul, plaquette, hmc_force_su3, gpu_wilson_action, gpu_kinetic_energy, mel_scale, pitch_shift, smith_waterman, felsenstein, batched_bisection_gpu, cubic_spline).
+**Updated**: March 2, 2026 -- Session 86
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | 45 justified unsafe | 844 WGSL shaders (37 DF64, 15 folding) | 2,866 barracuda tests | 5,500+ workspace lib tests (8,300+ total) | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU
+**Latest**: S84–S86 — 144 ComputeDispatch ops (+33 across 3 sessions). Hydrology god-file refactored. Production stubs evolved (experimental.rs → real probes, wgpu_backend.rs → device limits). Full ops audit: ~139 legacy ops remaining.
 
 ---
 
@@ -10,24 +10,15 @@
 
 ### P0: ComputeDispatch Migration (Incremental)
 
-111 of ~250 ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
-~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~139 ops remaining.
+144 of ~280+ ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
+~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~139 ops remaining (full
+audit S86 revealed ops in subdirectories: bio/, md/, lattice/, complex/, linalg/).
 
-Migrated so far:
-- 5 linalg (cholesky f32/f64, eigh, inverse_f64, linsolve f32/f64)
-- 15 special functions (hermite, bessel, digamma, legendre, laguerre, spherical_harmonics, beta — all f64)
-- 14 MD/bio/reduce (morse, born_mayer, lennard_jones, yukawa, velocity_verlet, kinetic_energy, rdf, pairwise_l2, hmm_forward, sum/norm/variance/prod_reduce, max_abs_diff — all f64)
-- 7 reduction ops (sum, prod, mean, norm, max, argmin, argmax — S71)
-- 6 attention ops (cross_attn, sparse_attn, local_attention, causal_attn, grouped_query, scaled_dot_product — S71+)
-- 5 tensor ops (filter, transpose, scatter, cdist, fused_map_reduce_f64 — S71++)
-- 3 index ops (nonzero, unique, masked_select — S71+++)
-- 4 FFT ops (fft_1d, ifft_1d, fft_1d_f64, fft_3d_f64 — S71+++)
-- 7 misc ops (qr_gpu, nms, variance, std, perceptual_loss, filter_response_norm, iou_loss — S71+++)
-- 5 more (eq, map, dotproduct, dropout, split — S78)
-- 6 more (elastic_transform, gillespie, tree_inference, mixup, random_affine, random_perspective — S80)
-- 7 more (lennard_jones_f64, cumsum_f64, label_smoothing, slice_assign, random_crop, lp_pool2d, unfold — S80)
-- 6 more (global_maxpool, adaptive_avgpool2d, adaptive_maxpool2d, reduce, scan, embedding_wgsl — S80)
-- 16 more (fhe_xor, fhe_or, fhe_and, fhe_rotate, fhe_modulus_switch, fhe_pointwise_mul, plaquette, hmc_force_su3, gpu_wilson_action, gpu_kinetic_energy, mel_scale, pitch_shift, smith_waterman, felsenstein, batched_bisection_gpu, cubic_spline — S82)
+Recent migrations:
+- S84 (+9): matmul_tiled, gemm_f64, giou_loss, focal_loss, tversky_loss, huber_loss, hinge_loss, contrastive_loss, chamfer_distance
+- S85 (+12): cosine_similarity, covariance, cross_product, psnr, ssim, diag, global_avgpool, box_iou, focal_loss_alpha, rotary_embedding, alibi, flatten
+- S86 (+12): determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat
+- See EVOLUTION_TRACKER.md for full migration history
 
 ### P1: DF64 Default Path (Architecture)
 
@@ -93,7 +84,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
 - [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
-- [ ] **ComputeDispatch migration** -- 111/250 ops migrated; ~139 remaining (incremental)
+- [ ] **ComputeDispatch migration** -- 144/280+ ops migrated; ~139 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
 - [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed
@@ -105,7 +96,19 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session (S79–S80)
+## Completed This Session (S84–S86)
+
+### Session 86: ComputeDispatch Batch 7 + Production Stub Evolution
+- 12 ops → ComputeDispatch (determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat)
+- wgpu_backend.rs: magic numbers → real `device.limits()` queries
+- deployment.rs: 10 placeholder stubs → capability-discovery documentation
+- Full ops audit: corrected remaining count from ~57 to ~139
+
+### Sessions 84–85: ComputeDispatch Batches 5–6 + Hydrology + Probes
+- 21 ops → ComputeDispatch across two sessions
+- hydrology.rs god file → hydrology/ directory module
+- experimental.rs stub → real FPGA/neuromorphic/quantum probes
+- mDNS constants extracted; frameworks.rs echo → proper error
 
 ### Session 80: Nautilus Absorption + BatchedEncoder + Nelder-Mead GPU
 - `barracuda::nautilus` module (7 files, 22 tests) — standalone bingoCube evolutionary reservoir computing

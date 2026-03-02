@@ -58,6 +58,7 @@
 //! - Composable stages
 //! - Capability-based buffer management
 
+pub mod batched_stateful;
 pub mod reduce;
 pub mod stateful;
 

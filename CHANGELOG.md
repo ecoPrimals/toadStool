@@ -5,7 +5,25 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 2, 2026 (Sessions 43-80 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus)
+## [Unreleased] - March 2, 2026 (Sessions 43-86 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+
+### Session 86 (Mar 2, 2026) — ComputeDispatch Batch 7 + Production Stub Evolution
+
+- **12 GPU ops migrated** to ComputeDispatch (determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat) — 144 total
+- **wgpu_backend.rs**: Magic numbers (num_units, memory_bandwidth, batch_size) replaced with real `device.limits()` queries
+- **deployment.rs**: 10 placeholder stubs cleaned up with capability-discovery documentation
+- **Full ops audit**: ~139 files still using legacy patterns (audit corrected from ~57 estimate — subdirectory ops undercounted)
+- 2,866 barracuda tests pass, 0 failures, 13 ignored
+
+### Sessions 84-85 (Mar 2, 2026) — ComputeDispatch Batches 5-6 + God File Refactoring
+
+- **S84** (+9 ops): matmul_tiled, gemm_f64, giou_loss, focal_loss, tversky_loss, huber_loss, hinge_loss, contrastive_loss, chamfer_distance
+- **S85** (+12 ops): cosine_similarity, covariance, cross_product, psnr, ssim, diag, global_avgpool, box_iou, focal_loss_alpha, rotary_embedding, alibi, flatten
+- **hydrology.rs** (690L) → hydrology/ directory: mod.rs (~310L CPU scalar) + gpu.rs (~280L GPU batch)
+- **experimental.rs** stub → real FPGA/neuromorphic/quantum probes (env/device-path detection, 4 tests)
+- **frameworks.rs** echo → proper error with migration guidance
+- **mDNS constants** extracted: MDNS_MULTICAST_ADDR + MDNS_PORT (RFC 6762)
+- Skipped pipeline/reduce.rs and staging/stateful.rs (cached pipeline reuse — ComputeDispatch would regress)
 
 ### Session 80 (Mar 2, 2026) — Nautilus Absorption + BatchedEncoder + Nelder-Mead GPU + fused_mlp
 

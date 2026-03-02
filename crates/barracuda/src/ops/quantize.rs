@@ -13,11 +13,10 @@
 /// WGSL kernel for quantization parameter computation (f64).
 pub const WGSL_QUANTIZE_PARAMS_F64: &str = include_str!("../shaders/misc/quantize_params_f64.wgsl");
 
-use crate::device::DeviceCapabilities;
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
-use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -105,119 +104,15 @@ impl Quantize {
             _padding: 0,
         };
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Quantize Params"),
-                contents: bytemuck::cast_slice(&[params]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+        let params_buffer = device.create_uniform_buffer("Quantize Params", &params);
 
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Quantize Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Quantize Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Quantize"));
-
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Quantize Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Quantize Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        // Encode and execute
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Quantize Encoder"),
-            });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Quantize Pass"),
-                timestamp_writes: None,
-            });
-
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-
-            // Dispatch using standard 1D shader workgroup size (256)
-            let caps = DeviceCapabilities::from_device(device);
-            let workgroups = caps.dispatch_1d(size as u32);
-            pass.dispatch_workgroups(workgroups, 1, 1);
-        }
+        ComputeDispatch::new(device, "Quantize")
+            .shader(Self::wgsl_shader(), "main")
+            .storage_read(0, input_buffer)
+            .storage_rw(1, &output_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch_1d(size as u32)
+            .submit();
 
         // Create staging buffer for reading i32 data
         let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -227,15 +122,20 @@ impl Quantize {
             mapped_at_creation: false,
         });
 
-        // Copy output to staging buffer (must be same encoder - compute must run before copy)
-        encoder.copy_buffer_to_buffer(
+        // Copy output to staging buffer (compute completed via ComputeDispatch above)
+        let mut copy_encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Quantize Copy Encoder"),
+            });
+        copy_encoder.copy_buffer_to_buffer(
             &output_buffer,
             0,
             &staging_buffer,
             0,
             (size * std::mem::size_of::<i32>()) as u64,
         );
-        device.submit_and_poll(Some(encoder.finish()));
+        device.submit_and_poll(Some(copy_encoder.finish()));
 
         let i32_data: Vec<i32> = device.map_staging_buffer(&staging_buffer, size)?;
         let f32_data: Vec<f32> = i32_data.iter().map(|&x| x as f32).collect();

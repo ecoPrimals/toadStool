@@ -7,10 +7,9 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::Result;
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 
 /// Permute operation (reorder dimensions)
 pub struct Permute {
@@ -81,63 +80,25 @@ impl Permute {
             input_strides[i] = input_strides[i + 1] * input_shape[i + 1];
         }
 
-        // Compute output strides (for indexing)
-        let mut output_strides = vec![1; num_dims];
-        for i in (0..num_dims - 1).rev() {
-            output_strides[i] = output_strides[i + 1] * output_shape[i + 1];
-        }
-
         // Access input buffer directly (zero-copy)
         let input_buffer = self.input.buffer();
 
         // Create buffers for shape and stride data
+        let input_shape_u32: Vec<u32> = input_shape.iter().map(|&x| x as u32).collect();
+        let output_shape_u32: Vec<u32> = output_shape.iter().map(|&x| x as u32).collect();
+        let permutation_u32: Vec<u32> =
+            self.permutation.iter().map(|&x| x as u32).collect();
+        let input_strides_u32: Vec<u32> =
+            input_strides.iter().map(|&x| x as u32).collect();
+
         let input_shape_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Permute Input Shape"),
-                    contents: bytemuck::cast_slice(
-                        &input_shape.iter().map(|&x| x as u32).collect::<Vec<_>>(),
-                    ),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                });
-
+            device.create_buffer_u32_init("Permute Input Shape", &input_shape_u32);
         let output_shape_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Permute Output Shape"),
-                    contents: bytemuck::cast_slice(
-                        &output_shape.iter().map(|&x| x as u32).collect::<Vec<_>>(),
-                    ),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                });
-
+            device.create_buffer_u32_init("Permute Output Shape", &output_shape_u32);
         let permutation_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Permute Permutation"),
-                    contents: bytemuck::cast_slice(
-                        &self
-                            .permutation
-                            .iter()
-                            .map(|&x| x as u32)
-                            .collect::<Vec<_>>(),
-                    ),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                });
-
+            device.create_buffer_u32_init("Permute Permutation", &permutation_u32);
         let input_strides_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Permute Input Strides"),
-                    contents: bytemuck::cast_slice(
-                        &input_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
-                    ),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                });
+            device.create_buffer_u32_init("Permute Input Strides", &input_strides_u32);
 
         // Create output buffer
         let output_buffer = device.create_buffer_f32(total_size)?;
@@ -159,177 +120,19 @@ impl Permute {
             _pad2: 0,
         };
 
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Permute Params"),
-                contents: bytemuck::cast_slice(&[params]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+        let params_buffer = device.create_uniform_buffer("Permute Params", &params);
 
-        // Compile shader
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Permute Shader"));
-
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Permute Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 4,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 5,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 6,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Permute Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: input_shape_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: output_shape_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: permutation_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: input_strides_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
-                    resource: output_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Create compute pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Permute Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let compute_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Permute Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Execute compute shader
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Permute Encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Permute Pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&compute_pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (total_size as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "Permute")
+            .shader(Self::wgsl_shader(), "main")
+            .uniform(0, &params_buffer)
+            .storage_read(1, input_buffer)
+            .storage_read(2, &input_shape_buffer)
+            .storage_read(3, &output_shape_buffer)
+            .storage_read(4, &permutation_buffer)
+            .storage_read(5, &input_strides_buffer)
+            .storage_rw(6, &output_buffer)
+            .dispatch_1d(total_size as u32)
+            .submit();
 
         // Return tensor without reading back (zero-copy)
         Ok(Tensor::from_buffer(

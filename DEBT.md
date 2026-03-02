@@ -73,7 +73,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| D-CD | ComputeDispatch migration | High | 111/250 ops migrated (~11,000+ lines removed). ~139 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. |
+| D-CD | ComputeDispatch migration | High | 144/280+ ops migrated (~14,000+ lines removed). ~139 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. Full audit S86 identified ops in subdirs (bio/, md/, lattice/, complex/, linalg/). |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
 | D-COV | Test coverage → 90% | Medium | Major gains in S70/S70+: +187 tests across CLI, server, API, monitoring, distributed, config, barracuda stats/ops. Gap: barracuda GPU ops, neuromorphic drivers. |
@@ -107,6 +107,18 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (S84–S86)
+
+| Item | Resolution |
+|------|-----------|
+| ComputeDispatch 111→144 | 33 ops migrated across 3 sessions: 9 (S84: losses + matmul + gemm) + 12 (S85: metrics + ML core) + 12 (S86: math + tensor ops + losses) |
+| hydrology.rs god file | Smart-refactored 690L → hydrology/ directory (mod.rs ~310 + gpu.rs ~280) |
+| experimental.rs stub | Evolved to real FPGA/neuromorphic/quantum probes with env/device-path detection |
+| frameworks.rs echo | Placeholder "echo input" → proper error with migration guidance |
+| wgpu_backend.rs magic numbers | `num_units: 1000`, `memory_bandwidth: 500GB/s`, `optimal_batch_size: 10000` → real `device.limits()` queries |
+| deployment.rs stubs | 10 placeholder methods → capability-discovery documentation |
+| mDNS constants | Inline `"224.0.0.251"` + `5353` → named `MDNS_MULTICAST_ADDR` + `MDNS_PORT` |
 
 ## Recently Resolved (S79–S80)
 

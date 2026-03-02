@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 2, 2026 -- Session 82
+**Last Updated**: March 2, 2026 -- Session 86
 
 ---
 
@@ -29,9 +29,9 @@
 
 ---
 
-## Current State (Session 82 — March 2, 2026)
+## Current State (Session 86 — March 2, 2026)
 
-**Still evolving.** Deep debt swept across 80 sessions. Module architecture clean — 35+ god files smart-refactored. Build streamlined with explicit re-exports and eliminated dependencies. GPU test resilience via NVK `catch_unwind` wrappers. Capability-based discovery replaces hardcoded primal names.
+**Still evolving.** Deep debt swept across 86 sessions. 144 GPU ops migrated to ComputeDispatch (~139 remaining). Module architecture clean — 35+ god files smart-refactored. Build streamlined with explicit re-exports and eliminated dependencies. GPU test resilience via NVK `catch_unwind` wrappers. Capability-based discovery replaces hardcoded primal names.
 
 - **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery via `poll_safe()`.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests. NVK GPU resilience wrappers on 40+ test files.

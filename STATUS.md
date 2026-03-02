@@ -1,4 +1,4 @@
-# Status -- March 2, 2026 (Session 82)
+# Status -- March 2, 2026 (Session 86)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,858+ tests** (GPU device-loss resilient via `catch_unwind`) |
+| `cargo test -p barracuda --lib` | PASS | **2,866 tests** (GPU device-loss resilient via `catch_unwind`) |
 | `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
 | `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
 | `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
@@ -38,7 +38,7 @@
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
-| ComputeDispatch adoption | **111 ops migrated** (~139 legacy ops remaining, incremental) |
+| ComputeDispatch adoption | **144 ops migrated** (~139 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
 | Default test timeout | **5s** (unit: 2s, integration: 30s, chaos: 20s) |
@@ -80,6 +80,22 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 86 (Mar 2, 2026) — ComputeDispatch Batch 7 + Production Stub Evolution
+- 12 GPU ops migrated to ComputeDispatch (determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat) → 144 total
+- wgpu_backend.rs magic numbers → real device.limits() queries (num_units, memory_capacity, bandwidth, batch_size)
+- deployment.rs 10 placeholder stubs → capability-discovery documentation
+- Full ops audit: ~139 files still using legacy patterns (audit corrected from previous ~57 estimate)
+- 2,866 barracuda tests pass, 0 failures, 13 ignored
+- All quality gates green
+
+### Sessions 84–85 (Mar 2, 2026) — ComputeDispatch Batches 5–6 + God File Refactoring
+- S84: 9 ops migrated (matmul_tiled, gemm_f64, giou_loss, focal_loss, tversky_loss, huber_loss, hinge_loss, contrastive_loss, chamfer_distance)
+- S84: hydrology.rs (690L) → hydrology/ directory (mod.rs + gpu.rs)
+- S84: experimental.rs stub → real FPGA/neuromorphic/quantum probes; frameworks.rs echo → error
+- S84: mDNS constants extracted (MDNS_MULTICAST_ADDR, MDNS_PORT)
+- S85: 12 ops migrated (cosine_similarity, covariance, cross_product, psnr, ssim, diag, global_avgpool, box_iou, focal_loss_alpha, rotary_embedding, alibi, flatten)
+- ComputeDispatch total: 111→144 across S84–S86
 
 ### Session 80 (Mar 2, 2026) — Nautilus Absorption + BatchedEncoder + Nelder-Mead GPU
 - `barracuda::nautilus` module (7 files, 22 tests): standalone bingoCube evolutionary reservoir computing — boards, evolution, population, readout, shell, brain

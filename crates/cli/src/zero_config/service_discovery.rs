@@ -21,6 +21,12 @@ use toadstool_common::primal_sockets::get_socket_path_for_service;
 /// Bind to any interface with OS-assigned port (mDNS socket)
 const BIND_ANY: &str = "0.0.0.0:0";
 
+/// mDNS multicast group address (RFC 6762)
+const MDNS_MULTICAST_ADDR: &str = "224.0.0.251";
+
+/// mDNS port (RFC 6762)
+const MDNS_PORT: u16 = 5353;
+
 /// Service discovery coordinator
 pub struct ServiceDiscovery {
     /// Timeout for discovery attempts
@@ -124,9 +130,8 @@ impl ServiceDiscovery {
     async fn try_mdns_discovery(&self, capability_name: &str) -> Result<Option<ServiceEndpoint>> {
         debug!("Attempting mDNS discovery for {}", capability_name);
 
-        // mDNS uses multicast address 224.0.0.251:5353
-        let multicast_addr: IpAddr = "224.0.0.251".parse()?;
-        let mdns_port = 5353;
+        let multicast_addr: IpAddr = MDNS_MULTICAST_ADDR.parse()?;
+        let mdns_port = MDNS_PORT;
 
         // Create UDP socket for mDNS
         let socket = match UdpSocket::bind(BIND_ANY).await {

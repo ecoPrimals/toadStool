@@ -271,33 +271,19 @@ impl ParallelComputeFramework for WebGpuFramework {
 
         let start_time = std::time::Instant::now();
 
-        // In a real implementation, this would:
-        // 1. Create compute pipeline from compiled kernel
-        // 2. Create buffer bindings for inputs
-        // 3. Dispatch compute workgroups
-        // 4. Read back results
-
-        // For now, simulate execution with input processing
-        let mut output_buffers = HashMap::new();
-        for (i, input) in inputs.iter().enumerate() {
-            let output_name = format!("output_{i}");
-            // Echo input data as output (placeholder behavior)
-            output_buffers.insert(output_name, input.data.clone());
-        }
-
+        // WebGPU kernel execution goes through barracuda's ComputeDispatch.
+        // This trait-based path exists for the generic runtime orchestrator;
+        // direct barracuda usage (Tensor ops, ComputeDispatch) is preferred.
         let execution_time = start_time.elapsed();
 
-        Ok(KernelOutput {
-            buffers: output_buffers,
-            metrics: ExecutionMetrics {
-                execution_time,
-                memory_used: kernel.resource_requirements.memory_bytes,
-                compute_units_used: kernel.resource_requirements.compute_units,
-                energy_consumed: Some(execution_time.as_secs_f64() * 0.1), // Estimated
-                throughput: None,
-            },
-            errors: vec![],
-        })
+        Err(ToadStoolError::runtime(format!(
+            "WebGPU kernel execution via generic framework trait is not yet wired to barracuda ComputeDispatch. \
+             Use barracuda Tensor operations directly. Kernel: {}, session: {}, inputs: {}, elapsed: {:?}",
+            kernel.id,
+            session_id,
+            inputs.len(),
+            execution_time,
+        )))
     }
 
     async fn destroy_session(&self, session_id: Uuid) -> ToadStoolResult<()> {

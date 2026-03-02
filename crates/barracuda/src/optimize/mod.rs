@@ -75,7 +75,9 @@ mod batched_nelder_mead_pipeline;
 pub mod bfgs;
 pub mod bisect;
 pub mod brent;
+pub mod brent_gpu;
 pub mod diagnostics;
+pub mod lbfgs;
 pub mod eval_record;
 pub mod multi_start;
 pub mod nelder_mead;
@@ -91,6 +93,8 @@ pub use batched_nelder_mead_gpu::{
 pub use bfgs::{bfgs, bfgs_numerical, numerical_gradient, BfgsConfig, BfgsResult};
 pub use bisect::bisect;
 pub use brent::{brent, brent_minimize, BrentResult};
+pub use brent_gpu::{BrentFunction, BrentGpu, BrentGpuResult};
+pub use lbfgs::{lbfgs, lbfgs_numerical, LbfgsConfig, LbfgsResult};
 pub use diagnostics::{
     convergence_diagnostics, should_stop_early, ConvergenceDiagnostics, ConvergenceState,
 };

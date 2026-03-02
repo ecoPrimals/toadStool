@@ -43,7 +43,7 @@
 //! let output = weights.matmul(&value)?;
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
@@ -121,131 +121,20 @@ impl AlibiPosition {
             _padding: 0,
         };
 
-        let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ALiBi Params"),
-            size: std::mem::size_of::<AlibiParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        device
-            .queue
-            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        let params_buffer = device.create_uniform_buffer("ALiBi Params", &params);
 
-        // Output buffer (same size as input)
         let output_size = self.scores.len();
         let output_buffer = device.create_buffer_f32(output_size)?;
 
-        // Compile shader
-        let shader = device.compile_shader(Self::shader(), Some("ALiBi"));
+        let total = (batch_size * num_heads * seq_len * seq_len) as u32;
 
-        // Create bind group layout
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("ALiBi BGL"),
-                entries: &[
-                    // Scores (input)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Output (biased scores)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Params
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ALiBi BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.scores.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("ALiBi Pipeline Layout"),
-                    bind_group_layouts: &[&bgl],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("ALiBi Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        // Execute
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ALiBi Encoder"),
-            });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("ALiBi Pass"),
-                timestamp_writes: None,
-            });
-
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let total = (batch_size * num_heads * seq_len * seq_len) as u32;
-            let workgroups = total.div_ceil(optimal_wg_size);
-            pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        device.submit_and_poll(Some(encoder.finish()));
+        ComputeDispatch::new(device, "ALiBi")
+            .shader(Self::shader(), "main")
+            .storage_read(0, self.scores.buffer())
+            .storage_rw(1, &output_buffer)
+            .uniform(2, &params_buffer)
+            .dispatch_1d(total)
+            .submit();
 
         // Return output tensor (same shape as input)
         Ok(Tensor::from_buffer(

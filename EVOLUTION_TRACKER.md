@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 82
+**Date**: March 2, 2026 — Session 86
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -34,6 +34,9 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | wateringHole | V69 | ✅ Core absorbed | Chi-squared batch, MC ET0 propagate |
 | groundSpring | V61 | ✅ S81 absorbed | InterconnectTopology, SubstratePipeline, BandwidthTier (PCIe P2P routing) |
 | neuralSpring | V70 | ✅ S81 absorbed | IFFT/NTT/INTT buffer fixes, `enable f64;` stripping |
+| Cross-spring S83 | All springs | ✅ S83 absorbed | BrentGpu, anderson_4d+Wegner, Omelyan, RichardsGpu, L-BFGS, BatchedStatefulF64, HeadKind generalization, SpectralBridge, ESN shape hardening |
+| Deep debt S84 | toadStool | ✅ S84 evolved | 9 ops → ComputeDispatch, hydrology god-file refactored, experimental.rs stub → real probes, frameworks.rs echo → proper error, mDNS constants extracted |
+| Deep debt S86 | toadStool | ✅ S86 evolved | 12 ops → ComputeDispatch (determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat); wgpu_backend.rs magic numbers → real device limits; deployment.rs stubs → capability-discovery docs |
 
 ---
 
@@ -82,11 +85,11 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ✅ Already exists: sparse_gemm_f64.rs + spmm_f64.wgsl |
 | ESN 36-head MultiHeadEsn + ExportedWeights alignment | hotSpring V0615 | ✅ S79 |
 | StatefulPipeline (water balance state) | airSpring V039 | ✅ S80: StatefulPipeline<S> + WaterBalanceState |
-| NPU substrate kind in metalForge | neuralSpring V60 | ☐ |
+| NPU substrate kind in metalForge | neuralSpring V60 | ✅ S81: `SubstrateType::Npu` in device/substrate.rs |
 | Streaming FASTQ/mzML/MS2 (bio I/O) | wateringHole V69 | ☐ |
-| Pseudofermion HMC (477 lines) | wateringHole V69 | ☐ |
-| Omelyan integrator | wateringHole V69 | ☐ |
-| Richards PDE (12 USDA textures) | wateringHole V69 | ☐ |
+| Pseudofermion HMC (477 lines) | wateringHole V69 | ✅ Already exists (CPU + GPU + shaders) — tracker stale |
+| Omelyan integrator | wateringHole V69 | ✅ S83: `OmelyanIntegrator` wraps `GpuHmcLeapfrog` (2MN, λ=0.1932) |
+| Richards PDE GPU solver | wateringHole V69 | ✅ S83: `RichardsGpu` multi-dispatch Picard (3 kernels) |
 | `TensorSession::fused_mlp` | wateringHole V69 | ✅ S80: fused_mlp via BatchedEncoder |
 
 ---
@@ -97,7 +100,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-CD | ComputeDispatch migration (~155 legacy ops) | High | 111 done (+16 S82: FHE gates, lattice, audio, bio, bisection, spline), incremental |
+| D-CD | ComputeDispatch migration (~155+ legacy ops) | High | 144 done (+12 S86: determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat), ~139 remaining (full audit revealed more ops than originally tracked) |
 | D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
 | D-COV | Test coverage → 90% | Medium | Major gains; gap in GPU ops, neuromorphic |
@@ -165,13 +168,13 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | `cargo check --workspace` | ✅ 0 errors |
 | `cargo clippy --workspace -- -D warnings` | ✅ S77: deprecated discovery calls removed |
 | `cargo fmt --all -- --check` | ✅ S77: 340 diffs fixed |
-| `cargo test -p barracuda --lib` | ✅ 2,858 passed, 13 ignored |
+| `cargo test -p barracuda --lib` | ✅ 2,866 passed, 13 ignored (S84: net -13 from refactoring; all passing) |
 | Workspace lib tests | ✅ 5,500+ passed |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
-| Production mocks/stubs | ✅ 0 |
+| Production mocks/stubs | ✅ Evolved (S84: frameworks.rs echo→error, experimental.rs stub→real probes; S86: deployment.rs docs→capability-discovery, wgpu_backend.rs magic numbers→device-limits) |
 | WGSL shaders | 844 (0 orphans, 0 f32-only, 37 DF64, 15 folding, 2 bitcast-fixed) |
-| God files refactored | 36+ (S82: creation.rs 744→645, extracted negotiate_features/score_physical_device/assemble) |
+| God files refactored | 37+ (S84: hydrology.rs 690→mod.rs ~310 + gpu.rs ~280) |
 | `cargo doc` | ✅ S77/S78: private intra-doc links fixed (ToadStoolError in universal_adapter, discovery_integration) |
 | e2e runtime nesting | ✅ S77: `run_gpu_resilient_async` evolved to dedicated runtime |
 | Zero-copy anti-patterns | ✅ S77: All `cast_slice().to_vec()` verified necessary, documented |

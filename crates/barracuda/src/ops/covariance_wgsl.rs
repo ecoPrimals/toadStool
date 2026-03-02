@@ -9,11 +9,11 @@
 //!
 //! **Note**: f32 precision. For f64, use manual computation with weighted_dot_f64.
 
+use crate::device::compute_pipeline::ComputeDispatch;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
 /// Parameters for covariance shader
 #[repr(C)]
@@ -109,16 +109,13 @@ impl Covariance {
 
     fn covariance_gpu(&self, x: &[f32], y: &[f32], ddof: u32) -> Result<f32> {
         let n = x.len();
-        let shader = self
-            .device
-            .compile_shader(Self::wgsl_shader(), Some("Covariance"));
+        use wgpu::util::DeviceExt;
 
-        // Create buffers
         let x_buf = self
             .device
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("X"),
+                label: Some("Covariance X"),
                 contents: bytemuck::cast_slice(x),
                 usage: wgpu::BufferUsages::STORAGE,
             });
@@ -127,17 +124,12 @@ impl Covariance {
             .device
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Y"),
+                label: Some("Covariance Y"),
                 contents: bytemuck::cast_slice(y),
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Output"),
-            size: 4, // single f32
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
+        let output_buf = self.device.create_buffer_f32(1)?;
 
         let params = CovarianceParams {
             size: n as u32,
@@ -145,149 +137,32 @@ impl Covariance {
             stride: n as u32,
             ddof,
         };
+        let params_buf = self.device.create_uniform_buffer("Covariance Params", &params);
 
-        let params_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Params"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        ComputeDispatch::new(&self.device, "Covariance")
+            .shader(Self::wgsl_shader(), "main")
+            .storage_read(0, &x_buf)
+            .storage_read(1, &y_buf)
+            .storage_rw(2, &output_buf)
+            .uniform(3, &params_buf)
+            .dispatch(1, 1, 1)
+            .submit();
 
-        // Create bind group layout
-        let bgl = self
-            .device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Covariance BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = self
-            .device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Covariance PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline =
-            self.device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Covariance Pipeline"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let bg = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Covariance BG"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: x_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: y_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: output_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                ],
-            });
-
-        // Dispatch
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Covariance Encoder"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Covariance Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(1, 1, 1);
-        }
-
-        self.device.submit_and_poll(Some(encoder.finish()));
-
-        // Read back result
         let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Staging"),
+            label: Some("Covariance Staging"),
             size: 4,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        let mut encoder2 =
+        let mut encoder =
             self.device
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Copy Encoder"),
+                    label: Some("Covariance Copy"),
                 });
-        encoder2.copy_buffer_to_buffer(&output_buf, 0, &staging, 0, 4);
-        self.device.submit_and_poll(Some(encoder2.finish()));
+        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging, 0, 4);
+        self.device.submit_and_poll(Some(encoder.finish()));
 
         let result_vec: Vec<f32> = self.device.map_staging_buffer(&staging, 1)?;
         Ok(result_vec[0])

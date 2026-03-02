@@ -1,6 +1,10 @@
 //! Multi-head ESN: shared reservoir with per-head readouts (hotSpring 36-head concept).
 //!
-//! 6 groups × 6 heads = 36 heads for multi-domain prediction.
+//! `HeadKind` provides a domain-agnostic head classification system:
+//! - Pre-defined kinds for known physics/bio/steering domains
+//! - `Custom(String)` for spring-specific or experimental heads
+//!
+//! Provenance: hotSpring V0615 (physics), wetSpring V86 (BioHeadKind) → generalized
 
 use crate::error::{BarracudaError, Result as BarracudaResult};
 use crate::linalg::solve_f64_cpu;
@@ -9,21 +13,47 @@ use crate::tensor::Tensor;
 use super::config::{validate_config, ESNConfig};
 use super::model::{ExportedWeights, ESN};
 
-/// Head group classification for multi-domain ESN
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub enum HeadGroup {
+/// Domain-agnostic head classification for multi-head ESN.
+///
+/// Pre-defined kinds cover common domains across all springs.
+/// Use `Custom(String)` for spring-specific or experimental heads.
+///
+/// # Evolution from `HeadGroup`
+/// S79 had 6 fixed physics groups. S83 generalizes to support:
+/// - hotSpring physics (Anderson, Qcd, Potts)
+/// - wetSpring biology (Diversity, Taxonomy, Amr, Bloom)
+/// - airSpring hydrology (Et0, SoilMoisture, Irrigation)
+/// - Any custom domain via `Custom(String)`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum HeadKind {
+    // Physics (hotSpring)
     Anderson,
     Qcd,
     Potts,
     Steering,
     Brain,
     Meta,
+    // Biology (wetSpring BioHeadKind absorption)
+    Diversity,
+    Taxonomy,
+    Amr,
+    Bloom,
+    Disorder,
+    // Hydrology (airSpring)
+    Et0,
+    SoilMoisture,
+    Irrigation,
+    // Extensible
+    Custom(String),
 }
 
-/// Configuration for a head within a group
+/// Backward-compatible alias.
+pub type HeadGroup = HeadKind;
+
+/// Configuration for a head within a group.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct HeadConfig {
-    pub group: HeadGroup,
+    pub group: HeadKind,
     pub label: String,
     pub output_size: usize,
 }

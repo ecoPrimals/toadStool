@@ -22,7 +22,7 @@ struct BrentParams {
 
 @group(0) @binding(0) var<storage, read> bracket_a: array<f64>;
 @group(0) @binding(1) var<storage, read> bracket_b: array<f64>;
-@group(0) @binding(2) var<storage, read> target: array<f64>;
+@group(0) @binding(2) var<storage, read> targets: array<f64>;
 @group(0) @binding(3) var<storage, read_write> roots: array<f64>;
 @group(0) @binding(4) var<storage, read_write> iterations: array<u32>;
 @group(0) @binding(5) var<uniform> params: BrentParams;
@@ -34,9 +34,10 @@ fn vg_theta_residual(h: f64, tgt: f64) -> f64 {
     let theta_s = params.aux_b;
     let alpha = params.aux_c;
     let n = params.aux_d;
-    let m = (h - h + 1.0) - (h - h + 1.0) / n;
+    let one = h - h + f64(1.0);
+    let m = one - one / n;
     let ah = alpha * abs(h);
-    let denom = pow_f64(h - h + 1.0 + pow_f64(ah, n), m);
+    let denom = pow_f64(one + pow_f64(ah, n), m);
     let theta = theta_r + (theta_s - theta_r) / denom;
     return theta - tgt;
 }
@@ -46,7 +47,7 @@ fn vg_theta_residual(h: f64, tgt: f64) -> f64 {
 fn green_ampt_residual(f_val: f64, tgt: f64) -> f64 {
     let ks = params.aux_a;
     let psi_dt = params.aux_b;
-    let one = f_val - f_val + 1.0;
+    let one = f_val - f_val + f64(1.0);
     let t_from_f = f_val / ks - psi_dt / ks * log_f64(one + f_val / psi_dt);
     return t_from_f - tgt;
 }
@@ -69,7 +70,7 @@ fn brent_solve(@builtin(workgroup_id) wg_id: vec3<u32>) {
 
     var a = bracket_a[idx];
     var b = bracket_b[idx];
-    let tgt = target[idx];
+    let tgt = targets[idx];
     let tol = params.tol;
     let max_it = params.max_iter;
 

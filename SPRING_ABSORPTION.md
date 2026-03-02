@@ -1,7 +1,53 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 2, 2026 — Session 82  
-**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V70), wetSpring (V82+V88), airSpring (V039+V045), groundSpring (V54+V61), wateringHole (updated MAR02)
+**Date**: March 2, 2026 — Session 86  
+**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V70), wetSpring (V82+V86+V88), airSpring (V039+V045+V052), groundSpring (V54+V61), wateringHole (updated MAR02)
+
+## S83 Execution Log — Cross-Spring Evolution & Shader Completion
+
+### P0: Shader Fixes
+- ✅ **`brent_f64.wgsl`** — Fixed f32→f64 type mismatch: `1.0` literals → `f64(1.0)` casts in `vg_theta_residual()` and `green_ampt_residual()`. Fixed `target` → `targets` (WGSL reserved keyword).
+- ✅ **`BrentGpu`** — New GPU executor (`optimize/brent_gpu.rs`): batched Brent root-finding via `ComputeDispatch`. Built-in functions: VG inverse, Green-Ampt, polynomial. 2 GPU tests pass.
+
+### P0: New Spectral Op
+- ✅ **`anderson_4d()`** — 4D Anderson Hamiltonian on L⁴ hypercubic lattice (`spectral/anderson.rs`). Open BC, z=8 neighbors. Returns SpectralCsrMatrix.
+- ✅ **`clean_4d_lattice()`** — Clean 4D tight-binding (no disorder).
+- ✅ **`wegner_block_4d()`** — Wegner block renormalization: coarse-grains L⁴ → (L/2)⁴ by averaging 2⁴=16 site blocks. Returns renormalized CSR Hamiltonian.
+- ✅ 6 tests: dimension/nnz, symmetry, clean bandwidth, Wegner coarsening, Wegner clean diagonal.
+
+### P1: Omelyan Integrator
+- ✅ **`OmelyanIntegrator`** — 2MN integrator wrapping `GpuHmcLeapfrog` (`ops/lattice/omelyan_integrator.rs`). Optimal λ=0.1932 (Omelyan et al. 2003). Step sequence: π(λε)→U(ε/2)→π((1-2λ)ε)→U(ε/2)→π(λε). `trajectory_quenched()` for multi-step. 3 tests.
+
+### P1: L-BFGS Optimizer
+- ✅ **`lbfgs()`** / **`lbfgs_numerical()`** — Limited-memory BFGS optimizer (`optimize/lbfgs.rs`). Two-loop recursion (Nocedal 1980), backtracking line search, configurable memory depth (default m=10). 4 tests: Rosenbrock, quadratic, numerical gradient, 20D memory-bounded.
+
+### P1: Richards PDE GPU Solver
+- ✅ **`richards_picard_f64.wgsl`** — 3 entry points: `compute_hydraulics` (K, C, θ parallel), `assemble_tridiag` (Crank-Nicolson parallel), `thomas_solve` (sequential Thomas algorithm).
+- ✅ **`RichardsGpu`** — Multi-dispatch iterative Picard solver (`pde/richards_gpu.rs`). CPU convergence check between iterations. 1 test.
+
+### P1: BatchedStatefulF64
+- ✅ **`BatchedStatefulF64`** — GPU-resident ping-pong state buffer for sequential multi-step pipelines (`pipeline/batched_stateful.rs`). Swap, read, write ops. 3 tests.
+
+### P2: HeadKind Generalization
+- ✅ **`HeadKind`** enum — Evolved from 6-variant physics `HeadGroup` to 15+ domain-agnostic variants: physics (Anderson, Qcd, Potts, Steering, Brain, Meta), biology (Diversity, Taxonomy, Amr, Bloom, Disorder), hydrology (Et0, SoilMoisture, Irrigation), plus `Custom(String)`. Backward-compatible `HeadGroup` alias retained.
+
+### P2: SpectralNautilusBridge
+- ✅ **`SpectralFeatures`** — Extracts level spacing ratio, bandwidth, condition number, λ_min, phase classification from eigenvalue data (`nautilus/spectral_bridge.rs`).
+- ✅ **`to_observation()`** — Maps spectral features to `BetaObservation` for NautilusBrain input. 3 tests.
+
+### P2: ESN v2 Shape Hardening
+- ✅ **`ESN::update()`** — Now accepts `[n, 1]`, `[1, n]`, and `[n]` input shapes, auto-reshaping to column vector. Clearer error messages for mismatches.
+
+### P2: Cross-Spring Validation Harness
+- ✅ **`tests/cross_spring_validation.rs`** — 8-check harness: anderson 1D/3D/4D, eigenvalue bounds, FAO-56 ET₀, Brent √2, L-BFGS quadratic, SpectralBridge. All pass.
+
+### Session Summary
+- **New files**: 8 (brent_gpu.rs, lbfgs.rs, omelyan_integrator.rs, richards_gpu.rs, richards_picard_f64.wgsl, batched_stateful.rs, spectral_bridge.rs, cross_spring_validation.rs)
+- **Modified files**: 8 (brent_f64.wgsl, anderson.rs, anderson_tests.rs, multi_head.rs, model.rs, optimize/mod.rs, pde/mod.rs, nautilus/mod.rs, pipeline/mod.rs, lattice/mod.rs)
+- **New tests**: 21+ (6 anderson_4d, 3 omelyan, 4 lbfgs, 2 brent_gpu, 3 batched_stateful, 3 spectral_bridge, 8 cross-spring harness, 1 richards_gpu)
+- **Tracker housekeeping**: Pseudofermion HMC marked as already-existing (was stale ☐)
+
+---
 
 ## S82 Execution Log — Deep Debt & Modernization
 
@@ -542,3 +588,90 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 - ✅ `cargo fmt --all -- --check`: 0 diffs
 - ✅ `cargo clippy --workspace -- -D warnings`: 0 warnings
 - ✅ `cargo build --workspace`: clean
+
+## S84 Deep Debt Execution Log
+
+### ComputeDispatch Migration Batch 5 (111→120)
+- ✅ `ops/matmul_tiled.rs` — 170 lines of BGL/pipeline/bind-group/encode boilerplate → 10 lines ComputeDispatch
+- ✅ `ops/linalg/gemm_f64.rs` — one-shot `execute_gemm` path migrated (GemmCachedF64 intentionally kept manual for pre-compiled reuse)
+- ✅ `ops/giou_loss.rs` — GIoU loss for object detection
+- ✅ `ops/focal_loss.rs` — Focal loss for imbalanced classification
+- ✅ `ops/tversky_loss.rs` — Tversky/generalized Dice loss for medical imaging
+- ✅ `ops/huber_loss.rs` — Huber loss for robust regression
+- ✅ `ops/hinge_loss.rs` — Hinge loss for SVM-style classification
+- ✅ `ops/contrastive_loss.rs` — NT-Xent contrastive loss for self-supervised learning
+- ✅ `ops/chamfer_distance.rs` — Chamfer distance for point cloud similarity
+- Skipped `pipeline/reduce.rs` and `staging/stateful.rs`: these intentionally pre-compile pipelines for reuse; ComputeDispatch would be a regression
+
+### God File Refactoring
+- ✅ `stats/hydrology.rs` (690 lines) → `stats/hydrology/mod.rs` (~310 lines: scalar CPU methods + tests) + `stats/hydrology/gpu.rs` (~280 lines: HargreavesBatchGpu, SeasonalPipelineF64, McEt0PropagateGpu)
+- Smart split by CPU/GPU domain boundary, not arbitrary line count
+
+### Production Stub Evolution
+- ✅ `runtime/gpu/src/frameworks.rs` — placeholder echo behavior → explicit error with migration guidance ("use barracuda Tensor operations directly")
+- ✅ `distributed/src/substrate_detection/experimental.rs` — empty Vec stub → real capability probes for FPGA (Xilinx XRT, Intel Quartus), neuromorphic (Akida VFIO, SpiNNaker), quantum simulators (Qiskit, Cirq); 4 new tests
+
+### Hardcoded Constants Evolution
+- ✅ `cli/src/zero_config/service_discovery.rs` — inline mDNS `"224.0.0.251"` and `5353` → named `MDNS_MULTICAST_ADDR` and `MDNS_PORT` constants (RFC 6762)
+- `core/config/src/network.rs` primal-name port getters already deprecated with capability-based migration paths; no further action needed
+
+### Quality Gates
+- ✅ `cargo check --workspace`: 0 errors
+- ✅ `cargo test -p barracuda --lib`: 2,866 passed, 13 ignored
+- ✅ All changes compile clean across full workspace
+
+## S85 ComputeDispatch Migration Batch 6 (120→132)
+
+### Metrics & Similarity Ops
+- ✅ `ops/cosine_similarity.rs` — pairwise cosine similarity between vector sets
+- ✅ `ops/covariance_wgsl.rs` — sample/population covariance, variance, std-dev (kept staging readback for scalar return)
+- ✅ `ops/cross_product.rs` — batched 3D vector cross product
+- ✅ `ops/psnr.rs` — Peak Signal-to-Noise Ratio (image quality metric)
+- ✅ `ops/ssim.rs` — Structural Similarity Index (Wang et al.)
+- ✅ `ops/diag.rs` — diagonal extract/create (2 modes)
+
+### ML/DL Core Ops
+- ✅ `ops/global_avgpool.rs` — global average pooling (H×W→1×1) for modern CNNs
+- ✅ `ops/box_iou.rs` — bounding box IoU for object detection
+- ✅ `ops/focal_loss_alpha.rs` — focal loss with per-class alpha weights (5 bindings)
+- ✅ `ops/rotary_embedding.rs` — RoPE for LLaMA/GPT-Neo/PaLM transformers
+- ✅ `ops/alibi.rs` — ALiBi position encoding for BLOOM/MPT/CodeGen
+- ✅ `ops/flatten.rs` — dimension flattening with configurable start/end dims
+
+### Quality Gates
+- ✅ `cargo check --workspace`: 0 errors
+- ✅ `cargo test -p barracuda --lib`: 2,866 passed, 0 failed, 13 ignored
+- ✅ ~57 legacy ops remaining (down from ~86 at start of session)
+
+## S86 Deep Debt Execution Log
+
+### ComputeDispatch Migration Batch 7 (132→144)
+
+#### Batch 7a — Losses, Metrics & Quantization
+- ✅ `ops/determinant.rs` — matrix determinant via LU decomposition (3 bindings)
+- ✅ `ops/mse_loss.rs` — mean squared error loss
+- ✅ `ops/dice.rs` — Dice coefficient loss for segmentation
+- ✅ `ops/quantize.rs` — FP32→INT8/INT4 quantization
+- ✅ `ops/dequantize.rs` — INT8/INT4→FP32 dequantization
+- ✅ `ops/bce_loss.rs` — binary cross-entropy loss
+
+#### Batch 7b — Tensor Manipulation & Reduction
+- ✅ `ops/permute.rs` — dimension permutation (N-D)
+- ✅ `ops/movedim.rs` — dimension reordering
+- ✅ `ops/logsumexp.rs` — numerically stable log-sum-exp
+- ✅ `ops/index_add.rs` — indexed scatter-add
+- ✅ `ops/tensor_split.rs` — split along dimension
+- ✅ `ops/concat.rs` — tensor concatenation
+
+### Production Stub & Magic Number Evolution
+- ✅ `runtime/universal/src/backends/wgpu_backend.rs` — replaced hardcoded `num_units: 1000`, `memory_bandwidth: 500_000_000_000`, `optimal_batch_size: 10_000` with real `device.limits()` queries; `memory_capacity` now uses `limits.max_buffer_size`; all estimates vary by device type
+- ✅ `cli/src/zero_config/deployment.rs` — 10 placeholder methods cleaned up: removed stale "MODERNIZED" comments, documented capability-discovery architecture (runtimes via registry, ecosystem primals via runtime discovery)
+
+### Full Ops Audit
+- Conducted full audit of remaining legacy ops: **~139 files** still use raw `create_bind_group_layout` / `create_compute_pipeline` patterns
+- Previous tracker estimate (~57) was low; actual count is much higher due to subdirectory ops (bio/, md/, lattice/, complex/, linalg/) not being counted
+
+### Quality Gates
+- ✅ `cargo check --workspace`: 0 errors
+- ✅ `cargo test -p barracuda --lib`: 2,866 passed, 0 failed, 13 ignored
+- ✅ All changes compile clean across full workspace

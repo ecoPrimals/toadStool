@@ -176,17 +176,28 @@ impl ESN {
         Ok(())
     }
 
-    /// Update reservoir state with a single input
+    /// Update reservoir state with a single input.
+    ///
+    /// Accepts column vectors of shape `[input_size, 1]`. Row vectors
+    /// `[1, input_size]` and flat vectors `[input_size]` are automatically
+    /// reshaped to column form for convenience.
     pub async fn update(&mut self, input: &Tensor) -> BarracudaResult<Tensor> {
-        if input.shape() != [self.config.input_size, 1] {
-            return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Input tensor shape mismatch: expected [{}, 1], got {:?}",
-                    self.config.input_size,
-                    input.shape()
-                ),
-            });
-        }
+        let input = match input.shape() {
+            [n, 1] if *n == self.config.input_size => input.clone(),
+            [1, n] if *n == self.config.input_size => input.reshape(vec![self.config.input_size, 1])?,
+            [n] if *n == self.config.input_size => input.reshape(vec![self.config.input_size, 1])?,
+            other => {
+                return Err(BarracudaError::InvalidInput {
+                    message: format!(
+                        "Input tensor shape mismatch: expected [{}, 1] (or [1, {}] or [{}]), got {other:?}",
+                        self.config.input_size,
+                        self.config.input_size,
+                        self.config.input_size,
+                    ),
+                });
+            }
+        };
+        let input = &input;
 
         let leak = self.config.leak_rate;
 

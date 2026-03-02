@@ -161,124 +161,24 @@ impl GemmF64 {
         let params = GemmParams::new(m as u32, k as u32, n as u32, batch_size as u32, alpha, beta);
         let params_buffer = device.create_uniform_buffer("GEMM Params", &params);
 
+        use crate::device::compute_pipeline::ComputeDispatch;
+
         let src = Self::wgsl_shader_for_device(&device);
-        let shader = device.compile_shader_f64(&src, Some("GEMM f64"));
 
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("GEMM BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("GEMM PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("GEMM f64"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "gemm_f64",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("GEMM BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: a_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: b_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: c_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        // Dispatch: (ceil(N/16), ceil(M/16), batch_size)
         let wg_x = (n as u32).div_ceil(16);
         let wg_y = (m as u32).div_ceil(16);
         let wg_z = batch_size as u32;
 
-        {
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("GEMM Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("GEMM Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bg, &[]);
-                pass.dispatch_workgroups(wg_x, wg_y, wg_z);
-            }
-            device.submit_and_poll(Some(encoder.finish()));
-        }
+        ComputeDispatch::new(&device, "gemm_f64")
+            .shader(&src, "gemm_f64")
+            .f64()
+            .uniform(0, &params_buffer)
+            .storage_read(1, &a_buffer)
+            .storage_read(2, &b_buffer)
+            .storage_rw(3, &c_buffer)
+            .dispatch(wg_x, wg_y, wg_z)
+            .submit();
 
-        // Read back results
         device.read_f64_buffer(&c_buffer, c_size)
     }
 }

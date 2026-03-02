@@ -168,3 +168,89 @@ fn find_w_c_linear_interpolation() {
     let w_c = find_w_c(&sweep, midpoint).unwrap();
     assert!(w_c > 10.0 && w_c < 20.0, "W_c={w_c}");
 }
+
+#[test]
+fn anderson_4d_dimension_and_nnz() {
+    let l = 4;
+    let mat = anderson_4d(l, 1.0, 42);
+    let n = l * l * l * l;
+    assert_eq!(mat.n, n);
+    // 8 neighbors in 4D (open BC), diagonal per site
+    // bonds along each axis: (l-1)*l^3, times 4 axes, times 2 (symmetric)
+    let expected_nnz = n + 2 * 4 * (l - 1) * l * l * l;
+    assert_eq!(
+        mat.nnz(),
+        expected_nnz,
+        "4D nnz={}, expected={expected_nnz}",
+        mat.nnz()
+    );
+}
+
+#[test]
+fn anderson_4d_symmetric() {
+    let l = 3;
+    let mat = anderson_4d(l, 5.0, 99);
+    for i in 0..mat.n {
+        for k in mat.row_ptr[i]..mat.row_ptr[i + 1] {
+            let j = mat.col_idx[k];
+            let v_ij = mat.values[k];
+            if i == j {
+                continue;
+            }
+            let found = (mat.row_ptr[j]..mat.row_ptr[j + 1])
+                .find(|&kk| mat.col_idx[kk] == i)
+                .map(|kk| mat.values[kk]);
+            assert_eq!(
+                found,
+                Some(v_ij),
+                "Missing symmetric entry ({j},{i}) for ({i},{j})={v_ij}"
+            );
+        }
+    }
+}
+
+#[test]
+fn clean_4d_bandwidth() {
+    let l = 3;
+    let mat = clean_4d_lattice(l);
+    // All diagonal entries should be 0 (no disorder)
+    for i in 0..mat.n {
+        for k in mat.row_ptr[i]..mat.row_ptr[i + 1] {
+            if mat.col_idx[k] == i {
+                assert!(
+                    mat.values[k].abs() < 1e-15,
+                    "clean 4D diagonal [{i}] = {}, expected 0",
+                    mat.values[k]
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn wegner_block_4d_coarsens() {
+    let l = 4;
+    let mat = anderson_4d(l, 8.0, 42);
+    let coarse = wegner_block_4d(&mat, l);
+    let l2 = l / 2;
+    assert_eq!(coarse.n, l2 * l2 * l2 * l2);
+    assert!(coarse.nnz() > 0);
+}
+
+#[test]
+fn wegner_block_4d_clean_zero_diag() {
+    let l = 4;
+    let mat = clean_4d_lattice(l);
+    let coarse = wegner_block_4d(&mat, l);
+    for i in 0..coarse.n {
+        for k in coarse.row_ptr[i]..coarse.row_ptr[i + 1] {
+            if coarse.col_idx[k] == i {
+                assert!(
+                    coarse.values[k].abs() < 1e-14,
+                    "Wegner clean coarse diagonal [{i}] = {}, expected ~0",
+                    coarse.values[k]
+                );
+            }
+        }
+    }
+}

@@ -36,35 +36,55 @@ impl WgpuComputeUnit {
             .await
             .map_err(|e| ComputeError::BackendError(e.to_string()))?;
 
-        // Estimate capabilities based on device type
-        let (memory_capacity, compute_throughput, power_profile) = match info.device_type {
-            wgpu::DeviceType::DiscreteGpu => (
-                16 * 1024 * 1024 * 1024, // 16 GB typical
-                10e12,                   // 10 TFLOPS
-                PowerProfile::High,
-            ),
-            wgpu::DeviceType::IntegratedGpu => (
-                4 * 1024 * 1024 * 1024, // 4 GB shared
-                1e12,                   // 1 TFLOPS
-                PowerProfile::Medium,
-            ),
-            wgpu::DeviceType::VirtualGpu => (
-                8 * 1024 * 1024 * 1024, // 8 GB
-                5e12,                   // 5 TFLOPS
-                PowerProfile::Medium,
-            ),
-            wgpu::DeviceType::Cpu => (
-                8 * 1024 * 1024 * 1024, // System RAM
-                100e9,                  // 100 GFLOPS
-                PowerProfile::Low,
-            ),
-            _ => (4 * 1024 * 1024 * 1024, 1e12, PowerProfile::Medium),
-        };
+        let limits = device.limits();
+
+        // Use actual device limits where available, estimate where wgpu doesn't expose details.
+        // max_compute_workgroups_per_dimension is the best proxy wgpu exposes for parallelism.
+        let max_wg = limits.max_compute_workgroups_per_dimension;
+
+        let (memory_capacity, compute_throughput, power_profile, bandwidth, batch_size) =
+            match info.device_type {
+                wgpu::DeviceType::DiscreteGpu => (
+                    limits.max_buffer_size.max(4 * 1024 * 1024 * 1024),
+                    10e12,
+                    PowerProfile::High,
+                    500_000_000_000_u64, // ~500 GB/s typical
+                    65_536_usize,
+                ),
+                wgpu::DeviceType::IntegratedGpu => (
+                    limits.max_buffer_size.max(1024 * 1024 * 1024),
+                    1e12,
+                    PowerProfile::Medium,
+                    50_000_000_000,
+                    16_384,
+                ),
+                wgpu::DeviceType::VirtualGpu => (
+                    limits.max_buffer_size.max(2 * 1024 * 1024 * 1024),
+                    5e12,
+                    PowerProfile::Medium,
+                    100_000_000_000,
+                    32_768,
+                ),
+                wgpu::DeviceType::Cpu => (
+                    limits.max_buffer_size.max(512 * 1024 * 1024),
+                    100e9,
+                    PowerProfile::Low,
+                    25_000_000_000,
+                    4_096,
+                ),
+                _ => (
+                    limits.max_buffer_size.max(1024 * 1024 * 1024),
+                    1e12,
+                    PowerProfile::Medium,
+                    50_000_000_000,
+                    16_384,
+                ),
+            };
 
         let capabilities = Capabilities {
             unit_type: ComputeUnitType::GpuWgpu,
             parallelism: Parallelism {
-                num_units: 1000, // Placeholder - wgpu doesn't expose this directly
+                num_units: max_wg as usize,
                 model: ExecutionModel::Simd,
             },
             power_profile,
@@ -72,10 +92,10 @@ impl WgpuComputeUnit {
                 typical_ms: 1,
                 deterministic: false,
             },
-            memory_capacity,
-            memory_bandwidth: 500_000_000_000, // ~500 GB/s
+            memory_capacity: memory_capacity as usize,
+            memory_bandwidth: bandwidth as usize,
             compute_throughput,
-            optimal_batch_size: 10_000,
+            optimal_batch_size: batch_size,
             supported_ops: vec![
                 OperationType::Map,
                 OperationType::Reduce,

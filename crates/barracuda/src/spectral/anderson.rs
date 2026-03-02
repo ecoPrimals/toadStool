@@ -469,6 +469,206 @@ pub fn anderson_eigenvalues(n: usize, disorder: f64, seed: u64) -> Vec<f64> {
     super::tridiag::find_all_eigenvalues(&diag, &off)
 }
 
+/// Construct the 4D Anderson Hamiltonian on an L⁴ hypercubic lattice
+/// with open boundary conditions.
+///
+/// H = -Δ₄D + V, where Δ₄D is the 4D discrete Laplacian (8 nearest
+/// neighbors) and V_i ~ Uniform[-W/2, W/2].
+///
+/// The clean bandwidth is [-8, 8] (hopping t=1, coordination number z=8).
+/// With disorder W, spectrum lies in [-8-W/2, 8+W/2].
+///
+/// In 4D the upper critical dimension d_c=4 coincides with the lattice
+/// dimension, producing logarithmic corrections to the metal-insulator
+/// transition. Wegner's block renormalization group can be studied directly
+/// by coarse-graining blocks of 2⁴ = 16 sites.
+///
+/// Returns a SpectralCsrMatrix of dimension N = L⁴.
+///
+/// # Provenance
+/// hotSpring Exp 026 (4D Anderson + Wegner block proxy)
+/// Wegner (1976) Z. Phys. B 25, 327
+pub fn anderson_4d(l: usize, disorder: f64, seed: u64) -> SpectralCsrMatrix {
+    let n = l * l * l * l;
+    let mut rng = LcgRng::new(seed);
+
+    let mut row_ptr = Vec::with_capacity(n + 1);
+    let mut col_idx = Vec::new();
+    let mut values = Vec::new();
+
+    let idx =
+        |ix: usize, iy: usize, iz: usize, iw: usize| -> usize { ((ix * l + iy) * l + iz) * l + iw };
+
+    row_ptr.push(0);
+
+    for ix in 0..l {
+        for iy in 0..l {
+            for iz in 0..l {
+                for iw in 0..l {
+                    let v_i = disorder * (rng.uniform() - 0.5);
+                    let mut entries: Vec<(usize, f64)> = Vec::new();
+
+                    if ix > 0 {
+                        entries.push((idx(ix - 1, iy, iz, iw), -1.0));
+                    }
+                    if iy > 0 {
+                        entries.push((idx(ix, iy - 1, iz, iw), -1.0));
+                    }
+                    if iz > 0 {
+                        entries.push((idx(ix, iy, iz - 1, iw), -1.0));
+                    }
+                    if iw > 0 {
+                        entries.push((idx(ix, iy, iz, iw - 1), -1.0));
+                    }
+                    entries.push((idx(ix, iy, iz, iw), v_i));
+                    if iw + 1 < l {
+                        entries.push((idx(ix, iy, iz, iw + 1), -1.0));
+                    }
+                    if iz + 1 < l {
+                        entries.push((idx(ix, iy, iz + 1, iw), -1.0));
+                    }
+                    if iy + 1 < l {
+                        entries.push((idx(ix, iy + 1, iz, iw), -1.0));
+                    }
+                    if ix + 1 < l {
+                        entries.push((idx(ix + 1, iy, iz, iw), -1.0));
+                    }
+
+                    entries.sort_by_key(|&(c, _)| c);
+                    for (c, v) in entries {
+                        col_idx.push(c);
+                        values.push(v);
+                    }
+                    row_ptr.push(col_idx.len());
+                }
+            }
+        }
+    }
+
+    SpectralCsrMatrix {
+        n,
+        row_ptr,
+        col_idx,
+        values,
+    }
+}
+
+/// Construct the clean 4D tight-binding Hamiltonian (no disorder).
+pub fn clean_4d_lattice(l: usize) -> SpectralCsrMatrix {
+    anderson_4d(l, 0.0, 0)
+}
+
+/// Wegner block renormalization for 4D Anderson model.
+///
+/// Coarse-grains a 4D lattice of side L into blocks of 2⁴ = 16 sites each,
+/// returning the effective disorder of the renormalized Hamiltonian.
+///
+/// The effective on-site energy for each block is the mean of its 16 sites'
+/// diagonal elements. The effective hopping between adjacent blocks is the
+/// mean of the 2⁴⁻¹ = 8 inter-block bonds per face.
+///
+/// Returns a SpectralCsrMatrix of dimension (L/2)⁴.
+///
+/// # Panics
+/// Panics if `l` is not even.
+pub fn wegner_block_4d(original: &SpectralCsrMatrix, l: usize) -> SpectralCsrMatrix {
+    assert!(l >= 2 && l % 2 == 0, "L must be even and >= 2 for Wegner blocking");
+    let l2 = l / 2;
+    let n_coarse = l2 * l2 * l2 * l2;
+
+    let fine_idx =
+        |ix: usize, iy: usize, iz: usize, iw: usize| -> usize { ((ix * l + iy) * l + iz) * l + iw };
+    let coarse_idx =
+        |ix: usize, iy: usize, iz: usize, iw: usize| -> usize { ((ix * l2 + iy) * l2 + iz) * l2 + iw };
+
+    let mut block_diag = vec![0.0; n_coarse];
+    for bx in 0..l2 {
+        for by in 0..l2 {
+            for bz in 0..l2 {
+                for bw in 0..l2 {
+                    let mut sum = 0.0;
+                    for dx in 0..2 {
+                        for dy in 0..2 {
+                            for dz in 0..2 {
+                                for dw in 0..2 {
+                                    let site = fine_idx(
+                                        bx * 2 + dx,
+                                        by * 2 + dy,
+                                        bz * 2 + dz,
+                                        bw * 2 + dw,
+                                    );
+                                    for k in original.row_ptr[site]..original.row_ptr[site + 1] {
+                                        if original.col_idx[k] == site {
+                                            sum += original.values[k];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    block_diag[coarse_idx(bx, by, bz, bw)] = sum / 16.0;
+                }
+            }
+        }
+    }
+
+    let mut row_ptr = Vec::with_capacity(n_coarse + 1);
+    let mut col_idx_out = Vec::new();
+    let mut values_out = Vec::new();
+    row_ptr.push(0);
+
+    for bx in 0..l2 {
+        for by in 0..l2 {
+            for bz in 0..l2 {
+                for bw in 0..l2 {
+                    let ci = coarse_idx(bx, by, bz, bw);
+                    let mut entries: Vec<(usize, f64)> = Vec::new();
+
+                    if bx > 0 {
+                        entries.push((coarse_idx(bx - 1, by, bz, bw), -1.0));
+                    }
+                    if by > 0 {
+                        entries.push((coarse_idx(bx, by - 1, bz, bw), -1.0));
+                    }
+                    if bz > 0 {
+                        entries.push((coarse_idx(bx, by, bz - 1, bw), -1.0));
+                    }
+                    if bw > 0 {
+                        entries.push((coarse_idx(bx, by, bz, bw - 1), -1.0));
+                    }
+                    entries.push((ci, block_diag[ci]));
+                    if bw + 1 < l2 {
+                        entries.push((coarse_idx(bx, by, bz, bw + 1), -1.0));
+                    }
+                    if bz + 1 < l2 {
+                        entries.push((coarse_idx(bx, by, bz + 1, bw), -1.0));
+                    }
+                    if by + 1 < l2 {
+                        entries.push((coarse_idx(bx, by + 1, bz, bw), -1.0));
+                    }
+                    if bx + 1 < l2 {
+                        entries.push((coarse_idx(bx + 1, by, bz, bw), -1.0));
+                    }
+
+                    entries.sort_by_key(|&(c, _)| c);
+                    for (c, v) in entries {
+                        col_idx_out.push(c);
+                        values_out.push(v);
+                    }
+                    row_ptr.push(col_idx_out.len());
+                }
+            }
+        }
+    }
+
+    SpectralCsrMatrix {
+        n: n_coarse,
+        row_ptr,
+        col_idx: col_idx_out,
+        values: values_out,
+    }
+}
+
 /// LCG RNG for reproducible disorder; used by Anderson models and Lanczos.
 pub(crate) struct LcgRng(u64);
 
