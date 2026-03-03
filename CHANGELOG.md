@@ -7,16 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - March 2, 2026 (Sessions 43-88 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
 
-### Session 89 (Mar 2, 2026) — barraCuda Primal Budding Complete
+### Session 89 (Mar 2-3, 2026) — barraCuda Budding, Demarcation, Deprecation & Rewire
 
+#### Phase 1: Extraction (Mar 2)
 - **barraCuda extraction**: Full barracuda crate (956 .rs files, 767 WGSL shaders, 61 test files) extracted to standalone `ecoPrimals/barraCuda/` repository
 - **Decoupling**: `toadstool-core` gated behind `#[cfg(feature = "toadstool")]` (1 file), `akida-driver` gated behind `#[cfg(feature = "npu-akida")]` (1 file + ops + bridge)
 - **Type extraction**: `DeviceSelection` and `HardwareWorkload` enums moved from `toadstool_integration.rs` to `device/mod.rs` (always available, no external deps)
 - **barracuda-core wired**: `BarraCudaPrimal` now wraps device discovery and health reporting from barracuda compute library
 - **Quality**: `cargo check`, `cargo clippy -- -D warnings`, `cargo test --lib` all pass (2,832 tests, 0 failures)
 - **MSRV**: bumped to 1.87 (code uses `is_multiple_of`, stable since 1.87)
-- **toadStool unchanged**: zero modifications to toadStool source, all original tests still pass
 - **Pushed to GitHub**: `ecoPrimals/barraCuda` repository live
+
+#### Phase 2: Demarcation & Feature Gates (Mar 2-3)
+- **Architecture demarcation**: `specs/ARCHITECTURE_DEMARCATION.md` — 3-layer ownership (barraCuda=math, toadStool=orchestration, songBird=wire)
+- **Infrastructure audit**: 17 barraCuda modules vs 4 toadStool runtime crates — zero functional duplication confirmed
+- **Domain model feature gates**: `domain-models` umbrella + per-module flags (domain-nn, domain-esn, domain-snn, domain-pde, domain-genomics, domain-vision, domain-timeseries)
+- **Adaptive coupling verified**: toadStool runtime/adaptive has zero code coupling to barraCuda (profiling only)
+
+#### Phase 3: hotSpring Validation & Bug Fixes (Mar 3)
+- **hotSpring first consumer**: 716/716 tests pass against standalone barraCuda (single-line Cargo.toml change)
+- **Fix sin_f64_safe**: naga 22 rejects `%` on f64 — replaced with `x - floor(x / two_pi) * two_pi` (fixes 36 shader compilation failures)
+- **Fix tokio test flavor**: `test_cpu_device_available` needs `multi_thread` runtime (fixes 1 test failure)
+- **Full suite**: 2,831 pass, 13 ignored (shader compilation tests now exercised)
+
+#### Phase 4: Deprecation & Rewire (Mar 3)
+- **Embedded barracuda deprecated**: `crates/barracuda/` removed from workspace members, `DEPRECATED.md` added
+- **Rewired**: `core/toadstool`, `cli`, `integration-tests` now depend on `ecoPrimals/barraCuda/crates/barracuda` (external path)
+- **Full workspace builds clean**: all toadStool crates compile against standalone barraCuda
 
 ### Session 88 (Mar 2, 2026) — Cross-Spring Absorption + API Gaps + Shader Evolution
 

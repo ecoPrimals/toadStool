@@ -522,7 +522,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_cpu_device_available() {
         // On systems with llvmpipe, CPU device should work
         if let Some(dev) = get_test_cpu_device() {

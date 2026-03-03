@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 2, 2026 -- Session 89
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,872+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU | L-BFGS GPU | barraCuda standalone primal
-**Latest**: S89 — barraCuda primal budding complete. 956 .rs files, 767 WGSL shaders extracted to standalone ecoPrimals/barraCuda/. 2,832 tests pass standalone. toadstool-core/akida-driver feature-gated. barracuda-core wired with device discovery.
+**Updated**: March 3, 2026 -- Session 89
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,831+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU | L-BFGS GPU | barraCuda standalone primal | **EMBEDDED BARRACUDA DEPRECATED**
+**Latest**: S89 — barraCuda budding complete + deprecation. toadStool workspace now depends on standalone ecoPrimals/barraCuda/. Embedded crates/barracuda/ deprecated (DEPRECATED.md). hotSpring validated 716/716 tests. sin_f64_safe and tokio test_pool fixed. Architecture demarcation spec codified. Domain models feature-gated.
 
 ---
 

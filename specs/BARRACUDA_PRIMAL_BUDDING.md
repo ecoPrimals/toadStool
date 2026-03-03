@@ -1,7 +1,7 @@
 # barraCuda Primal Budding — Architecture Spec
 
-**Date**: March 2, 2026 (Session 88–89)
-**Status**: Phase 0 complete — extraction done, standalone passing
+**Date**: March 2–3, 2026 (Session 88–89)
+**Status**: Phase 4 complete — toadStool deprecated embedded barracuda, rewired to standalone
 **Classification**: Core architecture evolution
 **Handoff**: `ecoPrimals/wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`
 **Scaffold**: `ecoPrimals/barraCuda/` (created via sourDough)
@@ -230,6 +230,50 @@ CUDA, no cloud, cross-vendor.
 
 ---
 
+## Phase 4 — Deprecation & Rewire ✅ COMPLETE (Session 89)
+
+### 4.1 Architecture demarcation
+
+`specs/ARCHITECTURE_DEMARCATION.md` codifies the 3-layer ownership:
+- **barraCuda** — "WHAT to compute" (math, shaders, wgpu, compute fabric)
+- **toadStool** — "WHERE and HOW" (multi-framework routing, orchestration, distribution)
+- **songBird** — "the wire" (network, discovery, NAT traversal)
+
+Infrastructure audit confirmed zero functional duplication between barraCuda's
+17 GPU modules and toadStool's 4 runtime crates.
+
+### 4.2 hotSpring first-consumer validation
+
+hotSpring rewired with a single-line Cargo.toml path swap. 716/716 tests pass.
+No code changes needed. API is identical.
+
+hotSpring also found 37 test failures in barraCuda's full suite (beyond --lib):
+- 36 from `sin_f64_safe` using f64 `%` operator (naga 22 rejects). Fixed.
+- 1 from tokio test flavor (block_in_place needs multi_thread). Fixed.
+
+### 4.3 toadStool workspace rewired
+
+```toml
+# crates/core/toadstool/Cargo.toml
+barracuda = { path = "../../../../../barraCuda/crates/barracuda" }
+
+# crates/cli/Cargo.toml
+barracuda = { path = "../../../../barraCuda/crates/barracuda", default-features = false, optional = true }
+
+# crates/integration-tests/Cargo.toml
+barracuda = { path = "../../../../barraCuda/crates/barracuda" }
+```
+
+Embedded `crates/barracuda/` removed from workspace members, `DEPRECATED.md` added.
+Full toadStool workspace builds clean against standalone barraCuda.
+
+### 4.4 Domain model feature gates
+
+barraCuda v0.2.1 adds `domain-models` umbrella feature with per-module flags,
+enabling Springs to opt out of domain modules they don't need (faster compile).
+
+---
+
 ## What ToadStool Becomes
 
 After budding, ToadStool is:
@@ -267,9 +311,15 @@ through computational substrates, discovering barraCuda instances for GPU math.
 - [x] No `akida-driver` usage without `#[cfg(feature = "npu-akida")]` (S89)
 - [x] barracuda-core wired to barracuda compute library (S89)
 - [x] toadStool unchanged — all original tests still pass (S89)
+- [x] hotSpring validates as first consumer — 716/716 tests pass (S89)
+- [x] `barracuda validate-gpu` binary exists (S89)
+- [x] SemVer CHANGELOG tracks every API change (S89)
+- [x] Architecture demarcation spec codified (S89)
+- [x] Domain models feature-gated for future Spring absorption (S89)
+- [x] toadStool workspace deprecated embedded barracuda, rewired to standalone (S89)
+- [x] Full toadStool workspace builds clean against standalone barraCuda (S89)
 - [ ] All 5 Springs can build against barracuda without toadstool workspace
-- [ ] `barracuda validate-gpu` binary exists and passes on Intel, AMD, NVIDIA
-- [ ] SemVer CHANGELOG tracks every API change
+- [ ] `validate-gpu` passes on Intel, AMD, NVIDIA (NVK sin_f64_safe fixed)
 - [ ] At least one Spring evolves a second primal (e.g., BearDog) in same session
 
 ---

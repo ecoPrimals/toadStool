@@ -112,7 +112,7 @@ sha2 = "0.10"
 hex = "0.4"
 
 # Evolutionary reservoir computing (CPU-only, no GPU dep)
-barracuda = { path = "../barracuda", default-features = false, optional = true }
+barracuda = { path = "../../../../barraCuda/crates/barracuda", default-features = false, optional = true }
 
 # Template engine
 handlebars = "4.5"
