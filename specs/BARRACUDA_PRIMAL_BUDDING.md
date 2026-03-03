@@ -4,6 +4,21 @@
 **Status**: RFC — pending Spring feedback
 **Classification**: Core architecture evolution
 **Handoff**: `ecoPrimals/wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`
+**Scaffold**: `ecoPrimals/barraCuda/` (created via sourDough)
+
+---
+
+## Naming
+
+**BarraCUDA** = **Barra**ge of **C**ross-platform **U**nified **D**ispatch **A**rithmetic
+
+Named after the barracuda fish. "CUDA" in this context is a backronym for
+**Cross-platform Unified Dispatch Arithmetic** — explicitly not NVIDIA's
+"Compute Unified Device Architecture." BarraCUDA has zero NVIDIA code,
+zero CUDA SDK usage, and runs on any GPU vendor via WGSL/wgpu.
+
+All documentation, specs, and code should use "BarraCUDA" consistently
+and reference the backronym to avoid trademark confusion.
 
 ---
 
