@@ -1,60 +1,42 @@
 # ToadStool + BarraCuda Specifications
 
-## Current Status (February 26, 2026 — Session 68)
+## Current Status (March 3, 2026 — Session 93)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
 - **`../STATUS.md`** — Detailed status with quality gates
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
-- Precision bottleneck gate — RESOLVED. Archived to `ecoPrimals/fossil/`.
 
 **Key Numbers:**
-- **2,546+ barracuda tests** (122 shader-specific: unit/e2e/chaos/fault) + 21,599 workspace tests
-- **700 WGSL shaders** (497 f32 via LazyLock, 182 f64, 21 Df64 — zero f32-only, all f64 canonical)
-- **Dual-layer universal precision**: op_preamble (source) + naga df64_rewrite (compiler)
-- **12 universal `{{SCALAR}}` templates** for multi-precision generation
-- **5 Springs validated**: 4,000+ acceptance checks
-- Pure-GPU f64 math library: 28 transcendental polyfills
-- DF64 core streaming: ~9.9x throughput on consumer GPUs
+- **5,369 workspace lib tests** (0 failures, all concurrent)
+- **845 WGSL shaders** (37 DF64, 15 folding — zero orphans, all f64 canonical)
+- **44 JSON-RPC methods** — REST + middleware removed
+- **Capability-based discovery** — sovereignty: 3 legacy APIs deprecated
+- **ecoBin pure-rust verified** — zero C FFI deps
+- **D-DF64 + D-CD transferred to barraCuda team (S93)**
 
-**Latest Updates (Feb 26 — Session 68):**
-
-| Update | Impact |
-|--------|--------|
-| **Dual-layer universal precision** | Layer 1: `op_preamble` (abstract ops for F16/F32/F64/DF64). Layer 2: naga-guided `df64_rewrite` (infix→bridge functions). |
-| **Precision bottleneck RESOLVED** | Zero f32-only shaders. All f64 canonical. Gate OPEN for absorptions. |
-| **F16 downcast hardened** | `downcast_f64_to_f16()` — sentinel protection + literal clamping (±65504.0). |
-| **DF64 ghost mappings cleaned** | 8 non-existent transcendental mappings removed. |
-| **NaN-safe bridge functions** | IEEE 754 compliant `_df64_gte_f64`/`_df64_lte_f64`. |
-| **122 shader tests** | Unit + e2e + chaos (15) + fault (13). |
-| **`compile_op_shader()`** | New entry point for abstract-op shaders at any precision. |
-
-**Previous (Feb 26 — Session 66):**
+**Latest (Mar 3 — Session 93):**
 
 | Update | Impact |
 |--------|--------|
-| **Multi-precision expansion** | `compile_shader_df64()` pipeline, 6 DF64 math shaders, 5 f64 gap-fills, 2 f64 losses |
-| **Cross-spring evolution** | stats::mae, shannon_from_frequencies, hill/monod, NeighborMode, sovereign compiler fix |
-| **Deep debt** | 15 files refactored, anyhow + log eliminated, 13→3 dead_code |
+| **D-DF64/D-CD transfer** | Precision strategy, ComputeDispatch, naga-IR optimizer → barraCuda team |
+| **Root doc cleanup** | All docs refocused on toadStool-owned work |
+| **Debris cleanup** | 12 stale docs deleted (~90 KB) |
+| **Handoff** | `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md` |
 
-**Sibling Validation Projects:**
-- **hotSpring** — Nuclear physics (HFB + lattice QCD), 664 tests, 22 papers validated
-- **wetSpring** — Life science (metagenomics) + analytical chemistry, 918 tests
-- **neuralSpring** — Neural network inference, 580 tests
-- **airSpring** — Precision agriculture (ET₀, soil, IoT), 468 tests
-- **groundSpring** — Hydrogeology, 154 tests
+**Remaining toadStool debt:** D-NPU, D-COV (90% target), D-SOV, vfio.rs refactoring
 
 ---
 
 ## Active Specifications
 
-### Universal Precision (Current Priority — Evolution Bottleneck)
+### Universal Precision (barraCuda-owned since S93)
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
-| **[UNIVERSAL_PRECISION_ARCHITECTURE.md](./UNIVERSAL_PRECISION_ARCHITECTURE.md)** | Math is universal, precision is silicon — compilation pipeline design | **Feb 24** | 🔄 Active |
+| **[UNIVERSAL_PRECISION_ARCHITECTURE.md](./UNIVERSAL_PRECISION_ARCHITECTURE.md)** | Math is universal, precision is silicon — compilation pipeline design | **Feb 24** | ✅ barraCuda team |
 
-**Tracker**: Precision bottleneck RESOLVED — gate open. Archived to `ecoPrimals/fossil/`.
+**Note**: Precision strategy (DF64, f64/f32 validation) transferred to barraCuda team (S93). toadStool serves hardware capabilities.
 
 ### Sovereign Compute
 
@@ -70,9 +52,9 @@
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
-| **[HYBRID_FP64_CORE_STREAMING.md](./HYBRID_FP64_CORE_STREAMING.md)** | DF64 core streaming — hybrid FP32/FP64 across all shaders and hardware eras | **Feb 23** | 🔄 Active |
-| **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks, validated results | **Feb 16** | ✅ Current |
-| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, fossil functions, log_f64 bug fix | **Feb 23** | ✅ Current |
+| **[HYBRID_FP64_CORE_STREAMING.md](./HYBRID_FP64_CORE_STREAMING.md)** | DF64 core streaming — hybrid FP32/FP64 | **Feb 23** | ✅ barraCuda team |
+| **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks | **Feb 16** | ✅ barraCuda team |
+| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, fossil functions | **Feb 23** | ✅ barraCuda team |
 | **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** | Cross-vendor workload strategy (GPU + NPU) | Feb 13 | ✅ Current |
 | **[CROSS_VENDOR_BENCHMARK_SPEC.md](./CROSS_VENDOR_BENCHMARK_SPEC.md)** | Benchmark methodology and validation | Feb 13 | ✅ Current |
 

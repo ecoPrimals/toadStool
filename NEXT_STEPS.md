@@ -1,84 +1,61 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 3, 2026 -- Session 92
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,866 barracuda tests | 5,369 workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | REST + middleware removed | Sovereignty: legacy primal-name APIs deprecated | ecoBin pure-rust verified | **EMBEDDED BARRACUDA DEPRECATED**
-**Latest**: S92 — Sovereignty deprecation sweep. Dead middleware eliminated. 47 new tests. ecoBin pure-rust build verified. Hot-path code audited clean (0 unwrap, 0 todo!, 0 FIXME).
+**Updated**: March 3, 2026 -- Session 93
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | 5,369 workspace lib tests | 44 JSON-RPC methods | REST + middleware removed | Sovereignty: legacy primal-name APIs deprecated | ecoBin pure-rust verified | D-DF64 transferred to barraCuda | **EMBEDDED BARRACUDA DEPRECATED**
+**Latest**: S93 — D-DF64 transferred to barraCuda team. Root docs cleaned for toadStool-focused remaining work.
 
 ---
 
 ## Active Work
 
-### P0: ComputeDispatch Migration (Incremental)
+### ~~P0: ComputeDispatch Migration~~ → Transferred to barraCuda (S93)
 
-144 of ~280+ ops migrated to the fluent `ComputeDispatch` builder. Each migration replaces
-~80 lines of manual BGL/BG/pipeline boilerplate with ~5 lines. ~139 ops remaining (full
-audit S86 revealed ops in subdirectories: bio/, md/, lattice/, complex/, linalg/).
-
-Recent migrations:
-- S84 (+9): matmul_tiled, gemm_f64, giou_loss, focal_loss, tversky_loss, huber_loss, hinge_loss, contrastive_loss, chamfer_distance
-- S85 (+12): cosine_similarity, covariance, cross_product, psnr, ssim, diag, global_avgpool, box_iou, focal_loss_alpha, rotary_embedding, alibi, flatten
-- S86 (+12): determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat
-- See EVOLUTION_TRACKER.md for full migration history
+**Transferred.** ComputeDispatch lives in the barraCuda crate. 144/280+ ops migrated;
+~139 remaining. barraCuda team owns this incremental migration.
 
 ### ~~P1: DF64 Default Path~~ → Transferred to barraCuda (S93)
 
-**Transferred to barraCuda team.** barraCuda owns precision strategy (f64/df64/f32
-validation, shader selection, `df64_rewrite` as default). toadStool's role is serving
-hardware capabilities: cache hierarchy (L1/L2/Infinity Cache), FP64:FP32 core ratios,
-memory bandwidth — so barraCuda can make data-driven precision decisions.
-See: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`.
+**Transferred.** barraCuda owns precision strategy (f64/df64/f32 validation, shader
+selection, `df64_rewrite` as default). toadStool serves hardware capabilities.
+Handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`.
 
-### P1: DF64 Transcendental Coverage
-
-Extend `df64_transcendentals.wgsl`:
-- [x] `asin_df64`, `acos_df64`, `atan_df64`, `atan2_df64` (S71)
-- [x] `sinh_df64`, `cosh_df64` (S71)
-- [x] `gamma_df64` (Lanczos g=7, reflection formula), `erf_df64` (A&S 7.1.26) (S71++)
-
-### P2: Architecture-Specific Polynomial Selection (Q3 2026)
-
-Different evaluation strategies per silicon family:
-- SM70 (Volta): 8-cycle ILP fill — longer Horner chains
-- SM80+ (Ampere/Ada): 4-cycle ILP — Estrin evaluation may beat Horner
-- RDNA2/3 (AMD): VALU utilization patterns differ from NVIDIA
-
-### P2: NpuDispatch Trait
+### P1: NpuDispatch Trait
 
 Generic NPU interface — airSpring/wetSpring/groundSpring converge on a single
 dispatch trait for neuromorphic hardware (Akida, Coral, future NPUs).
 
-### P1: barraCuda Primal Budding (Architecture)
+### P1: Test Coverage → 90% (D-COV)
 
-barraCuda has budded from ToadStool into a standalone primal at
-`ecoPrimals/barraCuda/`. See `specs/BARRACUDA_PRIMAL_BUDDING.md`.
+5,369 tests currently. S91-92 added 47 tests to previously 0%-coverage modules.
+Focus areas for next push: low-coverage crates in CLI ecosystem integration,
+distributed coordination, auto_config installer paths, runtime edge platforms.
 
-Completed (S89):
-- [x] Phase 0: Feature-gate toadstool-core dep (`#[cfg(feature = "toadstool")]`)
-- [x] Phase 0: Feature-gate akida-driver dep (`#[cfg(feature = "npu-akida")]`)
-- [x] Phase 0: Standalone compilation (`cargo check/clippy/test` without toadstool-core)
-- [x] Phase 0: Repo extraction to `ecoPrimals/barraCuda/` — 956 .rs files, 767 WGSL shaders
-- [x] Phase 0: barracuda-core wired to barracuda compute library (device discovery, health)
-- [x] Phase 0: 2,832 tests pass standalone, 0 failures, clippy clean
+### P1: Sovereignty Migration (D-SOV)
 
-Remaining:
-- [ ] Phase 1: API surface audit (re-exports, constructors, BREAKING_CHANGES)
-- [ ] Phase 1: GPU validation binary (FHE + lattice QCD canary)
-- [ ] Phase 1: SemVer 1.0.0 release
-- [ ] Phase 2: Springs rewire to direct barraCuda dependency
-- [ ] Phase 3: Multi-primal Spring evolution (BearDog, NestGate in Springs)
-- [ ] Phase 4: ToadStool deprecates internal barracuda, depends on standalone barraCuda
+Three legacy APIs deprecated in S92 (`get_socket_path_for_service`,
+`get_primal_default_port`, `capability_typical_provider`). NestGate client
+migrated. Remaining callers need migration to capability-based APIs.
+`EcosystemDiscoverer::new()` still keys by primal name (benign — capability
+data is attached, but would be cleaner as capability-keyed).
 
-Key insight: BearDog (crypto scaffolding) + barraCuda (FHE GPU compute) compose
-at the IPC level for sovereign encrypted computation. Neither depends on the other
-at the crate level.
+### P2: Smart Refactoring — vfio.rs (971 lines)
 
-### Sovereign Phase 4+ — naga-IR Optimizer Evolution
+Top remaining large file. `crates/neuromorphic/akida-driver/src/backends/vfio.rs`
+mixes VFIO API, DMA, interrupts, IOMMU, and tests. Split by domain into
+`vfio_api.rs`, `dma.rs`, `interrupts.rs`, `iommu.rs` with tests in `tests/`.
 
-Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations:
-- [ ] Register pressure estimation (live-range counting on naga expression arena)
-- [ ] Loop software pipelining at naga IR level
-- [ ] Architecture-specific peephole optimization per `GpuArch`
-- [ ] naga → NAK IR direct bridge (research)
+---
+
+### Transferred to Other Teams
+
+| Item | Owner | Notes |
+|------|-------|-------|
+| D-DF64: DF64 as default precision | barraCuda team | S93: precision strategy is barraCuda's domain |
+| DF64 transcendental coverage | barraCuda team | COMPLETE (S71): 15 functions |
+| Architecture-specific polynomial selection | barraCuda team | Per-silicon Horner vs Estrin |
+| Sovereign compiler Phase 4+ | barraCuda team | naga-IR optimizer, register pressure, peepholes |
+| barraCuda budding Phases 1-4 | barraCuda team | API audit, SemVer 1.0, Springs rewire |
+| ComputeDispatch migration (D-CD) | barraCuda team | 144/280+ done; ~139 remaining; lives in barraCuda crate |
 
 ---
 
@@ -111,11 +88,12 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
 - [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
-- [ ] **ComputeDispatch migration** -- 144/280+ ops migrated; ~139 remaining (incremental)
-- [x] **DF64 default path** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
-- [ ] **NpuDispatch trait** -- generic NPU interface
-- [ ] **Test coverage target 90%** -- 5,369 tests; +47 in S91-92 (monitoring, templates, installer, connection, wasm_ops, session)
-- [ ] **Sovereignty migration** -- deprecated primal-name APIs need callers migrated to capability-based APIs
+- [x] **ComputeDispatch migration** -- transferred to barraCuda team (lives in barraCuda crate)
+- [x] **DF64 default path** -- transferred to barraCuda team (S93)
+- [ ] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
+- [ ] **Test coverage target 90%** -- 5,369 tests; +47 in S91-92; focus on low-coverage crates (toadStool D-COV)
+- [ ] **Sovereignty migration** -- callers migrating to capability-based APIs (toadStool D-SOV)
+- [ ] **Smart refactoring** -- vfio.rs (971 lines) top remaining large file
 
 ### Cross-Repo Debt
 
@@ -124,7 +102,14 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session (S90-92)
+## Completed This Session (S90-93)
+
+### Session 93: D-DF64 Transfer & Root Doc Cleanup
+- Transferred D-DF64, D-CD (ComputeDispatch), DF64 transcendentals, arch-specific polynomial selection, naga-IR optimizer evolution, and barraCuda budding Phases 1-4 to barraCuda team ownership
+- Created formal handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`
+- Cleaned NEXT_STEPS.md to focus on toadStool-owned remaining work (D-NPU, D-COV, D-SOV, smart refactoring)
+- Deleted 12 stale docs/debris files (~90 KB): orphan txt, completed migration guides, self-congratulatory status reports
+- Root docs synchronized: STATUS, README, QUICK_REFERENCE, BREAKING_CHANGES, DOCUMENTATION, EVOLUTION_TRACKER, SPRING_ABSORPTION_TRACKER
 
 ### Session 92: Sovereignty Deprecation Sweep & Audit Continuation
 - Deprecated `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider` with `#[deprecated(since = "0.92.0")]`

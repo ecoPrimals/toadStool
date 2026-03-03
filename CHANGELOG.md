@@ -5,7 +5,28 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 3, 2026 (Sessions 43-91 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+## [Unreleased] - March 3, 2026 (Sessions 43-93 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+
+### Session 93 (Mar 3, 2026) — D-DF64 Transfer & Root Doc Cleanup
+
+#### Debt Transfers to barraCuda Team
+- **D-DF64** (DF64 as default precision path) → barraCuda team owns precision strategy
+- **D-CD** (ComputeDispatch migration, ~139 remaining) → lives in barraCuda crate
+- **barraCuda budding Phases 1-4** → barraCuda team
+- **naga-IR optimizer Phases 4+** → barraCuda team
+- **DF64 transcendental coverage** → barraCuda team (COMPLETE)
+- **Architecture-specific polynomial selection** → barraCuda team
+- Formal handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`
+
+#### Debris Cleanup
+- **Deleted 12 stale documentation files** (~90 KB): orphan `types_content.txt`, `CHAOS_TESTS_STATUS.txt`, songbird integration docs (3), `DISCOVERY_MVP_STATUS.md`, `REFACTORING_PLAN.md`, `UNSAFE_CODE_EVOLUTION_PATH.md`, `SAFETY_AUDIT.md`, `MIGRATION.md`, `webgpu_knowledge_base/` (2 files)
+- **Fixed stale reference** in `QUICK_START_ENCRYPTION.md` (removed link to deleted `INTEGRATION_GUIDE.md`)
+
+#### Root Documentation Refresh
+- All 8 root docs bumped to Session 93
+- **NEXT_STEPS.md refocused** on toadStool-only remaining work: D-NPU, D-COV, D-SOV, vfio.rs refactoring
+- **README.md Active Debt** split into toadStool-owned vs transferred-to-barraCuda tables
+- **EVOLUTION_TRACKER.md** debt section cleaned; transferred items noted
 
 ### Session 92 (Mar 3, 2026) — Sovereignty Deprecation Sweep & Audit Continuation
 

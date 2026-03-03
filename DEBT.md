@@ -9,9 +9,9 @@ iterations, evolving toward vendor-agnostic, capability-based solutions.
 
 ## Active Workarounds
 
-### W-001: f64 Transcendental Polyfills — Architectural Solution
+### W-001: f64 Transcendental Polyfills — Transferred to barraCuda (S93)
 
-**Status**: ACTIVE — Architecturally solved; polyfill is the sovereign solution
+**Status**: TRANSFERRED — barraCuda team owns precision strategy and polyfill infrastructure
 **Impact**: Enables f64 transcendentals on ALL GPUs regardless of vendor math library support
 
 **Root Cause**: SPIR-V has no mechanism to link vendor math libraries (NVIDIA libdevice, AMD ocml).
@@ -46,9 +46,9 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 ---
 
-### W-003: NAK Compiler 149x Performance Gap (Sovereign FP64 Compute)
+### W-003: NAK Compiler 149x Performance Gap — Transferred to barraCuda (S93)
 
-**Status**: ACTIVE — Phases 1 + 4 done, pending Titan V hw validation
+**Status**: TRANSFERRED — barraCuda team owns compiler optimization and hw validation
 **Impact**: NVK/NAK Jacobi eigensolve ~9x slower than NVIDIA proprietary after warp-packing
 
 **Phases**:
@@ -73,25 +73,22 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| D-CD | ComputeDispatch migration | High | 144/280+ ops migrated (~14,000+ lines removed). ~139 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. Full audit S86 identified ops in subdirs (bio/, md/, lattice/, complex/, linalg/). |
-| D-DF64 | DF64 as default precision path | — | **Transferred to barraCuda team (S93).** barraCuda owns precision strategy (f64/df64/f32 validation, shader selection). toadStool serves hardware capabilities (cache hierarchy, core ratios, FP64:FP32 rate). Handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
-| D-COV | Test coverage → 90% | Medium | S92: 5,369 lib tests pass (0 failures). S91 added 47 tests to 0%-coverage modules (monitoring, templates, installer, connection, wasm_ops, session). Middleware removed (dead code). Pure-rust build verified clean. |
-| D-SOV | Sovereignty: primal-name → capability | Medium | S92: Deprecated `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider`. Migrated NestGate client to `get_socket_path_for_capability`. Added `EcosystemDiscoverer::find_pattern_by_capability()`. Remaining: `EcosystemDiscoverer::new()` uses primal-name keys (benign — capability data is attached). |
+| D-COV | Test coverage → 90% | Medium | 5,369 lib tests. +47 in S92. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
+| D-SOV | Sovereignty: primal-name → capability | Medium | 3 APIs deprecated (S92). NestGate migrated. Remaining callers to follow. |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
+| — | vfio.rs smart refactoring | Medium | 971 lines — split by domain: vfio_api, dma, interrupts, iommu |
 
-### DF64 Transcendental Coverage — COMPLETE (S71)
+### Transferred to barraCuda Team (S93)
 
-All 15 DF64 transcendental functions implemented in `df64_transcendentals.wgsl`:
-exp, log, sin, cos, tan, sqrt, pow, asin, acos, atan, atan2, sinh, cosh, gamma (Lanczos g=7), erf (A&S 7.1.26).
-
-### Sovereign Compiler Phase 4+
-
-Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations:
-- Register pressure estimation (live-range counting on naga expression arena)
-- Loop software pipelining at naga IR level
-- Architecture-specific peephole optimization per `GpuArch`
-- naga → NAK IR direct bridge (research)
+| ID | Description | Notes |
+|----|-------------|-------|
+| D-CD | ComputeDispatch migration (~139 remaining) | Lives in barraCuda crate |
+| D-DF64 | DF64 as default precision path | barraCuda owns precision strategy. Handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md` |
+| W-001 | f64 transcendental polyfills (28 functions) | Architecturally solved; sovereign solution |
+| W-003 | NAK compiler 149x performance gap | Phases 1+4 done; Titan V hw validation pending |
+| — | DF64 transcendental coverage (COMPLETE S71) | 15 functions in `df64_transcendentals.wgsl` |
+| — | Sovereign compiler Phase 4+ | FMA fusion, DCE done; register pressure, peepholes, naga→NAK remaining |
 
 ### Cross-Repo Debt
 

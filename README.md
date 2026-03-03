@@ -333,19 +333,24 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 ---
 
-## Active Debt
+## Active Debt (toadStool)
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-CD | ComputeDispatch migration (~139 legacy ops) | Active -- incremental, 144 done |
-| D-DF64 | DF64 as default path (not fallback) | Transferred to barraCuda team (S93) |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Active -- design phase |
-| D-COV | Test coverage → 90% | Active -- 5,369 tests; S92 +47 tests in CLI, server, auto_config |
-| D-SOV | Sovereignty deprecation migration | Active -- legacy primal-name APIs deprecated, callers migrating |
-| W-001 | f64 transcendental polyfill for all drivers | Sovereign -- `compile_shader_f64()` handles 28 functions |
-| W-003 | NAK compiler scheduling gap (SM70 Volta) | Active -- Phases 1+4 done; Titan V hw validation pending |
+| D-COV | Test coverage → 90% | Active -- 5,369 tests; focus on low-coverage crates |
+| D-SOV | Sovereignty deprecation migration | Active -- 3 APIs deprecated, callers migrating |
 | D-S20-003 | neuralSpring `evolved/` migration (~2075 lines) | Blocked -- awaiting neuralSpring team |
 | D-S18-002 | cubecl transitive `dirs-sys` | Blocked -- needs upstream PR |
+
+### Transferred to barraCuda Team (S93)
+
+| ID | Description |
+|----|-------------|
+| D-CD | ComputeDispatch migration (~139 remaining ops) |
+| D-DF64 | DF64 as default precision path |
+| W-001 | f64 transcendental polyfill (28 functions -- COMPLETE) |
+| W-003 | NAK compiler scheduling gap (SM70 Volta) |
 
 See [DEBT.md](DEBT.md) for full register and evolution paths.
 
@@ -366,4 +371,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 3, 2026 -- Session 92. 845 WGSL shaders (37 DF64, 15 folding, 15-function DF64 transcendental suite). 2,866 barracuda tests. 5,369 workspace lib tests. 144 ops migrated to ComputeDispatch (~139 remaining). 44 JSON-RPC methods (8 `ai.nautilus.*`). REST API + middleware removed -- JSON-RPC only. Sovereignty: legacy primal-name APIs deprecated, capability-based APIs promoted, BearDog strings neutralized. ecoBin verified: `pure-rust` build with zero C FFI deps. All quality gates green. Fully concurrent test suite. Rust 1.80+. Zero anyhow. Zero chrono. Zero pollster. Zero serde_yaml. Zero libc (akida-driver). Zero production stubs. ~60+ justified unsafe (all SAFETY documented). 35+ god files smart-refactored. Capability-based discovery.
+**Last Updated**: March 3, 2026 -- Session 93. 5,369 workspace lib tests. 44 JSON-RPC methods. REST + middleware removed. Sovereignty: 3 APIs deprecated, callers migrating. ecoBin pure-rust verified. D-DF64 + D-CD + barraCuda budding transferred to barraCuda team. 12 stale docs cleaned. Remaining toadStool debt: D-NPU, D-COV (90% target), D-SOV, vfio.rs refactoring. All quality gates green. Rust 1.80+.

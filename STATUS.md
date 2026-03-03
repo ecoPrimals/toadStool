@@ -1,4 +1,4 @@
-# Status -- March 3, 2026 (Session 92)
+# Status -- March 3, 2026 (Session 93)
 
 ## Quality Gates
 
@@ -85,6 +85,14 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 93 (Mar 3, 2026) — D-DF64 Transfer & Root Doc Cleanup
+- **D-DF64, D-CD, barraCuda budding, naga-IR optimizer, DF64 transcendentals, arch-specific polynomials** all transferred to barraCuda team
+- Formal handoff created: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`
+- **Deleted 12 stale docs** (~90 KB): completed migration guides, orphan .txt, self-congratulatory status reports, stale webgpu_knowledge_base
+- **NEXT_STEPS.md refocused** on toadStool-only remaining work: D-NPU, D-COV, D-SOV, vfio.rs refactoring
+- **Active Debt table** in README.md split into toadStool-owned vs transferred-to-barraCuda
+- All root docs bumped to Session 93
 
 ### Session 92 (Mar 3, 2026) — Sovereignty Deprecation Sweep & Audit Continuation
 - **Sovereignty**: Deprecated `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider` with `#[deprecated(since = "0.92.0")]`. Migrated NestGate client to `get_socket_path_for_capability` (3 callsites). Added `EcosystemDiscoverer::find_pattern_by_capability()`. Neutralized 5 BearDog user-facing strings in access control. `version_info()` → "ecoPrimals sovereign pattern".

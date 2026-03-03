@@ -1,7 +1,7 @@
 # Spring Absorption Tracker
 
-**Session**: S92 (March 3, 2026)
-**ToadStool**: master, BarraCUDA 845 WGSL shaders, 2,866 barracuda + 5,369 workspace tests
+**Session**: S93 (March 3, 2026)
+**ToadStool**: master, 5,369 workspace tests. D-DF64/D-CD transferred to barraCuda team.
 
 ## Spring Pin Status
 

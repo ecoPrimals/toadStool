@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 3, 2026 — Session 92
+**Date**: March 3, 2026 — Session 93
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -103,12 +103,13 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-CD | ComputeDispatch migration (~155+ legacy ops) | High | 144 done (+12 S86: determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat), ~139 remaining (full audit revealed more ops than originally tracked) |
-| D-DF64 | DF64 as default precision path | — | **Transferred to barraCuda team (S93).** toadStool serves hardware capabilities; barraCuda owns precision strategy. |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
-| D-COV | Test coverage → 90% | Medium | 5,369 tests; +47 in S92 (monitoring, templates, installer, connection, wasm_ops, session); gap in GPU ops, neuromorphic |
-| D-SOV | Sovereignty deprecation migration | Medium | S92: 3 legacy APIs deprecated; NestGate client migrated; remaining callers to follow |
+| D-COV | Test coverage → 90% | Medium | 5,369 tests; +47 in S92; gap in GPU ops, neuromorphic |
+| D-SOV | Sovereignty deprecation migration | Medium | 3 APIs deprecated; NestGate migrated; remaining callers to follow |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
+| — | vfio.rs smart refactoring | Medium | 971 lines — split by domain: vfio_api, dma, interrupts, iommu |
+
+**Transferred to barraCuda team (S93):** D-CD (ComputeDispatch, ~139 remaining), D-DF64 (precision strategy), naga-IR optimizer Phases 4+, barraCuda budding Phases 1-4.
 
 ### God Files Remaining (>600 lines)
 
@@ -175,7 +176,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | `cargo clippy --workspace -- -D warnings` | ✅ S77: deprecated discovery calls removed |
 | `cargo fmt --all -- --check` | ✅ S77: 340 diffs fixed |
 | `cargo test -p barracuda --lib` | ✅ 2,866+ passed, hardware_verification 13/13 (S87: 3 pre-existing failures fixed) |
-| Workspace lib tests | ✅ 5,369 passed (S92) |
+| Workspace lib tests | ✅ 5,369 passed (S93) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ Evolved (S84: frameworks.rs echo→error, experimental.rs stub→real probes; S86: deployment.rs docs→capability-discovery, wgpu_backend.rs magic numbers→device-limits) |
@@ -188,5 +189,14 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Compile bottleneck analysis | S78 | tfhe+tfhe-fft = 30.6% CPU (showcase); wgpu 22/23 duplication wastes ~90s |
 
 ---
+
+### Session 93 (Mar 3, 2026)
+
+| Category | Change |
+|----------|--------|
+| Debt transfer | D-DF64, D-CD, barraCuda budding, naga-IR optimizer, DF64 transcendentals → barraCuda team |
+| Debris cleanup | 12 stale docs deleted (~90 KB) |
+| Root docs | All bumped to S93; NEXT_STEPS refocused on toadStool-only work |
+| Handoff | `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md` created |
 
 *This tracker is the single source of truth for evolution status. Updated each session.*
