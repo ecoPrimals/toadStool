@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Whisper speech recognition model
 //!
 //! Type-safe API surface for Whisper ASR inference.

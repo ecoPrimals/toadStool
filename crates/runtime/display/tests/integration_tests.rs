@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for display backend
 //!
 //! Tests the full stack from window creation to IPC communication.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource type definitions for ToadStool
 
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Layer Normalization
 //!
 //! Full GPU multi-pass normalization using Welford's algorithm.

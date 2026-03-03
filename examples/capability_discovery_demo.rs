@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Example: Migration from Hardcoded to Discovery
 //!
 //! This example shows the evolution from hardcoded service addresses

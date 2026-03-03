@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability discovery and error-path tests.
 
 use std::collections::HashMap;

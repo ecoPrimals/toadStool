@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Connection handling for Manual JSON-RPC server (Unix socket + TCP)
 
 use std::collections::HashMap;

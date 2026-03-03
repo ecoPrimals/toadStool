@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for helper functions
 //!
 //! ✅ MODERN CONCURRENT TESTING - Zero sleeps, fully concurrent

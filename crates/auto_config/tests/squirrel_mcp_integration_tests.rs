@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration Tests for AI/MCP Interface - Business Logic
 //!
 //! Target: ai_mcp_interface.rs async handlers (16% → 70%+ coverage)

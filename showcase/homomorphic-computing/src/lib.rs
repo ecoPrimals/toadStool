@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Homomorphic Computing Cross-Substrate Benchmark
 //!
 //! This library implements homomorphic encryption benchmarks across:

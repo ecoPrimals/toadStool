@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service Registry - Dynamic service discovery
 //!
 //! Eliminates hardcoded primal/service names, enabling:

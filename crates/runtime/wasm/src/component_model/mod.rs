@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WebAssembly Component Model Support
 //!
 //! This module provides support for WebAssembly component model features,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cross-Gate Compute Delegation
 //!
 //! Routes compute jobs to the best available GPU across the mesh.

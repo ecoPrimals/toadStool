@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Application lifecycle configuration
 //!
 //! This module contains configuration types for application-level settings including:

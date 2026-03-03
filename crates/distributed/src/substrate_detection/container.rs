@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Container runtime detection (Docker, Podman, containerd).
 
 use super::probe;

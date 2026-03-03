@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for biomeos_integration/auth module
 //!
 //! This test suite covers:

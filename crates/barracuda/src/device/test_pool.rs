@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Test device pool — dual-backend with automatic recovery
 //!
 //! **Architecture**: Math is the contract, hardware is the target.

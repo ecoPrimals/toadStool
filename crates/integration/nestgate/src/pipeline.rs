@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Data pipeline structures and functionality for `NestGate` integration
 
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration selector for optimal workgroup size selection
 
 use crate::cache::OptimizationCache;

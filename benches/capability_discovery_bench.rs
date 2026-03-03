@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability Discovery Performance Benchmarks
 //!
 //! Measures the performance of our Deep Debt capability-based discovery system.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for toadstool::lib root module
 //!
 //! Sprint 14: lib.rs coverage 0% → 80%

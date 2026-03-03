@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Compare NPU vs GPU raytracing performance
 //!
 //! Deep Debt: Uses ToadStool for hardware discovery and selection

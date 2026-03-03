@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Sandbox manager trait definitions
 
 use toadstool::error::ToadStoolResult;

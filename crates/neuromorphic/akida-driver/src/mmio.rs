@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Memory-Mapped I/O for Akida NPU
 //!
 //! Provides safe abstractions for accessing Akida hardware registers.
@@ -173,6 +174,11 @@ impl MappedRegion {
             ptr: *mut VfioRegionInfo,
             _marker: std::marker::PhantomData<&'a mut VfioRegionInfo>,
         }
+        // SAFETY: RegionInfoIoctl fulfils the rustix Ioctl contract: opcode is the
+        // VFIO_DEVICE_GET_REGION_INFO constant, as_ptr returns the caller's stack-
+        // allocated VfioRegionInfo (whose layout matches the kernel ABI), and
+        // IS_MUTATING=true since the kernel fills region size/offset. Lifetime 'a
+        // ties the pointer to the borrow, preventing use-after-free.
         unsafe impl Ioctl for RegionInfoIoctl<'_> {
             type Output = ();
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Security Policy Tests Module
 //!
 //! This module organizes extensive security policy tests into logical groupings

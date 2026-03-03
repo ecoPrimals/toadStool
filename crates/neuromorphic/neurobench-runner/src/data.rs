@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Data loading utilities for `NeuroBench`
 //!
 //! Handles loading benchmark datasets from standard `NeuroBench` formats.

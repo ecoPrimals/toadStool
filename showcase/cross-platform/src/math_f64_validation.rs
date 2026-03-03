@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! math_f64.wgsl Validation Benchmark
 //!
 //! Validates the pure-GPU f64 math library against CPU reference implementations.

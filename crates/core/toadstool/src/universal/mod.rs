@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal compute platform modules
 //!
 //! Smart refactoring: Domain-driven module organization.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Concurrent testing helpers
 //!
 //! This module provides modern, signal-based synchronization primitives for tests,

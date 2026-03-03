@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Multi-Primal Integration E2E Tests
 //!
 //! Comprehensive end-to-end tests for inter-primal communication.

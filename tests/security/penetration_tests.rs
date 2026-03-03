@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security penetration tests
 //!
 //! These tests validate system security by simulating various attack vectors

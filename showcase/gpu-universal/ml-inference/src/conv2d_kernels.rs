@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Conv2D GPU Kernels for Convolutional Neural Networks
 //!
 //! Implements 2D convolution operations for CNNs:

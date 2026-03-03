@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resources Module Async Coverage Tests - November 7, 2025
 //!
 //! Target: Push resources.rs coverage from 39.56% → 60%+

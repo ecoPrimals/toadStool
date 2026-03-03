@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Legacy systems compatibility layer.
 //!
 //! Provides emulation and compatibility mappings for legacy target systems.

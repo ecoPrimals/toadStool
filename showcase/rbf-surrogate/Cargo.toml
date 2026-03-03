@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["ToadStool Contributors"]
 description = "Showcase: Radial Basis Function surrogate model on GPU via BarraCuda"
-license = "AGPL-3.0"
+license.workspace = true
 repository = "https://github.com/ecoPrimals/toadStool"
 keywords = ["rbf", "surrogate", "gpu", "barracuda"]
 categories = ["science", "mathematics"]
@@ -14,7 +14,7 @@ name = "rbf_demo"
 path = "src/main.rs"
 
 [dependencies]
-barracuda = { path = "../../crates/barracuda" }
+barracuda = { path = "../../../../barraCuda/crates/barracuda" }
 toadstool-core = { path = "../../crates/toadstool-core" }
 tokio = { version = "1.43", features = ["full"] }
 tracing = "0.1"

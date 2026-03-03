@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CPU substrate for homomorphic operations
 //!
 //! Pure Rust baseline implementation using concrete-core primitives.

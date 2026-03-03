@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🔐 Universal Homomorphic Compute Validation
 //! 
 //! **Purpose**: Prove "Encrypted Compute Everywhere" - same FHE workload on CPU, GPU, NPU

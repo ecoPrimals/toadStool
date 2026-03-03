@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Processing Substrate Selection Example
 //!
 //! Demonstrates the modern, robust API for selecting processing substrates.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error types for `ToadStool` Universal Compute Platform
 //!
 //! This module re-exports the unified error system from `toadstool-common`.

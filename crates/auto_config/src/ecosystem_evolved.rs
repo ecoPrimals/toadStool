@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem Discovery for Auto-Configuration - EVOLVED
 //!
 //! **DEEP DEBT EVOLUTION**: Capability-based discovery using IPC helpers

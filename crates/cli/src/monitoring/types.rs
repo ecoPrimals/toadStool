@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Monitoring types - structs and enums for metrics, alerts, and dashboards
 
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core types and data structures for protocol integration
 
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Distribution Module
 //!
 //! Generic distribution abstractions for distributing work across nodes, clouds, and devices.

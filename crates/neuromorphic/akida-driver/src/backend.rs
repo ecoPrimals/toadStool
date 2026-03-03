@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Backend abstraction for NPU drivers
 //!
 //! Provides unified interface for kernel and userspace backends.

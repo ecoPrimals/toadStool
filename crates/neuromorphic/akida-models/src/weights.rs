@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Weight data extraction and parsing
 //!
 //! Handles parsing of quantized weight data from Akida models.

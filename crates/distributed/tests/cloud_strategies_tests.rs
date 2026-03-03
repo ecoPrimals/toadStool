@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for cloud scheduling and deployment strategies
 //!
 //! This test suite covers:

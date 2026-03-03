@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ecosystem Integration - Sovereign Science Network
 //!
 //! Integration with the ecoPrimals ecosystem for distributed sovereign computing:

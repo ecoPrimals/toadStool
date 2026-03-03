@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource monitoring and metrics collection
 //!
 //! This module provides optimized resource monitoring with adaptive sampling

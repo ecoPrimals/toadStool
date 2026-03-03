@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tensor Operations - Compute-Intensive Pattern
 //!
 //! High-compute operations with tiling:

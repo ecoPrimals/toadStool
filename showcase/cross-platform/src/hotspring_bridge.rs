@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! hotSpring Integration Bridge
 //!
 //! Connects ToadStool's BarraCuda to hotSpring's MD validation suite.

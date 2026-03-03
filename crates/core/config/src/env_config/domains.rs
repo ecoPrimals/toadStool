@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource, monitoring and security environment configurations.
 
 use std::path::PathBuf;

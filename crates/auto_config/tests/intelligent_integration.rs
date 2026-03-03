@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for IntelligentAutoConfig
 //!
 //! These tests exercise the intelligent configuration code paths.

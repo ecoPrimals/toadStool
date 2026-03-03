@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security Service Client - Capability-based discovery (Evolved)
 //!
 //! **DEEP DEBT EVOLUTION**: This is the evolved version of the BearDog client.

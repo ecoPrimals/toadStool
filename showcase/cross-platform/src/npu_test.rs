@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Direct NPU Test via VFIO
 //!
 //! Tests the Akida NPU through the pure Rust VFIO backend.

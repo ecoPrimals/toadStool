@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Reduction operations: Sum, Mean, Max, Min, Var, Std, Cumsum, Prod
 
 use crate::error::{BarracudaError, Result};

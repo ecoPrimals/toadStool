@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async BearDog Integration Tests
 //!
 //! Tests the async methods of BearDogIntegration including authentication,

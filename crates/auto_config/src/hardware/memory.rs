@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Memory detection and configuration
 
 use serde::{Deserialize, Serialize};

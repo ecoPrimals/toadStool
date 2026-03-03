@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `ServiceEndpoint` URL parsing extension
 
 use std::collections::HashMap;

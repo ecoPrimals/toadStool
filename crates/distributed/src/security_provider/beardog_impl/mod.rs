@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BearDog SecurityProvider Implementation
 //!
 //! BearDog primal implementation of the generic SecurityProvider trait.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Activation operations: ReLU, GELU, Sigmoid, Softmax, LogSoftmax
 
 use crate::error::{BarracudaError, Result};

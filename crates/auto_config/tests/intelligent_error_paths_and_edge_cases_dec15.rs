@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Error Path and Edge Case Coverage for Intelligent Auto-Configuration
 //!
 //! **Goal**: Increase coverage from 38% → 50%+ with high-value tests

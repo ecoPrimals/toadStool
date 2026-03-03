@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // End-to-End (E2E) Integration Tests
 // Tests complete workflows combining multiple operations
 

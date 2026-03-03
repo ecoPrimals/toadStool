@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Adaptive Runtime Selection E2E Tests
 //!
 //! Comprehensive tests for intelligent runtime selection.

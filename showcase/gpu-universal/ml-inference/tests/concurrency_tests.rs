@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Concurrency Testing - Parallel execution, thread safety, race conditions
 // Tests system behavior under concurrent workloads
 

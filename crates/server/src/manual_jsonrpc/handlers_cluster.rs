@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cross-gate routing handlers (gate.*)
 
 use crate::cross_gate::GateGpuInfo;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive coverage tests for config_utils module
 //!
 //! Goal: Increase config_utils coverage from 1.87% to 70%+

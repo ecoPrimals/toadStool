@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Board health check and diagnostics example
 
 use akida_detection_demo::{akida_device, detect_all_boards};

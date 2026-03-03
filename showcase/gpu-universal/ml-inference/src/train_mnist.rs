@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Train MNIST classifier - Real training with validation
 
 use anyhow::Result;

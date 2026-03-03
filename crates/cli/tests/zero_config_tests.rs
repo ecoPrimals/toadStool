@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for zero_config module
 //!
 //! This module provides comprehensive test coverage for the zero_config module's

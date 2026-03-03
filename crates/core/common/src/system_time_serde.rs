@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Serde support for `std::time::SystemTime`
 //!
 //! Serializes as Unix timestamp (seconds since epoch) for portable JSON compatibility.

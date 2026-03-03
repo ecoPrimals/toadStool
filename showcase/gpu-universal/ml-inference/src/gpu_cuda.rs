@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! MNIST CUDA GPU Inference - Real workload
 
 use anyhow::Result;

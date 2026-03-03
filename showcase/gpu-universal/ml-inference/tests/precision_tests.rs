@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Comprehensive fp32 precision validation tests
 // Tests numerical accuracy at single-precision (fp32) for all operations
 

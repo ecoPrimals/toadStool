@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Industrial Systems Adapters
 //!
 //! Support for industrial control systems including:

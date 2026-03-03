@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # BYOB (Bring Your Own Biome) Compute Execution
 //!
 //! Handles compute execution requests for team biome deployments.

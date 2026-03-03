@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Native workload builder for executing native binaries
 
 use std::collections::HashMap;

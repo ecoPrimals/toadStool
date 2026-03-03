@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Compute Demo
 //!
 //! Demonstrates the capability-based universal compute system:

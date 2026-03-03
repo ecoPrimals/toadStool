@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Graceful Degradation - Handle Missing Capabilities
 //!
 //! Provides strategies for gracefully handling situations where a requested

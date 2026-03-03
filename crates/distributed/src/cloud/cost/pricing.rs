@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based pricing tiers and cost models
 
 use crate::cloud::types::{CloudCapabilities, ComputeType};

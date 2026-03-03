@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Helper functions for API handlers
 
 use crate::types::NodeResources;

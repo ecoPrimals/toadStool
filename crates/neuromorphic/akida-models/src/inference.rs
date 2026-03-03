@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Model inference integration
 //!
 //! Bridges model metadata with device inference execution.

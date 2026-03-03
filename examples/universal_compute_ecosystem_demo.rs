@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ToadStool Universal Compute Platform Demo
 //!
 //! This demo showcases ToadStool as a revolutionary universal compute platform:

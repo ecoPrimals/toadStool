@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Fault Injection and Recovery E2E Tests
 //!
 //! Comprehensive chaos testing for fault injection, runtime crashes,

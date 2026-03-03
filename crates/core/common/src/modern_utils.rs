@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Modern Utility Helpers
 //!
 //! Common utilities using modern Rust patterns that can be used throughout the codebase.

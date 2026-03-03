@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cache Probing Microbenchmark
 //!
 //! Discovers memory hierarchy via bandwidth microbenchmarks.

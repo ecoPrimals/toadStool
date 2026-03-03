@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Well-Known Ecosystem Identifiers
 //!
 //! These are names of ecosystem services that ToadStool integrates with.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical background services tests
 //!
 //! Priority 2 coverage for server/src/background.rs

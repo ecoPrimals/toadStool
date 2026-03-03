@@ -56,7 +56,7 @@ humantime-serde = "1.1"
 # Runtime engines
 toadstool-runtime-container = { path = "../runtime/container" }
 toadstool-runtime-native = { path = "../runtime/native" }
-toadstool-runtime-python = { path = "../runtime/python" }
+toadstool-runtime-python = { path = "../runtime/python", optional = true }
 toadstool-runtime-wasm = { path = "../runtime/wasm", optional = true }  # Optional: has zstd C dependency
 wasmi = { version = "1.0", features = ["std"], optional = true }  # For WASM execution when wasm feature enabled
 toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
@@ -142,7 +142,8 @@ rustix = { version = "0.38", features = ["process"] }
 
 [features]
 default = ["full"]
-full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm", "nautilus"]
+full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm", "nautilus", "python"]
+python = ["dep:toadstool-runtime-python"]
 ecosystem = []
 universal = []
 monitoring = []

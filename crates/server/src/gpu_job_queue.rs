@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Compute Job Queue
 //!
 //! Accepts compute jobs, queues them, executes on available GPU, returns results.

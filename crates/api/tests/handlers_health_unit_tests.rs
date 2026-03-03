@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # API Handlers - Health Endpoint Tests
 //!
 //! Unit tests for health check endpoint with comprehensive coverage.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Communication Manager
 //!
 //! Handles communication protocols for edge devices including serial, network, and wireless protocols.

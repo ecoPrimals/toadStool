@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Experimental platform detection via capability probing.
 //!
 //! Detects non-standard compute substrates (FPGA, neuromorphic, quantum

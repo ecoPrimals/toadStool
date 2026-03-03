@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Server error conversion tests - calling actual production code
 //!
 //! These tests directly call the From trait implementations in server/src/errors.rs

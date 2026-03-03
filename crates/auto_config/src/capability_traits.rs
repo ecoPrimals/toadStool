@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Capability Detection Traits
 //!
 //! Trait-based interfaces for hardware and ecosystem detection.

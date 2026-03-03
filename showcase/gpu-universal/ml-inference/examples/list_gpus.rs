@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! List all available GPUs for research
 //!
 //! Utility to enumerate all GPUs in the system for multi-GPU experiments

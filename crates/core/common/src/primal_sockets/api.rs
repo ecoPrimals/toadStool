@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Public API - thin wrappers with single env snapshot at call site
 
 use std::path::PathBuf;
@@ -114,6 +115,10 @@ pub fn get_toadstool_socket_path() -> PathBuf {
     paths::resolve_toadstool_socket(&SocketPathEnv::from_env())
 }
 
+#[deprecated(
+    since = "0.92.0",
+    note = "Use `get_socket_path_for_capability()` for sovereignty-compliant discovery"
+)]
 #[allow(deprecated)]
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
     match service_name.to_lowercase().as_str() {
@@ -130,6 +135,27 @@ pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
             paths::resolve_socket_path_for_service(service_name, &env, override_path)
         }
     }
+}
+
+/// Resolve socket path by capability rather than primal name.
+///
+/// This is the sovereignty-compliant API: ToadStool discovers peers by
+/// what they *do*, not who they *are*. The actual socket path is resolved
+/// from the environment variable `BIOMEOS_{CAPABILITY}_SOCKET`, falling back
+/// to a conventional path under the biomeos runtime directory.
+///
+/// Supported capabilities: `coordination`, `crypto`, `storage`, `ai`, `compute`.
+#[must_use]
+pub fn get_socket_path_for_capability(capability: &str) -> PathBuf {
+    let env_var = format!(
+        "BIOMEOS_{}_SOCKET",
+        capability.to_uppercase().replace('-', "_")
+    );
+    if let Ok(path) = std::env::var(&env_var) {
+        return PathBuf::from(path);
+    }
+    let biomeos_dir = get_biomeos_dir();
+    biomeos_dir.join(format!("{capability}.sock"))
 }
 
 #[cfg(test)]
@@ -392,5 +418,36 @@ mod tests {
         });
         assert!(result2.is_ok());
         assert_eq!(result1.unwrap(), result2.unwrap());
+    }
+
+    #[test]
+    fn test_get_socket_path_for_capability_from_env() {
+        temp_env::with_var("BIOMEOS_CRYPTO_SOCKET", Some("/tmp/crypto.sock"), || {
+            let path = get_socket_path_for_capability("crypto");
+            assert_eq!(path, PathBuf::from("/tmp/crypto.sock"));
+        });
+    }
+
+    #[test]
+    fn test_get_socket_path_for_capability_fallback() {
+        temp_env::with_var_unset("BIOMEOS_STORAGE_SOCKET", || {
+            temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/test-rt"), || {
+                let path = get_socket_path_for_capability("storage");
+                assert_eq!(path, PathBuf::from("/tmp/test-rt/biomeos/storage.sock"));
+            });
+        });
+    }
+
+    #[test]
+    fn test_get_socket_path_for_capability_coordination() {
+        temp_env::with_var_unset("BIOMEOS_COORDINATION_SOCKET", || {
+            temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/test-rt"), || {
+                let path = get_socket_path_for_capability("coordination");
+                assert_eq!(
+                    path,
+                    PathBuf::from("/tmp/test-rt/biomeos/coordination.sock")
+                );
+            });
+        });
     }
 }

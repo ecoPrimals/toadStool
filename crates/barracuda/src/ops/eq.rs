@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Eq operation - Element-wise equality
 //! Pure WGSL implementation
 

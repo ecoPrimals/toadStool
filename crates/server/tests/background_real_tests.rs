@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real background task implementation tests
 //!
 //! These tests provide actual coverage for the background module

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Platform-Agnostic Path Resolution
 //!
 //! Pure Rust, zero-hardcoding path resolution for cross-platform compatibility.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive E2E Real-World Scenarios
 //!
 //! These tests validate complete user workflows and production-like scenarios.

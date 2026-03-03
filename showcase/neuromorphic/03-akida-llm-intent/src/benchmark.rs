@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Benchmark Akida vs CPU vs GPU intent classification
 
 use crate::ClassificationResult;

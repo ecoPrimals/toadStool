@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Platform-specific path resolution for installation
 
 use std::path::PathBuf;

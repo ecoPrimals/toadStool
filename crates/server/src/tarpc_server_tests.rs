@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
 use crate::rpc_types::{ResourceRequirements, WorkloadPriority};
 use std::net::SocketAddr;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🎯 Zero-Copy Constants - Universal Operations
 //!
 //! Central location for universal operations string constants.

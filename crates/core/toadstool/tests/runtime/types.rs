@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for runtime.rs - Sprint 24
 //!
 //! Target: 45% → 65% coverage (~50 tests)

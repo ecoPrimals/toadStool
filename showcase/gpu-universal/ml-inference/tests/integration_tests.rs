@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration Tests: Multi-Operation Pipelines
 //!
 //! Tests real-world use cases with multiple operations working together.

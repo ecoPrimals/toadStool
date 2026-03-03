@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed GPU Federation Demo
 //!
 //! Shows how ToadStool can pool GPUs across multiple towers on a LAN

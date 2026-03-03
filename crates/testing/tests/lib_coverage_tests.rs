@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for testing/src/lib.rs
 //!
 //! Target: Get lib.rs from 0% → 100% coverage

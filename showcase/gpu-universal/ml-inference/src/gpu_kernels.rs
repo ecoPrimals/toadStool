@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Kernels for Neural Network Operations
 //!
 //! OpenCL and CUDA kernels for MNIST inference:

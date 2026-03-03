@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Distributed Module Tests - Expansion for 70%+ Coverage
 //!
 //! **Purpose**: Expand Distributed module test coverage from 45% to 70%+

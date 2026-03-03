@@ -3,7 +3,7 @@ name = "cross-platform-showcase"
 version = "0.1.0"
 edition = "2021"
 description = "Cross-platform compute showcase: GPU, NPU, and CPU pipelines"
-license = "AGPL-3.0"
+license.workspace = true
 repository = "https://github.com/ecoPrimals/toadStool"
 readme = "README.md"
 keywords = ["gpu", "npu", "compute", "benchmark", "cross-platform"]
@@ -141,7 +141,7 @@ cuda-comparison = ["cuda"]  # Enable CUDA performance comparison benchmarks
 
 [dependencies]
 # BarraCuda for GPU compute
-barracuda = { path = "../../crates/barracuda" }
+barracuda = { path = "../../../../barraCuda/crates/barracuda" }
 
 # ToadStool for hardware discovery
 toadstool-core = { path = "../../crates/toadstool-core" }

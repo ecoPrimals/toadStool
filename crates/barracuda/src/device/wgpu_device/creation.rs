@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Device creation and adapter selection
 //!
 //! **Why this file is large (~640 lines)**: Single concern—"how do I obtain a
@@ -69,7 +70,7 @@ impl WgpuDevice {
                 tracing::warn!("GPU device lost (flagged for pool recovery): {msg}");
                 return;
             }
-            panic!("wgpu uncaptured error: {msg}");
+            tracing::error!("wgpu uncaptured error (non-fatal): {msg}");
         }));
     }
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Hybrid CPU+GPU pipeline - real workload sharing
 
 use anyhow::Result;

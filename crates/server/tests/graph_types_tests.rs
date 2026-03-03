@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for execution graph types (ExecutionGraph, GraphNode, GraphEdge, etc.)
 //!
 //! Extracted from graph_types.rs to reduce file size and improve maintainability.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for capability-based service adapters
 //!
 //! These tests verify that the new adapter system works correctly

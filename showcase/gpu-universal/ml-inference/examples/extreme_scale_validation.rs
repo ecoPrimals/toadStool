@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Extreme Scale Validation
 //!
 //! Tests all optimizations at very large scales (2048+, 4096+)

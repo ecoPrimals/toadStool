@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security context validation tests
 //!
 //! Tests use the real SecurityContext API: isolation_level, capabilities

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic Akida detection example
 //!
 //! Demonstrates PCIe bus scanning and board discovery.

@@ -5,7 +5,7 @@ edition = "2021"
 repository = "https://github.com/ecoPrimals/toadStool"
 authors = ["Toadstool Team"]
 description = "100% Pure Rust display and input backend for ecoPrimals"
-license = "AGPL-3.0"
+license.workspace = true
 keywords = ["display", "input", "drm", "evdev", "pure-rust"]
 categories = ["gui", "graphics", "hardware-support"]
 

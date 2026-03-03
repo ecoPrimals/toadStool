@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Simplified Distributed Computing Demo
 //!
 //! Demonstrates the new Songbird-centric architecture where:

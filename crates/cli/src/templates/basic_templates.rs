@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic and development template implementations
 //!
 //! This module contains the foundational biome templates:
@@ -35,17 +36,17 @@ pub fn create_basic_template() -> TemplateComponents {
     let name = "basic-biome".to_string();
     let description = "Basic universal compute biome with essential services".to_string();
 
-    // Essential primals
-    // Note: Templates use specific primal names as deployment identifiers.
-    // Runtime discovery will map these to actual available services via capabilities.
+    // Essential primals — keyed by capability, not primal name.
+    // The container image is a *default* implementation; at runtime, the
+    // deployment engine resolves the actual provider via capability discovery.
     let mut primals = HashMap::new();
     primals.insert(
-        "pki-provider".to_string(), // Generic name (typically provided by beardog)
+        "pki-provider".to_string(), // Capability-based key
         PrimalConfig {
             version: "latest".to_string(),
             source: WorkloadSource::Container {
                 registry: "registry.ecosystem.sovereignscience.org".to_string(),
-                image: "beardog".to_string(), // Default implementation
+                image: "beardog".to_string(), // Default implementation for PKI capability
                 tag: "latest".to_string(),
                 digest: None,
             },

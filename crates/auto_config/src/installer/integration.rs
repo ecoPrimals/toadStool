@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! System integration: PATH, desktop shortcuts, shell completion
 
 use std::path::Path;
@@ -150,4 +151,59 @@ complete -F _toadstool_complete toadstool
 
     info!("🐚 Shell completion installed");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_has_gui_macos_always_true() {
+        assert!(has_gui(Platform::MacOS));
+    }
+
+    #[test]
+    fn test_has_gui_windows_always_true() {
+        assert!(has_gui(Platform::Windows));
+    }
+
+    #[test]
+    fn test_has_gui_android_false() {
+        assert!(!has_gui(Platform::Android));
+    }
+
+    #[test]
+    fn test_has_gui_wasm_false() {
+        assert!(!has_gui(Platform::Wasm));
+    }
+
+    #[test]
+    fn test_has_gui_unknown_false() {
+        assert!(!has_gui(Platform::Unknown));
+    }
+
+    #[test]
+    fn test_has_gui_linux_with_display() {
+        temp_env::with_var("DISPLAY", Some(":0"), || {
+            assert!(has_gui(Platform::Linux));
+        });
+    }
+
+    #[test]
+    fn test_has_gui_linux_with_wayland() {
+        temp_env::with_var_unset("DISPLAY", || {
+            temp_env::with_var("WAYLAND_DISPLAY", Some("wayland-0"), || {
+                assert!(has_gui(Platform::Linux));
+            });
+        });
+    }
+
+    #[test]
+    fn test_has_gui_linux_headless() {
+        temp_env::with_var_unset("DISPLAY", || {
+            temp_env::with_var_unset("WAYLAND_DISPLAY", || {
+                assert!(!has_gui(Platform::Linux));
+            });
+        });
+    }
 }

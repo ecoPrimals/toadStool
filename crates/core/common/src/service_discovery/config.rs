@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Config-file discovery types and capability parsing
 //!
 //! Config files are JSON, searched in order:

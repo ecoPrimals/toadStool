@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Momentum-based optimizers (Adam, SGD, RMSprop)
 //!
 //! Fundamental optimization algorithms with optional momentum.

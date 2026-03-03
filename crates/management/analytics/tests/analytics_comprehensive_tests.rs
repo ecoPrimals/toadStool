@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Analytics Module Comprehensive Tests
 //!
 //! Expanding test coverage for management/analytics module

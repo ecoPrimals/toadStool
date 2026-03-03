@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! OpenCL compute unit implementation (capability-based fallback)
 //!
 //! This module is compiled only when the `opencl` feature is enabled.

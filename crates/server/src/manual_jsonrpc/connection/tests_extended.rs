@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Connection flow tests: Unix raw JSON, HTTP, TCP, mock-based integration.
 
 use super::super::{ManualJsonRpcServer, INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND};
@@ -128,12 +129,18 @@ async fn test_unix_socket_temp_path_connect_client() {
     tokio::spawn(async move {
         let _ = server.serve(path_for_server).await;
     });
-    // Wait for server to bind
-    for _ in 0..100 {
-        tokio::task::yield_now().await;
-    }
-
-    let mut client = UnixStream::connect(&socket_path).await.expect("connect");
+    // Wait for server socket to appear on disk
+    let mut client = {
+        let mut stream = None;
+        for _ in 0..200 {
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+            if let Ok(s) = UnixStream::connect(&socket_path).await {
+                stream = Some(s);
+                break;
+            }
+        }
+        stream.expect("connect: server socket not ready after 1s")
+    };
     let req = r#"{"jsonrpc":"2.0","method":"toadstool.health","params":{},"id":100}"#;
     client.write_all(req.as_bytes()).await.unwrap();
     client.write_all(b"\n").await.unwrap();

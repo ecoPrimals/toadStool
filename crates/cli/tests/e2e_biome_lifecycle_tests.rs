@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🚀 E2E Integration Tests - Biome Lifecycle
 //!
 //! **Philosophy**: Test real-world workflows end-to-end

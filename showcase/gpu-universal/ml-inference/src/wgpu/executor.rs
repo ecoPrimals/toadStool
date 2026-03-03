@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WGPU Executor - Main GPU compute coordinator
 //!
 //! Pure Rust GPU executor using WebGPU standard.

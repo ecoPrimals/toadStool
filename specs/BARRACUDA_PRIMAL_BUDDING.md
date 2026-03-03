@@ -1,7 +1,7 @@
 # barraCuda Primal Budding — Architecture Spec
 
 **Date**: March 2–3, 2026 (Session 88–89)
-**Status**: Phase 4 complete — toadStool deprecated embedded barracuda, rewired to standalone
+**Status**: Phase 5 complete — zero cross-dependencies, fully untangled
 **Classification**: Core architecture evolution
 **Handoff**: `ecoPrimals/wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`
 **Scaffold**: `ecoPrimals/barraCuda/` (created via sourDough)
@@ -272,6 +272,41 @@ Full toadStool workspace builds clean against standalone barraCuda.
 barraCuda v0.2.1 adds `domain-models` umbrella feature with per-module flags,
 enabling Springs to opt out of domain modules they don't need (faster compile).
 
+## Phase 5 — Complete Untangle `COMPLETE`
+
+### 5.1 toadstool-core coupling eliminated
+
+- `device/toadstool_integration.rs` — deleted (entire file)
+- `device/wgpu_device/creation.rs` — `from_selection()` method removed
+- `device/wgpu_device/mod.rs` — 2 toadstool-gated tests removed
+- `device/mod.rs` — module declaration and re-exports removed
+- `toadstool` feature removed from Cargo.toml
+
+### 5.2 akida-driver coupling eliminated
+
+- `npu/ml_backend.rs` and `npu/ops/` modules removed
+- `ops/npu_bridge.rs` — `with_npu_backend()`, `NPU_BACKEND` static removed; `is_npu_available()` returns false
+- `ops/matmul.rs` — NPU routing branch and `matmul_npu()` removed
+- `ops/softmax.rs` — NPU routing branch and `softmax_npu()` removed
+- `lib.rs` — `NpuMlBackend` re-export removed
+- `npu-akida` feature removed from Cargo.toml
+
+### 5.3 Verified zero cross-dependencies
+
+```
+barraCuda → toadStool: ZERO (rg scan confirmed)
+barraCuda → sourDough: sourdough-core only (via barracuda-core)
+barraCuda Cargo.toml: no toadstool-core, no akida-driver
+cargo check (3 configs): all pass
+cargo clippy: 0 warnings
+cargo test --lib: 2,835 pass, 0 fail
+```
+
+### 5.4 Showcases rewired
+
+- `showcase/rbf-surrogate/Cargo.toml` → standalone barraCuda path
+- `showcase/cross-platform/Cargo.toml` → standalone barraCuda path
+
 ---
 
 ## What ToadStool Becomes
@@ -318,9 +353,13 @@ through computational substrates, discovering barraCuda instances for GPU math.
 - [x] Domain models feature-gated for future Spring absorption (S89)
 - [x] toadStool workspace deprecated embedded barracuda, rewired to standalone (S89)
 - [x] Full toadStool workspace builds clean against standalone barraCuda (S89)
+- [x] **Zero cross-dependencies**: toadstool_integration.rs deleted, akida-driver coupling removed (S89)
+- [x] **2,835 lib tests pass** after untangle (S89)
+- [x] **Showcases rewired** to standalone barraCuda (S89)
+- [x] **Handoff published**: `wateringHole/handoffs/BARRACUDA_S89_UNTANGLE_AND_HANDOFF_MAR03_2026.md` (S89)
 - [ ] All 5 Springs can build against barracuda without toadstool workspace
 - [ ] `validate-gpu` passes on Intel, AMD, NVIDIA (NVK sin_f64_safe fixed)
-- [ ] At least one Spring evolves a second primal (e.g., BearDog) in same session
+- [ ] hotSpring QCD runs with barraCuda math + toadStool hardware dispatch
 
 ---
 

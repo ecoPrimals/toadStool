@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Standalone Universal Compute Demonstration

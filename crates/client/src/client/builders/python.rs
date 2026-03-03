@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Python workload builder for executing Python scripts
 
 use std::collections::HashMap;

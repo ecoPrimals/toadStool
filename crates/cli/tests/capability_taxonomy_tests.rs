@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability Taxonomy Tests
 //!
 //! Comprehensive tests for the capability-based discovery system.

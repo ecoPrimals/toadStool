@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! ToadStool - Universal Compute Platform (UniBin Architecture)
 //!
 //! 🍄 **WELCOME TO THE FUTURE OF SOVEREIGN SCIENCE** 🍄

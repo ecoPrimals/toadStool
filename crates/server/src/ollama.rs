@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ollama Integration Client
 //!
 //! Native Ollama management for model lifecycle and inference.

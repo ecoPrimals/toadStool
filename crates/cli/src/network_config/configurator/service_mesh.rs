@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service mesh configuration extension
 //!
 //! Provides service mesh-specific configuration and validation.

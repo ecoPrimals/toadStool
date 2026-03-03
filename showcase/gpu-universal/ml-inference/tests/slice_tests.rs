@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Slice Tests: Tensor Slicing
 //!
 //! Tests slicing operation for extracting tensor sections.

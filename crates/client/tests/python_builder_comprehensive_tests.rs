@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Python workload builder
 //!
 //! Week 14 Day 3: Python Builder Tests

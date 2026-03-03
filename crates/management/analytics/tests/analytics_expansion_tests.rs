@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Analytics Module Test Expansion - October 31, 2025
 //!
 //! This expansion adds comprehensive coverage for:

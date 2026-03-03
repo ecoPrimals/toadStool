@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tiled MatMul Performance Benchmark
 //!
 //! Compares naive (no shared memory) vs tiled (shared memory) MatMul

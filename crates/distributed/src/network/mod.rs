@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 pub mod distributor;
 pub mod load_balancer;
 pub mod metrics;

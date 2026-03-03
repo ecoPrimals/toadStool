@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Monitoring and Observability - Real-time System Intelligence
 //!
 //! Comprehensive monitoring for `ToadStool` universal compute platform:
@@ -533,5 +534,125 @@ impl Default for MonitoringConfig {
             export_prometheus: true,
             export_grafana: true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_metrics_store_new() {
+        let store = MetricsStore::new(Duration::from_secs(3600));
+        assert!(store.series.is_empty());
+        assert!(store.stats.is_empty());
+        assert_eq!(store.retention_period, Duration::from_secs(3600));
+    }
+
+    #[test]
+    fn test_update_stats_first_value() {
+        let mut store = MetricsStore::new(Duration::from_secs(3600));
+        store.update_stats("cpu", 42.0);
+        let stats = store.stats.get("cpu").expect("stats");
+        assert_eq!(stats.count, 1);
+        assert!((stats.min - 42.0).abs() < f64::EPSILON);
+        assert!((stats.max - 42.0).abs() < f64::EPSILON);
+        assert!((stats.avg - 42.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_update_stats_multiple_values() {
+        let mut store = MetricsStore::new(Duration::from_secs(3600));
+        store.update_stats("mem", 10.0);
+        store.update_stats("mem", 20.0);
+        store.update_stats("mem", 30.0);
+        let stats = store.stats.get("mem").expect("stats");
+        assert_eq!(stats.count, 3);
+        assert!((stats.min - 10.0).abs() < f64::EPSILON);
+        assert!((stats.max - 30.0).abs() < f64::EPSILON);
+        assert!((stats.avg - 20.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_update_stats_independent_metrics() {
+        let mut store = MetricsStore::new(Duration::from_secs(3600));
+        store.update_stats("a", 5.0);
+        store.update_stats("b", 100.0);
+        assert_eq!(store.stats.len(), 2);
+        assert!((store.stats["a"].avg - 5.0).abs() < f64::EPSILON);
+        assert!((store.stats["b"].avg - 100.0).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_old_data_removes_expired() {
+        let mut store = MetricsStore::new(Duration::from_secs(60));
+        let old = std::time::SystemTime::now()
+            .checked_sub(Duration::from_secs(120))
+            .expect("sub");
+        let recent = std::time::SystemTime::now();
+        store.series.insert(
+            "test".to_string(),
+            TimeSeries {
+                name: "test".to_string(),
+                data_points: vec![
+                    DataPoint {
+                        timestamp: old,
+                        value: 1.0,
+                    },
+                    DataPoint {
+                        timestamp: recent,
+                        value: 2.0,
+                    },
+                ],
+                labels: HashMap::new(),
+            },
+        );
+        store.cleanup_old_data().await;
+        assert_eq!(store.series["test"].data_points.len(), 1);
+        assert!((store.series["test"].data_points[0].value - 2.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_monitoring_config_default() {
+        let config = MonitoringConfig::default();
+        assert!(config.enable_alerts);
+        assert!(config.export_prometheus);
+        assert_eq!(config.max_metrics_per_batch, 1000);
+    }
+
+    #[tokio::test]
+    async fn test_store_batch_gauge_metric() {
+        let mut store = MetricsStore::new(Duration::from_secs(3600));
+        let batch = MetricBatch {
+            timestamp: std::time::SystemTime::now(),
+            source: "test".to_string(),
+            metrics: vec![Metric {
+                name: "cpu".to_string(),
+                value: MetricValue::Gauge(75.0),
+                labels: HashMap::new(),
+                timestamp: std::time::SystemTime::now(),
+            }],
+        };
+        store.store_batch(batch).await;
+        assert_eq!(store.series.len(), 1);
+        assert_eq!(store.series["cpu"].data_points.len(), 1);
+        assert!((store.stats["cpu"].avg - 75.0).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn test_store_batch_counter_ignored() {
+        let mut store = MetricsStore::new(Duration::from_secs(3600));
+        let batch = MetricBatch {
+            timestamp: std::time::SystemTime::now(),
+            source: "test".to_string(),
+            metrics: vec![Metric {
+                name: "requests".to_string(),
+                value: MetricValue::Counter(100),
+                labels: HashMap::new(),
+                timestamp: std::time::SystemTime::now(),
+            }],
+        };
+        store.store_batch(batch).await;
+        assert!(!store.stats.contains_key("requests"));
     }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for AI/MCP Interface
 //!
 //! Tests all major functions and paths in ai_mcp_interface.rs to achieve 70%+ coverage

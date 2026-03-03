@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Simplified Tests for GPU Frameworks
 //!
 //! Tests cover basic framework functionality that matches the actual API

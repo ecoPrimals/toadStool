@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed Types Tests - Week 5
 //! Comprehensive tests for distributed system types
 

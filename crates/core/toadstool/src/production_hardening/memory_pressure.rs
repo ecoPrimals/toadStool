@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Memory pressure handling and optimization.
 
 use std::sync::Arc;

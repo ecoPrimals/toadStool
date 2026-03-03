@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core configurator functionality
 //!
 //! This module provides the core construction and orchestration methods

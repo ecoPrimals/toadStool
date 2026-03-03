@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cloud credentials and authentication
 //!
 //! This module contains credential structures for different cloud providers

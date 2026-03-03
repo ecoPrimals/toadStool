@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core types for unified memory system
 
 use serde::{Deserialize, Serialize};

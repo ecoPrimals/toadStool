@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Node registry, capability tracker, and health monitor implementations
 
 use std::collections::HashMap;

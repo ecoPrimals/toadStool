@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Expanded tests for discovery_defaults module
 //!
 //! Coverage expansion: discovery_defaults.rs needs expanded coverage

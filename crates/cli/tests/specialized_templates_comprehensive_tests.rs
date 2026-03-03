@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for specialized templates
 //!
 //! Goal: Push specialized_templates.rs coverage from 1.18% to 50%+

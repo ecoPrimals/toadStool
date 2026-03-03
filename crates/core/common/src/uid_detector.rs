@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure Rust UID Detection
 //!
 //! Evolved from `unsafe { libc::getuid() }` to 100% safe Rust implementation.

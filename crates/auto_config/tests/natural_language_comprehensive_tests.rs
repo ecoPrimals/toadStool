@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage for natural language configuration module
 //!
 //! This test suite provides property-based tests, table-driven tests, and error path

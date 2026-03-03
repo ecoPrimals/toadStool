@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CLI Executor Implementation - Phase 2 Coverage Expansion
 //!
 //! Target: crates/cli/src/executor/executor_impl.rs (976 lines)

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure Rust driver for BrainChip Akida neuromorphic processors
 //!
 //! This crate provides direct, safe access to Akida AKD1000/AKD1500 neuromorphic

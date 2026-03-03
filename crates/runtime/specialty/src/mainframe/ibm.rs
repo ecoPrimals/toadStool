@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! IBM Mainframe Adapter (System/360, System/370, z/Series)
 
 use std::collections::HashMap;

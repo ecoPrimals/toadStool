@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI monitoring system (Phase 1)
 //! Target: cli/src/monitoring.rs (522 lines, currently 0% coverage)
 //! Goal: Add 60-80 tests for 50%+ coverage

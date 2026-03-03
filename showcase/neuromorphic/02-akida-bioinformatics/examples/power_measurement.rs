@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Power consumption measurement for Akida boards
 
 use akida_bioinformatics_demo::{akida_filter::AkidaFilter, benchmark::*, FilterConfig};

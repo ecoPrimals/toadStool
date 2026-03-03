@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Manual JSON-RPC tests (consolidated from mod and handlers)
 
 use toadstool_common::interned_strings::primals;

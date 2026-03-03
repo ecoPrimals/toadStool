@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime selection logic by strategy.
 //!
 //! Pure selection functions that operate on runtime statistics.

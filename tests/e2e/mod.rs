@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! E2E test module - declares all end-to-end test files.
 
 pub mod adaptive_runtime_selection_e2e;

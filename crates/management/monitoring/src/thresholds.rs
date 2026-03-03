@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Threshold monitoring and actions
 //!
 //! Resource threshold configuration and violation handling.

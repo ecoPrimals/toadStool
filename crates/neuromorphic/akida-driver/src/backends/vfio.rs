@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! VFIO NPU backend — Pure Rust with DMA support
 //!
 //! This backend uses Linux VFIO (Virtual Function I/O) to provide:
@@ -134,6 +135,10 @@ struct VfioIoctlReturn<const OP: Opcode> {
     arg: usize,
 }
 
+// SAFETY: VfioIoctlReturn fulfils the rustix Ioctl contract: opcode is a compile-time
+// VFIO constant, as_ptr returns arg cast to *mut c_void (no-arg or integer-arg ioctls),
+// and output_from_ptr trivially wraps the kernel return value. All callers pass valid
+// BorrowedFd obtained from VFIO container/group/device opens.
 unsafe impl<const OP: Opcode> Ioctl for VfioIoctlReturn<OP> {
     type Output = i32;
 
@@ -188,6 +193,10 @@ struct VfioIoctlPtr<const OP: Opcode, T> {
     ptr: *mut T,
 }
 
+// SAFETY: VfioIoctlPtr fulfils the rustix Ioctl contract: opcode is a compile-time VFIO
+// constant, as_ptr casts the caller-supplied *mut T to *mut c_void (T is a VFIO struct
+// whose layout matches the kernel ABI), IS_MUTATING=true since the kernel writes back.
+// All callers construct T on the stack with correct argsz and pass &raw mut.
 unsafe impl<const OP: Opcode, T> Ioctl for VfioIoctlPtr<OP, T> {
     type Output = ();
 

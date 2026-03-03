@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Dot Product and Elementwise Binary Operations Demo
 //!
 //! Demonstrates fundamental vector operations:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! FP64 Benchmark - Compare double precision performance across vendors
 //!
 //! This benchmark tests native f64 shader performance on GPUs that support SHADER_F64.

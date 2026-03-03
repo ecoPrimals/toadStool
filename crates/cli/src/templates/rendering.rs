@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Manifest rendering and template helper functions
 //!
 //! Supports both TOML (preferred, ecoBin compliant) and YAML formats.
@@ -185,4 +186,68 @@ pub fn print_template_info(template: &BiomeTemplate) {
     info!("  1. Review and customize the generated biome.yaml");
     info!("  2. Deploy with: toadstool biome deploy");
     info!("  3. Monitor with: toadstool biome status");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_template_tags_basic() {
+        let tags = get_template_tags(&BiomeTemplate::Basic);
+        assert_eq!(tags, vec!["basic", "essential"]);
+    }
+
+    #[test]
+    fn test_get_template_tags_science() {
+        let tags = get_template_tags(&BiomeTemplate::Science);
+        assert!(tags.contains(&"science".to_string()));
+        assert!(tags.contains(&"research".to_string()));
+    }
+
+    #[test]
+    fn test_get_template_tags_ai_research() {
+        let tags = get_template_tags(&BiomeTemplate::AiResearch);
+        assert!(tags.contains(&"ai".to_string()));
+        assert!(tags.contains(&"gpu".to_string()));
+    }
+
+    #[test]
+    fn test_get_template_tags_custom() {
+        use super::super::types_mod::CustomTemplateSpec;
+        let spec = CustomTemplateSpec {
+            name: "my-tpl".to_string(),
+            description: "test".to_string(),
+            primals: vec![],
+            services: vec![],
+            security_level: "standard".to_string(),
+            resource_profile: "minimal".to_string(),
+        };
+        let tags = get_template_tags(&BiomeTemplate::Custom(spec));
+        assert_eq!(tags, vec!["custom"]);
+    }
+
+    #[test]
+    fn test_get_template_tags_all_variants() {
+        assert!(!get_template_tags(&BiomeTemplate::Quantum).is_empty());
+        assert!(!get_template_tags(&BiomeTemplate::Genomics).is_empty());
+        assert!(!get_template_tags(&BiomeTemplate::Vision).is_empty());
+        assert!(!get_template_tags(&BiomeTemplate::Distributed).is_empty());
+        assert!(!get_template_tags(&BiomeTemplate::Sovereign).is_empty());
+        assert!(!get_template_tags(&BiomeTemplate::Development).is_empty());
+    }
+
+    #[test]
+    fn test_get_template_tags_sovereign_has_security() {
+        let tags = get_template_tags(&BiomeTemplate::Sovereign);
+        assert!(tags.contains(&"sovereign".to_string()));
+        assert!(tags.contains(&"security".to_string()));
+    }
+
+    #[test]
+    fn test_get_template_tags_distributed_has_cluster() {
+        let tags = get_template_tags(&BiomeTemplate::Distributed);
+        assert!(tags.contains(&"cluster".to_string()));
+        assert!(tags.contains(&"orchestration".to_string()));
+    }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vector Addition Showcase
 //!
 //! Demonstrates the simplest possible GPU workload across multiple backends:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration-style tests for GPU job queue
 
 use toadstool_server::gpu_job_queue::*;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Final Operations - Completing the 100 Operation Milestone
 //!
 //! **Week 10 Implementation**: Essential pooling, activations, losses, and tensor ops

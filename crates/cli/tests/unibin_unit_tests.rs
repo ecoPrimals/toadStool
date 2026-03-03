@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! UniBin Architecture Unit Tests
 //!
 //! Comprehensive unit tests for ToadStool's UniBin implementation.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Backend trait for unified memory implementations
 
 use crate::unified_memory::types::*;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! NPU substrate for homomorphic operations using Akida neuromorphic hardware
 //!
 //! # The NPU Advantage for Homomorphic Encryption

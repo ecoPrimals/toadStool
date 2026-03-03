@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Linux compatibility layer.
 //!
 //! Uses `uname`-based detection during initialization to verify the platform.

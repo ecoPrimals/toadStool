@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Intelligent Auto-Configuration
 //!
 //! Tests cover intelligent.rs functionality (10.81% → 30%+ target)

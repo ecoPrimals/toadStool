@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Benchmark Optimizations
 //!
 //! Measures actual performance improvements from async, tiling, and 2-dispatch optimizations

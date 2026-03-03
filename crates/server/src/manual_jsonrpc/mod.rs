@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Pure Manual JSON-RPC 2.0 Server over Unix Sockets
 //!
 //! **DEPRECATED** (since 2.2.0): Use `pure_jsonrpc::JsonRpcHandler` for new code.
 //! This module is phased out in favor of `pure_jsonrpc`, which has SemanticMethodRegistry,
 //! proper error types, and Cow<'static, str> for zero-copy version strings.
 //!
-//! See [MIGRATION.md](MIGRATION.md) for migration path. Do not delete — unibin still uses it.
-//!
-//! Educational implementation for other primals to learn from.
+//! See [MIGRATION.md](MIGRATION.md) for migration path.
+//! Unibin has migrated to `pure_jsonrpc`; this module is retained for test coverage
+//! and as a reference implementation for other primals.
 //! No library dependencies - just tokio, serde_json, and the JSON-RPC 2.0 spec.
 
 mod connection;

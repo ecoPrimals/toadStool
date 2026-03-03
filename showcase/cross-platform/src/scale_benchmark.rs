@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Scale Benchmark - Does BarraCuda reach parity at scale?
 //!
 //! Tests the hypothesis: the 10x gap is constant overhead (~300μs),

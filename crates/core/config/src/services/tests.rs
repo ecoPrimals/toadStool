@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #[cfg(test)]
 mod service_registry_tests {
     use super::super::*;

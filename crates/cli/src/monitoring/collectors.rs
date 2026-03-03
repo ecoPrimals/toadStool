@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Metrics collectors - system, process, and network data collection
 
 use crate::Result;

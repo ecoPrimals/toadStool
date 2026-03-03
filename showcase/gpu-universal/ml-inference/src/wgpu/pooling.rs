@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pooling operations
 //!
 //! MaxPool2D and other pooling operations for CNNs.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Warmup Demo - ToadStool "Mise en Place"
 //!
 //! Demonstrates the difference between cold and warm shader cache

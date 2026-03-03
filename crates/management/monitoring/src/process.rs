@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Process management for resource monitoring
 //!
 //! Registration, unregistration, and metrics retrieval for monitored processes.

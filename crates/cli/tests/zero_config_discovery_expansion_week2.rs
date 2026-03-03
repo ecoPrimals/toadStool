@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Week 2 Zero-Config Discovery Expansion Tests
 //!
 //! Comprehensive tests for zero-config discovery functionality covering:

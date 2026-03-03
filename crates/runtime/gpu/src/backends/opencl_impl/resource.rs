@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! OpenCL Compute Resource - UniversalComputeResource implementation
 //!
 //! Wraps OpenClBackend and provides utilization monitoring, execution time

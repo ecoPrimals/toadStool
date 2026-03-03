@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for backward compatibility with deprecated endpoint configuration
 //! These tests validate that legacy hardcoded endpoints still work
 #![allow(deprecated)]

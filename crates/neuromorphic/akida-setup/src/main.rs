@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Akida NPU Setup - Rust Binary (No Scripts!)
 //!
 //! Replaces bash scripts with compiled Rust code.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🚀 UniversalComputeManager Simple Concurrent Tests
 //!
 //! **Philosophy**: Modern, concurrent, event-driven, robust

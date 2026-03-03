@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Embedded Systems Adapters
 //!
 //! Support for legacy embedded systems including:

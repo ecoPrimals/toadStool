@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU fingerprinting for hardware identification
 //!
 //! Uniquely identifies GPU hardware for cache lookup and optimization.

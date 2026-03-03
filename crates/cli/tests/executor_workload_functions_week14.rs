@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Week 14, Day 1: Direct Function Tests for executor/workload.rs
 //!
 //! These tests directly call the actual functions from workload.rs

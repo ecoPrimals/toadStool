@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Session Benchmark - Comparing batched vs unbatched tensor operations
 //!
 //! Demonstrates the performance improvement from using TensorSession

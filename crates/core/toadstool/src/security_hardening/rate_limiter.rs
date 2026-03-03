@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Rate limiting for security hardening
 //!
 //! Extracted from security_hardening.rs for modularity (Feb 14, 2026).

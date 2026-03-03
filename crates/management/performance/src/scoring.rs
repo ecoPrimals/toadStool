@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Performance scoring algorithms
 //!
 //! Algorithms for calculating performance and efficiency scores based on

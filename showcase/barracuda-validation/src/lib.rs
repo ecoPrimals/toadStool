@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // BarraCuda Validation Library
 // Shared utilities for validation benchmarks
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core orchestration logic for zero-configuration deployment
 
 use crate::Result;

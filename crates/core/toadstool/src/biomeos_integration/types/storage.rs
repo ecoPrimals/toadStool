@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage configuration types for BiomeOS integration
 //!
 //! This module contains types for storage provisioning, volumes,

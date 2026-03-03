@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cooperative Network Revolution Demo
 //! Shows how giving creates exponential returns through network effects
 

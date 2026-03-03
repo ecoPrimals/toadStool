@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem Discovery for Auto-Configuration
 //!
-//! Discovers available ecosystem services (Songbird, `BearDog`, `NestGate`, Squirrel, biomeOS)
-//! and automatically configures optimal integration settings.
+//! Discovers available ecosystem services by capability and automatically
+//! configures optimal integration settings.
+//!
+//! Use [`EcosystemDiscoverer::find_pattern_by_capability`] for
+//! sovereignty-compliant capability-based lookup.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -104,7 +108,7 @@ impl EcosystemDiscoverer {
                 name: "toadstool".to_string(),
                 description: "Other ToadStool universal compute instances".to_string(),
                 default_ports: vec![config.network.toadstool_port],
-                health_endpoints: vec!["/health".to_string(), "/api/v2/health".to_string()],
+                health_endpoints: vec!["/health".to_string(), "/jsonrpc".to_string()],
                 service_type: ServiceType::Compute,
                 required_capabilities: vec![
                     "compute".to_string(),
@@ -118,6 +122,17 @@ impl EcosystemDiscoverer {
             _discovery_timeout: Duration::from_secs(30),
             last_discovery: None,
         }
+    }
+
+    /// Look up a service pattern by capability name (sovereignty-compliant).
+    ///
+    /// Returns the first `ServicePattern` whose `required_capabilities` contains
+    /// the given capability, or `None`.
+    #[must_use]
+    pub fn find_pattern_by_capability(&self, capability: &str) -> Option<&ServicePattern> {
+        self.service_patterns
+            .values()
+            .find(|p| p.required_capabilities.iter().any(|c| c == capability))
     }
 
     /// Discover all available ecosystem services

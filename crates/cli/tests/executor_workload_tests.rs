@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI executor workload types and structures
 
 use std::collections::HashMap;

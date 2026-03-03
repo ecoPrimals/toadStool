@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ray tracing scene representation
 //!
 //! Deep Debt: Simple, efficient scene for NPU vs GPU comparison

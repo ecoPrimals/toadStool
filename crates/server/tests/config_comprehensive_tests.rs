@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for server configuration
 //!
 //! Week 13 Day 1: Configuration and Type Tests

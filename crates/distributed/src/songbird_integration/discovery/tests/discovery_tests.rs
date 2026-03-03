@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! SongbirdNetworkDiscovery and type serialization tests
 
 use crate::songbird_integration::types::{

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Normalization Operations
 //!
 //! **Week 9 Implementation**: Essential normalization layers for modern deep learning

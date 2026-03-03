@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC request handler and method router
 //!
 //! Routes JSON-RPC 2.0 requests to the appropriate executor or job queue.
@@ -30,7 +31,7 @@ use super::types::{
 /// names and semantic `{domain}.{operation}` names via the registry.
 pub struct JsonRpcHandler {
     executor: Arc<dyn super::super::tarpc_server::WorkloadExecutor + Send + Sync>,
-    version: String,
+    version: Arc<str>,
     start_time: std::time::Instant,
     job_queue: crate::gpu_job_queue::GpuJobQueue,
     error_count: Arc<AtomicU64>,
@@ -49,7 +50,7 @@ impl JsonRpcHandler {
     /// Pass `error_count` to share the counter with other servers for unified monitoring.
     pub fn new(
         executor: Arc<dyn super::super::tarpc_server::WorkloadExecutor + Send + Sync>,
-        version: String,
+        version: impl Into<Arc<str>>,
         error_count: Option<Arc<AtomicU64>>,
     ) -> Self {
         let local_gate_id = std::env::var("HOSTNAME")
@@ -58,7 +59,7 @@ impl JsonRpcHandler {
             .unwrap_or_else(|_| "local".to_string());
         Self {
             executor,
-            version,
+            version: version.into(),
             start_time: std::time::Instant::now(),
             job_queue: GpuJobQueue::new(JobQueueConfig::default()),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
@@ -314,7 +315,7 @@ impl JsonRpcHandler {
         let error_count = self.error_count.load(Ordering::Relaxed) as usize; // display only
         let status = HealthStatus {
             healthy: true,
-            version: self.version.clone(),
+            version: self.version.to_string(),
             uptime_secs: uptime.as_secs(),
             active_workloads: 0,
             queued_workloads: 0,
@@ -329,12 +330,12 @@ impl JsonRpcHandler {
     #[allow(clippy::unused_async)] // JSON-RPC method dispatch; async for API consistency
     async fn version_info(&self) -> Result<serde_json::Value, JsonRpcError> {
         let mut info = HashMap::new();
-        info.insert("version".to_string(), self.version.clone());
+        info.insert("version".to_string(), self.version.to_string());
         info.insert("protocol".to_string(), "JSON-RPC 2.0".to_string());
         info.insert("service".to_string(), "ToadStool Compute".to_string());
         info.insert(
             "implementation".to_string(),
-            "Pure Rust (BearDog pattern)".to_string(),
+            "Pure Rust (ecoPrimals sovereign pattern)".to_string(),
         );
 
         Ok(serde_json::json!(info))

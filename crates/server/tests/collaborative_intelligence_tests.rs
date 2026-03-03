@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for collaborative intelligence resource planning
 //!
 //! Tests complex graph scenarios, edge cases, and integration with ToadStool systems.

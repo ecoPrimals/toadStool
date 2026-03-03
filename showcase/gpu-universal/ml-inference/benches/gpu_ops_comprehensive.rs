@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive GPU Operations Benchmark - All 105 Operations
 //!
 //! Benchmarks every barraCuda operation for performance analysis.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for client types and workload submission
 //!
 //! Goal: Increase client coverage from 0% to 70%+

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // 🔐 Complete Three-Way Validation Comparison
 // ⚠️ VALIDATION HARNESS ONLY - NOT PRODUCTION CODE
 //

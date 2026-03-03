@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WGPU GPU Executor - Modern Idiomatic Rust Implementation
 //!
 //! This module provides a pure Rust GPU compute abstraction using WebGPU (wgpu).

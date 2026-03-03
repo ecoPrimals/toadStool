@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Performance management types
 //!
 //! Core types for performance optimization, metrics, and statistics.

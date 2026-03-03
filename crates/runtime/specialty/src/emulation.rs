@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Legacy System Emulation
 //!
 //! Support for legacy system emulators:

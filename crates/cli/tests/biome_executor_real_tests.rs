@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real tests for BiomeExecutor - actually testing the implementation
 //!
 //! This file tests the REAL BiomeExecutor, not mocks.

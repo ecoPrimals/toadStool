@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Advanced Convolution Operations
 //!
 //! **Week 5 Implementation**: Efficient convolutions for mobile/edge deployment

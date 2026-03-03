@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! E2E tests for IPC helpers and semantic method registry
 //!
 //! These tests expand coverage of the semantic method system which is

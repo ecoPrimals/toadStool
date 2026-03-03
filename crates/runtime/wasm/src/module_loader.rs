@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Module loading for wasmi
 //!
 //! Handles loading WASM modules from various sources (file, bytes, URL)

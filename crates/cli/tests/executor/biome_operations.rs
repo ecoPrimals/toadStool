@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Biome operations tests
 //!
 //! Tests for biome lifecycle operations: up, down, restart, status.

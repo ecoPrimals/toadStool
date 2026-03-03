@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Edge platform types
 
 use toadstool_runtime_edge::*;

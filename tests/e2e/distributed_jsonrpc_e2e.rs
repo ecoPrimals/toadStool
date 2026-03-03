@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! End-to-End Tests for Distributed Coordinator + JSON-RPC Server Integration
 //!
 //! Tests the complete workflow from JSON-RPC client → Server → Coordinator → Execution

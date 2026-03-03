@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BiomeOS Storage Integration Functional Tests - Week 19 Sprint 12
 //!
 //! Focus: Storage provisioning, CRUD operations, error handling

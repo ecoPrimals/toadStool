@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Normalization operations
 //!
 //! Softmax, LayerNorm, BatchNorm, GroupNorm, InstanceNorm, RMSNorm, etc.

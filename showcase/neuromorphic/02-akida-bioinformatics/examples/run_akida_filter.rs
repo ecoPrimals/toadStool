@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Run k-mer filtering on Akida boards
 
 use akida_bioinformatics_demo::{akida_filter::AkidaFilter, benchmark::*, FilterConfig};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Analytics data types
 
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! ToadStool client module - re-exports for public API
 
 pub mod builders;

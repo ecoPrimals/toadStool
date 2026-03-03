@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive ecosystem integration tests
 //!
 //! Tests ToadStool's integration with all ecosystem primals:

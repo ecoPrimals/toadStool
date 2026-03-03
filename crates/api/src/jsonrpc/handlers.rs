@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC 2.0 method handlers
 //!
 //! Each handler corresponds to a JSON-RPC method (e.g. api.health, api.execution.submit).
@@ -270,5 +271,37 @@ pub async fn handle_cluster_status(state: &ApiState) -> JsonRpcResponse {
 }
 
 pub async fn handle_workload_execute(state: &ApiState, params: &Value) -> JsonRpcResponse {
-    handle_execution_submit(state, params).await
+    use toadstool_distributed::primal_capabilities::WorkloadRequest;
+
+    let request: WorkloadRequest = match serde_json::from_value(params.clone()) {
+        Ok(r) => r,
+        Err(_) => return handle_execution_submit(state, params).await,
+    };
+
+    let provider = match state.capability_provider.as_ref() {
+        Some(p) => p,
+        None => {
+            return JsonRpcResponse::error(
+                error_codes::INTERNAL_ERROR,
+                "Capability provider not configured",
+                None,
+            )
+        }
+    };
+
+    match provider.handle_workload(request).await {
+        Ok(response) => match serde_json::to_value(&response) {
+            Ok(v) => JsonRpcResponse::success(v, None),
+            Err(e) => JsonRpcResponse::error(
+                error_codes::INTERNAL_ERROR,
+                format!("Serialization failed: {e}"),
+                None,
+            ),
+        },
+        Err(e) => JsonRpcResponse::error(
+            error_codes::INTERNAL_ERROR,
+            format!("Workload execution failed: {e}"),
+            None,
+        ),
+    }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive concurrent tests for Background Services
 //!
 //! ✅ MODERN CONCURRENT TESTING - Event-driven, no sleeps

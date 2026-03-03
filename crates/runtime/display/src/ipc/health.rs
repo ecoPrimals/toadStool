@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Health check utilities for isomorphic IPC
 //!
 //! Provides health monitoring for display server endpoints

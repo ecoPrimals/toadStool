@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed coordinator integration tests - Month 2 Week 1 Day 3
 //!
 //! Tier 1 tests: Coverage-measured integration tests

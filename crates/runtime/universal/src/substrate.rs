@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Simplified Substrate Abstraction
 //!
 //! **Deep Debt**: Agnostic, capability-based substrate interface

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration test module - declares all integration test files.
 
 pub mod distributed_coordination_tests;

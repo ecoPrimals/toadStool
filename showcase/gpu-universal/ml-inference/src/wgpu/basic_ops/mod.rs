@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic tensor operations
 //!
 //! MatMul, BatchMatMul, Vector Addition, Binary Operations, Convolutions, etc.

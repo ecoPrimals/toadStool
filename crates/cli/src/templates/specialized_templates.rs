@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Specialized biome templates (Science, AI, Quantum, Genomics, Vision, Distributed, Sovereign, Custom)
 //!
 //! This module contains all specialized template implementations for different

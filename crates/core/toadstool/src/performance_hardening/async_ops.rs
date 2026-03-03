@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async operation batching and optimization
 //!
 //! This module provides async operation batching with concurrency control

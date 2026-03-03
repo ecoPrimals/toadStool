@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // 🔥 HETEROGENEOUS PIPELINE VALIDATION - ACTUAL HARDWARE
 // ✅ Evolution from Simulation → Real Hardware
 // ✅ CPU (TFHE-rs), GPU (BarraCuda), NPU (Akida)

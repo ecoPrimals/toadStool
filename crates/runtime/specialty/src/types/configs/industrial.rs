@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Industrial control systems configuration types
 
 use serde::{Deserialize, Serialize};

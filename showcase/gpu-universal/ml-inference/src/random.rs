@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Random Number Generation Operations
 //!
 //! **Week 7 Implementation**: GPU-accelerated RNG with bearDog entropy integration

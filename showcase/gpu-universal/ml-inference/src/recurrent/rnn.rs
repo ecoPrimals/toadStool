@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic RNN Cell (Elman Network)
 
 use anyhow::Result;

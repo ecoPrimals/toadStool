@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for environment variable configuration overrides
 //!
 //! Coverage expansion: env_overrides.rs had ZERO test coverage

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Experiment 001b: MatMul Workgroup Sweep on AMD GPU
 //!
 //! **Purpose**: Cross-vendor validation of Experiment 001 findings

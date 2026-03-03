@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Attention Mechanisms for Transformers
 //!
 //! **Week 3 Implementation**: Core attention operations for BERT, GPT, LLaMA

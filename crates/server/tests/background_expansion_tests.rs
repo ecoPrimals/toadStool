@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional background services tests to expand coverage from 78.60% → 90%+
 //!
 //! These tests complement background_comprehensive_tests.rs by covering:

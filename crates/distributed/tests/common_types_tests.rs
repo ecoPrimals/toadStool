@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for common types (capacity, distribution, load balancing)
 
 use std::collections::HashMap;

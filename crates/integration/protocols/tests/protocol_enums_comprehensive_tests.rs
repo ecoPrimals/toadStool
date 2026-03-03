@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Protocol Enums
 //!
 //! This test suite provides extensive coverage of enum types used in protocol integration,

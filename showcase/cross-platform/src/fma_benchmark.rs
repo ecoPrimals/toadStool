@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! FMA vs Separate Operations Benchmark
 //!
 //! Compares fused multiply-add (d = a * b + c) against separate mul + add.

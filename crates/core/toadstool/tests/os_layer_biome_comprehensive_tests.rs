@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for os_layer/biome.rs module
 //!
 //! Sprint 21: BiomeOS Integration Tests

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Capacity Management Types
 //!
 //! Generic capacity tracking abstractions used across Songbird, Cloud, and other distributed systems.

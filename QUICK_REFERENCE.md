@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 2, 2026 -- Session 87**
+**March 3, 2026 -- Session 92**
 
 ---
 
@@ -189,11 +189,16 @@ Examples:
 ### Discovery (Capability-Based)
 
 ```rust
-use toadstool_common::primal_sockets::discover_crypto_socket;
+use toadstool_common::primal_sockets::get_socket_path_for_capability;
 
-// Discovers ANY crypto service (beardog, HSM, KMS, etc.)
-let socket = discover_crypto_socket().await?;
+// Discovers by capability name, not primal name (sovereignty-compliant)
+let socket = get_socket_path_for_capability("crypto");
+let socket = get_socket_path_for_capability("storage");
+let socket = get_socket_path_for_capability("network");
 ```
+
+> **Note**: `get_socket_path_for_service()` is deprecated since 0.92.0.
+> Use `get_socket_path_for_capability()` for sovereignty-compliant discovery.
 
 ### Configuration (Parameter-Based)
 
@@ -252,9 +257,9 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-config` | Centralized config, ports, network |
 | `toadstool` | Core runtime, IPC server/client, scheduler |
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
-| `toadstool-api` | REST API, middleware (WebSocket removed; JSON-RPC polling) |
+| `toadstool-api` | JSON-RPC API, types (REST + middleware removed; JSON-RPC polling) |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
-| `barracuda` | 844 WGSL shaders (37 DF64, 15 folding, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity, nautilus (evolutionary reservoir computing) |
+| `barracuda` | 845 WGSL shaders (37 DF64, 15 folding, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity, nautilus (evolutionary reservoir computing) |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |
 | `toadstool-testing` | Chaos, fault, property, performance testing |
 
@@ -544,4 +549,4 @@ API reference: see [Scientific Computing Middleware API](#scientific-computing-m
 
 ---
 
-**Last Updated**: March 2, 2026 — Session 87
+**Last Updated**: March 3, 2026 — Session 92

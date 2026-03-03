@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Fault Testing - Invalid inputs, error handling, graceful degradation
 // Tests system resilience under error conditions
 

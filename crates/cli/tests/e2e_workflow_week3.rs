@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Week 3 E2E Workflow Tests
 //! End-to-end workflow testing simulating real-world usage patterns

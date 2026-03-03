@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core Logic Tests for API Handlers
 //!
 //! Tests the fundamental logic and algorithms used in API handlers without

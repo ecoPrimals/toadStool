@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! End-to-End tests for Universal Unified Memory
 //!
 //! These tests verify the complete unified memory system from initialization

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Optimization cache for persistent configuration storage
 //!
 //! Stores learned optimal configurations across runs.

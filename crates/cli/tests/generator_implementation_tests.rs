@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for template generator
 //!
 //! Goal: Push generator_impl.rs coverage from 1.43% to 50%+

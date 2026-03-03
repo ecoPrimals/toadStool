@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional type tests (serde, config, etc.)
 
 use super::super::protocols;

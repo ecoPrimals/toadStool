@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage for resources.rs requirements and metrics types
 //!
 //! This test suite targets requirement and metric types defined in

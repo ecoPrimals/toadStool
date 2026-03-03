@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["ToadStool Team"]
 description = "Edge/IoT runtime engine for ToadStool Universal Compute Platform"
-license = "AGPL-3.0-or-later"
+license.workspace = true
 repository = "https://github.com/toadstool-platform/toadstool"
 
 [dependencies]

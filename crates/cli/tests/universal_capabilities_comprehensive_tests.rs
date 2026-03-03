@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Universal Capability Display Operations
 //!
 //! Tests for capability display functionality in universal compute manager.

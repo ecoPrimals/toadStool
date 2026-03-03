@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Utility functions for WGPU operations
 //!
 //! Eliminates boilerplate and provides safe, idiomatic Rust patterns.

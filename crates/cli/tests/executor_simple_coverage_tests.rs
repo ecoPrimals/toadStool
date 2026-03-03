@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Simple CLI Executor Coverage Tests
 //!
 //! Target: Improve executor coverage from 1.81% with simple, passing tests

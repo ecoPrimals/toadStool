@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Component linking and composition
 
 use std::sync::Arc;

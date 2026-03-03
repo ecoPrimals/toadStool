@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Monitoring Module Edge Cases Tests
 //!
 //! Expanding test coverage for management/monitoring module

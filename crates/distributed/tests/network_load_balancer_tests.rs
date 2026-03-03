@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for network load balancer functionality
 
 use toadstool_distributed::network::load_balancer::{

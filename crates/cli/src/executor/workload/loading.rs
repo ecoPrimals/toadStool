@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload file loading and parsing.
 //!
 //! Reads workload specification files from disk (TOML or JSON format).

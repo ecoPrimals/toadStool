@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for basic template coverage
 //!
 //! Goal: Push basic_templates.rs coverage from 0.57% to 60%+

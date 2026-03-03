@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real Hardware Measurement Infrastructure
 //!
 //! **Deep Debt Principle**: No hardcoded values, measure actual hardware!

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for UniversalCloudOrchestrator (Phase 1)
 //! Target: cloud/orchestrator.rs (423 lines, currently 0% coverage)
 //! Goal: Add 60-80 tests to bring coverage above 50%

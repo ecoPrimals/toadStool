@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 2, 2026 -- Session 86
+**Last Updated**: March 3, 2026 -- Session 92
 
 ---
 
@@ -29,21 +29,24 @@
 
 ---
 
-## Current State (Session 86 — March 2, 2026)
+## Current State (Session 92 — March 3, 2026)
 
-**Still evolving.** Deep debt swept across 86 sessions. 144 GPU ops migrated to ComputeDispatch (~139 remaining). Module architecture clean — 35+ god files smart-refactored. Build streamlined with explicit re-exports and eliminated dependencies. GPU test resilience via NVK `catch_unwind` wrappers. Capability-based discovery replaces hardcoded primal names.
+**Still evolving.** Deep debt swept across 92 sessions. 144 GPU ops migrated to ComputeDispatch (~139 remaining). Module architecture clean — 35+ god files smart-refactored. REST API and middleware fully removed — JSON-RPC 2.0 is the only API path. Sovereignty evolution: legacy primal-name APIs deprecated, capability-based APIs promoted.
 
 - **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery via `poll_safe()`.
+- **ecoBin verified** — `pure-rust` feature compiles with zero C FFI dependencies. PyO3 feature-gated.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests. NVK GPU resilience wrappers on 40+ test files.
-- **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, 45 justified `unsafe` blocks, zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `dbg!()`. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
+- **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, ~60+ justified `unsafe` blocks (all SAFETY documented), zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `unimplemented!()`, zero FIXME/HACK, zero `dbg!()`. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
+- **Sovereignty** — Legacy APIs (`get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider`) deprecated since 0.92.0. NestGate client migrated. `find_pattern_by_capability()` added. BearDog strings neutralized.
 - **Module architecture** — 35+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
 - **Dual-layer universal precision** — Layer 1: `op_preamble`. Layer 2: naga-guided `df64_rewrite`. `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
-- **844 WGSL shaders** — zero orphans, 37 DF64, 15 folding, **zero f32-only**. All f64 canonical.
-- **2,866 barracuda tests** + 5,500+ workspace lib tests (8,300+ total) | all quality gates green (0 warnings)
+- **845 WGSL shaders** — zero orphans, 37 DF64, 15 folding, **zero f32-only**. All f64 canonical.
+- **2,866 barracuda tests** + 5,369 workspace lib tests | all quality gates green (0 warnings)
 - **barracuda::nautilus** — standalone evolutionary reservoir computing (7 files, 22 tests)
 - **44 JSON-RPC methods** across 9 domains (8 `ai.nautilus.*` methods for evolutionary AI)
+- **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 - **BatchedEncoder** — fused multi-op GPU pipelines (single `queue.submit()`)
 - **Batch Nelder-Mead GPU** — N parallel optimizations via batched simplex shaders
 - **GpuDriverProfile workarounds** — sin/cos F64 Taylor preamble for NVK

@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 2, 2026
+**Date**: March 3, 2026
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -76,7 +76,8 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-CD | ComputeDispatch migration | High | 144/280+ ops migrated (~14,000+ lines removed). ~139 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. Full audit S86 identified ops in subdirs (bio/, md/, lattice/, complex/, linalg/). |
 | D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
-| D-COV | Test coverage → 90% | Medium | Major gains in S70/S70+: +187 tests across CLI, server, API, monitoring, distributed, config, barracuda stats/ops. Gap: barracuda GPU ops, neuromorphic drivers. |
+| D-COV | Test coverage → 90% | Medium | S92: 5,369 lib tests pass (0 failures). S91 added 47 tests to 0%-coverage modules (monitoring, templates, installer, connection, wasm_ops, session). Middleware removed (dead code). Pure-rust build verified clean. |
+| D-SOV | Sovereignty: primal-name → capability | Medium | S92: Deprecated `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider`. Migrated NestGate client to `get_socket_path_for_capability`. Added `EcosystemDiscoverer::find_pattern_by_capability()`. Remaining: `EcosystemDiscoverer::new()` uses primal-name keys (benign — capability data is attached). |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
 
 ### DF64 Transcendental Coverage — COMPLETE (S71)

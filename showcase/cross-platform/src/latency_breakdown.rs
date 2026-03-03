@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Latency Breakdown Benchmark
 //!
 //! Isolates WHERE the latency is coming from:

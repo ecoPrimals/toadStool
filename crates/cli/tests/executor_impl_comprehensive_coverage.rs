@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Coverage Tests for CLI Executor Implementation
 //!
 //! Target: crates/cli/src/executor/executor_impl.rs (976 lines)

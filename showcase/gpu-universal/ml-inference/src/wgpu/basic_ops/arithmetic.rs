@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Arithmetic and element-wise binary operations
 //!
 //! Add, Sub, Mul, Div - SAXPY and element-wise ops.

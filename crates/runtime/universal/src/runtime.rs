@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal compute runtime
 //!
 //! This module provides the main UniversalRuntime API that applications use.
@@ -136,7 +137,7 @@ impl UniversalRuntime {
     {
         let workload = WorkloadBuilder::new()
             .operation(OperationType::Map)
-            .data_f32(input.clone())
+            .data_f32(input)
             .build()?;
 
         let output = self.execute_optimal(workload).await?;

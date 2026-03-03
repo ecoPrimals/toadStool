@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ecosystem Integration - Type Definitions
 //!
 //! # Zero-Copy Optimization (Phase 2.3)

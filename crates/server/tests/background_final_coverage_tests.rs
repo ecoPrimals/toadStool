@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Final background services tests to push coverage from 83.41% → 90%+
 //!
 //! These tests target specific uncovered lines to maximize coverage

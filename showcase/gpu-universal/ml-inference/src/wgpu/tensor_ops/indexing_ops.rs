@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Indexing operations: Argmax, TopK, Where
 
 use crate::error::{BarracudaError, Result};

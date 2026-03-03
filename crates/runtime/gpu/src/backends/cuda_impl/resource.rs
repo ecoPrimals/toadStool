@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CUDA compute resource and context
 
 use std::collections::HashMap;

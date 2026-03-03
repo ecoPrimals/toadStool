@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Modern Rust Patterns Showcase
 //!
 //! This example demonstrates the modern, idiomatic patterns we're evolving toward

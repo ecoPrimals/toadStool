@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for CLI executor workload module
 //!
 //! These tests target the 0% coverage area in crates/cli/src/executor/workload.rs

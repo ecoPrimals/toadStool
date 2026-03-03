@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Shape and layout operations: Reshape, Slice, Pad, Transpose, Squeeze, Unsqueeze, Expand
 
 use crate::error::{BarracudaError, Result, ResultExt};

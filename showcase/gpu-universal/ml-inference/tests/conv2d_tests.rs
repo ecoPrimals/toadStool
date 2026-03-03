@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Conv2D Tests: Standard 2D Convolution
 //!
 //! Tests the fundamental CNN operation across various configurations.

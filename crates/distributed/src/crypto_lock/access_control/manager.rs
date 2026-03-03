@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! ToadStool Crypto Lock Manager - policy enforcement and access control
 
 use std::collections::HashMap;
@@ -110,10 +111,7 @@ impl ToadStoolCryptoLock {
                 );
 
                 let access_result = AccessResult::Granted {
-                    reason: format!(
-                        "Valid BearDog crypto permission: {}",
-                        best_permission.permission_id
-                    ),
+                    reason: format!("Valid crypto permission: {}", best_permission.permission_id),
                     permission_level: self.calculate_permission_level(&best_permission),
                     expires_at: Some(best_permission.valid_until),
                     restrictions: self.extract_restrictions(&best_permission.scope),
@@ -141,8 +139,8 @@ impl ToadStoolCryptoLock {
                 warn!("⏰ Crypto permission expired for target: {:?}", target);
 
                 Ok(AccessResult::Denied {
-                    reason: "BearDog crypto permission expired".to_string(),
-                    how_to_get_access: "Renew your BearDog permission or request delegation"
+                    reason: "Security provider crypto permission expired".to_string(),
+                    how_to_get_access: "Renew your crypto permission or request delegation"
                         .to_string(),
                 })
             }
@@ -157,7 +155,7 @@ impl ToadStoolCryptoLock {
         }
     }
 
-    /// Install a `BearDog` crypto permission
+    /// Install a crypto permission from the security provider
     pub async fn install_crypto_permission(
         &mut self,
         permission: SecurityProviderPermission,
@@ -193,7 +191,7 @@ impl ToadStoolCryptoLock {
             PermissionValidationResult::Invalid => {
                 error!("❌ Invalid crypto permission signature, rejecting");
                 Err(ToadStoolError::security(
-                    "Invalid BearDog crypto permission",
+                    "Invalid crypto permission signature",
                 ))
             }
             PermissionValidationResult::Expired => {
@@ -205,7 +203,7 @@ impl ToadStoolCryptoLock {
             PermissionValidationResult::Revoked => {
                 error!("🚫 Crypto permission revoked, rejecting");
                 Err(ToadStoolError::security(
-                    "BearDog crypto permission revoked",
+                    "Crypto permission revoked by issuer",
                 ))
             }
         }
@@ -309,16 +307,16 @@ impl ToadStoolCryptoLock {
                     return true;
                 }
 
-                const ECOSYSTEM_PRIMALS: &[&str] = &[
+                const ECOSYSTEM_CAPABILITIES: &[&str] = &[
                     "primal:toadstool",
-                    "primal:security",
-                    "primal:nestgate",
-                    "primal:songbird",
-                    "primal:squirrel",
+                    "capability:security",
+                    "capability:storage",
+                    "capability:coordination",
+                    "capability:ai",
                 ];
                 if feature_set
                     .iter()
-                    .any(|f| ECOSYSTEM_PRIMALS.contains(&f.as_str()))
+                    .any(|f| ECOSYSTEM_CAPABILITIES.contains(&f.as_str()))
                 {
                     return true;
                 }
@@ -390,7 +388,7 @@ impl ToadStoolCryptoLock {
                 format!("Get security provider permission for {provider:?} cloud provider")
             }
             ExternalTarget::ContainerPlatform { platform, .. } => {
-                format!("Get BearDog crypto permission for {platform:?} container platform")
+                format!("Get crypto permission for {platform:?} container platform")
             }
             ExternalTarget::ExternalTool { tool_name, .. } => {
                 format!("Get security provider permission for {tool_name} external tool")

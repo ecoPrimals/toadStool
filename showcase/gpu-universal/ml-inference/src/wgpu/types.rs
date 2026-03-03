@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Type definitions for WGPU executor
 //!
 //! All configuration types, enums, and structs for GPU operations.

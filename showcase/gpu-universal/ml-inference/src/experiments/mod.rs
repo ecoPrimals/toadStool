@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WebGPU Systematic Experimentation Framework
 //!
 //! This module provides infrastructure for running systematic GPU experiments

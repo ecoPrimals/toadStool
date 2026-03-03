@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Compute Platform configuration and management
 
 use std::collections::HashMap;

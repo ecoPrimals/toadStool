@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! E2E workflow tests - Month 2 Week 1 Day 2
 //!
 //! Tier 2 tests: Production hardening (NOT measured in coverage)

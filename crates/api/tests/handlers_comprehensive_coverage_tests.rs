@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage for API handlers
 //!
 //! This test suite covers the modern API v2 handlers with proper types

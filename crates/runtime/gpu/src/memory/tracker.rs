@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Memory Usage Tracker
 //!
 //! Tracks GPU memory allocations for:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Concurrency Stress Tests
 //!
 //! These tests prove thread safety and concurrency correctness at scale.

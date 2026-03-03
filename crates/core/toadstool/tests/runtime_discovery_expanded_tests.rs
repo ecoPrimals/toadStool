@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Expanded tests for runtime_discovery module
 //!
 //! Coverage expansion: runtime_discovery.rs had minimal test coverage

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Parity Test: NVIDIA vs AMD
 //!
 //! Verifies that the same WGSL shader produces identical results on both GPUs.

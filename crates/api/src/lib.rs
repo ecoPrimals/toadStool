@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
 
 //! Modern API for ToadStool with OpenAPI support
@@ -21,8 +22,7 @@
 //!
 //! ### Legacy: REST (deprecated)
 //!
-//! REST routes at `/api/v2/*` are maintained for backward compatibility
-//! but will be removed in a future version.
+//! REST routes at `/api/v2/*` have been removed. Use JSON-RPC exclusively.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -42,7 +42,6 @@ pub mod byob;
 pub mod constants;
 pub mod handlers;
 pub mod jsonrpc;
-pub mod middleware;
 pub mod types;
 
 /// API server state
@@ -86,42 +85,8 @@ impl Default for ApiMetrics {
 /// New integrations should use JSON-RPC exclusively.
 pub fn create_router(state: ApiState) -> Router {
     Router::new()
-        // ================================================================
         // PRIMARY: JSON-RPC 2.0 (ecoBin compliant)
-        // ================================================================
         .route("/jsonrpc", post(jsonrpc::jsonrpc_handler))
-        // ================================================================
-        // LEGACY: REST routes (deprecated - use JSON-RPC instead)
-        // ================================================================
-        // Execution management routes
-        .route("/api/v2/executions", post(handlers::submit_execution))
-        .route(
-            "/api/v2/executions/:execution_id",
-            get(handlers::get_execution_status),
-        )
-        .route("/api/v2/executions", get(handlers::list_executions))
-        .route(
-            "/api/v2/executions/:execution_id",
-            axum::routing::delete(handlers::cancel_execution),
-        )
-        // Logs route
-        .route(
-            "/api/v2/executions/:execution_id/logs",
-            get(handlers::get_execution_logs),
-        )
-        // Metrics routes
-        .route(
-            "/api/v2/executions/:execution_id/metrics",
-            get(handlers::get_execution_metrics),
-        )
-        .route("/api/v2/metrics", get(handlers::get_api_metrics))
-        // Cluster routes
-        .route("/api/v2/cluster/status", get(handlers::get_cluster_status))
-        // Health routes
-        .route("/api/v2/health", get(handlers::health_check))
-        // Workload routes
-        .route("/api/v2/workload/execute", post(handlers::execute_workload))
-        // Root route
         .route("/", get(root_handler))
         .with_state(state)
 }

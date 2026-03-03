@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime configuration overrides (container, WASM, Python).
 
 use super::super::ConfigResult;

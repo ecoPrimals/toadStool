@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network and communication configuration
 //!
 //! This module contains configuration types for networking including:

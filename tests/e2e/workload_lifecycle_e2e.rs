@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload Lifecycle E2E Tests
 //!
 //! Comprehensive end-to-end tests covering complete workload lifecycles

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage for distributed coordinator
 //!
 //! This test suite expands coverage from 30% to 60%+ by testing:

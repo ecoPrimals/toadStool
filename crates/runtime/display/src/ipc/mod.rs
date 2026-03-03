@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! IPC protocol (JSON-RPC 2.0 over Unix sockets)
 //!
 //! Provides client-server communication for display operations.

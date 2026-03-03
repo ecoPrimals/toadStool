@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security Provider Factory
 //!
 //! Creates security provider instances from Universal Adapter capability handles.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tiled MatMul Validation Test
 //!
 //! Validates that the memory-optimized tiled MatMul produces correct results.

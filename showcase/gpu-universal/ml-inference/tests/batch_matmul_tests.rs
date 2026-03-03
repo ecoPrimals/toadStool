@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BatchMatMul Tests: Batched Matrix Multiplication
 //!
 //! Tests batched matmul for transformer attention.

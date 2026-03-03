@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based Songbird Discovery Client
 //!
 //! **Philosophy**: "Discover by capability, not by name"

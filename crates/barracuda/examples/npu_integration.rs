@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BarraCuda NPU Integration Examples
 //!
 //! Demonstrates using NPU operations for real ML inference.

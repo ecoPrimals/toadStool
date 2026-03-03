@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Bandwidth Validation Benchmark
 //!
 //! This benchmark validates our bandwidth measurements are accurate by:

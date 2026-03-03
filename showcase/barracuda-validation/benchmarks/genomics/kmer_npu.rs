@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // K-mer Counting on NPU - Actual Akida Hardware Execution
 // Deep Debt Principles: Measure genomics on NPU, no simulations!
 

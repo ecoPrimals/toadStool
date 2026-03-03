@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async Execution Framework - Zero-Wait GPU Operations
 //!
 //! **BREAKTHROUGH**: Eliminates GPU launch overhead through async batching and pipelining

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI Executor Workload types
 //!
 //! Week 17 Sprint 4: CLI Executor workload specification tests

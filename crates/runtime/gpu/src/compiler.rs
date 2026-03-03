@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Kernel Compiler Implementation
 
 use super::config::CompilationConfig;
@@ -12,8 +13,8 @@ use tokio::sync::RwLock;
 
 /// Universal kernel compiler and optimizer
 pub struct UniversalKernelCompiler {
-    /// Compilation cache
-    cache: Arc<RwLock<HashMap<String, CompiledKernel>>>,
+    /// Compilation cache (Arc-wrapped to avoid cloning compiled binaries)
+    cache: Arc<RwLock<HashMap<String, Arc<CompiledKernel>>>>,
     /// Supported input formats
     _input_formats: Vec<KernelFormat>,
     /// Target frameworks for compilation
@@ -54,33 +55,36 @@ impl UniversalKernelCompiler {
         }
     }
 
-    /// Compile kernel for specific framework and device
+    /// Compile kernel for specific framework and device.
+    ///
+    /// Cached kernels are returned via `Arc::clone` (cheap pointer bump)
+    /// rather than deep-copying the compiled binary.
     pub async fn compile_kernel(
         &self,
         kernel_source: &str,
         format: KernelFormat,
         target_framework: GpuFramework,
         device: &UniversalComputeDevice,
-    ) -> ToadStoolResult<CompiledKernel> {
-        // Generate cache key
+    ) -> ToadStoolResult<Arc<CompiledKernel>> {
         let cache_key = self.generate_cache_key(kernel_source, &format, &target_framework, device);
 
-        // Check cache first
         if self.config.caching.enabled {
             let cache = self.cache.read().await;
             if let Some(cached_kernel) = cache.get(&cache_key) {
-                return Ok(cached_kernel.clone());
+                return Ok(Arc::clone(cached_kernel));
             }
         }
 
-        // Compile kernel
-        let compiled_kernel =
-            self.compile_kernel_internal(kernel_source, format, target_framework, device)?;
+        let compiled_kernel = Arc::new(self.compile_kernel_internal(
+            kernel_source,
+            format,
+            target_framework,
+            device,
+        )?);
 
-        // Cache the result
         if self.config.caching.enabled {
             let mut cache = self.cache.write().await;
-            cache.insert(cache_key, compiled_kernel.clone());
+            cache.insert(cache_key, Arc::clone(&compiled_kernel));
         }
 
         Ok(compiled_kernel)

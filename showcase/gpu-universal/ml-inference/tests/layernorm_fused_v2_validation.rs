@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Fused LayerNorm V2 Validation Test
 //!
 //! Validates that the corrected fused (1-launch) LayerNorm V2 produces

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage provisioning and management via NestGate
 //!
 //! This module provides a high-level storage provisioning manager that uses

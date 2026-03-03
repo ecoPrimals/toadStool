@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Power measurement utilities for BarraCuda showcases
 // Real hardware queries (no hardcoding)
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Processing Substrate Abstraction
 //!
 //! Modern, idiomatic, async abstraction for all processing substrates:

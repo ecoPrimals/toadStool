@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # WASM Runtime - Component Model Tests
 //!
 //! Unit tests for WASM component model with comprehensive coverage.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Intrusion detection system
 //!
 //! Extracted from security_hardening.rs for modularity (Feb 14, 2026).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Graph node types for workflow representation
 
 use serde::{Deserialize, Serialize};

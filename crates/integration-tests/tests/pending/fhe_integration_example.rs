@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! FHE Integration Test - Complete Example
 //!
 //! **Purpose**: Demonstrate full FHE NTT pipeline with actual GPU execution

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vulkan Compute Executor
 //!
 //! Modern, idiomatic Rust implementation of GPU compute via Vulkan

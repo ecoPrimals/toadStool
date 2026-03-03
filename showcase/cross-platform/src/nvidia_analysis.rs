@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! NVIDIA Vulkan Analysis - Understanding the 8% vs 77% gap
 //!
 //! AMD RADV achieves 77% theoretical bandwidth, NVIDIA only 8%.

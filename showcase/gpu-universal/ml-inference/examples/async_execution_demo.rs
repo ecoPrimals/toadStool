@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async Execution Framework Demo
 //!
 //! Demonstrates the power of async GPU execution with batching and pipelining.

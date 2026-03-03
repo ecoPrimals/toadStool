@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GGUF model file loader
 //!
 //! Loads model weights from llama.cpp GGUF format.

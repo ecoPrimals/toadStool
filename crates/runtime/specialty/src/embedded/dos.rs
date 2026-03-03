@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DOS interface for 8086 systems
 //!
 //! This module provides DOS filesystem and interface support for 8086-based systems.

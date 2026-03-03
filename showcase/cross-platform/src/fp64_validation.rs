@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! FP64 Precision Validation
 //!
 //! Validates that GPU fp64 produces CORRECT results, not just fast ones.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for server/src/mocks.rs
 //!
 //! Target: Get mocks.rs from 0% → 100% coverage

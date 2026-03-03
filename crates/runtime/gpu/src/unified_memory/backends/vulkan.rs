@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vulkan unified memory backend
 //!
 //! **Status**: ✅ PRODUCTION READY with wgpu fallback

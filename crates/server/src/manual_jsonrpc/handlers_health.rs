@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Health, version, capabilities, and GPU info handlers
 
 use std::sync::atomic::Ordering;

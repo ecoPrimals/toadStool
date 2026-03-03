@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! wgpu compute unit implementation (pure Rust!)
 //!
 //! This shows how wgpu GPUs are treated as ComputeUnits.

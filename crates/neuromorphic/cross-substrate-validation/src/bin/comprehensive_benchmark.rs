@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive GPU vs Neuromorphic Benchmark
 //!
 //! Tests various workload types to understand:

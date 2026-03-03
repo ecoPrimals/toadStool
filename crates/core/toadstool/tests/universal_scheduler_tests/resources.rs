@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource type tests — SystemResources, ResourceRequirements, CpuRequirements, MemoryRequirements.
 
 use std::collections::HashMap;

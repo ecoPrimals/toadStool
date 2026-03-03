@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cache Awareness Demo
 //!
 //! Demonstrates ToadStool's runtime cache discovery and intelligent workload tiling.

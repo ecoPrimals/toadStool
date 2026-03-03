@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // 🍄 ToadStool Universal Substrate Achievement Summary
 // ==================================================
 // "If it has a chip and memory, ToadStool runs on it"

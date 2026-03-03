@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI ecosystem types
 //!
 //! ⚠️ These tests verify backward compatibility with the deprecated `EcosystemService` enum.

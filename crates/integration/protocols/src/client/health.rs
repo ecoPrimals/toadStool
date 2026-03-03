@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Health monitoring for protocol services
 
 use std::collections::HashMap;

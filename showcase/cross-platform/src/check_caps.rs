@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Precision Capability Check
 //!
 //! Checks which precision features (f64, f16) are available on each GPU.

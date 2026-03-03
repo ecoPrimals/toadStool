@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based service discovery.
 //!
 //! Discovers ecoPrimal services via env vars, mDNS, Kubernetes, Docker Compose, and registries.

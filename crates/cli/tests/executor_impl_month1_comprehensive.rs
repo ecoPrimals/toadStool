@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for executor_impl.rs (Month 1 Coverage Expansion)
 //!
 //! Target: Add 20-30 tests covering BiomeExecutor functionality

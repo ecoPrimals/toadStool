@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coordination service client - Capability-based discovery
 //!
 //! **Design Philosophy (Infant Discovery)**:

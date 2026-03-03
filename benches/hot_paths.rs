@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Hot Path Benchmarks for ToadStool
 //!
 //! Benchmarks for the most frequently executed code paths to identify

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Server config types coverage tests - calling actual production code
 //!
 //! These tests directly instantiate and use types from server/src/config

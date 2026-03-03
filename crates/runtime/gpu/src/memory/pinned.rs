@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pinned Host Memory for Fast GPU Transfers
 //!
 //! Page-locked (pinned) host memory enables:

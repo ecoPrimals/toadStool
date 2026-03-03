@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! TransposedConv2D Tests: Upsampling/Deconvolution
 //!
 //! Tests transposed convolution for learnable upsampling.

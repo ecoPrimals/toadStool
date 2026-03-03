@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Chaos Engineering - Resilience Tests
 //!
 //! Tests system resilience under various failure conditions with real implementations

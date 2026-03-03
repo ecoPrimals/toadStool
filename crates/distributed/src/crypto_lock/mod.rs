@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # `ToadStool` Crypto Lock System
 //!
 //! Cryptographic access control for external integrations:

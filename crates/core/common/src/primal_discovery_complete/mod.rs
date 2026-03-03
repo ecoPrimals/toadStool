@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Complete Primal Discovery with mDNS Integration
 //!
 //! This module completes the capability-based discovery system by wiring up

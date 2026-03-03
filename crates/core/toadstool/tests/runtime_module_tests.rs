@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Runtime module
 //!
 //! Week 16 Sprint: Runtime module (0% → 30-40% coverage)

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Performance Profiling Infrastructure
 //!
 //! **Deep Debt**: Profile actual performance, don't hardcode estimates!

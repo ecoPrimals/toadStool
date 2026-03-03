@@ -3,6 +3,26 @@
 Per-session log of API changes that may affect downstream springs.
 Springs: check this file after updating your toadStool pin.
 
+## S90-92 (March 3, 2026)
+
+### Deprecations (non-breaking, migration recommended)
+
+- `get_socket_path_for_service()` deprecated since 0.92.0 — use `get_socket_path_for_capability()`
+- `get_primal_default_port()` deprecated since 0.92.0 — use capability-based discovery via infant_discovery
+- `capability_typical_provider()` deprecated since 0.92.0 — use capability-based discovery via infant_discovery
+
+### Breaking Changes
+
+- **REST API removed** (S90): All `/api/v2/*` routes deleted. JSON-RPC 2.0 via `/jsonrpc` is the only API path.
+- **Middleware removed** (S92): `toadstool_api::middleware` module deleted. No replacement needed — middleware was REST-era code with no production callers.
+- **BearDog strings neutralized** (S92): Error messages in `crypto_lock/access_control/manager.rs` no longer reference "BearDog" by name. Now uses generic "crypto permission" / "security provider" language.
+
+### New APIs (non-breaking)
+
+- `get_socket_path_for_capability(capability: &str)` — sovereignty-compliant socket discovery
+- `EcosystemDiscoverer::find_pattern_by_capability(capability: &str)` — capability-based service pattern lookup
+- `verify_sha256(data, expected)` extracted as standalone fn in `wasm_ops`
+
 ## S88 (March 2, 2026)
 
 ### New APIs (non-breaking)

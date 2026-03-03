@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload Manager for ToadStool Daemon Mode
 //!
 //! Manages the lifecycle of workloads:

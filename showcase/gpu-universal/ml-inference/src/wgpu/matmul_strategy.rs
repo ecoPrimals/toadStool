@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Matrix Multiplication Strategy Selection
 //!
 //! Automatically chooses the best MatMul implementation based on matrix dimensions.

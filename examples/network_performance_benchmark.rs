@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ToadStool Network Performance Benchmark
 //!
 //! This benchmark specifically tests the performance of the Songbird network configuration

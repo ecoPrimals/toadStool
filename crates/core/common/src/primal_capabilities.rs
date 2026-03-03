@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 //! Capability-to-primal reference mapping.
@@ -13,11 +13,18 @@ use crate::infant_discovery::capabilities::capabilities::{
     SERVICE_MESH, STORAGE, TRACING,
 };
 
-/// Standard capability-to-primal mapping (for documentation/reference only)
+/// Standard capability-to-primal mapping (for documentation/reference only).
 ///
 /// Shows which primal typically provides each capability in the ecoPrimals ecosystem.
 /// **NOTE**: This is for reference only! Discovery should be capability-based, not name-based.
+///
+/// Production code should discover providers at runtime via `infant_discovery` instead
+/// of relying on this static mapping.
 #[must_use]
+#[deprecated(
+    since = "0.92.0",
+    note = "Use capability-based discovery via infant_discovery instead of static primal-name mappings"
+)]
 #[allow(clippy::match_same_arms)] // Intentionally separate for documentation and extensibility
 pub fn capability_typical_provider(capability: &str) -> Option<&'static str> {
     match capability {
@@ -56,9 +63,11 @@ pub fn capability_typical_provider(capability: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
+    #[allow(deprecated)]
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn test_capability_provider_mapping() {
         assert_eq!(capability_typical_provider(PKI), Some("BearDog"));
         assert_eq!(capability_typical_provider(ORCHESTRATION), Some("Songbird"));

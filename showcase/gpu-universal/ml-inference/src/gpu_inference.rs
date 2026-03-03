@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU inference using ToadStool's universal compute abstraction
 
 use crate::{network::SimpleNetwork, InferenceResult};

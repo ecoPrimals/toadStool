@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability serialization helpers.
 //!
 //! Converts between `Capability` enum and string representation for discovery protocol.

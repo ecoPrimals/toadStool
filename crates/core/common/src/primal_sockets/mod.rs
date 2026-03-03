@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Primal Unix Socket Discovery
 //!
 //! Pure Rust unix socket path resolution for primal-to-primal communication.
@@ -27,8 +28,8 @@ mod tests;
 pub use api::{
     ensure_biomeos_dir, get_beardog_socket_path, get_biomeos_dir, get_family_id,
     get_nestgate_socket_path, get_nucleus_socket_path, get_runtime_dir,
-    get_socket_path_for_service, get_songbird_socket_path, get_squirrel_socket_path,
-    get_toadstool_socket_path,
+    get_socket_path_for_capability, get_socket_path_for_service, get_songbird_socket_path,
+    get_squirrel_socket_path, get_toadstool_socket_path,
 };
 pub use discovery::{
     discover_coordination_socket, discover_crypto_socket, discover_socket_for_capability,

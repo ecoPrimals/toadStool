@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Matrix Multiplication (MatMul) Operation Demo
 //!
 //! Demonstrates:

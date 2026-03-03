@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Error Path Tests for Distributed Module
 //!
 //! **Purpose**: Test all error conditions and recovery paths

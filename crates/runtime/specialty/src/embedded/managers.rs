@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Memory layout and peripheral managers
 //!
 //! This module contains managers for memory layouts and peripheral configurations.

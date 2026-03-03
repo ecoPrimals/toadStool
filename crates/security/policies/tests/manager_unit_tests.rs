@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for policy manager
 //! Target: security/policies/src/manager.rs (181 lines, 6.63% → 60% coverage)
 

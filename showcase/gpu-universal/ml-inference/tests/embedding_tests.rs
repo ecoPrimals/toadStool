@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Embedding Tests: Token Embedding Lookups
 //!
 //! Tests embedding operation for NLP.

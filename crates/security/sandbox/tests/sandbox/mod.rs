@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Sandbox Security Tests Module
 //!
 //! This module organizes sandbox security tests into logical groupings.

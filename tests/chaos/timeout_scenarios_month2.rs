@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Timeout scenario chaos tests - Month 2 Week 1 Day 3
 //!
 //! Tier 2 tests: Production hardening (NOT measured in coverage)

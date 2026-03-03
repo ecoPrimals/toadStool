@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for the environment configuration subsystem.
 
 use std::time::Duration;

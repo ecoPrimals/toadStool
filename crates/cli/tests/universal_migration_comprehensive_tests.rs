@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Universal Migration Operations
 //!
 //! Tests for workload migration functionality in universal compute manager.

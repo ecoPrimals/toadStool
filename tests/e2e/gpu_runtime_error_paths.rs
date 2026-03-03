@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Runtime Error Path Tests
 //!
 //! Comprehensive error handling tests for the GPU runtime engine.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for pure JSON-RPC handler.
 //!
 //! These tests cover request parsing, method dispatch, and error

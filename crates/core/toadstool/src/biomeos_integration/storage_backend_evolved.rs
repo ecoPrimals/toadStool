@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // storage_backend_evolved.rs - Capability-based storage backend
 //
 // DEEP DEBT EVOLUTION: Discovers storage providers by capability, not by name.

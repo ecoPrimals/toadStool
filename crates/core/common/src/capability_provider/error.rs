@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability provider error types.
 //!
 //! Errors for capability-based discovery and invocation.

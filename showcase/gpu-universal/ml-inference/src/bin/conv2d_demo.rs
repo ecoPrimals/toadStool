@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Conv2D Demo - Convolutional Neural Network Operations
 //!
 //! Demonstrates 2D convolution on GPU:

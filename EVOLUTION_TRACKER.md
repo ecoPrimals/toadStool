@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 2, 2026 — Session 88
+**Date**: March 3, 2026 — Session 92
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -38,6 +38,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Deep debt S84 | toadStool | ✅ S84 evolved | 9 ops → ComputeDispatch, hydrology god-file refactored, experimental.rs stub → real probes, frameworks.rs echo → proper error, mDNS constants extracted |
 | Deep debt S86 | toadStool | ✅ S86 evolved | 12 ops → ComputeDispatch (determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat); wgpu_backend.rs magic numbers → real device limits; deployment.rs stubs → capability-discovery docs |
 | Deep debt S87 | toadStool | ✅ S87 evolved | TODO(afit)→NOTE(async-dyn) (75 instances, 52 files); gpu_helpers 663L→3 submodules; unsafe audit (~60+ sites documented); FHE shader fixes; hardware_verification 13/13 pass; hotspring fault tests fixed |
+| Deep audit S90 | toadStool | ✅ S90 evolved | REST API + handlers removed; 2,780+ SPDX headers; license workspace unified; `get_socket_path_for_capability()` API; Arc-cached kernels; PyO3 feature-gated; capability-based trust; 15 JSON-RPC integration tests |
+| Coverage + debt S92 | toadStool | ✅ S92 evolved | +47 tests → 5,369; dead middleware eliminated (~131 KB); sovereignty deprecations formalized; BearDog strings neutralized; ecoBin pure-rust verified; `find_pattern_by_capability()` API |
 
 ---
 
@@ -104,7 +106,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | D-CD | ComputeDispatch migration (~155+ legacy ops) | High | 144 done (+12 S86: determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat), ~139 remaining (full audit revealed more ops than originally tracked) |
 | D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
-| D-COV | Test coverage → 90% | Medium | Major gains; gap in GPU ops, neuromorphic |
+| D-COV | Test coverage → 90% | Medium | 5,369 tests; +47 in S92 (monitoring, templates, installer, connection, wasm_ops, session); gap in GPU ops, neuromorphic |
+| D-SOV | Sovereignty deprecation migration | Medium | S92: 3 legacy APIs deprecated; NestGate client migrated; remaining callers to follow |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
 
 ### God Files Remaining (>600 lines)
@@ -148,6 +151,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | K8s/Docker port hardcoding | ✅ S77: Configurable via `TOADSTOOL_DISCOVERY_HTTP_PORT` |
 | Production stubs/mocks | ✅ S77+S82: TCP provider, EMA prediction, detect_capabilities→OS probing, LocalhostDiscovery→env-based |
 | `legacy_primal_to_capabilities` / `legacy_primal_primary_capability` | ✅ S78: Removed (no callers); primal_capabilities now clean capability-to-primal mapping |
+| `get_socket_path_for_service` / `get_primal_default_port` / `capability_typical_provider` | ✅ S92: Deprecated with `#[deprecated(since = "0.92.0")]`. NestGate client migrated. Migration bridge documented in `integrator_impl.rs`. |
+| BearDog user-facing strings | ✅ S92: Neutralized in access control manager (5 locations) + JSON-RPC version_info |
 | CPU memory detection | ✅ S82: `estimate_system_memory()` reads `/proc/meminfo` (Linux) / `sysctl hw.memsize` (macOS) |
 | AMQP port hardcoding | ✅ S82: Extracted `storage::AMQP_PORT` constant |
 
@@ -170,16 +175,16 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | `cargo clippy --workspace -- -D warnings` | ✅ S77: deprecated discovery calls removed |
 | `cargo fmt --all -- --check` | ✅ S77: 340 diffs fixed |
 | `cargo test -p barracuda --lib` | ✅ 2,866+ passed, hardware_verification 13/13 (S87: 3 pre-existing failures fixed) |
-| Workspace lib tests | ✅ 5,500+ passed |
+| Workspace lib tests | ✅ 5,369 passed (S92) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ Evolved (S84: frameworks.rs echo→error, experimental.rs stub→real probes; S86: deployment.rs docs→capability-discovery, wgpu_backend.rs magic numbers→device-limits) |
-| WGSL shaders | 844 (0 orphans, 0 f32-only, 37 DF64, 15 folding, 2 bitcast-fixed) |
+| WGSL shaders | 845 (0 orphans, 0 f32-only, 37 DF64, 15 folding, 2 bitcast-fixed) |
 | God files refactored | 37+ (S84: hydrology.rs 690→mod.rs ~310 + gpu.rs ~280) |
 | `cargo doc` | ✅ S77/S78: private intra-doc links fixed (ToadStoolError in universal_adapter, discovery_integration) |
 | e2e runtime nesting | ✅ S77: `run_gpu_resilient_async` evolved to dedicated runtime |
 | Zero-copy anti-patterns | ✅ S77: All `cast_slice().to_vec()` verified necessary, documented |
-| Test coverage (llvm-cov) | 41.86% lines | Target: 90% — major gap remaining |
+| Test coverage (llvm-cov) | 70.5%+ lines | S90: 70.5% line / 73% function (excl GPU crates). Target: 90% |
 | Compile bottleneck analysis | S78 | tfhe+tfhe-fft = 30.6% CPU (showcase); wgpu 22/23 duplication wastes ~90s |
 
 ---

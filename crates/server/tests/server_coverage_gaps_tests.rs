@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional coverage tests for server crate edge cases and error paths.
 //!
 //! Focus: JSON-RPC compute methods, GPU job queue edge cases, resource estimator,

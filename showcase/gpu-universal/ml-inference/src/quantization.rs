@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Quantization Operations
 //!
 //! **Week 6 Implementation**: Model compression for deployment

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Framework Comprehensive Tests
 //!
 //! Testing GPU framework detection, capabilities, and configuration

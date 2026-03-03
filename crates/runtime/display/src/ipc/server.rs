@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Display server implementation
 //!
 //! **ISOMORPHIC IPC**: JSON-RPC server with automatic Unix→TCP fallback.

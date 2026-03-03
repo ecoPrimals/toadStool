@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::super::types::{PersistentVolume, VolumeConfig};
 use super::*;
 

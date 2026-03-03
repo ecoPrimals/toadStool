@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Client error types
 //!
 //! This module defines the error types used throughout the ToadStool client library.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 2D Convolutions: depthwise, standard, transposed
 
 use anyhow::Result;

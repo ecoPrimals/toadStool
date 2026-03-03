@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Extended Coverage Tests for Intelligent Auto-Configuration
 //!
 //! Comprehensive tests targeting 27% → 70% coverage increase

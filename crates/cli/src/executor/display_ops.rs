@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Display and Logging Operations
 //!
 //! This module contains all display and logging operations:

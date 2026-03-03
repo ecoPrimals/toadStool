@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WASM Runtime Configuration Tests - Week 5
 //! Comprehensive tests for WebAssembly runtime configuration
 

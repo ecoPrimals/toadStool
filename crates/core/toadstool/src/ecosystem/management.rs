@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Service Management
 //!
 //! Manages the lifecycle of ecosystem services including registration,

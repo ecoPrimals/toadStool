@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trait implementations for embedded emulators
 //!
 //! Error-returning stubs until CPU emulation cores are implemented.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Train SNN model for k-mer filtering
 //!
 //! This example demonstrates how to train a spiking neural network

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Squirrel MCP Interface
 //!
 //! Tests cover squirrel_mcp.rs functionality (13.18% → 30%+ target)

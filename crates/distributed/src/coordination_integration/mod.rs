@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coordination Integration Module - Vendor-Agnostic Service Coordination
 //!
 //! **Design Philosophy (Infant Discovery)**:

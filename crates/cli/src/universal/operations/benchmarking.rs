@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Benchmarking Operations
 //!
 //! Extension trait for performance benchmarking operations.

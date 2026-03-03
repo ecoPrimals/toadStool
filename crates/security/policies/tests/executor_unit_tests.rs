@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for policy action executor
 //! Target: crates/security/policies/src/executor.rs (2.31% coverage)
 

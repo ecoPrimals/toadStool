@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource module tests
 //!
 //! Tests use both submodule paths and re-exported API (mod.rs pub use) for coverage.

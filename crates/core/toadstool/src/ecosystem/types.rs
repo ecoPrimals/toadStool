@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem Types
 //!
 //! Core type definitions for ecosystem coordination and service integration.

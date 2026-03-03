@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security configuration overrides (auth, encryption, audit, sandbox).
 
 use super::super::ConfigResult;

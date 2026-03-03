@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cross-Substrate Validation Benchmark
 //!
 //! Compares performance of the same workload across:

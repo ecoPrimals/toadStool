@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC protocol types for display operations
 //!
 //! Defines the protocol between petalTongue (client) and Toadstool (server).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based service discovery and invocation
 //!
 //! This module implements capability-based service interaction where services

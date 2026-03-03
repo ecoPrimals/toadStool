@@ -5,7 +5,105 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 2, 2026 (Sessions 43-88 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+## [Unreleased] - March 3, 2026 (Sessions 43-91 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+
+### Session 92 (Mar 3, 2026) — Sovereignty Deprecation Sweep & Audit Continuation
+
+#### Sovereignty Evolution (CRITICAL fixes)
+- **`version_info()`** → "Pure Rust (ecoPrimals sovereign pattern)" (was "BearDog pattern")
+- **Access control manager** → all 5 user-facing "BearDog" strings replaced with generic "security provider" / "crypto permission" language
+- **Deprecated `get_socket_path_for_service()`** (since 0.92.0) → callers should use `get_socket_path_for_capability()`
+- **Deprecated `get_primal_default_port()`** (since 0.92.0) → callers should use capability-based discovery
+- **Deprecated `capability_typical_provider()`** (since 0.92.0) → use infant_discovery instead of static mappings
+- **Migrated NestGate client** from `get_socket_path_for_service` → `get_socket_path_for_capability` (3 callsites)
+- **New `EcosystemDiscoverer::find_pattern_by_capability()`** → capability-keyed lookup alongside legacy name-keyed patterns
+- **Improved `integrator_impl.rs`** → name→capability mapping documented as migration bridge with `#[allow(deprecated)]`
+- **Improved `basic_templates.rs`** → comments clarify capability-based keying vs default implementation image
+
+#### Dead Code Elimination (continued from S91)
+- **Removed `middleware.rs` and 7 middleware test files** (~131 KB) — dead in production since REST removal
+
+#### Coverage Push (+47 tests → 5,369 total)
+- **`ai_mcp_interface/session.rs`**: 4 tests (AiPreferences default, ResourcePreferences, serialization roundtrip, AiSession construction)
+- **`monitoring/display.rs`**: 4 tests (format_prometheus: empty, single metric, latest point, empty series skipped)
+- **`monitoring/mod.rs`**: 8 tests (MetricsStore new/update_stats/cleanup_old_data, MonitoringConfig default, store_batch gauge and counter)
+- **`templates/rendering.rs`**: 8 tests (get_template_tags for Basic/Science/AiResearch/Custom/Sovereign/Distributed + all-variants)
+- **`installer/integration.rs`**: 8 tests (has_gui for macOS/Windows/Android/Wasm/Unknown/Linux headless/DISPLAY/Wayland)
+- **`installer/platform_components.rs`**: 7 tests (Android/Wasm/Unknown no-op, Linux systemd, macOS plist, Windows service.json)
+- **`pure_jsonrpc/connection.rs`**: 6 tests (process_request valid/invalid/empty/method-not-found, TCP raw JSON, TCP HTTP POST)
+- **`executor/wasm_ops.rs`**: 4 tests (verify_sha256 none/correct/wrong/empty-data) — extracted checksum into standalone `verify_sha256()` fn
+
+#### ecoBin Compliance Verification
+- **`cargo build -p toadstool-cli --no-default-features --features pure-rust`** — compiles cleanly
+- **Zero C FFI dependencies** in pure-rust profile (only `cc` build tool crate in tree, no `openssl-sys`/`ring`/`libz-sys`)
+
+#### Technical Debt Audit
+- **0 production `todo!()`/`unimplemented!()`** — none found
+- **0 production FIXME/HACK** — none found
+- **1 production TODO** — `integrator_impl.rs:73` (now documented as migration bridge)
+- **Production `unwrap()`**: All in non-hot-path code (barracuda ops, edge platforms); core IPC/JSON-RPC/discovery paths are unwrap-free
+- **`Box<dyn Error>`**: Only in standalone benchmark binaries (acceptable Rust pattern for `main()`)
+- **Stubs**: Specialty embedded toolchains (6502, Z80, etc.) return errors — intentional until hardware integration
+
+#### Quality Gates (all PASS)
+- `cargo fmt --all -- --check` — 0 diffs
+- `cargo clippy --workspace --all-targets -- -D warnings` — 0 warnings
+- `cargo doc --workspace --no-deps` — 0 warnings
+- `cargo test --workspace --lib` — **5,369 passed, 0 failed**
+
+### Session 90 (Mar 3, 2026) — Deep Audit, Sovereignty Evolution & Quality Gate Sweep
+
+#### Comprehensive Audit & Fixes
+- **Fixed 8 failing `runtime_discovery` tests**: Tests assumed services existed in empty discovery client; evolved to seeded test fixtures with proper capability-based assertions
+- **Fixed flaky `test_unix_socket_temp_path_connect_client`**: Replaced `yield_now` loops with proper retry-with-sleep connection waiting
+- **Eliminated production `panic!()`**: wgpu uncaptured error handler evolved from `panic!()` to `tracing::error!()` (non-fatal logging)
+- **Fixed SIGSEGV in runtime-universal**: wgpu adapter enumeration now wrapped in `catch_unwind` + 10s timeout — headless/CI systems degrade to CPU-only instead of crashing
+
+#### License & SPDX Compliance
+- **Unified all 37 Cargo.toml files** to `license.workspace = true` (inheriting `AGPL-3.0-or-later`)
+- **Added SPDX headers to 2,780 `.rs` files** — 0 files missing after this session
+- **Normalized 112 inconsistent SPDX headers** (94 `AGPL-3.0-only` + 18 bare `AGPL-3.0` → `AGPL-3.0-or-later`)
+
+#### Sovereignty Evolution
+- **`ECOSYSTEM_PRIMALS` → `ECOSYSTEM_CAPABILITIES`**: Access control trust model evolved from primal-name-based (`primal:nestgate`) to capability-based (`capability:storage`)
+- **New `get_socket_path_for_capability()` API**: Resolves socket paths by capability name (`crypto`, `storage`, `coordination`) instead of primal name
+- **Hardcoded `localhost` literals** in config_utils replaced with `crate::defaults::network::LOCALHOST` constant
+
+#### REST → JSON-RPC Migration
+- **Removed all deprecated REST routes** from API router (10 routes at `/api/v2/*`)
+- **Evolved `api.workload.execute` JSON-RPC handler** to use capability provider (previously just delegated to `handle_execution_submit`)
+- **Updated auto_config health endpoints**: `/api/v2/health` → `/jsonrpc`
+- **Updated manual_jsonrpc deprecation docs**: Corrected stale claim that unibin depends on it
+
+#### Dead Code Elimination
+- **Deleted 6 deprecated REST handler files** (cluster, execution, health, logs, metrics, workload) — ~30 KB removed
+- **Deleted `execution_modern.rs`** — dead "modern patterns example" (never routed, 0% coverage)
+- **Deleted 8 REST-specific test files** — tests for code that no longer exists (~3,400 lines removed)
+- **Rewrote `handlers_basic_tests.rs`** — 15 new JSON-RPC integration tests covering all methods
+
+#### Clone Audit (Hot Path Optimization)
+- **`UniversalKernelCompiler` cache** → stores `Arc<CompiledKernel>` instead of cloning compiled binary on every cache hit
+- **`execute_map_f32`** → moves `Vec<f32>` into workload builder instead of cloning
+- **`JsonRpcHandler.version`** → `Arc<str>` (cheap clone on every health/version request)
+
+#### ecoBin Compliance
+- **PyO3 made optional** in `toadstool-runtime-python` (was phantom dep — no source code used it)
+- **Python runtime feature-gated** in CLI: `python` feature (included in `full`, excluded from `pure-rust`)
+- **`pyo3-build-config` made optional** build dependency
+
+#### Unsafe Documentation
+- **Documented 6 undocumented `unsafe` blocks** in akida-driver: `mmio.rs` (RegionInfoIoctl), `backends/vfio.rs` (VfioIoctlReturn, VfioIoctlPtr)
+
+#### Quality Gates (all PASS)
+- `cargo fmt --all -- --check` — 0 diffs
+- `cargo clippy --workspace --all-targets -- -D warnings` — 0 warnings
+- `cargo doc --workspace --no-deps` — 0 warnings
+- `cargo test --workspace --lib` — **5,322 passed, 0 failed**
+- `cargo test --test handlers_basic_tests` — **15 new JSON-RPC integration tests passed**
+- All files < 1000 lines (largest production: `vfio.rs` at 963)
+- 0 production `panic!()`, 0 blind `unwrap()`, 0 `Box<dyn Error>` in core
+- 0 undocumented `unsafe` blocks
+- AGPL-3.0-or-later on all source files and Cargo.toml
 
 ### Session 89 (Mar 2-3, 2026) — barraCuda Budding, Demarcation, Deprecation & Rewire
 
@@ -34,6 +132,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Embedded barracuda deprecated**: `crates/barracuda/` removed from workspace members, `DEPRECATED.md` added
 - **Rewired**: `core/toadstool`, `cli`, `integration-tests` now depend on `ecoPrimals/barraCuda/crates/barracuda` (external path)
 - **Full workspace builds clean**: all toadStool crates compile against standalone barraCuda
+
+#### Phase 5: Complete Untangle (Mar 3)
+- **toadstool-core coupling eliminated**: `device/toadstool_integration.rs` deleted, `from_selection()` removed, `toadstool` feature removed
+- **akida-driver coupling eliminated**: `npu/ml_backend.rs` and `npu/ops/` removed, NPU routing stubs in matmul/softmax simplified, `npu-akida` feature removed
+- **Zero cross-dependencies verified**: `rg` scan + `cargo check` (3 configs) + `cargo clippy` + 2,835 tests pass
+- **Showcases rewired**: `rbf-surrogate` and `cross-platform` showcases point to standalone barraCuda
+- **TPU stubs formalized**: `tpu`, `cloud-tpu`, `coral-tpu`, `mock-tpu` features (no deps, forward-compatible)
+- **wateringHole handoff**: `BARRACUDA_S89_UNTANGLE_AND_HANDOFF_MAR03_2026.md` published
 
 ### Session 88 (Mar 2, 2026) — Cross-Spring Absorption + API Gaps + Shader Evolution
 

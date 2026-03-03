@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse mDNS ServiceInfo into DiscoveredService.
 //!
 //! Extracted for testability; converts mdns-sd ServiceInfo records

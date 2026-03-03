@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Request and Response Types
 //!
 //! Types for inter-primal communication.

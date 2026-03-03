@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Dual-GPU Showcase: Breaking CUDA Vendor Lock-in
 //!
 //! Demonstrates running the same ML inference workload on both

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! End-to-end system tests
 //!
 //! These tests validate complete system functionality from a user's perspective,

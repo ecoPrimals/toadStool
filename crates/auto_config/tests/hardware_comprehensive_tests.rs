@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for hardware detection module
 //!
 //! These tests ensure complete coverage of the hardware detection system,

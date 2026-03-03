@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Recurrent Neural Networks (RNN/LSTM/GRU)
 //!
 //! **Week 4 Implementation**: Sequence modeling operations for speech, video, NLP

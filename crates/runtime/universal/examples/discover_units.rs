@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discover all compute units example
 //!
 //! This demonstrates the core principle: CPU, GPU, neuromorphic - all

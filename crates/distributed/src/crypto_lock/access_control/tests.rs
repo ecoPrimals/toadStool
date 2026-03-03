@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Access control tests
 
 #[cfg(test)]
@@ -383,12 +384,12 @@ mod tests {
         let target = ExternalTarget::ExternalTool {
             tool_name: "x".to_string(),
             api_endpoints: vec![],
-            feature_set: vec!["primal:security".to_string()],
+            feature_set: vec!["capability:security".to_string()],
         };
         let result = lock.check_external_access(&target).await.unwrap();
         match &result {
             AccessResult::Granted { .. } => {}
-            _ => panic!("Expected Granted for primal:security"),
+            _ => panic!("Expected Granted for capability:security"),
         }
     }
 
@@ -517,47 +518,47 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_check_external_access_primal_nestgate() {
+    async fn test_check_external_access_capability_storage() {
         let lock = ToadStoolCryptoLock::new().await.unwrap();
         let target = ExternalTarget::ExternalTool {
             tool_name: "x".to_string(),
             api_endpoints: vec![],
-            feature_set: vec!["primal:nestgate".to_string()],
+            feature_set: vec!["capability:storage".to_string()],
         };
         let result = lock.check_external_access(&target).await.unwrap();
         match &result {
             AccessResult::Granted { .. } => {}
-            AccessResult::Denied { .. } => panic!("Expected Granted for primal:nestgate"),
+            AccessResult::Denied { .. } => panic!("Expected Granted for capability:storage"),
         }
     }
 
     #[tokio::test]
-    async fn test_check_external_access_primal_songbird() {
+    async fn test_check_external_access_capability_coordination() {
         let lock = ToadStoolCryptoLock::new().await.unwrap();
         let target = ExternalTarget::ExternalTool {
             tool_name: "x".to_string(),
             api_endpoints: vec![],
-            feature_set: vec!["primal:songbird".to_string()],
+            feature_set: vec!["capability:coordination".to_string()],
         };
         let result = lock.check_external_access(&target).await.unwrap();
         match &result {
             AccessResult::Granted { .. } => {}
-            _ => panic!("Expected Granted for primal:songbird"),
+            _ => panic!("Expected Granted for capability:coordination"),
         }
     }
 
     #[tokio::test]
-    async fn test_check_external_access_primal_squirrel() {
+    async fn test_check_external_access_capability_ai() {
         let lock = ToadStoolCryptoLock::new().await.unwrap();
         let target = ExternalTarget::ExternalTool {
             tool_name: "x".to_string(),
             api_endpoints: vec![],
-            feature_set: vec!["primal:squirrel".to_string()],
+            feature_set: vec!["capability:ai".to_string()],
         };
         let result = lock.check_external_access(&target).await.unwrap();
         match &result {
             AccessResult::Granted { .. } => {}
-            _ => panic!("Expected Granted for primal:squirrel"),
+            _ => panic!("Expected Granted for capability:ai"),
         }
     }
 

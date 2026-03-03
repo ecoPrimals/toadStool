@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Coverage Tests for WASM Runtime Lib
 //!
 //! Targeting lib.rs to increase coverage from 48.72% to 60%+

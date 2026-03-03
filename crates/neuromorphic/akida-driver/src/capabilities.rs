@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Device capability querying and representation
 //!
 //! This module provides runtime capability discovery for Akida devices.

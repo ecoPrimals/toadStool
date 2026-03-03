@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Native Runtime E2E Tests
 //!
 //! Comprehensive end-to-end tests for the Native runtime engine.

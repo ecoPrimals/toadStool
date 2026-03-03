@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network, health check, and deployment structure tests
 
 use super::super::*;

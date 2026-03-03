@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource leak detection and automatic cleanup.
 
 use std::collections::HashMap;

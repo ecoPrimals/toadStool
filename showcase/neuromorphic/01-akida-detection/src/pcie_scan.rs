@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! PCIe bus scanning for Akida devices
 
 use anyhow::{Context, Result};

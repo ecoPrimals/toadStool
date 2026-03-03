@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Akida PCIe board detection and integration
 //!
 //! This library provides detection and management of BrainChip Akida neuromorphic

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Advanced Linear Algebra Operations
 //!
 //! **Week 8 Implementation**: Core matrix decompositions and numerical linear algebra

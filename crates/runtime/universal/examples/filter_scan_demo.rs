@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Filter and Scan Operations Demo
 //!
 //! Demonstrates new operations added to the Universal Runtime:

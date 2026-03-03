@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Job distribution and splitting logic
 
 use std::collections::HashMap;

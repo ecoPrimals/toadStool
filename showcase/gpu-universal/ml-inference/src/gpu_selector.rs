@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Discovery and Selection
 //!
 //! Discovers available GPUs and provides capability-based selection.

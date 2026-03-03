@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Chaos Testing - Resource Exhaustion Scenarios (Week 4)
 //!
 //! Tests system behavior under resource exhaustion conditions

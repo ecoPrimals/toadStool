@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error handling tests - Month 2 Week 1
 //!
 //! Tier 1 tests: Coverage-measured error conversion and formatting tests

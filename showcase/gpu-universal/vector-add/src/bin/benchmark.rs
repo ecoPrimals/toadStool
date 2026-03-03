@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vector Addition Benchmark
 //!
 //! Comprehensive benchmarking across backends for comparison with ZLUDA/SCALE

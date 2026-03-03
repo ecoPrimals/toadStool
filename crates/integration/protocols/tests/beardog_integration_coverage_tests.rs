@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive BearDog Integration Coverage Tests
 //!
 //! This test suite provides thorough coverage of the BearDogIntegration implementation

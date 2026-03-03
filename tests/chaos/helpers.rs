@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Chaos Engineering Test Helper Functions
 // Implementation of stub functions for chaos testing infrastructure
 

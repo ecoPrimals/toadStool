@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! F64 polyfill injection and driver-specific patching.
 //!
 //! Handles:

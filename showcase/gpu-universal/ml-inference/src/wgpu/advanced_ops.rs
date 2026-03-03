@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Advanced tensor operations
 //!
 //! Gather, Scatter, Scan and other advanced indexing/reduction operations.

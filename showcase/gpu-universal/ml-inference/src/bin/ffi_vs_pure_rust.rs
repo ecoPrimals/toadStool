@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! FFI vs Pure Rust Comparison Demo
 //!
 //! Demonstrates the difference between traditional FFI-based GPU computing

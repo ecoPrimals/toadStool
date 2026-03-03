@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Squirrel MCP Coordination Demo - Temporarily disabled due to auto_config compilation issues
 //!
 //! This demo shows AI-friendly coordination between ToadStool and Squirrel MCP.

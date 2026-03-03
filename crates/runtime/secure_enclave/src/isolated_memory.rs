@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Isolated memory region for secure computation
 //!
 //! Provides memory regions that are:

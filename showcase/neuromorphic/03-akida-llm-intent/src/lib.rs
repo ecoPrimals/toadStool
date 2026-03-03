@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Akida LLM Intent Classification
 //!
 //! Demonstrates using Akida neuromorphic chip for ultra-low-latency

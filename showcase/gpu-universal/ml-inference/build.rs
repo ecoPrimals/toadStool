@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Build script for compiling Vulkan shaders to SPIR-V
 //!
 //! Compiles GLSL compute shaders to SPIR-V bytecode at build time

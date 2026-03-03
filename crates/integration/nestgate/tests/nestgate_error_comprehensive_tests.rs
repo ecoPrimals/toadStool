@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for NestGate Error Types
 //!
 //! This test suite provides extensive coverage of NestGate error handling,

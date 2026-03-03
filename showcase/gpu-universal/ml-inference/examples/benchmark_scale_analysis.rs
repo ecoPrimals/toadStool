@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Scale Analysis Benchmark
 //!
 //! Tests optimizations at multiple scales to find where they provide benefit

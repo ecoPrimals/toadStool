@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network Chaos E2E Tests
 //!
 //! Comprehensive chaos testing for network failures, socket disconnections,

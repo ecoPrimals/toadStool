@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for ToadStool Analytics Engine
 //!
 //! This test suite provides thorough coverage of the analytics module including:

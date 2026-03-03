@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Layer Normalization - 2-Dispatch variant
 //!
 

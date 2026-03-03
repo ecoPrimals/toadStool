@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Precision tests - Arithmetic
 use ml_inference_showcase::gpu_resilience::gpu_test_resilient_async;
 use ml_inference_showcase::wgpu::{BinaryOp, WgpuExecutor};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unary and elementwise operations: Clamp, Abs, Sqrt, Pow, Exp
 
 use crate::error::{BarracudaError, Result};

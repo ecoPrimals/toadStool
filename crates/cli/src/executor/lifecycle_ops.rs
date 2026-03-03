@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Internal Lifecycle Operations for Biome Management
 //!
 //! This module contains all internal biome lifecycle management:

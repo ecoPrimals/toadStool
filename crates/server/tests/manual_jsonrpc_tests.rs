@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for ManualJsonRpcServer
 //!
 //! Tests the pure Rust HTTP/1.1 + JSON-RPC 2.0 implementation over Unix sockets.

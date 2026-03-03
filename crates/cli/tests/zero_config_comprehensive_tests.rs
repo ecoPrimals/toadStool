@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Zero-Configuration Deployment System
 //!
 //! Tests for zero-config discovery and deployment functionality.

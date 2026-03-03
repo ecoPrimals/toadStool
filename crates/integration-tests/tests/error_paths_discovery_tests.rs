@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error path tests for runtime discovery
 //!
 //! Tests error handling and failure scenarios in the primal discovery system,

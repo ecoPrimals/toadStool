@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC message framing/deframing over Unix streams
 //!
 //! Uses newline-delimited JSON (NDJSON) for simple framing.

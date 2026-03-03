@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // 🔐 TFHE-rs CPU Baseline Validation
 // ⚠️ VALIDATION HARNESS ONLY - NOT PRODUCTION CODE
 //

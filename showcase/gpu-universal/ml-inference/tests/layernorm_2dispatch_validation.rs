@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 2-Dispatch LayerNorm Validation Test
 //!
 //! Validates that the practical 2-dispatch LayerNorm produces correct results

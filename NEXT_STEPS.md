@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 3, 2026 -- Session 89
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,831+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU | L-BFGS GPU | barraCuda standalone primal | **EMBEDDED BARRACUDA DEPRECATED**
-**Latest**: S89 — barraCuda budding complete + deprecation. toadStool workspace now depends on standalone ecoPrimals/barraCuda/. Embedded crates/barracuda/ deprecated (DEPRECATED.md). hotSpring validated 716/716 tests. sin_f64_safe and tokio test_pool fixed. Architecture demarcation spec codified. Domain models feature-gated.
+**Updated**: March 3, 2026 -- Session 92
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,866 barracuda tests | 5,369 workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | REST + middleware removed | Sovereignty: legacy primal-name APIs deprecated | ecoBin pure-rust verified | **EMBEDDED BARRACUDA DEPRECATED**
+**Latest**: S92 — Sovereignty deprecation sweep. Dead middleware eliminated. 47 new tests. ecoBin pure-rust build verified. Hot-path code audited clean (0 unwrap, 0 todo!, 0 FIXME).
 
 ---
 
@@ -112,7 +112,8 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [ ] **ComputeDispatch migration** -- 144/280+ ops migrated; ~139 remaining (incremental)
 - [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
 - [ ] **NpuDispatch trait** -- generic NPU interface
-- [ ] **Test coverage target 90%** -- significant gains across CLI, server, API, monitoring, distributed
+- [ ] **Test coverage target 90%** -- 5,369 tests; +47 in S91-92 (monitoring, templates, installer, connection, wasm_ops, session)
+- [ ] **Sovereignty migration** -- deprecated primal-name APIs need callers migrated to capability-based APIs
 
 ### Cross-Repo Debt
 
@@ -121,7 +122,31 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session (S89)
+## Completed This Session (S90-92)
+
+### Session 92: Sovereignty Deprecation Sweep & Audit Continuation
+- Deprecated `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider` with `#[deprecated(since = "0.92.0")]`
+- Migrated NestGate client to `get_socket_path_for_capability` (3 callsites)
+- Added `EcosystemDiscoverer::find_pattern_by_capability()` for capability-based lookup
+- Neutralized 5 BearDog user-facing strings in access control manager
+- `version_info()` → "Pure Rust (ecoPrimals sovereign pattern)"
+- Removed dead middleware.rs + 7 test files (~131 KB)
+- +47 tests → 5,369 total (monitoring, templates, installer, connection, wasm_ops, session)
+- ecoBin `pure-rust` build verified: zero C FFI deps
+- Fixed `bail!` macro undefined on `#[cfg(not(feature = "wasm"))]` path
+- Extracted `verify_sha256()` as standalone fn for testability
+- Audited: 0 production `todo!()`, 0 `unimplemented!()`, 0 FIXME, 0 HACK
+
+### Session 90: Deep Audit, REST Removal, Sovereignty Evolution
+- Fixed SIGSEGV in runtime-universal (wgpu catch_unwind + timeout)
+- Unified 37 Cargo.toml license fields to workspace. 2,780+ SPDX headers added/normalized.
+- Capability-based trust model. `get_socket_path_for_capability()` API added.
+- Removed all REST routes + handlers + 8 test files. JSON-RPC only.
+- Arc-cached compiled kernels, moved Vec, Arc<str> version on hot paths.
+- PyO3 feature-gated. Python runtime optional in CLI.
+- Documented all unsafe blocks in akida-driver.
+- Rewrote handlers_basic_tests.rs (15 JSON-RPC integration tests).
+- 5,322 tests, 0 failures.
 
 ### Session 89: barraCuda Primal Budding
 - Full barracuda crate extracted to `ecoPrimals/barraCuda/` (956 .rs, 767 WGSL, 61 tests)

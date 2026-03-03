@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for resources module
 //!
 //! Sprint 16: resources.rs coverage 44.12% → 65%+

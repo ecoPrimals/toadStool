@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for API handlers
 //!
 //! These tests exercise the handler logic with real request/response cycles.

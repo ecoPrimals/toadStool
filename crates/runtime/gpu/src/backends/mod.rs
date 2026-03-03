@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real GPU Backend Implementations
 //!
 //! No mocks - only production-ready implementations

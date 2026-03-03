@@ -6,7 +6,7 @@ readme = "README.md"
 keywords = ["entropy", "rng", "beardog", "capability-discovery", "deep-debt"]
 categories = ["cryptography", "algorithms"]
 authors = ["ToadStool Team"]
-license = "AGPL-3.0"
+license.workspace = true
 description = "bearDog entropy integration for high-quality random number generation"
 repository = "https://github.com/ecoPrimals/toadStool"
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Version and protocol constants
 //!
 //! Centralized version strings and protocol identifiers.

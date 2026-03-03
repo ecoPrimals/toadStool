@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Parity Benchmark: BarraCuda vs CUDA vs ROCm
 //!
 //! Goal: Identify performance gaps and optimization targets to achieve

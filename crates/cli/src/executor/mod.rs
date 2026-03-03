@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Biome Executor - Core Universal Compute Operations
 //!
 //! Implements the essential biome lifecycle management commands:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Executor Module Refactoring Unit Tests
 //!
 //! Comprehensive unit tests for refactored executor modules:

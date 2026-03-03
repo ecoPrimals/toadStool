@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Power Measurement Infrastructure
 //!
 //! **Deep Debt**: Measure actual power, don't hardcode estimates!

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // LayerNorm Fused Optimization Benchmark
 //
 // Compares 3-pass (original) vs 1-pass (fused) LayerNorm implementations

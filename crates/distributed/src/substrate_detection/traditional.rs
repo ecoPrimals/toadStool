@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Traditional OS platform detection (Linux, Windows, macOS).
 
 use super::probe;

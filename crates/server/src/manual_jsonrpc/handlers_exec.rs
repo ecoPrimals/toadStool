@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Compute, Ollama, and resource management handlers
 
 use serde_json::Value;

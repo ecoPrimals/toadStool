@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Expanded tests for runtime_defaults module
 //!
 //! Coverage expansion: runtime_defaults.rs needs expanded coverage

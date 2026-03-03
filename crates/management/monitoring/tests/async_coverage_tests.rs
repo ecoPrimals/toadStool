@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async Coverage Tests for Monitoring Module
 //!
 //! Focused on increasing coverage of async methods and background task execution paths

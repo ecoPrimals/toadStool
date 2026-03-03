@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration Tests for BearDog SecurityProvider
 //!
 //! Tests the complete integration between:

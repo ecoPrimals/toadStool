@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Experiment 002: Workgroup Size Sweep for LayerNorm
 //!
 //! **Hypothesis**: Memory-bound operations (LayerNorm) may have different optimal

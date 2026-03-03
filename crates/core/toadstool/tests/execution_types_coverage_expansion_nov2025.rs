@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage for execution.rs types
 //!
 //! This test suite targets types defined in crates/core/toadstool/src/execution.rs

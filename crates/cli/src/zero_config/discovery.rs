@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! System and ecosystem discovery functionality
 
 use crate::{CliContextExt, Result};

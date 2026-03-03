@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Compute substrates for homomorphic operations
 //!
 //! This module implements homomorphic encryption across different substrates:

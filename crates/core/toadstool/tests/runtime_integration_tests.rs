@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime Integration Tests - Phase 3
 //!
 //! Integration tests for multi-runtime workflows and cross-engine operations:

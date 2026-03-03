@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Evolution Benchmark - What BarraCuda has achieved
 //!
 //! Shows the cumulative effect of all optimizations:

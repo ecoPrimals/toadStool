@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
     // Test that each coordinator gets a unique instance ID
     let config1 = DistributedConfig::default();
     let config2 = DistributedConfig::default();

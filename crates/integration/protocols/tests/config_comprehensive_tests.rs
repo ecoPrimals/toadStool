@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Protocol Configuration
 //!
 //! This test suite provides extensive coverage of protocol configuration structures

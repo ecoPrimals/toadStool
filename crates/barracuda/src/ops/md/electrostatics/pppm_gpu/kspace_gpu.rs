@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! PPPM compute with GPU FFT (k-space)
 
 use std::sync::Arc;

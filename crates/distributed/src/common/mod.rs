@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Distributed Computing Abstractions
 //!
 //! Generic, reusable abstractions for distributed systems including:

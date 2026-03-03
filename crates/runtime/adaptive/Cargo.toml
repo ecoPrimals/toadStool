@@ -6,7 +6,7 @@ readme = "README.md"
 keywords = ["gpu", "optimization", "adaptive", "performance", "runtime"]
 categories = ["algorithms", "hardware-support", "science"]
 authors = ["ToadStool Team"]
-license = "AGPL-3.0"
+license.workspace = true
 description = "Adaptive optimization system for barraCuda GPU operations"
 repository = "https://github.com/ecoPrimals/toadStool"
 

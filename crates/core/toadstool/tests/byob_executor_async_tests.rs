@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async integration tests for ByobExecutor trait methods
 //!
 //! Coverage Target: Further increase byob.rs from 36% → 55%+

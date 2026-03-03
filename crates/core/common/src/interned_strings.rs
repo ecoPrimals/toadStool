@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Interned Strings - Zero-Allocation Constants
 //!
 //! This module provides static string constants for common values throughout the codebase.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration Utilities
 //!
 //! This module provides utility functions to replace hardcoded values with
@@ -34,6 +35,10 @@ impl ConfigUtils {
     /// // Returns SONGBIRD_PORT env value or 8080
     /// ```
     #[must_use]
+    #[deprecated(
+        since = "0.92.0",
+        note = "Use capability-based discovery via infant_discovery instead of primal-name port lookup"
+    )]
     pub fn get_primal_default_port(primal_name: &str) -> u16 {
         use crate::ports::{discovery_fallback, get_primal_port};
 
@@ -71,6 +76,7 @@ impl ConfigUtils {
         note = "Use capability-based discovery (RuntimeDiscovery::discover_capability) instead of hardcoded primal endpoints"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_songbird_port() -> u16 {
         Self::get_primal_default_port("SONGBIRD")
     }
@@ -91,6 +97,7 @@ impl ConfigUtils {
         note = "Use capability-based discovery for crypto services instead of hardcoded endpoints"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_beardog_port() -> u16 {
         Self::get_primal_default_port("BEARDOG")
     }
@@ -106,6 +113,7 @@ impl ConfigUtils {
         note = "Use capability-based discovery for storage services instead of hardcoded endpoints"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_nestgate_port() -> u16 {
         Self::get_primal_default_port("NESTGATE")
     }
@@ -121,6 +129,7 @@ impl ConfigUtils {
         note = "Use capability-based discovery for AI services instead of hardcoded endpoints"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_squirrel_port() -> u16 {
         Self::get_primal_default_port("SQUIRREL")
     }
@@ -557,7 +566,11 @@ impl ConfigUtils {
         let loader = EnvConfigLoader::new();
         loader.get_string(
             "REDIS_URL",
-            &format!("redis://localhost:{}", crate::defaults::storage::REDIS_PORT),
+            &format!(
+                "redis://{}:{}",
+                crate::defaults::network::LOCALHOST,
+                crate::defaults::storage::REDIS_PORT
+            ),
         )
     }
 
@@ -567,7 +580,11 @@ impl ConfigUtils {
         let loader = EnvConfigLoader::new();
         loader.get_string(
             "AMQP_URL",
-            &format!("amqp://localhost:{}", crate::defaults::storage::AMQP_PORT),
+            &format!(
+                "amqp://{}:{}",
+                crate::defaults::network::LOCALHOST,
+                crate::defaults::storage::AMQP_PORT
+            ),
         )
     }
 
@@ -593,7 +610,8 @@ impl ConfigUtils {
         loader.get_string(
             "METRICS_URL",
             &format!(
-                "http://localhost:{}",
+                "http://{}:{}",
+                crate::defaults::network::LOCALHOST,
                 crate::defaults::network::METRICS_PORT
             ),
         )

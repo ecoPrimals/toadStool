@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unix Socket Security Provider
 //!
 //! Communicates with a remote security provider over Unix domain sockets.

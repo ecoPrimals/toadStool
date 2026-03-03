@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Local capability detection and verification
 //!
 //! Pure Rust hardware detection for GPU, CPU, and memory capabilities.

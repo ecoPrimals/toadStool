@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Activation Operations - Element-Wise Non-Linear Pattern
 //!
 //! Operations in this module share computational characteristics:

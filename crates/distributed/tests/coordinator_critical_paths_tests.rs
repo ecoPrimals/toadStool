@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical Path Tests for Distributed Coordinator
 
 #![allow(clippy::all, dead_code)]

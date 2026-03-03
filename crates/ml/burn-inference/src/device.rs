@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Device abstraction for Burn inference
 //!
 //! Provides a unified interface for selecting compute devices (GPU, CPU).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coordination service discovery - Finds coordination providers by capability
 //!
 //! **Design**: Runtime discovery, no hardcoded service names.

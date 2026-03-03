@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real fault injection tests for chaos engineering
 //! These tests perform actual error injection and recovery validation
 

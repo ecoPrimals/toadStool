@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Shader Optimization Benchmark
 //!
 //! Tests different shader optimization strategies to find the best

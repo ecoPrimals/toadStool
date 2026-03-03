@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for server state and event types
 //!
 //! Week 13 Day 1: State Management and Event Handling Tests

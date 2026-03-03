@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! SecurityProvider trait - the core abstraction
 //!
 //! This trait defines what ANY security provider must be able to do.

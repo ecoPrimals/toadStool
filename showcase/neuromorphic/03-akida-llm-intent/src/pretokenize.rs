@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pre-tokenization and feature extraction for Akida
 
 use ndarray::{Array1, Array2};

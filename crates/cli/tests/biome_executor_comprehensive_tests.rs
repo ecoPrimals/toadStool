@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeExecutor - Critical 0% Coverage File
 //!
 //! This test suite covers the executor_impl.rs file which has 938 lines with 0% coverage.

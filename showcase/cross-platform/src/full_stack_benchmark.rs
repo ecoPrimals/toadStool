@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Full Stack Benchmark - BarraCuda vs CUDA vs ROCm
 //!
 //! Comprehensive comparison with batching and warmup enabled.

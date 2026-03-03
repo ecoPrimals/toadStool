@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration validation tests - Month 2 Week 1
 //!
 //! Tier 1 tests: Coverage-measured unit tests for config validation

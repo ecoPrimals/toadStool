@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Matrix multiplication benchmark across all GPU backends
 //!
 //! Demonstrates universal abstraction: same operation on CUDA, ROCm, WebGPU, OpenCL

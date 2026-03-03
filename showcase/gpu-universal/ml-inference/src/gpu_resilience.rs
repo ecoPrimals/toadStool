@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU test resilience for NVK/Nouveau driver limitations.
 //!
 //! Under concurrent GPU load (full workspace `cargo test`), NVK/Nouveau can cause

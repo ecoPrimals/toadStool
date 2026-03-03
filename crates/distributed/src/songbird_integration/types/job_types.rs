@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Job request/response, complexity, subtask, and coordination types
 
 use serde::{Deserialize, Serialize};

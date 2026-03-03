@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Chaos Testing - Random inputs, extreme values, edge cases
 // Tests system resilience under unpredictable conditions
 

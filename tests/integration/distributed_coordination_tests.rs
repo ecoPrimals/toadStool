@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed Coordination Integration Tests
 //!
 //! Tests for distributed ToadStool coordination, resource pooling,

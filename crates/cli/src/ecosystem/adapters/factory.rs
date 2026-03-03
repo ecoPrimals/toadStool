@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Adapter factory - simplifies initialization of capability-based adapters
 //!
 //! This factory reduces boilerplate when creating adapters by handling the

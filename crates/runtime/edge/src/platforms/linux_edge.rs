@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Linux Edge Device Platform
 //!
 //! Generic Linux-based edge device discovered via biomeOS runtime sockets

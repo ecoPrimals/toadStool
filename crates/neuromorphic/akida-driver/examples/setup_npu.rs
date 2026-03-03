@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Test NPU setup
 
 use akida_driver::setup::NpuSetup;

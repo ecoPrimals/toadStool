@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Background services for server monitoring and maintenance
 //!
 //! ## Module structure

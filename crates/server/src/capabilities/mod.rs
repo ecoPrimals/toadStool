@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Primal Capability Infrastructure
 //!
 //! Self-knowledge and capability-based discovery for primals.

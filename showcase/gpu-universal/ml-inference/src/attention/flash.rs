@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! FlashAttention - Memory-Efficient Attention
 
 use anyhow::Result;

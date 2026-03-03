@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core cloud abstractions
 //!
 //! This module contains the fundamental cloud provider abstractions, including

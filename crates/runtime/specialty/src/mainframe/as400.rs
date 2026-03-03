@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! AS/400 System Adapter
 
 use std::collections::HashMap;

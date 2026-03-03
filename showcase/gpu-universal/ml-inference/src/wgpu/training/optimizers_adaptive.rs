@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Adaptive learning rate optimizers (AdaGrad, Nadam, AdaDelta)
 //!
 //! Per-parameter adaptive step sizes.

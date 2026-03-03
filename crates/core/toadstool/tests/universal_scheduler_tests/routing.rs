@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal routing and BiomeOS job type tests.
 //!
 //! Tests that UniversalScheduler correctly routes Primal and BiomeOS job types

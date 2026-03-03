@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for workload handlers (Phase 1)
 //! Target: api/src/handlers/workload.rs (24 lines, currently 0% coverage)
 //! Goal: Add 15-20 tests for complete coverage

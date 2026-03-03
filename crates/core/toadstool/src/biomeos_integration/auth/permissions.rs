@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Permission and propagation types
 
 use std::collections::HashMap;

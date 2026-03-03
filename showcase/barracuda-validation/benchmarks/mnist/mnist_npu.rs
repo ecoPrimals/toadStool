@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // MNIST Inference on NPU - Actual Akida Hardware Execution
 // Deep Debt Principles: Measure actual behavior, no simulations!
 

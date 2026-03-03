@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # BYOB HTTP API for Toadstool
 //!
 //! HTTP API endpoints for handling BYOB deployment requests from Songbird.

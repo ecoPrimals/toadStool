@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security policy type definitions
 //!
 //! This module contains all the core type definitions for the security policy system,

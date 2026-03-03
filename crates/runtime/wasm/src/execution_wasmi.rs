@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WebAssembly execution logic for wasmi
 //!
 //! Implements complete WASM module execution with WASI support, fuel metering,

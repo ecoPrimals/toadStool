@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cost types, constants, and error definitions
 
 use thiserror::Error;

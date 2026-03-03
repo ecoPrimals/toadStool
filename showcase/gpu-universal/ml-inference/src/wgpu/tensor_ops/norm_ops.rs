@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Normalization operations: LayerNorm, Norm
 
 use super::reduction_ops::{Mean, Std};

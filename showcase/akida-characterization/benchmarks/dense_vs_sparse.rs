@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Dense vs Sparse Operations Benchmark
 //! 
 //! Tests NPU, GPU, and CPU performance across sparsity spectrum

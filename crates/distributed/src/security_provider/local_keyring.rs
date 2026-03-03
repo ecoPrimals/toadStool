@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Local keyring security provider.
 //!
 //! Wraps `SoftwareHsmProvider` for all cryptographic operations, adding

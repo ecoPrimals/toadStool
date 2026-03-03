@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive sandbox security tests
 //!
 //! This test suite provides extensive coverage for sandbox configuration,

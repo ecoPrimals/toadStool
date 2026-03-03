@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical coverage expansion for executor_impl.rs
 //!
 //! This test file provides comprehensive coverage for BiomeExecutor,

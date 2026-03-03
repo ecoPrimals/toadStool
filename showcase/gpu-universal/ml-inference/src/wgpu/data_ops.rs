@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Data manipulation operations
 //!
 //! Tensor operations for data manipulation: concat, slice, pad, reshape, etc.

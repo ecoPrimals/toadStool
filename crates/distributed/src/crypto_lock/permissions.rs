@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Permission types and data structures for crypto lock system
 
 use std::time::{Duration, SystemTime};

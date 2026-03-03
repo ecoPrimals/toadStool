@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Conv3D Tests: 3D Convolution
 //!
 //! Tests 3D convolution for video/medical imaging.

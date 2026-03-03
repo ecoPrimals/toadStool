@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! RDNA2 instruction latency tables for Mesa ACO / RADV backend.
 //!
 //! **This file is the prepared upstream contribution patch for AMD RADV/ACO.**

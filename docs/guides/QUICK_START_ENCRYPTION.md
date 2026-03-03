@@ -225,10 +225,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## 📚 More Information
+## More Information
 
-- **Full Guide**: `crates/distributed/src/songbird_integration/INTEGRATION_GUIDE.md`
-- **Implementation**: `INTEGRATION_IMPLEMENTATION_SUMMARY.md`
 - **Architecture**: `docs/planning/THREE_PRIMAL_INTEGRATION_ROADMAP.md`
 - **API Docs**: `crates/core/toadstool/src/encryption/mod.rs`
 

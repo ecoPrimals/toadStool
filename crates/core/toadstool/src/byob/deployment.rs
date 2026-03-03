@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Deployment state and lifecycle management
 
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! MatMul Auto Strategy Validation
 //!
 //! Validates the intelligent strategy selection at multiple scales

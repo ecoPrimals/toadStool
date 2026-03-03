@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for Background services module
 //!
 //! These tests target the background.rs module to achieve 40%+ coverage

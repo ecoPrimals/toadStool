@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeOS Backend Implementations.
 //!
 //! Covers legacy sync constructors for unit testing without real services.

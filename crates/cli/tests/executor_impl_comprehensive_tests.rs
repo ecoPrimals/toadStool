@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI executor implementation
 //! Addresses zero-coverage file: cli/src/executor/executor_impl.rs (938 lines)
 

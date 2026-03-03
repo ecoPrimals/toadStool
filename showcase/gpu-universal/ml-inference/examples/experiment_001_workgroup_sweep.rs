@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Experiment 001: Workgroup Size Sweep for MatMul
 //!
 //! **Hypothesis**: Different workgroup sizes will have different performance

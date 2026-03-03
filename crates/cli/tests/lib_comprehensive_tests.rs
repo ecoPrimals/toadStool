@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI library entry point (Phase 1)
 //! Target: cli/src/lib.rs (62 lines, currently 0% coverage)
 //! Goal: Add 15-20 tests for complete coverage

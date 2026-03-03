@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trait implementations for embedded programmers
 //!
 //! Error-returning stubs until hardware-specific implementations are available.

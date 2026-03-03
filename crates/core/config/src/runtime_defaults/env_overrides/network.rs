@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network configuration overrides.
 //!
 //! # Network Environment Variables (primary; current values are fallback defaults)

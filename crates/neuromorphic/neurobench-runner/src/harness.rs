@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Benchmark harness for running `NeuroBench` workloads
 //!
 //! Coordinates model loading, dataset loading, inference, and metric collection.

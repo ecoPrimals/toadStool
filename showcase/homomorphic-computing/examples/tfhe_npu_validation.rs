@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // 🔐 NPU Validation via Akida - REAL HARDWARE
 //
 // Three-way comparison: CPU (TFHE-rs) vs GPU (BarraCuda) vs NPU (Akida)

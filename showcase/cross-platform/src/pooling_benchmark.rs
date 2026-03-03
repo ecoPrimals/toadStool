@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pooling Benchmark - Validates buffer pooling reduces allocation overhead
 //!
 //! Tests the TensorContext buffer pooling system:

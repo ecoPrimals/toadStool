@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | March 2, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | March 3, 2026
 
 ---
 
@@ -34,16 +34,16 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 2,866 barracuda + 5,500+ workspace lib + integration tests |
+| `cargo test --workspace` | 2,866 barracuda + 5,369 workspace lib + integration tests |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | Five springs validation | 4,000+ acceptance checks |
-| `unsafe` blocks | 45 workspace-wide (2 barracuda, rest FFI/hardware/MMIO), all `// SAFETY:` documented |
+| `unsafe` blocks | ~60+ workspace-wide (barracuda + GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production stubs | 0 -- all stubs evolved to real implementations or proper errors |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
-| Production TODOs | 0 -- all evolved to formal `BLOCKED(reason)` markers |
-| Dead code | ~400 lines removed; ~35 justified `#[allow(dead_code)]` (feature-gated, GPU fallbacks) |
+| Production TODOs / FIXME / HACK | 0 -- all evolved to formal `BLOCKED(reason)` markers or resolved |
+| Dead code | ~400+ lines removed (REST, middleware, dead modules); ~35 justified `#[allow(dead_code)]` remain |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) -- pure std::time, tokio-native, serde_yaml_ng |
 | Hardcoded primal names | 0 inline strings -- all use `primals::*` constants or capability-based discovery |
 | `async-trait` migration | 5 crates migrated to native AFIT (Rust 1.80+); remaining uses justified by `dyn Trait` dispatch |
@@ -234,7 +234,7 @@ toadStool/
 |   |   +-- config/                Centralized configuration (env-aware, network config)
 |   |   +-- toadstool/             Core runtime, IPC, scheduler, production hardening
 |   +-- server/                    JSON-RPC server, GPU job queue, Ollama, cross-gate router
-|   +-- api/                       REST API, middleware
+|   +-- api/                       JSON-RPC API, types (REST removed S90, middleware removed S92)
 |   +-- cli/                       UniBin CLI (single binary, BYOB server subcommand)
 |   +-- integration/               Inter-primal protocols (beardog, nestgate, songbird)
 |   +-- distributed/               Multi-gate coordination, cloud cost/compliance/federation
@@ -273,7 +273,7 @@ toadStool/
 8. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 9. **Vendor-agnostic** -- WGSL over CUDA/ROCm, any GPU works
 10. **Sovereign compute** -- no vendor lock-in, pure Rust core, no external math dependencies
-11. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (45 blocks, all justified)
+11. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (~60+ blocks, all justified)
 12. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -285,22 +285,16 @@ toadStool/
 | Build warnings | 0 |
 | Unit tests (barracuda) | 2,866 |
 | Shader-specific tests | 155 (unit + e2e + chaos + fault + naga validation) |
-| WGSL shaders (barracuda) | 844 (zero orphans, shader-first, 37 DF64 + 15 folding + 200+ f64 — zero f32-only, all f64 canonical) |
-| Lib tests (server) | 576 |
-| Lib tests (core toadstool) | 1,340 |
-| Lib tests (distributed) | 1,057 |
-| Lib tests (common) | 923 |
-| Lib tests (config) | 368 |
-| Lib tests (CLI) | 209 |
-| Lib tests (testing) | 104 |
-| Lib tests (API) | 58 |
+| WGSL shaders (barracuda) | 845 (zero orphans, shader-first, 37 DF64 + 15 folding + 200+ f64 — zero f32-only, all f64 canonical) |
+| Workspace lib tests | 5,369 (server + core + distributed + common + config + CLI + testing + API + auto_config) |
 | Full workspace test time | ~6m30s (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | 45 workspace-wide (2 barracuda, rest FFI/hardware/MMIO), all `// SAFETY:` documented |
+| `unsafe` blocks | ~60+ workspace-wide (barracuda + GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
-| Production `todo!()`/`dbg!()` | 0 |
-| Dead code removed | ~400 lines; ~35 justified `#[allow(dead_code)]` remain |
+| Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
+| Production FIXME / HACK | 0 |
+| Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~35 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants |
 | External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core) |
 | Five springs validation | 4,000+ acceptance checks |
@@ -316,11 +310,12 @@ toadStool/
 - **ComputeDispatch migration** -- 144/280+ ops migrated; ~139 legacy ops use manual BGL/BG boilerplate (incremental)
 - **DF64 as default path** -- df64_rewrite as default precision, not fallback (groundSpring V35)
 - **NpuDispatch trait** -- generic NPU interface (airSpring/wetSpring/groundSpring converge)
-- **Test coverage** -- pushing toward 90% target; major coverage gains in CLI, server, API, monitoring, distributed
+- **Test coverage** -- pushing toward 90% target; 5,369 tests; +47 in S91-92 (monitoring, templates, installer, connection, wasm_ops, session)
 - **DF64 transcendental coverage** -- COMPLETE: 15 functions (exp, log, sin, cos, tan, sqrt, pow, asin, acos, atan, atan2, sinh, cosh, gamma, erf)
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
 ### Recently Completed
+- **Sessions 90–92: Deep Audit + Dead Code + Sovereignty + Coverage** -- REST API + middleware deleted (JSON-RPC only). 47 new tests (5,369 total). Pure-rust ecoBin build verified. Legacy primal-name APIs deprecated, 3 callsites migrated. BearDog strings neutralized. `find_pattern_by_capability()` API added.
 - **Sessions 84–86: ComputeDispatch Batches 5–7 + Deep Debt** -- 33 more ops → ComputeDispatch (144 total). hydrology.rs god-file refactored. experimental.rs stub → real probes. wgpu_backend.rs magic numbers → device limits. Full ops audit (corrected ~139 remaining).
 - **Session 80: bingoCube Nautilus absorption + BatchedEncoder + Nelder-Mead GPU + fused_mlp** -- `barracuda::nautilus` module (7 files, 22 tests) — standalone evolutionary reservoir computing absorbed from bingoCube. `ai.nautilus.*` 8 JSON-RPC methods wired into daemon (feature-gated). `BatchedEncoder` for fused multi-op GPU pipelines (single `queue.submit()`). `fused_mlp` via BatchedEncoder. Batch Nelder-Mead GPU (N parallel optimizations). `StatefulPipeline<S>` for day-over-day state. `GpuDriverProfile` sin/cos F64 workarounds (Taylor preamble for NVK). `NeighborMode::PrecomputedBuffer` (2D/3D/4D lattice). `BatchedMultinomialGpu` alignment (cumulative_probs + seed). ComputeDispatch 76→95 ops (4 migration batches). Socket resolution consolidated.
 - **Session 79: ESN MultiHeadEsn + ExportedWeights + SpectralAnalysis** -- 36-head `MultiHeadEsn` with `HeadGroup` variants, `head_disagreement()` uncertainty, `SpectralAnalysis` extensions (`spectral_bandwidth`, `classify_spectral_phase`), `ExportedWeights` aligned with hotSpring.
@@ -345,7 +340,8 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 | D-CD | ComputeDispatch migration (~139 legacy ops) | Active -- incremental, 144 done |
 | D-DF64 | DF64 as default path (not fallback) | Active -- architectural |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Active -- design phase |
-| D-COV | Test coverage → 90% | Active -- major gains in server, CLI, API, monitoring |
+| D-COV | Test coverage → 90% | Active -- 5,369 tests; S92 +47 tests in CLI, server, auto_config |
+| D-SOV | Sovereignty deprecation migration | Active -- legacy primal-name APIs deprecated, callers migrating |
 | W-001 | f64 transcendental polyfill for all drivers | Sovereign -- `compile_shader_f64()` handles 28 functions |
 | W-003 | NAK compiler scheduling gap (SM70 Volta) | Active -- Phases 1+4 done; Titan V hw validation pending |
 | D-S20-003 | neuralSpring `evolved/` migration (~2075 lines) | Blocked -- awaiting neuralSpring team |
@@ -370,4 +366,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 2, 2026 -- Session 86. 844 WGSL shaders (37 DF64, 15 folding, 15-function DF64 transcendental suite). 2,866 barracuda tests. 5,500+ workspace lib tests (8,300+ total). 144 ops migrated to ComputeDispatch (~139 remaining). 44 JSON-RPC methods (8 `ai.nautilus.*`). `barracuda::nautilus` (evolutionary reservoir computing, 22 tests). `BatchedEncoder` + `fused_mlp`. Batch Nelder-Mead GPU. `StatefulPipeline`. `GpuDriverProfile` sin/cos workarounds. All quality gates green. Fully concurrent test suite. Rust 1.80+. Zero anyhow. Zero chrono. Zero pollster. Zero serde_yaml. Zero libc (akida-driver). Zero production stubs. 45 justified unsafe. 35+ god files smart-refactored. Capability-based discovery.
+**Last Updated**: March 3, 2026 -- Session 92. 845 WGSL shaders (37 DF64, 15 folding, 15-function DF64 transcendental suite). 2,866 barracuda tests. 5,369 workspace lib tests. 144 ops migrated to ComputeDispatch (~139 remaining). 44 JSON-RPC methods (8 `ai.nautilus.*`). REST API + middleware removed -- JSON-RPC only. Sovereignty: legacy primal-name APIs deprecated, capability-based APIs promoted, BearDog strings neutralized. ecoBin verified: `pure-rust` build with zero C FFI deps. All quality gates green. Fully concurrent test suite. Rust 1.80+. Zero anyhow. Zero chrono. Zero pollster. Zero serde_yaml. Zero libc (akida-driver). Zero production stubs. ~60+ justified unsafe (all SAFETY documented). 35+ god files smart-refactored. Capability-based discovery.

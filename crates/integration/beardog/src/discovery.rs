@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! bearDog service discovery via capability-based discovery
 //!
 //! Discovers bearDog entropy service at runtime - NO HARDCODING!

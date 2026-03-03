@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Adapter - Capability-Based Primal Discovery
 //!
 //! ## Philosophy: "Infant Discovery"

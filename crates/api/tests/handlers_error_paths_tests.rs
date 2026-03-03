@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Error Path Tests for API Handlers
 //!
 //! Tests for error handling in API handlers identified in coverage audit:

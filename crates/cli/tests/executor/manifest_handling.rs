@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Manifest handling tests
 //!
 //! Tests for manifest parsing, validation, and error handling.

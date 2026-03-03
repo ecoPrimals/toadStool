@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Dual-GPU Parallel Execution Demo
 //!
 //! Demonstrates simultaneous execution on multiple GPUs for maximum throughput

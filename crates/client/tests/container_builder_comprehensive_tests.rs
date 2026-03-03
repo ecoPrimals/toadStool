@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Container workload builder
 //!
 //! Week 14 Day 4: Container Builder Tests  

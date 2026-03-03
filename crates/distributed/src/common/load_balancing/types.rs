@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Load Balancing Types
 //!
 //! Generic load balancing abstractions used across Songbird, Cloud, and other distributed systems.

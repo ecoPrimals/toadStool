@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for substrate detection module
 //!
 //! Tests cover platform detection, capabilities tracking, and substrate identification.

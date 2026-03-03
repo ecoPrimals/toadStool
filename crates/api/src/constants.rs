@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! API handler constants
 //!
 //! Module-level constants for API handlers. These are intentionally kept separate

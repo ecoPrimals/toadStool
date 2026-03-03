@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for API lib.rs
 //!
 //! Coverage target: 20% → 45% (20 tests)

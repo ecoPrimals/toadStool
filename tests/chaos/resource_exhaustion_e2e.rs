@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource Exhaustion E2E Tests
 //!
 //! Comprehensive chaos testing for resource exhaustion scenarios:

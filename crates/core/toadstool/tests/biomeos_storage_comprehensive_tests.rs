@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeOS Storage Integration
 //!
 //! Week 17 Sprint 2: Storage Provisioning Manager tests

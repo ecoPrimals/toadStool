@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BFV (Brakerski-Fan-Vercauteren) Homomorphic Encryption Scheme
 //!
 //! ⚠️ **PROOF OF CONCEPT - NOT CRYPTOGRAPHICALLY SECURE** ⚠️

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Performance Benchmarking Suite
 //!
 //! Establishes baseline metrics for critical paths in ToadStool

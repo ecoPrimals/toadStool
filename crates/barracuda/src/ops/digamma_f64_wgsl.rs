@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DIGAMMA F64 - Digamma function ψ(x) = Γ'(x)/Γ(x) - f64 precision
 //!
 //! Deep Debt Principles:

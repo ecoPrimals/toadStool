@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Core EcosystemIntegrator implementation - refactored by protocol
 //
 // ⚠️ LEGACY INTEGRATION LAYER
@@ -68,18 +69,18 @@ impl EcosystemIntegrator {
                 capability_categories::ORCHESTRATION.to_string(), // Orchestration capabilities
             ]
         } else {
-            // Map service types to capabilities
-            // TODO(sovereignty): Prefer capability names directly from config.
-            // When legacy config passes primal names, we map to capabilities for discovery.
-            // Ideal: config says "crypto" not "beardog"; no name→capability mapping needed.
+            // Migration bridge: map legacy primal names to capabilities.
+            // Callers that already pass capability names (e.g. "crypto", "storage")
+            // fall through to the identity arm unchanged.
             service_types.into_iter()
                 .map(|st| {
                     use crate::ecosystem::constants::{capability_categories, service_names};
+                    #[allow(deprecated)]
                     match st.as_str() {
                         service_names::SONGBIRD => capability_categories::NETWORK.to_string(),
                         service_names::BEARDOG => capability_categories::CRYPTO.to_string(),
                         service_names::NESTGATE => capability_categories::STORAGE.to_string(),
-                        _ => st,
+                        _ => st, // Already a capability name — pass through
                     }
                 })
                 .collect()

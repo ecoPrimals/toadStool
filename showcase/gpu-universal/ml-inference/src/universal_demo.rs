@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Demonstrate ToadStool's universal compute abstraction
 //! Same code runs on CUDA, ROCm, WebGPU, or CPU
 

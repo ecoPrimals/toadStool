@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeExecutor implementation
 //!
 //! **Target**: executor_impl.rs (938 lines, 0% → 70%+ coverage)

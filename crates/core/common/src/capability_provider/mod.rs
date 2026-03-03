@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based service discovery and invocation
 //!
 //! Deep Debt Solution: Primals discover each other by capability at runtime,

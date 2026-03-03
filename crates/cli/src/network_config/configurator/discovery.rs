@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DNS and service discovery extension
 //!
 //! Provides DNS discovery configuration and validation.

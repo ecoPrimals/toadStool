@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Command routing and dispatch
 //!
 //! Routes parsed CLI commands to their implementations.

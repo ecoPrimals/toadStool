@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Property-based tests for adaptive runtime
 //!
 //! Tests mathematical and logical properties that should always hold

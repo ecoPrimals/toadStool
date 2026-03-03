@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical Path Tests for CLI Executor
 //!
 //! Tests for high-priority execution paths identified in coverage audit:

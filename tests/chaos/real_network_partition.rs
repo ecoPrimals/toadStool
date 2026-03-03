@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real network partition chaos testing
 //!
 //! This module implements actual network partition testing with real TCP connections,

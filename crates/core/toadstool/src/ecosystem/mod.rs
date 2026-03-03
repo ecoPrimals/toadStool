@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem Coordination - Capability-Based Discovery
 //!
 //! This module handles integration with services in the ecosystem using

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource limits and execution configuration overrides.
 
 use super::super::ConfigResult;

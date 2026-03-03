@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional template tests for missing coverage
 //!
 //! Tests for specialized templates that weren't covered:

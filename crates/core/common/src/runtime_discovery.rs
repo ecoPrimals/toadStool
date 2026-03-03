@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime Service Discovery - Zero Hardcoding
 //!
 //! This module provides runtime discovery of services based on capabilities,
@@ -409,9 +410,23 @@ impl DiscoveryClient for LocalhostDiscoveryClient {
 mod tests {
     use super::*;
 
+    fn seeded_client() -> LocalhostDiscoveryClient {
+        let mut client = LocalhostDiscoveryClient::new();
+        client.add_service(DiscoveredService {
+            id: Some("test-compute".to_string()),
+            capabilities: vec![Capability::Compute(
+                crate::primal_identity::ComputeCapability::NativeExecution,
+            )],
+            endpoints: vec![ServiceEndpoint::http("localhost", 9999)],
+            healthy: true,
+            metadata: HashMap::new(),
+        });
+        client
+    }
+
     #[tokio::test]
     async fn test_runtime_discovery() {
-        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let client = Arc::new(seeded_client());
         let discovery = RuntimeDiscovery::new(client);
 
         let services = discovery.discover_all_services().await.unwrap();
@@ -420,7 +435,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_capability_discovery() {
-        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let client = Arc::new(seeded_client());
         let discovery = RuntimeDiscovery::new(client);
 
         use crate::primal_identity::ComputeCapability;
@@ -432,8 +447,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_runtime_discovery_with_fallback() {
-        let primary = Arc::new(LocalhostDiscoveryClient::new());
-        let fallback = Arc::new(LocalhostDiscoveryClient::new());
+        let primary = Arc::new(seeded_client());
+        let fallback = Arc::new(seeded_client());
 
         let discovery = RuntimeDiscovery::new(primary).with_fallback(fallback);
 
@@ -443,7 +458,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_runtime_discovery_with_cache_ttl() {
-        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let client = Arc::new(seeded_client());
         let discovery = RuntimeDiscovery::new(client).with_cache_ttl(Duration::from_secs(60));
 
         let services = discovery.discover_all_services().await.unwrap();
@@ -452,7 +467,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_compute_service() {
-        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let client = Arc::new(seeded_client());
         let discovery = RuntimeDiscovery::new(client);
 
         let service = discovery.find_compute_service().await;
@@ -491,18 +506,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_clear_cache() {
-        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let client = Arc::new(seeded_client());
         let discovery = RuntimeDiscovery::new(client);
 
-        // Populate cache
-        let _ = discovery.discover_all_services().await;
+        let services = discovery.discover_all_services().await.unwrap();
+        assert!(!services.is_empty());
 
-        // Clear cache
         discovery.clear_cache().await;
 
-        // Cache should be empty (but may repopulate on next call)
         let services = discovery.discover_all_services().await.unwrap();
-        assert!(!services.is_empty()); // Will repopulate
+        assert!(!services.is_empty());
     }
 
     #[tokio::test]
@@ -589,15 +602,33 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_localhost_discovery_client_discover_all() {
+    async fn test_localhost_discovery_client_discover_all_empty() {
         let client = LocalhostDiscoveryClient::new();
+        let services = client.discover_all().await.unwrap();
+        assert!(services.is_empty(), "empty client yields empty results");
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_discover_all_seeded() {
+        let client = seeded_client();
         let services = client.discover_all().await.unwrap();
         assert!(!services.is_empty());
     }
 
     #[tokio::test]
-    async fn test_localhost_discovery_client_discover_by_capability() {
+    async fn test_localhost_discovery_client_discover_by_capability_empty() {
         let client = LocalhostDiscoveryClient::new();
+
+        use crate::primal_identity::ComputeCapability;
+        let cap = Capability::Compute(ComputeCapability::NativeExecution);
+
+        let services = client.discover_by_capability(&cap).await.unwrap();
+        assert!(services.is_empty(), "empty client yields empty results");
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_discover_by_capability_seeded() {
+        let client = seeded_client();
 
         use crate::primal_identity::ComputeCapability;
         let cap = Capability::Compute(ComputeCapability::NativeExecution);

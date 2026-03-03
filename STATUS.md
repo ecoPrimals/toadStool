@@ -1,4 +1,4 @@
-# Status -- March 2, 2026 (Session 88)
+# Status -- March 3, 2026 (Session 92)
 
 ## Quality Gates
 
@@ -8,18 +8,14 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,872+ tests** (S88: +6 new tests for tridiag eigenvectors, L-BFGS GPU batch, tolerances) |
-| `cargo test -p toadstool-server --lib` | PASS | **576 tests** |
-| `cargo test -p toadstool --lib` | PASS | **1,340 tests** |
-| `cargo test -p toadstool-cli --lib` | PASS | **209 tests** |
-| `cargo test -p toadstool-common --lib` | PASS | **923 tests** |
-| `cargo test -p toadstool-distributed --lib` | PASS | **1,057 tests** |
-| `cargo test -p toadstool-config --lib` | PASS | **368 tests** |
-| `cargo test -p toadstool-api --lib` | PASS | **58 tests** |
-| `cargo test --workspace` (excl barracuda) | PASS | **6m30s wall time, 8 threads, NVK GPU resilience wrappers** |
+| `cargo test --workspace --lib` | PASS | **5,369 tests, 0 failures** |
+| `cargo llvm-cov` (excl GPU crates) | **70.5%+ line** | JSON-RPC: 97.5%; 47 new tests in S91-92 |
+| `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
-| Standalone clone test | PASS | Pull to any machine, `cargo test` works — GPU-optional, CPU fallback |
-| License compliance | PASS | AGPL-3.0-or-later: root LICENSE + SPDX headers |
+| Standalone clone test | PASS | GPU-optional, CPU fallback |
+| License compliance | PASS | **AGPL-3.0-or-later: all Cargo.toml + all 2,780+ .rs files have SPDX headers** |
+| Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
+| Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
 
 ## Codebase Metrics
 
@@ -32,12 +28,21 @@
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
-| Production mocks/stubs | **0** — all evolved to real implementations or proper errors (S82 memory detection evolution) |
+| Production mocks/stubs | **0** — all evolved to real implementations or proper errors |
 | Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (32+ large files smart-refactored to domain modules) |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — named constants throughout |
+| REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
+| Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
+| SPDX headers | **100%** — all .rs files have AGPL-3.0-or-later (S90) |
+| Sovereignty | **Deprecated** `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider` (S92). Capability-based APIs promoted. BearDog user-facing strings neutralized. |
+| ecoBin | **PyO3 optional** — `pure-rust` feature compiles cleanly with zero C FFI deps (S90, verified S92) |
+| unsafe docs | **100%** — all `unsafe` blocks have `// SAFETY:` comments (S90) |
+| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90) |
+| Production `todo!()` / `unimplemented!()` | **0** — confirmed by full codebase audit (S92) |
+| Production FIXME / HACK | **0** — confirmed by full codebase audit (S92) |
 | ComputeDispatch adoption | **144 ops migrated** (~139 legacy ops remaining, incremental) |
 | Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
@@ -80,6 +85,26 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 92 (Mar 3, 2026) — Sovereignty Deprecation Sweep & Audit Continuation
+- **Sovereignty**: Deprecated `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider` with `#[deprecated(since = "0.92.0")]`. Migrated NestGate client to `get_socket_path_for_capability` (3 callsites). Added `EcosystemDiscoverer::find_pattern_by_capability()`. Neutralized 5 BearDog user-facing strings in access control. `version_info()` → "ecoPrimals sovereign pattern".
+- **Dead code**: Removed middleware.rs + 7 middleware test files (~131 KB — dead since REST removal)
+- **Coverage**: +47 tests → 5,369 total (monitoring, templates, installer, connection, wasm_ops, session)
+- **ecoBin**: `pure-rust` build verified clean — zero C FFI dependencies
+- **Bug fix**: `bail!` macro in `wasm_ops.rs` undefined on `#[cfg(not(feature = "wasm"))]` path
+- **Extracted**: `verify_sha256()` standalone fn from BiomeExecutor method for testability
+- **Audit**: 0 production `todo!()`, 0 `unimplemented!()`, 0 FIXME, 0 HACK. Hot-path code is unwrap-free.
+
+### Session 90 (Mar 3, 2026) — Deep Audit, Sovereignty Evolution & Quality Gate Sweep
+- Fixed SIGSEGV in runtime-universal (wgpu catch_unwind + timeout)
+- Unified 37 Cargo.toml license fields to workspace. 2,780+ SPDX headers added/normalized.
+- Capability-based trust model. `get_socket_path_for_capability()` API.
+- Removed all REST routes + handlers + 8 test files. JSON-RPC api.workload.execute completed.
+- Arc-cached compiled kernels, moved Vec, Arc<str> version on hot paths.
+- PyO3 feature-gated. Python runtime optional in CLI.
+- Documented all unsafe blocks in akida-driver.
+- Rewrote handlers_basic_tests.rs (15 JSON-RPC integration tests).
+- 5,322 tests, 0 failures. All quality gates pass.
 
 ### Session 87 (Mar 2, 2026) — Deep Debt Resolution + Idiomatic Concurrent Rust + Code Quality
 - **TODO(afit) → NOTE(async-dyn)**: 75 instances across 52 files reclassified from debt to conscious architectural decision (async-trait required for dyn-compatible traits in Rust 1.92)

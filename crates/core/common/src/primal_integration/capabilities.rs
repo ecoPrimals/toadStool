@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Standard capability identifiers for discovery.
 //!
 //! Use these constants with [`super::discover_service_by_capability`] or

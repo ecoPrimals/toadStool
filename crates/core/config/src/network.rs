@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network configuration utilities
 //!
 //! **Migration Note**: For runtime configuration, use `EnvironmentConfig::from_env()`
@@ -138,6 +139,7 @@ pub fn default_federation_address() -> std::net::SocketAddr {
     note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
 )]
 #[must_use]
+#[allow(deprecated)]
 pub fn get_songbird_port() -> u16 {
     crate::config_utils::ConfigUtils::get_primal_default_port("SONGBIRD")
 }
@@ -154,6 +156,7 @@ pub fn get_songbird_port() -> u16 {
     note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
 )]
 #[must_use]
+#[allow(deprecated)]
 pub fn get_beardog_port() -> u16 {
     crate::config_utils::ConfigUtils::get_primal_default_port("BEARDOG")
 }
@@ -172,6 +175,7 @@ pub fn get_beardog_port() -> u16 {
     note = "Use RuntimeDiscovery::discover_capability(Capability::Storage) for service discovery"
 )]
 #[must_use]
+#[allow(deprecated)]
 pub fn get_nestgate_port() -> u16 {
     crate::config_utils::ConfigUtils::get_primal_default_port("NESTGATE")
 }
@@ -184,6 +188,7 @@ pub fn get_nestgate_port() -> u16 {
     note = "Use RuntimeDiscovery::discover_capability(Capability::AI) for service discovery"
 )]
 #[must_use]
+#[allow(deprecated)]
 pub fn get_squirrel_port() -> u16 {
     crate::config_utils::ConfigUtils::get_primal_default_port("SQUIRREL")
 }

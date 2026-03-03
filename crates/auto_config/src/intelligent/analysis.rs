@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pattern recognition and usage learning (Pipeline Stage 2)
 
 use std::time::Duration;

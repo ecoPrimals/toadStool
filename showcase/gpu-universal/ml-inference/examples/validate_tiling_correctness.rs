@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tiling Correctness Validation
 //!
 //! **Purpose**: Validate numerical correctness of tiling implementation

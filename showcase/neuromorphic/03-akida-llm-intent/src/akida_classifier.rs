@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Akida-accelerated intent classifier
 
 use crate::{IntentCategory, ClassificationResult};

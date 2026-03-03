@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Agent backend traits and implementations for BiomeOS/Squirrel integration
 //!
 //! This module defines the trait interface for agent deployment backends and

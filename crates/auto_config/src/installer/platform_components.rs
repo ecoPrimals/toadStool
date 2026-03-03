@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Platform-specific installation components (systemd, launchd, Windows service)
 
 use std::path::Path;
@@ -127,9 +128,70 @@ pub async fn install_platform_components(
         Platform::Linux => install_linux_components(installation_path).await,
         Platform::MacOS => install_macos_components(installation_path).await,
         Platform::Windows => install_windows_components(installation_path).await,
-        Platform::Android | Platform::Wasm | Platform::Unknown => {
-            // No platform-specific components for these
-            Ok(())
-        }
+        Platform::Android | Platform::Wasm | Platform::Unknown => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_android_is_noop() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let result = install_platform_components(Platform::Android, dir.path()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_wasm_is_noop() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let result = install_platform_components(Platform::Wasm, dir.path()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_unknown_is_noop() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let result = install_platform_components(Platform::Unknown, dir.path()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_linux_creates_systemd_service() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let result = install_linux_components(dir.path()).await;
+        assert!(result.is_ok());
+        let service_file = dir.path().join("systemd/toadstool.service");
+        assert!(service_file.exists());
+        let content = std::fs::read_to_string(service_file).expect("read");
+        assert!(content.contains("[Unit]"));
+        assert!(content.contains("ExecStart="));
+        assert!(content.contains("toadstool daemon"));
+    }
+
+    #[tokio::test]
+    async fn test_macos_creates_plist() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let result = install_macos_components(dir.path()).await;
+        assert!(result.is_ok());
+        let plist_file = dir.path().join("launchd/dev.toadstool.daemon.plist");
+        assert!(plist_file.exists());
+        let content = std::fs::read_to_string(plist_file).expect("read");
+        assert!(content.contains("<plist"));
+        assert!(content.contains("dev.toadstool.daemon"));
+    }
+
+    #[tokio::test]
+    async fn test_windows_creates_service_json() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let result = install_windows_components(dir.path()).await;
+        assert!(result.is_ok());
+        let json_file = dir.path().join("service/service.json");
+        assert!(json_file.exists());
+        let content = std::fs::read_to_string(json_file).expect("read");
+        let parsed: serde_json::Value = serde_json::from_str(&content).expect("json");
+        assert_eq!(parsed["service_name"], "ToadStool");
+        assert_eq!(parsed["start_type"], "automatic");
     }
 }

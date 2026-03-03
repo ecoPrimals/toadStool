@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Query detailed board capabilities
 
 use akida_detection_demo::detect_all_boards;

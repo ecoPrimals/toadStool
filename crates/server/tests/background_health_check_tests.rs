@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Background Task Health Check Logic Tests
 //!
 //! Week 13 Day 1 (Evening): Health Check Function Tests

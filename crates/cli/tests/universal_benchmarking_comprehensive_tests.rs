@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Universal Benchmarking Operations
 //!
 //! Tests for benchmarking functionality in universal compute manager.

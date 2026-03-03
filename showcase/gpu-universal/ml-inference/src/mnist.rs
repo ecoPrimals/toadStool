@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real MNIST data loader - no mocks
 
 use anyhow::{Context, Result};

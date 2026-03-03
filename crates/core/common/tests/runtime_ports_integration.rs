@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for runtime port discovery
 //!
 //! Tests the Deep Debt compliant port discovery system in realistic scenarios

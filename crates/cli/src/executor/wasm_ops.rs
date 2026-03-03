@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WASM Loading and Execution Operations
 //!
 //! This module contains WASM-specific operations:
@@ -12,6 +13,23 @@
 use super::*;
 use sha2::{Digest, Sha256};
 
+/// Verify SHA-256 checksum of data against an expected hex string.
+///
+/// Returns `Ok(())` when no checksum is supplied or when the data matches.
+pub(crate) fn verify_sha256(data: &[u8], expected: &Option<String>) -> Result<()> {
+    if let Some(expected) = expected {
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        let actual = format!("{:x}", hasher.finalize());
+        if &actual != expected {
+            return Err(crate::CliError::Other(format!(
+                "WASM module checksum mismatch: expected {expected}, got {actual}"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// WASM operation implementations
 impl BiomeExecutor {
     pub(super) async fn load_wasm_with_verification(
@@ -19,28 +37,16 @@ impl BiomeExecutor {
         source: &str,
         expected_checksum: &Option<String>,
     ) -> Result<Vec<u8>> {
-        // Load WASM module from source
         let module_data = if source.starts_with("http://") || source.starts_with("https://") {
-            // Download from URL
             return Err(crate::CliError::Other(
                 "HTTP WASM loading not yet implemented".to_string(),
             ));
         } else {
-            // Load from local file
             fs::read(source).await?
         };
 
-        // Verify checksum if provided
-        if let Some(expected) = expected_checksum {
-            let mut hasher = Sha256::new();
-            hasher.update(&module_data);
-            let actual_checksum = format!("{:x}", hasher.finalize());
-
-            if &actual_checksum != expected {
-                return Err(crate::CliError::Other(format!(
-                    "WASM module checksum mismatch: expected {expected}, got {actual_checksum}"
-                )));
-            }
+        verify_sha256(&module_data, expected_checksum)?;
+        if expected_checksum.is_some() {
             info!("✅ WASM module checksum verified");
         }
 
@@ -83,9 +89,44 @@ impl BiomeExecutor {
         #[cfg(not(feature = "wasm"))]
         {
             let _ = (module_data, args);
-            bail!(
-                "WASM execution requires the 'wasm' feature. Build with: cargo build --features wasm"
-            );
+            return Err(crate::CliError::Other(
+                "WASM execution requires the 'wasm' feature. Build with: cargo build --features wasm".to_string(),
+            ));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_verify_sha256_none_checksum() {
+        let data = b"hello world";
+        assert!(verify_sha256(data, &None).is_ok());
+    }
+
+    #[test]
+    fn test_verify_sha256_correct_checksum() {
+        let data = b"hello world";
+        let expected = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
+        assert!(verify_sha256(data, &Some(expected.to_string())).is_ok());
+    }
+
+    #[test]
+    fn test_verify_sha256_wrong_checksum() {
+        let data = b"hello world";
+        let wrong = "0000000000000000000000000000000000000000000000000000000000000000";
+        let result = verify_sha256(data, &Some(wrong.to_string()));
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("checksum mismatch"));
+    }
+
+    #[test]
+    fn test_verify_sha256_empty_data() {
+        let data = b"";
+        let expected = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        assert!(verify_sha256(data, &Some(expected.to_string())).is_ok());
     }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Biome Executor
 //!
 //! Coverage target: 2% → 30% (20 tests)

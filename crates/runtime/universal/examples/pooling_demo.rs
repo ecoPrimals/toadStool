@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pooling Operations Demo (MaxPool2D, AvgPool2D)
 //!
 //! Demonstrates:

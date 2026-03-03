@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional tests for SystemResourceMonitor
 //!
 //! These tests expand coverage for ResourceMonitor trait implementation

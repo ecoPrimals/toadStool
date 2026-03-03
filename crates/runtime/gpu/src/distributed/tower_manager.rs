@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tower Discovery and Management
 //!
 //! Manages discovery and health monitoring of remote ToadStool towers

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Validate trained model through universal compute abstraction
 
 use anyhow::Result;

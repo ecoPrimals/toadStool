@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🎯 Zero-Copy Constants - Template Strings
 //!
 //! Central location for template string constants to avoid repeated allocations.

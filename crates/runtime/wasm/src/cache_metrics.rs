@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Module cache metrics
 //!
 //! Provides metrics tracking for WASM module caching

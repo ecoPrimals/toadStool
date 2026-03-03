@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BearDog Unix Socket Client (Pure Rust!)
 //!
 //! **Design Philosophy**:
@@ -16,6 +17,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
+#[allow(deprecated)]
 use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_for_service};
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};

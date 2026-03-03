@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage client implementation using capability-based discovery
 //!
 //! **TRUE PRIMAL**: Self-knowledge only - discovers storage via capabilities!
@@ -117,9 +118,8 @@ impl StorageClient {
 
         let service_name = service.name.clone();
 
-        // Get unix socket path for discovered service
         let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
+            toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
 
         info!(
             "✅ Discovered storage service: {} (capability-based discovery)",
@@ -151,6 +151,7 @@ impl StorageClient {
     ///
     /// # Errors
     /// Returns an error if the client configuration is invalid or connection fails
+    #[allow(deprecated)]
     pub async fn connect(service_name: &str) -> NestGateResult<Self> {
         let socket = toadstool_common::primal_sockets::get_socket_path_for_service(service_name);
         let config = NestGateConfig {
@@ -182,15 +183,14 @@ impl StorageClient {
             NESTGATE.to_string()
         });
 
-        // ✅ Generic socket path resolution (works with ANY storage service!)
         let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
+            toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         let client = Self {
             rpc_client,
             config,
-            service_name, // ✅ Dynamic service name!
+            service_name,
         };
 
         // Perform initial health check
@@ -470,7 +470,7 @@ impl StorageClient {
     #[cfg(test)]
     pub fn new_for_testing(config: NestGateConfig, service_name: String) -> Self {
         let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
+            toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
         Self {
             rpc_client,

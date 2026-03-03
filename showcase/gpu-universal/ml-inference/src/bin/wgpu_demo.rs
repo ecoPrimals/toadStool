@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure Rust GPU Demo using wgpu
 //!
 //! No FFI, no unsafe - just modern idiomatic Rust!

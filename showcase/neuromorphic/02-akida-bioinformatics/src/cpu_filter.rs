@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CPU-based k-mer filtering (baseline)
 
 use anyhow::Result;

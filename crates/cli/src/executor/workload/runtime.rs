@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime type selection and engine registration.
 //!
 //! Parses runtime hints, infers runtime from workload spec, and registers
@@ -9,6 +10,7 @@ use tracing::{debug, info};
 use toadstool::{execution::RuntimeType, runtime::RuntimeOrchestrator, workload::WorkloadSpec};
 
 use toadstool_runtime_native::NativeRuntimeEngine;
+#[cfg(feature = "python")]
 use toadstool_runtime_python::PythonRuntimeEngine;
 #[cfg(feature = "wasm")]
 use toadstool_runtime_wasm::WasmRuntimeEngine;
@@ -53,18 +55,25 @@ pub(super) async fn register_runtime_engines(orchestrator: &RuntimeOrchestrator)
         .context("Failed to register native runtime")?;
     info!("   ✅ Native runtime registered");
 
-    // Python runtime
-    match PythonRuntimeEngine::new() {
-        Ok(python_engine) => {
-            orchestrator
-                .register_engine(RuntimeType::Python, Box::new(python_engine))
-                .await
-                .context("Failed to register Python runtime")?;
-            info!("   ✅ Python runtime registered");
+    // Python runtime (optional — ecoBin builds omit PyO3)
+    #[cfg(feature = "python")]
+    {
+        match PythonRuntimeEngine::new() {
+            Ok(python_engine) => {
+                orchestrator
+                    .register_engine(RuntimeType::Python, Box::new(python_engine))
+                    .await
+                    .context("Failed to register Python runtime")?;
+                info!("   ✅ Python runtime registered");
+            }
+            Err(e) => {
+                debug!("   ⚠️  Python runtime not available: {}", e);
+            }
         }
-        Err(e) => {
-            debug!("   ⚠️  Python runtime not available: {}", e);
-        }
+    }
+    #[cfg(not(feature = "python"))]
+    {
+        debug!("   ⚠️  Python runtime not enabled (pure-rust build)");
     }
 
     // WASM runtime - Optional (has zstd C dependency)

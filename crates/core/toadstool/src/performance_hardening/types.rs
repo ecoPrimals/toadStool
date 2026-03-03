@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Performance hardening types and configurations
 //!
 //! This module contains all configuration structs and statistics types

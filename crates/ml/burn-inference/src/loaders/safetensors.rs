@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Safetensors file loader
 //!
 //! Loads model weights from `HuggingFace` safetensors format.

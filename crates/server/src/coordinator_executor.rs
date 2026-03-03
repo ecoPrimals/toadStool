@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Distributed Coordinator Executor Wrapper
 //!
 //! Integrates the `DistributedCoordinator` with the server's `WorkloadExecutor` trait.

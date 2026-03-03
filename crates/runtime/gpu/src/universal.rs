@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Capability-Based Compute Abstractions
 //!
 //! This module provides hardware-agnostic compute abstractions where:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! macOS-specific sandbox implementation
 //!
 //! This module provides macOS-specific sandboxing functionality using

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for ToadStool Universal Compute Platform
 //!
 //! These tests verify end-to-end functionality across the entire system,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core installation: directory structure and toadstool executable
 
 use std::path::Path;

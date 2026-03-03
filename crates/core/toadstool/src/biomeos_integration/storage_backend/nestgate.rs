@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! NestGate storage backend — production implementation over Unix sockets
 
 use std::future::Future;

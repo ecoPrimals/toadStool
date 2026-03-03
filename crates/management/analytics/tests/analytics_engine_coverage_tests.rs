@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Analytics Engine Coverage Tests
 //!
 //! This test suite provides thorough coverage of the analytics engine's

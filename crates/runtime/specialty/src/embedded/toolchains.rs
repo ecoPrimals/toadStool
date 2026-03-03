@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Toolchain implementations for embedded systems
 //!
 //! Error-returning stubs until cross-compilation toolchains are integrated.

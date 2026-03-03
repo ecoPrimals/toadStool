@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real biome lifecycle E2E tests
 //! These tests perform actual file I/O and validation
 

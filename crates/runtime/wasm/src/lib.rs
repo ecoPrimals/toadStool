@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
 #![allow(async_fn_in_trait)]
 

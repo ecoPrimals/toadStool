@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BearDog service discovery
 //!
 //! **Design**: Runtime discovery via mDNS, Songbird registry, or config

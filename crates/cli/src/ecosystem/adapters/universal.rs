@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal service adapter - protocol-agnostic service invocation
 //!
 //! The universal adapter discovers services by capability and invokes them

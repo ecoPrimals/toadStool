@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Raytracing - Dense Parallel Ray Traversal
 //!
 //! Deep Debt: Uses BarraCuda WGSL shaders for GPU raytracing

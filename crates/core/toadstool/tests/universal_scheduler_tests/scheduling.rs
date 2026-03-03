@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic scheduling tests — creation, queue management, job output, resource constraints.
 
 use std::collections::HashMap;

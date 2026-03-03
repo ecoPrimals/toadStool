@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Environment snapshot for socket path resolution
 
 /// Environment snapshot for socket path resolution.

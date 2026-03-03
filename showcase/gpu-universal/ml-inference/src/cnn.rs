@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Complete CNN Implementation
 //!
 //! LeNet-5 style convolutional neural network for MNIST

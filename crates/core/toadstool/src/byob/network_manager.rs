@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network management for BYOB deployments
 //!
 //! Handles Docker network lifecycle: creation, attachment, detachment, and removal.

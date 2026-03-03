@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based substrate selection
 //!
 //! **Deep Debt Principle**: Primal Self-Knowledge

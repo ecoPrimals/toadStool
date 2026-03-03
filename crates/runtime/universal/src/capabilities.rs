@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability discovery and management
 //!
 //! This module implements runtime discovery of compute capabilities,
@@ -33,10 +34,17 @@ impl CapabilityDiscovery {
             units.extend(Self::discover_opencl().await);
         }
 
-        // Discover GPU (wgpu)
+        // Discover GPU (wgpu) — isolated so driver crashes don't bring down the process
         #[cfg(feature = "wgpu-backend")]
         {
-            units.extend(Self::discover_wgpu().await);
+            match tokio::time::timeout(std::time::Duration::from_secs(10), Self::discover_wgpu())
+                .await
+            {
+                Ok(gpu_units) => units.extend(gpu_units),
+                Err(_) => {
+                    eprintln!("[toadstool-runtime-universal] wgpu discovery timed out — continuing with CPU only");
+                }
+            }
         }
 
         // Future: Discover neuromorphic
@@ -81,22 +89,29 @@ impl CapabilityDiscovery {
         Vec::new()
     }
 
-    /// Discover wgpu adapters
+    /// Discover wgpu adapters.
+    ///
+    /// Catches panics from GPU driver initialization so that headless/CI
+    /// environments degrade gracefully to CPU-only instead of segfaulting.
     #[cfg(feature = "wgpu-backend")]
     async fn discover_wgpu() -> Vec<Box<dyn ComputeUnit>> {
         use crate::backends::WgpuComputeUnit;
 
+        let adapters = match std::panic::catch_unwind(|| {
+            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::all(),
+                ..Default::default()
+            });
+            instance.enumerate_adapters(wgpu::Backends::all())
+        }) {
+            Ok(a) => a,
+            Err(_) => {
+                eprintln!("[toadstool-runtime-universal] wgpu adapter enumeration panicked — falling back to CPU only");
+                return Vec::new();
+            }
+        };
+
         let mut units = Vec::new();
-
-        // Create wgpu instance
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        // Enumerate all adapters
-        let adapters = instance.enumerate_adapters(wgpu::Backends::all());
-
         for adapter in adapters {
             if let Ok(unit) = WgpuComputeUnit::from_adapter(adapter).await {
                 units.push(Box::new(unit) as Box<dyn ComputeUnit>);

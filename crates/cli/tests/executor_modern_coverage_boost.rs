@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Modern concurrent tests for BiomeExecutor - Coverage boost
 //! Focus: Real API calls, zero sleeps, event-based, fully concurrent
 //! Target: Increase executor_impl.rs coverage from 1.81% to 40%

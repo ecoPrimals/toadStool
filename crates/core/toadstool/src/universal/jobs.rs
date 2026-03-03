@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Job types and priority management
 
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Edge Case Validation
 //!
 //! Tests edge cases: small matrices, non-square, odd sizes, power-of-2 boundaries

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // 🔥 ACTUAL GPU HARDWARE VALIDATION
 // ✅ Uses REAL BarraCuda GPU execution
 // ✅ Measures ACTUAL hardware performance

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // AES Encryption Benchmark - BarraCuda Universal Validation
 // Deep Debt Principles: Pure Rust, no hardcoding, capability-based, runtime discovery
 

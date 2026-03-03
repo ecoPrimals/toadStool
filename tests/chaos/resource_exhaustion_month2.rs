@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource exhaustion chaos tests - Month 2 Week 1
 //!
 //! Tier 2 tests: Production robustness (NOT measured in coverage)

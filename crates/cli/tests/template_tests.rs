@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Template generation tests
 //!
 //! Comprehensive tests for biome template generators.

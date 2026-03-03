@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! LeNet-5 CNN Demo - Complete Neural Network
 //!
 //! Demonstrates full end-to-end CNN inference:

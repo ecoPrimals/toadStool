@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Advanced Production Hardening Tests - Phase 2
 //!
 //! Comprehensive tests for production hardening edge cases and complex scenarios:

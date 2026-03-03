@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Timeout helpers for testing
 //!
 //! Provides consistent timeout handling across all async tests,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! LSTM Cell and Layer
 
 use anyhow::Result;

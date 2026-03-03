@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cross-Hardware Vendor Benchmark
 //!
 //! Compares BarraCuda (wgpu/Vulkan) vs native CUDA vs CPU baseline

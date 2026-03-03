@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Intelligent Auto-Configuration System
 //!
 //! Core intelligence layer for `ToadStool`'s zero-touch auto-configuration.

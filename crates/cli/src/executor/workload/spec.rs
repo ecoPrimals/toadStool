@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload specification file format types.
 //!
 //! Defines the structure of workload files (TOML/JSON) used by `toadstool execute`.

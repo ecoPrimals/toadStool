@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Concurrent tests for WASM Runtime Configuration
 //!
 //! ✅ MODERN CONCURRENT TESTING - Zero sleeps, fully concurrent

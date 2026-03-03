@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DiscoveryClient parse_node_data tests
 
 use std::sync::Arc;

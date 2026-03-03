@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive unit tests for client types module
 //! Target: crates/client/src/client/types.rs
 //! Focus: Type conversions, enums, and struct operations

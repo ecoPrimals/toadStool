@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Unified Memory Demo
 //!
 //! Demonstrates vendor-agnostic zero-copy GPU compute using ToadStool's

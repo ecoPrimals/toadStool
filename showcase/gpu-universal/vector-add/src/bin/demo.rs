@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vector Addition Demo
 //!
 //! Simple demonstration of vector addition across multiple GPU backends

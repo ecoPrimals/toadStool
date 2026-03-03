@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ephemeral key storage with explicit wiping
 //!
 //! Keys are stored in isolated memory and wiped explicitly on drop.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Biome Templates - Universal Compute Manifest Generation
 //!
 //! Templates for creating biome.yaml manifests for different scientific computing workflows.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage and media configuration types for legacy systems
 
 use serde::{Deserialize, Serialize};

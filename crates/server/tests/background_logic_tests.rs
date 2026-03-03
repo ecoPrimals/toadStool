@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Background services logic tests
 //!
 //! Tests cover background.rs functionality (0% → 25%+ target)

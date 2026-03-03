@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Mainframe System Adapters
 //!
 //! Support for legacy mainframe systems including:

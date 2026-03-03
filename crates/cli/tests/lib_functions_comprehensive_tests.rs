@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI library functions
 //! Target: crates/cli/src/lib.rs (0% coverage → 100%)
 //! Focus: load_biome_manifest(), validate_manifest(), CliContext
