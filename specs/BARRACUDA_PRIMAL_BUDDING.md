@@ -1,4 +1,4 @@
-# BarraCUDA Primal Budding — Architecture Spec
+# barraCuda Primal Budding — Architecture Spec
 
 **Date**: March 2, 2026 (Session 88)
 **Status**: RFC — pending Spring feedback
@@ -10,31 +10,30 @@
 
 ## Naming
 
-**BarraCUDA** = **Barra**ge of **C**ross-platform **U**nified **D**ispatch **A**rithmetic
+**barraCuda** — *BARrier-free Rust Abstracted Cross-platform Unified Dimensional Algebra*
 
-Named after the barracuda fish. "CUDA" in this context is a backronym for
-**Cross-platform Unified Dispatch Arithmetic** — explicitly not NVIDIA's
-"Compute Unified Device Architecture." BarraCUDA has zero NVIDIA code,
-zero CUDA SDK usage, and runs on any GPU vendor via WGSL/wgpu.
+More concept than exact acronym. The barracuda stands still until it strikes —
+fast, silent, instant math across any silicon. barraCuda is vendor-agnostic.
+It runs on any GPU via WGSL/wgpu. One source, any backend, identical results.
 
-All documentation, specs, and code should use "BarraCUDA" consistently
-and reference the backronym to avoid trademark confusion.
+All documentation, specs, and code should use "barraCuda" (camelCase)
+consistently.
 
 ---
 
 ## Context
 
-BarraCUDA has grown from ToadStool's GPU backend into the ecosystem's universal
+barraCuda has grown from ToadStool's GPU backend into the ecosystem's universal
 math engine. 766 WGSL shaders, 2,866+ tests, 5 Springs consuming it, FHE on GPU,
 lattice QCD, spectral analysis, molecular dynamics, hydrology — it is a separate
 system wearing a library costume.
 
 The Springs don't need ToadStool's orchestration runtime to multiply matrices.
-They need BarraCUDA. The monolithic workspace couples their compile times,
+They need barraCuda. The monolithic workspace couples their compile times,
 hides API breakage, and prevents them from evolving other primals alongside
 GPU compute.
 
-This spec describes how ToadStool prepares for BarraCUDA to bud into its own
+This spec describes how ToadStool prepares for barraCuda to bud into its own
 primal.
 
 ---
@@ -65,7 +64,7 @@ The runtime uses barracuda for:
 - Tensor serialization for cross-node transfer
 - Capability probing (what GPU ops are available)
 
-This direction stays — ToadStool depends on BarraCUDA, not the reverse.
+This direction stays — ToadStool depends on barraCuda, not the reverse.
 
 ---
 
@@ -82,7 +81,7 @@ toadstool = ["toadstool-core"]  # NEW: optional integration
 ```
 
 All code that touches `toadstool-core` moves behind `#[cfg(feature = "toadstool")]`.
-BarraCUDA compiles and passes all tests without this feature.
+barraCuda compiles and passes all tests without this feature.
 
 ### 0.2 Standalone compilation gate
 
@@ -118,7 +117,7 @@ crate that both can depend on without circular dependency.
 
 ### 1.2 IPC contract for barracuda-as-primal
 
-When BarraCUDA becomes a primal, it needs IPC endpoints:
+When barraCuda becomes a primal, it needs IPC endpoints:
 
 ```
 barracuda.device.list          → [{adapter, features, limits}]
@@ -198,7 +197,7 @@ barracuda = { version = "1.0", features = ["gpu"] }
 
 ## Phase 3 — Multi-Primal Springs
 
-With BarraCUDA decoupled, Springs can evolve other primals:
+With barraCuda decoupled, Springs can evolve other primals:
 
 ### What becomes possible
 
@@ -209,15 +208,15 @@ With BarraCUDA decoupled, Springs can evolve other primals:
 | GPU ML + distributed inference | barracuda + squirrel + songbird | multiple primals can't coexist |
 | GPU hydrology + edge deployment | barracuda + airspring-local | lightweight dep chain needed |
 
-### BearDog + BarraCUDA composition
+### BearDog + barraCuda composition
 
 BearDog provides cryptographic scaffolding (Ed25519, ChaCha20-Poly1305, BLAKE3,
-X.509, genetic lineage). BarraCUDA provides FHE GPU compute (NTT, INTT,
+X.509, genetic lineage). barraCuda provides FHE GPU compute (NTT, INTT,
 pointwise mod-mul). Together they enable:
 
 1. BearDog generates FHE scheme parameters and keys
 2. BearDog encrypts data using FHE scheme
-3. BarraCUDA performs homomorphic computation on GPU
+3. barraCuda performs homomorphic computation on GPU
 4. BearDog decrypts results
 
 Neither depends on the other at the crate level. They compose at the primal IPC
@@ -232,13 +231,13 @@ After budding, ToadStool is:
 
 - **Node atomic**: basic CPU computation, no GPU required
 - **Orchestration**: primal lifecycle, IPC, discovery, biomeOS integration
-- **Bridge**: connects to BarraCUDA (and other primals) for specialized compute
+- **Bridge**: connects to barraCuda (and other primals) for specialized compute
 - **Lighter**: faster compile, smaller surface area, clearer mission
 
 ToadStool retains its role as the compute orchestration primal in NUCLEUS. It
 just no longer carries the full math engine inside its workspace. The mycelial
 model from SOVEREIGN_COMPUTE_EVOLUTION.md still holds — ToadStool nodes spread
-through computational substrates, discovering BarraCUDA instances for GPU math.
+through computational substrates, discovering barraCuda instances for GPU math.
 
 ---
 
@@ -268,7 +267,7 @@ through computational substrates, discovering BarraCUDA instances for GPU math.
 
 ## References
 
-- `SOVEREIGN_COMPUTE_EVOLUTION.md` — BarraCUDA as "unified math language"
+- `SOVEREIGN_COMPUTE_EVOLUTION.md` — barraCuda as "unified math language"
 - `PRIMAL_CAPABILITY_SYSTEM.md` — capability-based discovery (implemented)
 - `wateringHole/UNIVERSAL_IPC_EVOLUTION_HANDOFF.md` — JSON-RPC 2.0 primal protocol
 - `wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`
