@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 2, 2026 -- Session 88
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,872+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU | L-BFGS GPU
-**Latest**: S88 — Cross-spring absorption. anderson_4d/wegner_block_4d re-exported. SeasonalGpuParams::new(). MultiHeadEsn::from_exported_weights(). 10 cross-spring tolerances. LbfgsGpu batched optimizer. tridiag_eigenvectors(). Feature-gate CI.
+**Updated**: March 2, 2026 -- Session 89
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | Standalone-resilient | Zero chrono | Zero anyhow | Zero pollster | Zero serde_yaml | Zero libc (akida-driver) | Zero production stubs | ~60+ justified unsafe (all documented) | 845 WGSL shaders (37 DF64, 15 folding) | 2,872+ barracuda tests | 5,500+ workspace lib tests | Rust 1.80+ | 35+ god files refactored | Capability-based discovery | NVK GPU resilience | barracuda::nautilus (22 tests) | 44 JSON-RPC methods | BatchedEncoder + fused_mlp | Batch Nelder-Mead GPU | L-BFGS GPU | barraCuda standalone primal
+**Latest**: S89 — barraCuda primal budding complete. 956 .rs files, 767 WGSL shaders extracted to standalone ecoPrimals/barraCuda/. 2,832 tests pass standalone. toadstool-core/akida-driver feature-gated. barracuda-core wired with device discovery.
 
 ---
 
@@ -45,26 +45,30 @@ Different evaluation strategies per silicon family:
 Generic NPU interface — airSpring/wetSpring/groundSpring converge on a single
 dispatch trait for neuromorphic hardware (Akida, Coral, future NPUs).
 
-### P1: BarraCUDA Primal Budding (Architecture)
+### P1: barraCuda Primal Budding (Architecture)
 
-BarraCUDA is budding from ToadStool into a standalone primal. See
-`specs/BARRACUDA_PRIMAL_BUDDING.md` and the ecosystem-wide RFC at
-`ecoPrimals/wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`.
+barraCuda has budded from ToadStool into a standalone primal at
+`ecoPrimals/barraCuda/`. See `specs/BARRACUDA_PRIMAL_BUDDING.md`.
 
-Phases:
-- [ ] Phase 0: Feature-gate toadstool-core dep in barracuda (decouple)
-- [ ] Phase 0: Standalone compilation CI (`cargo check -p barracuda` without toadstool-core)
-- [ ] Phase 0: API surface audit (re-exports, constructors, BREAKING_CHANGES)
-- [ ] Phase 1: Extract barracuda-types crate if needed
+Completed (S89):
+- [x] Phase 0: Feature-gate toadstool-core dep (`#[cfg(feature = "toadstool")]`)
+- [x] Phase 0: Feature-gate akida-driver dep (`#[cfg(feature = "npu-akida")]`)
+- [x] Phase 0: Standalone compilation (`cargo check/clippy/test` without toadstool-core)
+- [x] Phase 0: Repo extraction to `ecoPrimals/barraCuda/` — 956 .rs files, 767 WGSL shaders
+- [x] Phase 0: barracuda-core wired to barracuda compute library (device discovery, health)
+- [x] Phase 0: 2,832 tests pass standalone, 0 failures, clippy clean
+
+Remaining:
+- [ ] Phase 1: API surface audit (re-exports, constructors, BREAKING_CHANGES)
 - [ ] Phase 1: GPU validation binary (FHE + lattice QCD canary)
-- [ ] Phase 2: Repo extraction to ecoPrimals/barracuda/
-- [ ] Phase 2: SemVer 1.0.0 release
-- [ ] Phase 3: Springs rewire to direct barracuda dependency
-- [ ] Phase 4: Multi-primal Spring evolution (BearDog, NestGate in Springs)
+- [ ] Phase 1: SemVer 1.0.0 release
+- [ ] Phase 2: Springs rewire to direct barraCuda dependency
+- [ ] Phase 3: Multi-primal Spring evolution (BearDog, NestGate in Springs)
+- [ ] Phase 4: ToadStool deprecates internal barracuda, depends on standalone barraCuda
 
-Key insight: BearDog (crypto scaffolding) + BarraCUDA (FHE GPU compute) compose
+Key insight: BearDog (crypto scaffolding) + barraCuda (FHE GPU compute) compose
 at the IPC level for sovereign encrypted computation. Neither depends on the other
-at the crate level. This is the only cross-vendor FHE-on-GPU implementation.
+at the crate level.
 
 ### Sovereign Phase 4+ — naga-IR Optimizer Evolution
 
@@ -117,7 +121,20 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 
 ---
 
-## Completed This Session (S87)
+## Completed This Session (S89)
+
+### Session 89: barraCuda Primal Budding
+- Full barracuda crate extracted to `ecoPrimals/barraCuda/` (956 .rs, 767 WGSL, 61 tests)
+- `toadstool-core` gated behind `#[cfg(feature = "toadstool")]` — 1 file: `device/toadstool_integration.rs`
+- `akida-driver` gated behind `#[cfg(feature = "npu-akida")]` — `npu/ml_backend.rs` + `npu/ops/` + bridge callsites
+- `DeviceSelection`/`HardwareWorkload` extracted to `device/mod.rs` (zero external deps)
+- `barracuda-core` wired: `BarraCudaPrimal::start()` runs device discovery, health reports adapter info
+- Standalone quality: `cargo check/clippy/test` all pass (2,832 tests, 0 failures)
+- MSRV 1.87 (code uses `is_multiple_of`)
+- toadStool completely unchanged
+- Pushed to GitHub: `ecoPrimals/barraCuda`
+
+## Completed (S87-S88)
 
 ### Session 87: Deep Debt Resolution + Idiomatic Concurrent Rust + Code Quality
 - TODO(afit) → NOTE(async-dyn): 75 instances across 52 files (reclassified from debt to architectural decision)

@@ -1,7 +1,7 @@
 # barraCuda Primal Budding — Architecture Spec
 
-**Date**: March 2, 2026 (Session 88)
-**Status**: RFC — pending Spring feedback
+**Date**: March 2, 2026 (Session 88–89)
+**Status**: Phase 0 complete — extraction done, standalone passing
 **Classification**: Core architecture evolution
 **Handoff**: `ecoPrimals/wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`
 **Scaffold**: `ecoPrimals/barraCuda/` (created via sourDough)
@@ -68,31 +68,34 @@ This direction stays — ToadStool depends on barraCuda, not the reverse.
 
 ---
 
-## Phase 0 — Decouple (This Session Onward)
+## Phase 0 — Decouple ✅ COMPLETE (Session 89)
 
-### 0.1 Feature-gate toadstool-core in barracuda
+### 0.1 Feature-gate toadstool-core ✅
 
 ```toml
-# Target: crates/barracuda/Cargo.toml
+# barraCuda/crates/barracuda/Cargo.toml
 [features]
 default = ["gpu"]
-gpu = ["wgpu", "bytemuck", "naga"]
-toadstool = ["toadstool-core"]  # NEW: optional integration
+gpu = ["dep:wgpu", "dep:bytemuck", "dep:naga"]
+toadstool = ["dep:toadstool-core"]   # optional
+npu-akida = ["dep:akida-driver"]     # optional
 ```
 
-All code that touches `toadstool-core` moves behind `#[cfg(feature = "toadstool")]`.
-barraCuda compiles and passes all tests without this feature.
+Decoupling surface (only 2 files):
+- `src/device/toadstool_integration.rs` → `#[cfg(feature = "toadstool")]`
+- `src/npu/ml_backend.rs` + `src/npu/ops/` → `#[cfg(feature = "npu-akida")]`
+- `DeviceSelection`/`HardwareWorkload` extracted to `device/mod.rs` (always available)
+- `npu_bridge.rs` stubbed: `is_npu_available() → false` when `npu-akida` off
 
-### 0.2 Standalone compilation gate
-
-Add to CI:
+### 0.2 Standalone compilation ✅
 
 ```bash
-cargo check -p barracuda --no-default-features --features gpu
-cargo test -p barracuda --no-default-features --features gpu
+cd barraCuda && cargo check -p barracuda          # clean
+cd barraCuda && cargo clippy -p barracuda -- -D warnings  # clean
+cd barraCuda && cargo test -p barracuda --lib      # 2,832 passed, 0 failed
 ```
 
-This proves barracuda has no hard dependency on toadstool-core.
+40 tests gated behind `toadstool`/`npu-akida` features (from toadStool's 2,872).
 
 ### 0.3 API surface audit
 
@@ -146,23 +149,25 @@ compute before running domain workloads.
 
 ---
 
-## Phase 2 — Repo Extraction
+## Phase 2 — Repo Extraction ✅ COMPLETE (Session 89)
 
-### 2.1 Create ecoPrimals/barracuda/
+### 2.1 ecoPrimals/barraCuda/ — live on GitHub
 
 ```
-ecoPrimals/barracuda/
+ecoPrimals/barraCuda/
 ├── crates/
-│   ├── barracuda-core/       (tensor, device, shader compilation)
-│   ├── barracuda-ops/        (all ops, shaders, FHE, linalg)
-│   └── barracuda-esn/        (ESN, nautilus, reservoir computing)
-├── specs/                    (moved from toadStool/specs/BARRACUDA_*)
-├── tests/                    (integration, chaos, fault, cross-vendor)
-├── CHANGELOG.md
-├── BREAKING_CHANGES.md
-├── Cargo.toml
-└── README.md
+│   ├── barracuda-core/       (primal lifecycle, device discovery, health)
+│   ├── barracuda/            (full compute library: 956 .rs, 767 WGSL, 61 tests)
+├── specs/
+│   └── BARRACUDA_SPECIFICATION.md
+├── Cargo.toml                (workspace, MSRV 1.87)
+├── Cargo.lock
+├── README.md
+└── .gitignore
 ```
+
+Sub-crate split (barracuda-ops, barracuda-esn, etc.) is future evolution
+*after* Springs validate the standalone library.
 
 ### 2.2 ToadStool workspace update
 
@@ -255,9 +260,13 @@ through computational substrates, discovering barraCuda instances for GPU math.
 
 ## Success Criteria
 
-- [ ] `cargo check -p barracuda --no-default-features --features gpu` passes
-- [ ] `cargo test -p barracuda --no-default-features --features gpu` passes (2,866+ tests)
-- [ ] No `toadstool-core` usage without `#[cfg(feature = "toadstool")]`
+- [x] `cargo check -p barracuda --features gpu` passes (S89)
+- [x] `cargo clippy -p barracuda -- -D warnings` passes (S89)
+- [x] `cargo test -p barracuda --lib` passes — 2,832 tests, 0 failures (S89)
+- [x] No `toadstool-core` usage without `#[cfg(feature = "toadstool")]` (S89)
+- [x] No `akida-driver` usage without `#[cfg(feature = "npu-akida")]` (S89)
+- [x] barracuda-core wired to barracuda compute library (S89)
+- [x] toadStool unchanged — all original tests still pass (S89)
 - [ ] All 5 Springs can build against barracuda without toadstool workspace
 - [ ] `barracuda validate-gpu` binary exists and passes on Intel, AMD, NVIDIA
 - [ ] SemVer CHANGELOG tracks every API change

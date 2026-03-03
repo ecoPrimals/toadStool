@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - March 2, 2026 (Sessions 43-88 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
 
+### Session 89 (Mar 2, 2026) — barraCuda Primal Budding Complete
+
+- **barraCuda extraction**: Full barracuda crate (956 .rs files, 767 WGSL shaders, 61 test files) extracted to standalone `ecoPrimals/barraCuda/` repository
+- **Decoupling**: `toadstool-core` gated behind `#[cfg(feature = "toadstool")]` (1 file), `akida-driver` gated behind `#[cfg(feature = "npu-akida")]` (1 file + ops + bridge)
+- **Type extraction**: `DeviceSelection` and `HardwareWorkload` enums moved from `toadstool_integration.rs` to `device/mod.rs` (always available, no external deps)
+- **barracuda-core wired**: `BarraCudaPrimal` now wraps device discovery and health reporting from barracuda compute library
+- **Quality**: `cargo check`, `cargo clippy -- -D warnings`, `cargo test --lib` all pass (2,832 tests, 0 failures)
+- **MSRV**: bumped to 1.87 (code uses `is_multiple_of`, stable since 1.87)
+- **toadStool unchanged**: zero modifications to toadStool source, all original tests still pass
+- **Pushed to GitHub**: `ecoPrimals/barraCuda` repository live
+
 ### Session 88 (Mar 2, 2026) — Cross-Spring Absorption + API Gaps + Shader Evolution
 
 - **Spring absorption tracker**: Created `SPRING_ABSORPTION_TRACKER.md` and `BREAKING_CHANGES.md` at root for cross-spring visibility
