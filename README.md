@@ -308,7 +308,7 @@ toadStool/
 
 ### Active / Next
 - **ComputeDispatch migration** -- 144/280+ ops migrated; ~139 legacy ops use manual BGL/BG boilerplate (incremental)
-- **DF64 as default path** -- df64_rewrite as default precision, not fallback (groundSpring V35)
+- **DF64 as default path** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities, barraCuda owns precision strategy
 - **NpuDispatch trait** -- generic NPU interface (airSpring/wetSpring/groundSpring converge)
 - **Test coverage** -- pushing toward 90% target; 5,369 tests; +47 in S91-92 (monitoring, templates, installer, connection, wasm_ops, session)
 - **DF64 transcendental coverage** -- COMPLETE: 15 functions (exp, log, sin, cos, tan, sqrt, pow, asin, acos, atan, atan2, sinh, cosh, gamma, erf)
@@ -338,7 +338,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 | ID | Description | Status |
 |----|-------------|--------|
 | D-CD | ComputeDispatch migration (~139 legacy ops) | Active -- incremental, 144 done |
-| D-DF64 | DF64 as default path (not fallback) | Active -- architectural |
+| D-DF64 | DF64 as default path (not fallback) | Transferred to barraCuda team (S93) |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Active -- design phase |
 | D-COV | Test coverage → 90% | Active -- 5,369 tests; S92 +47 tests in CLI, server, auto_config |
 | D-SOV | Sovereignty deprecation migration | Active -- legacy primal-name APIs deprecated, callers migrating |

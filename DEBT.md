@@ -74,7 +74,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
 | D-CD | ComputeDispatch migration | High | 144/280+ ops migrated (~14,000+ lines removed). ~139 legacy ops use manual BGL/BG boilerplate. Incremental — each op is ~80 lines → ~5 lines. Full audit S86 identified ops in subdirs (bio/, md/, lattice/, complex/, linalg/). |
-| D-DF64 | DF64 as default precision path | Medium | `df64_rewrite` as default, not fallback (groundSpring V35). Architectural decision. |
+| D-DF64 | DF64 as default precision path | — | **Transferred to barraCuda team (S93).** barraCuda owns precision strategy (f64/df64/f32 validation, shader selection). toadStool serves hardware capabilities (cache hierarchy, core ratios, FP64:FP32 rate). Handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`. |
 | D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
 | D-COV | Test coverage → 90% | Medium | S92: 5,369 lib tests pass (0 failures). S91 added 47 tests to 0%-coverage modules (monitoring, templates, installer, connection, wasm_ops, session). Middleware removed (dead code). Pure-rust build verified clean. |
 | D-SOV | Sovereignty: primal-name → capability | Medium | S92: Deprecated `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider`. Migrated NestGate client to `get_socket_path_for_capability`. Added `EcosystemDiscoverer::find_pattern_by_capability()`. Remaining: `EcosystemDiscoverer::new()` uses primal-name keys (benign — capability data is attached). |

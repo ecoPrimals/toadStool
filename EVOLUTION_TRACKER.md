@@ -104,7 +104,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
 | D-CD | ComputeDispatch migration (~155+ legacy ops) | High | 144 done (+12 S86: determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat), ~139 remaining (full audit revealed more ops than originally tracked) |
-| D-DF64 | DF64 as default precision path | Medium | Architectural decision pending |
+| D-DF64 | DF64 as default precision path | — | **Transferred to barraCuda team (S93).** toadStool serves hardware capabilities; barraCuda owns precision strategy. |
 | D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
 | D-COV | Test coverage → 90% | Medium | 5,369 tests; +47 in S92 (monitoring, templates, installer, connection, wasm_ops, session); gap in GPU ops, neuromorphic |
 | D-SOV | Sovereignty deprecation migration | Medium | S92: 3 legacy APIs deprecated; NestGate client migrated; remaining callers to follow |

@@ -20,11 +20,13 @@ Recent migrations:
 - S86 (+12): determinant, mse_loss, dice, quantize, dequantize, bce_loss, permute, movedim, logsumexp, index_add, tensor_split, concat
 - See EVOLUTION_TRACKER.md for full migration history
 
-### P1: DF64 Default Path (Architecture)
+### ~~P1: DF64 Default Path~~ → Transferred to barraCuda (S93)
 
-Make `df64_rewrite` the default precision strategy, not a fallback. Currently DF64 activates
-only when `Fp64Strategy::Hybrid` is selected. For consumer GPUs (1:64 FP64:FP32),
-DF64 should be the primary path with native f64 reserved for reductions/convergence.
+**Transferred to barraCuda team.** barraCuda owns precision strategy (f64/df64/f32
+validation, shader selection, `df64_rewrite` as default). toadStool's role is serving
+hardware capabilities: cache hierarchy (L1/L2/Infinity Cache), FP64:FP32 core ratios,
+memory bandwidth — so barraCuda can make data-driven precision decisions.
+See: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`.
 
 ### P1: DF64 Transcendental Coverage
 
@@ -110,7 +112,7 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
 - [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
 - [ ] **ComputeDispatch migration** -- 144/280+ ops migrated; ~139 remaining (incremental)
-- [ ] **DF64 default path** -- df64_rewrite as default, not fallback (groundSpring V35)
+- [x] **DF64 default path** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - [ ] **NpuDispatch trait** -- generic NPU interface
 - [ ] **Test coverage target 90%** -- 5,369 tests; +47 in S91-92 (monitoring, templates, installer, connection, wasm_ops, session)
 - [ ] **Sovereignty migration** -- deprecated primal-name APIs need callers migrated to capability-based APIs
