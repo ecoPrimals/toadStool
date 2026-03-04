@@ -70,10 +70,8 @@ pub struct ServerState {
 
     /// Workload manager
     pub workload_manager: Arc<WorkloadManager>,
-
-    /// Nautilus evolutionary reservoir brain (CPU-only)
-    #[cfg(feature = "nautilus")]
-    pub nautilus_brain: super::nautilus_handlers::NautilusBrainState,
+    // Nautilus methods are proxied to barraCuda via capability-based IPC.
+    // No local state needed — barraCuda owns the brain.
 }
 
 /// JSON-RPC 2.0 request
@@ -135,8 +133,6 @@ pub async fn start_jsonrpc_server(
     let state = ServerState {
         start_time: Instant::now(),
         workload_manager,
-        #[cfg(feature = "nautilus")]
-        nautilus_brain: super::nautilus_handlers::create_brain("toadstool"),
     };
 
     // Remove existing socket if present
@@ -238,7 +234,7 @@ async fn handle_request(request: JsonRpcRequest, state: &ServerState) -> JsonRpc
         "daemon.list_workloads" => handle_list_workloads(state).await,
         #[cfg(feature = "nautilus")]
         method if method.starts_with("ai.nautilus.") => {
-            route_nautilus(method, &request.params, &state.nautilus_brain).await
+            route_nautilus(method, &request.params).await
         }
         _ => Err(JsonRpcError {
             code: error_codes::METHOD_NOT_FOUND,
@@ -398,36 +394,16 @@ async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcErro
     }))
 }
 
-/// Route `ai.nautilus.*` methods to their handlers.
+/// Proxy `ai.nautilus.*` methods to barraCuda via capability-based IPC.
 #[cfg(feature = "nautilus")]
-async fn route_nautilus(
-    method: &str,
-    params: &Value,
-    brain: &super::nautilus_handlers::NautilusBrainState,
-) -> Result<Value, JsonRpcError> {
-    use super::nautilus_handlers as nh;
-    let result = match method {
-        "ai.nautilus.status" => nh::handle_status(brain).await,
-        "ai.nautilus.observe" => nh::handle_observe(brain, params).await,
-        "ai.nautilus.train" => nh::handle_train(brain).await,
-        "ai.nautilus.predict" => nh::handle_predict(brain, params).await,
-        "ai.nautilus.screen" => nh::handle_screen(brain, params).await,
-        "ai.nautilus.edges" => nh::handle_edges(brain).await,
-        "ai.nautilus.shell.export" => nh::handle_shell_export(brain).await,
-        "ai.nautilus.shell.import" => nh::handle_shell_import(brain, params).await,
-        _ => {
-            return Err(JsonRpcError {
-                code: error_codes::METHOD_NOT_FOUND,
-                message: format!("Method not found: {method}"),
-                data: None,
-            })
-        }
-    };
-    result.map_err(|e| JsonRpcError {
-        code: e.code,
-        message: e.message,
-        data: None,
-    })
+async fn route_nautilus(method: &str, params: &Value) -> Result<Value, JsonRpcError> {
+    super::nautilus_handlers::proxy_to_barracuda(method, params)
+        .await
+        .map_err(|e| JsonRpcError {
+            code: e.code,
+            message: e.message,
+            data: None,
+        })
 }
 
 #[cfg(test)]
@@ -452,8 +428,6 @@ mod tests {
         let state = Arc::new(ServerState {
             start_time: Instant::now(),
             workload_manager,
-            #[cfg(feature = "nautilus")]
-            nautilus_brain: crate::daemon::nautilus_handlers::create_brain("test"),
         });
 
         if socket_path.exists() {

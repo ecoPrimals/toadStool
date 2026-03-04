@@ -12,7 +12,7 @@
 //!
 //! ## Design
 //!
-//! Complements `ManualJsonRpcServer` from toadstool-server.
+//! Complements `pure_jsonrpc::JsonRpcHandler` from toadstool-server.
 //! Same protocol, different transport (unix socket vs HTTP).
 
 use serde::{Deserialize, Serialize};

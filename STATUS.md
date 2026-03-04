@@ -1,4 +1,4 @@
-# Status -- March 3, 2026 (Session 93)
+# Status -- March 3, 2026 (Session 94b)
 
 ## Quality Gates
 
@@ -21,23 +21,23 @@
 
 | Metric | Value |
 |--------|-------|
-| WGSL shaders | **845** (S88: +lbfgs_two_loop_f64.wgsl; zero orphans, 37 DF64 + 15 folding + 200+ f64, all f64 canonical) |
+| WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
 | Rust version | **1.80+** (std::sync::LazyLock) |
 | `unsafe` blocks | **~60+** (all `// SAFETY:` documented; barracuda + runtime/gpu; GPU APIs, aligned alloc, FFI) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
-| Production mocks/stubs | **0** — all evolved to real implementations or proper errors |
+| Production mocks/stubs | **0** — all evolved to real implementations or proper errors (NestGate store/retrieve evolved S94b) |
 | Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (32+ large files smart-refactored to domain modules) |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
-| Hardcoded IPs/ports | **0** — named constants throughout |
+| Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b) |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
 | SPDX headers | **100%** — all .rs files have AGPL-3.0-or-later (S90) |
-| Sovereignty | **Deprecated** `get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider` (S92). Capability-based APIs promoted. BearDog user-facing strings neutralized. |
+| Sovereignty | **RESOLVED** (S94b). All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated. BearDog user-facing strings neutralized. |
 | ecoBin | **PyO3 optional** — `pure-rust` feature compiles cleanly with zero C FFI deps (S90, verified S92) |
 | unsafe docs | **100%** — all `unsafe` blocks have `// SAFETY:` comments (S90) |
 | Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90) |
@@ -61,9 +61,9 @@
 
 ### Server / IPC
 - **pure_jsonrpc**: Full JSON-RPC 2.0 with SemanticMethodRegistry, Unix/TCP serving, Cow zero-copy
-- **manual_jsonrpc**: Fully deprecated (all handlers ported to pure_jsonrpc)
 - **Error codes**: Proper `WORKLOAD_NOT_FOUND` (-32000) for job queue errors
 - **Coordinator cancel**: Real `CancellationToken`-based execution cancellation
+- **NestGate**: Real JSON-RPC `storage.artifact.store`/`retrieve` with graceful degradation
 
 ### Testing Infrastructure
 - **Fully concurrent**: All tests run with `--test-threads=8`, zero serial tests
@@ -85,6 +85,16 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Session 94b (Mar 3, 2026) — Deep Debt Execution + Spring Absorption
+- **D-NPU RESOLVED**: Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter in `toadstool-core`. `NpuParameterController` trait absorbed from hotSpring.
+- **D-SOV RESOLVED**: All 7 production callers of `get_socket_path_for_service` migrated to `get_socket_path_for_capability()` (beardog, songbird, biomeos auth/agent/storage, CLI service discovery, CLI zero-config discovery).
+- **GPU capability probing**: `GpuAdapterInfo` struct exposes driver, f64 support, workgroup limits, max buffer size for barraCuda's driver profiling. Multi-adapter GPU selection via `TOADSTOOL_GPU_ADAPTER` env var (absorbed from hotSpring).
+- **NestGate mocks eliminated**: `store_artifact`/`retrieve_artifact` evolved from stubs to real JSON-RPC `storage.artifact.store`/`storage.artifact.retrieve` with graceful fallback.
+- **Hardcoded ports evolved**: CLI `8080` and `9090` replaced with `ConfigUtils::get_toadstool_port()` and `ports::toadstool::METRICS`.
+- **integration-tests stabilized**: barracuda dependency made optional (zero imports found).
+- **Placeholder removed**: `management/resources` crate excluded from workspace.
+- All quality gates green: 0 clippy warnings, 0 fmt diffs, 0 doc warnings, 5,369 tests passing.
 
 ### Session 93 (Mar 3, 2026) — D-DF64 Transfer & Root Doc Cleanup
 - **D-DF64, D-CD, barraCuda budding, naga-IR optimizer, DF64 transcendentals, arch-specific polynomials** all transferred to barraCuda team

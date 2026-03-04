@@ -71,19 +71,19 @@ impl OpenClComputeUnit {
     /// 3. wgpu has better async support
     /// 4. Maintaining two GPU backends adds complexity
     ///
-    /// **If you need GPU compute**, use:
-    /// ```rust
-    /// use barracuda::device::WgpuDevice;
-    /// let device = WgpuDevice::new().await?;
-    /// ```
+    /// **If you need GPU compute**, use `wgpu` via `toadstool-runtime-gpu` or
+    /// discover barraCuda via capability-based IPC.
     ///
     /// Returns clear error directing users to wgpu
-    #[deprecated(since = "0.2.0", note = "Use barracuda::device::WgpuDevice")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use wgpu backend or discover barraCuda via compute capability"
+    )]
     pub fn from_device(_device: ocl::Device) -> Result<Self, ComputeError> {
         Err(ComputeError::BackendError(
             "OpenCL backend not available. Install OpenCL ICD for your platform \
              (e.g. ocl-icd-opencl-dev on Debian) and enable the 'opencl' feature. \
-             For production, prefer wgpu: use barracuda::device::WgpuDevice (pure Rust, safer)."
+             For production, prefer wgpu via toadstool-runtime-gpu (pure Rust, safer)."
                 .to_string(),
         ))
     }
@@ -103,7 +103,7 @@ impl ComputeUnit for OpenClComputeUnit {
         // Capability-based fallback: clear error when OpenCL isn't available
         Err(ComputeError::ExecutionFailed(
             "OpenCL backend not available. Install OpenCL ICD and enable the 'opencl' feature. \
-             For production, migrate to wgpu: use barracuda::device::WgpuDevice. \
+             For production, migrate to wgpu via toadstool-runtime-gpu. \
              See docs/architecture/UNIVERSAL_GPU_STRATEGY.md for migration guide."
                 .to_string(),
         ))

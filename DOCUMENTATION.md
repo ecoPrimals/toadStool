@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 3, 2026 -- Session 93
+**Last Updated**: March 3, 2026 -- Session 94b
 
 ---
 
@@ -18,9 +18,9 @@
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
 | See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-44-total) |
-| Try GPU operations | [docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md) |
+| Try GPU operations | See barraCuda (`ecoPrimals/barraCuda/`) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
-| Use scientific computing | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api) |
+| Use scientific computing | See barraCuda (`ecoPrimals/barraCuda/`) |
 | Run tests | [docs/guides/TESTING.md](docs/guides/TESTING.md) |
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
@@ -29,30 +29,23 @@
 
 ---
 
-## Current State (Session 92 — March 3, 2026)
+## Current State (Session 94b — March 3, 2026)
 
-**Still evolving.** Deep debt swept across 92 sessions. 144 GPU ops migrated to ComputeDispatch (~139 remaining). Module architecture clean — 35+ god files smart-refactored. REST API and middleware fully removed — JSON-RPC 2.0 is the only API path. Sovereignty evolution: legacy primal-name APIs deprecated, capability-based APIs promoted.
+**Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration.
 
 - **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery via `poll_safe()`.
 - **ecoBin verified** — `pure-rust` feature compiles with zero C FFI dependencies. PyO3 feature-gated.
-- **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests. NVK GPU resilience wrappers on 40+ test files.
+- **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, ~60+ justified `unsafe` blocks (all SAFETY documented), zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `unimplemented!()`, zero FIXME/HACK, zero `dbg!()`. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
-- **Sovereignty** — Legacy APIs (`get_socket_path_for_service`, `get_primal_default_port`, `capability_typical_provider`) deprecated since 0.92.0. NestGate client migrated. `find_pattern_by_capability()` added. BearDog strings neutralized.
+- **Sovereignty RESOLVED** — All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated.
+- **NPU dispatch** — Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. `NpuParameterController` trait (absorbed from hotSpring).
+- **GPU capability probing** — `GpuAdapterInfo` struct exposes detailed adapter info for barraCuda. Multi-adapter selection via `TOADSTOOL_GPU_ADAPTER`.
+- **NestGate integration** — Real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback.
 - **Module architecture** — 35+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
-- **Dual-layer universal precision** — Layer 1: `op_preamble`. Layer 2: naga-guided `df64_rewrite`. `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
-- **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
-- **845 WGSL shaders** — zero orphans, 37 DF64, 15 folding, **zero f32-only**. All f64 canonical.
-- **2,866 barracuda tests** + 5,369 workspace lib tests | all quality gates green (0 warnings)
-- **barracuda::nautilus** — standalone evolutionary reservoir computing (7 files, 22 tests)
-- **44 JSON-RPC methods** across 9 domains (8 `ai.nautilus.*` methods for evolutionary AI)
+- **5,369 workspace lib tests** | all quality gates green (0 warnings)
+- **44 JSON-RPC methods** across 9 domains
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
-- **BatchedEncoder** — fused multi-op GPU pipelines (single `queue.submit()`)
-- **Batch Nelder-Mead GPU** — N parallel optimizations via batched simplex shaders
-- **GpuDriverProfile workarounds** — sin/cos F64 Taylor preamble for NVK
-- **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU
-- **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory
-- **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields + DF64 variants
 
 ---
 
@@ -88,23 +81,21 @@
 
 **[docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment.
 
-**[docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md)** -- BarraCuda quick start.
+BarraCuda guides have been fossilized to `ecoPrimals/fossil/toadStool/docs-S94b/`. See the barraCuda primal for current docs.
 
 ---
 
 ## Scientific Middleware
 
-**[QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api)** -- API reference with usage examples for all middleware modules (linalg, numerical, special, stats, optimize, surrogate, sample, PDE, mixing, grids).
-
-Archived: `BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md` and `PHASE1_COMPLETION_REPORT.md` moved to `ecoPrimals/fossil/`.
+Scientific computing middleware (linalg, numerical, special, stats, optimize, surrogate, sample, PDE) has moved to **barraCuda** (`ecoPrimals/barraCuda/`). Legacy API examples are preserved in [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api) for reference.
 
 ---
 
 ## By Role
 
-**ML/AI Engineers**: [README.md](README.md) then [docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md)
+**ML/AI Engineers**: [README.md](README.md) then see barraCuda (`ecoPrimals/barraCuda/`)
 
-**Computational Scientists**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api) then `cargo doc -p barracuda --open`
+**Computational Scientists**: See barraCuda (`ecoPrimals/barraCuda/`) for scientific middleware
 
 **System Architects**: [STATUS.md](STATUS.md) then [specs/](specs/)
 

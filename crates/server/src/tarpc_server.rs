@@ -500,7 +500,7 @@ impl WorkloadExecutor for StandaloneExecutor {
         // To enable real backend dispatch here, define a workload protocol:
         // 1. submission.data should contain serialized operation spec
         // 2. Parse to determine: operation type, input tensors, parameters
-        // 3. Dispatch via barracuda::dispatch::dispatch_for() based on workload_type
+        // 3. Dispatch via barraCuda (discovered at runtime via compute capability IPC)
         //
         // Current implementation: Returns processed result based on input size.
         // This allows testing the full RPC pipeline without backend setup.

@@ -1,7 +1,7 @@
 # Spring Absorption Tracker
 
-**Session**: S93 (March 3, 2026)
-**ToadStool**: master, 5,369 workspace tests. D-DF64/D-CD transferred to barraCuda team.
+**Session**: S94b (March 3, 2026)
+**ToadStool**: master, 5,369 workspace tests. D-DF64/D-CD transferred to barraCuda team. D-NPU/D-SOV resolved.
 
 ## Spring Pin Status
 

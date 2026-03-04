@@ -126,11 +126,7 @@ impl ZeroConfigDeployment {
         let coordination_provider_available = self.ecosystem_services.songbird.is_some()
             || std::env::var("TOADSTOOL_COORDINATION_PROVIDER").is_ok();
 
-        // ✅ DEEP DEBT: Dynamic port allocation, not hardcoded 8080
-        let host_port = std::env::var("TOADSTOOL_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(8080); // Fallback only
+        let host_port = toadstool_config::config_utils::ConfigUtils::get_toadstool_port();
 
         Ok(NetworkConfig {
             mode: "bridge".to_string(),

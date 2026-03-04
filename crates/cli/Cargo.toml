@@ -111,8 +111,8 @@ base64 = "0.22"
 sha2 = "0.10"
 hex = "0.4"
 
-# Evolutionary reservoir computing (CPU-only, no GPU dep)
-barracuda = { path = "../../../../barraCuda/crates/barracuda", default-features = false, optional = true }
+# barracuda removed S94b: nautilus methods are now proxied to barraCuda via
+# capability-based IPC (JSON-RPC over Unix socket). Zero library coupling.
 
 # Template engine
 handlebars = "4.5"
@@ -159,8 +159,8 @@ gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibilit
 # NPU FEATURES: Neuromorphic accelerator support
 npu = []  # Enables Akida NPU commands
 
-# Nautilus evolutionary reservoir (CPU-only barracuda)
-nautilus = ["dep:barracuda"]
+# Nautilus: proxied to barraCuda via capability-based IPC (zero library dep)
+nautilus = []
 
 # PURE RUST: Build without C dependencies (no WASM, minimal features)
 pure-rust = ["ecosystem", "universal", "monitoring"]

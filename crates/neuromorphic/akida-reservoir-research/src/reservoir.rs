@@ -134,8 +134,8 @@ impl ReservoirGenerator {
         debug!("Scaling to spectral radius {}", self.config.spectral_radius);
 
         // For simplicity, we use Frobenius norm as a cheap approximation.
-        // Pending: Use barracuda::ops::linalg::Eigh for exact spectral radius when this
-        // crate adopts barracuda tensors; current ndarray-based code would need a migration.
+        // Pending: exact spectral radius via eigenvalue decomposition; current ndarray-based
+        // code uses Frobenius norm as a cheap approximation.
         let frobenius_norm = w_res.iter().map(|&x| x * x).sum::<f32>().sqrt();
 
         let scaling_factor = self.config.spectral_radius / frobenius_norm;

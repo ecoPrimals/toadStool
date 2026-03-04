@@ -31,15 +31,15 @@ run_tier1() {
         "toadstool-common"
         "toadstool-config"
         "toadstool"
+        "toadstool-core"
         "toadstool-cli"
         "toadstool-server"
-        "toadstool-api"
         "toadstool-distributed"
         "toadstool-auto-config"
         "toadstool-security-sandbox"
         "toadstool-security-policies"
-        "toadstool-management-resources"
         "toadstool-management-performance"
+        "toadstool-management-monitoring"
         "toadstool-management-analytics"
         "toadstool-runtime-wasm"
         "toadstool-runtime-container"
@@ -108,7 +108,7 @@ run_tier2() {
     # Chaos Tests
     echo -e "${YELLOW}Running chaos tests...${NC}"
     cargo test -p toadstool-cli --test chaos_resource_scenarios_week4 2>&1 | grep -E "test result|error" || true
-    cargo test -p barracuda --test fault_injection 2>&1 | grep -E "test result|error" || true
+    cargo test -p toadstool-testing -- --test-threads=1 2>&1 | grep -E "test result|error" || true
     
     # Long-running E2E (optional, can take hours)
     if [ "${RUN_LONG_E2E:-false}" = "true" ]; then

@@ -1,9 +1,8 @@
 # ToadStool Documentation
 
-**Updated**: March 2, 2026 -- Session 86
+**Updated**: March 3, 2026 -- Session 94b
 
-Old integration guides (biomeOS, error codes, collaborative intelligence examples) archived to `ecoPrimals/fossil/toadStool-archives/docs-archive-session68/`. Stale demos, showcase docs, orphaned examples, and superseded scripts archived to `ecoPrimals/fossil/toadStool/session68+++/`.
-
+Old integration guides and barracuda-specific docs archived to `ecoPrimals/fossil/toadStool/`.
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub.
 
 ---
@@ -23,7 +22,7 @@ Primary documentation lives at the repository root. See [../DOCUMENTATION.md](..
 
 ### Guides
 - **[guides/TESTING.md](guides/TESTING.md)** -- Testing strategy
-- **[guides/BARRACUDA_V2_QUICKSTART.md](guides/BARRACUDA_V2_QUICKSTART.md)** -- BarraCuda GPU quick start
+- **[guides/AKIDA_DRIVER_DEPLOYMENT.md](guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment
 
 ### Reference
 - **[reference/](reference/)** -- Constants, types, server methods, config patterns

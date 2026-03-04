@@ -1,6 +1,6 @@
-# ToadStool + BarraCuda Specifications
+# ToadStool Specifications
 
-## Current Status (March 3, 2026 — Session 93)
+## Current Status (March 3, 2026 — Session 94b)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -15,16 +15,17 @@
 - **ecoBin pure-rust verified** — zero C FFI deps
 - **D-DF64 + D-CD transferred to barraCuda team (S93)**
 
-**Latest (Mar 3 — Session 93):**
+**Latest (Mar 3 — Session 94b):**
 
 | Update | Impact |
 |--------|--------|
-| **D-DF64/D-CD transfer** | Precision strategy, ComputeDispatch, naga-IR optimizer → barraCuda team |
-| **Root doc cleanup** | All docs refocused on toadStool-owned work |
-| **Debris cleanup** | 12 stale docs deleted (~90 KB) |
-| **Handoff** | `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md` |
+| **D-NPU resolved** | Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter + `NpuParameterController` |
+| **D-SOV resolved** | All 7 production callers migrated to capability-based discovery |
+| **GPU probing** | `GpuAdapterInfo` + multi-adapter selection for barraCuda |
+| **NestGate mocks eliminated** | Real JSON-RPC `storage.artifact.store`/`retrieve` with fallback |
+| **Hardcoded ports evolved** | CLI `8080`/`9090` → config constants |
 
-**Remaining toadStool debt:** D-NPU, D-COV (90% target), D-SOV, vfio.rs refactoring
+**Remaining toadStool debt:** D-COV (90% target)
 
 ---
 
@@ -248,6 +249,7 @@ ToadStool core.
 - **Immediate work:** `../NEXT_STEPS.md`
 - **Planning docs:** `docs/planning/`
 - **Benchmarks:** `showcase/cross-platform/`
-- **Shaders:** `crates/barracuda/src/shaders/`
-- **Device layer:** `crates/barracuda/src/device/`
-- **Tests:** `cargo test -p barracuda`
+- **Hardware traits:** `crates/toadstool-core/src/` (NpuDispatch, NpuParameterController)
+- **GPU backends:** `crates/runtime/universal/src/backends/`
+- **Tests:** `cargo test --workspace`
+- **barraCuda (math/shaders):** `ecoPrimals/barraCuda/`

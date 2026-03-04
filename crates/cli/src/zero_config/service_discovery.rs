@@ -2,8 +2,7 @@
 //! Service discovery implementations
 //!
 //! Provides multiple discovery mechanisms for finding ecosystem services:
-#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
-//! - Filesystem (biomeOS runtime directory - primal socket files)
+//! - Filesystem (biomeOS runtime directory - capability socket files)
 //! - mDNS/Multicast DNS (local network)
 //! - DNS-SD/Service Discovery (DNS-based)
 //! - Localhost fallback (development)
@@ -16,8 +15,6 @@ use tokio::time::timeout;
 use tracing::debug;
 
 use super::types::ServiceEndpoint;
-use toadstool_common::constants::ecosystem::well_known;
-use toadstool_common::primal_sockets::get_socket_path_for_service;
 
 /// Bind to any interface with OS-assigned port (mDNS socket)
 const BIND_ANY: &str = "0.0.0.0:0";
@@ -83,9 +80,7 @@ impl ServiceDiscovery {
 
     /// Try filesystem-based discovery (biomeOS runtime directory)
     ///
-    /// Scans the biomeOS runtime directory for primal socket files.
-    /// Uses well_known constants to map capability names to primal socket names.
-    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
+    /// Scans the biomeOS runtime directory for capability socket files.
     #[allow(clippy::unused_async)] // Sync filesystem scan; async for API consistency
     async fn try_filesystem_discovery(
         &self,
@@ -93,23 +88,12 @@ impl ServiceDiscovery {
     ) -> Result<Option<ServiceEndpoint>> {
         debug!("Attempting filesystem discovery for {}", capability_name);
 
-        let primal_name = match capability_name {
-            "orchestration" => well_known::SONGBIRD,
-            "pki" => well_known::BEARDOG,
-            "storage" => well_known::NESTGATE,
-            "ai" => well_known::SQUIRREL,
-            "toadstool" => toadstool_common::constants::primal_identity::PRIMAL_NAME,
-            _ => {
-                debug!("No well-known primal for capability: {}", capability_name);
-                return Ok(None);
-            }
-        };
-
-        let socket_path = get_socket_path_for_service(primal_name);
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_capability(capability_name);
 
         if socket_path.exists() {
             let endpoint = format!("unix://{}", socket_path.display());
-            debug!("Found primal socket: {}", endpoint);
+            debug!("Found capability socket: {}", endpoint);
 
             return Ok(Some(ServiceEndpoint {
                 name: capability_name.to_string(),

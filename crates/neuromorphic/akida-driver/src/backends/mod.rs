@@ -18,7 +18,7 @@ pub mod vfio;
 
 pub use kernel::KernelBackend;
 pub use userspace::UserspaceBackend;
-pub use vfio::VfioBackend;
+pub use vfio::{DmaBuffer, VfioBackend};
 
 /// Read NPU power consumption from hwmon sysfs (pure Rust, no `glob` crate).
 ///

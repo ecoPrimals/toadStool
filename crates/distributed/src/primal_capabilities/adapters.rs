@@ -69,13 +69,11 @@ impl SongbirdAdapter {
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
     pub fn new(songbird_endpoint: &str) -> Result<Self, DistributedError> {
-        // CAPABILITY-BASED: Discover coordination service via shared primal_sockets
-        // (tries discover_coordination_socket, falls back to env-aware songbird path)
-        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_capability("coordination");
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
-        // Get ToadStool's own endpoint from environment (required - primal self-knowledge)
         let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT")
             .map_err(|_| DistributedError::ToadstoolEndpointNotSet)?;
 
@@ -92,8 +90,8 @@ impl SongbirdAdapter {
         songbird_endpoint: &str,
         toadstool_endpoint: String,
     ) -> Result<Self, DistributedError> {
-        // CAPABILITY-BASED: Discover coordination service via shared primal_sockets
-        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_capability("coordination");
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 

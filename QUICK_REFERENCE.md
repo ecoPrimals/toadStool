@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 3, 2026 -- Session 93**
+**March 3, 2026 -- Session 94b**
 
 ---
 
@@ -25,10 +25,10 @@ cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toa
 cargo build --release
 
 # Specific crate
-cargo build --release -p barracuda
 cargo build --release -p toadstool-common
 cargo build --release -p toadstool-server
 cargo build --release -p toadstool-cli
+cargo build --release -p toadstool-core
 ```
 
 ---
@@ -36,8 +36,8 @@ cargo build --release -p toadstool-cli
 ## Test
 
 ```bash
-# Full workspace (excludes barracuda for GPU-optional runs; runs concurrently)
-cargo test --workspace --exclude barracuda -- --test-threads=8
+# Full workspace (runs concurrently)
+cargo test --workspace -- --test-threads=8
 
 # Specific crate
 cargo test -p toadstool-common
@@ -45,14 +45,10 @@ cargo test -p toadstool-server
 cargo test -p toadstool-config
 cargo test -p toadstool-cli
 cargo test -p toadstool-distributed
-
-# BarraCuda (lib tests work without GPU; shader tests require GPU)
-cargo test -p barracuda --lib
-cargo test -p barracuda --lib ops::linalg --release
-cargo test -p barracuda --lib linalg numerical special optimize surrogate --release
+cargo test -p toadstool-core
 
 # Coverage (requires cargo-llvm-cov)
-cargo llvm-cov --workspace --ignore-run-fail --exclude barracuda
+cargo llvm-cov --workspace --ignore-run-fail
 
 # Coverage (core crates combined)
 cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toadstool-server -p toadstool-distributed --summary-only
@@ -259,7 +255,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
 | `toadstool-api` | JSON-RPC API, types (REST + middleware removed; JSON-RPC polling) |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
-| `barracuda` | 845 WGSL shaders (37 DF64, 15 folding, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity, nautilus (evolutionary reservoir computing) |
+| `toadstool-core` | Generic hardware traits (NpuDispatch, NpuParameterController) |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |
 | `toadstool-testing` | Chaos, fault, property, performance testing |
 
@@ -267,7 +263,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 
 ## Scientific Computing Middleware API
 
-> **Shader-First Architecture**: All parallelizable math is implemented as WGSL shaders. ToadStool dispatches to GPU (default) or CPU (fallback/fp64). When fp64 GPUs become available, transition is seamless.
+> **Note**: Scientific computing middleware (linalg, numerical, special, stats, optimize, etc.) has moved to **barraCuda** (`ecoPrimals/barraCuda/`). See `cargo doc -p barracuda --open` in the barraCuda workspace. The examples below reference barraCuda APIs for convenience.
 
 ### Linear Algebra
 
@@ -493,7 +489,7 @@ let (df_drho, df_dz) = cyl.compute(&f_values, &rho_grid, d_rho, d_z).await?;
 ```rust
 use barracuda::device::{Device, WorkloadHint};
 
-// Auto-routing (BarraCuda picks the best device)
+// Auto-routing (barraCuda picks the best device via toadStool capabilities)
 let device = Device::select_for_workload(&WorkloadHint::FFT);
 
 // User override (force CPU even if GPU is available)
@@ -545,8 +541,8 @@ constants::timeouts::*               // Connection, request, etc.
 
 ### Scientific Middleware
 
-API reference: see [Scientific Computing Middleware API](#scientific-computing-middleware-api) above. Full Rust docs: `cargo doc -p barracuda --open`.
+Scientific middleware has moved to barraCuda. See `cargo doc -p barracuda --open` in the barraCuda workspace.
 
 ---
 
-**Last Updated**: March 3, 2026 — Session 92
+**Last Updated**: March 3, 2026 — Session 94b

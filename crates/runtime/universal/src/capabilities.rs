@@ -93,6 +93,10 @@ impl CapabilityDiscovery {
     ///
     /// Catches panics from GPU driver initialization so that headless/CI
     /// environments degrade gracefully to CPU-only instead of segfaulting.
+    ///
+    /// **hotSpring absorption (S94):** Multi-adapter selection with env var
+    /// override. Set `TOADSTOOL_GPU_ADAPTER` to a comma-separated fallback
+    /// list: index (`"0"`), name substring (`"3090,titan"`), or `"auto"`.
     #[cfg(feature = "wgpu-backend")]
     async fn discover_wgpu() -> Vec<Box<dyn ComputeUnit>> {
         use crate::backends::WgpuComputeUnit;
@@ -111,13 +115,71 @@ impl CapabilityDiscovery {
             }
         };
 
-        let mut units = Vec::new();
-        for adapter in adapters {
+        let mut units: Vec<Box<dyn ComputeUnit>> = Vec::new();
+        let mut infos: Vec<(usize, String, bool)> = Vec::new();
+        for (idx, adapter) in adapters.into_iter().enumerate() {
+            let info = adapter.get_info();
+            let has_f64 = adapter.features().contains(wgpu::Features::SHADER_F64);
+            let name = info.name.clone();
             if let Ok(unit) = WgpuComputeUnit::from_adapter(adapter).await {
-                units.push(Box::new(unit) as Box<dyn ComputeUnit>);
+                infos.push((idx, name, has_f64));
+                units.push(Box::new(unit));
             }
         }
 
+        if let Ok(selector) = std::env::var("TOADSTOOL_GPU_ADAPTER") {
+            return Self::select_adapters(&selector, &infos, units);
+        }
+
+        units
+    }
+
+    /// Reorder/filter adapters based on a comma-separated selector string.
+    ///
+    /// Supported selectors: index ("0"), name substring ("3090"), "auto" (best
+    /// discrete GPU with f64). Returns the full list if no selector matches.
+    #[cfg(feature = "wgpu-backend")]
+    fn select_adapters(
+        selector: &str,
+        infos: &[(usize, String, bool)],
+        mut units: Vec<Box<dyn ComputeUnit>>,
+    ) -> Vec<Box<dyn ComputeUnit>> {
+        for token in selector.split(',').map(str::trim) {
+            if token.eq_ignore_ascii_case("auto") {
+                let best = infos
+                    .iter()
+                    .filter(|(_, _, f64_ok)| *f64_ok)
+                    .min_by_key(|(idx, _, _)| *idx);
+                if let Some((idx, name, _)) = best {
+                    eprintln!("[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER=auto → selected [{idx}] {name}");
+                    let unit = units.swap_remove(*idx);
+                    return vec![unit];
+                }
+            } else if let Ok(idx) = token.parse::<usize>() {
+                if idx < units.len() {
+                    eprintln!(
+                        "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={idx} → selected [{}]",
+                        infos[idx].1
+                    );
+                    let unit = units.swap_remove(idx);
+                    return vec![unit];
+                }
+            } else {
+                let lower = token.to_lowercase();
+                if let Some((idx, name, _)) = infos
+                    .iter()
+                    .find(|(_, n, _)| n.to_lowercase().contains(&lower))
+                {
+                    eprintln!("[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={token} → matched [{idx}] {name}");
+                    let unit = units.swap_remove(*idx);
+                    return vec![unit];
+                }
+            }
+        }
+
+        eprintln!(
+            "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={selector} matched no adapter — using all discovered"
+        );
         units
     }
 }

@@ -7,13 +7,60 @@
 use crate::types::*;
 use std::sync::Arc;
 
-/// wgpu compute unit
+/// wgpu compute unit — hardware discovery layer for GPU adapters.
+///
+/// toadStool discovers and exposes adapter identity and limits so that
+/// barraCuda (compute math primal) can make driver-aware decisions
+/// (NVK detection, f64 workarounds, workgroup tuning).
 pub struct WgpuComputeUnit {
     name: String,
     capabilities: Capabilities,
+    adapter_info: GpuAdapterInfo,
     _adapter: wgpu::Adapter,
     _device: Arc<wgpu::Device>,
     _queue: Arc<wgpu::Queue>,
+}
+
+/// Vendor-agnostic GPU adapter identity exposed by toadStool.
+///
+/// barraCuda uses this to build its `GpuDriverProfile` without
+/// depending on wgpu directly — toadStool abstracts the hardware.
+#[derive(Debug, Clone)]
+pub struct GpuAdapterInfo {
+    /// Adapter name (e.g. "NVIDIA GeForce RTX 3090").
+    pub name: String,
+    /// Driver name (e.g. "nvk", "radv", "anv", "nvidia").
+    pub driver: String,
+    /// Driver info / version string.
+    pub driver_info: String,
+    /// Vendor ID (PCI).
+    pub vendor_id: u32,
+    /// Device ID (PCI).
+    pub device_id: u32,
+    /// Backend API (Vulkan, Metal, DX12, etc.).
+    pub backend: String,
+    /// Device type.
+    pub device_type: GpuDeviceType,
+    /// Max compute workgroups per dimension.
+    pub max_compute_workgroups_per_dimension: u32,
+    /// Max compute workgroup size (x * y * z).
+    pub max_compute_workgroup_size_x: u32,
+    pub max_compute_workgroup_size_y: u32,
+    pub max_compute_workgroup_size_z: u32,
+    /// Max buffer size in bytes.
+    pub max_buffer_size: u64,
+    /// Whether shader-f64 feature is supported.
+    pub supports_shader_f64: bool,
+}
+
+/// GPU device type classification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GpuDeviceType {
+    Discrete,
+    Integrated,
+    Virtual,
+    Cpu,
+    Other,
 }
 
 impl WgpuComputeUnit {
@@ -106,13 +153,49 @@ impl WgpuComputeUnit {
             supported_types: vec![DataType::F32, DataType::I32],
         };
 
+        let device_type = match info.device_type {
+            wgpu::DeviceType::DiscreteGpu => GpuDeviceType::Discrete,
+            wgpu::DeviceType::IntegratedGpu => GpuDeviceType::Integrated,
+            wgpu::DeviceType::VirtualGpu => GpuDeviceType::Virtual,
+            wgpu::DeviceType::Cpu => GpuDeviceType::Cpu,
+            _ => GpuDeviceType::Other,
+        };
+
+        let adapter_info = GpuAdapterInfo {
+            name: name.clone(),
+            driver: info.driver.clone(),
+            driver_info: info.driver_info.clone(),
+            vendor_id: info.vendor,
+            device_id: info.device,
+            backend: format!("{:?}", info.backend),
+            device_type,
+            max_compute_workgroups_per_dimension: limits.max_compute_workgroups_per_dimension,
+            max_compute_workgroup_size_x: limits.max_compute_workgroup_size_x,
+            max_compute_workgroup_size_y: limits.max_compute_workgroup_size_y,
+            max_compute_workgroup_size_z: limits.max_compute_workgroup_size_z,
+            max_buffer_size: limits.max_buffer_size,
+            supports_shader_f64: adapter.features().contains(wgpu::Features::SHADER_F64),
+        };
+
         Ok(Self {
             name,
             capabilities,
+            adapter_info,
             _adapter: adapter,
             _device: Arc::new(device),
             _queue: Arc::new(queue),
         })
+    }
+}
+
+impl WgpuComputeUnit {
+    /// Get the adapter identity info for driver-aware decisions.
+    ///
+    /// barraCuda reads this to build its `GpuDriverProfile` (NVK detection,
+    /// f64 workarounds, workgroup tuning) without depending on wgpu.
+    #[must_use]
+    pub fn adapter_info(&self) -> &GpuAdapterInfo {
+        &self.adapter_info
     }
 }
 
@@ -127,9 +210,12 @@ impl ComputeUnit for WgpuComputeUnit {
     }
 
     async fn execute(&self, _workload: Workload) -> Result<Output, ComputeError> {
-        // Placeholder - full implementation would use wgpu compute pipeline
+        // toadStool provides hardware discovery and capability probing.
+        // GPU compute dispatch (shaders, pipelines) is barraCuda's domain.
+        // Use barraCuda's ComputeDispatch for actual GPU execution.
         Err(ComputeError::ExecutionFailed(
-            "wgpu execution not yet fully implemented in universal runtime".to_string(),
+            "GPU compute dispatch is barraCuda's domain — discover via 'compute' capability IPC"
+                .to_string(),
         ))
     }
 }

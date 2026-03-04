@@ -13,8 +13,6 @@ use tokio::sync::Mutex;
 
 use super::types::{AgentConfig, ModelConfig};
 use crate::{ToadStoolError, ToadStoolResult};
-#[allow(deprecated)]
-use toadstool_config::constants::primals::SQUIRREL;
 
 /// Agent information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -277,15 +275,13 @@ impl SquirrelBackend {
         since = "0.3.0",
         note = "Use new_async() for capability-based discovery"
     )]
-    #[allow(deprecated)]
     pub fn new(
         _endpoint: impl Into<String>,
         model_registry: impl Into<String>,
         agent_runtime: impl Into<String>,
         mcp_enabled: bool,
     ) -> Self {
-        // LEGACY: Uses primal name for backward compatibility
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(SQUIRREL);
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability("ai");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             model_registry: model_registry.into(),

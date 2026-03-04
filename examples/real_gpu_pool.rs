@@ -69,10 +69,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // GPU auto-detection is available via barracuda::device::WgpuDevice
+    // GPU auto-detection is available via toadstool-runtime-gpu (wgpu backend)
     // which discovers all Vulkan/Metal/DX12 GPUs at runtime.
     // This example demonstrates the CPU resource pool path.
-    println!("ℹ️  GPU detection available via barracuda::device::WgpuDevice");
+    println!("ℹ️  GPU detection available via toadstool-runtime-gpu (wgpu)");
     println!("   Auto-detects: Vulkan, Metal, DX12 via WGPU");
     println!("   This example: Using CPU resource pool");
     println!();

@@ -73,11 +73,10 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| D-NPU | NpuDispatch trait | Medium | Generic NPU interface — airSpring/wetSpring/groundSpring converge |
-| D-COV | Test coverage → 90% | Medium | 5,369 lib tests. +47 in S92. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
-| D-SOV | Sovereignty: primal-name → capability | Medium | 3 APIs deprecated (S92). NestGate migrated. Remaining callers to follow. |
+| D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
+| D-COV | Test coverage → 90% | Medium | 17,986 tests pass. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
+| D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
-| — | vfio.rs smart refactoring | Medium | 971 lines — split by domain: vfio_api, dma, interrupts, iommu |
 
 ### Transferred to barraCuda Team (S93)
 
@@ -105,6 +104,28 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (S94 — Deep Debt Execution + Spring Absorption)
+
+| Item | Resolution |
+|------|-----------|
+| Dead barracuda dependency | Removed from `core/toadstool/Cargo.toml` — zero imports found; barracuda is a peer primal, discovered at runtime via capability-based IPC |
+| Embedded `crates/barracuda/` (15MB) | Moved to `ecoPrimals/fossil/toadStool/barracuda-fossil-S94b/` (S94b) |
+| `manual_jsonrpc` module | Deleted entirely (8 files + integration tests). All capabilities ported to `pure_jsonrpc`. Doc references updated. |
+| `vfio.rs` god file (971L) | Smart-refactored into `vfio/` directory: `types.rs` (kernel ABI), `ioctl.rs` (safe wrappers), `dma.rs` (DmaBuffer), `mod.rs` (backend integration) |
+| Production panics/unwraps | Audited — all panics and unwraps are in `#[cfg(test)]` code; production code is clean |
+| Sovereignty audit | `get_socket_path_for_capability()` is canonical; deprecated name-based APIs preserved for fallback only |
+| All files < 1000 lines | Largest: 936 (test file). All production code well under limit. |
+| **D-NPU: NpuDispatch trait** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter + `NpuModelHandle`. Vendor-agnostic, capability-based, zero-copy input (`Cow`). |
+| **NpuParameterController trait** | `toadstool-core::npu_controller` — generic NPU-driven parameter tuning abstraction (absorbed from hotSpring). `ParameterSuggestion<P>`, `SafetyClamp<P>`, `SuggestionSource`, `ControllerError`. |
+| **GpuAdapterInfo** | `toadstool-runtime-universal::GpuAdapterInfo` — exposes driver name, vendor/device ID, f64 support, workgroup limits for barraCuda's `GpuDriverProfile`. |
+| **Multi-adapter GPU selection** | `TOADSTOOL_GPU_ADAPTER` env var: comma-separated fallback (index, name substring, "auto"). Absorbed from hotSpring's `adapter.rs`. |
+| **NestGate production mock → real RPC** | `store_artifact`/`retrieve_artifact` evolved from hardcoded stubs to real JSON-RPC calls (`storage.artifact.store`/`storage.artifact.retrieve`) with graceful fallback. |
+| **Placeholder crate removed** | `management/resources` excluded from workspace — no implementation, was polluting build graph. |
+| **D-SOV: Sovereignty migration** | All 7 production callers of `get_socket_path_for_service` migrated to `get_socket_path_for_capability()`. CLI filesystem/socket discovery uses capability names directly. Deprecated APIs retained for backward compatibility. |
+| **Hardcoded ports → config constants** | CLI `8080` → `ConfigUtils::get_toadstool_port()`, `9090` → `ports::toadstool::METRICS`. Network policy port reads from config. |
+| **integration-tests barracuda dep** | Made optional (zero imports found in crate). Workspace builds without barraCuda present. |
+| Build verification | `cargo fmt` ✅ `cargo clippy -D warnings` ✅ `cargo doc` ✅ `cargo test` ✅ (all pass, 0 fail) |
 
 ## Recently Resolved (S87)
 

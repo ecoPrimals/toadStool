@@ -402,7 +402,7 @@ impl LocalCapacityManager {
             cpu_cores: cap.cpu_cores,
             memory_gb: gb(cap.memory_bytes),
             storage_gb: gb(cap.storage_bytes),
-            gpu_count: 0, // GPU detection handled by barracuda::WgpuDevice
+            gpu_count: 0, // GPU detection handled by toadstool-runtime-gpu
             specialized_hardware: vec![],
             software_capabilities: vec!["rust".to_string()],
         })

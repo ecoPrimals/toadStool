@@ -69,7 +69,7 @@ pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerSta
 // Re-export server functions for daemon
 #[deprecated(
     since = "2.2.0",
-    note = "Use ManualJsonRpcServer instead - no TCP hardcoding"
+    note = "Use pure_jsonrpc::JsonRpcHandler — no TCP hardcoding"
 )]
 #[allow(deprecated)]
 pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
@@ -114,13 +114,7 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 
 pub mod handlers;
 
-// DEPRECATED: Manual JSON-RPC 2.0 — fully phased out. All capabilities ported to pure_jsonrpc.
-#[deprecated(
-    since = "2.2.0",
-    note = "Use pure_jsonrpc::JsonRpcHandler. All capabilities (Unix/TCP serving, resources, gpu, ollama, gate) are in pure_jsonrpc. See crates/server/src/manual_jsonrpc/MIGRATION.md"
-)]
-#[allow(deprecated)]
-pub mod manual_jsonrpc;
+// manual_jsonrpc: REMOVED S94 — fully replaced by pure_jsonrpc
 
 // ✅ PURE RUST: Ollama integration client (ollama.list_models/inference/load/unload)
 pub mod ollama;
@@ -129,8 +123,7 @@ pub mod ollama;
 #[cfg(test)]
 pub mod mocks;
 
-// ✅ CANONICAL: BearDog's pattern for JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
-// Consolidation target — manual_jsonrpc is deprecated in favor of this module.
+// ✅ CANONICAL: JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
 pub mod lifecycle; // Server startup and shutdown
 pub mod pure_jsonrpc;
 pub mod resource_estimator;
@@ -160,13 +153,7 @@ pub use rpc_types::{
 // Re-export coordinator executor
 pub use coordinator_executor::CoordinatorExecutor;
 
-// Re-export manual JSON-RPC server (DEPRECATED — use pure_jsonrpc::JsonRpcHandler)
-#[deprecated(
-    since = "2.2.0",
-    note = "Use pure_jsonrpc::JsonRpcHandler with pure_jsonrpc::connection::serve_unix/serve_tcp. All capabilities ported. See manual_jsonrpc/MIGRATION.md"
-)]
-#[allow(deprecated)]
-pub use manual_jsonrpc::ManualJsonRpcServer;
+// ManualJsonRpcServer: REMOVED S94 — use pure_jsonrpc::JsonRpcHandler
 
 // Re-export collaborative intelligence types
 pub use graph_types::{

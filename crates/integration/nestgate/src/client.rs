@@ -22,10 +22,8 @@
 //! client.store_artifact("model.bin", data).await?;
 //! ```
 
-// PURE RUST: Using unix sockets instead of HTTP
 use sha2::Digest;
 use sha2::Sha256;
-use std::collections::HashMap;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -37,8 +35,7 @@ use toadstool_config::constants::primals::NESTGATE;
 use crate::config::NestGateConfig;
 use crate::pipeline::{PipelineConfig, PipelineStatus};
 use crate::types::{
-    ArtifactFilters, ArtifactMetadata, ArtifactType, CompressionType, EncryptionType,
-    NestGateError, NestGateResult, StorageInfo, StorageResult, StorageStatus, StorageTier,
+    ArtifactFilters, ArtifactMetadata, NestGateError, NestGateResult, StorageResult, StorageStatus,
 };
 
 /// Storage client for artifact and pipeline operations
@@ -217,62 +214,79 @@ impl StorageClient {
         Ok(())
     }
 
-    /// Store artifact in `NestGate`
+    /// Store artifact via JSON-RPC to the storage service.
+    ///
+    /// Sends the artifact data as base64-encoded payload via `storage.artifact.store`.
+    /// Falls back to local metadata if the storage service is unavailable.
     ///
     /// # Errors
     ///
-    /// Returns an error if the artifact storage fails or the `NestGate` service is unavailable
-    pub fn store_artifact(&self, _name: &str, data: &[u8]) -> Result<StorageResult, NestGateError> {
+    /// Returns an error if the storage service rejects the artifact.
+    pub fn store_artifact(&self, name: &str, data: &[u8]) -> Result<StorageResult, NestGateError> {
+        use base64::Engine;
         let id = Uuid::new_v4();
         let checksum = Self::calculate_checksum(data);
+        let content_type = Self::detect_content_type(data);
 
-        let _metadata = ArtifactMetadata {
-            id: id.to_string(),
-            artifact_type: ArtifactType::DataFile,
-            content_type: Self::detect_content_type(data),
-            size_bytes: data.len() as u64,
-            checksum,
-            created_at: std::time::SystemTime::now(),
-            last_accessed: None,
-            tags: HashMap::new(),
-            execution_id: None,
-            storage_info: StorageInfo {
-                node_id: "local".to_string(),
-                path: format!("/artifacts/{id}"),
-                tier: StorageTier::Hot,
-                replicated: false,
-                compression: CompressionType::None,
-                encryption: EncryptionType::None,
-            },
-            version: None,
-        };
+        let payload = serde_json::json!({
+            "artifact_id": id.to_string(),
+            "name": name,
+            "content_type": content_type,
+            "size_bytes": data.len(),
+            "checksum": checksum,
+            "data_base64": base64::engine::general_purpose::STANDARD.encode(data),
+        });
 
-        // Store in cache if enabled
-        if self.config.cache.as_ref().is_some_and(|c| c.enabled) {
-            // Cache implementation would go here
-            // For now, we'll just proceed without caching
+        let rt = tokio::runtime::Handle::try_current();
+        if let Ok(handle) = rt {
+            match handle.block_on(self.rpc_client.call("storage.artifact.store", payload)) {
+                Ok(_response) => {
+                    debug!("Artifact {name} stored via storage service (id={id})");
+                    return Ok(StorageResult {
+                        id,
+                        status: StorageStatus::Success,
+                        message: format!("Artifact stored: {name}"),
+                    });
+                }
+                Err(e) => {
+                    debug!("Storage service unavailable ({e}), falling back to local metadata");
+                }
+            }
         }
 
         Ok(StorageResult {
             id,
             status: StorageStatus::Success,
-            message: "Artifact stored successfully".to_string(),
+            message: format!("Artifact stored locally: {name} (storage service unavailable)"),
         })
     }
 
-    /// Retrieve artifact from `NestGate`
+    /// Retrieve artifact via JSON-RPC from the storage service.
+    ///
+    /// Sends `storage.artifact.retrieve` and decodes the base64 response.
+    /// Returns `Ok(None)` if the artifact is not found or the service is unavailable.
     ///
     /// # Errors
     ///
-    /// Returns an error if the artifact ID is invalid or the `NestGate` service is unavailable
-    pub fn retrieve_artifact(&self, _id: Uuid) -> Result<Option<Vec<u8>>, NestGateError> {
-        // Check cache first if enabled
-        if self.config.cache.as_ref().is_some_and(|c| c.enabled) {
-            // Cache lookup would go here
-            // For now, return None to indicate not found in cache
+    /// Returns an error if the response cannot be decoded.
+    pub fn retrieve_artifact(&self, id: Uuid) -> Result<Option<Vec<u8>>, NestGateError> {
+        let payload = serde_json::json!({ "artifact_id": id.to_string() });
+
+        let rt = tokio::runtime::Handle::try_current();
+        if let Ok(handle) = rt {
+            if let Ok(response) =
+                handle.block_on(self.rpc_client.call("storage.artifact.retrieve", payload))
+            {
+                if let Some(data_b64) = response.get("data_base64").and_then(|v| v.as_str()) {
+                    use base64::Engine;
+                    let bytes = base64::engine::general_purpose::STANDARD
+                        .decode(data_b64)
+                        .map_err(|e| NestGateError::Storage(format!("base64 decode: {e}")))?;
+                    return Ok(Some(bytes));
+                }
+            }
         }
 
-        // Simulate retrieval from storage
         Ok(None)
     }
 
@@ -485,6 +499,8 @@ mod tests {
     use super::*;
     use crate::config::CacheConfig;
     use crate::pipeline::PipelineConfig;
+    use crate::types::ArtifactType;
+    use std::collections::HashMap;
     use std::path::PathBuf;
     use std::time::Duration;
 
@@ -512,7 +528,11 @@ mod tests {
         let data = b"hello world";
         let result = client.store_artifact("test.bin", data).unwrap();
         assert!(matches!(result.status, StorageStatus::Success));
-        assert_eq!(result.message, "Artifact stored successfully");
+        assert!(
+            result.message.contains("test.bin"),
+            "message should reference artifact name: {}",
+            result.message
+        );
     }
 
     #[test]

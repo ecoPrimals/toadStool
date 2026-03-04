@@ -418,28 +418,15 @@ impl ZeroConfigDeployment {
             .await
     }
 
-    /// Try Unix socket capability-based discovery (biomeOS runtime directory)
+    /// Try Unix socket capability-based discovery (biomeOS runtime directory).
     ///
-    /// Discovers primals by capability name using well-known socket paths.
-    /// Replaces deprecated HTTP localhost discovery with proper Unix socket checks.
-    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
+    /// Discovers primals by capability name using `get_socket_path_for_capability`.
     async fn try_unix_socket_discovery(
         &self,
         capability_name: &str,
     ) -> Result<Option<ServiceEndpoint>> {
-        use toadstool_common::constants::ecosystem::well_known;
-        use toadstool_common::primal_sockets::get_socket_path_for_service;
-
-        let primal_name = match capability_name {
-            "orchestration" => well_known::SONGBIRD,
-            "pki" => well_known::BEARDOG,
-            "storage" => well_known::NESTGATE,
-            "ai" => well_known::SQUIRREL,
-            "toadstool" => toadstool_common::constants::primal_identity::PRIMAL_NAME,
-            _ => return Ok(None),
-        };
-
-        let socket_path = get_socket_path_for_service(primal_name);
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_capability(capability_name);
 
         self.check_unix_socket_endpoint(&socket_path, capability_name)
             .await

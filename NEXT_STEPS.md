@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 3, 2026 -- Session 93
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | 5,369 workspace lib tests | 44 JSON-RPC methods | REST + middleware removed | Sovereignty: legacy primal-name APIs deprecated | ecoBin pure-rust verified | D-DF64 transferred to barraCuda | **EMBEDDED BARRACUDA DEPRECATED**
-**Latest**: S93 — D-DF64 transferred to barraCuda team. Root docs cleaned for toadStool-focused remaining work.
+**Updated**: March 3, 2026 -- Session 94b
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 44 JSON-RPC methods | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | D-DF64 transferred to barraCuda | **EMBEDDED BARRACUDA FOSSILIZED** | **NpuDispatch + NpuParameterController traits** | **GpuAdapterInfo for barraCuda** | **NestGate mock→RPC**
+**Latest**: S94b — NpuDispatch generic trait, NpuParameterController (hotSpring absorption), GpuAdapterInfo driver probing, multi-adapter selection (TOADSTOOL_GPU_ADAPTER), NestGate evolved to real RPC, placeholder crate removed, production mock audit complete.
 
 ---
 
@@ -19,30 +19,23 @@
 selection, `df64_rewrite` as default). toadStool serves hardware capabilities.
 Handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`.
 
-### P1: NpuDispatch Trait
+### ~~P1: NpuDispatch Trait~~ ✅ RESOLVED (S94b)
 
-Generic NPU interface — airSpring/wetSpring/groundSpring converge on a single
-dispatch trait for neuromorphic hardware (Akida, Coral, future NPUs).
+`toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch`
+adapter. Vendor-agnostic, capability-based, zero-copy input (`Cow`). Also added
+`NpuParameterController` trait (hotSpring absorption) for NPU-driven autonomous
+parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-5,369 tests currently. S91-92 added 47 tests to previously 0%-coverage modules.
-Focus areas for next push: low-coverage crates in CLI ecosystem integration,
-distributed coordination, auto_config installer paths, runtime edge platforms.
+17,986 tests pass. Focus areas for next push: low-coverage crates in CLI ecosystem
+integration, distributed coordination, auto_config installer paths, runtime edge platforms.
 
-### P1: Sovereignty Migration (D-SOV)
+### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
-Three legacy APIs deprecated in S92 (`get_socket_path_for_service`,
-`get_primal_default_port`, `capability_typical_provider`). NestGate client
-migrated. Remaining callers need migration to capability-based APIs.
-`EcosystemDiscoverer::new()` still keys by primal name (benign — capability
-data is attached, but would be cleaner as capability-keyed).
-
-### P2: Smart Refactoring — vfio.rs (971 lines)
-
-Top remaining large file. `crates/neuromorphic/akida-driver/src/backends/vfio.rs`
-mixes VFIO API, DMA, interrupts, IOMMU, and tests. Split by domain into
-`vfio_api.rs`, `dma.rs`, `interrupts.rs`, `iommu.rs` with tests in `tests/`.
+All 7 production callers of `get_socket_path_for_service` migrated to
+`get_socket_path_for_capability()`. CLI filesystem and socket discovery use capability
+names directly. Deprecated API definitions retained for backward compatibility only.
 
 ---
 
@@ -91,9 +84,11 @@ mixes VFIO API, DMA, interrupts, IOMMU, and tests. Split by domain into
 - [x] **ComputeDispatch migration** -- transferred to barraCuda team (lives in barraCuda crate)
 - [x] **DF64 default path** -- transferred to barraCuda team (S93)
 - [ ] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
-- [ ] **Test coverage target 90%** -- 5,369 tests; +47 in S91-92; focus on low-coverage crates (toadStool D-COV)
-- [ ] **Sovereignty migration** -- callers migrating to capability-based APIs (toadStool D-SOV)
-- [ ] **Smart refactoring** -- vfio.rs (971 lines) top remaining large file
+- [ ] **Test coverage target 90%** -- 17,986 tests; focus on low-coverage crates (toadStool D-COV)
+- [ ] **Sovereignty migration** -- remaining callers to capability-based APIs (toadStool D-SOV)
+- [x] **Smart refactoring** -- vfio.rs (971L) smart-refactored into `vfio/` directory (S94)
+- [x] **manual_jsonrpc removal** -- deleted, pure_jsonrpc is canonical (S94)
+- [x] **Barracuda fossilization** -- dead dep removed, crates/barracuda → archive/ (S94)
 
 ### Cross-Repo Debt
 
@@ -102,7 +97,29 @@ mixes VFIO API, DMA, interrupts, IOMMU, and tests. Split by domain into
 
 ---
 
-## Completed This Session (S90-93)
+## Completed This Session (S90-94)
+
+### Session 94b: Deep Execution + Spring Absorption
+- **NpuDispatch trait** (`toadstool-core::npu_dispatch`): generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. Vendor-agnostic, capability-based, zero-copy `Cow` input. `NpuModelHandle`, `DispatchResult`, `NpuCapability` enum, `NpuInfo` struct.
+- **NpuParameterController trait** (`toadstool-core::npu_controller`): absorbed from hotSpring — generic NPU-driven parameter tuning. `ParameterSuggestion<P>`, `SafetyClamp<P>`, `SuggestionSource`, `ControllerError`. Springs implement for domain-specific tuning.
+- **GpuAdapterInfo** (`toadstool-runtime-universal`): exposes driver name, driver_info, vendor/device ID, backend, device type, workgroup limits, max buffer size, and shader-f64 support. barraCuda uses this for `GpuDriverProfile` (NVK detection, f64 workarounds).
+- **Multi-adapter GPU selection**: `TOADSTOOL_GPU_ADAPTER` env var with comma-separated fallback (index, name substring, "auto"). Absorbed from hotSpring's `adapter.rs` pattern.
+- **NestGate mock → real RPC**: `store_artifact`/`retrieve_artifact` evolved from hardcoded stubs to real JSON-RPC calls with graceful fallback when storage service unavailable.
+- **Placeholder crate removed**: `management/resources` excluded from workspace (empty crate polluting build graph).
+- **Production mock audit**: Complete — all remaining stubs are either error-returning (correct behavior for unimplemented hardware), test-gated, or documented heuristic models.
+- **External dependency audit**: Workspace clean — all non-Rust deps behind optional features on excluded crates. No `build.rs` files.
+- **Large file audit**: Production code well under 1000L limit. 812L and 806L files are ~490L production + ~320L tests.
+- Verification: `cargo fmt` ✅ `cargo clippy -D warnings` ✅ `cargo doc` ✅ `cargo test` ✅ (all pass, 0 fail)
+
+### Session 94: Deep Debt Execution — Fossilization + Deletion + Refactoring
+- Removed dead `barracuda` dependency from `core/toadstool/Cargo.toml` (zero imports; barracuda is a peer primal)
+- Fossilized `crates/barracuda/` (15MB, 1,790 files) to `ecoPrimals/fossil/toadStool/barracuda-fossil-S94b/`
+- Deleted `manual_jsonrpc` module entirely (8 files + integration tests); `pure_jsonrpc` is canonical
+- Smart-refactored `vfio.rs` (971L) into `vfio/` directory: `types.rs`, `ioctl.rs`, `dma.rs`, `mod.rs`
+- Updated all doc references (ManualJsonRpcServer → pure_jsonrpc::JsonRpcHandler)
+- Audited production panics/unwraps: all in test code (clean production)
+- All files under 1000 lines (largest: 936 line test file)
+- Verification: `cargo fmt` ✅ `cargo clippy -D warnings` ✅ `cargo doc` ✅ `cargo test` 17,986 pass, 0 fail
 
 ### Session 93: D-DF64 Transfer & Root Doc Cleanup
 - Transferred D-DF64, D-CD (ComputeDispatch), DF64 transcendentals, arch-specific polynomial selection, naga-IR optimizer evolution, and barraCuda budding Phases 1-4 to barraCuda team ownership

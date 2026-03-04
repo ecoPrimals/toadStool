@@ -47,7 +47,7 @@ uuid = { version = "1.8", features = ["v4", "serde"] }
 tracing = "0.1"
 thiserror = { workspace = true }
 # Concurrency primitives (for unified memory)
-# dashmap removed: evolved to std::sync::RwLock<HashMap> (consistent with barracuda pattern)
+# dashmap removed: evolved to std::sync::RwLock<HashMap>
 parking_lot = "0.12"
 
 # System integration and monitoring

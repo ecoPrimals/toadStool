@@ -18,7 +18,7 @@ toadstool         = { path = "../core/toadstool" }
 toadstool-common  = { path = "../core/common" }
 toadstool-config  = { path = "../core/config" }
 toadstool-testing = { path = "../testing" }
-barracuda         = { path = "../../../../barraCuda/crates/barracuda" }
+# barracuda is a separate primal — zero library coupling. Interact via JSON-RPC IPC.
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

@@ -7,8 +7,6 @@ members = [
     "crates/core/toadstool",
     "crates/toadstool-core",  # NEW: Hardware infrastructure layer (Feb 8, 2026) 🍄
     "crates/auto_config",  # Re-enabled for zero-touch demo
-    # "crates/barracuda",  # DEPRECATED: Migrated to standalone ecoPrimals/barraCuda (S89, Mar 2026)
-    #                       # All consumers now use path = "../../../../barraCuda/crates/barracuda"
     
     # API and interfaces
     "crates/cli",
@@ -21,7 +19,7 @@ members = [
     # "crates/integration/songbird",  # Temporarily commented - missing crate
     "crates/management/monitoring",
     "crates/management/performance",
-    "crates/management/resources",
+    # "crates/management/resources",  # Placeholder — no implementation yet (removed S94)
     "crates/management/analytics",
     "crates/runtime/adaptive",        # NEW: Adaptive optimization (Jan 15, 2026)
     "crates/runtime/container",
@@ -58,13 +56,10 @@ members = [
 ]
 
 exclude = [
-    # Showcases: moved to biomeOS and springs (Mar 2, 2026)
-    # Build individually with: cargo build -p <showcase-name>
+    # Showcases: excluded from workspace, build individually
     "showcase/neuromorphic/01-akida-detection",
     "showcase/neuromorphic/04-raytracing-comparison",
-    "showcase/rbf-surrogate",
     "showcase/gpu-universal/ml-inference",
-    "showcase/cross-platform",
     "showcase/homomorphic-computing",
 ]
 
@@ -202,8 +197,7 @@ overflow-checks = true
 
 [profile.dev.package."*"]
 # Dependencies (naga, wgpu, spirv-tools, etc.) at opt-level 2:
-# shader compilation in naga is 5-10x faster optimized, which dominates
-# barracuda's 2,700+ GPU test execution time.
+# shader compilation in naga is 5-10x faster optimized.
 opt-level = 2
 
 [profile.release]

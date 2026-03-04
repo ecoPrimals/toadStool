@@ -272,7 +272,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         value: "service-mesh=toadstool".to_string(),
                     }],
                     ports: vec![NetworkPort {
-                        port: 8080,
+                        port: toadstool_config::config_utils::ConfigUtils::get_toadstool_port(),
                         protocol: "tcp".to_string(),
                         end_port: None,
                     }],
@@ -511,7 +511,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                                 .or_else(|_| std::env::var("PROMETHEUS_PORT"))
                                 .ok()
                                 .and_then(|p| p.parse().ok())
-                                .unwrap_or(9090u16);
+                                .unwrap_or(toadstool_config::ports::toadstool::METRICS);
                             let prometheus_host = std::env::var("TOADSTOOL_PROMETHEUS_HOST")
                                 .or_else(|_| std::env::var("PROMETHEUS_HOST"))
                                 .unwrap_or_else(|_| "prometheus".to_string());

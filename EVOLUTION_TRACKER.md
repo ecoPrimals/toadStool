@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 3, 2026 — Session 93
+**Date**: March 3, 2026 — Session 94
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -40,6 +40,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Deep debt S87 | toadStool | ✅ S87 evolved | TODO(afit)→NOTE(async-dyn) (75 instances, 52 files); gpu_helpers 663L→3 submodules; unsafe audit (~60+ sites documented); FHE shader fixes; hardware_verification 13/13 pass; hotspring fault tests fixed |
 | Deep audit S90 | toadStool | ✅ S90 evolved | REST API + handlers removed; 2,780+ SPDX headers; license workspace unified; `get_socket_path_for_capability()` API; Arc-cached kernels; PyO3 feature-gated; capability-based trust; 15 JSON-RPC integration tests |
 | Coverage + debt S92 | toadStool | ✅ S92 evolved | +47 tests → 5,369; dead middleware eliminated (~131 KB); sovereignty deprecations formalized; BearDog strings neutralized; ecoBin pure-rust verified; `find_pattern_by_capability()` API |
+| Deep debt S94 | toadStool | ✅ S94 evolved | Dead barracuda dep removed; crates/barracuda fossilized (15MB→archive); manual_jsonrpc deleted (8 files); vfio.rs 971L→4-module directory; all files <1000L; 17,986 tests pass |
+| Deep execution S94b | toadStool | ✅ S94b evolved | **NpuDispatch trait** (generic + AkidaNpuDispatch adapter); **NpuParameterController trait** (hotSpring absorption); **GpuAdapterInfo** (driver/f64/workgroup for barraCuda); Multi-adapter selection (`TOADSTOOL_GPU_ADAPTER`); NestGate mock→real RPC; placeholder crate removed; production mock audit complete; **D-SOV sovereignty migration** (7 callers → capability-based); hardcoded ports → config constants; integration-tests barracuda dep → optional |
 
 ---
 

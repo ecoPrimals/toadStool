@@ -3,6 +3,27 @@
 Per-session log of API changes that may affect downstream springs.
 Springs: check this file after updating your toadStool pin.
 
+## S94b (March 3, 2026)
+
+### Breaking Changes
+
+- **`management/resources` crate removed from workspace** — placeholder crate excluded; no production code existed.
+- **`integration-tests` barracuda dependency now optional** — enable with `cargo test -p toadstool-integration-tests --features barracuda`. Zero imports were found; this was a dead dependency.
+
+### Deprecation Migration Complete (non-breaking)
+
+- All 7 production callers of `get_socket_path_for_service()` migrated to `get_socket_path_for_capability()` (D-SOV resolved).
+- Hardcoded CLI ports `8080` / `9090` replaced with `ConfigUtils::get_toadstool_port()` and `ports::toadstool::METRICS`.
+
+### New APIs (non-breaking)
+
+- `NpuDispatch` trait — vendor-agnostic neuromorphic compute interface (`toadstool-core`)
+- `AkidaNpuDispatch` — Akida adapter for `NpuDispatch`
+- `NpuParameterController` trait — NPU-driven autonomous parameter tuning (`toadstool-core`)
+- `GpuAdapterInfo` / `GpuDeviceType` — detailed GPU adapter info for barraCuda driver profiling (`toadstool-runtime-universal`)
+- Multi-adapter GPU selection via `TOADSTOOL_GPU_ADAPTER` environment variable
+- `NestGateClient::store_artifact()` / `retrieve_artifact()` now use real JSON-RPC with fallback
+
 ## S90-92 (March 3, 2026)
 
 ### Deprecations (non-breaking, migration recommended)

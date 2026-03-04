@@ -1,7 +1,8 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 2, 2026 — Session 86  
-**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V70), wetSpring (V82+V86+V88), airSpring (V039+V045+V052), groundSpring (V54+V61), wateringHole (updated MAR02)
+**Date**: March 3, 2026 — Session 94b  
+**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V70), wetSpring (V82+V86+V88), airSpring (V039+V045+V052), groundSpring (V54+V61), wateringHole (updated MAR03)  
+**S94b**: NpuParameterController trait absorbed from hotSpring. Multi-adapter GPU selection absorbed from hotSpring.
 
 ## S83 Execution Log — Cross-Spring Evolution & Shader Completion
 

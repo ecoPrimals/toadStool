@@ -17,8 +17,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-#[allow(deprecated)]
-use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_for_service};
+use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_for_capability};
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
 
@@ -115,7 +114,7 @@ impl BearDogClient {
     )]
     #[allow(deprecated)]
     pub fn new(config: BearDogConfig) -> ToadStoolResult<Self> {
-        let socket_path = get_socket_path_for_service("beardog");
+        let socket_path = get_socket_path_for_capability("crypto");
         let rpc_client = UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
