@@ -4,7 +4,7 @@
 //! This module provides static string constants for common values throughout the codebase.
 //! Using these interned strings eliminates unnecessary string allocations.
 //!
-//! ## WateringHole Sovereignty: Discover by Capability, Address by Name
+//! ## `WateringHole` Sovereignty: Discover by Capability, Address by Name
 //!
 //! - **`capabilities::*`** — Use for DISCOVERY. Scan for what a service CAN DO.
 //!   Example: `if capabilities.contains(capabilities::CRYPTO)` or

@@ -344,4 +344,94 @@ mod tests {
         let result = provider.health_check().await;
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_json_rpc_request_serialization() {
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "test.method".to_string(),
+            params: serde_json::json!({"key": "value"}),
+            id: 1,
+        };
+        let json = serde_json::to_string(&req);
+        assert!(json.is_ok());
+        assert!(json.unwrap().contains("test.method"));
+    }
+
+    #[test]
+    fn test_json_rpc_response_deserialization_with_result() {
+        let json = r#"{"jsonrpc":"2.0","result":{"healthy":true},"id":1}"#;
+        let parsed: Result<JsonRpcResponse<serde_json::Value>, _> = serde_json::from_str(json);
+        assert!(parsed.is_ok());
+        let resp = parsed.unwrap();
+        assert!(resp.result.is_some());
+        assert!(resp.error.is_none());
+    }
+
+    #[test]
+    fn test_json_rpc_response_deserialization_with_error() {
+        let json =
+            r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":1}"#;
+        let parsed: Result<JsonRpcResponse<serde_json::Value>, _> = serde_json::from_str(json);
+        assert!(parsed.is_ok());
+        let resp = parsed.unwrap();
+        assert!(resp.result.is_none());
+        assert!(resp.error.is_some());
+        let err = resp.error.unwrap();
+        assert_eq!(err.code, -32600);
+        assert!(err.message.contains("Invalid"));
+    }
+
+    #[test]
+    fn test_encrypt_request_structure() {
+        let data = [1u8, 2, 3, 4, 5];
+        let req = EncryptRequest {
+            data: &data,
+            options: None,
+        };
+        let json = serde_json::to_value(&req);
+        assert!(json.is_ok());
+    }
+
+    #[test]
+    fn test_decrypt_request_structure() {
+        use crate::security_provider::types::EncryptionMetadata;
+        use std::time::SystemTime;
+        let ciphertext = [0xaau8, 0xbb];
+        let metadata = EncryptionMetadata {
+            algorithm: "AES-256-GCM".to_string(),
+            key_id: "key-1".to_string(),
+            encrypted_at: SystemTime::now(),
+        };
+        let req = DecryptRequest {
+            ciphertext: &ciphertext,
+            metadata: &metadata,
+        };
+        let json = serde_json::to_value(&req);
+        assert!(json.is_ok());
+    }
+
+    #[test]
+    fn test_verify_request_structure() {
+        let data = [1u8, 2, 3];
+        let sig = [0x11u8, 0x22];
+        let req = VerifyRequest {
+            data: &data,
+            signature: &sig,
+            public_key_id: "pk-1",
+        };
+        let json = serde_json::to_value(&req);
+        assert!(json.is_ok());
+    }
+
+    #[test]
+    fn test_revoke_request_structure() {
+        let perm_id = uuid::Uuid::new_v4();
+        let req = RevokeRequest {
+            permission_id: &perm_id,
+            reason: "test revocation",
+        };
+        let json = serde_json::to_value(&req);
+        assert!(json.is_ok());
+    }
 }

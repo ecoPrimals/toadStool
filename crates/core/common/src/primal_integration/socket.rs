@@ -17,7 +17,7 @@ pub fn discover_service_socket_by_capability(capability: &str) -> Option<String>
     let env_key = format!("{}_SOCKET", capability.to_uppercase().replace('-', "_"));
     std::env::var(&env_key).ok().or_else(|| {
         let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
-        let socket_path = format!("{}/{}.sock", runtime_dir, capability);
+        let socket_path = format!("{runtime_dir}/{capability}.sock");
         if std::path::Path::new(&socket_path).exists() {
             Some(socket_path)
         } else {

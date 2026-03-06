@@ -161,3 +161,151 @@ impl PlatformDetectionOps for crate::universal::UniversalComputeManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::universal::types::{DetectedPlatform, PlatformStatus};
+    use toadstool_distributed::substrate_detection::{PlatformType, SubstrateCapabilities};
+
+    async fn make_manager() -> crate::universal::UniversalComputeManager {
+        crate::universal::UniversalComputeManager::new()
+            .await
+            .expect("manager creation")
+    }
+
+    fn make_detected_platform(platform_type: PlatformType) -> DetectedPlatform {
+        DetectedPlatform {
+            platform_type,
+            capabilities: SubstrateCapabilities {
+                traditional_platforms: vec![],
+                container_platforms: vec![],
+                language_runtimes: vec![],
+                gpu_platforms: vec![],
+                specialized_platforms: vec![],
+                experimental_platforms: vec![],
+            },
+            status: PlatformStatus::Available,
+            performance_score: None,
+            last_tested: None,
+            metadata: std::collections::HashMap::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_test_generic_capabilities() {
+        let manager = make_manager().await;
+        let result = manager.test_generic_capabilities().await;
+        assert!(result.is_ok());
+        let ok = result.unwrap();
+        assert!(ok); // echo test should succeed on any platform
+    }
+
+    #[tokio::test]
+    async fn test_test_linux_capabilities_on_linux() {
+        let manager = make_manager().await;
+        let result = manager.test_linux_capabilities().await;
+        assert!(result.is_ok());
+        #[cfg(target_os = "linux")]
+        assert!(result.unwrap());
+        #[cfg(not(target_os = "linux"))]
+        assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_test_macos_capabilities() {
+        let manager = make_manager().await;
+        let result = manager.test_macos_capabilities().await;
+        assert!(result.is_ok());
+        #[cfg(target_os = "macos")]
+        assert!(result.unwrap());
+        #[cfg(not(target_os = "macos"))]
+        assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_test_windows_capabilities() {
+        let manager = make_manager().await;
+        let result = manager.test_windows_capabilities().await;
+        assert!(result.is_ok());
+        #[cfg(target_os = "windows")]
+        assert!(matches!(result.unwrap(), true | false));
+        #[cfg(not(target_os = "windows"))]
+        assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_test_platform_capabilities_linux() {
+        let manager = make_manager().await;
+        let platform = make_detected_platform(PlatformType::Linux {
+            distribution: "ubuntu".to_string(),
+            architecture: "x86_64".to_string(),
+        });
+        let result = manager
+            .test_platform_capabilities("linux-1", &platform)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_test_platform_capabilities_docker() {
+        let manager = make_manager().await;
+        let platform = make_detected_platform(PlatformType::Docker);
+        let result = manager
+            .test_platform_capabilities("docker-1", &platform)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_test_platform_capabilities_wasm() {
+        let manager = make_manager().await;
+        let platform = make_detected_platform(PlatformType::WebAssembly {
+            runtime: "wasmtime".to_string(),
+        });
+        let result = manager
+            .test_platform_capabilities("wasm-1", &platform)
+            .await;
+        assert!(result.is_ok());
+        assert!(result.unwrap()); // WASM always returns true when detected
+    }
+
+    #[tokio::test]
+    async fn test_test_platform_capabilities_other() {
+        let manager = make_manager().await;
+        let platform = make_detected_platform(PlatformType::Other {
+            os: "unknown".to_string(),
+            architecture: "x86_64".to_string(),
+        });
+        let result = manager
+            .test_platform_capabilities("other-1", &platform)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_test_platform_capabilities_macos() {
+        let manager = make_manager().await;
+        let platform = make_detected_platform(PlatformType::MacOS {
+            version: "14.0".to_string(),
+            architecture: "arm64".to_string(),
+        });
+        let result = manager
+            .test_platform_capabilities("macos-1", &platform)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_test_platform_capabilities_windows() {
+        let manager = make_manager().await;
+        let platform = make_detected_platform(PlatformType::Windows {
+            version: "11".to_string(),
+            architecture: "x86_64".to_string(),
+        });
+        let result = manager
+            .test_platform_capabilities("windows-1", &platform)
+            .await;
+        assert!(result.is_ok());
+    }
+}

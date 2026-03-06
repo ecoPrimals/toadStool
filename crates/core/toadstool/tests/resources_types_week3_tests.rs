@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
-//! Comprehensive tests for resources.rs types
-//!
-//! Test Coverage Sprint - Week 3, Nov 7, 2025
-//! Target: Bring resources.rs from 45% → 60%+
+//! Comprehensive tests for resources.rs types.
 
 use std::time::{Duration, SystemTime};
 use toadstool::resources::*;

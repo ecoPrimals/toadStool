@@ -97,12 +97,12 @@ impl EnvironmentConfig {
         config.app.queue_size = self.resources.queue_size as usize;
         config.app.batch_size = self.resources.batch_size as usize;
 
-        config.logging.level = self.monitoring.log_level.clone();
+        config.logging.level.clone_from(&self.monitoring.log_level);
 
         config.security.auth.enabled = self.security.auth_enabled;
         config.security.sandbox.enabled = self.security.sandboxing_enabled;
 
-        config.app.environment = self.environment.clone();
+        config.app.environment.clone_from(&self.environment);
         config.app.data_dir = self.data_dir.to_string_lossy().to_string();
         config.app.cache_dir = self.cache_dir.to_string_lossy().to_string();
         config.app.temp_dir = self.temp_dir.to_string_lossy().to_string();

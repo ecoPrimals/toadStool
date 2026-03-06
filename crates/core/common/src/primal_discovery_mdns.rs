@@ -285,10 +285,7 @@ mod tests {
         let result = MdnsAdapter::new(config);
         // mDNS may not be available in all test environments
         if let Err(e) = &result {
-            eprintln!(
-                "mDNS adapter creation failed (expected in some environments): {}",
-                e
-            );
+            eprintln!("mDNS adapter creation failed (expected in some environments): {e}");
         }
         // Don't assert success - mDNS requires network access
     }

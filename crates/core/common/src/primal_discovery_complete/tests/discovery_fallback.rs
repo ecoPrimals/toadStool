@@ -131,8 +131,7 @@ async fn test_create_fallback_service_http() {
     assert!(services[0]
         .metadata
         .get("source")
-        .map(|s| s == "configuration")
-        .unwrap_or(false));
+        .is_some_and(|s| s == "configuration"));
 }
 
 #[tokio::test]

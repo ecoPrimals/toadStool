@@ -27,7 +27,6 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 pub(super) struct DisplayManager;
 
 #[cfg(test)]
-#[allow(dead_code)] // Reserved: print_biomes_table for future biome list CLI
 impl DisplayManager {
     /// Print biomes in a formatted table
     ///
@@ -222,5 +221,39 @@ mod tests {
             result.is_ok(),
             "tail_log_file should handle oversized request"
         );
+    }
+
+    #[tokio::test]
+    async fn test_print_biomes_table_empty() {
+        let biomes = HashMap::new();
+        let result = DisplayManager::print_biomes_table(&biomes).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_print_biomes_table_with_biomes() {
+        use crate::{BiomeInfo, ResourceUsage};
+        let mut biomes = HashMap::new();
+        biomes.insert(
+            "test-biome".to_string(),
+            BiomeInfo {
+                id: uuid::Uuid::new_v4(),
+                name: "test-biome".to_string(),
+                status: BiomeStatus::Running,
+                created: std::time::SystemTime::now(),
+                started: Some(std::time::SystemTime::now()),
+                manifest_path: PathBuf::from("/tmp/biome.yaml"),
+                resource_usage: ResourceUsage {
+                    cpu_percent: 0.0,
+                    memory_bytes: 0,
+                    storage_bytes: 0,
+                    network_rx_bytes: 0,
+                    network_tx_bytes: 0,
+                },
+                services: vec![],
+            },
+        );
+        let result = DisplayManager::print_biomes_table(&biomes).await;
+        assert!(result.is_ok());
     }
 }

@@ -24,8 +24,8 @@
 //! This module evolves ToadStool's IPC from Unix-only to universal multi-transport,
 //! following upstream `wateringHole/UNIVERSAL_IPC_STANDARD_V3.md`.
 //!
-//! **Phase 1 (Current)**: Module structure + Unix + Abstract (Android MVP)  
-//! **Phase 2 (Future)**: Add TCP fallback for cross-device  
+//! **Phase 1 (Current)**: Module structure + Unix + Abstract (Android MVP)\
+//! **Phase 2 (Future)**: Add TCP fallback for cross-device\
 //! **Phase 3 (Future)**: Multi-transport server orchestration
 
 pub mod client;

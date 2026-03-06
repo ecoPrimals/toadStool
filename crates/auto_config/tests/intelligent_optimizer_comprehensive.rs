@@ -40,7 +40,7 @@ async fn test_optimize_for_platform_minimal_hardware() {
 
     if let Ok(hardware) = hardware_result {
         // Test optimization with real hardware
-        let result = optimizer.optimize_for_platform(&hardware).await;
+        let result = optimizer.optimize_for_platform(&hardware);
 
         match result {
             Ok(platform_config) => {

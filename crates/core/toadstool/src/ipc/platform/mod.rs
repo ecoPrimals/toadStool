@@ -108,7 +108,7 @@ impl Endpoint {
 
     /// Get transport tier for fallback logic
     ///
-    /// Tier 1: Preferred (Unix, Abstract)  
+    /// Tier 1: Preferred (Unix, Abstract)\
     /// Tier 2: Fallback (TCP)
     pub fn tier(&self) -> TransportTier {
         match self {

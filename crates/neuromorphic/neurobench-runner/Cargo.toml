@@ -40,3 +40,4 @@ path = "src/bin/neurobench.rs"
 
 [dev-dependencies]
 approx = "0.5"
+tempfile = "3"

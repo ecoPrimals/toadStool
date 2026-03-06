@@ -34,7 +34,7 @@ use toadstool_common::constants::PRIMAL_NAME;
 /// #[tokio::main]
 /// async fn main() -> toadstool_display::Result<()> {
 ///     // Discover own capabilities (self-knowledge!)
-///     let caps = DisplayCapabilities::discover_self().await?;
+///     let caps = DisplayCapabilities::discover_self()?;
 ///     
 ///     // Announce to ecosystem
 ///     caps.announce().await?;
@@ -124,19 +124,23 @@ impl DisplayCapabilities {
     /// Queries local hardware to determine what we can provide.
     /// NO hardcoding! All runtime discovery!
     ///
+    /// # Errors
+    ///
+    /// Returns an error if DRM device discovery fails or platform paths cannot be resolved.
+    ///
     /// # Example
     ///
     /// ```rust,no_run
     /// # use toadstool_display::DisplayCapabilities;
     /// #[tokio::main]
     /// async fn main() -> toadstool_display::Result<()> {
-    ///     let caps = DisplayCapabilities::discover_self().await?;
+    ///     let caps = DisplayCapabilities::discover_self()?;
     ///     println!("Found {} displays", caps.displays.len());
     ///     println!("Found {} input devices", caps.input_devices.len());
     ///     Ok(())
     /// }
     /// ```
-    pub async fn discover_self() -> Result<Self> {
+    pub fn discover_self() -> Result<Self> {
         use crate::drm::Device as DrmDevice;
         use crate::input::Device as InputDevice;
 
@@ -196,7 +200,7 @@ impl DisplayCapabilities {
         };
 
         // Determine socket path (XDG compliant)
-        let socket_path = Self::get_socket_path()?;
+        let socket_path = Self::get_socket_path();
 
         tracing::info!("✅ Capability discovery complete!");
         tracing::info!("  Displays: {}", displays.len());
@@ -233,20 +237,24 @@ impl DisplayCapabilities {
     /// Writes capability JSON file so other primals can discover us.
     /// **No hardcoding!** Uses XDG standard paths.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the discovery directory cannot be created or the capability file cannot be written.
+    ///
     /// # Example
     ///
     /// ```rust,no_run
     /// # use toadstool_display::DisplayCapabilities;
     /// #[tokio::main]
     /// async fn main() -> toadstool_display::Result<()> {
-    ///     let caps = DisplayCapabilities::discover_self().await?;
+    ///     let caps = DisplayCapabilities::discover_self()?;
     ///     caps.announce().await?;
     ///     println!("Announced capabilities!");
     ///     Ok(())
     /// }
     /// ```
     pub async fn announce(&self) -> Result<()> {
-        let discovery_dir = Self::get_discovery_dir()?;
+        let discovery_dir = Self::get_discovery_dir();
 
         // Create directory if needed
         tokio::fs::create_dir_all(&discovery_dir).await?;
@@ -270,6 +278,10 @@ impl DisplayCapabilities {
     /// Reads capability files from discovery directory.
     /// Other primals use this to find us!
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the discovery directory cannot be read or capability files cannot be parsed.
+    ///
     /// # Example
     ///
     /// ```rust,no_run
@@ -286,7 +298,7 @@ impl DisplayCapabilities {
     /// }
     /// ```
     pub async fn find_all() -> Result<Vec<Self>> {
-        let discovery_dir = Self::get_discovery_dir()?;
+        let discovery_dir = Self::get_discovery_dir();
 
         if !discovery_dir.exists() {
             return Ok(vec![]);
@@ -324,8 +336,12 @@ impl DisplayCapabilities {
     /// Cleanup (remove capability announcement)
     ///
     /// Call on shutdown to clean up discovery files.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the discovery directory cannot be resolved or the capability file cannot be removed.
     pub async fn cleanup(&self) -> Result<()> {
-        let discovery_dir = Self::get_discovery_dir()?;
+        let discovery_dir = Self::get_discovery_dir();
         let filename = format!("{}.json", self.primal_id);
         let filepath = discovery_dir.join(filename);
 
@@ -338,21 +354,21 @@ impl DisplayCapabilities {
     }
 
     /// Get socket path (XDG compliant, no hardcoding!)
-    fn get_socket_path() -> Result<PathBuf> {
+    fn get_socket_path() -> PathBuf {
         // Use PlatformPaths for consistent XDG-compliant path resolution
         use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
         let env = PathEnv::from_env();
         let paths = PlatformPaths::new(&env);
-        Ok(paths.toadstool_socket_dir().join("display.sock"))
+        paths.toadstool_socket_dir().join("display.sock")
     }
 
     /// Get discovery directory (XDG compliant, no hardcoding!)
-    fn get_discovery_dir() -> Result<PathBuf> {
+    fn get_discovery_dir() -> PathBuf {
         // Use PlatformPaths for consistent XDG-compliant path resolution
         use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
         let env = PathEnv::from_env();
         let paths = PlatformPaths::new(&env);
-        Ok(paths.runtime_dir().join("ecoPrimals/discovery"))
+        paths.runtime_dir().join("ecoPrimals/discovery")
     }
 }
 
@@ -536,5 +552,83 @@ mod tests {
         // Cleanup
         tokio::fs::remove_file(&filepath).await.unwrap();
         assert!(!filepath.exists());
+    }
+
+    #[test]
+    fn test_capability_detection_supported_formats() {
+        let caps = make_caps();
+        assert!(caps.supported_formats.contains(&"RGBA8888".to_string()));
+        assert!(caps.supported_formats.contains(&"RGB565".to_string()));
+        assert!(!caps.supported_formats.is_empty());
+    }
+
+    #[test]
+    fn test_capability_detection_max_windows() {
+        let caps = make_caps();
+        assert!(caps.max_windows > 0);
+        assert!(caps.max_windows <= 64);
+    }
+
+    #[test]
+    fn test_capability_detection_primal_type() {
+        let caps = make_caps();
+        assert_eq!(caps.primal_type, "toadstool");
+    }
+
+    #[test]
+    fn test_capability_detection_metadata() {
+        let caps = make_caps();
+        assert!(!caps.metadata.version.is_empty());
+        assert!(caps.metadata.pure_rust);
+        assert!(!caps.metadata.timestamp.is_empty());
+    }
+
+    #[test]
+    fn test_display_info_connected() {
+        let info = DisplayInfo {
+            name: "DP-1".to_string(),
+            width: 3840,
+            height: 2160,
+            refresh_rate: 120.0,
+            connected: false,
+        };
+        assert!(!info.connected);
+        assert_eq!(info.width, 3840);
+        assert_eq!(info.height, 2160);
+    }
+
+    #[test]
+    fn test_capabilities_empty_displays() {
+        let mut caps = make_caps();
+        caps.displays = vec![];
+        let json = serde_json::to_string(&caps).unwrap();
+        let deserialized: DisplayCapabilities = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.displays.is_empty());
+    }
+
+    #[test]
+    fn test_capabilities_multiple_displays() {
+        let mut caps = make_caps();
+        caps.displays = vec![
+            DisplayInfo {
+                name: "eDP-1".to_string(),
+                width: 1920,
+                height: 1080,
+                refresh_rate: 60.0,
+                connected: true,
+            },
+            DisplayInfo {
+                name: "HDMI-1".to_string(),
+                width: 2560,
+                height: 1440,
+                refresh_rate: 144.0,
+                connected: true,
+            },
+        ];
+        assert_eq!(caps.displays.len(), 2);
+        let json = serde_json::to_string(&caps).unwrap();
+        let deserialized: DisplayCapabilities = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.displays.len(), 2);
+        assert_eq!(deserialized.displays[1].name, "HDMI-1");
     }
 }

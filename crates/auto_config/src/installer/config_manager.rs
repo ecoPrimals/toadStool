@@ -19,9 +19,16 @@ pub struct ConfigManager {
 }
 
 impl ConfigManager {
+    #[must_use]
     pub fn new() -> Self {
         let platform = Platform::detect();
         let config_path = config_path_for_platform(&platform);
+        Self { config_path }
+    }
+
+    /// Create a ConfigManager with a custom path (for testing).
+    #[must_use]
+    pub fn with_path(config_path: PathBuf) -> Self {
         Self { config_path }
     }
 
@@ -170,5 +177,96 @@ impl ConfigManager {
 impl Default for ConfigManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use toadstool_config::ToadStoolConfig;
+
+    #[tokio::test]
+    async fn test_apply_configuration_creates_directory_and_files() {
+        let temp_dir = tempdir().expect("create temp dir");
+        let config_path = temp_dir.path().to_path_buf();
+        let manager = ConfigManager::with_path(config_path.clone());
+
+        let config = ToadStoolConfig::default();
+        manager.apply_configuration(&config).await.unwrap();
+
+        assert!(config_path.exists());
+        assert!(config_path.is_dir());
+
+        let toadstool_json = config_path.join("toadstool.json");
+        assert!(toadstool_json.exists(), "toadstool.json should exist");
+        let content = tokio::fs::read_to_string(&toadstool_json).await.unwrap();
+        assert!(
+            content.contains("toadstool") || content.contains("app") || content.contains("runtime")
+        );
+
+        let runtime_dir = config_path.join("runtimes");
+        assert!(runtime_dir.exists());
+        assert!(runtime_dir.join("native.json").exists());
+        assert!(runtime_dir.join("container.json").exists());
+        assert!(runtime_dir.join("wasm.json").exists());
+
+        let security_json = config_path.join("security.json");
+        assert!(security_json.exists());
+
+        let observability_json = config_path.join("observability.json");
+        assert!(observability_json.exists());
+    }
+
+    #[tokio::test]
+    async fn test_apply_configuration_writes_valid_json() {
+        let temp_dir = tempdir().expect("create temp dir");
+        let config_path = temp_dir.path().to_path_buf();
+        let manager = ConfigManager::with_path(config_path.clone());
+
+        let config = ToadStoolConfig::default();
+        manager.apply_configuration(&config).await.unwrap();
+
+        let toadstool_content = tokio::fs::read_to_string(config_path.join("toadstool.json"))
+            .await
+            .unwrap();
+        let _parsed: serde_json::Value =
+            serde_json::from_str(&toadstool_content).expect("toadstool.json should be valid JSON");
+
+        let native_content =
+            tokio::fs::read_to_string(config_path.join("runtimes").join("native.json"))
+                .await
+                .unwrap();
+        let native_json: serde_json::Value =
+            serde_json::from_str(&native_content).expect("native.json should be valid JSON");
+        assert_eq!(native_json["enabled"], true);
+    }
+
+    #[tokio::test]
+    async fn test_apply_configuration_idempotent() {
+        let temp_dir = tempdir().expect("create temp dir");
+        let config_path = temp_dir.path().to_path_buf();
+        let manager = ConfigManager::with_path(config_path.clone());
+
+        let config = ToadStoolConfig::default();
+        manager.apply_configuration(&config).await.unwrap();
+        manager.apply_configuration(&config).await.unwrap();
+
+        assert!(config_path.join("toadstool.json").exists());
+    }
+
+    #[tokio::test]
+    async fn test_apply_configuration_with_gpu_writes_gpu_config() {
+        let temp_dir = tempdir().expect("create temp dir");
+        let config_path = temp_dir.path().to_path_buf();
+        let manager = ConfigManager::with_path(config_path.clone());
+
+        let mut config = ToadStoolConfig::default();
+        config.runtime.gpu = Some(toadstool_config::GpuConfig::default());
+
+        manager.apply_configuration(&config).await.unwrap();
+
+        let gpu_json = config_path.join("runtimes").join("gpu.json");
+        assert!(gpu_json.exists());
     }
 }

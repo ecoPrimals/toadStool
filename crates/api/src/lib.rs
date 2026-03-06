@@ -1,5 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::doc_markdown,
+    clippy::manual_let_else,
+    clippy::match_same_arms,
+    clippy::must_use_candidate,
+    clippy::needless_pass_by_value,
+    clippy::redundant_closure_for_method_calls,
+    clippy::struct_excessive_bools,
+    clippy::unnested_or_patterns,
+    clippy::unused_async,
+    clippy::wildcard_imports
+)]
 
 //! Modern API for ToadStool with OpenAPI support
 //!

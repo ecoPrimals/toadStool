@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: March 3, 2026 -- Session 94b
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 44 JSON-RPC methods | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | D-DF64 transferred to barraCuda | **EMBEDDED BARRACUDA FOSSILIZED** | **NpuDispatch + NpuParameterController traits** | **GpuAdapterInfo for barraCuda** | **NestGate mock→RPC**
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 47 JSON-RPC methods | Hardware Transport Layer wired to daemon + CLI | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | D-DF64 transferred to barraCuda | **EMBEDDED BARRACUDA FOSSILIZED** | **NpuDispatch + NpuParameterController traits** | **GpuAdapterInfo for barraCuda** | **NestGate mock→RPC**
 **Latest**: S94b — NpuDispatch generic trait, NpuParameterController (hotSpring absorption), GpuAdapterInfo driver probing, multi-adapter selection (TOADSTOOL_GPU_ADAPTER), NestGate evolved to real RPC, placeholder crate removed, production mock audit complete.
 
 ---
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-17,986 tests pass. Focus areas for next push: low-coverage crates in CLI ecosystem
+18,028 tests pass. Focus areas for next push: low-coverage crates in CLI ecosystem
 integration, distributed coordination, auto_config installer paths, runtime edge platforms.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
@@ -83,9 +83,12 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **9 god files refactored (S74+S75)** -- primal_integration, capability_provider, primals/lib, opencl_impl, env_overrides, os_layer/compat, workload, unified, precision/mod
 - [x] **ComputeDispatch migration** -- transferred to barraCuda team (lives in barraCuda crate)
 - [x] **DF64 default path** -- transferred to barraCuda team (S93)
-- [ ] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
-- [ ] **Test coverage target 90%** -- 17,986 tests; focus on low-coverage crates (toadStool D-COV)
-- [ ] **Sovereignty migration** -- remaining callers to capability-based APIs (toadStool D-SOV)
+- [x] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
+- [ ] **Test coverage target 90%** -- 18,028 tests; focus on low-coverage crates (toadStool D-COV)
+- [x] **Sovereignty migration** -- remaining callers to capability-based APIs (toadStool D-SOV)
+- [x] **Hardware Transport wiring** -- transport.discover/list/route JSON-RPC + CLI commands
+- [x] **Detection stubs evolved** -- 11 functions → real /proc + command-based detection
+- [x] **Smart refactoring (round 2)** -- security.rs (771→5 modules), config_utils (777→5 modules)
 - [x] **Smart refactoring** -- vfio.rs (971L) smart-refactored into `vfio/` directory (S94)
 - [x] **manual_jsonrpc removal** -- deleted, pure_jsonrpc is canonical (S94)
 - [x] **Barracuda fossilization** -- dead dep removed, crates/barracuda → archive/ (S94)

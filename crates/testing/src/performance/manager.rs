@@ -313,3 +313,81 @@ impl PerformanceTestManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::performance::{LoadTestConfig, PerformanceTestConfig};
+
+    #[tokio::test]
+    async fn test_benchmark_basic() {
+        let config = PerformanceTestConfig {
+            test_name: "quick_bench".to_string(),
+            warm_up_iterations: 1,
+            measurement_iterations: 3,
+            memory_profiling: false,
+            ..Default::default()
+        };
+        let manager = PerformanceTestManager::new(config);
+        let result = manager
+            .benchmark(|| async { Ok(()) })
+            .await
+            .expect("benchmark should succeed");
+        assert_eq!(result.test_name, "quick_bench");
+        assert!(result.iterations >= 1);
+    }
+
+    #[tokio::test]
+    async fn test_load_test_short_duration() {
+        let config = PerformanceTestConfig::default();
+        let manager = PerformanceTestManager::new(config);
+        let load_config = LoadTestConfig {
+            test_name: "short_load".to_string(),
+            concurrent_users: 2,
+            test_duration: std::time::Duration::from_millis(50),
+            think_time: std::time::Duration::ZERO,
+            ramp_up_duration: std::time::Duration::ZERO,
+            target_rps: None,
+        };
+        let result = manager
+            .load_test(load_config, || async { Ok(()) })
+            .await
+            .expect("load test should succeed");
+        assert_eq!(result.test_name, "short_load");
+        assert_eq!(result.concurrent_users, 2);
+    }
+
+    #[test]
+    fn test_compare_results_improvement() {
+        let config = PerformanceTestConfig::default();
+        let manager = PerformanceTestManager::new(config);
+        let mut baseline = BenchmarkResult::default("b");
+        baseline.average_duration = std::time::Duration::from_millis(100);
+        let mut current = BenchmarkResult::default("c");
+        current.average_duration = std::time::Duration::from_millis(80);
+        let comparison = manager.compare_results(&baseline, &current);
+        assert!(comparison.improvement_percent > 0.0);
+        assert!(!comparison.regression_detected);
+    }
+
+    #[test]
+    fn test_compare_results_regression() {
+        let config = PerformanceTestConfig::default();
+        let manager = PerformanceTestManager::new(config);
+        let mut baseline = BenchmarkResult::default("b");
+        baseline.average_duration = std::time::Duration::from_millis(100);
+        let mut current = BenchmarkResult::default("c");
+        current.average_duration = std::time::Duration::from_millis(120);
+        let comparison = manager.compare_results(&baseline, &current);
+        assert!(comparison.improvement_percent < 0.0);
+        assert!(comparison.regression_detected);
+    }
+
+    #[tokio::test]
+    async fn test_generate_report() {
+        let config = PerformanceTestConfig::default();
+        let manager = PerformanceTestManager::new(config);
+        let report = manager.generate_report().await;
+        assert_eq!(report.total_benchmarks, 0);
+    }
+}

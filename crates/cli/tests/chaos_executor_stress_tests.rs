@@ -71,14 +71,8 @@ async fn chaos_rapid_fire_operations() -> Result<()> {
         handles.push(tokio::spawn(async move {
             let op = i % 4;
             let result = match op {
-                0 => {
-                    exec.list_biomes(false, "text".to_string(), false, None)
-                        .await
-                }
-                1 => {
-                    exec.list_biomes(false, "json".to_string(), false, None)
-                        .await
-                }
+                0 => exec.list_biomes(false, "text", false, None).await,
+                1 => exec.list_biomes(false, "json", false, None).await,
                 2 => exec
                     .down_biome(format!("nonexistent-{}", i), false, 5, false)
                     .await
@@ -123,9 +117,7 @@ async fn chaos_sustained_high_load() -> Result<()> {
         let exec = Arc::clone(&executor);
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
-            let result = exec
-                .list_biomes(false, "text".to_string(), false, None)
-                .await;
+            let result = exec.list_biomes(false, "text", false, None).await;
             tx.send(i).ok();
             result
         }));
@@ -182,7 +174,7 @@ async fn chaos_memory_pressure() -> Result<()> {
     let mut functional = 0;
     for executor in &executors {
         if executor
-            .list_biomes(false, "text".to_string(), false, None)
+            .list_biomes(false, "text", false, None)
             .await
             .is_ok()
         {
@@ -213,9 +205,7 @@ async fn chaos_operation_storms() -> Result<()> {
         let exec = Arc::clone(&executor);
         let tx = tx.clone();
         tokio::spawn(async move {
-            let _ = exec
-                .list_biomes(false, "text".to_string(), false, None)
-                .await;
+            let _ = exec.list_biomes(false, "text", false, None).await;
             tx.send(format!("list_{}", i)).ok();
         });
     }
@@ -281,7 +271,7 @@ async fn chaos_timeout_cascade() -> Result<()> {
             let timeout_ms = 100 + (i * 10); // Varying timeouts
             let result = timeout(
                 Duration::from_millis(timeout_ms),
-                exec.list_biomes(false, "text".to_string(), false, None),
+                exec.list_biomes(false, "text", false, None),
             )
             .await;
 
@@ -332,9 +322,7 @@ async fn chaos_error_cascade() -> Result<()> {
     }
 
     // Verify system still functional after error cascade
-    let result = executor
-        .list_biomes(false, "text".to_string(), false, None)
-        .await;
+    let result = executor.list_biomes(false, "text", false, None).await;
     assert!(
         result.is_ok(),
         "System should remain functional after error cascade"
@@ -359,9 +347,7 @@ async fn chaos_concurrent_state_access() -> Result<()> {
         let exec = Arc::clone(&executor);
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
-            let result = exec
-                .list_biomes(false, "text".to_string(), false, None)
-                .await;
+            let result = exec.list_biomes(false, "text", false, None).await;
             tx.send(i).ok();
             result
         }));
@@ -400,8 +386,7 @@ async fn chaos_interleaved_operations() -> Result<()> {
         handles.push(tokio::spawn(async move {
             if i % 2 == 0 {
                 // Read
-                exec.list_biomes(false, "text".to_string(), false, None)
-                    .await
+                exec.list_biomes(false, "text", false, None).await
             } else {
                 // Write (will fail, but tests state management)
                 exec.down_biome(format!("test-{}", i), false, 1, false)
@@ -417,9 +402,7 @@ async fn chaos_interleaved_operations() -> Result<()> {
     }
 
     // System should still be responsive
-    let result = executor
-        .list_biomes(false, "text".to_string(), false, None)
-        .await;
+    let result = executor.list_biomes(false, "text", false, None).await;
     assert!(
         result.is_ok(),
         "System should be responsive after interleaved ops"
@@ -438,9 +421,7 @@ async fn chaos_recovery_after_stress() -> Result<()> {
     for i in 0..100 {
         let exec = Arc::clone(&executor);
         stress_handles.push(tokio::spawn(async move {
-            let _ = exec
-                .list_biomes(false, "json".to_string(), false, None)
-                .await;
+            let _ = exec.list_biomes(false, "json", false, None).await;
             let _ = exec
                 .down_biome(format!("stress-{}", i), false, 1, false)
                 .await;
@@ -459,8 +440,7 @@ async fn chaos_recovery_after_stress() -> Result<()> {
     for _ in 0..20 {
         let exec = Arc::clone(&executor);
         recovery_handles.push(tokio::spawn(async move {
-            exec.list_biomes(false, "text".to_string(), false, None)
-                .await
+            exec.list_biomes(false, "text", false, None).await
         }));
     }
 

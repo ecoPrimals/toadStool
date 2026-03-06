@@ -294,4 +294,89 @@ mod tests {
         let parsed: ServiceDiscoveryConfig = toml::from_str(&toml).unwrap();
         assert_eq!(parsed.services.len(), config.services.len());
     }
+
+    #[test]
+    fn test_service_config_defaults() {
+        let config = ServiceConfig {
+            url: "http://localhost:8080".to_string(),
+            priority: 75,
+            enabled: false,
+            health_check_interval: 60,
+            metadata: std::collections::HashMap::new(),
+        };
+        assert_eq!(config.priority, 75);
+        assert!(!config.enabled);
+        assert_eq!(config.health_check_interval, 60);
+    }
+
+    #[test]
+    fn test_discovery_config_default() {
+        let config = DiscoveryConfig::default();
+        assert!(config.enable_env);
+        assert!(config.enable_config);
+        assert!(!config.enable_mdns);
+        assert!(!config.enable_service_mesh);
+        assert_eq!(config.timeout_seconds, 10);
+    }
+
+    #[test]
+    fn test_from_file_valid_toml() {
+        let dir = std::env::temp_dir().join("toadstool_config_test");
+        std::fs::create_dir_all(&dir).ok();
+        let path = dir.join("services.toml");
+
+        let toml = r#"
+[services.crypto]
+url = "unix:///var/run/crypto.sock"
+priority = 90
+enabled = true
+
+[discovery]
+enable_env = true
+enable_config = true
+"#;
+        std::fs::write(&path, toml).unwrap();
+
+        let config = ServiceDiscoveryConfig::from_file(&path).unwrap();
+        assert!(config.get_service("crypto").is_some());
+        let crypto = config.get_service("crypto").unwrap();
+        assert_eq!(crypto.url, "unix:///var/run/crypto.sock");
+        assert_eq!(crypto.priority, 90);
+
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn test_from_file_invalid_toml() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("invalid.toml");
+        std::fs::write(&path, "invalid toml [[[").expect("write invalid toml");
+
+        let result = ServiceDiscoveryConfig::from_file(&path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_file_not_found() {
+        let result = ServiceDiscoveryConfig::from_file("/nonexistent/path/config.toml");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_save_and_load() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("save_test.toml");
+
+        let config = ServiceDiscoveryConfig::create_example();
+        config.save(&path).expect("save config");
+
+        let loaded = ServiceDiscoveryConfig::from_file(&path).expect("load config");
+        assert_eq!(loaded.services.len(), config.services.len());
+    }
+
+    #[test]
+    fn test_get_service_nonexistent() {
+        let config = ServiceDiscoveryConfig::default();
+        assert!(config.get_service("nonexistent").is_none());
+    }
 }

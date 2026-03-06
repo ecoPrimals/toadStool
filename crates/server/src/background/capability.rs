@@ -38,3 +38,38 @@ pub(super) async fn run(state: ServerState) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::{broadcast, RwLock};
+
+    use crate::config::ServerConfig;
+    use crate::state::{ServerState, ServerStatistics};
+
+    #[tokio::test]
+    async fn test_capability_run_no_provider_completes_one_tick() {
+        let (event_broadcaster, _) = broadcast::channel(100);
+        let state = ServerState {
+            runtime_engines: Arc::new(RwLock::new(HashMap::new())),
+            active_executions: Arc::new(RwLock::new(HashMap::new())),
+            event_broadcaster,
+            config: ServerConfig::default(),
+            resource_monitor: Arc::new(
+                toadstool_testing::mocks::resource_monitors::MockResourceMonitor::new_successful(),
+            ),
+            stats: Arc::new(RwLock::new(ServerStatistics::default())),
+            capability_provider: None,
+        };
+
+        let handle = tokio::spawn(async move {
+            run(state).await;
+        });
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        handle.abort();
+        let _ = handle.await;
+    }
+}

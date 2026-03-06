@@ -249,7 +249,7 @@ impl RuntimeDiscovery {
         let now = std::time::SystemTime::now();
         let timeout = config.service_timeout;
 
-        let stale: Vec<Uuid> = services_write
+        let stale_ids: Vec<Uuid> = services_write
             .iter()
             .filter(|(_, service)| {
                 now.duration_since(service.last_seen)
@@ -259,13 +259,13 @@ impl RuntimeDiscovery {
             .map(|(id, _)| *id)
             .collect();
 
-        if !stale.is_empty() {
-            for id in &stale {
+        if !stale_ids.is_empty() {
+            for id in &stale_ids {
                 services_write.remove(id);
             }
 
             let mut state_write = state.write().await;
-            let stale_count = stale.len();
+            let stale_count = stale_ids.len();
             #[allow(clippy::cast_possible_truncation)]
             let timeout_delta = stale_count as u64;
             state_write.stats.timeouts += timeout_delta;

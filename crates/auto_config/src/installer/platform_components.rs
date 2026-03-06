@@ -15,7 +15,7 @@ pub async fn install_linux_components(installation_path: &Path) -> Result<(), To
     info!("🐧 Installing Linux-specific components...");
 
     let service_content = format!(
-        r#"[Unit]
+        r"[Unit]
 Description=ToadStool Universal Compute Platform
 After=network.target
 
@@ -29,7 +29,7 @@ Group=toadstool
 
 [Install]
 WantedBy=multi-user.target
-"#,
+",
         installation_path.display()
     );
 

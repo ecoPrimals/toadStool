@@ -138,7 +138,7 @@ pub fn validate_preflight(
 
         Some(MigrationTarget::Local) => check_local_capacity(requirements),
 
-        Some(MigrationTarget::Cloud { .. }) | Some(MigrationTarget::DifferentCloud { .. }) => {
+        Some(MigrationTarget::Cloud { .. } | MigrationTarget::DifferentCloud { .. }) => {
             // For cloud targets we trust the cloud provider's declared capacity
             // and only reject if a GPU is required but the provider is known not
             // to support it (heuristic — full capability lookup is out of scope

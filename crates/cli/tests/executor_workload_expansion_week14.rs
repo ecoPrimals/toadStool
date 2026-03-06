@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Week 14, Day 1: Executor Workload Function Tests
+//! Executor workload function tests.
 //!
-//! Target: crates/cli/src/executor/workload.rs (currently 0% coverage)
-//! Goal: Bring coverage from 0% to 40% with 10 comprehensive tests
-//!
-//! These tests focus on actual function implementation, not just types.
+//! These tests focus on actual function implementation in workload.rs,
+//! not just types.
 
 use std::collections::HashMap;
 

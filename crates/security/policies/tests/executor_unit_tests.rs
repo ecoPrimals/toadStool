@@ -95,9 +95,7 @@ async fn test_execute_allow() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Allow));
     assert_eq!(result.warnings.len(), 0);
@@ -114,9 +112,7 @@ async fn test_execute_deny() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Deny));
     assert_eq!(result.warnings.len(), 0);
@@ -135,9 +131,7 @@ async fn test_execute_allow_with_warning() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Allow));
     assert_eq!(result.warnings.len(), 1);
@@ -158,9 +152,7 @@ async fn test_execute_deny_with_message() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Deny));
     assert_eq!(result.warnings.len(), 1);
@@ -186,9 +178,7 @@ async fn test_execute_modify_security_context_isolation() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.security_modifications.len(), 1);
@@ -217,9 +207,7 @@ async fn test_execute_modify_security_context_add_capabilities() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.security_modifications.len(), 2);
@@ -252,9 +240,7 @@ async fn test_execute_modify_security_context_remove_capabilities() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.security_modifications.len(), 2);
@@ -287,9 +273,7 @@ async fn test_execute_modify_security_context_combined() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     // 1 for isolation + 1 for add + 1 for remove
@@ -311,9 +295,7 @@ async fn test_execute_apply_resource_limits_cpu() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.resource_modifications.len(), 1);
@@ -343,9 +325,7 @@ async fn test_execute_apply_resource_limits_memory() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.resource_modifications.len(), 1);
@@ -368,9 +348,7 @@ async fn test_execute_apply_resource_limits_network() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.resource_modifications.len(), 1);
@@ -396,9 +374,7 @@ async fn test_execute_apply_resource_limits_all() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.resource_modifications.len(), 3);
@@ -435,9 +411,7 @@ async fn test_execute_require_authentication() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::RequiresAuth));
     assert_eq!(result.warnings.len(), 1);
@@ -462,9 +436,7 @@ async fn test_execute_log_and_continue() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     // Result should remain unchanged from initial Allow
     assert!(matches!(result.result, PolicyResult::Allow));
@@ -493,9 +465,7 @@ async fn test_execute_custom_action() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert_eq!(result.warnings.len(), 1);
     assert_eq!(result.warnings[0].level, "info");
@@ -521,7 +491,6 @@ async fn test_execute_multiple_actions_sequence() {
     };
     executor
         .execute_action(&action1, &mut result, &context)
-        .await
         .unwrap();
     assert_eq!(result.warnings.len(), 1);
 
@@ -533,7 +502,6 @@ async fn test_execute_multiple_actions_sequence() {
     };
     executor
         .execute_action(&action2, &mut result, &context)
-        .await
         .unwrap();
     assert_eq!(result.security_modifications.len(), 2);
     assert!(matches!(result.result, PolicyResult::Modified));
@@ -546,7 +514,6 @@ async fn test_execute_multiple_actions_sequence() {
     };
     executor
         .execute_action(&action3, &mut result, &context)
-        .await
         .unwrap();
     assert_eq!(result.resource_modifications.len(), 2);
 
@@ -572,9 +539,7 @@ async fn test_execute_empty_capabilities_lists() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.security_modifications.len(), 0);
@@ -591,9 +556,7 @@ async fn test_execute_no_resource_limits() {
     let mut result = create_empty_result();
     let context = create_test_context();
 
-    let exec_result = executor
-        .execute_action(&action, &mut result, &context)
-        .await;
+    let exec_result = executor.execute_action(&action, &mut result, &context);
     assert!(exec_result.is_ok());
     assert!(matches!(result.result, PolicyResult::Modified));
     assert_eq!(result.resource_modifications.len(), 0);

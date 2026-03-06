@@ -255,4 +255,75 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_device_info_accessors() {
+        let info = DeviceInfo {
+            index: 0,
+            path: PathBuf::from("/dev/akida0"),
+            pcie_address: "0000:a1:00.0".to_string(),
+            capabilities: crate::capabilities::Capabilities {
+                chip_version: crate::capabilities::ChipVersion::Akd1000,
+                npu_count: 80,
+                memory_mb: 10,
+                pcie: crate::capabilities::PcieConfig::new(3, 8),
+                power_mw: None,
+                temperature_c: None,
+                mesh: None,
+                clock_mode: None,
+                batch: None,
+                weight_mutation: crate::capabilities::WeightMutationSupport::None,
+            },
+        };
+        assert_eq!(info.index(), 0);
+        assert_eq!(info.path(), Path::new("/dev/akida0"));
+        assert_eq!(info.pcie_address(), "0000:a1:00.0");
+        assert_eq!(info.capabilities().npu_count, 80);
+    }
+
+    #[test]
+    fn test_device_manager_device_invalid_index() {
+        let manager = DeviceManager { devices: vec![] };
+        let result = manager.device(0);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            AkidaError::InvalidIndex { .. }
+        ));
+    }
+
+    #[test]
+    fn test_device_manager_open_first_empty() {
+        let manager = DeviceManager { devices: vec![] };
+        let result = manager.open_first();
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), AkidaError::NoDevicesFound));
+    }
+
+    #[test]
+    fn test_device_manager_device_count() {
+        let manager = DeviceManager {
+            devices: vec![DeviceInfo {
+                index: 0,
+                path: PathBuf::from("/dev/akida0"),
+                pcie_address: "0000:a1:00.0".to_string(),
+                capabilities: crate::capabilities::Capabilities {
+                    chip_version: crate::capabilities::ChipVersion::Akd1000,
+                    npu_count: 80,
+                    memory_mb: 10,
+                    pcie: crate::capabilities::PcieConfig::new(3, 8),
+                    power_mw: None,
+                    temperature_c: None,
+                    mesh: None,
+                    clock_mode: None,
+                    batch: None,
+                    weight_mutation: crate::capabilities::WeightMutationSupport::None,
+                },
+            }],
+        };
+        assert_eq!(manager.device_count(), 1);
+        assert_eq!(manager.devices().len(), 1);
+        let info = manager.device(0).unwrap();
+        assert_eq!(info.index(), 0);
+    }
 }

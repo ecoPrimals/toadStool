@@ -256,4 +256,83 @@ mod tests {
         assert_eq!(ids.len(), 1);
         assert!(ids.contains(&"local".to_string()));
     }
+
+    #[tokio::test]
+    async fn test_select_best_tower_empty_returns_local() {
+        let manager = TowerManager::new("local-tower".to_string());
+        let reqs = ComputeRequirements {
+            memory_bytes: 1024,
+            ..Default::default()
+        };
+        let result = manager.select_best_tower(&reqs).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "local-tower");
+    }
+
+    #[tokio::test]
+    async fn test_select_by_capability_empty_returns_local() {
+        let manager = TowerManager::new("local".to_string());
+        let result = manager.select_by_capability("gpu").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "local");
+    }
+
+    #[tokio::test]
+    async fn test_select_multiple_towers() {
+        let manager = TowerManager::new("local".to_string());
+        let reqs = ComputeRequirements::default();
+        let result = manager.select_multiple_towers(&reqs, 3).await;
+        assert!(result.is_ok());
+        let towers = result.unwrap();
+        assert!(!towers.is_empty());
+        assert!(towers.contains(&"local".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_get_tower_endpoint_none() {
+        let manager = TowerManager::new("local".to_string());
+        let endpoint = manager.get_tower_endpoint("nonexistent").await;
+        assert!(endpoint.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_remote_tower_count() {
+        let manager = TowerManager::new("local".to_string());
+        assert_eq!(manager.remote_tower_count().await, 0);
+
+        let endpoint = RemoteTowerEndpoint {
+            tower_id: "remote-1".to_string(),
+            address: "10.0.0.1:8080".to_string(),
+            gpu_capabilities: None,
+            last_seen: Instant::now(),
+            latency_ms: 10,
+        };
+        manager.register_tower(endpoint).await;
+        assert_eq!(manager.remote_tower_count().await, 1);
+    }
+
+    #[tokio::test]
+    async fn test_register_tower_replaces_stale() {
+        let manager = TowerManager::new("local".to_string());
+        let ep1 = RemoteTowerEndpoint {
+            tower_id: "remote-1".to_string(),
+            address: "10.0.0.1:8080".to_string(),
+            gpu_capabilities: None,
+            last_seen: Instant::now(),
+            latency_ms: 5,
+        };
+        manager.register_tower(ep1).await;
+        let ep2 = RemoteTowerEndpoint {
+            tower_id: "remote-1".to_string(),
+            address: "10.0.0.2:8080".to_string(),
+            gpu_capabilities: None,
+            last_seen: Instant::now(),
+            latency_ms: 3,
+        };
+        manager.register_tower(ep2).await;
+        assert_eq!(manager.tower_count().await, 2);
+        let endpoint = manager.get_tower_endpoint("remote-1").await;
+        assert!(endpoint.is_some());
+        assert_eq!(endpoint.unwrap().address, "10.0.0.2:8080");
+    }
 }

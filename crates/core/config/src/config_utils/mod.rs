@@ -3,74 +3,37 @@
 //!
 //! This module provides utility functions to replace hardcoded values with
 //! environment-aware configuration throughout the `ToadStool` codebase.
+//!
+//! ## Module structure
+//!
+//! - `paths` — Config file paths, directory resolution, XDG compliance
+//! - `network` — Port constants, network configuration helpers
+//! - `environment` — Environment variable parsing, overrides
+//! - `defaults` — Default values, fallback configuration
 
-use std::collections::HashMap;
-use std::env;
-use std::time::Duration;
-use toadstool_common::constants::network::DEFAULT_HOSTNAME;
-use tracing::{debug, info};
-
-use crate::env_config::{EnvConfigLoader, NetworkEnvConfig};
-use crate::network;
+mod defaults;
+mod environment;
+mod network;
+mod paths;
 
 /// Global configuration utilities for replacing hardcoded values
 pub struct ConfigUtils;
 
 impl ConfigUtils {
+    // ========== Network (delegate to network) ==========
+
     /// Get primal port by capability/env name (capability-based lookup)
-    ///
-    /// **Purpose**: Defaults for initial connection discovery before runtime discovery.
-    /// Used when capability-based discovery (Songbird, mDNS) is not yet available.
-    ///
-    /// **Production**: Prefer `RuntimeDiscovery::discover_capability()` instead.
-    /// This is the cold-start bootstrap path only.
-    ///
-    /// **Env pattern**: Checks `{PRIMAL_NAME}_PORT` (e.g. `SONGBIRD_PORT`, `BEARDOG_PORT`).
-    /// Primal names use UPPERCASE for env var convention.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// let port = ConfigUtils::get_primal_default_port("SONGBIRD");
-    /// // Returns SONGBIRD_PORT env value or 8080
-    /// ```
     #[must_use]
     #[deprecated(
         since = "0.92.0",
         note = "Use capability-based discovery via infant_discovery instead of primal-name port lookup"
     )]
+    #[allow(deprecated)]
     pub fn get_primal_default_port(primal_name: &str) -> u16 {
-        use crate::ports::{discovery_fallback, get_primal_port};
-
-        let fallback = match primal_name {
-            "SONGBIRD" => discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT,
-            "BEARDOG" => discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT,
-            "NESTGATE" => discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT,
-            "SQUIRREL" => discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT,
-            "BIOMEOS" => discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT,
-            _ => crate::defaults::network::API_PORT, // Unknown primal: use ToadStool default
-        };
-
-        get_primal_port(primal_name, fallback)
+        network::get_primal_default_port(primal_name)
     }
 
     /// Get Songbird port from environment or default
-    ///
-    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
-    ///
-    /// **Modern Pattern**:
-    /// ```ignore
-    /// // Self-knowledge: ToadStool knows only its own config
-    /// let my_port = config.network.toadstool_port;
-    ///
-    /// // Runtime discovery: Find coordination services by capability
-    /// let discovery = RuntimeDiscovery::new();
-    /// let coord_services = discovery
-    ///     .discover_capability(&Capability::Coordination)
-    ///     .await?;
-    /// ```
-    ///
-    /// This method remains for backwards compatibility and fallback scenarios only.
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery (RuntimeDiscovery::discover_capability) instead of hardcoded primal endpoints"
@@ -78,20 +41,10 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)]
     pub fn get_songbird_port() -> u16 {
-        Self::get_primal_default_port("SONGBIRD")
+        network::get_songbird_port()
     }
 
-    /// Get `BearDog` port from environment or default
-    ///
-    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
-    ///
-    /// **Modern Pattern**: Use `RuntimeDiscovery::discover_capability(&Capability::Crypto)`
-    /// instead of hardcoded BearDog endpoints. Each primal has self-knowledge only.
-    ///
-    /// # Self-Knowledge Principle
-    ///
-    /// This function violates self-knowledge by checking OTHER primal's environment.
-    /// Uses non-prefixed env var: `BEARDOG_PORT` (not `TOADSTOOL_BEARDOG_PORT`)
+    /// Get BearDog port from environment or default
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery for crypto services instead of hardcoded endpoints"
@@ -99,15 +52,10 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)]
     pub fn get_beardog_port() -> u16 {
-        Self::get_primal_default_port("BEARDOG")
+        network::get_beardog_port()
     }
 
-    /// Get `NestGate` port from environment or default
-    ///
-    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
-    ///
-    /// **Modern Pattern**: Use `RuntimeDiscovery::discover_capability(&Capability::Storage)`
-    /// instead of hardcoded NestGate endpoints.
+    /// Get NestGate port from environment or default
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery for storage services instead of hardcoded endpoints"
@@ -115,15 +63,10 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)]
     pub fn get_nestgate_port() -> u16 {
-        Self::get_primal_default_port("NESTGATE")
+        network::get_nestgate_port()
     }
 
     /// Get Squirrel port from environment or default
-    ///
-    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
-    ///
-    /// **Modern Pattern**: Use `RuntimeDiscovery::discover_capability(&Capability::AI)`
-    /// instead of hardcoded Squirrel endpoints.
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery for AI services instead of hardcoded endpoints"
@@ -131,644 +74,400 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)]
     pub fn get_squirrel_port() -> u16 {
-        Self::get_primal_default_port("SQUIRREL")
+        network::get_squirrel_port()
     }
 
-    /// Get `ToadStool` port from environment or default
+    /// Get ToadStool port from environment or default
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
-        // ✅ SELF-KNOWLEDGE: ToadStool knows its own port
-        // Use empty prefix and full env var name "TOADSTOOL_PORT"
-        let loader = EnvConfigLoader::with_prefix(""); // Check TOADSTOOL_PORT directly
-        loader.get_u16("TOADSTOOL_PORT", crate::defaults::network::API_PORT)
+        network::get_toadstool_port()
     }
 
-    /// Resolve whether to use placeholder implementations for external services.
-    ///
-    /// Reads `TOADSTOOL_STUB_EXTERNAL_SERVICES` (1/true/yes = use stubs).
-    /// Falls back to environment-appropriate default (dev: true, prod: false).
+    /// Resolve whether to use placeholder implementations for external services
     #[must_use]
     pub fn stub_external_services() -> bool {
-        let loader = EnvConfigLoader::new();
-        let env = loader.get_string("ENV", crate::app::DEFAULT_ENVIRONMENT);
-        let default = if env == crate::production::DEFAULT_PROD_ENVIRONMENT {
-            crate::production::DEFAULT_PROD_STUB_EXTERNAL
-        } else {
-            crate::development::DEFAULT_DEV_STUB_EXTERNAL
-        };
-        loader.get_bool("STUB_EXTERNAL_SERVICES", default)
+        environment::stub_external_services()
     }
 
     /// Get federation port from environment or default
     #[must_use]
     pub fn get_federation_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("FEDERATION_PORT", config.network.federation_port)
+        network::get_federation_port()
     }
 
     /// Get metrics port from environment or default
     #[must_use]
     pub fn get_metrics_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("METRICS_PORT", config.network.metrics_port)
+        network::get_metrics_port()
     }
 
     /// Get health check port from environment or default
     #[must_use]
     pub fn get_health_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("HEALTH_PORT", config.network.health_port)
+        network::get_health_port()
     }
 
-    /// Get events port from environment or default (JSON-RPC event streaming; replaces deprecated `WebSocket`)
+    /// Get events port from environment or default
     #[must_use]
     pub fn get_events_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("EVENTS_PORT", config.network.events_port)
+        network::get_events_port()
     }
 
     /// Get bind address from environment or default
     #[must_use]
     pub fn get_bind_address() -> String {
-        // ✅ SELF-KNOWLEDGE: ToadStool knows its own bind address
-        // Use constant default, not cached config value
-        let loader = EnvConfigLoader::with_prefix(""); // Check BIND_ADDRESS directly
-        loader.get_string(
-            "BIND_ADDRESS",
-            crate::defaults::network::BIND_ADDRESS_DEFAULT,
-        )
+        network::get_bind_address()
     }
 
     /// Get external hostname from environment or default
     #[must_use]
     pub fn get_external_hostname() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("EXTERNAL_HOSTNAME", DEFAULT_HOSTNAME)
+        network::get_external_hostname()
     }
 
     /// Get Songbird endpoint from environment or default
-    ///
-    /// # ⚠️ Deprecated - Use Capability-Based Discovery
-    ///
-    /// **Legacy fallback only**. Modern code should use runtime discovery:
-    /// ```ignore
-    /// let discovery = RuntimeDiscovery::new();
-    /// let services = discovery.discover_capability(&Capability::Coordination).await?;
-    /// let endpoint = services.first().map(|s| &s.endpoint);
-    /// ```
     #[deprecated(
         since = "0.2.0",
         note = "Hardcoded endpoints violate self-knowledge principle. Use RuntimeDiscovery for capability-based service location."
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated method during migration
+    #[allow(deprecated)]
     pub fn get_songbird_endpoint() -> String {
-        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!(
-            "http://{}:{}",
-            Self::get_bind_address(),
-            Self::get_songbird_port()
-        )
+        network::get_songbird_endpoint()
     }
 
-    /// Get `BearDog` endpoint from environment or default
-    ///
-    /// # ⚠️ Deprecated - Use Capability-Based Discovery
-    ///
-    /// Prefer `RuntimeDiscovery::discover_capability(&Capability::Crypto)` for dynamic service location.
+    /// Get BearDog endpoint from environment or default
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery instead of hardcoded crypto service endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated method during migration
+    #[allow(deprecated)]
     pub fn get_beardog_endpoint() -> String {
-        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!(
-            "http://{}:{}",
-            Self::get_bind_address(),
-            Self::get_beardog_port()
-        )
+        network::get_beardog_endpoint()
     }
 
-    /// Get `NestGate` endpoint from environment or default
-    ///
-    /// # ⚠️ Deprecated - Use Capability-Based Discovery
-    ///
-    /// Prefer `RuntimeDiscovery::discover_capability(&Capability::Storage)` for dynamic service location.
+    /// Get NestGate endpoint from environment or default
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery instead of hardcoded storage service endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated method during migration
+    #[allow(deprecated)]
     pub fn get_nestgate_endpoint() -> String {
-        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!(
-            "http://{}:{}",
-            Self::get_bind_address(),
-            Self::get_nestgate_port()
-        )
+        network::get_nestgate_endpoint()
     }
 
     /// Get Squirrel endpoint from environment or default
-    ///
-    /// # ⚠️ Deprecated - Use Capability-Based Discovery
-    ///
-    /// Prefer `RuntimeDiscovery::discover_capability(&Capability::AI)` for dynamic service location.
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery instead of hardcoded AI service endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated method during migration
+    #[allow(deprecated)]
     pub fn get_squirrel_endpoint() -> String {
-        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!(
-            "http://{}:{}",
-            Self::get_bind_address(),
-            Self::get_squirrel_port()
-        )
+        network::get_squirrel_endpoint()
     }
 
-    /// Get `ToadStool` endpoint from environment or default
+    /// Get ToadStool endpoint from environment or default
     #[must_use]
     pub fn get_toadstool_endpoint() -> String {
-        let net_config = NetworkEnvConfig::from_env();
-        net_config.toadstool_endpoint()
+        network::get_toadstool_endpoint()
     }
 
     /// Get request timeout from environment or default
     #[must_use]
-    pub fn get_request_timeout() -> Duration {
-        let loader = EnvConfigLoader::new();
-        loader.get_duration(
-            "REQUEST_TIMEOUT_SECS",
-            Duration::from_secs(network::DEFAULT_REQUEST_TIMEOUT_SECS),
-        )
+    pub fn get_request_timeout() -> std::time::Duration {
+        network::get_request_timeout()
     }
 
     /// Get connection timeout from environment or default
     #[must_use]
-    pub fn get_connection_timeout() -> Duration {
-        let loader = EnvConfigLoader::new();
-        loader.get_duration(
-            "CONNECTION_TIMEOUT_SECS",
-            Duration::from_secs(network::DEFAULT_CONNECTION_TIMEOUT_SECS),
-        )
+    pub fn get_connection_timeout() -> std::time::Duration {
+        network::get_connection_timeout()
     }
 
     /// Get max retries from environment or default
     #[must_use]
     pub fn get_max_retries() -> u32 {
-        let loader = EnvConfigLoader::new();
-        loader.get_u32("MAX_RETRIES", network::DEFAULT_MAX_RETRIES)
+        network::get_max_retries()
     }
 
     /// Get max connections per host from environment or default
     #[must_use]
     pub fn get_max_connections_per_host() -> u32 {
-        let loader = EnvConfigLoader::new();
-        loader.get_u32(
-            "MAX_CONNECTIONS_PER_HOST",
-            network::DEFAULT_MAX_CONNECTIONS_PER_HOST,
-        )
+        network::get_max_connections_per_host()
     }
 
     /// Get keepalive interval from environment or default
     #[must_use]
-    pub fn get_keepalive_interval() -> Duration {
-        let loader = EnvConfigLoader::new();
-        loader.get_duration(
-            "KEEPALIVE_INTERVAL_SECS",
-            Duration::from_secs(network::DEFAULT_KEEPALIVE_INTERVAL_SECS),
-        )
-    }
-
-    /// Get worker threads from environment or default
-    #[must_use]
-    pub fn get_worker_threads() -> u32 {
-        let loader = EnvConfigLoader::new();
-        #[allow(clippy::cast_possible_truncation)]
-        loader.get_u32(
-            "WORKER_THREADS",
-            std::thread::available_parallelism()
-                .map(|n| n.get() as u32)
-                .unwrap_or(4),
-        )
-    }
-
-    /// Get max concurrent executions from environment or default
-    #[must_use]
-    pub fn get_max_concurrent_executions() -> u32 {
-        let loader = EnvConfigLoader::new();
-        loader.get_u32("MAX_CONCURRENT_EXECUTIONS", 100)
-    }
-
-    /// Get execution timeout from environment or default
-    #[must_use]
-    pub fn get_execution_timeout() -> Duration {
-        let loader = EnvConfigLoader::new();
-        loader.get_duration("EXECUTION_TIMEOUT_SECS", Duration::from_secs(300))
-    }
-
-    /// Get max CPU usage from environment or default
-    #[must_use]
-    pub fn get_max_cpu_usage() -> f64 {
-        let loader = EnvConfigLoader::new();
-        loader.get_f64("MAX_CPU_PERCENT", 90.0)
-    }
-
-    /// Get max memory usage from environment or default
-    #[must_use]
-    pub fn get_max_memory_usage() -> u64 {
-        let loader = EnvConfigLoader::new();
-        loader.get_u64("MAX_MEMORY_BYTES", 8 * 1024 * 1024 * 1024) // 8GB
-    }
-
-    /// Get max storage usage from environment or default
-    #[must_use]
-    pub fn get_max_storage_usage() -> u64 {
-        let loader = EnvConfigLoader::new();
-        loader.get_u64("MAX_STORAGE_BYTES", 100 * 1024 * 1024 * 1024) // 100GB
-    }
-
-    /// Get metrics collection interval from environment or default
-    #[must_use]
-    pub fn get_metrics_interval() -> Duration {
-        let loader = EnvConfigLoader::new();
-        loader.get_duration("METRICS_INTERVAL_SECS", Duration::from_secs(10))
-    }
-
-    /// Get health check interval from environment or default
-    #[must_use]
-    pub fn get_health_check_interval() -> Duration {
-        let loader = EnvConfigLoader::new();
-        loader.get_duration("HEALTH_CHECK_INTERVAL_SECS", Duration::from_secs(30))
-    }
-
-    /// Get log level from environment or default
-    #[must_use]
-    pub fn get_log_level() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("LOG_LEVEL", "info")
-    }
-
-    /// Get data directory from environment or default
-    #[must_use]
-    pub fn get_data_dir() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("DATA_DIR", "./data")
-    }
-
-    /// Get cache directory from environment or default
-    #[must_use]
-    pub fn get_cache_dir() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("CACHE_DIR", "./cache")
-    }
-
-    /// Get temp directory from environment or default
-    #[must_use]
-    pub fn get_temp_dir() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("TEMP_DIR", "./tmp")
-    }
-
-    /// Get log directory from environment or default
-    #[must_use]
-    pub fn get_log_dir() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("LOG_DIR", "./logs")
-    }
-
-    /// Get environment name from environment or default
-    #[must_use]
-    pub fn get_environment() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("ENV", "development")
-    }
-
-    /// Get debug mode from environment or default
-    #[must_use]
-    pub fn get_debug_mode() -> bool {
-        let loader = EnvConfigLoader::new();
-        loader.get_bool("DEBUG", false)
-    }
-
-    /// Get verbose mode from environment or default
-    #[must_use]
-    pub fn get_verbose_mode() -> bool {
-        let loader = EnvConfigLoader::new();
-        loader.get_bool("VERBOSE", false)
-    }
-
-    /// Get TLS enabled from environment or default
-    #[must_use]
-    pub fn get_tls_enabled() -> bool {
-        let loader = EnvConfigLoader::new();
-        loader.get_bool("TLS_ENABLED", false)
-    }
-
-    /// Get auth enabled from environment or default
-    #[must_use]
-    pub fn get_auth_enabled() -> bool {
-        let loader = EnvConfigLoader::new();
-        loader.get_bool("AUTH_ENABLED", false)
-    }
-
-    /// Get sandboxing enabled from environment or default
-    #[must_use]
-    pub fn get_sandboxing_enabled() -> bool {
-        let loader = EnvConfigLoader::new();
-        loader.get_bool("SANDBOXING_ENABLED", true)
-    }
-
-    /// Get metrics enabled from environment or default
-    #[must_use]
-    pub fn get_metrics_enabled() -> bool {
-        let loader = EnvConfigLoader::new();
-        loader.get_bool("METRICS_ENABLED", true)
-    }
-
-    /// Get health checks enabled from environment or default
-    #[must_use]
-    pub fn get_health_checks_enabled() -> bool {
-        let loader = EnvConfigLoader::new();
-        loader.get_bool("HEALTH_CHECKS_ENABLED", true)
+    pub fn get_keepalive_interval() -> std::time::Duration {
+        network::get_keepalive_interval()
     }
 
     /// Get all service ports as a map
-    ///
-    /// Returns only self-knowledge ports (ToadStool's own). Ports for external
-    /// primals (songbird, beardog, nestgate, squirrel) are discovered at runtime.
     #[must_use]
-    pub fn get_service_ports() -> HashMap<String, u16> {
-        use toadstool_common::constants::primal_identity::PRIMAL_NAME;
-
-        let mut ports = HashMap::new();
-        ports.insert(PRIMAL_NAME.to_string(), Self::get_toadstool_port());
-        ports.insert("federation".to_string(), Self::get_federation_port());
-        ports.insert("metrics".to_string(), Self::get_metrics_port());
-        ports.insert("health".to_string(), Self::get_health_port());
-        ports.insert("events".to_string(), Self::get_events_port());
-        ports
+    pub fn get_service_ports() -> std::collections::HashMap<String, u16> {
+        network::get_service_ports()
     }
 
     /// Get all service endpoints as a map
-    ///
-    /// Returns only ToadStool's own endpoint. External primal endpoints
-    /// (songbird, beardog, nestgate, squirrel) are discovered at runtime.
     #[must_use]
-    pub fn get_service_endpoints() -> HashMap<String, String> {
-        use toadstool_common::constants::primal_identity::PRIMAL_NAME;
-
-        let mut endpoints = HashMap::new();
-        endpoints.insert(PRIMAL_NAME.to_string(), Self::get_toadstool_endpoint());
-        endpoints
+    pub fn get_service_endpoints() -> std::collections::HashMap<String, String> {
+        network::get_service_endpoints()
     }
 
     /// Get container port range from environment or default
     #[must_use]
     pub fn get_container_port_range() -> (u16, u16) {
-        let loader = EnvConfigLoader::new();
-        let start = loader.get_u16(
-            "CONTAINER_PORT_START",
-            crate::defaults::ports::CONTAINER_START,
-        );
-        let end = loader.get_u16("CONTAINER_PORT_END", crate::defaults::ports::CONTAINER_END);
-        (start, end)
+        network::get_container_port_range()
     }
 
     /// Get port allocation range from environment or default
     #[must_use]
     pub fn get_port_allocation_range() -> (u16, u16) {
-        let loader = EnvConfigLoader::new();
-        let start = loader.get_u16("PORT_RANGE_START", crate::defaults::ports::RANGE_START);
-        let end = loader.get_u16("PORT_RANGE_END", crate::defaults::ports::RANGE_END);
-        (start, end)
+        network::get_port_allocation_range()
     }
 
-    /// Get database URL from environment or default
+    // ========== Paths (delegate to paths) ==========
+
+    /// Get data directory from environment or default
     #[must_use]
-    pub fn get_database_url() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("DATABASE_URL", "sqlite://./data/toadstool.db")
+    pub fn get_data_dir() -> String {
+        paths::get_data_dir()
     }
 
-    /// Get cache URL from environment or default
+    /// Get cache directory from environment or default
     #[must_use]
-    pub fn get_cache_url() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string(
-            "REDIS_URL",
-            &format!(
-                "redis://{}:{}",
-                crate::defaults::network::LOCALHOST,
-                crate::defaults::storage::REDIS_PORT
-            ),
-        )
+    pub fn get_cache_dir() -> String {
+        paths::get_cache_dir()
     }
 
-    /// Get message broker URL from environment or default
+    /// Get temp directory from environment or default
     #[must_use]
-    pub fn get_message_broker_url() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string(
-            "AMQP_URL",
-            &format!(
-                "amqp://{}:{}",
-                crate::defaults::network::LOCALHOST,
-                crate::defaults::storage::AMQP_PORT
-            ),
-        )
+    pub fn get_temp_dir() -> String {
+        paths::get_temp_dir()
     }
 
-    /// Get distributed storage URL from environment or default
-    ///
-    /// Empty default = use capability discovery. Set DISTRIBUTED_STORAGE_URL for explicit URL.
+    /// Get log directory from environment or default
     #[must_use]
-    #[allow(deprecated)]
-    pub fn get_distributed_storage_url() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string(
-            "DISTRIBUTED_STORAGE_URL",
-            crate::defaults::storage::DISTRIBUTED_URL,
-        )
-    }
-
-    /// Get monitoring endpoint from environment or default
-    ///
-    /// Port 0 = OS-assigned; use discovery for actual endpoint.
-    #[must_use]
-    pub fn get_monitoring_endpoint() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string(
-            "METRICS_URL",
-            &format!(
-                "http://{}:{}",
-                crate::defaults::network::LOCALHOST,
-                crate::defaults::network::METRICS_PORT
-            ),
-        )
-    }
-
-    /// Get alert webhook URL from environment or default
-    #[must_use]
-    pub fn get_alert_webhook_url() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("ALERT_WEBHOOK_URL", "")
+    pub fn get_log_dir() -> String {
+        paths::get_log_dir()
     }
 
     /// Get encryption key path from environment or default
     #[must_use]
     pub fn get_encryption_key_path() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("ENCRYPTION_KEY_PATH", "./keys/encryption.key")
+        paths::get_encryption_key_path()
     }
 
     /// Get TLS cert path from environment or default
     #[must_use]
     pub fn get_tls_cert_path() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("TLS_CERT_PATH", "./certs/tls.crt")
+        paths::get_tls_cert_path()
     }
 
     /// Get TLS key path from environment or default
     #[must_use]
     pub fn get_tls_key_path() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("TLS_KEY_PATH", "./certs/tls.key")
+        paths::get_tls_key_path()
     }
 
     /// Get CA cert path from environment or default
     #[must_use]
     pub fn get_ca_cert_path() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("CA_CERT_PATH", "./certs/ca.crt")
+        paths::get_ca_cert_path()
+    }
+
+    // ========== Environment (delegate to environment) ==========
+
+    /// Get environment name from environment or default
+    #[must_use]
+    pub fn get_environment() -> String {
+        environment::get_environment()
+    }
+
+    /// Get debug mode from environment or default
+    #[must_use]
+    pub fn get_debug_mode() -> bool {
+        environment::get_debug_mode()
+    }
+
+    /// Get verbose mode from environment or default
+    #[must_use]
+    pub fn get_verbose_mode() -> bool {
+        environment::get_verbose_mode()
+    }
+
+    /// Get all environment variables with TOADSTOOL prefix
+    #[must_use]
+    pub fn get_all_toadstool_env_vars() -> std::collections::HashMap<String, String> {
+        environment::get_all_toadstool_env_vars()
+    }
+
+    // ========== Defaults (delegate to defaults) ==========
+
+    /// Get worker threads from environment or default
+    #[must_use]
+    pub fn get_worker_threads() -> u32 {
+        defaults::get_worker_threads()
+    }
+
+    /// Get max concurrent executions from environment or default
+    #[must_use]
+    pub fn get_max_concurrent_executions() -> u32 {
+        defaults::get_max_concurrent_executions()
+    }
+
+    /// Get execution timeout from environment or default
+    #[must_use]
+    pub fn get_execution_timeout() -> std::time::Duration {
+        defaults::get_execution_timeout()
+    }
+
+    /// Get max CPU usage from environment or default
+    #[must_use]
+    pub fn get_max_cpu_usage() -> f64 {
+        defaults::get_max_cpu_usage()
+    }
+
+    /// Get max memory usage from environment or default
+    #[must_use]
+    pub fn get_max_memory_usage() -> u64 {
+        defaults::get_max_memory_usage()
+    }
+
+    /// Get max storage usage from environment or default
+    #[must_use]
+    pub fn get_max_storage_usage() -> u64 {
+        defaults::get_max_storage_usage()
+    }
+
+    /// Get metrics collection interval from environment or default
+    #[must_use]
+    pub fn get_metrics_interval() -> std::time::Duration {
+        defaults::get_metrics_interval()
+    }
+
+    /// Get health check interval from environment or default
+    #[must_use]
+    pub fn get_health_check_interval() -> std::time::Duration {
+        defaults::get_health_check_interval()
+    }
+
+    /// Get log level from environment or default
+    #[must_use]
+    pub fn get_log_level() -> String {
+        defaults::get_log_level()
+    }
+
+    /// Get TLS enabled from environment or default
+    #[must_use]
+    pub fn get_tls_enabled() -> bool {
+        defaults::get_tls_enabled()
+    }
+
+    /// Get auth enabled from environment or default
+    #[must_use]
+    pub fn get_auth_enabled() -> bool {
+        defaults::get_auth_enabled()
+    }
+
+    /// Get sandboxing enabled from environment or default
+    #[must_use]
+    pub fn get_sandboxing_enabled() -> bool {
+        defaults::get_sandboxing_enabled()
+    }
+
+    /// Get metrics enabled from environment or default
+    #[must_use]
+    pub fn get_metrics_enabled() -> bool {
+        defaults::get_metrics_enabled()
+    }
+
+    /// Get health checks enabled from environment or default
+    #[must_use]
+    pub fn get_health_checks_enabled() -> bool {
+        defaults::get_health_checks_enabled()
+    }
+
+    /// Get database URL from environment or default
+    #[must_use]
+    pub fn get_database_url() -> String {
+        defaults::get_database_url()
+    }
+
+    /// Get cache URL from environment or default
+    #[must_use]
+    pub fn get_cache_url() -> String {
+        defaults::get_cache_url()
+    }
+
+    /// Get message broker URL from environment or default
+    #[must_use]
+    pub fn get_message_broker_url() -> String {
+        defaults::get_message_broker_url()
+    }
+
+    /// Get distributed storage URL from environment or default
+    #[must_use]
+    #[allow(deprecated)]
+    pub fn get_distributed_storage_url() -> String {
+        defaults::get_distributed_storage_url()
+    }
+
+    /// Get monitoring endpoint from environment or default
+    #[must_use]
+    pub fn get_monitoring_endpoint() -> String {
+        defaults::get_monitoring_endpoint()
+    }
+
+    /// Get alert webhook URL from environment or default
+    #[must_use]
+    pub fn get_alert_webhook_url() -> String {
+        defaults::get_alert_webhook_url()
     }
 
     /// Get JWT secret from environment or default
     #[must_use]
     pub fn get_jwt_secret() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("JWT_SECRET", "default-jwt-secret-change-in-production")
+        defaults::get_jwt_secret()
     }
 
     /// Get API key from environment or default
     #[must_use]
     pub fn get_api_key() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("API_KEY", "default-api-key-change-in-production")
+        defaults::get_api_key()
     }
 
     /// Get webhook secret from environment or default
     #[must_use]
     pub fn get_webhook_secret() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string(
-            "WEBHOOK_SECRET",
-            "default-webhook-secret-change-in-production",
-        )
+        defaults::get_webhook_secret()
     }
 
     /// Get federation trust domain from environment or default
     #[must_use]
     pub fn get_federation_trust_domain() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("FEDERATION_TRUST_DOMAIN", DEFAULT_HOSTNAME)
+        defaults::get_federation_trust_domain()
     }
 
     /// Get cluster name from environment or default
     #[must_use]
     pub fn get_cluster_name() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("CLUSTER_NAME", "toadstool-cluster")
+        defaults::get_cluster_name()
     }
 
     /// Get node name from environment or default
     #[must_use]
     pub fn get_node_name() -> String {
-        let loader = EnvConfigLoader::new();
-        loader.get_string("NODE_NAME", "toadstool-node-1")
-    }
-
-    /// Get all environment variables with TOADSTOOL prefix
-    #[must_use]
-    pub fn get_all_toadstool_env_vars() -> HashMap<String, String> {
-        env::vars()
-            .filter(|(key, _)| key.starts_with("TOADSTOOL_"))
-            .collect()
+        defaults::get_node_name()
     }
 
     /// Print all current configuration values (for debugging)
     #[cfg(debug_assertions)]
     pub fn print_current_config() {
-        info!("=== ToadStool Configuration ===");
-        debug!("Environment: {}", Self::get_environment());
-        debug!("Debug: {}", Self::get_debug_mode());
-        debug!("Verbose: {}", Self::get_verbose_mode());
-
-        info!("=== Network Configuration ===");
-        debug!("Bind Address: {}", Self::get_bind_address());
-        debug!("External Hostname: {}", Self::get_external_hostname());
-        debug!("TLS Enabled: {}", Self::get_tls_enabled());
-
-        info!("=== Service Ports ===");
-        for (service, port) in Self::get_service_ports() {
-            debug!("{service}: {port}");
-        }
-
-        info!("=== Service Endpoints ===");
-        for (service, endpoint) in Self::get_service_endpoints() {
-            debug!("{service}: {endpoint}");
-        }
-
-        info!("=== Resource Limits ===");
-        debug!("Max CPU: {}%", Self::get_max_cpu_usage());
-        debug!("Max Memory: {} bytes", Self::get_max_memory_usage());
-        debug!("Max Storage: {} bytes", Self::get_max_storage_usage());
-        debug!("Worker Threads: {}", Self::get_worker_threads());
-        debug!(
-            "Max Concurrent Executions: {}",
-            Self::get_max_concurrent_executions()
-        );
-
-        info!("=== Timeouts ===");
-        debug!("Request Timeout: {:?}", Self::get_request_timeout());
-        debug!("Connection Timeout: {:?}", Self::get_connection_timeout());
-        debug!("Execution Timeout: {:?}", Self::get_execution_timeout());
-
-        info!("=== Directories ===");
-        debug!("Data Dir: {}", Self::get_data_dir());
-        debug!("Cache Dir: {}", Self::get_cache_dir());
-        debug!("Temp Dir: {}", Self::get_temp_dir());
-        debug!("Log Dir: {}", Self::get_log_dir());
-
-        info!("=== Security ===");
-        debug!("Auth Enabled: {}", Self::get_auth_enabled());
-        debug!("Sandboxing Enabled: {}", Self::get_sandboxing_enabled());
-        debug!("Encryption Key Path: {}", Self::get_encryption_key_path());
-
-        info!("=== Monitoring ===");
-        debug!("Metrics Enabled: {}", Self::get_metrics_enabled());
-        debug!(
-            "Health Checks Enabled: {}",
-            Self::get_health_checks_enabled()
-        );
-        debug!("Metrics Interval: {:?}", Self::get_metrics_interval());
-        debug!(
-            "Health Check Interval: {:?}",
-            Self::get_health_check_interval()
-        );
-
-        info!("=== Logging ===");
-        debug!("Log Level: {}", Self::get_log_level());
-        debug!("Log Dir: {}", Self::get_log_dir());
+        defaults::print_current_config();
     }
 }
 

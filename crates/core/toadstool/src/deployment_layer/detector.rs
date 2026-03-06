@@ -299,6 +299,7 @@ impl Default for LayerDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::deployment_layer::{CloudProvider, DeploymentLayer};
 
     #[test]
     fn test_layer_detector_new() {
@@ -394,5 +395,100 @@ VERSION="39 (Container Image)""#;
         let (name, version) = detector.parse_os_release(content);
         assert_eq!(name, "Fedora Linux");
         assert_eq!(version, Some("39 (Container Image)".to_string()));
+    }
+
+    #[test]
+    fn test_detect_aws_cloud_layer_via_env() {
+        temp_env::with_var("AWS_EXECUTION_ENV", Some("AWS_Lambda_rust"), || {
+            let runtime = tokio::runtime::Runtime::new().unwrap();
+            let result = runtime.block_on(async {
+                let mut detector = LayerDetector::new();
+                detector.detect().await
+            });
+            assert!(result.is_ok());
+            let layer = result.unwrap();
+            assert!(
+                matches!(
+                    layer,
+                    DeploymentLayer::CloudLayer {
+                        provider: CloudProvider::AWS,
+                        ..
+                    }
+                ),
+                "expected AWS CloudLayer, got {:?}",
+                layer
+            );
+        });
+    }
+
+    #[test]
+    fn test_detect_gcp_cloud_layer_via_env() {
+        temp_env::with_vars(
+            [
+                ("AWS_EXECUTION_ENV", None::<&str>),
+                ("AWS_LAMBDA_FUNCTION_NAME", None::<&str>),
+                ("ECS_CONTAINER_METADATA_URI", None::<&str>),
+                ("GCP_PROJECT", Some("my-project")),
+            ],
+            || {
+                let runtime = tokio::runtime::Runtime::new().unwrap();
+                let result = runtime.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    detector.detect().await
+                });
+                assert!(result.is_ok());
+                let layer = result.unwrap();
+                assert!(
+                    matches!(
+                        layer,
+                        DeploymentLayer::CloudLayer {
+                            provider: CloudProvider::GCP,
+                            ..
+                        }
+                    ),
+                    "expected GCP CloudLayer, got {:?}",
+                    layer
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_detect_azure_cloud_layer_via_env() {
+        temp_env::with_vars(
+            [
+                ("AWS_EXECUTION_ENV", None::<&str>),
+                ("GCP_PROJECT", None::<&str>),
+                ("AZURE_SUBSCRIPTION_ID", Some("sub-123")),
+            ],
+            || {
+                let runtime = tokio::runtime::Runtime::new().unwrap();
+                let result = runtime.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    detector.detect().await
+                });
+                assert!(result.is_ok());
+                let layer = result.unwrap();
+                assert!(
+                    matches!(
+                        layer,
+                        DeploymentLayer::CloudLayer {
+                            provider: CloudProvider::Azure,
+                            ..
+                        }
+                    ),
+                    "expected Azure CloudLayer, got {:?}",
+                    layer
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_detect_reset_clears_cache() {
+        let mut detector = LayerDetector::new();
+        detector.cached_layer = Some(DeploymentLayer::BareMetalOS);
+        detector.reset();
+        assert!(detector.cached_layer.is_none());
     }
 }

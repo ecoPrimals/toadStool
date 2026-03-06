@@ -66,8 +66,7 @@ impl AlignedBuffer {
     }
 
     /// Get the raw pointer (for use in allocations)
-    #[allow(dead_code)] // API for future use
-    fn as_ptr(&self) -> *mut u8 {
+    fn _as_ptr(&self) -> *mut u8 {
         self.ptr.as_ptr()
     }
 

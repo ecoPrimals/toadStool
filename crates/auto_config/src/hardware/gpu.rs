@@ -60,8 +60,8 @@ async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
             let parts: Vec<&str> = line.split(',').map(str::trim).collect();
             if parts.len() >= 3 {
                 let name = parts[0].to_string();
-                let memory_mb = parts[1].parse::<f64>().unwrap_or(0.0);
-                let memory_gb = memory_mb / 1024.0;
+                let mem_mb = parts[1].parse::<f64>().unwrap_or(0.0);
+                let memory_gb = mem_mb / 1024.0;
                 let _driver_version = parts[2].to_string();
 
                 gpus.push(GpuInfo {
@@ -156,6 +156,7 @@ fn get_nvidia_compute_capability(gpu_name: &str) -> String {
 }
 
 /// Calculate GPU performance score
+#[must_use]
 pub fn calculate_gpu_score(gpu_info: &[GpuInfo]) -> f64 {
     if gpu_info.is_empty() {
         return 20.0; // Integrated graphics assumption

@@ -133,6 +133,7 @@ impl ModuleLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_cache_key_generation() {
@@ -147,5 +148,88 @@ mod tests {
         let key = loader.generate_cache_key(&source);
         assert!(key.starts_with("wasm_"));
         assert_eq!(key.len(), 5 + 32); // "wasm_" + 32 hex chars
+    }
+
+    #[test]
+    fn test_cache_key_different_sources_different_keys() {
+        let engine = Engine::default();
+        let config = WasmRuntimeConfig::default();
+        let loader = ModuleLoader::new(engine, config);
+
+        let source1 = WasmModuleSource::Bytes {
+            data: bytes::Bytes::from(vec![0, 97, 115, 109]),
+        };
+        let source2 = WasmModuleSource::Bytes {
+            data: bytes::Bytes::from(vec![0, 97, 115, 109, 1, 0, 0, 0]),
+        };
+        let key1 = loader.generate_cache_key(&source1);
+        let key2 = loader.generate_cache_key(&source2);
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn test_cache_key_file_source() {
+        let engine = Engine::default();
+        let config = WasmRuntimeConfig::default();
+        let loader = ModuleLoader::new(engine, config);
+
+        let source = WasmModuleSource::File {
+            path: PathBuf::from("/tmp/test.wasm"),
+        };
+        let key = loader.generate_cache_key(&source);
+        assert!(key.starts_with("wasm_"));
+    }
+
+    #[test]
+    fn test_loader_engine_access() {
+        let engine = Engine::default();
+        let config = WasmRuntimeConfig::default();
+        let loader = ModuleLoader::new(engine, config);
+        let _ = loader.engine();
+    }
+
+    #[tokio::test]
+    async fn test_load_module_from_bytes_valid_wasm() {
+        let engine = Engine::default();
+        let config = WasmRuntimeConfig::default();
+        let loader = ModuleLoader::new(engine, config);
+
+        let wasm = wat::parse_str("(module)").unwrap();
+        let source = WasmModuleSource::Bytes {
+            data: bytes::Bytes::from(wasm),
+        };
+        let result = loader.load_module(&source).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_load_module_invalid_bytes_fails() {
+        let engine = Engine::default();
+        let config = WasmRuntimeConfig::default();
+        let loader = ModuleLoader::new(engine, config);
+
+        let source = WasmModuleSource::Bytes {
+            data: bytes::Bytes::from(vec![0, 0, 0, 0]),
+        };
+        let result = loader.load_module(&source).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_load_module_url_not_supported() {
+        let engine = Engine::default();
+        let config = WasmRuntimeConfig::default();
+        let loader = ModuleLoader::new(engine, config);
+
+        let source = WasmModuleSource::Url {
+            url: "https://example.com/module.wasm".to_string(),
+        };
+        let result = loader.load_module(&source).await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .to_lowercase()
+            .contains("url"));
     }
 }

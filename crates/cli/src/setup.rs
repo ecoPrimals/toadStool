@@ -260,4 +260,94 @@ mod tests {
     fn test_print_banner_no_panic() {
         print_banner();
     }
+
+    #[test]
+    fn test_exit_code_for_error_parse() {
+        #[derive(Debug)]
+        struct ParseError;
+        impl std::fmt::Display for ParseError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "parse error")
+            }
+        }
+        impl std::error::Error for ParseError {}
+
+        assert_eq!(exit_code_for_error(&ParseError), exit_codes::CONFIG_ERROR);
+    }
+
+    #[test]
+    fn test_exit_code_for_error_missing() {
+        #[derive(Debug)]
+        struct MissingError;
+        impl std::fmt::Display for MissingError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "missing required field")
+            }
+        }
+        impl std::error::Error for MissingError {}
+
+        assert_eq!(exit_code_for_error(&MissingError), exit_codes::CONFIG_ERROR);
+    }
+
+    #[test]
+    fn test_exit_code_for_error_resource() {
+        #[derive(Debug)]
+        struct ResourceError;
+        impl std::fmt::Display for ResourceError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "resource exhausted")
+            }
+        }
+        impl std::error::Error for ResourceError {}
+
+        assert_eq!(
+            exit_code_for_error(&ResourceError),
+            exit_codes::RUNTIME_ERROR
+        );
+    }
+
+    // Note: init_enhanced_logging tests omitted - tracing subscriber can only be
+    // initialized once per process; calling it in tests causes conflicts when
+    // tests run in parallel. The function is tested indirectly via CLI startup.
+
+    #[test]
+    fn test_print_enhanced_error_no_panic() {
+        #[derive(Debug)]
+        struct TestError;
+        impl std::fmt::Display for TestError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "test error message")
+            }
+        }
+        impl std::error::Error for TestError {}
+
+        print_enhanced_error(&TestError);
+    }
+
+    #[test]
+    fn test_print_success_message_no_panic() {
+        print_success_message("Operation completed");
+    }
+
+    #[test]
+    fn test_print_operation_summary_no_details() {
+        print_operation_summary("test-op", std::time::Duration::from_secs(5), None);
+    }
+
+    #[test]
+    fn test_print_operation_summary_with_details() {
+        print_operation_summary(
+            "test-op",
+            std::time::Duration::from_millis(500),
+            Some("Extra info"),
+        );
+    }
+
+    #[test]
+    fn test_exit_codes_constants() {
+        assert_eq!(exit_codes::GENERAL_ERROR, 1);
+        assert_eq!(exit_codes::CONFIG_ERROR, 2);
+        assert_eq!(exit_codes::RUNTIME_ERROR, 3);
+        assert_eq!(exit_codes::INTERRUPTED, 130);
+    }
 }

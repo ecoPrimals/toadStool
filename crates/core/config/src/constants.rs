@@ -46,7 +46,7 @@ pub mod ports {
 
 /// # ⚠️ DEPRECATED: Ecosystem primal service names
 ///
-/// **WateringHole Sovereignty**: Discover by CAPABILITY, not by hardcoded name.
+/// **`WateringHole` Sovereignty**: Discover by CAPABILITY, not by hardcoded name.
 /// Scan for what a service CAN DO, not what it IS CALLED.
 ///
 /// **Use `RuntimeDiscovery` instead** for primal-agnostic, capability-based discovery.

@@ -266,9 +266,9 @@ mod tests {
     #[test]
     fn test_resolve_socket_path_service_aliases() {
         let env = test_env();
-        let bear_dog = resolve_socket_path_for_service("bear-dog", &env, None);
+        let bear_dog_aliased = resolve_socket_path_for_service("bear-dog", &env, None);
         let beardog = resolve_socket_path_for_service("beardog", &env, None);
-        assert_eq!(bear_dog, beardog);
+        assert_eq!(bear_dog_aliased, beardog);
 
         let path = resolve_socket_path_for_service("toad-stool", &env, None);
         assert!(path.to_string_lossy().contains("toadstool"));

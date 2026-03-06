@@ -32,7 +32,6 @@ pub fn from_beardog_permission(
 ) -> ToadStoolResult<SecurityPermission> {
     let now = std::time::SystemTime::now();
 
-    // ✅ IMPLEMENTED: Full BearDog integration complete (Phase 1B)
     // NOTE: Using default permission structure - full extraction in future enhancement
     Ok(SecurityPermission {
         permission_id: uuid::Uuid::new_v4(),

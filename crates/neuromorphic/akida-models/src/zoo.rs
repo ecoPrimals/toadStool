@@ -320,10 +320,12 @@ impl ModelZoo {
         &self.cache_dir
     }
 
-    /// Create a stub model for testing
+    /// Create a stub model for bootstrap, development, or testing
     ///
-    /// Creates a minimal .fbz file that passes format validation.
-    /// This is useful for testing without real models.
+    /// Creates a minimal .fbz file that passes format validation. Used when real
+    /// Akida Model Zoo models are not available—e.g., `NeuroBench` setup (`--init-stubs`),
+    /// CI, or local development. The stub is valid for format checks but cannot perform
+    /// inference; replace with real models for production workloads.
     ///
     /// # Errors
     ///
@@ -373,6 +375,9 @@ impl ModelZoo {
     }
 
     /// Initialize stub models for all `NeuroBench` benchmarks
+    ///
+    /// Creates stubs only for models not already present. Use for bootstrap when
+    /// real models are unavailable (e.g., `model_zoo --init-stubs`).
     ///
     /// # Errors
     ///

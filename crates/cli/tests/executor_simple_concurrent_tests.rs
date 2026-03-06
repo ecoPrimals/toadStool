@@ -94,8 +94,7 @@ async fn test_concurrent_list_operations() -> Result<()> {
     for _ in 0..10 {
         let exec = Arc::clone(&executor);
         handles.push(tokio::spawn(async move {
-            exec.list_biomes(false, "text".to_string(), false, None)
-                .await
+            exec.list_biomes(false, "text", false, None).await
         }));
     }
 
@@ -120,9 +119,7 @@ async fn test_stress_list_operations() -> Result<()> {
         let tx = tx.clone();
 
         handles.push(tokio::spawn(async move {
-            let result = exec
-                .list_biomes(false, "text".to_string(), false, None)
-                .await;
+            let result = exec.list_biomes(false, "text", false, None).await;
             tx.send(i).ok();
             result
         }));
@@ -154,23 +151,17 @@ async fn test_concurrent_different_formats() -> Result<()> {
     // Test different formats concurrently
     let h1 = {
         let exec = Arc::clone(&executor);
-        tokio::spawn(async move {
-            exec.list_biomes(false, "text".to_string(), false, None)
-                .await
-        })
+        tokio::spawn(async move { exec.list_biomes(false, "text", false, None).await })
     };
 
     let h2 = {
         let exec = Arc::clone(&executor);
-        tokio::spawn(async move {
-            exec.list_biomes(false, "json".to_string(), false, None)
-                .await
-        })
+        tokio::spawn(async move { exec.list_biomes(false, "json", false, None).await })
     };
 
     let h3 = {
         let exec = Arc::clone(&executor);
-        tokio::spawn(async move { exec.list_biomes(true, "text".to_string(), true, None).await })
+        tokio::spawn(async move { exec.list_biomes(true, "text", true, None).await })
     };
 
     // All formats should work concurrently
@@ -199,7 +190,7 @@ async fn test_concurrent_filter_options() -> Result<()> {
     for filter in filters {
         let exec = Arc::clone(&executor);
         handles.push(tokio::spawn(async move {
-            exec.list_biomes(true, "json".to_string(), false, filter)
+            exec.list_biomes(true, "json", false, filter.as_deref())
                 .await
         }));
     }
@@ -263,9 +254,7 @@ async fn test_burst_traffic_pattern() -> Result<()> {
         let tx = tx.clone();
 
         tokio::spawn(async move {
-            let _result = exec
-                .list_biomes(false, "text".to_string(), false, None)
-                .await;
+            let _result = exec.list_biomes(false, "text", false, None).await;
             tx.send(format!("burst1_{}", i)).ok();
         });
     }
@@ -284,9 +273,7 @@ async fn test_burst_traffic_pattern() -> Result<()> {
         let tx = tx.clone();
 
         tokio::spawn(async move {
-            let _result = exec
-                .list_biomes(true, "json".to_string(), false, None)
-                .await;
+            let _result = exec.list_biomes(true, "json", false, None).await;
             tx.send(format!("burst2_{}", i)).ok();
         });
     }
@@ -310,8 +297,7 @@ async fn test_sustained_load() -> Result<()> {
     for _ in 0..200 {
         let exec = Arc::clone(&executor);
         handles.push(tokio::spawn(async move {
-            exec.list_biomes(false, "text".to_string(), false, None)
-                .await
+            exec.list_biomes(false, "text", false, None).await
         }));
     }
 
@@ -350,7 +336,7 @@ async fn test_timeout_awareness() -> Result<()> {
         handles.push(tokio::spawn(async move {
             timeout(
                 Duration::from_secs(5),
-                exec.list_biomes(false, "text".to_string(), false, None),
+                exec.list_biomes(false, "text", false, None),
             )
             .await
         }));
@@ -381,7 +367,7 @@ async fn test_rapid_sequential_operations() -> Result<()> {
     for _ in 0..50 {
         timeout(
             Duration::from_millis(500),
-            executor.list_biomes(false, "text".to_string(), false, None),
+            executor.list_biomes(false, "text", false, None),
         )
         .await??;
     }
@@ -403,9 +389,7 @@ async fn test_concurrent_lifecycle() -> Result<()> {
     for _ in 0..10 {
         handles.push(tokio::spawn(async {
             let executor = BiomeExecutor::new().await?;
-            executor
-                .list_biomes(false, "text".to_string(), false, None)
-                .await?;
+            executor.list_biomes(false, "text", false, None).await?;
             drop(executor);
             Ok::<_, anyhow::Error>(())
         }));
@@ -430,20 +414,17 @@ async fn test_multiple_executors_mixed() -> Result<()> {
     // Run operations on all 3 concurrently
     let h1 = {
         let e = Arc::clone(&exec1);
-        tokio::spawn(async move { e.list_biomes(false, "text".to_string(), false, None).await })
+        tokio::spawn(async move { e.list_biomes(false, "text", false, None).await })
     };
 
     let h2 = {
         let e = Arc::clone(&exec2);
-        tokio::spawn(async move { e.list_biomes(true, "json".to_string(), false, None).await })
+        tokio::spawn(async move { e.list_biomes(true, "json", false, None).await })
     };
 
     let h3 = {
         let e = Arc::clone(&exec3);
-        tokio::spawn(async move {
-            e.list_biomes(false, "text".to_string(), true, Some("running".to_string()))
-                .await
-        })
+        tokio::spawn(async move { e.list_biomes(false, "text", true, Some("running")).await })
     };
 
     // All executors work independently
@@ -466,19 +447,19 @@ async fn test_event_driven_coordination() -> Result<()> {
     let e1 = Arc::clone(&executor);
     let h1 = tokio::spawn(async move {
         rx1.recv().await.ok();
-        e1.list_biomes(false, "text".to_string(), false, None).await
+        e1.list_biomes(false, "text", false, None).await
     });
 
     let e2 = Arc::clone(&executor);
     let h2 = tokio::spawn(async move {
         rx2.recv().await.ok();
-        e2.list_biomes(false, "text".to_string(), false, None).await
+        e2.list_biomes(false, "text", false, None).await
     });
 
     let e3 = Arc::clone(&executor);
     let h3 = tokio::spawn(async move {
         rx3.recv().await.ok();
-        e3.list_biomes(false, "text".to_string(), false, None).await
+        e3.list_biomes(false, "text", false, None).await
     });
 
     // Brief setup delay
@@ -581,8 +562,7 @@ async fn test_mixed_operations_stress() -> Result<()> {
             0 => {
                 // list
                 handles.push(tokio::spawn(async move {
-                    exec.list_biomes(false, "text".to_string(), false, None)
-                        .await
+                    exec.list_biomes(false, "text", false, None).await
                 }));
             }
             1 => {

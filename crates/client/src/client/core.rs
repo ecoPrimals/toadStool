@@ -323,6 +323,22 @@ impl ToadStoolClient {
     pub fn start_event_stream(&self) -> ClientResult<()> {
         Ok(())
     }
+
+    /// Test-only constructor that skips health check (no real network).
+    #[cfg(test)]
+    pub fn new_for_testing(config: ClientConfig) -> ClientResult<Self> {
+        if !config.base_url.starts_with("unix:") {
+            let _ = Url::parse(&config.base_url)?;
+        }
+        let socket_path = resolve_socket_path(&config.base_url)?;
+        let rpc_client = UnixJsonRpcClient::new(socket_path);
+        Ok(Self {
+            config,
+            rpc_client,
+            active_executions: Arc::new(RwLock::new(HashMap::new())),
+            event_handlers: Arc::new(RwLock::new(Vec::new())),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -358,5 +374,129 @@ mod tests {
             path.to_string_lossy().ends_with(".sock")
                 || path.to_string_lossy().contains("toadstool")
         );
+    }
+
+    #[test]
+    fn test_resolve_socket_path_unix_triple_slash() {
+        let path = resolve_socket_path("unix:///tmp/toadstool.sock").unwrap();
+        assert!(path.to_string_lossy().contains("tmp"));
+        assert!(path.to_string_lossy().contains("toadstool"));
+    }
+
+    #[test]
+    fn test_resolve_socket_path_unix_no_leading_slash() {
+        let path = resolve_socket_path("unix:relative/path.sock").unwrap();
+        assert!(!path.to_string_lossy().starts_with("//"));
+    }
+
+    #[test]
+    fn test_resolve_socket_path_unix_empty_after_prefix() {
+        let path = resolve_socket_path("unix:").unwrap();
+        assert!(path.as_os_str().is_empty() || path.to_string_lossy().is_empty());
+    }
+
+    #[test]
+    fn test_resolve_socket_path_unix_strip_leading_slashes() {
+        let path = resolve_socket_path("unix://///tmp/sock").unwrap();
+        assert!(path.to_string_lossy().contains("tmp"));
+    }
+
+    mod client_method_tests {
+        use super::*;
+        use crate::client::config::ClientConfig;
+        use crate::client::types::{ToadStoolEvent, WorkloadSubmission, WorkloadType};
+
+        fn test_client() -> ToadStoolClient {
+            let config = ClientConfig {
+                base_url: "unix:///tmp/test-toadstool.sock".to_string(),
+                ..Default::default()
+            };
+            ToadStoolClient::new_for_testing(config).expect("test client")
+        }
+
+        fn default_workload() -> WorkloadSubmission {
+            WorkloadSubmission {
+                workload_type: WorkloadType::Native {
+                    executable: "/bin/echo".to_string(),
+                    args: vec![],
+                    working_dir: None,
+                },
+                runtime_hint: None,
+                priority: None,
+                timeout: None,
+                environment: std::collections::HashMap::new(),
+                resources: None,
+                metadata: std::collections::HashMap::new(),
+            }
+        }
+
+        #[tokio::test]
+        async fn test_submit_workload_returns_error() {
+            let client = test_client();
+            let workload = default_workload();
+            let result = client.submit_workload(workload).await;
+            assert!(result.is_err());
+            let err = result.unwrap_err();
+            assert!(
+                err.to_string().contains("compute.submit") || err.to_string().contains("JSON-RPC")
+            );
+        }
+
+        #[tokio::test]
+        async fn test_get_execution_status_returns_error() {
+            let client = test_client();
+            let result = client.get_execution_status(uuid::Uuid::new_v4()).await;
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("compute.status"));
+        }
+
+        #[tokio::test]
+        async fn test_subscribe_to_events_returns_error() {
+            let client = test_client();
+            let result = client.subscribe_to_events().await;
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("polling"));
+        }
+
+        #[tokio::test]
+        async fn test_start_event_stream_ok() {
+            let client = test_client();
+            let result = client.start_event_stream();
+            assert!(result.is_ok());
+        }
+
+        #[tokio::test]
+        async fn test_list_executions_empty() {
+            let client = test_client();
+            let result = client.list_executions().await;
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_empty());
+        }
+
+        #[tokio::test]
+        async fn test_add_event_handler_no_panic() {
+            let client = test_client();
+            client.add_event_handler(|_: ToadStoolEvent| {}).await;
+        }
+
+        #[test]
+        fn test_with_config_invalid_url_fails() {
+            let config = ClientConfig {
+                base_url: "not-a-valid-url!!!".to_string(),
+                ..Default::default()
+            };
+            let result = ToadStoolClient::new_for_testing(config);
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_with_config_unix_url_succeeds() {
+            let config = ClientConfig {
+                base_url: "unix:///tmp/test.sock".to_string(),
+                ..Default::default()
+            };
+            let result = ToadStoolClient::new_for_testing(config);
+            assert!(result.is_ok());
+        }
     }
 }

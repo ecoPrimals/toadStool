@@ -68,7 +68,7 @@ pub(super) fn execute_gelu(workload: Workload) -> Result<WorkloadData, ComputeEr
                 .map(|&x| {
                     // GELU approximation
                     let sqrt_2_over_pi = 0.797_884_6_f32; // √(2/π)
-                    let coeff = 0.044715_f32;
+                    let coeff = 0.044_715_f32;
                     let inner = sqrt_2_over_pi * (x + coeff * x.powi(3));
                     0.5 * x * (1.0 + inner.tanh())
                 })
@@ -79,8 +79,8 @@ pub(super) fn execute_gelu(workload: Workload) -> Result<WorkloadData, ComputeEr
             let output: Vec<f64> = input
                 .par_iter()
                 .map(|&x| {
-                    let sqrt_2_over_pi = 0.7978845608028654_f64;
-                    let coeff = 0.044715_f64;
+                    let sqrt_2_over_pi = 0.797_884_560_802_865_4_f64;
+                    let coeff = 0.044_715_f64;
                     let inner = sqrt_2_over_pi * (x + coeff * x.powi(3));
                     0.5 * x * (1.0 + inner.tanh())
                 })
@@ -221,10 +221,10 @@ pub(super) fn execute_softmax(workload: Workload) -> Result<WorkloadData, Comput
 /// - Ensemble effect
 /// - Different behavior training vs inference
 #[inline]
-pub(super) fn execute_dropout(workload: Workload) -> Result<WorkloadData, ComputeError> {
+pub(super) fn execute_dropout(workload: Workload) -> WorkloadData {
     // For simplicity, return input unchanged (inference mode)
     // Full implementation would check training flag and apply dropout
-    Ok(workload.input)
+    workload.input
 }
 
 #[cfg(test)]

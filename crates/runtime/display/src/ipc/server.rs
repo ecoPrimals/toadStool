@@ -114,6 +114,10 @@ impl DisplayServer {
     /// 2. **DETECT** platform constraints (`SELinux`, unsupported)
     /// 3. **ADAPT** to TCP fallback (127.0.0.1:ephemeral)
     /// 4. **SUCCEED** or fail with real error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if both Unix socket and TCP binding fail.
     pub async fn start(self: Arc<Self>) -> Result<()> {
         tracing::info!("🔌 Starting IPC server (isomorphic mode)...");
         tracing::info!("   Trying Unix socket IPC (optimal)...");
@@ -123,7 +127,7 @@ impl DisplayServer {
             Ok(()) => Ok(()),
 
             // 2. DETECT platform constraints
-            Err(e) if self.is_platform_constraint(&e) => {
+            Err(e) if Self::is_platform_constraint(&e) => {
                 tracing::warn!("⚠️  Unix sockets unavailable: {}", e);
                 tracing::warn!("   Detected platform constraint, adapting...");
 
@@ -201,7 +205,7 @@ impl DisplayServer {
         tracing::info!("✅ TCP IPC listening on {}", local_addr);
 
         // Write discovery file for clients
-        self.write_tcp_discovery_file(&local_addr)?;
+        Self::write_tcp_discovery_file(&local_addr);
 
         // Update transport
         *self.transport.write().await = Some(IpcTransport::TcpFallback(local_addr));
@@ -229,12 +233,12 @@ impl DisplayServer {
     /// Detect platform constraints (not real errors!)
     ///
     /// Platform constraints should trigger TCP fallback, not failure.
-    fn is_platform_constraint(&self, error: &DisplayError) -> bool {
+    fn is_platform_constraint(error: &DisplayError) -> bool {
         // Extract IO error from DisplayError
         let error_str = error.to_string();
 
         // Check for permission denied + SELinux
-        if error_str.contains("Permission denied") && self.is_selinux_enforcing() {
+        if error_str.contains("Permission denied") && Self::is_selinux_enforcing() {
             tracing::debug!("   Platform constraint: SELinux enforcing (Android?)");
             return true;
         }
@@ -249,7 +253,7 @@ impl DisplayServer {
     }
 
     /// Check if `SELinux` is enforcing (common on Android)
-    fn is_selinux_enforcing(&self) -> bool {
+    fn is_selinux_enforcing() -> bool {
         std::fs::read_to_string("/sys/fs/selinux/enforce")
             .ok()
             .and_then(|s| s.trim().parse::<u8>().ok())
@@ -259,7 +263,7 @@ impl DisplayServer {
     /// Write TCP discovery file for clients
     ///
     /// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, HOME, /tmp
-    fn write_tcp_discovery_file(&self, addr: &SocketAddr) -> Result<()> {
+    fn write_tcp_discovery_file(addr: &SocketAddr) {
         // XDG-compliant discovery file paths
         let discovery_dirs: Vec<Option<String>> = vec![
             std::env::var("XDG_RUNTIME_DIR").ok(),
@@ -283,8 +287,6 @@ impl DisplayServer {
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Handle Unix socket connection
@@ -417,7 +419,7 @@ impl DisplayServer {
                     .unwrap_or_default();
 
                 let mut mgr = manager.write().await;
-                let window_id = mgr.create_window(params).await?;
+                let window_id = mgr.create_window(params)?;
 
                 Ok(serde_json::json!({
                     "window_id": window_id.as_string()
@@ -433,7 +435,7 @@ impl DisplayServer {
                 let window_id = WindowId::from_string(window_id_str)?;
 
                 let mut mgr = manager.write().await;
-                mgr.destroy_window(window_id).await?;
+                mgr.destroy_window(window_id)?;
 
                 Ok(serde_json::json!({"destroyed": true}))
             }
@@ -446,17 +448,19 @@ impl DisplayServer {
                     .as_str()
                     .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
                 let window_id = WindowId::from_string(window_id_str)?;
+                #[allow(clippy::cast_possible_truncation)] // Display dimensions fit in u32
                 let width = params["width"]
                     .as_u64()
                     .ok_or_else(|| DisplayError::IpcError("Missing width".to_string()))?
                     as u32;
+                #[allow(clippy::cast_possible_truncation)] // Display dimensions fit in u32
                 let height = params["height"]
                     .as_u64()
                     .ok_or_else(|| DisplayError::IpcError("Missing height".to_string()))?
                     as u32;
 
                 let mut mgr = manager.write().await;
-                mgr.resize_window(window_id, Size { width, height }).await?;
+                mgr.resize_window(window_id, Size { width, height })?;
 
                 Ok(serde_json::json!({"resized": true}))
             }
@@ -679,5 +683,92 @@ mod tests {
         let t = IpcTransport::TcpFallback(addr);
         let s = format!("{:?}", t);
         assert!(s.contains("TcpFallback") || s.contains("127"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_create_window_default_params() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let request_str =
+            r#"{"jsonrpc":"2.0","method":"display.create_window","params":{},"id":1}"#;
+        let response = DisplayServer::handle_request(request_str, &manager).await;
+        assert!(
+            response.error.is_none(),
+            "create_window with empty params should succeed: {:?}",
+            response.error
+        );
+        assert!(response.result.is_some());
+        let result = response.result.unwrap();
+        assert!(result.get("window_id").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_resize_window_missing_width() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let window_id = crate::window::WindowId::new();
+        let request_str = format!(
+            r#"{{"jsonrpc":"2.0","method":"display.resize_window","params":{{"window_id":"{}","height":600}},"id":1}}"#,
+            window_id.as_string()
+        );
+        let response = DisplayServer::handle_request(&request_str, &manager).await;
+        assert!(response.error.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_get_window_info_missing_params() {
+        let manager = match test_manager().await {
+            Some(m) => m,
+            None => return,
+        };
+        let request_str =
+            r#"{"jsonrpc":"2.0","method":"display.get_window_info","params":{},"id":1}"#;
+        let response = DisplayServer::handle_request(request_str, &manager).await;
+        assert!(response.error.is_some());
+        assert!(response
+            .error
+            .unwrap()
+            .message
+            .contains("Missing window_id"));
+    }
+
+    #[test]
+    fn test_discover_socket_path_format() {
+        let path = DisplayServer::discover_socket_path();
+        let components: Vec<_> = path.components().collect();
+        assert!(!components.is_empty());
+        assert_eq!(path.file_name().unwrap(), "display.sock");
+    }
+
+    #[test]
+    fn test_is_platform_constraint_permission_denied() {
+        let err = crate::DisplayError::IpcError("Permission denied".to_string());
+        let result = DisplayServer::is_platform_constraint(&err);
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_is_platform_constraint_unsupported() {
+        let err = crate::DisplayError::IpcError("Unsupported operation".to_string());
+        let result = DisplayServer::is_platform_constraint(&err);
+        assert!(result);
+    }
+
+    #[test]
+    fn test_is_platform_constraint_not_supported() {
+        let err = crate::DisplayError::IpcError("not supported".to_string());
+        let result = DisplayServer::is_platform_constraint(&err);
+        assert!(result);
+    }
+
+    #[test]
+    fn test_is_platform_constraint_other_error() {
+        let err = crate::DisplayError::IpcError("Connection refused".to_string());
+        let result = DisplayServer::is_platform_constraint(&err);
+        assert!(!result);
     }
 }

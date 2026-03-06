@@ -32,5 +32,5 @@ pub const REDIS_PORT: u16 = 6379;
 /// Default `PostgreSQL` port
 pub const POSTGRES_PORT: u16 = 5432;
 
-/// Default AMQP (RabbitMQ) port
+/// Default AMQP (`RabbitMQ`) port
 pub const AMQP_PORT: u16 = 5672;

@@ -195,9 +195,7 @@ impl WorkloadExecutor {
 
         // ✅ EVOLVED: Full conversion with validation
         // For local execution, integrate with runtime engines
-        // For distributed execution, submit to UniversalScheduler:
-        //   let response = scheduler.schedule_job(job).await?;
-        //   return convert_execution_response(response);
+        // For distributed execution, submit to UniversalScheduler
 
         Ok(WorkloadResponse {
             request_id: request.request_id.clone(),

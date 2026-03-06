@@ -2,7 +2,7 @@
 //! Capability serialization helpers.
 //!
 //! Converts between `Capability` enum and string representation for discovery protocol.
-//! These should match the Capability enum in primal_identity.
+//! These should match the Capability enum in `primal_identity`.
 
 use crate::primal_identity::Capability;
 

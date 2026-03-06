@@ -16,10 +16,9 @@ members = [
     "crates/integration/nestgate",
     "crates/integration/primals",
     "crates/integration/protocols", 
-    # "crates/integration/songbird",  # Temporarily commented - missing crate
     "crates/management/monitoring",
     "crates/management/performance",
-    # "crates/management/resources",  # Placeholder — no implementation yet (removed S94)
+    "crates/management/resources",
     "crates/management/analytics",
     "crates/runtime/adaptive",        # NEW: Adaptive optimization (Jan 15, 2026)
     "crates/runtime/container",

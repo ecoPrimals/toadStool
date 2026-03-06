@@ -245,7 +245,9 @@ impl CapabilityResolver {
 mod tests {
     use super::*;
     use crate::ecosystem::capabilities::taxonomy::StandardCapability;
-    use toadstool_common::infant_discovery::{ServiceHealth, ServiceMetadata};
+    use toadstool_common::infant_discovery::{
+        DiscoveryPreferences, ServiceHealth, ServiceMetadata,
+    };
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_resolve_from_registry() {
@@ -269,5 +271,95 @@ mod tests {
         // Resolve should find it
         let resolved = resolver.resolve(capability).await.unwrap();
         assert_eq!(resolved.endpoint, "http://localhost:8081");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_resolve_with_preferences_from_registry() {
+        let discovery = Arc::new(DiscoveryEngine::new());
+        let registry = Arc::new(CapabilityRegistry::new());
+        let resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
+
+        let capability = StandardCapability::CryptoSignatureEd25519.id();
+        let provider = ServiceProvider {
+            endpoint: "unix:///var/run/crypto.sock".to_string(),
+            protocols: vec!["unix".to_string(), "jsonrpc".to_string()],
+            health: ServiceHealth::Healthy,
+            metadata: ServiceMetadata::default(),
+            last_seen: std::time::Instant::now(),
+            priority: 90,
+        };
+
+        registry.register(capability.clone(), provider).await;
+
+        let prefs = DiscoveryPreferences {
+            required_protocols: vec!["unix".to_string()],
+            min_health: ServiceHealth::Healthy,
+            prefer_local: false,
+            timeout: None,
+            preferred_sources: vec![],
+        };
+
+        let resolved = resolver
+            .resolve_with_preferences(capability, prefs)
+            .await
+            .unwrap();
+        assert!(resolved.endpoint.contains("unix"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_resolve_all_from_registry() {
+        let discovery = Arc::new(DiscoveryEngine::new());
+        let registry = Arc::new(CapabilityRegistry::new());
+        let resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
+
+        let capability = StandardCapability::StorageObjectS3.id();
+        let provider = ServiceProvider {
+            endpoint: "http://localhost:9000".to_string(),
+            protocols: vec!["http".to_string()],
+            health: ServiceHealth::Healthy,
+            metadata: ServiceMetadata::default(),
+            last_seen: std::time::Instant::now(),
+            priority: 50,
+        };
+
+        registry.register(capability.clone(), provider).await;
+
+        let providers = resolver.resolve_all(capability).await.unwrap();
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0].endpoint, "http://localhost:9000");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_resolve_all_empty_when_not_found() {
+        let discovery = Arc::new(DiscoveryEngine::new());
+        let registry = Arc::new(CapabilityRegistry::new());
+        let resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
+
+        let capability = StandardCapability::CryptoKeyGeneration.id();
+        let providers = resolver.resolve_all(capability).await.unwrap();
+        assert!(providers.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_refresh_fails_when_no_discovery() {
+        let discovery = Arc::new(DiscoveryEngine::new());
+        let registry = Arc::new(CapabilityRegistry::new());
+        let resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
+
+        let capability = StandardCapability::CryptoSignatureEd25519.id();
+        let result = resolver.refresh(capability).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_set_auto_register() {
+        let discovery = Arc::new(DiscoveryEngine::new());
+        let registry = Arc::new(CapabilityRegistry::new());
+        let mut resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
+
+        resolver.set_auto_register(false);
+        // Just verify it doesn't panic - we can't easily test the effect
+        // without mocking discovery
+        drop(resolver);
     }
 }

@@ -172,15 +172,19 @@ Two kinds of streaming exist in the ecosystem:
 - `stateful.rs` — iterative simulation (MD, SCF, PDE solvers keep state on GPU)
 - `pipeline.rs` — compose GPU stages into single command submissions
 
-### Hardware streaming (toadStool — `runtime/orchestration`)
+### Hardware streaming (toadStool — `runtime/orchestration` + `toadstool-core`)
 - Route workloads across heterogeneous devices and nodes
 - Multiplex across CPU + GPU + NPU substrates
 - Distribute across network via songBird
 - Adaptive re-routing based on load and thermal conditions
+- **Physical hardware backbone** (S94b): stream data via HDMI/DP output to
+  capture cards on other machines, serial links to edge devices, PCIe peer-to-peer.
+  See `DUAL_FABRIC_ARCHITECTURE.md` and `HARDWARE_TRANSPORT_SPEC.md`.
 
 **Example**:
 - barraCuda: "stream this FFT through 3 GPU compute stages" (single device)
 - toadStool: "stream this workload across 2 GPUs and 1 NPU on 3 nodes" (fleet)
+- toadStool: "stream partition data to Machine B via HDMI backbone at 6 GB/s" (hardware fabric)
 
 ---
 

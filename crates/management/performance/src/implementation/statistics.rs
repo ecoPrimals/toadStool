@@ -101,7 +101,7 @@ pub(super) fn update_model_from_history(
     }
 
     let mut by_runtime: HashMap<RuntimeType, Vec<&PerformanceMetrics>> = HashMap::new();
-    for m in history.iter() {
+    for m in history {
         by_runtime
             .entry(m.runtime_type.clone())
             .or_default()
@@ -142,9 +142,9 @@ pub(super) fn update_model_from_history(
             baselines.insert(
                 format!("{rt:?}"),
                 BaselineMetrics {
-                    _avg_execution_time: Duration::from_secs_f64(sum_time / c),
-                    _avg_memory_mb: sum_mem / c,
-                    _avg_cpu_percent: sum_cpu / c,
+                    avg_execution_time: Duration::from_secs_f64(sum_time / c),
+                    avg_memory_mb: sum_mem / c,
+                    avg_cpu_percent: sum_cpu / c,
                 },
             );
         }

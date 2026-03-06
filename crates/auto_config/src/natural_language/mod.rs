@@ -79,7 +79,7 @@ impl NaturalLanguageConfig {
         info!("🗣️  Processing natural language configuration request");
 
         // Analyze intent
-        let analysis = intent::analyze_intent(text, &self.intent_patterns).await?;
+        let analysis = intent::analyze_intent(text, &self.intent_patterns)?;
 
         // Get appropriate template
         let template = templates::get_template(&self.templates, &analysis.primary_intent);
@@ -90,7 +90,7 @@ impl NaturalLanguageConfig {
         );
 
         // Generate configuration from template
-        let config = self.generate_config_from_template(&template).await?;
+        let config = self.generate_config_from_template(&template)?;
 
         Ok(config)
     }
@@ -100,8 +100,8 @@ impl NaturalLanguageConfig {
     /// # Errors
     ///
     /// Returns an error if intent analysis fails
-    pub async fn analyze_intent(&self, text: &str) -> ToadStoolResult<IntentAnalysis> {
-        intent::analyze_intent(text, &self.intent_patterns).await
+    pub fn analyze_intent(&self, text: &str) -> ToadStoolResult<IntentAnalysis> {
+        intent::analyze_intent(text, &self.intent_patterns)
     }
 
     /// Configure from a specific template by name
@@ -117,7 +117,7 @@ impl NaturalLanguageConfig {
             ToadStoolError::configuration(format!("Template not found: {template_name}"))
         })?;
 
-        self.generate_config_from_template(template).await
+        self.generate_config_from_template(template)
     }
 
     /// Get list of available template names
@@ -131,17 +131,14 @@ impl NaturalLanguageConfig {
     /// # Errors
     ///
     /// Returns an error if preference extraction fails
-    pub async fn extract_explicit_preferences(
-        &self,
-        text: &str,
-    ) -> ToadStoolResult<ExplicitPreferences> {
+    pub fn extract_explicit_preferences(&self, text: &str) -> ToadStoolResult<ExplicitPreferences> {
         // This is now a public wrapper around the intent module's logic
         let text_lower = text.to_lowercase();
         Ok(intent::extract_explicit_preferences(&text_lower))
     }
 
     /// Generate configuration from a template
-    async fn generate_config_from_template(
+    fn generate_config_from_template(
         &self,
         template: &ConfigurationTemplate,
     ) -> ToadStoolResult<ToadStoolConfig> {
@@ -185,10 +182,7 @@ impl NaturalLanguageConfig {
     /// NOTE: Pass-through implementation - configuration validation happens
     /// elsewhere in the pipeline. Reserved for future optimization passes.
     #[allow(dead_code)] // Reserved: future config optimization passes
-    async fn validate_and_optimize(
-        &self,
-        config: ToadStoolConfig,
-    ) -> ToadStoolResult<ToadStoolConfig> {
+    fn validate_and_optimize(&self, config: ToadStoolConfig) -> ToadStoolResult<ToadStoolConfig> {
         // Configuration is validated during generation and by config module
         // This method is reserved for future optimization logic
         Ok(config)
@@ -205,43 +199,40 @@ impl Default for NaturalLanguageConfig {
 mod tests {
     use super::*;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_machine_learning_intent() {
+    #[test]
+    fn test_machine_learning_intent() {
         let nl_config = NaturalLanguageConfig::new();
 
         let analysis = nl_config
             .analyze_intent(
                 "I want to train neural networks and do machine learning with GPU acceleration",
             )
-            .await
             .unwrap();
 
         assert_eq!(analysis.primary_intent, "machine_learning");
         assert!(analysis.confidence > 0.0);
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_web_development_intent() {
+    #[test]
+    fn test_web_development_intent() {
         let nl_config = NaturalLanguageConfig::new();
 
         let analysis = nl_config
             .analyze_intent(
                 "I'm building a web application with React and need to deploy containers",
             )
-            .await
             .unwrap();
 
         assert_eq!(analysis.primary_intent, "web_development");
         assert!(analysis.confidence > 0.0);
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_explicit_preferences_extraction() {
+    #[test]
+    fn test_explicit_preferences_extraction() {
         let nl_config = NaturalLanguageConfig::new();
 
         let analysis = nl_config
             .analyze_intent("I need high performance with GPU acceleration and maximum security")
-            .await
             .unwrap();
 
         assert_eq!(

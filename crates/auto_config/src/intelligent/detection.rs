@@ -31,7 +31,7 @@ impl PlatformOptimizer {
     /// Currently does not return errors, but future versions may return errors
     /// if platform-specific optimizations fail.
     #[must_use = "Platform optimization result should be checked"]
-    pub async fn optimize_for_platform(
+    pub fn optimize_for_platform(
         &self,
         hardware: &SystemCapabilities,
     ) -> ToadStoolResult<PlatformConfig> {

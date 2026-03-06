@@ -97,3 +97,27 @@ fn verify_device_nodes() -> Result<()> {
     tracing::info!("✅ Found {} device node(s)", nodes.len());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_verify_setup_empty_devices() {
+        let devices: Vec<AkidaDevice> = vec![];
+        let result = verify_setup(&devices);
+        // May fail on kernel module check if akida_pcie not loaded
+        let _ = result;
+    }
+
+    #[test]
+    fn test_verify_setup_with_nonexistent_device() {
+        let devices = vec![AkidaDevice {
+            pcie_address: "0000:ff:ff.0".to_string(),
+            vendor_id: "1e7c".to_string(),
+            device_id: "bca1".to_string(),
+        }];
+        let result = verify_setup(&devices);
+        assert!(result.is_err());
+    }
+}

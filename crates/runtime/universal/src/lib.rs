@@ -1,5 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
+#![allow(
+    clippy::doc_markdown,
+    clippy::wildcard_imports,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use,
+    clippy::match_same_arms,
+    clippy::match_wildcard_for_single_variants,
+    clippy::struct_excessive_bools,
+    clippy::single_match_else,
+    clippy::redundant_closure_for_method_calls,
+    clippy::manual_let_else,
+    clippy::map_unwrap_or,
+    clippy::unreadable_literal,
+    clippy::unnecessary_wraps, // discover_cpu needs Option for cfg-gated None
+)]
 
 //! ToadStool Universal Compute Runtime
 //!

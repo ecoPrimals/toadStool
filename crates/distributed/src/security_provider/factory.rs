@@ -151,7 +151,6 @@ impl SecurityProviderFactory {
     async fn create_in_process_provider() -> ToadStoolResult<Arc<dyn SecurityProvider>> {
         // For in-process, we can try to instantiate providers directly
 
-        // ✅ COMPLETED: BearDog SecurityProvider fully implemented (Phase 1B)
         // Try BearDog implementation first
         use crate::security_provider::beardog_impl::BearDogSecurityProvider;
         match BearDogSecurityProvider::new().await {

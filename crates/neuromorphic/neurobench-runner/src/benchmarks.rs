@@ -141,28 +141,32 @@ impl BenchmarkResult {
 
         // Mean latency
         let total: Duration = sorted.iter().sum();
-        self.mean_latency = total / sorted.len() as u32;
+        let len_u32 = u32::try_from(sorted.len()).unwrap_or(1);
+        self.mean_latency = total / len_u32;
 
-        // Percentiles
-        let p95_idx = (sorted.len() as f64 * 0.95) as usize;
-        let p99_idx = (sorted.len() as f64 * 0.99) as usize;
+        // Percentiles (integer math to avoid casts)
+        let len = sorted.len();
+        let p95_idx = (len * 95 / 100).min(len.saturating_sub(1));
+        let p99_idx = (len * 99 / 100).min(len.saturating_sub(1));
         self.p95_latency = sorted.get(p95_idx).copied().unwrap_or(Duration::ZERO);
         self.p99_latency = sorted.get(p99_idx).copied().unwrap_or(Duration::ZERO);
 
-        // Throughput
+        // Throughput (inferences per second)
         if self.mean_latency.as_nanos() > 0 {
-            self.throughput = 1_000_000_000.0 / self.mean_latency.as_nanos() as f64;
+            self.throughput = 1_000_000_000.0 / self.mean_latency.as_secs_f64();
         }
 
         // Energy per inference
         if let Some(power) = self.mean_power_mw {
-            let latency_us = self.mean_latency.as_micros() as f64;
+            let latency_us = self.mean_latency.as_secs_f64() * 1_000_000.0;
             self.energy_per_inference_uj = Some(power * latency_us / 1000.0);
         }
 
-        // Accuracy
+        // Accuracy (f64 division; precision loss acceptable for benchmark display)
         if self.num_samples > 0 {
-            self.accuracy = self.num_correct as f64 / self.num_samples as f64;
+            #[allow(clippy::cast_precision_loss)]
+            let acc = self.num_correct as f64 / self.num_samples as f64;
+            self.accuracy = acc;
         }
     }
 

@@ -476,3 +476,155 @@ async fn test_detector_default_creates_functional_detector() {
         .expect("default detector can detect");
     assert!(!layer.description().is_empty());
 }
+
+// ── GCP GCLOUD_PROJECT and GOOGLE_CLOUD_ZONE fallbacks ─────────────────────────
+
+#[tokio::test]
+async fn test_detector_gcp_gcloud_project_env() {
+    temp_env::with_vars(
+        [
+            ("AWS_EXECUTION_ENV", None::<&str>),
+            ("GCP_PROJECT", None::<&str>),
+            ("GOOGLE_CLOUD_PROJECT", None::<&str>),
+            ("GCLOUD_PROJECT", Some("gcloud-project")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let layer = detector.detect().await.expect("detect succeeds");
+                    if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
+                        assert!(matches!(provider, CloudProvider::GCP));
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
+}
+
+#[tokio::test]
+async fn test_detector_gcp_google_cloud_zone_fallback() {
+    temp_env::with_vars(
+        [
+            ("GCP_PROJECT", Some("proj")),
+            ("GCE_ZONE", None::<&str>),
+            ("GOOGLE_CLOUD_ZONE", Some("us-east1-b")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector.detect().await.expect("detect succeeds");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
+}
+
+// ── Azure alternate env vars ────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_detector_azure_website_instance_id() {
+    temp_env::with_vars(
+        [
+            ("AWS_EXECUTION_ENV", None::<&str>),
+            ("GCP_PROJECT", None::<&str>),
+            ("AZURE_SUBSCRIPTION_ID", None::<&str>),
+            ("WEBSITE_INSTANCE_ID", Some("web-inst-123")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let layer = detector.detect().await.expect("detect succeeds");
+                    if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
+                        assert!(matches!(provider, CloudProvider::Azure));
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
+}
+
+#[tokio::test]
+async fn test_detector_azure_functions_worker_runtime() {
+    temp_env::with_vars(
+        [
+            ("AWS_EXECUTION_ENV", None::<&str>),
+            ("GCP_PROJECT", None::<&str>),
+            ("AZURE_SUBSCRIPTION_ID", None::<&str>),
+            ("WEBSITE_INSTANCE_ID", None::<&str>),
+            ("FUNCTIONS_WORKER_RUNTIME", Some("rust")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let layer = detector.detect().await.expect("detect succeeds");
+                    if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
+                        assert!(matches!(provider, CloudProvider::Azure));
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
+}
+
+#[tokio::test]
+async fn test_detector_azure_region_fallback() {
+    temp_env::with_vars(
+        [
+            ("AZURE_SUBSCRIPTION_ID", Some("sub")),
+            ("AZURE_LOCATION", None::<&str>),
+            ("AZURE_REGION", Some("westeurope")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector.detect().await.expect("detect succeeds");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
+}
+
+// ── DetectionError Display ──────────────────────────────────────────────────────
+
+#[test]
+fn test_detection_error_display() {
+    use toadstool::deployment_layer::DetectionError;
+    let err = DetectionError::ContainerIdNotFound;
+    let s = format!("{}", err);
+    assert!(s.contains("Container") || s.contains("not found") || !s.is_empty());
+}

@@ -38,8 +38,7 @@ impl Default for NestGateConfig {
         // - Legacy compatibility
         // - Explicit endpoint configuration
         //
-        // Production code should use capability-based discovery:
-        //   let client = NestGateClient::discover().await?;
+        // Production code should use capability-based discovery (NestGateClient::discover).
 
         let port: u16 = std::env::var("TOADSTOOL_STORAGE_PORT")
             .ok()

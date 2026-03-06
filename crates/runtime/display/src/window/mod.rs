@@ -49,6 +49,10 @@ impl WindowId {
     }
 
     /// Parse from string
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string is not a valid UUID.
     pub fn from_string(s: &str) -> Result<Self> {
         uuid::Uuid::parse_str(s)
             .map(Self)
@@ -213,6 +217,10 @@ impl WindowManager {
     /// Create a new window manager
     ///
     /// **Self-knowledge**: Discovers DRM devices at runtime!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no DRM device can be discovered or opened.
     pub async fn new() -> Result<Self> {
         tracing::info!("🪟 Initializing window manager...");
 
@@ -252,7 +260,11 @@ impl WindowManager {
     /// Create a new window
     ///
     /// Allocates framebuffer and registers window.
-    pub async fn create_window(&mut self, req: CreateWindowRequest) -> Result<WindowId> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if framebuffer allocation fails.
+    pub fn create_window(&mut self, req: CreateWindowRequest) -> Result<WindowId> {
         tracing::info!(
             "Creating window: {}x{} (fullscreen: {})",
             req.width,
@@ -286,7 +298,11 @@ impl WindowManager {
     /// Destroy a window
     ///
     /// Deallocates framebuffer and removes from registry.
-    pub async fn destroy_window(&mut self, id: WindowId) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the window ID is not found.
+    pub fn destroy_window(&mut self, id: WindowId) -> Result<()> {
         tracing::info!("Destroying window: {}", id);
 
         // Remove window
@@ -314,7 +330,11 @@ impl WindowManager {
     /// Resize a window
     ///
     /// Allocates new framebuffer with new size.
-    pub async fn resize_window(&mut self, id: WindowId, size: Size) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the window is not found or framebuffer allocation fails.
+    pub fn resize_window(&mut self, id: WindowId, size: Size) -> Result<()> {
         tracing::info!("Resizing window {}: {}x{}", id, size.width, size.height);
 
         // Get window
@@ -337,6 +357,10 @@ impl WindowManager {
     }
 
     /// Get window information
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the window ID is not found.
     pub fn get_window_info(&self, id: WindowId) -> Result<WindowInfo> {
         self.windows
             .get(&id)
@@ -370,6 +394,10 @@ impl WindowManager {
     }
 
     /// Get window reference
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the window ID is not found.
     pub fn get_window(&self, id: WindowId) -> Result<&Window> {
         self.windows
             .get(&id)
@@ -419,11 +447,3 @@ mod tests {
         assert!(!req.fullscreen);
     }
 }
-
-// ✅ Phase 1 COMPLETE:
-// - Window struct with framebuffer
-// - WindowManager with multi-window support
-// - Create/destroy/resize operations
-// - Focus management
-// - Full async API
-// - Deep Debt compliant!

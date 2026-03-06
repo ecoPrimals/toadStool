@@ -275,10 +275,7 @@ impl AiMlWorkload {
         matches!(
             (self.operation, self.model_size),
             (
-                AiOperation::Training,
-                ModelSize::Large | ModelSize::XLarge | ModelSize::XXLarge
-            ) | (
-                AiOperation::FineTuning,
+                AiOperation::Training | AiOperation::FineTuning,
                 ModelSize::Large | ModelSize::XLarge | ModelSize::XXLarge
             ) | (
                 AiOperation::Inference,

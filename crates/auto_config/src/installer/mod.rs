@@ -5,10 +5,10 @@
 //! - **paths**: Platform-specific path resolution
 //! - **core**: Directory structure and toadstool executable
 //! - **runtimes**: Container (Docker) and GPU runtime setup
-//! - **platform_components**: Linux/macOS/Windows service configs
+//! - **`platform_components`**: Linux/macOS/Windows service configs
 //! - **integration**: PATH, desktop shortcuts, shell completion
-//! - **config_manager**: Apply ToadStool configuration
-//! - **types**: InstallationResult, InstallationConfig
+//! - **`config_manager`**: Apply ToadStool configuration
+//! - **types**: `InstallationResult`, `InstallationConfig`
 
 mod config_manager;
 mod core;
@@ -41,6 +41,7 @@ pub struct SmartInstaller {
 }
 
 impl SmartInstaller {
+    #[must_use]
     pub fn new() -> Self {
         let platform = Platform::detect();
         let installation_path = paths::default_installation_path(&platform);
@@ -233,5 +234,56 @@ mod tests {
         let result = InstallationResult::default();
         assert!(!result.success);
         assert!(result.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_ensure_installation_directory_creates_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let install_path = dir.path().join("toadstool");
+        assert!(!install_path.exists());
+
+        let result = core::ensure_installation_directory(&install_path).await;
+        assert!(result.is_ok());
+        assert!(install_path.exists());
+        assert!(install_path.is_dir());
+    }
+
+    #[tokio::test]
+    async fn test_install_core_components_creates_structure() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let install_path = dir.path().to_path_buf();
+
+        let result = core::install_core_components(&install_path).await;
+        assert!(result.is_ok());
+
+        assert!(install_path.join("bin").exists());
+        assert!(install_path.join("config").exists());
+        assert!(install_path.join("data").exists());
+        assert!(install_path.join("logs").exists());
+
+        let script_name = if cfg!(windows) {
+            "toadstool.bat"
+        } else {
+            "toadstool"
+        };
+        assert!(install_path.join("bin").join(script_name).exists());
+    }
+
+    #[tokio::test]
+    async fn test_paths_default_installation_with_home() {
+        temp_env::with_var("HOME", Some("/tmp/test-home"), || {
+            let path = paths::default_installation_path(&Platform::Linux);
+            assert!(path.to_string_lossy().contains("toadstool"));
+            assert!(path.to_string_lossy().contains("test-home"));
+        });
+    }
+
+    #[tokio::test]
+    async fn test_paths_config_path_with_home() {
+        temp_env::with_var("HOME", Some("/tmp/test-home"), || {
+            let path = paths::config_path_for_platform(&Platform::Linux);
+            assert!(path.to_string_lossy().contains("toadstool"));
+            assert!(path.to_string_lossy().contains("config"));
+        });
     }
 }

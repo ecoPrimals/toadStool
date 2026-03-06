@@ -87,13 +87,13 @@ pub async fn query_local_capabilities() -> Vec<String> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_returns_non_empty() {
         let caps = query_local_capabilities().await;
         assert!(!caps.is_empty(), "capabilities should never be empty");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_always_includes_compute_cpu_orchestration() {
         let caps = query_local_capabilities().await;
         assert!(
@@ -113,7 +113,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_no_duplicates() {
         let caps = query_local_capabilities().await;
         let mut seen = std::collections::HashSet::new();
@@ -122,7 +122,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_all_non_empty() {
         let caps = query_local_capabilities().await;
         for c in &caps {

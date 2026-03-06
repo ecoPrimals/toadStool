@@ -409,6 +409,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn test_lerp() {
         assert_eq!(lerp(0.0, 10.0, 0.5), 5.0);
         assert_eq!(lerp(0.0, 10.0, 0.0), 0.0);
@@ -447,22 +448,22 @@ mod tests {
     #[test]
     fn test_util_error_display() {
         let timeout_err = UtilError::Timeout(Duration::from_secs(5));
-        let display = format!("{}", timeout_err);
-        assert!(display.contains("timeout") || display.contains("5"));
+        let display = format!("{timeout_err}");
+        assert!(display.contains("timeout") || display.contains('5'));
 
         let op_err = UtilError::OperationFailed("test op failed".to_string());
-        let display = format!("{}", op_err);
+        let display = format!("{op_err}");
         assert!(display.contains("test op failed"));
 
         let input_err = UtilError::InvalidInput("bad value".to_string());
-        let display = format!("{}", input_err);
+        let display = format!("{input_err}");
         assert!(display.contains("bad value"));
     }
 
     #[test]
     fn test_util_error_debug() {
         let err = UtilError::InvalidInput("x".to_string());
-        let debug_str = format!("{:?}", err);
+        let debug_str = format!("{err:?}");
         assert!(!debug_str.is_empty());
     }
 

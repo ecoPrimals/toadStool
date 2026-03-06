@@ -15,6 +15,7 @@ use std::collections::HashMap;
 /// - Environment-specific feature sets
 /// - Experimental feature gating
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct FeatureFlags {
     /// Enable experimental features (unstable, may change)
     pub enable_experimental: bool,
@@ -41,7 +42,7 @@ pub struct FeatureFlags {
     ///
     /// # Deprecation
     ///
-    /// gRPC is deprecated per wateringHole UNIVERSAL_IPC_STANDARD_V3.
+    /// gRPC is deprecated per wateringHole `UNIVERSAL_IPC_STANDARD_V3`.
     /// Migrate to JSON-RPC 2.0 over Unix sockets (required transport).
     /// tarpc is optional.
     #[deprecated(

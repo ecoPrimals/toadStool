@@ -115,3 +115,46 @@ pub(crate) struct VfioDmaUnmap {
     pub iova: u64,
     pub size: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_vfio_device_info_default() {
+        let info = VfioDeviceInfo::default();
+        assert_eq!(info.argsz, 0);
+        assert_eq!(info.flags, 0);
+        assert_eq!(info.num_regions, 0);
+        assert_eq!(info.num_irqs, 0);
+    }
+
+    #[test]
+    fn test_vfio_group_status_default() {
+        let status = VfioGroupStatus::default();
+        assert_eq!(status.argsz, 0);
+        assert_eq!(status.flags, 0);
+    }
+
+    #[test]
+    fn test_vfio_region_info_default() {
+        let info = VfioRegionInfo::default();
+        assert_eq!(info.size, 0);
+        assert_eq!(info.offset, 0);
+    }
+
+    #[test]
+    fn test_vfio_dma_map_default() {
+        let map = VfioDmaMap::default();
+        assert_eq!(map.vaddr, 0);
+        assert_eq!(map.iova, 0);
+        assert_eq!(map.size, 0);
+    }
+
+    #[test]
+    fn test_vfio_dma_unmap_default() {
+        let unmap = VfioDmaUnmap::default();
+        assert_eq!(unmap.iova, 0);
+        assert_eq!(unmap.size, 0);
+    }
+}

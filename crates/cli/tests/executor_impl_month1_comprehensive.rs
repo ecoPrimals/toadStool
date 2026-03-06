@@ -33,8 +33,7 @@ mod executor_initialization {
         // Verify BiomeExecutor::new() method exists and has correct signature
         // This tests the API contract without requiring full initialization
 
-        // The function signature should be:
-        // pub async fn new() -> Result<Self>
+        // The function signature should be: async fn new() -> Result<Self>
 
         // Compilation of this test verifies the method exists
         // (No runtime assertions needed - this is a compilation check)
@@ -67,18 +66,7 @@ mod run_biome_tests {
 
     #[test]
     fn test_run_biome_signature() {
-        // Verify run_biome method signature
-        // pub async fn run_biome(
-        //     &self,
-        //     _ctx: &CliContext,
-        //     manifest_path: PathBuf,
-        //     name: Option<String>,
-        //     env: Vec<String>,
-        //     debug: bool,
-        //     cpu_limit: Option<f64>,
-        //     memory_limit: Option<String>,
-        //     security: String,
-        // ) -> Result<()>
+        // Verify run_biome method signature (manifest_path, name, env, debug, limits, security)
 
         let _params = vec![
             "ctx: &CliContext",

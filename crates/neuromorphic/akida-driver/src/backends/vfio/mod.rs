@@ -449,6 +449,18 @@ mod tests {
     }
 
     #[test]
+    fn test_find_iommu_group_nonexistent_device() {
+        let result = VfioBackend::find_iommu_group("0000:xx:yy.z");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("IOMMU") || msg.contains("Cannot read") || msg.contains("Failed"),
+            "expected IOMMU-related error, got: {msg}"
+        );
+    }
+
+    #[test]
     fn test_vfio_backend_init() {
         let pcie_address = "0000:a1:00.0";
         match VfioBackend::init(pcie_address) {
@@ -459,5 +471,30 @@ mod tests {
             }
             Err(e) => println!("VFIO backend unavailable (expected if no hardware): {e}"),
         }
+    }
+
+    #[test]
+    fn test_vfio_ioctl_constants() {
+        assert_eq!(ioctls::VFIO_API_VERSION, 0);
+        assert_eq!(ioctls::VFIO_GROUP_FLAGS_VIABLE, 1);
+        assert_eq!(ioctls::VFIO_TYPE1V2_IOMMU, 3);
+        assert_eq!(ioctls::VFIO_DMA_MAP_FLAG_READ, 1);
+        assert_eq!(ioctls::VFIO_DMA_MAP_FLAG_WRITE, 2);
+    }
+
+    #[test]
+    fn test_poll_config_structure() {
+        let cfg = PollConfig {
+            reg: 0x10,
+            done_mask: 0x1,
+            error_mask: 0x2,
+            max_polls: 1000,
+            yield_interval: 100,
+            timeout_msg: "timeout",
+            error_msg: "error",
+        };
+        assert_eq!(cfg.reg, 0x10);
+        assert_eq!(cfg.done_mask, 0x1);
+        assert_eq!(cfg.error_mask, 0x2);
     }
 }

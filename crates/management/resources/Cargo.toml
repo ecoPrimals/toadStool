@@ -10,3 +10,5 @@ keywords = ["resources", "management", "monitoring", "allocation"]
 categories = ["development-tools"]
 
 [dependencies]
+serde = { workspace = true }
+sysinfo = { workspace = true }

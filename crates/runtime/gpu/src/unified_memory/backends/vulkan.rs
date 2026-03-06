@@ -70,8 +70,7 @@ pub struct VulkanBackend {
     wgpu_device: Option<Arc<wgpu::Device>>,
 
     /// wgpu queue (when using wgpu path)
-    #[allow(dead_code)]
-    wgpu_queue: Option<Arc<wgpu::Queue>>,
+    _wgpu_queue: Option<Arc<wgpu::Queue>>,
 }
 
 impl VulkanBackend {
@@ -95,7 +94,7 @@ impl VulkanBackend {
             capabilities,
             available: false,
             wgpu_device: None,
-            wgpu_queue: None,
+            _wgpu_queue: None,
         }
     }
 
@@ -167,7 +166,7 @@ impl VulkanBackend {
             capabilities,
             available: true,
             wgpu_device: Some(Arc::new(device)),
-            wgpu_queue: Some(Arc::new(queue)),
+            _wgpu_queue: Some(Arc::new(queue)),
         })
     }
 
@@ -234,7 +233,7 @@ impl VulkanBackend {
             capabilities,
             available: true,
             wgpu_device: None,
-            wgpu_queue: None,
+            _wgpu_queue: None,
         })
     }
 }

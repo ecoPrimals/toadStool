@@ -18,8 +18,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 struct TouchPoint {
     /// Tracking ID assigned by kernel (for debugging)
-    #[allow(dead_code)] // Kernel ID for debugging; internal touch_id used for tracking
-    tracking_id: i32,
+    _tracking_id: i32,
     /// Our internal touch ID (stable across updates)
     touch_id: u32,
     /// Current X position
@@ -144,28 +143,27 @@ impl TouchTracker {
                         events.push((touch.touch_id, TouchPhase::Ended, touch.x, touch.y));
                     }
                     continue;
-                } else {
-                    // Touch started
-                    let touch_id = self.next_touch_id;
-                    self.next_touch_id += 1;
-
-                    let x = update.x.unwrap_or(0);
-                    let y = update.y.unwrap_or(0);
-
-                    self.slots.insert(
-                        slot,
-                        TouchPoint {
-                            tracking_id,
-                            touch_id,
-                            x,
-                            y,
-                            phase: TouchPhase::Started,
-                        },
-                    );
-
-                    events.push((touch_id, TouchPhase::Started, x, y));
-                    continue;
                 }
+                // Touch started
+                let touch_id = self.next_touch_id;
+                self.next_touch_id += 1;
+
+                let x = update.x.unwrap_or(0);
+                let y = update.y.unwrap_or(0);
+
+                self.slots.insert(
+                    slot,
+                    TouchPoint {
+                        _tracking_id: tracking_id,
+                        touch_id,
+                        x,
+                        y,
+                        phase: TouchPhase::Started,
+                    },
+                );
+
+                events.push((touch_id, TouchPhase::Started, x, y));
+                continue;
             }
 
             // Handle position updates (touch moved)
@@ -352,23 +350,3 @@ mod tests {
         assert_eq!(ids.len(), 10); // No duplicates
     }
 }
-
-// ✅ COMPLETE IMPLEMENTATION!
-//
-// Priority 4 COMPLETE:
-// - ✅ TouchTracker implementation
-// - ✅ MT Protocol Type B support
-// - ✅ Stable touch ID assignment
-// - ✅ 10+ simultaneous touches
-// - ✅ Touch lifecycle (Started/Moved/Ended)
-// - ✅ State accumulation (waits for SYN)
-// - ✅ Zero placeholders
-// - ✅ Zero unsafe
-// - ✅ Comprehensive tests
-//
-// DEEP DEBT COMPLIANCE: A+
-// - Pure Rust (evdev types)
-// - Agnostic (no touch count limits)
-// - Complete implementation
-// - Modern Rust (HashMap, strong typing)
-// - Self-knowledge (runtime state tracking)

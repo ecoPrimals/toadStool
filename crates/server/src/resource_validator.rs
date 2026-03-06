@@ -501,7 +501,7 @@ mod tests {
     use std::collections::HashMap;
     use toadstool::resources::{CpuRequirements, MemoryRequirements};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_validate_small_graph() {
         let validator = ResourceValidator::new();
 
@@ -536,7 +536,7 @@ mod tests {
         assert!(result.gaps.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_validate_large_graph() {
         let validator = ResourceValidator::new();
 

@@ -56,6 +56,10 @@ pub struct Harness {
 
 impl Harness {
     /// Create new harness with default config
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if the device cannot be opened or the backend fails to initialize.
     pub fn new(device_id: &str) -> Result<Self> {
         Self::with_config(HarnessConfig {
             device_id: device_id.to_string(),
@@ -64,6 +68,10 @@ impl Harness {
     }
 
     /// Create with specific config
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if the device cannot be opened or the backend fails to initialize.
     pub fn with_config(config: HarnessConfig) -> Result<Self> {
         info!(
             "Initializing NeuroBench harness for device {}",
@@ -79,6 +87,10 @@ impl Harness {
     }
 
     /// Run a benchmark with real dataset
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if model loading, dataset loading, or inference fails.
     pub fn run(
         &mut self,
         benchmark: Benchmark,
@@ -161,7 +173,8 @@ impl Harness {
 
         // Calculate power
         if !power_samples.is_empty() {
-            let avg_power: f64 = power_samples.iter().sum::<f64>() / power_samples.len() as f64;
+            let len = u32::try_from(power_samples.len()).unwrap_or(1);
+            let avg_power: f64 = power_samples.iter().sum::<f64>() / f64::from(len);
             result.mean_power_mw = Some(avg_power * 1000.0); // W to mW
         }
 
@@ -172,6 +185,10 @@ impl Harness {
     }
 
     /// Run benchmark with synthetic data (for hardware validation without datasets)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if model loading or inference fails.
     pub fn run_synthetic(
         &mut self,
         benchmark: Benchmark,
@@ -190,7 +207,7 @@ impl Harness {
         let input_shape = benchmark.input_shape();
         let input_size: usize = input_shape.iter().product();
         let test_input: Vec<f32> = (0..input_size)
-            .map(|i| ((i % 256) as f32) / 255.0)
+            .map(|i| f32::from(u8::try_from(i % 256).unwrap_or(0)) / 255.0)
             .collect();
 
         // Warmup
@@ -231,7 +248,8 @@ impl Harness {
         }
 
         if !power_samples.is_empty() {
-            let avg_power: f64 = power_samples.iter().sum::<f64>() / power_samples.len() as f64;
+            let len = u32::try_from(power_samples.len()).unwrap_or(1);
+            let avg_power: f64 = power_samples.iter().sum::<f64>() / f64::from(len);
             result.mean_power_mw = Some(avg_power * 1000.0);
         }
 
@@ -337,6 +355,21 @@ mod tests {
         let config = HarnessConfig::default();
         assert_eq!(config.backend, BackendSelection::Auto);
         assert!(!config.data_dir.is_empty());
+        assert_eq!(config.device_id, "0000:a1:00.0");
+        assert!(!config.models_dir.is_empty());
+    }
+
+    #[test]
+    fn test_harness_config_clone() {
+        let config = HarnessConfig {
+            device_id: "0000:01:00.0".to_string(),
+            backend: BackendSelection::Kernel,
+            models_dir: "/models".to_string(),
+            data_dir: "/data".to_string(),
+        };
+        let cloned = config.clone();
+        assert_eq!(cloned.device_id, config.device_id);
+        assert_eq!(cloned.backend, BackendSelection::Kernel);
     }
 
     #[test]
@@ -346,11 +379,68 @@ mod tests {
 
         let empty: Vec<f32> = vec![];
         assert_eq!(get_predicted_class(&empty), None);
+
+        let single = vec![1.0];
+        assert_eq!(get_predicted_class(&single), Some(0));
+
+        let ties = vec![0.5, 0.5, 0.5];
+        let tied_result = get_predicted_class(&ties);
+        assert!(tied_result.is_some());
+        assert!(tied_result.unwrap() < 3);
     }
 
     #[test]
     fn test_benchmark_data_dir() {
         assert_eq!(benchmark_data_dir(Benchmark::DvsGesture), "dvs_gesture");
         assert_eq!(benchmark_data_dir(Benchmark::KeywordFscil), "keyword_fscil");
+        assert_eq!(benchmark_data_dir(Benchmark::ChaoticFunction), "chaotic");
+        assert_eq!(benchmark_data_dir(Benchmark::NhpMotor), "nhp_motor");
+        assert_eq!(benchmark_data_dir(Benchmark::EventCamera), "event_camera");
+    }
+
+    #[test]
+    fn test_sample_to_f32_u8_path() {
+        let sample = Sample {
+            input: vec![0, 128, 255],
+            label: 0,
+            id: None,
+        };
+        let result = sample_to_f32(&sample, Benchmark::DvsGesture);
+        assert!(!result.is_empty());
+        assert!((result[0] - 0.0).abs() < 0.01);
+        assert!((result[1] - 0.5).abs() < 0.01);
+        assert!((result[2] - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_sample_to_f32_f32_path() {
+        let data = [0.25_f32, 0.5, 0.75];
+        let sample = Sample::from_f32(&data, 0, None);
+        let result = sample_to_f32(&sample, Benchmark::DvsGesture);
+        assert_eq!(result.len(), 3);
+        assert!((result[0] - 0.25).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_benchmark_result_new_and_finalize() {
+        let mut result = BenchmarkResult::new(Benchmark::DvsGesture);
+        assert_eq!(result.benchmark, Benchmark::DvsGesture);
+        assert_eq!(result.num_samples, 0);
+        result.num_samples = 10;
+        result.num_correct = 8;
+        result.finalize(&[
+            std::time::Duration::from_micros(100),
+            std::time::Duration::from_micros(110),
+            std::time::Duration::from_micros(120),
+        ]);
+        assert!(result.accuracy > 0.7);
+        assert!(result.throughput > 0.0);
+    }
+
+    #[test]
+    fn test_benchmark_result_finalize_empty() {
+        let mut result = BenchmarkResult::new(Benchmark::KeywordFscil);
+        result.finalize(&[]);
+        assert_eq!(result.mean_latency, std::time::Duration::ZERO);
     }
 }

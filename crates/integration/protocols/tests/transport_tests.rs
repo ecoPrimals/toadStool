@@ -3,8 +3,11 @@
 //!
 //! Tests for HTTP transport, message routing, and protocol handling.
 
+use std::collections::HashMap;
+use std::time::Duration;
 use toadstool_integration_protocols::transport::*;
 use toadstool_integration_protocols::types::*;
+use uuid::Uuid;
 
 #[test]
 fn test_http_transport_creation() {
@@ -629,4 +632,158 @@ fn test_connection_service_id() {
     };
 
     assert_eq!(connection.service_id, "unique-service-123");
+}
+
+// ============================================================================
+// Async Transport send_message Tests
+// ============================================================================
+
+fn make_test_message() -> ProtocolMessage {
+    ProtocolMessage {
+        id: Uuid::new_v4(),
+        message_type: "test".to_string(),
+        source: "source".to_string(),
+        destination: None,
+        payload: serde_json::json!({}),
+        headers: HashMap::new(),
+        timestamp: std::time::SystemTime::now(),
+        format: MessageFormat::Json,
+        correlation_id: None,
+        reply_to: None,
+        ttl: Some(Duration::from_secs(60)),
+        priority: MessagePriority::Normal,
+    }
+}
+
+#[tokio::test]
+async fn test_http_transport_send_message_returns_error() {
+    let transport = HttpTransport::new();
+    let msg = make_test_message();
+    let endpoint = ServiceEndpoint {
+        id: "ep".to_string(),
+        transport: TransportType::Http,
+        address: "localhost".to_string(),
+        port: 8080,
+        path: None,
+        tls_enabled: false,
+        health_status: HealthStatus::Healthy,
+    };
+    let result = transport.send_message(&msg, &endpoint).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("deprecated") || err.to_string().contains("Unix"));
+}
+
+#[tokio::test]
+async fn test_trpc_transport_send_message_returns_error() {
+    let transport = TRpcTransport::new();
+    let msg = make_test_message();
+    let endpoint = ServiceEndpoint {
+        id: "ep".to_string(),
+        transport: TransportType::TRpc,
+        address: "localhost".to_string(),
+        port: 9000,
+        path: None,
+        tls_enabled: false,
+        health_status: HealthStatus::Healthy,
+    };
+    let result = transport.send_message(&msg, &endpoint).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("not yet implemented"));
+}
+
+#[tokio::test]
+async fn test_transport_enum_http_send_message() {
+    let transport = Transport::Http(HttpTransport::new());
+    let msg = make_test_message();
+    let endpoint = ServiceEndpoint {
+        id: "ep".to_string(),
+        transport: TransportType::Http,
+        address: "localhost".to_string(),
+        port: 8080,
+        path: None,
+        tls_enabled: false,
+        health_status: HealthStatus::Healthy,
+    };
+    let result = transport.send_message(&msg, &endpoint).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_transport_enum_trpc_send_message() {
+    let transport = Transport::TRpc(TRpcTransport::new());
+    let msg = make_test_message();
+    let endpoint = ServiceEndpoint {
+        id: "ep".to_string(),
+        transport: TransportType::TRpc,
+        address: "localhost".to_string(),
+        port: 9000,
+        path: None,
+        tls_enabled: false,
+        health_status: HealthStatus::Healthy,
+    };
+    let result = transport.send_message(&msg, &endpoint).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_transport_manager_send_message_http_error() {
+    let manager = TransportManager::new();
+    let msg = make_test_message();
+    let endpoint = ServiceEndpoint {
+        id: "ep".to_string(),
+        transport: TransportType::Http,
+        address: "localhost".to_string(),
+        port: 8080,
+        path: None,
+        tls_enabled: false,
+        health_status: HealthStatus::Healthy,
+    };
+    let result = manager.send_message(&msg, &endpoint).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_transport_manager_send_message_trpc_error() {
+    let manager = TransportManager::new();
+    let msg = make_test_message();
+    let endpoint = ServiceEndpoint {
+        id: "ep".to_string(),
+        transport: TransportType::TRpc,
+        address: "localhost".to_string(),
+        port: 9000,
+        path: None,
+        tls_enabled: false,
+        health_status: HealthStatus::Healthy,
+    };
+    let result = manager.send_message(&msg, &endpoint).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_transport_manager_send_message_unknown_transport() {
+    let manager = TransportManager::new();
+    let msg = make_test_message();
+    let endpoint = ServiceEndpoint {
+        id: "ep".to_string(),
+        transport: TransportType::Tcp,
+        address: "localhost".to_string(),
+        port: 8080,
+        path: None,
+        tls_enabled: false,
+        health_status: HealthStatus::Healthy,
+    };
+    let result = manager.send_message(&msg, &endpoint).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("No transport handler") || err.to_string().contains("Tcp"));
+}
+
+#[tokio::test]
+async fn test_transport_manager_register_transport() {
+    let mut manager = TransportManager::new();
+    manager.register_transport(Transport::Http(HttpTransport::new()));
+    let transports = manager.get_supported_transports();
+    assert!(transports.contains(&TransportType::Http));
 }

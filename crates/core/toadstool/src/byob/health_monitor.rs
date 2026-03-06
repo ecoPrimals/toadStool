@@ -46,6 +46,10 @@ pub trait HealthMonitor: Send + Sync {
     /// - `health_check`: Health check configuration
     ///
     /// **Returns**: Ok(true) if healthy, Ok(false) if unhealthy, Err on check failure
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the health check execution fails.
     fn perform_health_check(
         &self,
         service_name: &str,
@@ -53,7 +57,7 @@ pub trait HealthMonitor: Send + Sync {
     ) -> ToadStoolResult<bool>;
 }
 
-/// Default implementation of HealthMonitor for BYOB
+/// Default implementation of `HealthMonitor` for BYOB
 pub struct ByobHealthMonitor {
     active_deployments: Arc<RwLock<HashMap<Uuid, ActiveDeployment>>>,
 }

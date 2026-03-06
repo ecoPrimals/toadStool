@@ -1,6 +1,6 @@
 # ToadStool Specifications
 
-## Current Status (March 3, 2026 — Session 94b)
+## Current Status (March 5, 2026 — Deep Debt Execution)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -8,22 +8,25 @@
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **5,369 workspace lib tests** (0 failures, all concurrent)
-- **845 WGSL shaders** (37 DF64, 15 folding — zero orphans, all f64 canonical)
-- **44 JSON-RPC methods** — REST + middleware removed
-- **Capability-based discovery** — sovereignty: 3 legacy APIs deprecated
+- **18,028 workspace tests** (0 failures, all concurrent)
+- **47 JSON-RPC methods** — REST + middleware removed; +transport.discover/list/route
+- **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport
+- **Capability-based discovery** — sovereignty: all production callers migrated
 - **ecoBin pure-rust verified** — zero C FFI deps
-- **D-DF64 + D-CD transferred to barraCuda team (S93)**
+- **Rust 1.82+** — `is_some_and`, `div_ceil`, modern idiomatic patterns
 
-**Latest (Mar 3 — Session 94b):**
+**Latest (Mar 5 — Deep Debt Execution):**
 
 | Update | Impact |
 |--------|--------|
-| **D-NPU resolved** | Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter + `NpuParameterController` |
-| **D-SOV resolved** | All 7 production callers migrated to capability-based discovery |
-| **GPU probing** | `GpuAdapterInfo` + multi-adapter selection for barraCuda |
-| **NestGate mocks eliminated** | Real JSON-RPC `storage.artifact.store`/`retrieve` with fallback |
-| **Hardcoded ports evolved** | CLI `8080`/`9090` → config constants |
+| **Hardware Transport wired** | `transport.discover/list/route` JSON-RPC + `toadstool transport discover/list/status` CLI |
+| **18,028 tests** | Up from 5,369 — expanded coverage across detection, monitoring, transport |
+| **Detection stubs evolved** | 11 functions → real /proc/cpuinfo, meminfo, os-release, nvidia-smi parsing |
+| **Smart refactoring** | `security.rs` (771→5 modules), `config_utils/mod.rs` (777→5 modules) |
+| **Hardcoding eliminated** | 35+ primal names → `well_known::*` constants; framework placeholders → explicit Unavailable |
+| **Dual-Fabric Architecture** | Spec for hardware backbone (HDMI/serial) + network plane (Songbird) multi-machine deployments |
+| **Airgapped data diode** | Hardware-enforced unidirectional data flow via HDMI — commodity GPU + capture card |
+| **Pixel format + buffer bugs fixed** | CaptureTransport AR24 alignment; DisplayTransport double-buffer alternation |
 
 **Remaining toadStool debt:** D-COV (90% target)
 
@@ -68,12 +71,19 @@
 | **[MULTITENANT_COMPUTE_ARCHITECTURE.md](./MULTITENANT_COMPUTE_ARCHITECTURE.md)** | Compute multi-tenancy across GPU/NPU/CPU | Feb 8 | ✅ Current |
 | **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** | Universal tensor ops (CPU, GPU, NPU) | Feb 2 | ✅ Current |
 
+### Hardware Transport & Dual-Fabric (S94b)
+
+| Document | Purpose | Updated | Status |
+|----------|---------|---------|--------|
+| **[DUAL_FABRIC_ARCHITECTURE.md](./DUAL_FABRIC_ARCHITECTURE.md)** | Multi-machine dual-fabric: hardware backbone (toadStool) + network plane (Songbird) | **Mar 3** | ✅ Specified |
+| **[HARDWARE_TRANSPORT_SPEC.md](./HARDWARE_TRANSPORT_SPEC.md)** | `HardwareTransport` trait, frame protocol, DisplayTransport, CaptureTransport, SerialTransport, TransportRouter | **Mar 3** | ✅ Implemented |
+| **[DISPLAY_BACKEND_SPEC.md](./DISPLAY_BACKEND_SPEC.md)** | DRM/input backend — display hardware control | Jan 19 | ✅ Phase 1 Complete |
+
 ### Research & Extensions (Future Work)
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
 | **[RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md)** | Neuromorphic reservoir computing ops | Jan 29 | 📋 Planned |
-| **[DISPLAY_BACKEND_SPEC.md](./DISPLAY_BACKEND_SPEC.md)** | DRM/input backend (Phase 0) | Jan 19 | 📋 Planned |
 | **[PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md)** | Capability-based discovery | Nov 2025 | ✅ Implemented |
 
 ---
@@ -101,7 +111,7 @@
 | 2 | **UnidirectionalPipeline** | 📋 Planned | Fire-and-forget input, batched async output |
 | 3 | **Bandwidth throttling** | 📋 Planned | Simulate 90/10 split |
 | 4 | **Benchmark vs traditional** | 📋 Planned | Measure speedup from eliminating round-trips |
-| 5 | **HDMI + capture (hardware)** | 📝 Research | Physical unidirectional with Magewell GPUDirect |
+| 5 | **HDMI + capture (hardware)** | ✅ Implemented | `DisplayTransport` (DRM Tx) + `CaptureTransport` (V4L2 Rx) + `TransportRouter` |
 
 **Key insight**: 10 GB/s of completed results (not raw data) = 12.5M eigensolves/sec.
 
@@ -116,9 +126,11 @@
 | **1D Richards Solver** | Unsaturated flow PDE | 📋 Planned | airSpring |
 | **Single-Dispatch Eigensolve** | Jacobi loop in shader | 📋 Planned | hotSpring Tier 1.1 |
 | **NPU Pipeline** | Train/compile/deploy from Rust | 📋 Planned | ToadStool core |
-| **Display Backend** | DRM/input backend (Phase 0) | 📋 Planned | ToadStool core |
+| **Display Backend** | DRM/KMS + modesetting + page flip | ✅ Implemented | ToadStool display |
+| **Hardware Transport** | `HardwareTransport` trait, frame protocol, router | ✅ Implemented | ToadStool core |
+| **Dual-Fabric Architecture** | Hardware backbone + network plane multi-machine | ✅ Specified | ToadStool core |
 | **Multi-Gate Routing** | Cross-machine GPU job routing | 📋 Planned | ToadStool core |
-| **Hardware Routing Layer** | ToadStool manages physical interconnects | 📋 Planned | ToadStool core |
+| **Multi-Link Striping** | Aggregate bandwidth across multiple HDMI outputs | 📋 Planned | ToadStool core |
 
 ---
 

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Background Task Health Check Logic Tests
+//! Background task health check logic tests.
 //!
-//! Week 13 Day 1 (Evening): Health Check Function Tests
-//! Target: Test perform_health_check() logic with various conditions
+//! Tests perform_health_check() logic with various conditions.
 
 use std::collections::HashMap;
 use std::sync::Arc;

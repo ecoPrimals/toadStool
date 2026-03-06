@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 3, 2026 -- Session 94b**
+**March 5, 2026 -- Deep Debt Execution**
 
 ---
 
@@ -68,7 +68,7 @@ cd showcase/cross-platform && cargo run --release
 
 ---
 
-## JSON-RPC Methods (44 total)
+## JSON-RPC Methods (47 total)
 
 ### Core (`toadstool.*`)
 
@@ -143,6 +143,14 @@ cd showcase/cross-platform && cargo run --release
 | `ollama.inference` | Run model inference |
 | `ollama.load` | Preload model into VRAM |
 | `ollama.unload` | Free VRAM by unloading model |
+
+### Transport (`transport.*`) — Hardware Transport Layer
+
+| Method | Description |
+|--------|-------------|
+| `transport.discover` | Discover available hardware transports (display, capture, serial) |
+| `transport.list` | List transports with optional direction/medium filters |
+| `transport.route` | Route data from one transport to another (any-to-any) |
 
 ### Cross-Gate (`gate.*`)
 

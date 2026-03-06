@@ -209,12 +209,6 @@ impl PrimalDiscovery {
         if self.config.enable_mdns {
             // Production implementation: Use infant_discovery module
             // See: crates/core/common/src/infant_discovery/ for mDNS implementation
-            //
-            // Integration pattern:
-            // use crate::infant_discovery::InfantDiscoveryEngine;
-            // let engine = InfantDiscoveryEngine::new(config).await?;
-            // let services = engine.discover_by_capability(capability).await?;
-            //
             tracing::debug!(
                 "mDNS discovery via infant_discovery module (capability: {})",
                 capability
@@ -256,11 +250,6 @@ impl PrimalDiscovery {
     ) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
         // Production implementation available in infant_discovery module
         // This is a legacy code path - modern code uses infant_discovery directly
-        //
-        // For production use:
-        // use crate::infant_discovery::InfantDiscoveryEngine;
-        // let engine = InfantDiscoveryEngine::new(config).await?;
-        // return engine.discover_all_primals().await;
 
         Err(DiscoveryError::MDnsError(
             "Use infant_discovery module for production mDNS (see crate::infant_discovery)"
@@ -308,14 +297,7 @@ impl PrimalDiscovery {
     // - crates/core/common/src/primal_discovery_mdns.rs
     //
     // This module (primal_discovery.rs) is a LEGACY compatibility layer.
-    // Modern code should use infant_discovery directly:
-    //
-    // ```rust
-    // use toadstool_common::infant_discovery::InfantDiscoveryEngine;
-    //
-    // let engine = InfantDiscoveryEngine::new(config).await?;
-    // let services = engine.discover_by_capability(capability).await?;
-    // ```
+    // Modern code should use infant_discovery directly.
     //
     // See: docs/architecture/INFANT_DISCOVERY.md for full architecture
     // ========================================================================
@@ -391,7 +373,9 @@ mod tests {
 
         // Simulate old endpoint
         let mut old_endpoint = endpoint.clone();
-        old_endpoint.last_seen = Instant::now() - Duration::from_secs(100);
+        old_endpoint.last_seen = Instant::now()
+            .checked_sub(Duration::from_secs(100))
+            .unwrap();
         assert!(!old_endpoint.is_fresh(Duration::from_secs(50)));
     }
 
@@ -462,8 +446,12 @@ mod tests {
             url: "http://stale:8000".to_string(),
             trust_level: TrustLevel::Local,
             discovered_via: DiscoveryMethod::MDns,
-            discovered_at: Instant::now() - Duration::from_secs(1000),
-            last_seen: Instant::now() - Duration::from_secs(1000),
+            discovered_at: Instant::now()
+                .checked_sub(Duration::from_secs(1000))
+                .unwrap(),
+            last_seen: Instant::now()
+                .checked_sub(Duration::from_secs(1000))
+                .unwrap(),
             latency_ms: 5,
         };
 

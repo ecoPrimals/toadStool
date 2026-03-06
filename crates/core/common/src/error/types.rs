@@ -520,8 +520,8 @@ mod tests {
             available: "4".to_string(),
         };
         assert!(err.to_string().contains("cores"));
-        assert!(err.to_string().contains("8"));
-        assert!(err.to_string().contains("4"));
+        assert!(err.to_string().contains('8'));
+        assert!(err.to_string().contains('4'));
     }
 
     // --- IntegrationError display ---
@@ -633,7 +633,7 @@ mod tests {
         // Validate the value through match rather than unwrap
         match r {
             Ok(v) => assert_eq!(v, 42),
-            Err(_) => panic!("expected Ok"),
+            Err(e) => panic!("expected Ok, got Err: {e:?}"),
         }
     }
 

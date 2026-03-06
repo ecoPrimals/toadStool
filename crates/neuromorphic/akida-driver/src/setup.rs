@@ -320,7 +320,7 @@ fn kernel_version() -> Result<String> {
 
 /// Pure Rust replacement for `which::which()`.
 /// Searches PATH for an executable, returning the first match.
-fn find_in_path(binary: &str) -> Option<PathBuf> {
+pub(crate) fn find_in_path(binary: &str) -> Option<PathBuf> {
     let path_var = std::env::var_os("PATH")?;
     std::env::split_paths(&path_var)
         .map(|dir| dir.join(binary))
@@ -336,5 +336,61 @@ mod tests {
         let version = kernel_version().unwrap();
         assert!(!version.is_empty());
         println!("Kernel version: {version}");
+    }
+
+    #[test]
+    fn test_npu_setup_new() {
+        let _setup = NpuSetup::new();
+    }
+
+    #[test]
+    fn test_npu_setup_default() {
+        let _setup = NpuSetup::default();
+    }
+
+    #[test]
+    fn test_find_in_path_common_binary() {
+        // ls, echo, etc. should exist on any Unix
+        let result = find_in_path("ls");
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_find_in_path_nonexistent() {
+        let result = find_in_path("nonexistent_binary_xyz_12345");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_npu_setup_find_driver() {
+        let mut setup = NpuSetup::new();
+        let result = setup.find_driver();
+        match result {
+            Ok(()) => {
+                // Driver found (e.g. AKIDA_DRIVER_PATH set or module in standard path)
+            }
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(msg.contains("not found") || msg.contains("AKIDA_DRIVER_PATH"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_is_module_loaded_runs() {
+        let result = is_module_loaded();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_kernel_version_format() {
+        let version = kernel_version().unwrap();
+        assert!(!version.is_empty());
+        assert!(
+            version
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_'),
+            "unexpected char in version: {version}"
+        );
     }
 }

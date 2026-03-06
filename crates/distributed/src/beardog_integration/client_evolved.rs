@@ -184,7 +184,7 @@ impl SecurityClient {
     ///
     /// # Deep Debt Evolution
     ///
-    /// Before: `call_rpc("/primal/beardog", "beardog.encrypt", ...)`
+    /// Before: `call_rpc("/primal/beardog", "crypto.encrypt", ...)`
     /// After: `provider.call("security.encrypt", ...)`
     ///
     /// # Errors

@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
-#![allow(async_fn_in_trait)]
+#![allow(
+    async_fn_in_trait,
+    clippy::doc_markdown,
+    clippy::wildcard_imports,
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::struct_excessive_bools,
+    clippy::map_unwrap_or,
+    clippy::unused_async, // Platform stubs are async for trait/API consistency
+)]
 
 //! Cross-Platform Security Sandboxing for ToadStool
 //!

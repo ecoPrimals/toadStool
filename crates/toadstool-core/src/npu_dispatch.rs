@@ -2,7 +2,7 @@
 //! Generic NPU Dispatch — vendor-agnostic neuromorphic compute interface.
 //!
 //! `NpuDispatch` is toadStool's hardware-layer abstraction for neuromorphic
-//! processors. Any NPU vendor (Akida, Loihi, SpiNNaker, etc.) implements this
+//! processors. Any NPU vendor (Akida, Loihi, `SpiNNaker`, etc.) implements this
 //! trait so that barraCuda and other primals can dispatch compute without
 //! vendor-specific knowledge.
 //!
@@ -17,7 +17,7 @@
 //!
 //! ## Deep Debt Principles
 //!
-//! - **Vendor-agnostic**: No BrainChip, Intel, or SpiNNaker types leak through.
+//! - **Vendor-agnostic**: No `BrainChip`, Intel, or `SpiNNaker` types leak through.
 //! - **Runtime discovery**: Capabilities are probed, not assumed.
 //! - **Capability-based**: Consumers ask "can you do X?" not "are you Akida?"
 
@@ -141,11 +141,13 @@ pub struct NpuModelHandle(u32);
 
 impl NpuModelHandle {
     /// Create a new model handle.
+    #[must_use]
     pub const fn new(id: u32) -> Self {
         Self(id)
     }
 
     /// Get the handle's numeric ID.
+    #[must_use]
     pub const fn id(&self) -> u32 {
         self.0
     }
@@ -163,6 +165,7 @@ pub struct AkidaNpuDispatch {
 
 impl AkidaNpuDispatch {
     /// Create from an already-initialized Akida backend.
+    #[must_use]
     pub fn from_backend(backend: Box<dyn akida_driver::NpuBackend>) -> Self {
         let caps = backend.capabilities();
         let mut capabilities = vec![NpuCapability::Inference, NpuCapability::PowerMonitoring];
@@ -229,6 +232,8 @@ impl NpuDispatch for AkidaNpuDispatch {
             .map_err(|e| NpuDispatchError::DispatchFailed {
                 reason: e.to_string(),
             })?;
+        // Inference latency in microseconds; u128->u64 truncation is acceptable for real-world durations.
+        #[allow(clippy::cast_possible_truncation)]
         let latency_us = start.elapsed().as_micros() as u64;
 
         let power_mw = self.backend.measure_power().ok();
@@ -286,5 +291,40 @@ mod tests {
             reason: "powered down".into(),
         };
         assert!(err.to_string().contains("powered down"));
+    }
+
+    #[test]
+    fn test_dispatch_result_structure() {
+        let result = DispatchResult {
+            output: vec![1.0, 2.0, 3.0],
+            latency_us: 100,
+            power_mw: Some(1500.0),
+        };
+        assert_eq!(result.output.len(), 3);
+        assert_eq!(result.latency_us, 100);
+        assert_eq!(result.power_mw, Some(1500.0));
+    }
+
+    #[test]
+    fn test_npu_capability_variants() {
+        let _ = NpuCapability::Inference;
+        let _ = NpuCapability::ReservoirComputing;
+        let _ = NpuCapability::OnChipLearning;
+        let _ = NpuCapability::SpikingNetwork;
+        let _ = NpuCapability::BatchInference;
+        let _ = NpuCapability::PowerMonitoring;
+    }
+
+    #[test]
+    fn test_npu_dispatch_error_variants() {
+        let _ = NpuDispatchError::ModelLoadFailed {
+            reason: "invalid format".into(),
+        };
+        let _ = NpuDispatchError::DispatchFailed {
+            reason: "timeout".into(),
+        };
+        let _ = NpuDispatchError::DeviceLost {
+            reason: "unplugged".into(),
+        };
     }
 }

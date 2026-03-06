@@ -15,8 +15,7 @@ use super::StorageBackend;
 /// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct NestGateBackend {
     pub(super) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
-    #[allow(dead_code)] // Stored for potential future use (defaults, reporting, etc.)
-    pub(super) storage_tier: String,
+    pub(super) _storage_tier: String,
     pub(super) replication_enabled: bool,
     pub(super) replication_factor: u32,
 }
@@ -28,6 +27,10 @@ impl NestGateBackend {
     /// Works with ANY service providing storage.object capability.
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if capability discovery fails or no storage service can be found.
     pub async fn new_async(
         storage_tier: impl Into<String>,
         replication_enabled: bool,
@@ -44,7 +47,7 @@ impl NestGateBackend {
 
         Ok(Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-            storage_tier: storage_tier.into(),
+            _storage_tier: storage_tier.into(),
             replication_enabled,
             replication_factor,
         })
@@ -70,7 +73,7 @@ impl NestGateBackend {
             toadstool_common::primal_sockets::get_socket_path_for_capability("storage");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-            storage_tier: storage_tier.into(),
+            _storage_tier: storage_tier.into(),
             replication_enabled,
             replication_factor,
         }
@@ -82,7 +85,7 @@ impl StorageBackend for NestGateBackend {
         Box::pin(async move {
             let _health: serde_json::Value = self
                 .rpc_client
-                .call("nestgate.health", serde_json::json!({}))
+                .call("storage.health", serde_json::json!({}))
                 .await
                 .map_err(|e| {
                     ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}"))
@@ -113,7 +116,7 @@ impl StorageBackend for NestGateBackend {
                 Some(ReplicationSettings {
                     enabled: true,
                     factor: replication_factor,
-                    strategy: "async".to_string(),
+                    strategy: "async".to_owned(),
                 })
             } else {
                 None
@@ -127,7 +130,7 @@ impl StorageBackend for NestGateBackend {
 
             let volume_info = self
                 .rpc_client
-                .call_typed::<VolumeInfo>("nestgate.provision_volume", params)
+                .call_typed::<VolumeInfo>("storage.provision_volume", params)
                 .await
                 .map_err(|e| {
                     ToadStoolError::runtime(format!(
@@ -159,7 +162,7 @@ impl StorageBackend for NestGateBackend {
                 Some(ReplicationSettings {
                     enabled: true,
                     factor: replication_factor,
-                    strategy: "sync".to_string(),
+                    strategy: "sync".to_owned(),
                 })
             } else {
                 None
@@ -173,7 +176,7 @@ impl StorageBackend for NestGateBackend {
 
             let volume_info = self
                 .rpc_client
-                .call_typed::<VolumeInfo>("nestgate.provision_persistent_volume", params)
+                .call_typed::<VolumeInfo>("storage.provision_persistent_volume", params)
                 .await
                 .map_err(|e| {
                     ToadStoolError::runtime(format!(
@@ -191,27 +194,27 @@ impl StorageBackend for NestGateBackend {
         service_name: &str,
         mount_path: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        let volume_name = volume_name.to_string();
-        let service_name_clone = service_name.to_string();
-        let mount_path_str = mount_path.to_string();
+        let volume_name = volume_name.to_owned();
+        let service_name = service_name.to_owned();
+        let mount_path = mount_path.to_owned();
 
         Box::pin(async move {
             let params = serde_json::json!({
                 "volume_name": volume_name,
-                "service_name": service_name_clone,
-                "mount_path": mount_path_str,
+                "service_name": service_name,
+                "mount_path": mount_path,
             });
 
-            let _: serde_json::Value = self
-                .rpc_client
-                .call("nestgate.mount_volume", params)
-                .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to mount volume: {e}")))?;
+            let _: serde_json::Value =
+                self.rpc_client
+                    .call("storage.mount_volume", params)
+                    .await
+                    .map_err(|e| ToadStoolError::runtime(format!("Failed to mount volume: {e}")))?;
 
             tracing::info!(
                 "Successfully mounted volume {} to {}",
                 volume_name,
-                service_name_clone
+                service_name
             );
             Ok(())
         })
@@ -222,25 +225,25 @@ impl StorageBackend for NestGateBackend {
         volume_name: &str,
         service_name: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        let volume_name = volume_name.to_string();
-        let service_name_clone = service_name.to_string();
+        let volume_name = volume_name.to_owned();
+        let service_name = service_name.to_owned();
 
         Box::pin(async move {
             let params = serde_json::json!({
                 "volume_name": volume_name,
-                "service_name": service_name_clone,
+                "service_name": service_name,
             });
 
             let _: serde_json::Value = self
                 .rpc_client
-                .call("nestgate.unmount_volume", params)
+                .call("storage.unmount_volume", params)
                 .await
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to unmount volume: {e}")))?;
 
             tracing::info!(
                 "Successfully unmounted volume {} from {}",
                 volume_name,
-                service_name_clone
+                service_name
             );
             Ok(())
         })
@@ -250,14 +253,14 @@ impl StorageBackend for NestGateBackend {
         &self,
         volume_name: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        let volume_name = volume_name.to_string();
+        let volume_name = volume_name.to_owned();
 
         Box::pin(async move {
             let params = serde_json::json!({"volume_name": volume_name});
 
             let _: serde_json::Value = self
                 .rpc_client
-                .call("nestgate.delete_volume", params)
+                .call("storage.delete_volume", params)
                 .await
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to delete volume: {e}")))?;
 
@@ -270,14 +273,14 @@ impl StorageBackend for NestGateBackend {
         &self,
         volume_name: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
-        let volume_name = volume_name.to_string();
+        let volume_name = volume_name.to_owned();
 
         Box::pin(async move {
             let params = serde_json::json!({"volume_name": volume_name});
 
             let status = self
                 .rpc_client
-                .call_typed::<VolumeStatus>("nestgate.get_volume_status", params)
+                .call_typed::<VolumeStatus>("storage.get_volume_status", params)
                 .await
                 .map_err(|e| {
                     ToadStoolError::runtime(format!("Failed to get volume status: {e}"))
@@ -293,7 +296,7 @@ impl StorageBackend for NestGateBackend {
         Box::pin(async move {
             let volumes = self
                 .rpc_client
-                .call_typed::<Vec<VolumeInfo>>("nestgate.list_volumes", serde_json::json!({}))
+                .call_typed::<Vec<VolumeInfo>>("storage.list_volumes", serde_json::json!({}))
                 .await
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to list volumes: {e}")))?;
 
@@ -327,7 +330,7 @@ mod tests {
     #[allow(deprecated)]
     fn test_nestgate_backend_new_configuration() {
         let backend = NestGateBackend::new("http://ignored", "fast-tier", true, 3);
-        assert_eq!(backend.storage_tier, "fast-tier");
+        assert_eq!(backend._storage_tier, "fast-tier");
         assert!(backend.replication_enabled);
         assert_eq!(backend.replication_factor, 3);
     }
@@ -337,7 +340,7 @@ mod tests {
     fn test_nestgate_backend_new_storage_tier_into() {
         let tier = String::from("ssd-tier");
         let backend = NestGateBackend::new("x", tier, false, 1);
-        assert_eq!(backend.storage_tier, "ssd-tier");
+        assert_eq!(backend._storage_tier, "ssd-tier");
         assert!(!backend.replication_enabled);
     }
 
@@ -495,6 +498,53 @@ mod tests {
     async fn test_list_volumes_fails_without_service() {
         let backend = NestGateBackend::new("", "tier", false, 1);
         let result = backend.list_volumes().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_provision_persistent_volume_fails_without_service() {
+        let backend = NestGateBackend::new("", "tier", false, 1);
+        let pv = PersistentVolume {
+            name: "pv-test".to_string(),
+            capacity: "10Gi".to_string(),
+            access_modes: vec!["ReadWriteOnce".to_string()],
+            storage_class: "standard".to_string(),
+            host_path: None,
+        };
+        let result = backend.provision_persistent_volume(&pv).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_mount_volume_fails_without_service() {
+        let backend = NestGateBackend::new("", "tier", false, 1);
+        let result = backend.mount_volume("vol1", "svc1", "/mnt/data").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_unmount_volume_fails_without_service() {
+        let backend = NestGateBackend::new("", "tier", false, 1);
+        let result = backend.unmount_volume("vol1", "svc1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_delete_volume_fails_without_service() {
+        let backend = NestGateBackend::new("", "tier", false, 1);
+        let result = backend.delete_volume("vol1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_get_volume_status_fails_without_service() {
+        let backend = NestGateBackend::new("", "tier", false, 1);
+        let result = backend.get_volume_status("vol1").await;
         assert!(result.is_err());
     }
 }

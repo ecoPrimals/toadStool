@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trait implementations for embedded programmers
 //!
-//! Error-returning stubs until hardware-specific implementations are available.
-//! All hardware operations return `not_supported` to clearly communicate status.
+//! ## Planned / Future Implementation
+//!
+//! These programmer structs and trait implementations are **infrastructure placeholders**
+//! for future hardware programmer support. They are registered in the embedded adapter
+//! registry and satisfy the type system, but all operations (except no-op `disconnect`)
+//! return `not_supported` until hardware-specific implementations are available.
+//!
+//! ## Architecture Notes
+//!
+//! - **GenericProgrammer**: ISP/ICSP interface; planned support for AVR, PIC, ARM
+//! - **EPROMProgrammer**: Parallel port or USB; planned for 27xxx/28xxx EPROM/EEPROM
+//!
+//! Each programmer will require: transport layer (USB, parallel, serial), protocol
+//! implementation (SPI, JTAG, proprietary), and device-specific algorithms.
 
 use async_trait::async_trait;
 

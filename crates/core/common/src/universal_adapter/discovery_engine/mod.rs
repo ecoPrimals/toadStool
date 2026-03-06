@@ -17,6 +17,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
+#[allow(deprecated)] // Protocol compatibility: platform path convention
+use crate::constants::ecosystem::well_known::BIOMEOS;
 use crate::{ToadStoolError, ToadStoolResult};
 
 #[cfg(test)]
@@ -139,7 +141,6 @@ impl MDnsSource {
     }
 
     fn parse_txt_records(
-        &self,
         service_name: &str,
         host: &str,
         port: u16,
@@ -222,7 +223,7 @@ impl DiscoverySource for MDnsSource {
                         let port = info.get_port();
 
                         let cap_info =
-                            self.parse_txt_records(info.get_fullname(), &host, port, &txt);
+                            Self::parse_txt_records(info.get_fullname(), &host, port, &txt);
                         tracing::debug!(
                             "mDNS discovered: {} at {}:{}",
                             cap_info.provider_id,
@@ -449,12 +450,13 @@ impl LocalRegistrySource {
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl DiscoverySource for LocalRegistrySource {
+    #[allow(deprecated)] // BIOMEOS used for platform path convention
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         let config_dir = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
             let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
             format!("{home}/.config")
         });
-        let registry_path = Path::new(&config_dir).join("biomeos/registry.json");
+        let registry_path = Path::new(&config_dir).join(BIOMEOS).join("registry.json");
 
         if !registry_path.exists() {
             return Ok(vec![]);

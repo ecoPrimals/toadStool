@@ -106,7 +106,7 @@ fn test_capability_from_str_known() {
 fn test_capability_from_str_unknown() {
     match capability_from_str("custom-thing") {
         Capability::Custom { name, .. } => assert_eq!(name, "custom-thing"),
-        other => panic!("Expected Custom, got {:?}", other),
+        other => panic!("Expected Custom, got {other:?}"),
     }
 }
 
@@ -199,8 +199,7 @@ async fn test_config_file_empty_services() {
 
 #[tokio::test]
 async fn test_parse_capabilities() {
-    let disc = env_discovery().await;
-    let caps = disc.parse_capabilities("coordination,storage,compute");
+    let caps = ServiceDiscovery::parse_capabilities("coordination,storage,compute");
     assert_eq!(caps.len(), 3);
     assert!(caps
         .iter()
@@ -211,8 +210,7 @@ async fn test_parse_capabilities() {
 
 #[tokio::test]
 async fn test_parse_capabilities_empty() {
-    let disc = env_discovery().await;
-    let caps = disc.parse_capabilities("");
+    let caps = ServiceDiscovery::parse_capabilities("");
     assert!(caps.is_empty());
 }
 
@@ -324,7 +322,7 @@ fn test_config_path_resolution_via_env() {
     let path_str = path.to_string_lossy().to_string();
     run_async_with_var!("TOADSTOOL_DISCOVERY_CONFIG", Some(path_str.as_str()), {
         let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-            path: "".to_string(),
+            path: String::new(),
         })
         .await
         .unwrap();
@@ -373,8 +371,7 @@ async fn test_config_skips_malformed_endpoint() {
 
 #[tokio::test]
 async fn test_parse_capabilities_unknown_filtered() {
-    let disc = env_discovery().await;
-    let caps = disc.parse_capabilities("coordination,unknown_thing,storage,foo");
+    let caps = ServiceDiscovery::parse_capabilities("coordination,unknown_thing,storage,foo");
     assert_eq!(caps.len(), 2);
     assert!(caps
         .iter()
@@ -384,8 +381,7 @@ async fn test_parse_capabilities_unknown_filtered() {
 
 #[tokio::test]
 async fn test_parse_capabilities_whitespace() {
-    let disc = env_discovery().await;
-    let caps = disc.parse_capabilities("  coordination  ,  storage  ,  compute  ");
+    let caps = ServiceDiscovery::parse_capabilities("  coordination  ,  storage  ,  compute  ");
     assert_eq!(caps.len(), 3);
 }
 
@@ -429,7 +425,7 @@ fn test_registry_empty_endpoint_returns_error() {
         let config = DiscoveryConfig::production();
         let result = ServiceDiscovery::with_config(
             DiscoveryMethod::Registry {
-                endpoint: "".to_string(),
+                endpoint: String::new(),
             },
             config,
         )
@@ -482,7 +478,7 @@ async fn test_discover_multi_partial_success() {
     let disc = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
         DiscoveryMethod::ConfigFile { path: path_str },
         DiscoveryMethod::Registry {
-            endpoint: "".to_string(),
+            endpoint: String::new(),
         },
     ]))
     .await
@@ -641,7 +637,7 @@ fn test_config_path_resolution_biomeos_runtime_dir() {
     let runtime_path = runtime_dir.to_str().unwrap().to_string();
     run_async_with_var!("BIOMEOS_RUNTIME_DIR", Some(runtime_path.as_str()), {
         let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-            path: "".to_string(),
+            path: String::new(),
         })
         .await
         .unwrap();
@@ -663,7 +659,7 @@ fn test_config_path_resolution_xdg_config_home() {
     let xdg_path = xdg_config.to_str().unwrap().to_string();
     run_async_with_var!("XDG_CONFIG_HOME", Some(xdg_path.as_str()), {
         let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-            path: "".to_string(),
+            path: String::new(),
         })
         .await
         .unwrap();
@@ -692,7 +688,7 @@ fn test_config_path_resolution_home_fallback() {
         ],
         {
             let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
-                path: "".to_string(),
+                path: String::new(),
             })
             .await
             .unwrap();
@@ -733,7 +729,7 @@ async fn test_discover_from_fallbacks_disabled_when_production() {
                     path: "/nonexistent/discovery.json".to_string(),
                 },
                 DiscoveryMethod::Registry {
-                    endpoint: "".to_string(),
+                    endpoint: String::new(),
                 },
             ]))
             .await
@@ -757,7 +753,7 @@ async fn test_discover_multi_all_fail_no_fallback() {
                     path: "/nonexistent/x.json".to_string(),
                 },
                 DiscoveryMethod::Registry {
-                    endpoint: "".to_string(),
+                    endpoint: String::new(),
                 },
             ]))
             .await
@@ -795,26 +791,25 @@ async fn test_new_no_refresh() {
 #[test]
 fn test_discovery_method_debug() {
     let m = DiscoveryMethod::Auto;
-    let s = format!("{:?}", m);
+    let s = format!("{m:?}");
     assert!(s.contains("Auto"));
 
     let m = DiscoveryMethod::ConfigFile {
         path: "/path".to_string(),
     };
-    let s = format!("{:?}", m);
+    let s = format!("{m:?}");
     assert!(s.contains("ConfigFile"));
     assert!(s.contains("/path"));
 
     let m = DiscoveryMethod::Registry {
         endpoint: "http://x".to_string(),
     };
-    let s = format!("{:?}", m);
+    let s = format!("{m:?}");
     assert!(s.contains("Registry"));
 }
 
 #[tokio::test]
 async fn test_parse_capabilities_ignores_unknown() {
-    let disc = env_discovery().await;
-    let caps = disc.parse_capabilities("foo,bar,compute,baz,storage");
+    let caps = ServiceDiscovery::parse_capabilities("foo,bar,compute,baz,storage");
     assert_eq!(caps.len(), 2);
 }

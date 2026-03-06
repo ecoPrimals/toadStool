@@ -3,6 +3,9 @@
 
 use super::super::*;
 use super::common::*;
+use crate::byob::{
+    validation::DeploymentValidator, PortMapping, ServiceResourceRequirements, VolumeMount,
+};
 use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
@@ -10,10 +13,10 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_validate_deployment_request() {
     let mock_engine = create_test_runtime_engine();
-    let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
+    let _executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
 
     let valid_request = create_test_deployment_request();
-    assert!(executor.validate_deployment_request(&valid_request).is_ok());
+    assert!(DeploymentValidator::validate_deployment(&valid_request).is_ok());
 
     let mut invalid_request = valid_request.clone();
     for i in 0..100 {
@@ -22,9 +25,7 @@ async fn test_validate_deployment_request() {
             create_test_service_spec(&format!("service-{i}")),
         );
     }
-    assert!(executor
-        .validate_deployment_request(&invalid_request)
-        .is_err());
+    assert!(DeploymentValidator::validate_deployment(&invalid_request).is_err());
 
     let mut resource_heavy_request = create_test_deployment_request();
     let mut heavy_service = create_test_service_spec("heavy-service");
@@ -33,15 +34,11 @@ async fn test_validate_deployment_request() {
     resource_heavy_request
         .services
         .insert("heavy-service".to_string(), heavy_service);
-    assert!(executor
-        .validate_deployment_request(&resource_heavy_request)
-        .is_err());
+    assert!(DeploymentValidator::validate_deployment(&resource_heavy_request).is_err());
 
     let mut empty_request = create_test_deployment_request();
     empty_request.services.clear();
-    assert!(executor
-        .validate_deployment_request(&empty_request)
-        .is_err());
+    assert!(DeploymentValidator::validate_deployment(&empty_request).is_err());
 
     let mut no_image_no_cmd_request = create_test_deployment_request();
     let mut bad_service = create_test_service_spec("bad-service");
@@ -50,9 +47,7 @@ async fn test_validate_deployment_request() {
     no_image_no_cmd_request
         .services
         .insert("bad-service".to_string(), bad_service);
-    assert!(executor
-        .validate_deployment_request(&no_image_no_cmd_request)
-        .is_err());
+    assert!(DeploymentValidator::validate_deployment(&no_image_no_cmd_request).is_err());
 }
 
 #[test]
@@ -145,9 +140,7 @@ fn test_create_service_execution_request_container_workload() {
         replicas: 1,
     };
 
-    let req = executor
-        .create_service_execution_request(&service, Uuid::new_v4())
-        .unwrap();
+    let req = executor.create_service_execution_request(&service, Uuid::new_v4());
 
     assert!(!req.execution_id.is_nil());
     match &req.workload {
@@ -224,9 +217,7 @@ fn test_create_service_execution_request_volume_mount_types() {
         replicas: 1,
     };
 
-    let req = executor
-        .create_service_execution_request(&service, Uuid::new_v4())
-        .unwrap();
+    let req = executor.create_service_execution_request(&service, Uuid::new_v4());
 
     match &req.workload {
         crate::WorkloadSpec::Container { volumes: v, .. } => {
@@ -271,9 +262,7 @@ fn test_create_service_execution_request_udp_port() {
         replicas: 1,
     };
 
-    let req = executor
-        .create_service_execution_request(&service, Uuid::new_v4())
-        .unwrap();
+    let req = executor.create_service_execution_request(&service, Uuid::new_v4());
 
     match &req.workload {
         crate::WorkloadSpec::Container { ports, .. } => {
@@ -312,9 +301,7 @@ fn test_create_service_execution_request_native_workload() {
         replicas: 1,
     };
 
-    let req = executor
-        .create_service_execution_request(&service, Uuid::new_v4())
-        .unwrap();
+    let req = executor.create_service_execution_request(&service, Uuid::new_v4());
 
     match &req.workload {
         crate::WorkloadSpec::Native {
@@ -349,9 +336,7 @@ fn test_create_service_execution_request_native_with_image_path() {
         replicas: 1,
     };
 
-    let req = executor
-        .create_service_execution_request(&service, Uuid::new_v4())
-        .unwrap();
+    let req = executor.create_service_execution_request(&service, Uuid::new_v4());
 
     match &req.workload {
         crate::WorkloadSpec::Container { image, .. } => {
@@ -385,9 +370,7 @@ fn test_create_service_execution_request_resource_defaults() {
         replicas: 1,
     };
 
-    let req = executor
-        .create_service_execution_request(&service, Uuid::new_v4())
-        .unwrap();
+    let req = executor.create_service_execution_request(&service, Uuid::new_v4());
 
     assert_eq!(req.resources.cpu.min_cores, 1.0);
     assert_eq!(req.resources.cpu.max_cores, None);
@@ -420,9 +403,7 @@ fn test_create_service_execution_request_with_gpu() {
         replicas: 1,
     };
 
-    let req = executor
-        .create_service_execution_request(&service, Uuid::new_v4())
-        .unwrap();
+    let req = executor.create_service_execution_request(&service, Uuid::new_v4());
 
     let gpu = req.resources.gpu.expect("gpu requirements");
     assert_eq!(gpu.min_units, 2);

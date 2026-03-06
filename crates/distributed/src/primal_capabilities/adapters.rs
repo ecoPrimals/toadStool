@@ -5,6 +5,8 @@
 #![allow(deprecated)] // get_songbird_socket_path: intentional use during capability-discovery migration
 
 use async_trait::async_trait;
+#[allow(deprecated)] // Protocol compatibility: primal_name in adapter
+use toadstool_common::constants::ecosystem::well_known::SONGBIRD;
 // No longer using reqwest - using unix sockets (pure Rust!)
 use serde::{Deserialize, Serialize};
 
@@ -107,7 +109,7 @@ impl SongbirdAdapter {
 #[async_trait]
 impl PrimalAdapter for SongbirdAdapter {
     fn primal_name(&self) -> &str {
-        "songbird"
+        SONGBIRD
     }
 
     fn endpoint(&self) -> &str {
@@ -146,7 +148,7 @@ impl PrimalAdapter for SongbirdAdapter {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("songbird.register_capabilities", params)
+            .call("coordination.register_capabilities", params)
             .await
             .map_err(|e| DistributedError::SongbirdRegistration(e.to_string()))?;
 
@@ -170,7 +172,7 @@ impl PrimalAdapter for SongbirdAdapter {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("songbird.heartbeat", params)
+            .call("coordination.heartbeat", params)
             .await
             .unwrap_or_else(|e| {
                 tracing::warn!("Heartbeat to Songbird failed: {e}");
@@ -197,7 +199,7 @@ impl PrimalAdapter for SongbirdAdapter {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("songbird.capability_update", params)
+            .call("coordination.capability_update", params)
             .await
             .unwrap_or_else(|e| {
                 tracing::warn!("Capability update to Songbird failed: {e}");
@@ -217,7 +219,7 @@ impl PrimalAdapter for SongbirdAdapter {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("songbird.deregister", params)
+            .call("coordination.deregister", params)
             .await
             .unwrap_or_else(|e| {
                 tracing::warn!("Deregistration from Songbird failed: {e}");

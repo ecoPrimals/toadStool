@@ -124,3 +124,31 @@ pub async fn start_daemon(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_start_daemon_invalid_config_path() {
+        let result = start_daemon(
+            8084,
+            false,
+            None,
+            Some(std::path::PathBuf::from(
+                "/nonexistent/config/path/that/does/not/exist.yaml",
+            )),
+            4,
+            None,
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_daemon_module_exports() {
+        use crate::daemon::{DaemonConfig, WorkloadManager};
+        let _ = std::mem::size_of::<DaemonConfig>();
+        let _ = std::mem::size_of::<WorkloadManager>();
+    }
+}

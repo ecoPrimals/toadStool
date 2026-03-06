@@ -136,7 +136,7 @@ impl ToadStoolSongbirdIntegration {
             distribution_strategy,
             estimated_subtasks: self.estimate_subtask_count(job, &complexity).await?,
             resource_requirements: job.resource_requirements.clone(),
-            preferred_node_types: vec!["universal".to_string()],
+            preferred_node_types: vec!["universal".to_owned()],
         })
     }
 
@@ -264,8 +264,8 @@ impl ToadStoolSongbirdIntegration {
 
         Ok(SongbirdJobResponse::Success {
             job_id: uuid::Uuid::new_v4(),
-            status: "queued".to_string(),
-            message: "Job submitted successfully to message queue".to_string(),
+            status: "queued".to_owned(),
+            message: "Job submitted successfully to message queue".to_owned(),
             estimated_completion: Some(SystemTime::now() + std::time::Duration::from_secs(420)),
         })
     }
@@ -404,7 +404,7 @@ impl LocalCapacityManager {
             storage_gb: gb(cap.storage_bytes),
             gpu_count: 0, // GPU detection handled by toadstool-runtime-gpu
             specialized_hardware: vec![],
-            software_capabilities: vec!["rust".to_string()],
+            software_capabilities: vec!["rust".to_owned()],
         })
     }
 }
@@ -430,12 +430,14 @@ mod tests {
     use super::*;
     use crate::{ExecutionTarget, UniversalScheduler, UniversalSchedulerConfig};
     use std::time::Duration;
+    use toadstool_common::constants::network::{DEFAULT_GRPC_PORT, LOCALHOST_IPV4};
     use uuid::Uuid;
 
     fn grpc_connection() -> SongbirdConnection {
+        let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, DEFAULT_GRPC_PORT);
         SongbirdConnection {
-            endpoints: vec!["http://localhost:50051".to_string()],
-            active_endpoint: "http://localhost:50051".to_string(),
+            endpoints: vec![endpoint.clone()],
+            active_endpoint: endpoint,
             auth_token: None,
             health_status: ConnectionHealth::Healthy,
             protocol_config: ProtocolConfig {

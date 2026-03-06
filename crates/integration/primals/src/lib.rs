@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::doc_markdown,
+    clippy::must_use_candidate
+)]
 
 //! # Universal Primal Integration Framework
 //!
@@ -38,7 +43,7 @@ pub use service::{ServiceEndpoint, ServiceRegistration, StartupResult, StartupSt
 
 /// Universal trait for Primal integration
 ///
-/// This is the canonical definition of the PrimalIntegration trait.
+/// This is the canonical definition of the `PrimalIntegration` trait.
 /// All Primals in the ecoPrimals ecosystem should implement this trait.
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]

@@ -261,7 +261,7 @@ impl OpenClBackend {
     /// Caches compiled programs for reuse
     pub async fn compile_program(&self, source: &str) -> ToadStoolResult<Program> {
         // Check cache first
-        let cache_key = format!("{}", source.len());
+        let cache_key = source.len().to_string();
         {
             let cache = self.program_cache.read().await;
             if let Some(prog) = cache.get(&cache_key) {

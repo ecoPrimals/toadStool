@@ -363,9 +363,9 @@ fn test_cache_stats_debug_clone() {
         fresh_entries: 3,
         stale_entries: 2,
     };
-    let debug_str = format!("{:?}", stats);
+    let debug_str = format!("{stats:?}");
     assert!(debug_str.contains("total_entries"));
-    assert!(debug_str.contains("5"));
+    assert!(debug_str.contains('5'));
     let cloned = stats.clone();
     assert_eq!(cloned.total_entries, stats.total_entries);
     assert_eq!(cloned.fresh_entries, stats.fresh_entries);

@@ -96,3 +96,16 @@ pub fn list_device_nodes() -> Result<Vec<String>> {
 
     Ok(nodes)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_list_device_nodes() {
+        let result = list_device_nodes();
+        assert!(result.is_ok());
+        let nodes = result.unwrap();
+        assert!(nodes.iter().all(|n| n.contains("akida")));
+    }
+}

@@ -16,13 +16,13 @@
 //! ## Module Structure
 //!
 //! - `types` - Core configuration and state types
-//! - `auth` - Cross-Primal authentication manager (uses auth_backend)
+//! - `auth` - Cross-Primal authentication manager (uses `auth_backend`)
 //! - `auth_backend` - Trait-based auth backends (legacy: BearDog, in-memory)
 //! - `auth_backend_evolved` - Capability-based auth backend (RECOMMENDED)
-//! - `storage` - Storage provisioning manager (uses storage_backend)
+//! - `storage` - Storage provisioning manager (uses `storage_backend`)
 //! - `storage_backend` - Trait-based storage backends (legacy: NestGate, in-memory)
 //! - `storage_backend_evolved` - Capability-based storage backend (RECOMMENDED)
-//! - `agents` - AI agent deployment manager (uses agent_backend)
+//! - `agents` - AI agent deployment manager (uses `agent_backend`)
 //! - `agent_backend` - Trait-based agent backends (legacy: Squirrel, in-memory)
 //! - `agent_backend_evolved` - Capability-based agent backend (RECOMMENDED)
 //!
@@ -32,7 +32,7 @@
 //! - Runtime discovery instead of hardcoded primal names
 //! - Proper error handling with thiserror
 //! - Semantic method naming (wateringHole standard)
-//! - Zero unwrap() in production code
+//! - Zero `unwrap()` in production code
 
 // Module declarations
 pub mod agent_backend;

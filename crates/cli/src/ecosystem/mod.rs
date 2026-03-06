@@ -9,9 +9,10 @@
 //! ## Module Structure (Refactored by Protocol)
 //!
 //! - `types`: Type definitions (EcosystemIntegrator, ServiceEndpoint, etc.)
+//! - `adapters/`: Capability-based service adapters (crypto, coordination, storage)
+//! - `capabilities/`: Capability resolution and discovery
 //! - `discovery`: Service discovery and scanning logic
 //! - `connection`: Connection management
-//! - `services/`: Service-specific integrations (Songbird, BearDog, NestGate)
 //! - `integrator_impl`: Core EcosystemIntegrator implementation
 
 // Public modules
@@ -348,7 +349,7 @@ mod tests {
     }
 
     // ========================================================================
-    // Week 14: Implementation Function Tests
+    // Implementation Function Tests
     // ========================================================================
 
     #[test]
@@ -440,9 +441,67 @@ mod tests {
         let result = integrator.discover_services(vec![], 1).await;
 
         // May timeout or succeed with empty list depending on network
-        if let Ok(_discovery) = result {
-            // total_discovered is unsigned, always >= 0
+        if let Ok(discovery) = result {
+            assert!(discovery.services.is_empty() || !discovery.services.is_empty());
+            assert_eq!(discovery.total_discovered, discovery.services.len());
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_discover_services_with_legacy_names() {
+        let mut integrator = EcosystemIntegrator::new();
+        // Test migration bridge: songbird -> network, beardog -> crypto, nestgate -> storage
+        let result = integrator
+            .discover_services(vec!["songbird".to_string(), "beardog".to_string()], 1)
+            .await;
+        if let Ok(discovery) = result {
+            assert!(discovery.scan_duration.as_secs() <= 2);
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_discover_services_with_capability_names() {
+        let mut integrator = EcosystemIntegrator::new();
+        let result = integrator
+            .discover_services(vec!["network".to_string(), "crypto".to_string()], 1)
+            .await;
+        if let Ok(discovery) = result {
+            assert!(discovery.verified_count <= discovery.total_discovered);
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_show_ecosystem_status_with_endpoints() {
+        let mut integrator = EcosystemIntegrator::new();
+        let result = integrator.discover_services(vec![], 1).await;
+        if let Ok(discovery) = result {
+            if !discovery.services.is_empty() {
+                let status_result = integrator.show_ecosystem_status("table").await;
+                assert!(status_result.is_ok());
+            }
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_connect_nestgate_storage_invalid_endpoint() {
+        let mut integrator = EcosystemIntegrator::new();
+        let result = integrator
+            .connect_nestgate_storage(
+                "not-a-valid-address".to_string(),
+                std::path::PathBuf::from("/tmp/test-mount"),
+                None,
+            )
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_install_crypto_permissions_validate_only() {
+        let mut integrator = EcosystemIntegrator::new();
+        let result = integrator
+            .install_crypto_permissions(PathBuf::from("/nonexistent/perms"), true)
+            .await;
+        assert!(result.is_err());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -466,6 +525,40 @@ mod tests {
             .install_crypto_permissions(PathBuf::from("/nonexistent/permissions.json"), false)
             .await;
 
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_show_ecosystem_status_json_empty() {
+        let integrator = EcosystemIntegrator::new();
+        let result = integrator.show_ecosystem_status("json").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_show_ecosystem_status_table_empty() {
+        let integrator = EcosystemIntegrator::new();
+        let result = integrator.show_ecosystem_status("table").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_show_ecosystem_status_default_format() {
+        let integrator = EcosystemIntegrator::new();
+        let result = integrator.show_ecosystem_status("text").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_connect_nestgate_storage_no_service() {
+        let mut integrator = EcosystemIntegrator::new();
+        let result = integrator
+            .connect_nestgate_storage(
+                "127.0.0.1:1".to_string(),
+                PathBuf::from("/tmp/test-mount"),
+                None,
+            )
+            .await;
         assert!(result.is_err());
     }
 

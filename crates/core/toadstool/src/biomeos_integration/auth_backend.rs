@@ -46,6 +46,10 @@ pub trait AuthBackend: Send + Sync {
     ) -> ToadStoolResult<AuthenticationToken>;
 
     /// Validate a token (optional, default implementation)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is expired, has invalid issuer/audience, or unsupported type.
     fn validate_token(&self, token: &AuthenticationToken) -> ToadStoolResult<()> {
         // Check expiration
         if token.expires_at <= SystemTime::now() {
@@ -102,6 +106,10 @@ impl BearDogBackend {
     /// Works with ANY service providing crypto.authentication capability.
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if capability discovery fails or no crypto service can be found.
     pub async fn new_async() -> ToadStoolResult<Self> {
         // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
@@ -143,7 +151,7 @@ impl AuthBackend for BearDogBackend {
         // Health check via JSON-RPC over unix socket
         let _health: serde_json::Value = self
             .rpc_client
-            .call("beardog.health", serde_json::json!({}))
+            .call("crypto.health", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to BearDog: {e}")))?;
 
@@ -157,7 +165,7 @@ impl AuthBackend for BearDogBackend {
 
         let token: AuthenticationToken = self
             .rpc_client
-            .call_typed("beardog.request_token", params)
+            .call_typed("crypto.request_token", params)
             .await
             .map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to request token from BearDog: {e}"))
@@ -178,7 +186,7 @@ impl AuthBackend for BearDogBackend {
 
         let token: AuthenticationToken = self
             .rpc_client
-            .call_typed("beardog.refresh_token", params)
+            .call_typed("crypto.refresh_token", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to refresh token: {e}")))?;
 
@@ -204,7 +212,7 @@ impl InMemoryAuthBackend {
     }
 
     /// Generate a test token
-    fn generate_test_token(&self, requesting_primal: &str) -> AuthenticationToken {
+    fn generate_test_token(requesting_primal: &str) -> AuthenticationToken {
         let token_id = format!("test-token-{requesting_primal}");
         AuthenticationToken {
             id: token_id,
@@ -234,7 +242,7 @@ impl Default for InMemoryAuthBackend {
 #[async_trait]
 impl AuthBackend for InMemoryAuthBackend {
     async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken> {
-        let token = self.generate_test_token(&request.requesting_primal);
+        let token = Self::generate_test_token(&request.requesting_primal);
 
         // Store token for potential refresh
         let mut tokens = self.tokens.lock().await;

@@ -270,12 +270,13 @@ fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
                         .get_addresses()
                         .iter()
                         .next()
-                        .map(std::string::ToString::to_string)
-                        .unwrap_or_else(|| info.get_hostname().trim_end_matches('.').to_string());
+                        .map_or(info.get_hostname().trim_end_matches('.').to_string(), |a| {
+                            a.to_string()
+                        });
                     let port = info.get_port();
                     let url = format!("http://{host}:{port}");
                     discovered.push(PrimalEndpoint {
-                        service_id: format!("{}-mdns", capability),
+                        service_id: format!("{capability}-mdns"),
                         url,
                         capabilities: vec![capability.to_string()],
                         healthy: true,
@@ -318,7 +319,7 @@ fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<PrimalEndpoint>> 
 
     let url = http_url(&dns_name, port);
     Some(vec![PrimalEndpoint {
-        service_id: format!("{}-k8s", capability),
+        service_id: format!("{capability}-k8s"),
         url,
         capabilities: vec![capability.to_string()],
         healthy: true,
@@ -356,7 +357,7 @@ fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEndpoin
 
     let url = http_url(&service_name, port);
     Some(vec![PrimalEndpoint {
-        service_id: format!("{}-compose", capability),
+        service_id: format!("{capability}-compose"),
         url,
         capabilities: vec![capability.to_string()],
         healthy: true,
@@ -364,7 +365,7 @@ fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEndpoin
     }])
 }
 
-/// Probe a well-known registry (Consul, etcd, or TOADSTOOL_REGISTRY_ENDPOINT) for
+/// Probe a well-known registry (Consul, etcd, or `TOADSTOOL_REGISTRY_ENDPOINT`) for
 /// a service with the given capability.
 ///
 /// Checks `TOADSTOOL_REGISTRY_ENDPOINT`, `CONSUL_HTTP_ADDR`, or `ETCD_ENDPOINTS`.
@@ -373,6 +374,21 @@ fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEndpoin
 /// configured, when the registry is unreachable, or when no matching service is found.
 #[must_use]
 fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+    #[derive(serde::Deserialize)]
+    struct RegistryServices {
+        #[serde(default)]
+        services: Vec<RegistryService>,
+    }
+    #[derive(serde::Deserialize)]
+    struct RegistryService {
+        #[serde(default)]
+        capabilities: Vec<String>,
+        #[serde(default)]
+        endpoints: Vec<String>,
+        #[serde(default)]
+        name: String,
+    }
+
     debug!("Probing registry for capability '{}'", capability);
 
     let endpoint = std::env::var("TOADSTOOL_REGISTRY_ENDPOINT")
@@ -409,10 +425,7 @@ fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     let addr = addrs.first()?;
     let mut stream = TcpStream::connect_timeout(addr, Duration::from_secs(3)).ok()?;
 
-    let request = format!(
-        "GET /{} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
-        path, host_port
-    );
+    let request = format!("GET /{path} HTTP/1.1\r\nHost: {host_port}\r\nConnection: close\r\n\r\n");
     stream.write_all(request.as_bytes()).ok()?;
     stream.flush().ok()?;
 
@@ -423,23 +436,7 @@ fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
         .as_slice()
         .windows(4)
         .position(|w| w == b"\r\n\r\n")
-        .map(|pos| &response[pos + 4..])
-        .unwrap_or(&response);
-
-    #[derive(serde::Deserialize)]
-    struct RegistryServices {
-        #[serde(default)]
-        services: Vec<RegistryService>,
-    }
-    #[derive(serde::Deserialize)]
-    struct RegistryService {
-        #[serde(default)]
-        capabilities: Vec<String>,
-        #[serde(default)]
-        endpoints: Vec<String>,
-        #[serde(default)]
-        name: String,
-    }
+        .map_or(&response[..], |pos| &response[pos + 4..]);
 
     let config: RegistryServices = serde_json::from_slice(body).ok()?;
     let now = std::time::SystemTime::now();
@@ -457,7 +454,7 @@ fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
             s.endpoints.into_iter().filter_map(move |url| {
                 if url.starts_with("http://") || url.starts_with("https://") {
                     Some(PrimalEndpoint {
-                        service_id: format!("{}-registry", service_name),
+                        service_id: format!("{service_name}-registry"),
                         url,
                         capabilities: vec![capability.to_string()],
                         healthy: true,

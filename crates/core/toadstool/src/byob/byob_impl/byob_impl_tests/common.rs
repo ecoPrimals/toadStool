@@ -2,6 +2,10 @@
 //! Shared test helpers for BYOB implementation tests
 
 use super::super::*;
+use crate::byob::{
+    DnsConfig, PortMapping, ServiceResourceRequirements, TeamNetworkConfig, TeamResourceQuotas,
+    TeamSecurityConfig, VolumeMount,
+};
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;

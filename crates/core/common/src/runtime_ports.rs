@@ -238,7 +238,7 @@ mod tests {
             let port = discovery.discover_port(None).unwrap();
             if discovery.is_port_available(port) {
                 // Try to bind immediately to claim it
-                if let Ok(_listener) = TcpListener::bind(format!("127.0.0.1:{}", port)) {
+                if let Ok(_listener) = TcpListener::bind(format!("127.0.0.1:{port}")) {
                     // Port is now bound, should be unavailable
                     assert!(!discovery.is_port_available(port));
                     port_found = Some(port);

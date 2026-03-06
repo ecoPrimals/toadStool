@@ -10,7 +10,7 @@ use crate::graph_types::{EdgeType, GraphEdge, GraphNode, NodeResourceRequirement
 use crate::resource_estimator::{NodeEstimate, ResourceEstimate};
 use crate::resource_validator::SystemCapabilities;
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_suggest_optimizations_sequential_graph() {
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph {
@@ -76,7 +76,7 @@ fn test_default_optimizer() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_optimization_error_estimation_failed_empty_graph() {
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph::simple("empty");
@@ -89,7 +89,7 @@ async fn test_optimization_error_estimation_failed_empty_graph() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_long_critical_path_bottleneck() {
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph::builder("long-path")
@@ -116,7 +116,7 @@ async fn test_long_critical_path_bottleneck() {
         .any(|b| b.bottleneck_type == BottleneckType::LongCriticalPath));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_caching_opportunity() {
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph::builder("caching")
@@ -135,7 +135,7 @@ async fn test_caching_opportunity() {
         .any(|o| o.opportunity_type == OpportunityType::Caching));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_batching_opportunity() {
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph::builder("batch")

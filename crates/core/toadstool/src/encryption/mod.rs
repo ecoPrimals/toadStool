@@ -204,15 +204,14 @@ impl EncryptionContext {
             .clone();
 
         // Use active key or generate new one
-        let key = match &self.active_key {
-            Some(k) => k.clone(),
-            None => {
-                let new_key = provider
-                    .generate_key(self.config.min_security_level)
-                    .await?;
-                self.active_key = Some(new_key.clone());
-                new_key
-            }
+        let key = if let Some(k) = &self.active_key {
+            k.clone()
+        } else {
+            let new_key = provider
+                .generate_key(self.config.min_security_level)
+                .await?;
+            self.active_key = Some(new_key.clone());
+            new_key
         };
 
         // Encrypt using discovered provider
@@ -539,5 +538,160 @@ mod tests {
         let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
         assert!(!ctx.is_required());
         assert!(!ctx.is_available());
+    }
+
+    #[tokio::test]
+    async fn test_discover_provider_empty_registry_sets_none() {
+        use super::provider::CryptoProviderRegistry;
+
+        let mut ctx = EncryptionContext::new(Uuid::new_v4(), EncryptionConfig::default());
+        let registry = CryptoProviderRegistry::new();
+
+        let result = ctx.discover_provider(&registry).await;
+        assert!(result.is_ok());
+        assert!(!ctx.is_available());
+    }
+
+    #[tokio::test]
+    async fn test_discover_provider_with_registered_provider() {
+        use super::capability::CryptoCapability;
+        use super::provider::{CryptoProvider, CryptoProviderRegistry, ProviderHealth};
+        use async_trait::async_trait;
+        use std::sync::Arc;
+
+        struct TestProvider;
+        #[async_trait]
+        impl CryptoProvider for TestProvider {
+            fn provider_id(&self) -> &str {
+                "test-crypto"
+            }
+            fn capabilities(&self) -> &CryptoCapability {
+                static CAP: std::sync::OnceLock<CryptoCapability> = std::sync::OnceLock::new();
+                CAP.get_or_init(|| CryptoCapability {
+                    algorithms: vec!["chacha20poly1305".to_string()],
+                    security_level: SecurityLevel::Standard,
+                    hardware_backed: false,
+                })
+            }
+            async fn encrypt(
+                &self,
+                data: &[u8],
+                _key: &super::types::EncryptionKey,
+            ) -> crate::ToadStoolResult<(
+                super::types::EncryptedPayload,
+                super::types::EncryptionMetadata,
+            )> {
+                Ok((
+                    super::types::EncryptedPayload::new(data.to_vec()),
+                    super::types::EncryptionMetadata::default(),
+                ))
+            }
+            async fn decrypt(
+                &self,
+                encrypted: &super::types::EncryptedPayload,
+                _key: &super::types::EncryptionKey,
+                _metadata: &super::types::EncryptionMetadata,
+            ) -> crate::ToadStoolResult<Vec<u8>> {
+                Ok(encrypted.ciphertext.clone())
+            }
+            async fn generate_key(
+                &self,
+                level: SecurityLevel,
+            ) -> crate::ToadStoolResult<super::types::EncryptionKey> {
+                Ok(super::types::EncryptionKey::new(
+                    "gen-key".to_string(),
+                    vec![1u8; 32],
+                    "chacha20poly1305".to_string(),
+                    level,
+                ))
+            }
+            async fn get_key(
+                &self,
+                key_id: &str,
+            ) -> crate::ToadStoolResult<super::types::EncryptionKey> {
+                Ok(super::types::EncryptionKey::new(
+                    key_id.to_string(),
+                    vec![1u8; 32],
+                    "chacha20poly1305".to_string(),
+                    SecurityLevel::Standard,
+                ))
+            }
+            async fn health_check(&self) -> crate::ToadStoolResult<ProviderHealth> {
+                Ok(ProviderHealth::healthy(1))
+            }
+        }
+
+        let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+            .encrypt_results(true)
+            .build();
+        let registry = CryptoProviderRegistry::new();
+        registry
+            .register(Arc::new(TestProvider))
+            .await
+            .expect("register");
+
+        let result = ctx.discover_provider(&registry).await;
+        assert!(result.is_ok());
+        assert!(ctx.is_available());
+    }
+
+    #[tokio::test]
+    async fn test_decrypt_input_without_provider_returns_error() {
+        let mut ctx = EncryptionContext::new(Uuid::new_v4(), EncryptionConfig::default());
+        let encrypted = EncryptedInput {
+            payload: EncryptedPayload::new(vec![1, 2, 3]),
+            key_id: "key-1".to_string(),
+            metadata: EncryptionMetadata::default(),
+            security_level: SecurityLevel::Standard,
+        };
+
+        let result = ctx.decrypt_input(&encrypted).await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No crypto provider"));
+    }
+
+    #[tokio::test]
+    async fn test_decrypt_input_security_level_below_minimum_returns_error() {
+        let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+            .security_level(SecurityLevel::HardwareSecured)
+            .build();
+        let encrypted = EncryptedInput {
+            payload: EncryptedPayload::new(vec![1, 2, 3]),
+            key_id: "key-1".to_string(),
+            metadata: EncryptionMetadata::default(),
+            security_level: SecurityLevel::Standard,
+        };
+
+        let result = ctx.decrypt_input(&encrypted).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("security level"));
+    }
+
+    #[tokio::test]
+    async fn test_encrypt_output_without_encrypt_results_returns_error() {
+        let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+            .encrypt_results(false)
+            .build();
+
+        let result = ctx.encrypt_output(b"hello").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not enabled"));
+    }
+
+    #[tokio::test]
+    async fn test_encrypt_output_without_provider_returns_error() {
+        let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+            .encrypt_results(true)
+            .build();
+
+        let result = ctx.encrypt_output(b"hello").await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No crypto provider"));
     }
 }

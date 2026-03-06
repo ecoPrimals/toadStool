@@ -73,15 +73,13 @@ pub struct OpenClBackend {
     available: bool,
 
     /// OpenCL version detected (for debugging)
-    #[allow(dead_code)]
-    version: String,
+    _version: String,
 
     /// wgpu device (when using wgpu path)
     wgpu_device: Option<Arc<wgpu::Device>>,
 
     /// wgpu queue (when using wgpu path)
-    #[allow(dead_code)]
-    wgpu_queue: Option<Arc<wgpu::Queue>>,
+    _wgpu_queue: Option<Arc<wgpu::Queue>>,
 }
 
 impl OpenClBackend {
@@ -104,9 +102,9 @@ impl OpenClBackend {
         Self {
             capabilities,
             available: false,
-            version: "Unknown".to_string(),
+            _version: "Unknown".to_string(),
             wgpu_device: None,
-            wgpu_queue: None,
+            _wgpu_queue: None,
         }
     }
 
@@ -168,9 +166,9 @@ impl OpenClBackend {
         Ok(Self {
             capabilities,
             available: true,
-            version: format!("wgpu-{:?}", info.backend),
+            _version: format!("wgpu-{:?}", info.backend),
             wgpu_device: Some(Arc::new(device)),
-            wgpu_queue: Some(Arc::new(queue)),
+            _wgpu_queue: Some(Arc::new(queue)),
         })
     }
 
@@ -196,7 +194,6 @@ impl OpenClBackend {
     }
 
     /// Get OpenCL version string (if available)
-    #[allow(dead_code)]
     fn detect_version() -> Option<String> {
         #[cfg(feature = "opencl")]
         {
@@ -247,9 +244,9 @@ impl OpenClBackend {
         Ok(Self {
             capabilities,
             available: true,
-            version: Self::detect_version().unwrap_or_else(|| "2.0+".to_string()),
+            _version: Self::detect_version().unwrap_or_else(|| "2.0+".to_string()),
             wgpu_device: None,
-            wgpu_queue: None,
+            _wgpu_queue: None,
         })
     }
 }

@@ -60,7 +60,7 @@ async fn test_discover_all_deduplication() {
                 },
             ])
         }
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "mock"
         }
     }
@@ -78,7 +78,7 @@ async fn test_discover_all_source_error() {
         async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
             Err(ToadStoolError::configuration("config error".to_string()))
         }
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "failing"
         }
     }
@@ -93,7 +93,7 @@ impl DiscoverySource for SlowSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         std::future::pending::<ToadStoolResult<Vec<CapabilityInfo>>>().await
     }
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "slow"
     }
 }
@@ -465,7 +465,7 @@ async fn test_discover_all_mixed_sources() {
                 health: HealthStatus::Unknown,
             }])
         }
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "ok"
         }
     }
@@ -475,7 +475,7 @@ async fn test_discover_all_mixed_sources() {
         async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
             Err(ToadStoolError::configuration("fail".to_string()))
         }
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "fail"
         }
     }
@@ -640,7 +640,7 @@ async fn test_discover_all_partial_timeout_and_success() {
                 health: HealthStatus::Unknown,
             }])
         }
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "fast"
         }
     }

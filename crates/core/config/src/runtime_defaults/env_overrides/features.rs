@@ -5,6 +5,7 @@ use super::super::ConfigResult;
 use super::parse;
 use crate::{BackendCacheConfig, MetricsConfig, ToadStoolConfig};
 
+#[allow(clippy::unnecessary_wraps)] // Result type required for ? in apply_env_overrides chain
 pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_METRICS") {
         config.metrics = if parse::parse_bool(&enabled) {

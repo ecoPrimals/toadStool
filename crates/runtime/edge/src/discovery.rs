@@ -564,7 +564,7 @@ impl MDNSDiscovery {
 
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "sock") {
+            if path.extension().is_some_and(|e| e == "sock") {
                 let stem = path
                     .file_stem()
                     .and_then(|s| s.to_str())

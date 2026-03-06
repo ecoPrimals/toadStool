@@ -26,6 +26,8 @@ mutex_atomic = "warn"
 # ToadStool core dependencies
 toadstool = { path = "../core/toadstool", features = ["networking"] }
 toadstool-config = { path = "../core/config" }
+toadstool-core = { path = "../toadstool-core" }
+toadstool-display = { path = "../runtime/display" }
 toadstool-common = { path = "../core/common" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-integration-protocols = { path = "../integration/protocols" }

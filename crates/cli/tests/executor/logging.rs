@@ -14,12 +14,7 @@ async fn test_show_logs_basic_call() {
     let executor = create_test_executor().await.unwrap();
 
     let result = executor
-        .show_logs(
-            "test-biome".to_string(),
-            false, // follow
-            None,  // tail
-            false, // timestamps
-        )
+        .show_logs("test-biome", false, 100, false, None, None)
         .await;
 
     // Will fail for nonexistent biome, but shouldn't panic
@@ -35,7 +30,7 @@ async fn test_show_logs_with_tail_option() {
 
     for tail in tail_values {
         let result = executor
-            .show_logs("test-biome".to_string(), false, Some(tail), false)
+            .show_logs("test-biome", false, tail, false, None, None)
             .await;
 
         // Should handle gracefully
@@ -48,7 +43,7 @@ async fn test_show_logs_with_timestamps() {
     let executor = create_test_executor().await.unwrap();
 
     let result = executor
-        .show_logs("test-biome".to_string(), false, None, true)
+        .show_logs("test-biome", false, 100, true, None, None)
         .await;
 
     // Should handle gracefully
@@ -62,7 +57,7 @@ async fn test_concurrent_log_access() {
         .map(|i| {
             let exec = executor.clone();
             tokio::spawn(async move {
-                exec.show_logs(format!("biome-{}", i), false, Some(10), false)
+                exec.show_logs(format!("biome-{}", i).as_str(), false, 10, false, None, None)
                     .await
             })
         })

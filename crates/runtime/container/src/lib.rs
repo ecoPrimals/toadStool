@@ -1,5 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::doc_markdown,
+    clippy::unused_async,
+    clippy::unnecessary_wraps,
+    clippy::match_same_arms,
+    clippy::struct_excessive_bools,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::needless_pass_by_value,
+    clippy::return_self_not_must_use,
+    clippy::wildcard_imports,
+    clippy::no_effect_underscore_binding,
+    clippy::used_underscore_binding,
+    clippy::items_after_statements,
+    clippy::cast_sign_loss
+)]
 
 //! # `ToadStool` Container Runtime Engine
 //!
@@ -709,6 +727,154 @@ mod tests {
         // Test resource validation
         assert_eq!(request.resources.cpu.max_cores, Some(1.0));
         assert_eq!(request.resources.memory.max_bytes, Some(512 * 1024 * 1024));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_cpu_validation_exceeds_limit() {
+        if let Ok(engine) = ContainerRuntimeEngine::new() {
+            let mut request = create_test_request("alpine:latest");
+            request.resources.cpu.max_cores = Some(1000.0);
+            let result = engine.validate_resource_requirements(&request);
+            assert!(result.is_err());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_metrics() {
+        if let Ok(engine) = ContainerRuntimeEngine::new() {
+            let metrics = engine.get_metrics().await;
+            assert!(metrics.is_ok());
+            let m = metrics.unwrap();
+            assert!(m.timing.start_time != std::time::UNIX_EPOCH);
+            assert_eq!(m.cpu.usage_percent, 0.0);
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_container_engine_default_fallback() {
+        let engine = ContainerRuntimeEngine::default();
+        assert!(engine.capabilities.supported_architectures.len() >= 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_container_execution_config_default() {
+        let config = ContainerExecutionConfig::default();
+        assert!(config.image.is_empty());
+        assert!(config.args.is_empty());
+        assert!(config.volumes.is_empty());
+        assert!(config.ports.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_with_resource_monitor() {
+        if let Ok(engine) = ContainerRuntimeEngine::new() {
+            use toadstool::resources::{ResourceMonitor, RuntimeMetrics, SystemResources};
+            struct MockMonitor;
+            impl ResourceMonitor for MockMonitor {
+                fn start_monitoring(&self, _workload_id: &str) -> toadstool::ToadStoolResult<()> {
+                    Ok(())
+                }
+                fn stop_monitoring(&self, _workload_id: &str) -> toadstool::ToadStoolResult<()> {
+                    Ok(())
+                }
+                fn get_metrics(
+                    &self,
+                    _workload_id: &str,
+                ) -> Pin<
+                    Box<
+                        dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_,
+                    >,
+                > {
+                    Box::pin(async { Ok(Default::default()) })
+                }
+                fn get_system_resources(
+                    &self,
+                ) -> Pin<
+                    Box<
+                        dyn Future<Output = toadstool::ToadStoolResult<SystemResources>>
+                            + Send
+                            + '_,
+                    >,
+                > {
+                    Box::pin(async { Ok(Default::default()) })
+                }
+            }
+            let _engine = engine.with_resource_monitor(Arc::new(MockMonitor));
+            assert!(true);
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_engine_with_containerd_config() {
+        let config = ContainerRuntimeConfig {
+            engine: ContainerEngineType::Containerd {
+                address: "/run/containerd/containerd.sock".to_string(),
+                namespace: "default".to_string(),
+            },
+            ..ContainerRuntimeConfig::default()
+        };
+        let result = ContainerRuntimeEngine::with_config(config);
+        assert!(result.is_ok());
+        let engine = result.unwrap();
+        assert!(!engine.get_capabilities().supported_workloads.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_engine_with_podman_config() {
+        let config = ContainerRuntimeConfig {
+            engine: ContainerEngineType::Podman {
+                socket_path: "/run/podman/podman.sock".to_string(),
+                remote_url: None,
+            },
+            ..ContainerRuntimeConfig::default()
+        };
+        let result = ContainerRuntimeEngine::with_config(config);
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_initialize_without_docker() {
+        let config = ContainerRuntimeConfig {
+            engine: ContainerEngineType::Containerd {
+                address: "invalid".to_string(),
+                namespace: "default".to_string(),
+            },
+            ..ContainerRuntimeConfig::default()
+        };
+        if let Ok(mut engine) = ContainerRuntimeEngine::with_config(config) {
+            let result = engine.initialize(RuntimeConfig::default()).await;
+            assert!(result.is_ok());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_validate_resource_requirements_ok() {
+        let engine = ContainerRuntimeEngine::default();
+        let mut request = create_test_request("alpine");
+        request.resources.memory.max_bytes = Some(256 * 1024 * 1024);
+        request.resources.cpu.max_cores = Some(0.5);
+        let result = engine.validate_resource_requirements(&request);
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_validate_resource_requirements_cpu_exceeds() {
+        let engine = ContainerRuntimeEngine::default();
+        let mut request = create_test_request("alpine");
+        request.resources.cpu.max_cores = Some(5000.0);
+        let result = engine.validate_resource_requirements(&request);
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_capabilities_platform_features() {
+        let engine = ContainerRuntimeEngine::default();
+        let caps = engine.get_capabilities();
+        assert!(
+            caps.platform_features.contains_key("volume_mounts")
+                || caps.platform_features.is_empty()
+        );
+        assert!(caps.supported_architectures.len() >= 1);
     }
 }
 

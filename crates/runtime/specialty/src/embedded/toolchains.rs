@@ -1,8 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Toolchain implementations for embedded systems
 //!
-//! Error-returning stubs until cross-compilation toolchains are integrated.
-//! All compile/link/disassemble operations return `not_supported`.
+//! ## Planned / Future Implementation
+//!
+//! These toolchain structs and trait implementations are **infrastructure placeholders**
+//! for future embedded cross-compilation support. They are registered in the embedded
+//! adapter registry and satisfy the type system, but all operations return
+//! `not_supported` until real toolchains are integrated.
+//!
+//! ## Architecture Notes
+//!
+//! - **6502**: Planned integration with cc65 or WDC816 toolchain
+//! - **Z80**: Planned integration with z88dk or SDCC
+//! - **8080**: Legacy Intel; may share tooling with Z80
+//! - **8051**: Planned SDCC integration
+//! - **8086**: Planned NASM/MASM integration for x86 real mode
+//! - **68000**: Planned vasm or gcc-m68k integration
+//!
+//! Each toolchain will require: cross-compiler binary discovery, platform-specific
+//! linker scripts, and ROM image format generation (e.g., .nes, .sms, raw binary).
 
 use async_trait::async_trait;
 use std::path::PathBuf;
@@ -23,22 +39,28 @@ fn not_implemented(feature: impl Into<String>) -> ToadStoolError {
     ))
 }
 
-/// Toolchain for 6502 (stub until cc65/wdc816 integration)
+/// Toolchain for 6502 (planned: cc65/wdc816 integration).
+/// Stub until cross-compilation toolchain is integrated.
 pub struct Toolchain6502;
 
-/// Toolchain for Z80 (stub until z88dk/SDCC integration)
+/// Toolchain for Z80 (planned: z88dk/SDCC integration).
+/// Stub until cross-compilation toolchain is integrated.
 pub struct ToolchainZ80;
 
-/// Toolchain for 8080 (stub)
+/// Toolchain for 8080 (planned: may share tooling with Z80).
+/// Stub until cross-compilation toolchain is integrated.
 pub struct Toolchain8080;
 
-/// Toolchain for 8051 (stub until SDCC integration)
+/// Toolchain for 8051 (planned: SDCC integration).
+/// Stub until cross-compilation toolchain is integrated.
 pub struct Toolchain8051;
 
-/// Toolchain for 8086 (stub until NASM/MASM integration)
+/// Toolchain for 8086 (planned: NASM/MASM integration).
+/// Stub until cross-compilation toolchain is integrated.
 pub struct Toolchain8086;
 
-/// Toolchain for 68000 (stub until vasm/gcc-m68k integration)
+/// Toolchain for 68000 (planned: vasm/gcc-m68k integration).
+/// Stub until cross-compilation toolchain is integrated.
 pub struct Toolchain68000;
 
 impl Toolchain6502 {

@@ -74,7 +74,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 17,986 tests pass. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
+| D-COV | Test coverage → 90% | Medium | 18,028 tests pass. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
 
@@ -104,6 +104,25 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (Deep Debt Execution — Mar 5, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| Hardware Transport wiring | JSON-RPC `transport.discover/list/route` + CLI `toadstool transport discover/list/status` |
+| Pixel format mismatch | CaptureTransport `AB24` → `AR24` to match DisplayTransport's `Argb8888` |
+| Double-buffer alternation | `DisplayTransport` now alternates buffers via `write_idx ^= 1` after each flip |
+| Detection stubs (11) | CPU, memory, distro, GPU, OpenCL, ROCm, neuromorphic, edge/IoT → real /proc + command parsing |
+| `security.rs` god file (771L) | Smart-refactored → `security/` with types.rs, policy.rs, context.rs, provider.rs |
+| `config_utils/mod.rs` god file (777L) | Smart-refactored → paths.rs, network.rs, environment.rs, defaults.rs |
+| `FrameworkHandle::Placeholder` | → `FrameworkHandle::Unavailable { name, reason }` with explicit context |
+| Hardcoded primal names (35+) | Evolved to `well_known::*` constants across primal_sockets, adapters, templates |
+| Production `unwrap()` (frame protocol) | Replaced with direct array indexing in `decode_frame` |
+| `management/resources` placeholder | Evolved to real `ResourceManager` with sysinfo (CPU, memory, disk tracking) |
+| `collect_biome_status` stub | Real runtime directory scanning for socket/PID files |
+| `#![allow(clippy::unused_async)]` | Removed crate-level suppression from distributed (zero warnings without it) |
+| Dead code (15 fields) | Prefixed with `_`; 3 functions gated to `#[cfg(test)]` |
+| Idiomatic Rust patterns | `div_ceil`, `is_some_and`, `is_ok_and`; rust-version 1.80→1.82 |
 
 ## Recently Resolved (S94 — Deep Debt Execution + Spring Absorption)
 

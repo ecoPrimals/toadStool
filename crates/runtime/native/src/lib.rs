@@ -52,12 +52,9 @@ impl std::fmt::Debug for NativeRuntimeEngine {
 #[derive(Debug)]
 struct ProcessHandle {
     child: Option<Child>,
-    #[allow(dead_code)] // For future process lifetime tracking
-    start_time: Instant,
-    #[allow(dead_code)] // For workload correlation
-    workload_id: String,
-    #[allow(dead_code)] // For debugging and audit
-    executable_path: PathBuf,
+    _start_time: Instant,
+    _workload_id: String,
+    _executable_path: PathBuf,
 }
 
 impl NativeRuntimeEngine {
@@ -88,13 +85,15 @@ impl NativeRuntimeEngine {
     }
 
     /// Set the resource monitor for this runtime
+    #[must_use]
     pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
         self.resource_monitor = Some(monitor);
         self
     }
 
     /// Validate executable source and return the executable path
-    async fn resolve_executable(&self, source: &ExecutableSource) -> ToadStoolResult<PathBuf> {
+    #[allow(clippy::unused_self)]
+    fn resolve_executable(&self, source: &ExecutableSource) -> ToadStoolResult<PathBuf> {
         match source {
             ExecutableSource::File { path } => {
                 if !path.exists() {
@@ -131,11 +130,12 @@ impl NativeRuntimeEngine {
     }
 
     /// Apply security context to the command
+    #[allow(clippy::unused_self)]
     fn apply_security_context(
         &self,
         mut command: TokioCommand,
         security_context: &SecurityContext,
-    ) -> ToadStoolResult<TokioCommand> {
+    ) -> TokioCommand {
         match security_context.isolation_level {
             IsolationLevel::None => {
                 debug!("No isolation applied");
@@ -207,7 +207,7 @@ impl NativeRuntimeEngine {
             debug!("Network outbound access denied");
         }
 
-        Ok(command)
+        command
     }
 
     /// Execute the workload and return the result
@@ -240,7 +240,7 @@ impl NativeRuntimeEngine {
         }
 
         // Apply security context
-        command = self.apply_security_context(command, &request.security_context)?;
+        command = self.apply_security_context(command, &request.security_context);
 
         // Start monitoring if available
         if let Some(monitor) = &self.resource_monitor {
@@ -260,9 +260,9 @@ impl NativeRuntimeEngine {
                     request.execution_id,
                     ProcessHandle {
                         child: None, // We'll update this after getting the result
-                        start_time,
-                        workload_id: request.execution_id.to_string(),
-                        executable_path: executable_path.clone(),
+                        _start_time: start_time,
+                        _workload_id: request.execution_id.to_string(),
+                        _executable_path: executable_path.clone(),
                     },
                 );
             }
@@ -362,7 +362,7 @@ impl NativeRuntimeEngine {
     }
 
     /// Validate resource requirements
-    fn validate_resource_requirements(&self, request: &ExecutionRequest) -> ToadStoolResult<()> {
+    fn validate_resource_requirements(request: &ExecutionRequest) -> ToadStoolResult<()> {
         // Check if we can meet the resource requirements
         let requirements = &request.resources;
 
@@ -440,7 +440,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
             // Validate the request
             request.workload.validate()?;
-            self.validate_resource_requirements(&request)?;
+            Self::validate_resource_requirements(&request)?;
 
             // Extract executable source
             let WorkloadSpec::Native {
@@ -454,7 +454,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
             };
 
             // Resolve the executable path
-            let executable_path = self.resolve_executable(executable_source).await?;
+            let executable_path = self.resolve_executable(executable_source)?;
 
             // Execute the workload
             self.execute_workload(&request, executable_path).await

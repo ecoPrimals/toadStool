@@ -298,4 +298,77 @@ mod tests {
 
         assert!(registry.is_available("compute_gpu"));
     }
+
+    #[test]
+    fn test_all_capability_constructors() {
+        let gpu = Capability::compute_gpu();
+        assert_eq!(gpu.id, "compute_gpu");
+        assert!(gpu.resource_requirements.gpu_required);
+
+        let heavy = Capability::compute_heavy();
+        assert_eq!(heavy.id, "compute_heavy");
+        assert!(!heavy.resource_requirements.gpu_required);
+
+        let ml = Capability::compute_ml_training();
+        assert_eq!(ml.id, "compute_ml_training");
+        assert!(ml.resource_requirements.gpu_required);
+
+        let native = Capability::compute_native();
+        assert_eq!(native.id, "compute_native");
+        assert!(native.available);
+
+        let container = Capability::compute_container();
+        assert_eq!(container.id, "compute_container");
+
+        let wasm = Capability::compute_wasm();
+        assert_eq!(wasm.id, "compute_wasm");
+
+        let mainframe = Capability::compute_mainframe();
+        assert_eq!(mainframe.id, "compute_mainframe");
+        assert!(!mainframe.available);
+
+        let embedded = Capability::compute_embedded();
+        assert_eq!(embedded.id, "compute_embedded");
+    }
+
+    #[test]
+    fn test_registry_add_remove_capability() {
+        let mut registry = CapabilityRegistry::new(vec![Capability::compute_native()]);
+        assert_eq!(registry.all_capabilities().len(), 1);
+
+        registry.add_capability(Capability::compute_wasm());
+        assert_eq!(registry.all_capabilities().len(), 2);
+
+        let removed = registry.remove_capability("compute_native");
+        assert!(removed.is_some());
+        assert_eq!(registry.all_capabilities().len(), 1);
+        assert!(registry.get_capability("compute_native").is_none());
+    }
+
+    #[test]
+    fn test_registry_available_filter() {
+        let caps = vec![
+            Capability::compute_gpu(),    // available: false
+            Capability::compute_heavy(),  // available: true
+            Capability::compute_native(), // available: true
+        ];
+        let registry = CapabilityRegistry::new(caps);
+        let available = registry.available_capabilities();
+        assert_eq!(available.len(), 2);
+    }
+
+    #[test]
+    fn test_capability_resources_serde() {
+        let res = CapabilityResources {
+            min_cpu_cores: 4,
+            min_memory_mb: 8192,
+            gpu_required: true,
+            gpu_memory_mb: Some(4096),
+            special_hardware: vec!["cuda".to_string()],
+        };
+        let json = serde_json::to_string(&res).unwrap();
+        let parsed: CapabilityResources = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.min_cpu_cores, 4);
+        assert_eq!(parsed.gpu_memory_mb, Some(4096));
+    }
 }

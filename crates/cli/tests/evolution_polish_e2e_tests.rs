@@ -71,9 +71,7 @@ async fn test_e2e_executor_full_lifecycle_standalone() {
     let ctx = create_test_context();
 
     // 1. List biomes (should be empty)
-    let list_result = executor
-        .list_biomes(false, "json".to_string(), false, None)
-        .await;
+    let list_result = executor.list_biomes(false, "json", false, None).await;
     assert!(list_result.is_ok(), "Should list biomes without registry");
 
     // 2. Try to create a biome (may fail at startup, but not due to registry)
@@ -103,14 +101,12 @@ async fn test_e2e_executor_full_lifecycle_standalone() {
     }
 
     // 3. List again
-    let list_result_2 = executor
-        .list_biomes(false, "yaml".to_string(), true, None)
-        .await;
+    let list_result_2 = executor.list_biomes(false, "yaml", true, None).await;
     assert!(list_result_2.is_ok(), "Second list should work");
 
     // 4. Try to stop nonexistent biome
     let down_result = executor
-        .down_biome("e2e-standalone".to_string(), false, 30, false)
+        .down_biome("e2e-standalone", false, 30, false)
         .await;
     assert!(down_result.is_err(), "Should fail for nonexistent biome");
 
@@ -252,9 +248,7 @@ async fn test_e2e_full_stack_capability_based() {
     let discovery = DiscoveryEngine::new();
 
     // 4. Perform operations
-    let _ = executor
-        .list_biomes(false, "json".to_string(), false, None)
-        .await;
+    let _ = executor.list_biomes(false, "json", false, None).await;
     let _ = factory.coordination_adapter();
     let _ = discovery;
 
@@ -273,14 +267,10 @@ async fn test_e2e_error_propagation_clean() {
 
     // Try various operations that should fail
     let errors = vec![
+        executor.down_biome("nonexistent1", false, 30, false).await,
+        executor.down_biome("nonexistent2", true, 60, false).await,
         executor
-            .down_biome("nonexistent1".to_string(), false, 30, false)
-            .await,
-        executor
-            .down_biome("nonexistent2".to_string(), true, 60, false)
-            .await,
-        executor
-            .show_logs("nonexistent3".to_string(), false, 50, false, None, None)
+            .show_logs("nonexistent3", false, 50, false, None, None)
             .await,
     ];
 
@@ -319,8 +309,7 @@ async fn test_e2e_multi_format_output_standalone() {
     for format in formats {
         let exec = Arc::clone(&executor);
         handles.push(tokio::spawn(async move {
-            exec.list_biomes(false, format.to_string(), false, None)
-                .await
+            exec.list_biomes(false, format, false, None).await
         }));
     }
 
@@ -401,14 +390,19 @@ async fn test_e2e_stress_many_operations_standalone() {
             b.wait().await;
 
             // Mix of operations
+            let _ = exec.list_biomes(i % 2 == 0, "json", false, None).await;
             let _ = exec
-                .list_biomes(i % 2 == 0, "json".to_string(), false, None)
+                .down_biome(format!("stress-{}", i).as_str(), false, 30, false)
                 .await;
             let _ = exec
-                .down_biome(format!("stress-{}", i), false, 30, false)
-                .await;
-            let _ = exec
-                .show_logs(format!("stress-{}", i), false, 50, false, None, None)
+                .show_logs(
+                    format!("stress-{}", i).as_str(),
+                    false,
+                    50,
+                    false,
+                    None,
+                    None,
+                )
                 .await;
 
             Ok::<(), anyhow::Error>(())
@@ -447,9 +441,7 @@ async fn test_e2e_infant_discovery_philosophy_enforced() {
     let discovery = DiscoveryEngine::new(); // Starts with no hardcoded knowledge
 
     // All operations work together seamlessly
-    let _ = executor
-        .list_biomes(false, "json".to_string(), false, None)
-        .await;
+    let _ = executor.list_biomes(false, "json", false, None).await;
     let _ = discovery;
 
     // Philosophy enforced end-to-end ✅

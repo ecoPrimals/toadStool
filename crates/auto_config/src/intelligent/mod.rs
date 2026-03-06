@@ -135,10 +135,7 @@ impl IntelligentAutoConfig {
         let usage_hints = usage_result?;
 
         // Phase 2: Platform Detection (depends on hardware, must be sequential)
-        let platform = self
-            .platform_optimizer
-            .optimize_for_platform(&hardware)
-            .await?;
+        let platform = self.platform_optimizer.optimize_for_platform(&hardware)?;
 
         // Phase 5: Generate Configuration
         let config = self
@@ -197,8 +194,7 @@ impl IntelligentAutoConfig {
         );
         let platform_config = auto_config
             .platform_optimizer
-            .optimize_for_platform(&hardware)
-            .await?;
+            .optimize_for_platform(&hardware)?;
         info!(
             "⚡ Platform optimizations applied: {} optimizations",
             platform_config.optimizations.len()
@@ -223,8 +219,7 @@ impl IntelligentAutoConfig {
         info!("✅ Phase 6: Validating configuration...");
         auto_config
             .config_validator
-            .validate_configuration(&config)
-            .await?;
+            .validate_configuration(&config)?;
 
         info!("🎉 Auto-configuration complete - ToadStool is ready!");
         info!("🚀 Zero-touch setup successful - ready to execute any workload!");

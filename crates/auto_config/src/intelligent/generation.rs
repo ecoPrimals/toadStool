@@ -44,29 +44,26 @@ impl ConfigGenerator {
         let mut config = ToadStoolConfig::default();
 
         // Configure runtime engines based on hardware
-        self.configure_runtime_engines(&mut config, hardware, platform, usage_hints)
-            .await?;
+        self.configure_runtime_engines(&mut config, hardware, platform, usage_hints)?;
 
         // Configure networking and ecosystem integration
         // Note: Ecosystem integration is handled through separate configuration systems
 
         // Configure security based on platform and environment
-        config.security = self.configure_security_settings(platform).await?;
+        config.security = self.configure_security_settings(platform)?;
 
         // Apply platform-specific optimizations
-        self.apply_platform_optimizations(&mut config, platform)
-            .await?;
+        self.apply_platform_optimizations(&mut config, platform)?;
 
         // Store configuration snapshot for learning
-        self.store_config_snapshot(&config, hardware, usage_hints)
-            .await?;
+        self.store_config_snapshot(&config, hardware, usage_hints)?;
 
         debug!("Optimal configuration generated successfully");
         Ok(config)
     }
 
     /// Configure runtime engines based on hardware capabilities
-    async fn configure_runtime_engines(
+    fn configure_runtime_engines(
         &self,
         config: &mut ToadStoolConfig,
         hardware: &SystemCapabilities,
@@ -116,7 +113,7 @@ impl ConfigGenerator {
     }
 
     /// Configure security settings based on platform and environment
-    async fn configure_security_settings(
+    fn configure_security_settings(
         &self,
         platform: &PlatformConfig,
     ) -> ToadStoolResult<SecurityConfig> {
@@ -138,7 +135,7 @@ impl ConfigGenerator {
     }
 
     /// Apply platform-specific optimizations
-    async fn apply_platform_optimizations(
+    fn apply_platform_optimizations(
         &self,
         config: &mut ToadStoolConfig,
         platform: &PlatformConfig,
@@ -176,7 +173,7 @@ impl ConfigGenerator {
     }
 
     /// Store configuration snapshot for learning and optimization
-    async fn store_config_snapshot(
+    fn store_config_snapshot(
         &mut self,
         config: &ToadStoolConfig,
         hardware: &SystemCapabilities,

@@ -68,7 +68,7 @@ async fn test_machine_learning_intent() {
     ];
 
     for text in test_cases {
-        let analysis = config.analyze_intent(text).await.unwrap();
+        let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "machine_learning",
             "Failed for: {}",
@@ -79,7 +79,7 @@ async fn test_machine_learning_intent() {
 
     // Test that analysis works even if intent is not exactly what we expect
     let text = "deep learning with high memory requirements";
-    let analysis = config.analyze_intent(text).await.unwrap();
+    let analysis = config.analyze_intent(text).unwrap();
     assert!(!analysis.primary_intent.is_empty());
     assert!(analysis.confidence >= 0.0);
 }
@@ -97,7 +97,7 @@ async fn test_web_development_intent() {
     ];
 
     for text in test_cases {
-        let analysis = config.analyze_intent(text).await.unwrap();
+        let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "web_development",
             "Failed for: {}",
@@ -120,7 +120,7 @@ async fn test_data_processing_intent() {
     ];
 
     for text in test_cases {
-        let analysis = config.analyze_intent(text).await.unwrap();
+        let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "data_processing",
             "Failed for: {}",
@@ -136,7 +136,7 @@ async fn test_gaming_intent() {
     let config = NaturalLanguageConfig::new();
 
     let text = "I'm building a multiplayer game with Unity and need low latency";
-    let analysis = config.analyze_intent(text).await.unwrap();
+    let analysis = config.analyze_intent(text).unwrap();
 
     assert_eq!(analysis.primary_intent, "gaming");
     assert!(analysis.confidence > 0.0);
@@ -148,7 +148,7 @@ async fn test_scientific_computing_intent() {
     let config = NaturalLanguageConfig::new();
 
     let text = "scientific simulations requiring high performance computing";
-    let analysis = config.analyze_intent(text).await.unwrap();
+    let analysis = config.analyze_intent(text).unwrap();
 
     // Intent recognition should work, even if it doesn't match exactly
     assert!(!analysis.primary_intent.is_empty());
@@ -171,7 +171,7 @@ async fn test_performance_preference_extraction() {
     ];
 
     for text in test_cases {
-        let prefs = config.extract_explicit_preferences(text).await.unwrap();
+        let prefs = config.extract_explicit_preferences(text).unwrap();
         // Should extract performance preferences
         assert!(prefs.performance_priority.is_some() || prefs.performance_priority.is_none());
     }
@@ -189,7 +189,7 @@ async fn test_security_preference_extraction() {
     ];
 
     for text in test_cases {
-        let prefs = config.extract_explicit_preferences(text).await.unwrap();
+        let prefs = config.extract_explicit_preferences(text).unwrap();
         // Should recognize security preferences
         assert!(prefs.security_priority.is_some() || prefs.security_priority.is_none());
     }
@@ -207,7 +207,7 @@ async fn test_gpu_requirement_extraction() {
     ];
 
     for text in test_cases {
-        let prefs = config.extract_explicit_preferences(text).await.unwrap();
+        let prefs = config.extract_explicit_preferences(text).unwrap();
         // Should recognize GPU requirements
         assert!(prefs.use_gpu.is_some() || prefs.use_gpu.is_none());
     }
@@ -225,7 +225,7 @@ async fn test_container_preference_extraction() {
     ];
 
     for text in test_cases {
-        let prefs = config.extract_explicit_preferences(text).await.unwrap();
+        let prefs = config.extract_explicit_preferences(text).unwrap();
         // Should recognize container preferences
         assert!(prefs.use_containers.is_some() || prefs.use_containers.is_none());
     }
@@ -462,7 +462,7 @@ async fn test_concurrent_intent_analysis() {
 
         let handle = tokio::spawn(async move {
             let _permit = sem.acquire().await.unwrap();
-            let analysis = config.analyze_intent(&text).await.unwrap();
+            let analysis = config.analyze_intent(&text).unwrap();
             assert!(analysis.confidence >= 0.0);
             assert!(!analysis.primary_intent.is_empty());
         });
@@ -499,7 +499,7 @@ async fn test_rapid_configuration_generation() {
 async fn test_empty_text_analysis() {
     let config = NaturalLanguageConfig::new();
 
-    let result = config.analyze_intent("").await;
+    let result = config.analyze_intent("");
     // Should handle empty text gracefully
     assert!(result.is_ok() || result.is_err());
 }
@@ -510,7 +510,7 @@ async fn test_long_text_analysis() {
     let config = NaturalLanguageConfig::new();
 
     let long_text = "machine learning ".repeat(100);
-    let result = config.analyze_intent(&long_text).await;
+    let result = config.analyze_intent(&long_text);
 
     assert!(result.is_ok());
     if let Ok(analysis) = result {
@@ -524,7 +524,7 @@ async fn test_mixed_intent_text() {
     let config = NaturalLanguageConfig::new();
 
     let text = "I want machine learning for my web application with gaming graphics";
-    let result = config.analyze_intent(text).await;
+    let result = config.analyze_intent(text);
 
     assert!(result.is_ok());
     // Should pick the primary intent
@@ -540,7 +540,7 @@ async fn test_special_characters() {
     let config = NaturalLanguageConfig::new();
 
     let text = "Machine Learning!!! @GPU #acceleration $performance %100";
-    let result = config.analyze_intent(text).await;
+    let result = config.analyze_intent(text);
 
     assert!(result.is_ok());
     if let Ok(analysis) = result {
@@ -561,7 +561,7 @@ async fn test_case_insensitivity() {
     ];
 
     for text in test_cases {
-        let analysis = config.analyze_intent(text).await.unwrap();
+        let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "machine_learning",
             "Failed for: {}",

@@ -24,9 +24,7 @@ async fn e2e_executor_initialization() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
     // Verify: Executor ready for commands
-    let result = executor
-        .list_biomes(false, "text".to_string(), false, None)
-        .await;
+    let result = executor.list_biomes(false, "text", false, None).await;
 
     // Should succeed (prints output)
     assert!(result.is_ok(), "Executor should be ready for commands");
@@ -45,9 +43,7 @@ async fn e2e_concurrent_executor_initialization() -> Result<()> {
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
             let executor = BiomeExecutor::new().await?;
-            executor
-                .list_biomes(false, "text".to_string(), false, None)
-                .await?;
+            executor.list_biomes(false, "text", false, None).await?;
             tx.send(i).ok();
             Ok::<_, anyhow::Error>(())
         }));
@@ -78,7 +74,7 @@ async fn e2e_list_biomes_multiple_formats() -> Result<()> {
         let exec = Arc::clone(&executor);
         let format = format.to_string();
         handles.push(tokio::spawn(async move {
-            exec.list_biomes(false, format, false, None).await
+            exec.list_biomes(false, format.as_str(), false, None).await
         }));
     }
 
@@ -98,7 +94,7 @@ async fn e2e_down_nonexistent_biome() -> Result<()> {
 
     // Simulate: User tries to stop biome that doesn't exist
     let result = executor
-        .down_biome("nonexistent-biome-123".to_string(), false, 30, false)
+        .down_biome("nonexistent-biome-123", false, 30, false)
         .await;
 
     // Should fail gracefully
@@ -114,14 +110,7 @@ async fn e2e_show_logs_nonexistent() -> Result<()> {
 
     // Simulate: User tries to view logs for nonexistent biome
     let result = executor
-        .show_logs(
-            "nonexistent-logs-456".to_string(),
-            false, // follow
-            50,    // lines
-            false, // timestamps
-            None,  // level_filter
-            None,  // grep_pattern
-        )
+        .show_logs("nonexistent-logs-456", false, 50, false, None, None)
         .await;
 
     // Should fail gracefully
@@ -153,9 +142,7 @@ async fn e2e_concurrent_list_operations() -> Result<()> {
             } else {
                 "text"
             };
-            let result = exec
-                .list_biomes(false, format.to_string(), false, None)
-                .await;
+            let result = exec.list_biomes(false, format, false, None).await;
             tx.send(i).ok();
             result
         }));
@@ -189,7 +176,7 @@ async fn e2e_mixed_concurrent_operations() -> Result<()> {
             let result = match i % 3 {
                 0 => {
                     // List biomes
-                    exec.list_biomes(false, "text".to_string(), false, None)
+                    exec.list_biomes(false, "text", false, None)
                         .await
                         .map(|_| ())
                 }
@@ -238,8 +225,7 @@ async fn e2e_rapid_list_operations() -> Result<()> {
     for _ in 0..50 {
         let exec = Arc::clone(&executor);
         handles.push(tokio::spawn(async move {
-            exec.list_biomes(false, "text".to_string(), false, None)
-                .await
+            exec.list_biomes(false, "text", false, None).await
         }));
     }
 
@@ -272,8 +258,7 @@ async fn e2e_timeout_protected_operations() -> Result<()> {
         handles.push(tokio::spawn(async move {
             timeout(Duration::from_secs(10), async {
                 let exec = BiomeExecutor::new().await?;
-                exec.list_biomes(false, "text".to_string(), false, None)
-                    .await?;
+                exec.list_biomes(false, "text", false, None).await?;
                 exec.down_biome(format!("test-{}", i), false, 5, false)
                     .await
                     .ok();
@@ -323,9 +308,7 @@ async fn e2e_burst_traffic() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let executor = BiomeExecutor::new().await.ok()?;
-            let _ = executor
-                .list_biomes(false, "text".to_string(), false, None)
-                .await;
+            let _ = executor.list_biomes(false, "text", false, None).await;
             tx.send(format!("burst2_{}", i)).ok()
         });
     }
@@ -349,9 +332,7 @@ async fn e2e_list_with_resources() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
     // Simulate: User runs `toadstool ps --resources`
-    let result = executor
-        .list_biomes(false, "text".to_string(), true, None)
-        .await;
+    let result = executor.list_biomes(false, "text", true, None).await;
 
     assert!(result.is_ok());
 
@@ -372,7 +353,7 @@ async fn e2e_list_with_status_filter() -> Result<()> {
     for status in statuses {
         handles.push(tokio::spawn(async move {
             let exec = BiomeExecutor::new().await?;
-            exec.list_biomes(false, "text".to_string(), false, status)
+            exec.list_biomes(false, "text", false, status.as_deref())
                 .await
         }));
     }
@@ -396,7 +377,7 @@ async fn e2e_show_logs_line_variations() -> Result<()> {
         handles.push(tokio::spawn(async move {
             let exec = BiomeExecutor::new().await?;
             // Expected to fail (no biome), but tests parameter handling
-            exec.show_logs("test-biome".to_string(), false, lines, false, None, None)
+            exec.show_logs("test-biome", false, lines, false, None, None)
                 .await
         }));
     }
@@ -420,7 +401,7 @@ async fn e2e_down_timeout_variations() -> Result<()> {
         handles.push(tokio::spawn(async move {
             let exec = BiomeExecutor::new().await?;
             // Expected to fail (no biome), but tests parameter handling
-            exec.down_biome("test-biome".to_string(), false, timeout_val, false)
+            exec.down_biome("test-biome", false, timeout_val, false)
                 .await
         }));
     }
@@ -441,13 +422,12 @@ async fn e2e_down_force_variations() -> Result<()> {
     // Test both force and non-force
     let handle1 = tokio::spawn(async {
         let exec = BiomeExecutor::new().await?;
-        exec.down_biome("test-1".to_string(), false, 30, false)
-            .await
+        exec.down_biome("test-1", false, 30, false).await
     });
 
     let handle2 = tokio::spawn(async {
         let exec = BiomeExecutor::new().await?;
-        exec.down_biome("test-2".to_string(), true, 30, false).await
+        exec.down_biome("test-2", true, 30, false).await
     });
 
     // Both should complete (will error, expected)

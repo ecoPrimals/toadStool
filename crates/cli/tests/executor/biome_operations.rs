@@ -30,12 +30,7 @@ async fn test_down_biome_nonexistent_fails() {
     let executor = create_test_executor().await.unwrap();
 
     let result = executor
-        .down_biome(
-            "nonexistent-biome".to_string(),
-            false, // force
-            30,    // timeout
-            false, // purge
-        )
+        .down_biome("nonexistent-biome", false, 30, false)
         .await;
 
     assert!(
@@ -52,12 +47,7 @@ async fn test_down_biome_with_different_timeouts() {
 
     for timeout in timeouts {
         let result = executor
-            .down_biome(
-                "test-biome".to_string(),
-                false,   // force
-                timeout, // timeout_secs
-                false,   // purge
-            )
+            .down_biome("test-biome", false, timeout, false)
             .await;
 
         // Should fail (biome doesn't exist) but not panic on timeout value
@@ -107,7 +97,7 @@ async fn test_down_biome_with_force_flag() {
     // Test force flag variations
     for force in [true, false] {
         let result = executor
-            .down_biome("test-biome".to_string(), force, 30, false)
+            .down_biome("test-biome", force, 30, false)
             .await;
 
         // Should handle gracefully (will fail for nonexistent biome)
@@ -122,7 +112,7 @@ async fn test_down_biome_with_purge_flag() {
     // Test purge flag variations
     for purge in [true, false] {
         let result = executor
-            .down_biome("test-biome".to_string(), false, 30, purge)
+            .down_biome("test-biome", false, 30, purge)
             .await;
 
         // Should handle gracefully
@@ -135,12 +125,7 @@ async fn test_show_logs_for_nonexistent_biome_fails() {
     let executor = create_test_executor().await.unwrap();
 
     let result = executor
-        .show_logs(
-            "nonexistent-biome".to_string(),
-            false, // follow
-            None,  // tail
-            false, // timestamps
-        )
+        .show_logs("nonexistent-biome", false, 100, false, None, None)
         .await;
 
     assert!(
@@ -163,7 +148,7 @@ async fn test_show_logs_with_different_options() {
 
     for (follow, tail, timestamps) in test_cases {
         let result = executor
-            .show_logs("test-biome".to_string(), follow, tail, timestamps)
+            .show_logs("test-biome", follow, tail.unwrap_or(100), timestamps, None, None)
             .await;
 
         // Should fail gracefully for nonexistent biome

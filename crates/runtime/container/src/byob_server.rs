@@ -139,3 +139,48 @@ async fn health_handler(
         "message": "Ready to execute team biomes"
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_byob_server_config_default() {
+        let config = ByobServerConfig::default();
+        assert!(config.bind_address.is_none());
+        assert!(config.port.is_none());
+        assert!(config.config_path.is_none());
+    }
+
+    #[test]
+    fn test_byob_server_config_clone() {
+        let config = ByobServerConfig {
+            bind_address: Some("127.0.0.1".to_string()),
+            port: Some(9999),
+            config_path: Some("/tmp/test.toml".to_string()),
+        };
+        let cloned = config.clone();
+        assert_eq!(cloned.bind_address, config.bind_address);
+        assert_eq!(cloned.port, config.port);
+        assert_eq!(cloned.config_path, config.config_path);
+    }
+
+    #[test]
+    fn test_byob_server_config_debug() {
+        let config = ByobServerConfig::default();
+        let _ = format!("{:?}", config);
+    }
+
+    #[tokio::test]
+    async fn test_run_byob_server_invalid_config_path() {
+        let config = ByobServerConfig {
+            bind_address: None,
+            port: None,
+            config_path: Some("/nonexistent/path/that/does/not/exist/config.toml".to_string()),
+        };
+        let result = run_byob_server(config).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("config") || err.to_string().contains("read"));
+    }
+}

@@ -39,7 +39,7 @@ impl UniversalCloudOrchestrator {
             cost_optimizer,
             compliance_enforcer,
             _load_balancer: load_balancer,
-            federation_manager,
+            _federation_manager: federation_manager,
         })
     }
 

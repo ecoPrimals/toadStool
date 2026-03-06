@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_socket_discovery_error_debug() {
         let err = SocketDiscoveryError::NoSocketFound("test".to_string());
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
     }
 
     #[test]

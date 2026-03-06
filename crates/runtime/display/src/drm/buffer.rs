@@ -166,6 +166,10 @@ impl DumbBuffer {
     ///
     /// * `device` - DRM device used to create this buffer (required for mapping)
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer cannot be mapped (e.g. mmap fails).
+    ///
     /// # Example
     ///
     /// ```rust,no_run
@@ -188,6 +192,10 @@ impl DumbBuffer {
     ///
     /// Maps the buffer once, invokes the closure with a view, then unmaps.
     /// Prefer this over multiple `write_pixel` calls for bulk updates.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer cannot be mapped.
     ///
     /// # Example
     ///
@@ -246,6 +254,11 @@ impl DumbBuffer {
     #[must_use]
     pub fn handle(&self) -> drm::buffer::Handle {
         self.inner.handle()
+    }
+
+    /// Borrow the underlying `drm::control::DumbBuffer` for framebuffer attachment.
+    pub(crate) fn inner(&self) -> &drm::control::dumbbuffer::DumbBuffer {
+        &self.inner
     }
 }
 
@@ -321,7 +334,7 @@ pub struct MappedBuffer<'a> {
     device: &'a super::Device,
 }
 
-impl<'a> MappedBuffer<'a> {
+impl MappedBuffer<'_> {
     /// Get buffer dimensions
     #[must_use]
     pub const fn dimensions(&self) -> (u32, u32) {
@@ -341,6 +354,10 @@ impl<'a> MappedBuffer<'a> {
     }
 
     /// Write a pixel at (x, y). Color in native format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer cannot be mapped for writing.
     pub fn write_pixel(&mut self, x: u32, y: u32, color: u32) -> Result<()> {
         self.buffer.with_mapping(self.device, |view| {
             view.write_pixel(x, y, color);
@@ -348,6 +365,10 @@ impl<'a> MappedBuffer<'a> {
     }
 
     /// Fill entire buffer with a pixel value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer cannot be mapped for writing.
     pub fn fill(&mut self, color: u32) -> Result<()> {
         self.buffer.with_mapping(self.device, |view| {
             view.fill(color);
@@ -355,6 +376,10 @@ impl<'a> MappedBuffer<'a> {
     }
 
     /// Copy raw bytes into the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer cannot be mapped for writing.
     pub fn copy_from_slice(&mut self, pixels: &[u8]) -> Result<()> {
         self.buffer.with_mapping(self.device, |view| {
             view.copy_from_slice(pixels);
@@ -368,32 +393,122 @@ impl<'a> MappedBuffer<'a> {
     }
 }
 
-// Drop is automatic with DumbMapping! ✅
-// drm crate handles unmapping automatically!
-// impl Drop for MappedBuffer { ... } <- NOT NEEDED!
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-// SAFETY REVIEW:
-//
-// ✅ ZERO UNSAFE CODE IN THIS MODULE!
-//
-// Pure Rust evolution complete:
-// 1. drm::control::Device::create_dumb_buffer() - Real DRM ioctl
-// 2. drm::control::Device::map_dumb_buffer() - Real mmap (safe wrapper)
-// 3. drm::control::Device::destroy_dumb_buffer() - Real cleanup
-// 4. drm::control::DumbMapping - Safe memory mapping with automatic cleanup
-// 5. Arc<OwnedFd> - Safe resource management
-//
-// ✅ COMPLETE IMPLEMENTATION (no placeholders/mocks!)
-//
-// Grade: ✅✅✅ PERFECTLY SAFE (Pure Rust!)
-// ARM64: ✅ Works perfectly!
-// Deep Debt: ✅ 100% compliant!
-// Production: ✅ Real DRM operations!
+    #[test]
+    fn test_pixel_format_bpp() {
+        assert_eq!(PixelFormat::RGBA8888.bpp(), 32);
+        assert_eq!(PixelFormat::BGRA8888.bpp(), 32);
+        assert_eq!(PixelFormat::RGB888.bpp(), 24);
+        assert_eq!(PixelFormat::RGB565.bpp(), 16);
+    }
 
-// Phase 3: Advanced DRM Features (for window manager)
-//
-// 1. Framebuffer attachment (add_framebuffer)
-// 2. CRTC/Connector enumeration
-// 3. Mode setting (set_crtc)
-// 4. Page flip support (VSync)
-// 5. Hotplug detection
+    #[test]
+    fn test_pixel_format_bytes_per_pixel() {
+        assert_eq!(PixelFormat::RGBA8888.bytes_per_pixel(), 4);
+        assert_eq!(PixelFormat::BGRA8888.bytes_per_pixel(), 4);
+        assert_eq!(PixelFormat::RGB888.bytes_per_pixel(), 3);
+        assert_eq!(PixelFormat::RGB565.bytes_per_pixel(), 2);
+    }
+
+    #[test]
+    fn test_pixel_format_to_drm_fourcc() {
+        use drm::buffer::DrmFourcc;
+        assert_eq!(PixelFormat::RGBA8888.to_drm_fourcc(), DrmFourcc::Argb8888);
+        assert_eq!(PixelFormat::BGRA8888.to_drm_fourcc(), DrmFourcc::Abgr8888);
+        assert_eq!(PixelFormat::RGB888.to_drm_fourcc(), DrmFourcc::Rgb888);
+        assert_eq!(PixelFormat::RGB565.to_drm_fourcc(), DrmFourcc::Rgb565);
+    }
+
+    #[test]
+    fn test_mapped_buffer_view_write_pixel_and_fill() {
+        let mut data = vec![0u8; 16 * 4];
+        let mut view = MappedBufferView {
+            data: data.as_mut_slice(),
+            width: 4,
+            height: 4,
+            stride: 16,
+            format: PixelFormat::RGBA8888,
+        };
+        view.fill(0xFF0000FF);
+        assert_eq!(view.dimensions(), (4, 4));
+        assert_eq!(view.stride(), 16);
+        view.write_pixel(0, 0, 0x00FF00FF);
+    }
+
+    #[test]
+    fn test_mapped_buffer_view_write_pixel_bounds() {
+        let mut data = vec![0u8; 8 * 4];
+        let mut view = MappedBufferView {
+            data: data.as_mut_slice(),
+            width: 4,
+            height: 2,
+            stride: 16,
+            format: PixelFormat::RGBA8888,
+        };
+        view.write_pixel(0, 0, 0x11223344);
+        view.write_pixel(3, 1, 0xAABBCCDD);
+        assert_eq!(view.dimensions(), (4, 2));
+    }
+
+    #[test]
+    fn test_mapped_buffer_view_write_pixel_out_of_bounds_no_panic() {
+        let mut data = vec![0u8; 16];
+        let mut view = MappedBufferView {
+            data: data.as_mut_slice(),
+            width: 2,
+            height: 2,
+            stride: 8,
+            format: PixelFormat::RGBA8888,
+        };
+        view.write_pixel(10, 10, 0xFF);
+        view.write_pixel(2, 0, 0xFF);
+        view.write_pixel(0, 2, 0xFF);
+    }
+
+    #[test]
+    fn test_mapped_buffer_view_copy_from_slice() {
+        let mut data = vec![0u8; 64];
+        let mut view = MappedBufferView {
+            data: data.as_mut_slice(),
+            width: 4,
+            height: 4,
+            stride: 16,
+            format: PixelFormat::RGBA8888,
+        };
+        let pixels = vec![0x11u8; 32];
+        view.copy_from_slice(&pixels);
+        assert_eq!(&data[..32], &pixels[..]);
+    }
+
+    #[test]
+    fn test_mapped_buffer_view_copy_from_slice_clamps() {
+        let mut data = vec![0u8; 16];
+        let mut view = MappedBufferView {
+            data: data.as_mut_slice(),
+            width: 2,
+            height: 2,
+            stride: 8,
+            format: PixelFormat::RGBA8888,
+        };
+        let large_slice = vec![0xFFu8; 1000];
+        view.copy_from_slice(&large_slice);
+        assert_eq!(data.len(), 16);
+    }
+
+    #[test]
+    fn test_mapped_buffer_view_rgb565_fill() {
+        let mut data = vec![0u8; 8 * 2];
+        let mut view = MappedBufferView {
+            data: data.as_mut_slice(),
+            width: 4,
+            height: 2,
+            stride: 8,
+            format: PixelFormat::RGB565,
+        };
+        view.fill(0xFFFF);
+        view.write_pixel(1, 1, 0x0000);
+    }
+}

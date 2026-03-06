@@ -14,6 +14,9 @@
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;
 
+#[allow(deprecated)] // Protocol compatibility: default PKI image
+use toadstool_common::constants::ecosystem::well_known::BEARDOG;
+
 use crate::{
     BiomeNetworking, BiomeResources, BiomeSecurity, BiomeStorage, HealthCheck, PrimalConfig,
     ServiceConfig, ServicePort, ServiceResources, WorkloadSource,
@@ -46,7 +49,7 @@ pub fn create_basic_template() -> TemplateComponents {
             version: "latest".to_string(),
             source: WorkloadSource::Container {
                 registry: "registry.ecosystem.sovereignscience.org".to_string(),
-                image: "beardog".to_string(), // Default implementation for PKI capability
+                image: BEARDOG.to_string(), // Default implementation for PKI capability
                 tag: "latest".to_string(),
                 digest: None,
             },

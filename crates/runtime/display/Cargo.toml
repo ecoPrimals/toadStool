@@ -21,6 +21,11 @@ evdev = "0.13"              # Pure Rust evdev (NO libevdev!)
 # Optional: GPU buffer management (Pure Rust!)
 gbm = { version = "0.15", optional = true }  # For zero-copy GPU rendering
 
+# Serial transport (wraps edge crate's serialport capability)
+# default-features = false: avoids libudev-sys (C dep) for ecoBin pure-Rust compliance.
+# Port enumeration still works; may return less detail or stale entries.
+serialport = { version = "4.3", optional = true, default-features = false }
+
 # Async runtime
 tokio = { workspace = true }
 futures = "0.3"
@@ -42,14 +47,20 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Common utilities
 toadstool-common = { path = "../../core/common" }
 
+# Core hardware transport traits
+toadstool-core = { path = "../../toadstool-core" }
+
 [dev-dependencies]
 tokio-test = "0.4"
 criterion = "0.5"
 tracing-subscriber = "0.3"
 tempfile = "3"
+toadstool-core = { path = "../../toadstool-core" }
 
 
 [features]
 default = []
 # Use rustix instead of linux-drm (fallback)
 rustix-backend = []
+# Enable serial transport (USB/UART) for edge device bridging
+serial-transport = ["serialport"]

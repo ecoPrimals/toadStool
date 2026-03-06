@@ -145,24 +145,24 @@ fn test_format_bytes_kilobytes() {
 
 #[test]
 fn test_format_bytes_megabytes() {
-    assert_eq!(format_bytes(1048576), "1.0 MB");
-    assert_eq!(format_bytes(1572864), "1.5 MB");
+    assert_eq!(format_bytes(1_048_576), "1.0 MB");
+    assert_eq!(format_bytes(1_572_864), "1.5 MB");
 }
 
 #[test]
 fn test_format_bytes_gigabytes() {
-    assert_eq!(format_bytes(1073741824), "1.0 GB");
-    assert_eq!(format_bytes(2147483648), "2.0 GB");
+    assert_eq!(format_bytes(1_073_741_824), "1.0 GB");
+    assert_eq!(format_bytes(2_147_483_648), "2.0 GB");
 }
 
 #[test]
 fn test_format_bytes_terabytes() {
-    assert_eq!(format_bytes(1099511627776), "1.0 TB");
+    assert_eq!(format_bytes(1_099_511_627_776), "1.0 TB");
 }
 
 #[test]
 fn test_format_bytes_petabytes() {
-    assert_eq!(format_bytes(1125899906842624), "1.0 PB");
+    assert_eq!(format_bytes(1_125_899_906_842_624), "1.0 PB");
 }
 
 // ============================================================================

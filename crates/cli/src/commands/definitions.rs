@@ -187,6 +187,12 @@ pub enum Commands {
         operation: UniversalCommands,
     },
 
+    /// Hardware transport operations (HDMI, serial, capture)
+    Transport {
+        #[command(subcommand)]
+        action: TransportCommands,
+    },
+
     /// Start ToadStool in server mode (long-running service)
     ///
     /// **UniBin Standard Compliant**: Ecosystem-standard subcommand for running ToadStool
@@ -304,9 +310,9 @@ pub enum Commands {
     /// **UniBin Standard Compliant**: Compute execution service for BYOB (Bring Your Own Biome)
     /// deployments. Provides REST endpoints for deploy, list, stop, and resource usage.
     ByobServer {
-        /// Server bind address
-        #[arg(short, long, default_value = "0.0.0.0")]
-        bind: String,
+        /// Server bind address (default from TOADSTOOL_BIND_ADDRESS or BIND_ADDRESS env)
+        #[arg(short, long)]
+        bind: Option<String>,
 
         /// Server port
         #[arg(short, long, default_value_t = toadstool_config::ports::toadstool::DAEMON_API)]
@@ -386,6 +392,26 @@ pub enum EcosystemCommands {
         #[arg(long)]
         dataset: Option<String>,
     },
+}
+
+#[derive(Subcommand)]
+pub enum TransportCommands {
+    /// Discover available hardware transports
+    Discover {
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// List registered transports (via daemon)
+    List {
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// Show transport layer status
+    Status,
 }
 
 #[derive(Subcommand)]

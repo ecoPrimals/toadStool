@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
-//! Comprehensive tests for workload.rs types
-//!
-//! Test Coverage Sprint - Week 2, Nov 7, 2025
-//! Target: Bring workload.rs from 40% → 55%+
+//! Comprehensive tests for workload.rs types.
 
 use std::collections::HashMap;
 use std::path::PathBuf;

@@ -212,10 +212,8 @@ pub trait AgentBackend: Send + Sync {
 /// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct SquirrelBackend {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
-    #[allow(dead_code)] // Stored for potential future use
-    model_registry: String,
-    #[allow(dead_code)] // Stored for potential future use
-    agent_runtime: String,
+    _model_registry: String,
+    _agent_runtime: String,
     _mcp_enabled: bool,
 }
 
@@ -226,6 +224,10 @@ impl SquirrelBackend {
     /// Works with ANY service providing ml.agent capability.
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if capability discovery fails or the ML service socket cannot be connected.
     pub async fn new_async(
         model_registry: impl Into<String>,
         agent_runtime: impl Into<String>,
@@ -259,8 +261,8 @@ impl SquirrelBackend {
 
         Ok(Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-            model_registry: model_registry.into(),
-            agent_runtime: agent_runtime.into(),
+            _model_registry: model_registry.into(),
+            _agent_runtime: agent_runtime.into(),
             _mcp_enabled: mcp_enabled,
         })
     }
@@ -284,8 +286,8 @@ impl SquirrelBackend {
         let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability("ai");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-            model_registry: model_registry.into(),
-            agent_runtime: agent_runtime.into(),
+            _model_registry: model_registry.into(),
+            _agent_runtime: agent_runtime.into(),
             _mcp_enabled: mcp_enabled,
         }
     }
@@ -298,7 +300,7 @@ impl AgentBackend for SquirrelBackend {
         // Health check via JSON-RPC over unix socket
         let _health: serde_json::Value = self
             .rpc_client
-            .call("squirrel.health", serde_json::json!({}))
+            .call("ai.health", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to Squirrel: {e}")))?;
 
@@ -312,7 +314,7 @@ impl AgentBackend for SquirrelBackend {
 
         let agent_info: AgentInfo = self
             .rpc_client
-            .call_typed("squirrel.deploy_agent", params)
+            .call_typed("ai.deploy_agent", params)
             .await
             .map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to deploy agent {}: {}", config.name, e))
@@ -328,7 +330,7 @@ impl AgentBackend for SquirrelBackend {
 
         let model_info: ModelInfo = self
             .rpc_client
-            .call_typed("squirrel.load_model", params)
+            .call_typed("ai.load_model", params)
             .await
             .map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to load model {}: {}", config.name, e))
@@ -346,7 +348,7 @@ impl AgentBackend for SquirrelBackend {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("squirrel.scale_agent", params)
+            .call("ai.scale_agent", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to scale agent: {e}")))?;
 
@@ -359,7 +361,7 @@ impl AgentBackend for SquirrelBackend {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("squirrel.stop_agent", params)
+            .call("ai.stop_agent", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to stop agent: {e}")))?;
 
@@ -372,7 +374,7 @@ impl AgentBackend for SquirrelBackend {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("squirrel.remove_agent", params)
+            .call("ai.remove_agent", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to remove agent: {e}")))?;
 
@@ -385,7 +387,7 @@ impl AgentBackend for SquirrelBackend {
 
         let status: AgentStatus = self
             .rpc_client
-            .call_typed("squirrel.get_agent_status", params)
+            .call_typed("ai.get_agent_status", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent status: {e}")))?;
 
@@ -395,7 +397,7 @@ impl AgentBackend for SquirrelBackend {
     async fn list_agents(&self) -> ToadStoolResult<Vec<AgentInfo>> {
         let agents: Vec<AgentInfo> = self
             .rpc_client
-            .call_typed("squirrel.list_agents", serde_json::json!({}))
+            .call_typed("ai.list_agents", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to list agents: {e}")))?;
 
@@ -405,7 +407,7 @@ impl AgentBackend for SquirrelBackend {
     async fn list_models(&self) -> ToadStoolResult<Vec<ModelInfo>> {
         let models: Vec<ModelInfo> = self
             .rpc_client
-            .call_typed("squirrel.list_models", serde_json::json!({}))
+            .call_typed("ai.list_models", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to list models: {e}")))?;
 
@@ -417,7 +419,7 @@ impl AgentBackend for SquirrelBackend {
 
         let resources: AgentResourceUsage = self
             .rpc_client
-            .call_typed("squirrel.get_agent_resources", params)
+            .call_typed("ai.get_agent_resources", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent resources: {e}")))?;
 
@@ -429,7 +431,7 @@ impl AgentBackend for SquirrelBackend {
 
         let _: serde_json::Value = self
             .rpc_client
-            .call("squirrel.unload_model", params)
+            .call("ai.unload_model", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to unload model: {e}")))?;
 

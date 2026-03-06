@@ -3,6 +3,10 @@
 
 use std::path::PathBuf;
 
+#[allow(deprecated)] // Protocol compatibility: service name matching requires well_known
+use crate::constants::ecosystem::well_known::{BEARDOG, BIOMEOS, NESTGATE, SONGBIRD, SQUIRREL};
+use crate::constants::primal_identity::PRIMAL_NAME;
+
 use super::discovery;
 use super::env::SocketPathEnv;
 use super::paths;
@@ -121,19 +125,25 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 )]
 #[allow(deprecated)]
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
-    match service_name.to_lowercase().as_str() {
-        "beardog" | "bear-dog" => get_beardog_socket_path(),
-        "songbird" | "song-bird" => get_songbird_socket_path(),
-        "nestgate" | "nest-gate" => get_nestgate_socket_path(),
-        "squirrel" => get_squirrel_socket_path(),
-        "toadstool" | "toad-stool" => get_toadstool_socket_path(),
-        "nucleus" | "biomeos" => get_nucleus_socket_path(),
-        _ => {
-            let env = SocketPathEnv::from_env();
-            let env_var = format!("{}_SOCKET", service_name.to_uppercase().replace('-', "_"));
-            let override_path = std::env::var(&env_var).ok().map(PathBuf::from);
-            paths::resolve_socket_path_for_service(service_name, &env, override_path)
-        }
+    let normalized = service_name.to_lowercase();
+    let s = normalized.as_str();
+    if s == BEARDOG || s == "bear-dog" {
+        get_beardog_socket_path()
+    } else if s == SONGBIRD || s == "song-bird" {
+        get_songbird_socket_path()
+    } else if s == NESTGATE || s == "nest-gate" {
+        get_nestgate_socket_path()
+    } else if s == SQUIRREL {
+        get_squirrel_socket_path()
+    } else if s == PRIMAL_NAME || s == "toad-stool" {
+        get_toadstool_socket_path()
+    } else if s == "nucleus" || s == BIOMEOS {
+        get_nucleus_socket_path()
+    } else {
+        let env = SocketPathEnv::from_env();
+        let env_var = format!("{}_SOCKET", service_name.to_uppercase().replace('-', "_"));
+        let override_path = std::env::var(&env_var).ok().map(PathBuf::from);
+        paths::resolve_socket_path_for_service(service_name, &env, override_path)
     }
 }
 

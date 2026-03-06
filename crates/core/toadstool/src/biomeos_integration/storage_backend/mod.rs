@@ -9,7 +9,7 @@
 //! | Backend | Module | Purpose |
 //! |---------|--------|---------|
 //! | [`NestGateBackend`] | `nestgate` | Production — communicates via Unix socket JSON-RPC |
-//! | [`InMemoryBackend`] | `inmemory` | Testing & lightweight — pure in-process HashMap |
+//! | [`InMemoryBackend`] | `inmemory` | Testing & lightweight — pure in-process `HashMap` |
 //!
 //! ## Design Pattern: Dependency Injection
 //!

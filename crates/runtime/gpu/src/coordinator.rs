@@ -224,3 +224,155 @@ impl LoadBalancer for WeightedRoundRobinBalancer {
         stats
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ResourceConfig;
+    use crate::types::{DeviceCapabilities, DeviceId, DeviceInfo, DeviceType, GpuFramework};
+
+    fn make_device(id: &str, total_memory: u64, compute_units: u32) -> UniversalComputeDevice {
+        UniversalComputeDevice {
+            id: DeviceId {
+                framework: GpuFramework::Cuda,
+                device_index: 0,
+                uuid: id.to_string(),
+            },
+            info: DeviceInfo {
+                name: format!("Device {id}"),
+                vendor: "Test".to_string(),
+                device_type: DeviceType::DiscreteGpu,
+                driver_version: "1.0".to_string(),
+                architecture: "test".to_string(),
+                physical_location: None,
+            },
+            capabilities: DeviceCapabilities {
+                compute_capability: "7.0".to_string(),
+                total_memory_bytes: total_memory,
+                memory_bandwidth_gbps: 100.0,
+                compute_units,
+                max_work_group_size: (256, 256, 256),
+                supported_data_types: vec![],
+                extensions: std::collections::HashMap::new(),
+                performance: crate::types::PerformanceCharacteristics {
+                    peak_gflops_fp32: 1000.0,
+                    peak_gflops_fp64: Some(500.0),
+                    peak_gflops_fp16: Some(2000.0),
+                    peak_memory_bandwidth_utilization: 0.8,
+                    typical_power_watts: 100.0,
+                    max_power_watts: 200.0,
+                },
+            },
+            usage: Arc::new(RwLock::new(crate::types::DeviceUsage::default())),
+            framework_handle: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_initialize_device_pool() {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
+        let result = coordinator.initialize_device_pool(&device).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_allocate_resources_success() {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
+        coordinator.initialize_device_pool(&device).await.unwrap();
+
+        let requirements = DeviceRequirements::minimal();
+        let result = coordinator
+            .allocate_resources(&device.id, &requirements)
+            .await;
+        assert!(result.is_ok());
+        let alloc = result.unwrap();
+        assert_eq!(alloc.memory_bytes, 64 * 1024 * 1024);
+        assert_eq!(alloc.compute_units, 1);
+    }
+
+    #[tokio::test]
+    async fn test_allocate_resources_insufficient_memory() {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 32 * 1024 * 1024, 16); // 32MB only
+        coordinator.initialize_device_pool(&device).await.unwrap();
+
+        let requirements = DeviceRequirements::minimal();
+        let result = coordinator
+            .allocate_resources(&device.id, &requirements)
+            .await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Insufficient memory"));
+    }
+
+    #[tokio::test]
+    async fn test_allocate_resources_insufficient_compute() {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 1);
+        coordinator.initialize_device_pool(&device).await.unwrap();
+
+        let mut requirements = DeviceRequirements::minimal();
+        requirements.min_compute_units = Some(4);
+        let result = coordinator
+            .allocate_resources(&device.id, &requirements)
+            .await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Insufficient compute"));
+    }
+
+    #[tokio::test]
+    async fn test_release_resources() {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
+        coordinator.initialize_device_pool(&device).await.unwrap();
+
+        let requirements = DeviceRequirements::minimal();
+        let alloc = coordinator
+            .allocate_resources(&device.id, &requirements)
+            .await
+            .unwrap();
+        let result = coordinator.release_resources(&device.id, &alloc).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_pool_stats() {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
+        coordinator.initialize_device_pool(&device).await.unwrap();
+
+        let stats = coordinator.get_pool_stats(&device.id).await;
+        assert!(stats.is_some());
+        let s = stats.unwrap();
+        assert_eq!(s.total_memory, 8 * 1024 * 1024 * 1024);
+        assert_eq!(s.total_compute_units, 16);
+        assert_eq!(s.allocated_memory, 0);
+    }
+
+    #[tokio::test]
+    async fn test_select_device_empty_fails() {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let requirements = DeviceRequirements::minimal();
+        let result = coordinator.select_device(&[], &requirements).await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_weighted_round_robin_balancer_default() {
+        let _ = WeightedRoundRobinBalancer::default();
+    }
+}

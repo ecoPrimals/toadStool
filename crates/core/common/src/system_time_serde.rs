@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Serde support for `std::time::SystemTime`
+//! Serde support for [`SystemTime`]
 //!
 //! Serializes as Unix timestamp (seconds since epoch) for portable JSON compatibility.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::time::SystemTime;
 
-/// Format SystemTime for display (e.g. "2025-02-27 12:00")
+/// Format [`SystemTime`] for display (e.g. "2025-02-27 12:00")
 #[must_use]
 pub fn format_display(t: SystemTime) -> String {
     let rfc = format_rfc3339(t);
     rfc.replace('T', " ").chars().take(16).collect()
 }
 
-/// Format SystemTime as RFC3339 string (e.g. "2025-02-27T12:00:00Z")
+/// Format [`SystemTime`] as RFC3339 string (e.g. "2025-02-27T12:00:00Z")
 #[must_use]
+#[allow(clippy::cast_possible_truncation)]
 pub fn format_rfc3339(t: SystemTime) -> String {
+    const SECS_PER_DAY: u64 = 86_400;
     let d = t.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
     let secs = d.as_secs();
-
-    const SECS_PER_DAY: u64 = 86_400;
-    #[allow(clippy::cast_possible_truncation)]
-    let days = (secs / SECS_PER_DAY) as u32; // fits: days since epoch < u32::MAX for realistic dates
+    // days since epoch fits u32 for all realistic dates (up to year ~11_761_191)
+    let days = (secs / SECS_PER_DAY) as u32;
     let time_of_day = secs % SECS_PER_DAY;
     let hour = (time_of_day / 3600) as u8;
     let minute = ((time_of_day % 3600) / 60) as u8;
@@ -34,7 +34,6 @@ pub fn format_rfc3339(t: SystemTime) -> String {
 
 /// Convert days since 1970-01-01 to (year, month, day) in UTC
 fn days_since_epoch_to_ymd(days: u32) -> (u32, u8, u8) {
-    // Use simplified Gregorian calendar conversion
     const EPOCH: u32 = 719_163; // Rata Die for 1970-01-01
     let rd = days + EPOCH;
 
@@ -44,16 +43,12 @@ fn days_since_epoch_to_ymd(days: u32) -> (u32, u8, u8) {
     (year, month, day)
 }
 
-#[allow(unused_assignments, clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_truncation)]
 fn rd_to_year_doy(rd: u32) -> (u32, u16) {
-    let mut year = 0u32;
-    let mut doy = rd;
+    // Intermediate u64 arithmetic avoids overflow on large Rata Die values
+    let mut year = (u64::from(rd) * 400 / 146_097) as u32;
+    let mut doy = rd - (u64::from(year) * 146_097 / 400) as u32;
 
-    // Approximate year (doy is u32, results fit in u32 for calendar arithmetic)
-    year = (doy as u64 * 400 / 146_097) as u32;
-    doy -= (year as u64 * 146_097 / 400) as u32;
-
-    // Refine
     year += (doy / 36_524) * 100;
     doy %= 36_524;
     year += (doy / 1461) * 4;
@@ -69,6 +64,7 @@ fn rd_to_year_doy(rd: u32) -> (u32, u16) {
     (year, doy as u16)
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn doy_to_month_day(year: u32, doy: u16) -> (u8, u8) {
     let leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
     let days_in_month: [u16; 12] = if leap {
@@ -80,6 +76,7 @@ fn doy_to_month_day(year: u32, doy: u16) -> (u8, u8) {
     let mut d = doy;
     for (i, &dim) in days_in_month.iter().enumerate() {
         if d <= dim {
+            // month 1..=12, day 1..=31 — both guaranteed ≤ 255
             return ((i + 1) as u8, d as u8);
         }
         d -= dim;
@@ -87,11 +84,11 @@ fn doy_to_month_day(year: u32, doy: u16) -> (u8, u8) {
     (12, 31)
 }
 
-/// Serialize SystemTime as Unix timestamp (seconds since epoch)
+/// Serialize [`SystemTime`] as Unix timestamp (seconds since epoch)
 ///
 /// # Errors
 ///
-/// Returns `S::Error` if the timestamp is before UNIX_EPOCH or serialization fails.
+/// Returns `S::Error` if the timestamp is before `UNIX_EPOCH` or serialization fails.
 pub fn serialize<S>(t: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -103,7 +100,7 @@ where
     secs.serialize(serializer)
 }
 
-/// Deserialize SystemTime from Unix timestamp (seconds since epoch)
+/// Deserialize [`SystemTime`] from Unix timestamp (seconds since epoch)
 ///
 /// # Errors
 ///
@@ -116,7 +113,7 @@ where
     Ok(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(secs))
 }
 
-/// Serde support for `Option<SystemTime>` - serializes as null or Unix timestamp
+/// Serde support for `Option<SystemTime>` — serializes as null or Unix timestamp
 pub mod opt {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::SystemTime;
@@ -125,7 +122,7 @@ pub mod opt {
 
     /// # Errors
     ///
-    /// Returns `S::Error` if the timestamp is before UNIX_EPOCH or serialization fails.
+    /// Returns `S::Error` if the timestamp is before `UNIX_EPOCH` or serialization fails.
     pub fn serialize<S>(opt: &Option<SystemTime>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

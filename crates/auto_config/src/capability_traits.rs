@@ -175,6 +175,7 @@ impl EcosystemServiceDiscoverer for MockEcosystemDiscoverer {
 /// Implement the traits for real detectors
 impl crate::hardware::HardwareDetector {
     /// Convert to trait object
+    #[must_use]
     pub fn into_trait(self) -> Box<dyn HardwareCapabilityDetector> {
         Box::new(RealHardwareDetector { inner: self })
     }
@@ -182,6 +183,7 @@ impl crate::hardware::HardwareDetector {
 
 impl crate::ecosystem::EcosystemDiscoverer {
     /// Convert to trait object
+    #[must_use]
     pub fn into_trait(self) -> Box<dyn EcosystemServiceDiscoverer> {
         Box::new(RealEcosystemDiscoverer { inner: self })
     }

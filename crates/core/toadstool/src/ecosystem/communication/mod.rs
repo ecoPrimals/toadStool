@@ -296,7 +296,7 @@ impl CommunicationManager {
     fn fallback_response(&self, original: EcosystemMessage) -> EcosystemMessage {
         EcosystemMessage {
             id: uuid::Uuid::new_v4(),
-            from: format!("{}_local", PRIMAL_NAME),
+            from: format!("{PRIMAL_NAME}_local"),
             to: original.from,
             message_type: super::types::EcosystemMessageType::StatusUpdate,
             payload: serde_json::json!({

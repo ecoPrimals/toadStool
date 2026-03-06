@@ -121,9 +121,9 @@ impl PathEnv {
         let temp = std::env::temp_dir();
         let temp_str = temp.to_string_lossy().to_string();
         Self {
-            xdg_runtime_dir: Some(format!("{}/test-runtime", temp_str)),
-            xdg_data_home: Some(format!("{}/test-data", temp_str)),
-            xdg_cache_home: Some(format!("{}/test-cache", temp_str)),
+            xdg_runtime_dir: Some(format!("{temp_str}/test-runtime")),
+            xdg_data_home: Some(format!("{temp_str}/test-data")),
+            xdg_cache_home: Some(format!("{temp_str}/test-cache")),
             home: Some(temp_str.clone()),
             user: Some("testuser".to_string()),
             tmpdir: Some(temp_str),
@@ -654,7 +654,7 @@ mod tests {
     fn test_path_env_from_env() {
         let env = PathEnv::from_env();
         // Should not panic; may or may not have values depending on test environment
-        let _ = format!("{:?}", env);
+        let _ = format!("{env:?}");
     }
 
     #[test]

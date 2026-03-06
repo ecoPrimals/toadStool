@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn test_discovery_config_debug() {
         let config = DiscoveryConfig::production();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("DiscoveryConfig"));
         assert!(debug_str.contains("enable_localhost_fallback"));
     }
@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn test_localhost_fallbacks_debug() {
         let fallbacks = LocalhostFallbacks { enabled: true };
-        let debug_str = format!("{:?}", fallbacks);
+        let debug_str = format!("{fallbacks:?}");
         assert!(debug_str.contains("LocalhostFallbacks"));
         assert!(debug_str.contains("enabled"));
     }

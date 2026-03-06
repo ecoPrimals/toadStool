@@ -68,11 +68,9 @@ impl ToadStoolConfigTrait for ProfilerConfig {
                 .ok()
                 .and_then(|s| s.parse().ok()),
             parallel: env::var("TOADSTOOL_PROFILER_PARALLEL")
-                .map(|s| s == "true" || s == "1")
-                .unwrap_or_default(),
+                .is_ok_and(|s| s == "true" || s == "1"),
             detailed_metrics: env::var("TOADSTOOL_PROFILER_DETAILED")
-                .map(|s| s == "true" || s == "1")
-                .unwrap_or_default(),
+                .is_ok_and(|s| s == "true" || s == "1"),
             output_format: env::var("TOADSTOOL_PROFILER_OUTPUT")
                 .ok()
                 .and_then(|s| match s.to_lowercase().as_str() {

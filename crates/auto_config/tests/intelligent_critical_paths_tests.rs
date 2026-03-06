@@ -338,7 +338,7 @@ async fn test_optimize_for_platform_completes() {
     let optimizer = PlatformOptimizer::new();
     let hardware = SystemCapabilities::default();
 
-    let result = optimizer.optimize_for_platform(&hardware).await;
+    let result = optimizer.optimize_for_platform(&hardware);
 
     match result {
         Ok(platform_config) => {

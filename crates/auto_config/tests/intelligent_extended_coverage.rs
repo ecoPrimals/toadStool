@@ -436,7 +436,7 @@ async fn test_platform_optimizer_optimize_linux() {
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
-    let result = optimizer.optimize_for_platform(&hardware).await;
+    let result = optimizer.optimize_for_platform(&hardware);
 
     assert!(result.is_ok());
 
@@ -469,7 +469,7 @@ async fn test_platform_optimizer_high_core_optimization() {
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
-    let result = optimizer.optimize_for_platform(&hardware).await;
+    let result = optimizer.optimize_for_platform(&hardware);
 
     assert!(result.is_ok());
 
@@ -504,7 +504,7 @@ async fn test_platform_optimizer_high_memory_optimization() {
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
-    let result = optimizer.optimize_for_platform(&hardware).await;
+    let result = optimizer.optimize_for_platform(&hardware);
 
     assert!(result.is_ok());
 

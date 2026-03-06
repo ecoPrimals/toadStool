@@ -34,7 +34,7 @@ async fn test_concurrent_list_biomes_calls() {
         .map(|_| {
             let exec = executor.clone();
             tokio::spawn(async move {
-                exec.list_biomes(false, "table".to_string(), false, None)
+                exec.list_biomes(false, "table", false, None)
                     .await
             })
         })
@@ -61,7 +61,7 @@ async fn test_concurrent_executor_operations() {
         let b = barrier.clone();
         handles.push(tokio::spawn(async move {
             b.wait().await;
-            exec.list_biomes(false, "table".to_string(), false, None)
+            exec.list_biomes(false, "table", false, None)
                 .await
         }));
     }
@@ -83,7 +83,7 @@ async fn test_concurrent_executor_operations() {
         let b = barrier.clone();
         handles.push(tokio::spawn(async move {
             b.wait().await;
-            exec.list_biomes(all, "table".to_string(), false, None)
+            exec.list_biomes(all, "table", false, None)
                 .await
         }));
     }
@@ -107,7 +107,7 @@ async fn test_stress_concurrent_operations() {
         let b = barrier.clone();
         handles.push(tokio::spawn(async move {
             b.wait().await;
-            exec.list_biomes(false, "table".to_string(), false, None)
+            exec.list_biomes(false, "table", false, None)
                 .await
         }));
     }
@@ -184,7 +184,7 @@ async fn test_executor_under_load() {
         .map(|_| {
             let exec = executor.clone();
             tokio::spawn(async move {
-                exec.list_biomes(false, "table".to_string(), false, None)
+                exec.list_biomes(false, "table", false, None)
                     .await
             })
         })
@@ -217,7 +217,7 @@ async fn test_race_condition_safety() {
             let b = barrier.clone();
             tokio::spawn(async move {
                 b.wait().await; // All start at exactly the same time
-                exec.list_biomes(false, "table".to_string(), false, None)
+                exec.list_biomes(false, "table", false, None)
                     .await
             })
         })

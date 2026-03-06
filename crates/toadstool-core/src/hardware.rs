@@ -225,6 +225,9 @@ impl HardwareManager {
     /// Re-scan hardware (for hot-plug events)
     ///
     /// Deep Debt: ToadStool adapts to hardware changes
+    ///
+    /// # Errors
+    /// Returns error if hardware discovery fails.
     pub fn rescan(&mut self) -> Result<(), HardwareError> {
         info!("ToadStool re-scanning hardware...");
         let new_manager = Self::discover()?;

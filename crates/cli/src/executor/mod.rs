@@ -373,7 +373,7 @@ mod tests {
     async fn test_down_biome_nonexistent_returns_error() {
         let executor = BiomeExecutor::new().await.expect("executor should create");
         let result = executor
-            .down_biome("nonexistent-biome-12345".to_string(), false, 30, false)
+            .down_biome("nonexistent-biome-12345", false, 30, false)
             .await;
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -383,9 +383,30 @@ mod tests {
     #[tokio::test]
     async fn test_list_biomes_empty() {
         let executor = BiomeExecutor::new().await.expect("executor should create");
-        let result = executor
-            .list_biomes(false, "table".to_string(), false, None)
-            .await;
+        let result = executor.list_biomes(false, "table", false, None).await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_list_biomes_with_resources() {
+        let executor = BiomeExecutor::new().await.expect("executor should create");
+        let result = executor.list_biomes(false, "table", true, None).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_list_biomes_json_format() {
+        let executor = BiomeExecutor::new().await.expect("executor should create");
+        let result = executor.list_biomes(false, "json", false, None).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_show_logs_nonexistent_biome() {
+        let executor = BiomeExecutor::new().await.expect("executor should create");
+        let result = executor
+            .show_logs("nonexistent-biome", false, 10, false, None, None)
+            .await;
+        assert!(result.is_err());
     }
 }

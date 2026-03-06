@@ -124,6 +124,10 @@ impl Device {
     ///
     /// Uses drm crate's Device trait methods to get real capabilities.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if driver or capability queries fail.
+    ///
     /// # Example
     ///
     /// ```rust,no_run
@@ -153,28 +157,36 @@ impl Device {
         // Query DRM capabilities using Device trait (Pure Rust!)
         let supports_dumb_buffers = self
             .get_driver_capability(drm::DriverCapability::DumbBuffer)
-            .map(|v| v != 0)
-            .unwrap_or_else(|_| {
-                tracing::debug!("Could not query dumb buffer support, assuming true");
-                true // Most modern drivers support this
-            });
+            .map_or_else(
+                |_| {
+                    tracing::debug!("Could not query dumb buffer support, assuming true");
+                    true // Most modern drivers support this
+                },
+                |v| v != 0,
+            );
 
         // Note: DriverCapability doesn't have CapAtomic, use ASyncPageFlip as proxy
         let supports_atomic_modesetting = self
             .get_driver_capability(drm::DriverCapability::ASyncPageFlip)
-            .map(|v| v != 0)
-            .unwrap_or_else(|_| {
-                tracing::debug!("Async page flip not supported, assuming no atomic");
-                false
-            });
+            .map_or_else(
+                |_| {
+                    tracing::debug!("Async page flip not supported, assuming no atomic");
+                    false
+                },
+                |v| v != 0,
+            );
 
+        #[allow(clippy::cast_possible_truncation)]
+        // DumbPreferredDepth is hardware register; 32-bit depth fits
         let preferred_depth = self
             .get_driver_capability(drm::DriverCapability::DumbPreferredDepth)
-            .map(|v| v as u32)
-            .unwrap_or_else(|_| {
-                tracing::debug!("Could not query preferred depth, defaulting to 32");
-                32 // Standard RGBA8888
-            });
+            .map_or_else(
+                |_| {
+                    tracing::debug!("Could not query preferred depth, defaulting to 32");
+                    32u32 // Standard RGBA8888
+                },
+                |v| v as u32,
+            );
 
         tracing::info!(
             "Capabilities: dumb={}, atomic={}, depth={}",
@@ -200,11 +212,13 @@ impl Device {
     ///
     /// The returned Arc is safe to clone and share.
     /// The underlying file descriptor is automatically managed.
+    #[must_use]
     pub fn fd(&self) -> &Arc<OwnedFd> {
         &self.fd
     }
 
     /// Get device path
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -219,6 +233,10 @@ impl Device {
     /// - ✅ Agnostic discovery!
     /// - ✅ Runtime detection!
     /// - ✅ Self-knowledge only!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `/dev/dri` cannot be read.
     ///
     /// # Example
     ///
@@ -264,10 +282,6 @@ impl Device {
     }
 }
 
-// Drop is automatic with OwnedFd! ✅
-// No unsafe close() needed - rustix handles cleanup!
-// impl Drop for Device { ... } <- NOT NEEDED!
-
 /// Device capabilities
 #[derive(Debug, Clone)]
 pub struct DeviceCapabilities {
@@ -282,32 +296,3 @@ pub struct DeviceCapabilities {
     /// Driver version string
     pub driver_version: String,
 }
-
-// SAFETY REVIEW:
-//
-// ✅ ZERO UNSAFE CODE IN THIS MODULE!
-//
-// Pure Rust evolution complete:
-// 1. rustix::fs::open() - Safe file operations
-// 2. Arc<OwnedFd> - Safe resource management with automatic cleanup
-// 3. No manual close() needed - Drop handled by rustix
-// 4. drm::get_version() - Safe DRM queries (Pure Rust!)
-// 5. drm::get_driver_capability() - Safe capability queries (Pure Rust!)
-//
-// ✅ COMPLETE IMPLEMENTATION (no placeholders/mocks!)
-//
-// Grade: ✅✅✅ PERFECTLY SAFE (Pure Rust!)
-// ARM64: ✅ Works perfectly!
-// Deep Debt: ✅ 100% compliant!
-// Production Ready: ✅ Complete implementation!
-
-// Phase 3: Advanced DRM Features (for window manager)
-//
-// 1. Resource enumeration (using drm crate):
-//    - Get connectors (displays)
-//    - Get CRTCs (scanout engines)
-//    - Get encoders
-//    - Get modes (resolutions)
-// 2. Mode setting operations
-// 3. Page flip (VSync) support
-// 4. Hotplug detection

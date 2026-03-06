@@ -242,7 +242,7 @@ impl EntropyClient {
 
         let seed: EphemeralSeed = self
             .rpc_client
-            .call_typed("beardog.entropy.generate_seed", params)
+            .call_typed("crypto.entropy.generate_seed", params)
             .await
             .map_err(|e| {
                 BeardogError::Other(format!("Failed to request seed from bearDog: {e}"))
@@ -334,5 +334,97 @@ mod tests {
         assert_eq!(request.source, EntropySource::Mixed);
         assert!((request.min_quality - 0.7).abs() < f32::EPSILON);
         assert!(request.mixing.is_valid());
+    }
+
+    #[tokio::test]
+    async fn test_entropy_client_is_available() {
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let client = EntropyClient {
+            endpoint: Some("unix:///tmp/beardog.sock".to_string()),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+            available: true,
+        };
+        assert!(client.is_available());
+    }
+
+    #[tokio::test]
+    async fn test_entropy_client_not_available() {
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let client = EntropyClient {
+            endpoint: None,
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+            available: false,
+        };
+        assert!(!client.is_available());
+    }
+
+    #[tokio::test]
+    async fn test_generate_seed_with_request() {
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let client = EntropyClient {
+            endpoint: None,
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+            available: false,
+        };
+
+        let request = SeedRequest::default();
+        let seed = client.generate_seed_with_request(request).await;
+        assert!(seed.is_ok());
+        let seed = seed.unwrap();
+        assert_eq!(seed.source, EntropySource::Machine);
+    }
+
+    #[test]
+    fn test_seed_request_serialization() {
+        let request = SeedRequest::default();
+        let json = serde_json::to_string(&request).unwrap();
+        let restored: SeedRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(request.source, restored.source);
+        assert!((request.min_quality - restored.min_quality).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_seed_request_mixing_valid() {
+        let request = SeedRequest::default();
+        assert!(request.mixing.is_valid());
+    }
+
+    #[test]
+    fn test_entropy_mixing_beardog_standard() {
+        let mixing = EntropyMixing::beardog_standard();
+        assert!(mixing.is_valid());
+        assert!(mixing.machine_weight > 0.0 || mixing.human_weight > 0.0);
+    }
+
+    #[test]
+    fn test_discover_via_env_beardog_url() {
+        temp_env::with_var("BEARDOG_URL", Some("unix:///run/beardog.sock"), || {
+            let result = std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(EntropyClient::discover_via_capability())
+            })
+            .join()
+            .expect("thread");
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), "unix:///run/beardog.sock");
+        });
+    }
+
+    #[test]
+    fn test_ephemeral_seed_structure() {
+        let seed = EntropyClient::system_entropy_fallback();
+        assert!(!seed.seed_data.is_empty());
+        assert_eq!(seed.source, EntropySource::Machine);
+        assert!(seed.quality.machine_quality > 0.0);
+    }
+
+    #[test]
+    fn test_seed_quality_new() {
+        let quality = SeedQuality::new(0.8, 0.9, 0.5);
+        assert!((quality.machine_quality - 0.9).abs() < f32::EPSILON);
+        assert!((quality.human_quality - 0.5).abs() < f32::EPSILON);
     }
 }

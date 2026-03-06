@@ -188,7 +188,7 @@ async fn test_concurrent_platform_detection() -> Result<()> {
 async fn test_show_capabilities_text() -> Result<()> {
     let manager = UniversalComputeManager::new().await?;
 
-    let result = manager.show_capabilities("text".to_string(), false).await;
+    let result = manager.show_capabilities("text", false).await;
 
     // Should succeed
     assert!(result.is_ok(), "Show capabilities (text) should succeed");
@@ -206,7 +206,7 @@ async fn test_show_capabilities_formats() -> Result<()> {
         let format = format.to_string();
         handles.push(tokio::spawn(async move {
             let mgr = UniversalComputeManager::new().await?;
-            mgr.show_capabilities(format, false).await
+            mgr.show_capabilities(format.as_str(), false).await
         }));
     }
 
@@ -233,7 +233,7 @@ async fn test_show_capabilities_detailed() -> Result<()> {
         let format = format.to_string();
         handles.push(tokio::spawn(async move {
             let mgr = UniversalComputeManager::new().await?;
-            mgr.show_capabilities(format, detailed).await
+            mgr.show_capabilities(format.as_str(), detailed).await
         }));
     }
 
@@ -258,7 +258,7 @@ async fn test_concurrent_show_capabilities() -> Result<()> {
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
             let format = if i % 2 == 0 { "text" } else { "json" };
-            let result = mgr.show_capabilities(format.to_string(), false).await;
+            let result = mgr.show_capabilities(format, false).await;
             tx.send(i).ok();
             result
         }));
@@ -290,7 +290,7 @@ async fn test_create_and_use_pattern() -> Result<()> {
     for _ in 0..10 {
         handles.push(tokio::spawn(async {
             let mgr = UniversalComputeManager::new().await?;
-            mgr.show_capabilities("text".to_string(), false).await?;
+            mgr.show_capabilities("text", false).await?;
             Ok::<_, anyhow::Error>(())
         }));
     }
@@ -327,7 +327,7 @@ async fn test_burst_manager_operations() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let mgr = UniversalComputeManager::new().await.ok()?;
-            let _result = mgr.show_capabilities("text".to_string(), false).await;
+            let _result = mgr.show_capabilities("text", false).await;
             tx.send(format!("burst2_{}", i)).ok()
         });
     }
@@ -351,9 +351,9 @@ async fn test_sustained_manager_load() -> Result<()> {
         handles.push(tokio::spawn(async move {
             let mgr = UniversalComputeManager::new().await?;
             if i % 2 == 0 {
-                mgr.show_capabilities("text".to_string(), false).await
+                mgr.show_capabilities("text", false).await
             } else {
-                mgr.show_capabilities("json".to_string(), true).await
+                mgr.show_capabilities("json", true).await
             }
         }));
     }
@@ -391,7 +391,7 @@ async fn test_timeout_awareness_manager() -> Result<()> {
         handles.push(tokio::spawn(async {
             timeout(Duration::from_secs(10), async {
                 let mgr = UniversalComputeManager::new().await?;
-                mgr.show_capabilities("text".to_string(), false).await
+                mgr.show_capabilities("text", false).await
             })
             .await
         }));
@@ -424,19 +424,19 @@ async fn test_event_driven_manager_coordination() -> Result<()> {
     let h1 = tokio::spawn(async move {
         rx1.recv().await.ok();
         let mgr = UniversalComputeManager::new().await?;
-        mgr.show_capabilities("text".to_string(), false).await
+        mgr.show_capabilities("text", false).await
     });
 
     let h2 = tokio::spawn(async move {
         rx2.recv().await.ok();
         let mgr = UniversalComputeManager::new().await?;
-        mgr.show_capabilities("json".to_string(), true).await
+        mgr.show_capabilities("json", true).await
     });
 
     let h3 = tokio::spawn(async move {
         rx3.recv().await.ok();
         let mgr = UniversalComputeManager::new().await?;
-        mgr.show_capabilities("yaml".to_string(), false).await
+        mgr.show_capabilities("yaml", false).await
     });
 
     // Brief setup delay

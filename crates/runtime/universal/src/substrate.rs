@@ -453,6 +453,7 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
         bytemuck::allocation::cast_vec(v)
     }
 
+    #[allow(clippy::unused_self)] // Required by trait; may use self for future extensions
     fn convert_workload(&self, workload: Workload) -> Result<BufferOperation, ComputeError> {
         // Consume workload for zero-copy: move data instead of cloning
         match workload.input {

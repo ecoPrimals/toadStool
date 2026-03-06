@@ -41,7 +41,6 @@
 //!
 //! See:
 //! - `crates/cli/src/ecosystem/adapters/` - New capability-based adapters
-//! - `reports/sessions/nov-19-2025/HARDCODING_ELIMINATION_COMPLETE.md` - Migration results
 
 #![deprecated(
     since = "0.1.0",

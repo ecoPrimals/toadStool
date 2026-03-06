@@ -135,7 +135,7 @@ impl IpcServer {
     pub async fn bind(&mut self) -> ToadStoolResult<()> {
         for endpoint in &self.endpoints {
             match self.try_bind(endpoint).await {
-                Ok(_) => {
+                Ok(()) => {
                     tracing::info!("✅ Bound {}", endpoint.display());
                 }
                 Err(e) => {

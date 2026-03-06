@@ -21,7 +21,7 @@ use tokio::time::{timeout, Duration};
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_nonexistent_workload() -> Result<()> {
     let path = PathBuf::from("/nonexistent/workload.toml");
-    let result = execute_workload(&path, None, vec![], 30, "text".to_string()).await;
+    let result = execute_workload(&path, None, &[], 30, "text").await;
 
     // Should fail gracefully (file not found)
     assert!(
@@ -43,7 +43,7 @@ async fn test_concurrent_nonexistent_workloads() -> Result<()> {
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/nonexistent_{}.toml", i));
-            let result = execute_workload(&path, None, vec![], 30, "text".to_string()).await;
+            let result = execute_workload(&path, None, &[], 30, "text").await;
             tx.send(i).ok();
             result
         }));
@@ -79,7 +79,7 @@ async fn test_stress_nonexistent_workloads() -> Result<()> {
     for i in 0..50 {
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/stress_test_{}.json", i));
-            execute_workload(&path, None, vec![], 30, "json".to_string()).await
+            execute_workload(&path, None, &[], 30, "json").await
         }));
     }
 
@@ -111,7 +111,7 @@ async fn test_concurrent_runtime_hints() -> Result<()> {
         let hint = Some(hint.to_string());
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/test_{}.toml", i));
-            execute_workload(&path, hint, vec![], 30, "text".to_string()).await
+            execute_workload(&path, hint.as_deref(), &[], 30, "text").await
         }));
     }
 
@@ -142,7 +142,7 @@ async fn test_mixed_runtime_hints_stress() -> Result<()> {
         let hint = Some(hints[i % hints.len()].to_string());
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/mixed_{}.json", i));
-            execute_workload(&path, hint, vec![], 30, "json".to_string()).await
+            execute_workload(&path, hint.as_deref(), &[], 30, "json").await
         }));
     }
 
@@ -177,8 +177,7 @@ async fn test_concurrent_timeout_variations() -> Result<()> {
         let timeout_val = *timeout_val;
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/timeout_{}.toml", i));
-            let result =
-                execute_workload(&path, None, vec![], timeout_val, "text".to_string()).await;
+            let result = execute_workload(&path, None, &[], timeout_val, "text").await;
             tx.send(i).ok();
             result
         }));
@@ -212,7 +211,7 @@ async fn test_concurrent_output_formats() -> Result<()> {
         let format = format.to_string();
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/format_{}.toml", i));
-            execute_workload(&path, None, vec![], 30, format).await
+            execute_workload(&path, None, &[], 30, format.as_str()).await
         }));
     }
 
@@ -243,7 +242,7 @@ async fn test_concurrent_env_overrides() -> Result<()> {
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/env_{}.toml", i));
             let env = vec![format!("VAR1=value{}", i), format!("VAR2=test{}", i)];
-            execute_workload(&path, None, env, 30, "text".to_string()).await
+            execute_workload(&path, None, &env, 30, "text").await
         }));
     }
 
@@ -274,7 +273,7 @@ async fn test_burst_workload_execution() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/burst1_{}.toml", i));
-            let _result = execute_workload(&path, None, vec![], 30, "text".to_string()).await;
+            let _result = execute_workload(&path, None, &[], 30, "text").await;
             tx.send(format!("burst1_{}", i)).ok();
         });
     }
@@ -289,14 +288,7 @@ async fn test_burst_workload_execution() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/burst2_{}.json", i));
-            let _result = execute_workload(
-                &path,
-                Some("python".to_string()),
-                vec![],
-                30,
-                "json".to_string(),
-            )
-            .await;
+            let _result = execute_workload(&path, Some("python"), &[], 30, "json").await;
             tx.send(format!("burst2_{}", i)).ok();
         });
     }
@@ -319,7 +311,7 @@ async fn test_sustained_workload_load() -> Result<()> {
     for i in 0..100 {
         handles.push(tokio::spawn(async move {
             let path = PathBuf::from(format!("/tmp/sustained_{}.toml", i));
-            execute_workload(&path, None, vec![], 30, "text".to_string()).await
+            execute_workload(&path, None, &[], 30, "text").await
         }));
     }
 
@@ -349,7 +341,7 @@ async fn test_timeout_awareness_workload() -> Result<()> {
         handles.push(tokio::spawn(async move {
             timeout(Duration::from_secs(5), async {
                 let path = PathBuf::from(format!("/tmp/timeout_aware_{}.toml", i));
-                execute_workload(&path, None, vec![], 30, "text".to_string()).await
+                execute_workload(&path, None, &[], 30, "text").await
             })
             .await
         }));
@@ -382,40 +374,19 @@ async fn test_event_driven_workload_coordination() -> Result<()> {
     let h1 = tokio::spawn(async move {
         rx1.recv().await.ok();
         let path = PathBuf::from("/tmp/coord1.toml");
-        execute_workload(
-            &path,
-            Some("native".to_string()),
-            vec![],
-            30,
-            "text".to_string(),
-        )
-        .await
+        execute_workload(&path, Some("native"), &[], 30, "text").await
     });
 
     let h2 = tokio::spawn(async move {
         rx2.recv().await.ok();
         let path = PathBuf::from("/tmp/coord2.toml");
-        execute_workload(
-            &path,
-            Some("python".to_string()),
-            vec![],
-            30,
-            "json".to_string(),
-        )
-        .await
+        execute_workload(&path, Some("python"), &[], 30, "json").await
     });
 
     let h3 = tokio::spawn(async move {
         rx3.recv().await.ok();
         let path = PathBuf::from("/tmp/coord3.toml");
-        execute_workload(
-            &path,
-            Some("wasm".to_string()),
-            vec![],
-            30,
-            "text".to_string(),
-        )
-        .await
+        execute_workload(&path, Some("wasm"), &[], 30, "text").await
     });
 
     // Brief setup delay

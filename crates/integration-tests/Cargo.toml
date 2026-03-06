@@ -36,10 +36,3 @@ toml       = "0.8"
 tempfile   = "3.8"
 reqwest    = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
-# Root tests/ (D-S16-004): Structure wired in tests/{chaos,e2e,integration,security,stress}/mod.rs
-# Root tests have API mismatches vs current toadstool - uncomment when migrated:
-# [[test]] name = "root_chaos"      path = "../../tests/root_chaos.rs"
-# [[test]] name = "root_e2e"        path = "../../tests/root_e2e.rs"
-# [[test]] name = "root_integration" path = "../../tests/root_integration.rs"
-# [[test]] name = "root_security"   path = "../../tests/root_security.rs"
-# [[test]] name = "root_stress"     path = "../../tests/root_stress.rs"

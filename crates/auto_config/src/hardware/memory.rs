@@ -121,6 +121,7 @@ fn parse_linux_meminfo(meminfo: &str) -> ToadStoolResult<MemoryInfo> {
 }
 
 /// Calculate memory performance score
+#[must_use]
 pub fn calculate_memory_score(memory_info: &MemoryInfo) -> f64 {
     (memory_info.total_gb / 32.0 * 100.0).min(100.0)
 }

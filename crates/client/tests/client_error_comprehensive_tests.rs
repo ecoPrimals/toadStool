@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for client error types
-//!
-//! Week 14 Day 4: Client Error Tests
-//! Target: Achieve complete coverage of client/error.rs
+//! Comprehensive tests for client error types.
 
 use std::fmt::Write;
 use toadstool_client::{ClientError, ClientResult};

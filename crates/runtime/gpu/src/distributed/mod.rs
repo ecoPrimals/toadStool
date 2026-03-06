@@ -324,12 +324,7 @@ impl DistributedGpuScheduler {
             stages.len()
         );
 
-        // Graceful degradation: execute locally
-        // Production would:
-        // for stage in stages {
-        //     let tower = self.tower_manager.select_by_capability(&stage).await?;
-        //     result = self.execute_stage_on_tower(&tower, result).await?;
-        // }
+        // Graceful degradation: execute locally (production would use tower_manager)
 
         self.execute_local(workload).await
     }
@@ -462,5 +457,130 @@ mod tests {
         let stats = scheduler.statistics().await;
         assert_eq!(stats.total_towers, 1);
         assert_eq!(stats.total_jobs, 0);
+    }
+
+    #[tokio::test]
+    async fn test_execute_distributed_single() {
+        use crate::cpu_resource::CpuComputeResource;
+        use crate::universal::{
+            KernelLanguage, OptimizationHints, UniversalKernel, UniversalWorkload,
+        };
+
+        let local = Arc::new(UniversalComputeScheduler::new(
+            SchedulingPolicy::CapabilityMatch,
+        ));
+        let cpu = CpuComputeResource::new().expect("CPU resource");
+        local.register_resource(Arc::new(cpu)).await;
+
+        let scheduler = DistributedGpuScheduler::new(local);
+
+        let workload = UniversalWorkload {
+            id: "test-workload".to_string(),
+            requirements: Default::default(),
+            kernel: UniversalKernel::Operation {
+                operation: crate::universal::Operation::GeneralCompute,
+                parameters: Default::default(),
+            },
+            inputs: vec![],
+            output_size: 0,
+            hints: OptimizationHints::default(),
+        };
+
+        let result = scheduler
+            .execute_distributed(workload, PartitionStrategy::Single)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute_distributed_data_parallel() {
+        use crate::cpu_resource::CpuComputeResource;
+        use crate::universal::{
+            KernelLanguage, OptimizationHints, UniversalKernel, UniversalWorkload,
+        };
+
+        let local = Arc::new(UniversalComputeScheduler::new(
+            SchedulingPolicy::CapabilityMatch,
+        ));
+        let cpu = CpuComputeResource::new().expect("CPU resource");
+        local.register_resource(Arc::new(cpu)).await;
+
+        let scheduler = DistributedGpuScheduler::new(local);
+
+        let workload = UniversalWorkload {
+            id: "test-dp".to_string(),
+            requirements: Default::default(),
+            kernel: UniversalKernel::Operation {
+                operation: crate::universal::Operation::GeneralCompute,
+                parameters: Default::default(),
+            },
+            inputs: vec![],
+            output_size: 0,
+            hints: OptimizationHints::default(),
+        };
+
+        let result = scheduler
+            .execute_distributed(workload, PartitionStrategy::DataParallel { chunk_size: 64 })
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute_distributed_pipeline() {
+        use crate::cpu_resource::CpuComputeResource;
+        use crate::universal::{
+            KernelLanguage, OptimizationHints, UniversalKernel, UniversalWorkload,
+        };
+
+        let local = Arc::new(UniversalComputeScheduler::new(
+            SchedulingPolicy::CapabilityMatch,
+        ));
+        let cpu = CpuComputeResource::new().expect("CPU resource");
+        local.register_resource(Arc::new(cpu)).await;
+
+        let scheduler = DistributedGpuScheduler::new(local);
+
+        let workload = UniversalWorkload {
+            id: "test-pipeline".to_string(),
+            requirements: Default::default(),
+            kernel: UniversalKernel::Operation {
+                operation: crate::universal::Operation::GeneralCompute,
+                parameters: Default::default(),
+            },
+            inputs: vec![],
+            output_size: 0,
+            hints: OptimizationHints::default(),
+        };
+
+        let result = scheduler
+            .execute_distributed(
+                workload,
+                PartitionStrategy::Pipeline {
+                    stages: vec!["stage1".to_string()],
+                },
+            )
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_statistics_with_remote_tower() {
+        let local = Arc::new(UniversalComputeScheduler::new(
+            SchedulingPolicy::CapabilityMatch,
+        ));
+        let scheduler = DistributedGpuScheduler::new(local);
+
+        let endpoint = RemoteTowerEndpoint {
+            tower_id: "remote-1".to_string(),
+            address: "10.0.0.2:8080".to_string(),
+            gpu_capabilities: None,
+            last_seen: Instant::now(),
+            latency_ms: 5,
+        };
+        scheduler.register_remote_tower(endpoint).await;
+
+        let stats = scheduler.statistics().await;
+        assert_eq!(stats.total_towers, 2);
+        assert_eq!(stats.active_towers, 2);
     }
 }

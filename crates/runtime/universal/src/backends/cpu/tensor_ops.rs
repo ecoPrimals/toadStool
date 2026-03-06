@@ -137,8 +137,7 @@ pub(super) fn execute_conv(workload: Workload) -> Result<WorkloadData, ComputeEr
                             // Add bias if present
                             let bias_val = bias
                                 .as_ref()
-                                .map(|b| b.get(oc).copied().unwrap_or(0.0))
-                                .unwrap_or(0.0);
+                                .map_or(0.0, |b| b.get(oc).copied().unwrap_or(0.0));
 
                             // Output index: [b, oc, oh, ow]
                             let out_idx = b * (out_channels * out_h * out_w)

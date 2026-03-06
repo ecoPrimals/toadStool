@@ -192,4 +192,128 @@ mod tests {
         assert_eq!(format_resource_amount(4.0, "GB"), "4GB");
         assert_eq!(format_resource_amount(2.5, "GB"), "2.50GB");
     }
+
+    #[test]
+    fn test_format_platform_summary_with_version() {
+        let s = format_platform_summary("linux", "x86_64", "5.10");
+        assert_eq!(s, "linux x86_64 (5.10)");
+    }
+
+    #[test]
+    fn test_format_platform_summary_unknown_version() {
+        let s = format_platform_summary("linux", "x86_64", "unknown");
+        assert_eq!(s, "linux x86_64");
+    }
+
+    #[test]
+    fn test_error_suggestion_permission_denied() {
+        let err = crate::CliError::Other("Permission denied".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("sudo"));
+    }
+
+    #[test]
+    fn test_error_suggestion_connection_refused() {
+        let err = crate::CliError::Other("connection refused".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("netstat"));
+    }
+
+    #[test]
+    fn test_error_suggestion_connection_timeout() {
+        let err = crate::CliError::Other("connection timeout".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("firewall"));
+    }
+
+    #[test]
+    fn test_error_suggestion_biome_yaml() {
+        let err = crate::CliError::Other("biome.yaml not found".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("toadstool init"));
+    }
+
+    #[test]
+    fn test_error_suggestion_already_running() {
+        let err = crate::CliError::Other("service already running".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("toadstool down"));
+    }
+
+    #[test]
+    fn test_error_suggestion_insufficient_resources() {
+        let err = crate::CliError::Other("insufficient resources".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("biome.yaml"));
+    }
+
+    #[test]
+    fn test_error_suggestion_security() {
+        let err = crate::CliError::Other("security violation".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("PKI"));
+    }
+
+    #[test]
+    fn test_error_suggestion_wasm() {
+        let err = crate::CliError::Other("wasm module invalid".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("WASM"));
+    }
+
+    #[test]
+    fn test_error_suggestion_timeout() {
+        let err = crate::CliError::Other("operation timeout".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("timeout"));
+    }
+
+    #[test]
+    fn test_error_suggestion_parse_invalid() {
+        let err = crate::CliError::Other("parse error: invalid format".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("syntax"));
+    }
+
+    #[test]
+    fn test_error_suggestion_no_match() {
+        let err = crate::CliError::Other("some random error".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_none());
+    }
+
+    #[test]
+    fn test_error_suggestion_gpu() {
+        let err = crate::CliError::Other("gpu initialization failed".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("nvidia-smi"));
+    }
+
+    #[test]
+    fn test_error_suggestion_container() {
+        let err = crate::CliError::Other("container runtime not available".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("Docker"));
+    }
+
+    #[test]
+    fn test_error_suggestion_not_found_no_file() {
+        // "not found" without "file" should match
+        let err = crate::CliError::Other("biome not found".to_string());
+        let suggestion = get_error_suggestion(&err);
+        assert!(suggestion.is_some());
+        assert!(suggestion.unwrap().contains("toadstool ps"));
+    }
 }

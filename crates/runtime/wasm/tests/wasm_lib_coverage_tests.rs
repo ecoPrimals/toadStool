@@ -222,16 +222,12 @@ mod component_config_tests {
     #[test]
     fn test_component_config_default() {
         // BLOCKED(component-model): awaiting feature implementation
-        // let config = ComponentModelConfig::default();
-        // assert!(config.enabled);
-        // assert!(config.max_instances > 0);
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_config_custom() {
         // BLOCKED(component-model): awaiting feature implementation
-        // let config = ComponentModelConfig { ... };
         eprintln!("skipped: component-model implementation pending");
     }
 

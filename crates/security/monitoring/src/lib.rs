@@ -39,6 +39,7 @@ pub struct SecurityEvent {
 }
 
 impl SecurityEvent {
+    #[allow(clippy::cast_possible_truncation)] // u128 ms since epoch fits u64 for centuries
     fn new(severity: Severity, category: EventCategory, message: impl Into<String>) -> Self {
         let timestamp_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -179,6 +180,7 @@ impl SecurityMonitor {
 
     /// Sample current system resources and store them in the history buffer.
     /// Detects anomalies (CPU > 90 %, memory > 95 %) and raises events.
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // numeric conversions for metrics
     pub async fn sample_resources(&self) {
         use sysinfo::System;
         let mut sys = System::new_all();

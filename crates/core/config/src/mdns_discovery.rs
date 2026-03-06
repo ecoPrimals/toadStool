@@ -197,14 +197,13 @@ impl MdnsDiscoveryClient {
                 // Format: "capability=coordination:service-discovery", "capability=storage:object", etc.
                 let parts: Vec<&str> = cap_str.split(':').collect();
                 match parts.as_slice() {
-                    ["coordination", "service-discovery"] | ["coordination", _] => capabilities
-                        .push(Capability::Coordination(
-                            CoordinationCapability::ServiceDiscovery,
-                        )),
-                    ["storage", "object"] | ["storage", _] => {
+                    ["coordination", "service-discovery" | _] => capabilities.push(
+                        Capability::Coordination(CoordinationCapability::ServiceDiscovery),
+                    ),
+                    ["storage", "object" | _] => {
                         capabilities.push(Capability::Storage(StorageCapability::ObjectStorage));
                     }
-                    ["compute", "native"] | ["compute", _] => {
+                    ["compute", "native" | _] => {
                         capabilities.push(Capability::Compute(ComputeCapability::NativeExecution));
                     }
                     ["authentication", _] => {
@@ -234,9 +233,9 @@ impl MdnsDiscoveryClient {
         id: String,
         address: IpAddr,
         port: u16,
-        txt_records: Vec<String>,
+        txt_records: &[String],
     ) -> DiscoveredService {
-        let capabilities = Self::parse_capabilities(&txt_records);
+        let capabilities = Self::parse_capabilities(txt_records);
 
         let endpoint = ServiceEndpoint {
             address: address.to_string(),

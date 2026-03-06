@@ -1,5 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(async_fn_in_trait)]
+#![allow(
+    async_fn_in_trait,
+    clippy::doc_markdown,
+    clippy::must_use_candidate,
+    clippy::missing_errors_doc,
+    clippy::wildcard_imports,
+    // GPU/low-level code: casts required for vendor APIs, buffer sizes, memory offsets
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::cast_sign_loss,
+    // Trait impls require async for API consistency even when body is sync
+    clippy::unused_async,
+    // Low-frequency pedantic lints; fixing would add noise without clear benefit
+    clippy::struct_excessive_bools,
+    clippy::unreadable_literal,
+    clippy::ref_as_ptr,
+    clippy::match_wildcard_for_single_variants,
+    clippy::match_same_arms,
+    clippy::items_after_statements,
+    clippy::unnecessary_literal_bound,
+    clippy::single_match_else,
+    clippy::ptr_cast_constness,
+    clippy::ptr_as_ptr,
+    clippy::inline_always,
+    clippy::unnecessary_wraps,
+    clippy::unused_self,
+    clippy::needless_pass_by_value,
+)]
 
 //! # `ToadStool` Universal GPU Compute Runtime
 //!

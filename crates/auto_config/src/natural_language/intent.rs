@@ -7,10 +7,14 @@
 use std::collections::HashMap;
 use tracing::{debug, info};
 
-use super::types::*;
+use super::types::{
+    ConfigurationIntent, ExplicitPreferences, IntentAnalysis, PerformancePreference,
+    SecurityPreference,
+};
 use crate::ToadStoolResult;
 
 /// Create default intent patterns for common workload types
+#[must_use]
 pub fn create_intent_patterns() -> HashMap<String, ConfigurationIntent> {
     let mut patterns = HashMap::new();
 
@@ -115,7 +119,7 @@ pub fn create_intent_patterns() -> HashMap<String, ConfigurationIntent> {
 }
 
 /// Analyze natural language text to extract user intent
-pub async fn analyze_intent(
+pub fn analyze_intent(
     text: &str,
     patterns: &HashMap<String, ConfigurationIntent>,
 ) -> ToadStoolResult<IntentAnalysis> {
@@ -146,8 +150,10 @@ pub async fn analyze_intent(
     let (primary_intent, (confidence, matched_keywords)) = intent_scores
         .iter()
         .max_by(|a, b| a.1 .0.total_cmp(&b.1 .0))
-        .map(|(name, (score, keywords))| (name.clone(), (*score, keywords.clone())))
-        .unwrap_or_else(|| ("general_purpose".to_string(), (0.0, Vec::new())));
+        .map_or_else(
+            || ("general_purpose".to_string(), (0.0, Vec::new())),
+            |(name, (score, keywords))| (name.clone(), (*score, keywords.clone())),
+        );
 
     // Extract explicit preferences from text
     let explicit_preferences = extract_explicit_preferences(&text_lower);
@@ -177,6 +183,7 @@ pub async fn analyze_intent(
 }
 
 /// Extract explicit preferences from natural language text
+#[must_use]
 pub fn extract_explicit_preferences(text: &str) -> ExplicitPreferences {
     let mut prefs = ExplicitPreferences::default();
 

@@ -96,7 +96,7 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
 
 /// Parse Linux /proc/cpuinfo
 fn parse_linux_cpuinfo(cpuinfo: &str) -> ToadStoolResult<CpuInfo> {
-    let mut cpu_info = CpuInfo::default();
+    let mut parsed = CpuInfo::default();
     let mut core_count = 0;
 
     for line in cpuinfo.lines() {
@@ -109,29 +109,29 @@ fn parse_linux_cpuinfo(cpuinfo: &str) -> ToadStoolResult<CpuInfo> {
                     core_count += 1;
                 }
                 "model name" => {
-                    if cpu_info.model_name.is_empty() {
-                        cpu_info.model_name = value.to_string();
+                    if parsed.model_name.is_empty() {
+                        parsed.model_name = value.to_string();
                     }
                 }
                 "cpu family" => {
                     if let Ok(family) = value.parse::<u32>() {
-                        cpu_info.family = family;
+                        parsed.family = family;
                     }
                 }
                 "cpu MHz" => {
                     if let Ok(mhz) = value.parse::<f64>() {
-                        cpu_info.base_frequency_mhz = mhz;
+                        parsed.base_frequency_mhz = mhz;
                     }
                 }
                 "cache size" => {
                     if value.contains("KB") {
                         if let Ok(kb) = value.replace(" KB", "").parse::<u32>() {
-                            cpu_info.cache_size_kb = kb;
+                            parsed.cache_size_kb = kb;
                         }
                     }
                 }
                 "flags" | "Features" => {
-                    cpu_info.instruction_sets = value
+                    parsed.instruction_sets = value
                         .split_whitespace()
                         .map(std::string::ToString::to_string)
                         .collect();
@@ -141,10 +141,10 @@ fn parse_linux_cpuinfo(cpuinfo: &str) -> ToadStoolResult<CpuInfo> {
         }
     }
 
-    cpu_info.logical_cores = core_count;
-    cpu_info.physical_cores = core_count; // Simplified - would need more logic for HT detection
+    parsed.logical_cores = core_count;
+    parsed.physical_cores = core_count; // Simplified - would need more logic for HT detection
 
-    Ok(cpu_info)
+    Ok(parsed)
 }
 
 /// Detect macOS CPU information
@@ -295,6 +295,7 @@ fn detect_cpu_features() -> ToadStoolResult<CpuFeatures> {
 }
 
 /// Calculate CPU performance score
+#[must_use]
 pub fn calculate_cpu_score(cpu_info: &CpuInfo) -> f64 {
     let core_score = (cpu_info.physical_cores as f64 / 16.0 * 40.0).min(40.0);
     let frequency_score = (cpu_info.base_frequency_mhz / 4000.0 * 30.0).min(30.0);

@@ -11,7 +11,7 @@ use crate::primal_identity::ServiceEndpoint;
 use super::config::capability_from_str;
 use super::types::{DiscoveredService, DiscoveryError, DiscoveryResult};
 
-/// Convert a primal discovery endpoint to DiscoveredService (pure, testable).
+/// Convert a primal discovery endpoint to `DiscoveredService` (pure, testable).
 pub(crate) fn primal_endpoint_to_discovered_service(
     service_id: &str,
     url: &str,

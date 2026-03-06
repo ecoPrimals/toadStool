@@ -44,19 +44,19 @@ pub mod toadstool {
 ///
 /// **Naming**: `DEFAULT_*_DISCOVERY_PORT` = fallback for `{PRIMAL}_PORT` env var.
 pub mod discovery_fallback {
-    /// Songbird coordination - default port for SONGBIRD_PORT env fallback
+    /// Songbird coordination - default port for `SONGBIRD_PORT` env fallback
     pub const DEFAULT_SONGBIRD_DISCOVERY_PORT: u16 = 8080;
 
-    /// BearDog security - default port for BEARDOG_PORT env fallback
+    /// BearDog security - default port for `BEARDOG_PORT` env fallback
     pub const DEFAULT_BEARDOG_DISCOVERY_PORT: u16 = 8081;
 
-    /// NestGate storage - default port for NESTGATE_PORT env fallback
+    /// NestGate storage - default port for `NESTGATE_PORT` env fallback
     pub const DEFAULT_NESTGATE_DISCOVERY_PORT: u16 = 8082;
 
-    /// Squirrel MCP - default port for SQUIRREL_PORT env fallback
+    /// Squirrel MCP - default port for `SQUIRREL_PORT` env fallback
     pub const DEFAULT_SQUIRREL_DISCOVERY_PORT: u16 = 8083;
 
-    /// BiomeOS integration - default port for BIOMEOS_PORT env fallback
+    /// BiomeOS integration - default port for `BIOMEOS_PORT` env fallback
     pub const DEFAULT_BIOMEOS_DISCOVERY_PORT: u16 = 8088;
 }
 

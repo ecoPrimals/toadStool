@@ -1,6 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
-#![allow(async_fn_in_trait)]
+#![allow(
+    async_fn_in_trait,
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::needless_pass_by_value,
+    clippy::unused_self,
+    clippy::unnecessary_wraps,
+    clippy::struct_excessive_bools,
+    clippy::redundant_closure_for_method_calls,
+    clippy::option_option,
+    clippy::missing_fields_in_debug,
+    clippy::match_same_arms,
+    clippy::doc_markdown,
+    clippy::doc_comment_double_space_linebreaks,
+    clippy::unused_async
+)]
 
 //! ToadStool - Universal Compute Platform  
 //! Copyright (C) 2025 ToadStool Development Team

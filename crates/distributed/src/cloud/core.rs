@@ -168,9 +168,8 @@ pub struct UniversalCloudOrchestrator {
     pub(crate) compliance_enforcer: CloudComplianceEnforcer,
     /// Multi-cloud load balancer
     pub(crate) _load_balancer: MultiCloudLoadBalancer,
-    /// Federation manager for cloud-to-cloud communication
-    #[allow(dead_code)] // Phase 2+: cloud-to-cloud federation
-    pub(crate) federation_manager: CloudFederationManager,
+    /// Federation manager for cloud-to-cloud communication (Phase 2+)
+    pub(crate) _federation_manager: CloudFederationManager,
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

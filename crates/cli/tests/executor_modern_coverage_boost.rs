@@ -39,9 +39,7 @@ async fn test_concurrent_executor_creation() -> Result<()> {
 async fn test_list_biomes_table() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
-    let result = executor
-        .list_biomes(true, "table".to_string(), false, None)
-        .await;
+    let result = executor.list_biomes(true, "table", false, None).await;
 
     assert!(result.is_ok());
     Ok(())
@@ -52,9 +50,7 @@ async fn test_list_biomes_table() -> Result<()> {
 async fn test_list_biomes_json() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
-    let result = executor
-        .list_biomes(false, "json".to_string(), false, None)
-        .await;
+    let result = executor.list_biomes(false, "json", false, None).await;
 
     assert!(result.is_ok());
     Ok(())
@@ -65,9 +61,7 @@ async fn test_list_biomes_json() -> Result<()> {
 async fn test_list_biomes_yaml() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
-    let result = executor
-        .list_biomes(true, "yaml".to_string(), true, None)
-        .await;
+    let result = executor.list_biomes(true, "yaml", true, None).await;
 
     assert!(result.is_ok());
     Ok(())
@@ -79,12 +73,7 @@ async fn test_list_biomes_filter_running() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
     let result = executor
-        .list_biomes(
-            true,
-            "table".to_string(),
-            false,
-            Some("running".to_string()),
-        )
+        .list_biomes(true, "table", false, Some("running"))
         .await;
 
     assert!(result.is_ok());
@@ -97,12 +86,7 @@ async fn test_list_biomes_filter_stopped() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
     let result = executor
-        .list_biomes(
-            true,
-            "table".to_string(),
-            false,
-            Some("stopped".to_string()),
-        )
+        .list_biomes(true, "table", false, Some("stopped"))
         .await;
 
     assert!(result.is_ok());
@@ -115,7 +99,7 @@ async fn test_list_biomes_filter_error() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
     let result = executor
-        .list_biomes(true, "json".to_string(), false, Some("error".to_string()))
+        .list_biomes(true, "json", false, Some("error"))
         .await;
 
     assert!(result.is_ok());
@@ -128,7 +112,7 @@ async fn test_down_nonexistent_biome() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
     let result = executor
-        .down_biome("nonexistent-biome".to_string(), false, 30, false)
+        .down_biome("nonexistent-biome", false, 30, false)
         .await;
 
     assert!(result.is_err(), "Should error on non-existent biome");
@@ -140,14 +124,7 @@ async fn test_down_nonexistent_biome() -> Result<()> {
 async fn test_down_biome_force() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
-    let result = executor
-        .down_biome(
-            "test-biome".to_string(),
-            true, // force
-            30,
-            false,
-        )
-        .await;
+    let result = executor.down_biome("test-biome", true, 30, false).await;
 
     // Will error but covers force path
     assert!(result.is_err());
@@ -159,14 +136,7 @@ async fn test_down_biome_force() -> Result<()> {
 async fn test_down_biome_purge() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
-    let result = executor
-        .down_biome(
-            "test-biome".to_string(),
-            false,
-            30,
-            true, // purge
-        )
-        .await;
+    let result = executor.down_biome("test-biome", false, 30, true).await;
 
     // Will error but covers purge path
     assert!(result.is_err());
@@ -208,7 +178,7 @@ async fn test_concurrent_lists() -> Result<()> {
 
         handles.push(tokio::spawn(async move {
             executor
-                .list_biomes(i % 2 == 0, format.to_string(), i % 2 == 1, None)
+                .list_biomes(i % 2 == 0, format, i % 2 == 1, None)
                 .await
         }));
     }
@@ -252,9 +222,7 @@ async fn test_event_based_list() -> Result<()> {
 
     let executor_clone = Arc::clone(&executor);
     tokio::spawn(async move {
-        let _ = executor_clone
-            .list_biomes(true, "json".to_string(), false, None)
-            .await;
+        let _ = executor_clone.list_biomes(true, "json", false, None).await;
         tx.send(()).ok();
     });
 
@@ -273,9 +241,7 @@ async fn test_rapid_sequential_lists() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
 
     for i in 0..30 {
-        let _ = executor
-            .list_biomes(i % 2 == 0, "table".to_string(), false, None)
-            .await;
+        let _ = executor.list_biomes(i % 2 == 0, "table", false, None).await;
     }
 
     Ok(())
@@ -293,9 +259,7 @@ async fn test_mixed_concurrent_ops() -> Result<()> {
 
         if i % 2 == 0 {
             handles.push(tokio::spawn(async move {
-                executor
-                    .list_biomes(true, "json".to_string(), false, None)
-                    .await
+                executor.list_biomes(true, "json", false, None).await
             }));
         } else {
             handles.push(tokio::spawn(async move {
@@ -325,9 +289,7 @@ async fn test_concurrent_operations_stability() -> Result<()> {
 
         handles.push(tokio::spawn(async move {
             // Mix of operations
-            let _ = executor
-                .list_biomes(true, "json".to_string(), false, None)
-                .await;
+            let _ = executor.list_biomes(true, "json", false, None).await;
         }));
     }
 
@@ -346,9 +308,7 @@ async fn test_all_output_formats() -> Result<()> {
     let formats = vec!["table", "json", "yaml"];
 
     for format in formats {
-        let result = executor
-            .list_biomes(true, format.to_string(), false, None)
-            .await;
+        let result = executor.list_biomes(true, format, false, None).await;
 
         assert!(result.is_ok(), "Format {} should work", format);
     }
@@ -373,7 +333,7 @@ async fn test_all_status_filters() -> Result<()> {
 
     for filter in filters {
         let result = executor
-            .list_biomes(true, "table".to_string(), false, filter.clone())
+            .list_biomes(true, "table", false, filter.as_deref())
             .await;
 
         assert!(result.is_ok(), "Filter {:?} should work", filter);

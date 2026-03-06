@@ -7,6 +7,7 @@
 mod universal_scheduler_tests {
     pub mod capabilities;
     pub mod coordinator;
+    pub mod execution;
     pub mod helpers;
     pub mod priority;
     pub mod resources;

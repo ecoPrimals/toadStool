@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn test_capability_error_debug() {
         let err = CapabilityError::DiscoveryUnavailable;
-        let debug_str = format!("{:?}", err);
+        let debug_str = format!("{err:?}");
         assert!(debug_str.contains("DiscoveryUnavailable"));
     }
 
@@ -268,6 +268,7 @@ mod tests {
         assert!(matches!(result.unwrap_err(), CapabilityError::RpcFailed(_)));
     }
 
+    #[allow(clippy::unused_async)]
     async fn spawn_mock_discovery_server(
         result: serde_json::Value,
     ) -> (PathBuf, tokio::task::JoinHandle<()>) {
@@ -311,9 +312,8 @@ mod tests {
         (socket_path, handle)
     }
 
-    #[test]
-    fn test_discover_success() {
-        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+    #[tokio::test]
+    async fn test_discover_success() {
         let result = serde_json::json!({
             "services": [{
                 "name": "beardog",
@@ -321,48 +321,58 @@ mod tests {
                 "capabilities": ["crypto", "encryption"]
             }]
         });
-        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
-        let provider = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
-            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
-                CryptoCapability::Encryption,
-            )))
-            .expect("discover should succeed")
-        });
+        let provider = tokio::task::spawn_blocking(move || {
+            temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+                run_async(|| {
+                    CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+                })
+            })
+        })
+        .await
+        .expect("spawn_blocking")
+        .expect("discover should succeed");
         std::fs::remove_file(&socket_path).ok();
 
         assert_eq!(provider.service_name(), "beardog");
         assert!(provider.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
     }
 
-    #[test]
-    fn test_discover_no_provider_found() {
-        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+    #[tokio::test]
+    async fn test_discover_no_provider_found() {
         let result = serde_json::json!({ "services": [] });
-        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
-        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
-            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
-                CryptoCapability::Encryption,
-            )))
+        let err = tokio::task::spawn_blocking(move || {
+            temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+                run_async(|| {
+                    CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+                })
+            })
         })
+        .await
+        .expect("spawn_blocking")
         .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
         assert!(matches!(err, CapabilityError::NoProviderFound(_)));
     }
 
-    #[test]
-    fn test_discover_invalid_response_no_services_array() {
-        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+    #[tokio::test]
+    async fn test_discover_invalid_response_no_services_array() {
         let result = serde_json::json!({ "not_services": [] });
-        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
-        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
-            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
-                CryptoCapability::Encryption,
-            )))
+        let err = tokio::task::spawn_blocking(move || {
+            temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+                run_async(|| {
+                    CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+                })
+            })
         })
+        .await
+        .expect("spawn_blocking")
         .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
@@ -370,19 +380,22 @@ mod tests {
         assert!(err.to_string().contains("No services array"));
     }
 
-    #[test]
-    fn test_discover_invalid_response_no_name() {
-        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+    #[tokio::test]
+    async fn test_discover_invalid_response_no_name() {
         let result = serde_json::json!({
             "services": [{ "endpoint": "/tmp/x.sock", "capabilities": [] }]
         });
-        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
-        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
-            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
-                CryptoCapability::Encryption,
-            )))
+        let err = tokio::task::spawn_blocking(move || {
+            temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+                run_async(|| {
+                    CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+                })
+            })
         })
+        .await
+        .expect("spawn_blocking")
         .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
@@ -390,19 +403,22 @@ mod tests {
         assert!(err.to_string().contains("No name field"));
     }
 
-    #[test]
-    fn test_discover_invalid_response_no_endpoint() {
-        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+    #[tokio::test]
+    async fn test_discover_invalid_response_no_endpoint() {
         let result = serde_json::json!({
             "services": [{ "name": "beardog", "capabilities": [] }]
         });
-        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
-        let err = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
-            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
-                CryptoCapability::Encryption,
-            )))
+        let err = tokio::task::spawn_blocking(move || {
+            temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+                run_async(|| {
+                    CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+                })
+            })
         })
+        .await
+        .expect("spawn_blocking")
         .unwrap_err();
         std::fs::remove_file(&socket_path).ok();
 
@@ -410,23 +426,24 @@ mod tests {
         assert!(err.to_string().contains("No endpoint field"));
     }
 
-    #[test]
-    fn test_discover_all_success() {
-        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+    #[tokio::test]
+    async fn test_discover_all_success() {
         let result = serde_json::json!({
             "services": [
                 { "name": "beardog1", "endpoint": "/tmp/b1.sock", "capabilities": ["crypto"] },
                 { "name": "beardog2", "endpoint": "/tmp/b2.sock", "capabilities": ["crypto"] }
             ]
         });
-        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
-        let providers = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
-            rt.block_on(discover_all(Capability::Crypto(
-                CryptoCapability::Encryption,
-            )))
-            .expect("discover_all should succeed")
-        });
+        let providers = tokio::task::spawn_blocking(move || {
+            temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+                run_async(|| discover_all(Capability::Crypto(CryptoCapability::Encryption)))
+                    .expect("discover_all should succeed")
+            })
+        })
+        .await
+        .expect("spawn_blocking");
         std::fs::remove_file(&socket_path).ok();
 
         assert_eq!(providers.len(), 2);
@@ -434,9 +451,8 @@ mod tests {
         assert_eq!(providers[1].service_name(), "beardog2");
     }
 
-    #[test]
-    fn test_discover_capabilities_from_service() {
-        let rt = tokio::runtime::Runtime::new().expect("create runtime");
+    #[tokio::test]
+    async fn test_discover_capabilities_from_service() {
         let result = serde_json::json!({
             "services": [{
                 "name": "beardog",
@@ -444,14 +460,18 @@ mod tests {
                 "capabilities": ["crypto", "authentication", "custom_cap"]
             }]
         });
-        let (socket_path, _server) = rt.block_on(spawn_mock_discovery_server(result));
+        let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
-        let provider = temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
-            rt.block_on(CapabilityProvider::discover(Capability::Crypto(
-                CryptoCapability::Encryption,
-            )))
-            .expect("discover should succeed")
-        });
+        let provider = tokio::task::spawn_blocking(move || {
+            temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
+                run_async(|| {
+                    CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+                })
+                .expect("discover should succeed")
+            })
+        })
+        .await
+        .expect("spawn_blocking");
         std::fs::remove_file(&socket_path).ok();
 
         let caps = provider.capabilities();

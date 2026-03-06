@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
+#![allow(clippy::missing_errors_doc)]
 
 //! Python runtime implementation for toadStool
 //!
@@ -106,6 +107,7 @@ impl PythonRuntimeEngine {
     }
 
     /// Configure resource monitoring
+    #[must_use]
     pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
         self.resource_monitor = Some(monitor);
         self
@@ -221,6 +223,8 @@ impl Default for PythonRuntimeEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool::execution::ExecutionRequest;
+    use uuid::Uuid;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_engine_initialization() {
@@ -234,5 +238,93 @@ mod tests {
         let engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
         let caps = engine.get_capabilities();
         assert!(caps.supported_workloads.contains(&WorkloadType::Python));
+    }
+
+    #[test]
+    fn test_python_runtime_config_default() {
+        let config = PythonRuntimeConfig::default();
+        assert_eq!(config.interpreter_path, "python3");
+        assert!(config.virtual_env.is_none());
+        assert_eq!(config.max_memory_mb, 1024);
+        assert!(config.requirements.is_empty());
+    }
+
+    #[test]
+    fn test_python_runtime_config_with_virtual_env() {
+        use toadstool_common::config_bases::TimeoutConfig;
+        let config = PythonRuntimeConfig {
+            interpreter_path: "python3".to_string(),
+            virtual_env: Some(PathBuf::from("/venv")),
+            max_memory_mb: 2048,
+            timeouts: TimeoutConfig::default(),
+            requirements: vec!["numpy".to_string()],
+        };
+        assert!(config.virtual_env.is_some());
+        assert_eq!(config.requirements.len(), 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_execute_returns_success() {
+        let engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
+        let request = ExecutionRequest {
+            execution_id: Uuid::new_v4(),
+            workload: toadstool::workload::WorkloadSpec::Python {
+                source: toadstool::workload::PythonSource::Code {
+                    code: "print('hello')".to_string(),
+                },
+                python_version: None,
+                requirements: vec![],
+                env_vars: HashMap::new(),
+            },
+            runtime_hint: None,
+            resources: toadstool::resources::ResourceRequirements::default(),
+            security_context: toadstool::security::SecurityContext::default(),
+            timeout: None,
+            environment: HashMap::new(),
+            input_data: toadstool::execution::ExecutionInput::default(),
+            callback_config: None,
+            encryption_config: None,
+        };
+        let result = engine.execute(request).await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.runtime_used, RuntimeType::Python);
+        assert!(matches!(response.status, ExecutionStatus::Success));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_supports_workload() {
+        let engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
+        assert!(engine.supports_workload(&WorkloadType::Python));
+        assert!(!engine.supports_workload(&WorkloadType::Wasm));
+        assert!(!engine.supports_workload(&WorkloadType::Native));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_metrics() {
+        let engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
+        let metrics = engine.get_metrics().await;
+        assert!(metrics.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_shutdown() {
+        let mut engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
+        let result = engine.shutdown().await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_with_config() {
+        let config = PythonRuntimeConfig::default();
+        let result = PythonRuntimeEngine::with_config(config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_debug_format() {
+        let engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
+        let debug_str = format!("{:?}", engine);
+        assert!(debug_str.contains("PythonRuntimeEngine"));
     }
 }

@@ -16,7 +16,29 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![deny(unsafe_code)]
-#![allow(clippy::unused_async)] // Test helpers/placeholders; async for trait/API consistency
+#![allow(
+    clippy::unused_async, // Test helpers/placeholders; async for trait/API consistency
+    clippy::must_use_candidate,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::return_self_not_must_use,
+    clippy::doc_markdown,
+    clippy::wildcard_imports,
+    // Test helpers: casts for durations, sizes, numeric conversions
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::cast_sign_loss,
+    clippy::unreadable_literal,
+    clippy::needless_continue,
+    clippy::format_push_string,
+    clippy::used_underscore_binding,
+    clippy::unused_self,
+    clippy::struct_excessive_bools,
+    clippy::redundant_closure_for_method_calls,
+    clippy::needless_pass_by_value,
+    clippy::match_same_arms,
+)]
 
 //! # `ToadStool` Testing Infrastructure
 //!

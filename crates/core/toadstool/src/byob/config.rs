@@ -63,6 +63,10 @@ impl ByobExecutorConfig {
     }
 
     /// Validate configuration values
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `max_concurrent_deployments` is 0 or `deployment_timeout` is less than 60 seconds.
     pub fn validate(&self) -> Result<(), String> {
         if self.max_concurrent_deployments == 0 {
             return Err("max_concurrent_deployments must be greater than 0".to_string());

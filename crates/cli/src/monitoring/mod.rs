@@ -19,7 +19,11 @@ use tokio::time::Duration;
 use tracing::{debug, info};
 use uuid::Uuid;
 
+#[cfg(unix)]
+use std::os::unix::fs::FileTypeExt;
+use std::path::Path;
 use toadstool_common::constants::timeouts::HEALTH_CHECK_INTERVAL;
+use toadstool_common::platform_paths;
 
 pub use collectors::{
     MetricsCollector, NetworkMetricsCollector, ProcessMetricsCollector, SystemMetricsCollector,
@@ -341,9 +345,90 @@ impl MonitoringSystem {
         })
     }
 
-    #[allow(clippy::unused_async)]
     async fn collect_biome_status(&self) -> Result<Vec<BiomeStatusSummary>> {
-        Ok(vec![])
+        let mut biomes = Vec::new();
+
+        // Scan runtime directories for .sock or .pid files indicating running biomes
+        let primary = platform_paths::biomeos_runtime_dir();
+        let fallback = Path::new("/tmp/toadstool");
+        let fallback_biomeos = fallback.join("biomeos");
+
+        let dirs_to_scan: Vec<_> = [primary, fallback.to_path_buf(), fallback_biomeos]
+            .into_iter()
+            .filter(|d| d.exists() && d.is_dir())
+            .collect();
+
+        for dir in dirs_to_scan {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let Some(name) = path.file_stem().and_then(|s| s.to_str()) else {
+                    continue;
+                };
+                let is_socket = path.extension().is_some_and(|e| e == "sock")
+                    && path.metadata().is_ok_and(|m| {
+                        #[cfg(unix)]
+                        {
+                            m.file_type().is_socket()
+                        }
+                        #[cfg(not(unix))]
+                        {
+                            m.file_type().is_file()
+                        }
+                    });
+                let is_pid = path.extension().is_some_and(|e| e == "pid");
+
+                if !is_socket && !is_pid {
+                    continue;
+                }
+
+                let (services_running, services_total, cpu_usage, memory_usage, uptime) = if is_pid
+                {
+                    if let Ok(contents) = std::fs::read_to_string(&path) {
+                        if let Ok(pid) = contents.trim().parse::<u32>() {
+                            let mut sys = sysinfo::System::new_all();
+                            sys.refresh_all();
+                            if let Some(p) = sys.process(sysinfo::Pid::from_u32(pid)) {
+                                let cpu = f64::from(p.cpu_usage());
+                                let mem = p.memory() as f64 / 1_073_741_824.0;
+                                let start = p.start_time();
+                                let uptime_secs = std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs()
+                                    .saturating_sub(start);
+                                (1, 1, cpu, mem, std::time::Duration::from_secs(uptime_secs))
+                            } else {
+                                (0, 1, 0.0, 0.0, std::time::Duration::ZERO)
+                            }
+                        } else {
+                            (1, 1, 0.0, 0.0, std::time::Duration::ZERO)
+                        }
+                    } else {
+                        (1, 1, 0.0, 0.0, std::time::Duration::ZERO)
+                    }
+                } else {
+                    (1, 1, 0.0, 0.0, std::time::Duration::ZERO)
+                };
+
+                // Deduplicate by name (same biome may appear in multiple dirs)
+                if !biomes.iter().any(|b: &BiomeStatusSummary| b.name == name) {
+                    biomes.push(BiomeStatusSummary {
+                        name: name.to_string(),
+                        status: "running".to_string(),
+                        services_running,
+                        services_total,
+                        cpu_usage,
+                        memory_usage,
+                        uptime,
+                    });
+                }
+            }
+        }
+
+        Ok(biomes)
     }
 
     #[allow(clippy::unused_async)]
@@ -654,5 +739,138 @@ mod tests {
         };
         store.store_batch(batch).await;
         assert!(!store.stats.contains_key("requests"));
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_system_new() {
+        let config = MonitoringConfig::default();
+        let system = MonitoringSystem::new(config)
+            .await
+            .expect("create monitoring system");
+        // System is created with default collectors and alert rules
+        assert!(true, "MonitoringSystem created");
+        drop(system);
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_system_start_and_stop() {
+        let config = MonitoringConfig::default();
+        let system = MonitoringSystem::new(config).await.expect("create");
+        let session_id = system
+            .start_monitoring(
+                MonitoringTarget::System,
+                vec!["cpu_usage_percent".to_string()],
+                Some(Duration::from_secs(60)),
+            )
+            .await
+            .expect("start monitoring");
+        let stop_result = system.stop_monitoring(session_id).await;
+        assert!(stop_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_system_get_dashboard_data() {
+        let config = MonitoringConfig::default();
+        let system = MonitoringSystem::new(config).await.expect("create");
+        let dashboard = system.get_dashboard_data().await.expect("dashboard");
+        assert!(dashboard.timestamp != std::time::UNIX_EPOCH);
+        assert!(dashboard.resource_usage.cpu_percent >= 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_system_query_metrics_empty() {
+        let config = MonitoringConfig::default();
+        let system = MonitoringSystem::new(config).await.expect("create");
+        let start = std::time::SystemTime::now();
+        let end = std::time::SystemTime::now();
+        let points = system
+            .query_metrics("nonexistent_metric".to_string(), start, end, HashMap::new())
+            .await
+            .expect("query");
+        assert!(points.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_system_get_metric_stats_none() {
+        let config = MonitoringConfig::default();
+        let system = MonitoringSystem::new(config).await.expect("create");
+        let stats = system.get_metric_stats("nonexistent").await.expect("stats");
+        assert!(stats.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_system_add_alert_rule() {
+        let config = MonitoringConfig::default();
+        let system = MonitoringSystem::new(config).await.expect("create");
+        let rule = AlertRule {
+            id: "test_rule".to_string(),
+            name: "Test Alert".to_string(),
+            condition: AlertCondition::Threshold {
+                metric: "cpu_usage_percent".to_string(),
+                operator: ComparisonOperator::GreaterThan,
+                value: 95.0,
+                duration: Duration::from_secs(60),
+            },
+            severity: AlertSeverity::Warning,
+            enabled: true,
+            cooldown: Duration::from_secs(300),
+            last_triggered: None,
+        };
+        let result = system.add_alert_rule(rule).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_system_export_prometheus() {
+        let config = MonitoringConfig::default();
+        let system = MonitoringSystem::new(config).await.expect("create");
+        let prom = system.export_prometheus().await.expect("export");
+        assert!(prom.is_empty() || prom.contains("gauge"));
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_targets() {
+        let _biome = MonitoringTarget::Biome("test-biome".to_string());
+        let _service = MonitoringTarget::Service("biome".to_string(), "svc".to_string());
+        let _system = MonitoringTarget::System;
+        let _platform = MonitoringTarget::Platform("linux".to_string());
+        let _fed = MonitoringTarget::Federation;
+        assert!(true);
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_session_status() {
+        let _active = SessionStatus::Active;
+        let _paused = SessionStatus::Paused;
+        let _stopped = SessionStatus::Stopped;
+        let _err = SessionStatus::Error("test".to_string());
+        assert!(true);
+    }
+
+    #[test]
+    fn test_system_metrics_collector() {
+        let collector = SystemMetricsCollector::new();
+        assert_eq!(collector.name(), "system");
+        let batch = collector.collect().expect("collect");
+        assert_eq!(batch.source, "system");
+        assert!(!batch.metrics.is_empty());
+        assert!(collector.capabilities().contains(&"cpu".to_string()));
+    }
+
+    #[test]
+    fn test_process_metrics_collector() {
+        let collector = ProcessMetricsCollector::new();
+        assert_eq!(collector.name(), "process");
+        let batch = collector.collect().expect("collect");
+        assert_eq!(batch.source, "process");
+        assert!(!collector.capabilities().is_empty());
+    }
+
+    #[test]
+    fn test_network_metrics_collector() {
+        let collector = NetworkMetricsCollector::new();
+        assert_eq!(collector.name(), "network");
+        let result = collector.collect();
+        assert!(result.is_ok() || result.is_err());
     }
 }

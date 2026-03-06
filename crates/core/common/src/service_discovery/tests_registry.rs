@@ -127,7 +127,7 @@ async fn test_discover_from_fallbacks_no_fallback_when_disabled() {
                             path: "/nonexistent/x.json".to_string(),
                         },
                         DiscoveryMethod::Registry {
-                            endpoint: "".to_string(),
+                            endpoint: String::new(),
                         },
                     ]),
                     config,
@@ -286,7 +286,7 @@ async fn test_registry_http_malformed_json_returns_error() {
                 break;
             }
         }
-        let body = r#"not valid json at all {]"#;
+        let body = r"not valid json at all {]";
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
             body.len(),
@@ -302,8 +302,7 @@ async fn test_registry_http_malformed_json_returns_error() {
     assert!(result.is_err());
     assert!(
         matches!(result, Err(DiscoveryError::InvalidResponse { .. })),
-        "Expected InvalidResponse for malformed JSON, got {:?}",
-        result
+        "Expected InvalidResponse for malformed JSON, got {result:?}"
     );
 }
 
@@ -313,7 +312,7 @@ async fn test_registry_http_connection_refused() {
     let port = listener.local_addr().unwrap().port();
     drop(listener);
 
-    let endpoint = format!("http://127.0.0.1:{}/services", port);
+    let endpoint = format!("http://127.0.0.1:{port}/services");
     let disc = ServiceDiscovery::new(DiscoveryMethod::Registry { endpoint })
         .await
         .unwrap();
@@ -321,8 +320,7 @@ async fn test_registry_http_connection_refused() {
     assert!(result.is_err());
     assert!(
         matches!(result, Err(DiscoveryError::NetworkError { .. })),
-        "Expected NetworkError for connection refused, got {:?}",
-        result
+        "Expected NetworkError for connection refused, got {result:?}"
     );
 }
 

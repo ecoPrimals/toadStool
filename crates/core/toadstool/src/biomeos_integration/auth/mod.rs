@@ -101,10 +101,16 @@ impl AuthenticationManager {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if capability discovery fails or no crypto provider can be configured.
     pub async fn discover() -> crate::ToadStoolResult<Self> {
         Self::discover_with_config(AuthManagerConfig::default()).await
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if capability discovery fails or no crypto provider can be configured.
     pub async fn discover_with_config(config: AuthManagerConfig) -> crate::ToadStoolResult<Self> {
         match Self::with_crypto_service(config.clone()).await {
             Ok(manager) => {
@@ -136,6 +142,9 @@ impl AuthenticationManager {
         Ok(Self::with_inmemory(config))
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if crypto service discovery fails or the backend cannot be initialized.
     pub async fn with_crypto_service(config: AuthManagerConfig) -> ToadStoolResult<Self> {
         let backend = super::auth_backend::BearDogBackend::new_async().await?;
         Ok(Self {
@@ -170,10 +179,16 @@ impl AuthenticationManager {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the backend connection cannot be established.
     pub async fn initialize_beardog_connection(&self) -> ToadStoolResult<()> {
         self.backend.initialize().await
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if token request or refresh fails.
     pub async fn get_current_token(&self) -> ToadStoolResult<AuthenticationToken> {
         if let Some(token) = &self.current_token {
             if token.expires_at > SystemTime::now() + Duration::from_secs(30) {
@@ -195,6 +210,9 @@ impl AuthenticationManager {
         self.backend.request_token(&token_request).await
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if signing fails (e.g., invalid key configuration).
     pub fn sign_token_request(
         &self,
         token: &AuthenticationToken,
@@ -203,7 +221,7 @@ impl AuthenticationManager {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
-        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
         let payload = format!(
             "{}:{}:{}",
             token.id,
@@ -216,11 +234,14 @@ impl AuthenticationManager {
         self.sign_payload(&payload)
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if signing fails (e.g., invalid key configuration).
     pub fn sign_verification_request(&self, primal_name: &str) -> ToadStoolResult<String> {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
-        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
         let payload = format!(
             "verify:{}:{}",
             primal_name,
@@ -234,6 +255,7 @@ impl AuthenticationManager {
 
     fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
         use base64::{engine::general_purpose, Engine as _};
+        use ed25519_dalek::Signer;
 
         if let Some(ref seed_b64) = self.config.signing_key_seed {
             let seed_bytes = general_purpose::STANDARD.decode(seed_b64).map_err(|e| {
@@ -253,7 +275,6 @@ impl AuthenticationManager {
                 )
             })?;
             let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
-            use ed25519_dalek::Signer;
             let signature = signing_key.sign(payload.as_bytes());
             Ok(format!(
                 "ed25519:{}",
@@ -285,6 +306,7 @@ impl AuthenticationManager {
         }
     }
 
+    #[must_use]
     pub fn get_public_key(&self) -> Option<String> {
         use base64::{engine::general_purpose, Engine as _};
         let seed_b64 = self.config.signing_key_seed.as_ref()?;
@@ -298,6 +320,9 @@ impl AuthenticationManager {
         Some(general_purpose::STANDARD.encode(verifying_key.as_bytes()))
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the refresh task cannot be spawned.
     pub fn start_token_refresh(&mut self) -> ToadStoolResult<()> {
         let refresh_interval = self.config.token_refresh_interval;
         let backend = Arc::clone(&self.backend);

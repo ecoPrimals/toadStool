@@ -35,7 +35,7 @@ async fn test_window_info_after_creation() {
         fullscreen: false,
     };
 
-    let id = manager.create_window(req).await.unwrap();
+    let id = manager.create_window(req).unwrap();
     let info = manager.get_window_info(id).unwrap();
 
     assert_eq!(info.width, 1024);
@@ -56,7 +56,6 @@ async fn test_window_resize() {
     let mut manager = manager_result.unwrap();
     let id = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
 
     // Resize
@@ -68,7 +67,6 @@ async fn test_window_resize() {
                 height: 600,
             },
         )
-        .await
         .unwrap();
 
     let info = manager.get_window_info(id).unwrap();
@@ -88,15 +86,12 @@ async fn test_window_focus_changes() {
 
     let id1 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
     let id2 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
     let id3 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
 
     // Should still be focused on first
@@ -126,15 +121,12 @@ async fn test_window_list_after_operations() {
 
     let id1 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
     let id2 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
     let id3 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
 
     assert_eq!(manager.window_count(), 3);
@@ -145,7 +137,7 @@ async fn test_window_list_after_operations() {
     assert!(windows.contains(&id3));
 
     // Destroy middle window
-    manager.destroy_window(id2).await.unwrap();
+    manager.destroy_window(id2).unwrap();
     assert_eq!(manager.window_count(), 2);
     let windows = manager.list_windows();
     assert!(!windows.contains(&id2));
@@ -163,18 +155,16 @@ async fn test_window_destroy_focused() {
 
     let id1 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
     let id2 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
 
     manager.set_focus(id1);
     assert_eq!(manager.get_focused(), Some(id1));
 
     // Destroy focused window
-    manager.destroy_window(id1).await.unwrap();
+    manager.destroy_window(id1).unwrap();
 
     // Focus should shift to remaining window
     assert_eq!(manager.get_focused(), Some(id2));
@@ -192,10 +182,9 @@ async fn test_window_destroy_last() {
 
     let id = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
 
-    manager.destroy_window(id).await.unwrap();
+    manager.destroy_window(id).unwrap();
     assert_eq!(manager.window_count(), 0);
     assert_eq!(manager.get_focused(), None);
 }
@@ -213,7 +202,7 @@ async fn test_window_not_found_errors() {
 
     // All operations should fail with non-existent window
     assert!(manager.get_window_info(fake_id).is_err());
-    assert!(manager.destroy_window(fake_id).await.is_err());
+    assert!(manager.destroy_window(fake_id).is_err());
     assert!(manager
         .resize_window(
             fake_id,
@@ -222,7 +211,6 @@ async fn test_window_not_found_errors() {
                 height: 100
             }
         )
-        .await
         .is_err());
 }
 

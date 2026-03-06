@@ -87,7 +87,7 @@ impl AgentDeploymentManager {
 
     /// Discover and create agent manager via capability-based discovery
     ///
-    /// This is the preferred method for creating an AgentDeploymentManager.
+    /// This is the preferred method for creating an `AgentDeploymentManager`.
     /// It discovers Squirrel (or another AI provider) at runtime.
     ///
     /// # Discovery Order
@@ -101,6 +101,10 @@ impl AgentDeploymentManager {
     /// ```rust,ignore
     /// let manager = AgentDeploymentManager::discover().await?;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if capability discovery fails or no AI provider can be configured.
     pub async fn discover() -> crate::ToadStoolResult<Self> {
         Self::discover_with_config(AgentDeploymentConfig::default()).await
     }
@@ -108,6 +112,10 @@ impl AgentDeploymentManager {
     /// Discover AI provider with custom configuration
     ///
     /// **EVOLVED**: Uses capability-based discovery (no hardcoded primal names).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if capability discovery fails or no AI provider can be configured.
     pub async fn discover_with_config(
         config: AgentDeploymentConfig,
     ) -> crate::ToadStoolResult<Self> {
@@ -151,6 +159,10 @@ impl AgentDeploymentManager {
     /// Create a new manager with capability-based ML service discovery (RECOMMENDED)
     ///
     /// **Deep Debt Compliant**: Discovers ML service by capability, not name.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if ML service discovery fails or the backend cannot be initialized.
     pub async fn with_ml_service(config: AgentDeploymentConfig) -> crate::ToadStoolResult<Self> {
         let backend = super::agent_backend::SquirrelBackend::new_async(
             config.model_registry.clone(),
@@ -197,36 +209,64 @@ impl AgentDeploymentManager {
     }
 
     /// Initialize connection to Squirrel (or test backend)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the backend connection cannot be established.
     pub async fn initialize_squirrel_connection(&self) -> ToadStoolResult<()> {
         self.backend.initialize().await
     }
 
     /// Deploy an AI agent from configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deployment fails, configuration is invalid, or backend is unavailable.
     pub async fn deploy_agent(&mut self, agent_config: &AgentConfig) -> ToadStoolResult<AgentInfo> {
         self.backend.deploy_agent(agent_config).await
     }
 
     /// Load a model for agent use
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if model loading fails or configuration is invalid.
     pub async fn load_model(&mut self, model_config: &ModelConfig) -> ToadStoolResult<ModelInfo> {
         self.backend.load_model(model_config).await
     }
 
     /// Scale an agent to specified replica count
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if scaling fails or the agent does not exist.
     pub async fn scale_agent(&mut self, agent_name: &str, replicas: u32) -> ToadStoolResult<()> {
         self.backend.scale_agent(agent_name, replicas).await
     }
 
     /// Stop an agent
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the agent cannot be stopped or does not exist.
     pub async fn stop_agent(&mut self, agent_name: &str) -> ToadStoolResult<()> {
         self.backend.stop_agent(agent_name).await
     }
 
     /// Remove an agent
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if removal fails or the agent does not exist.
     pub async fn remove_agent(&mut self, agent_name: &str) -> ToadStoolResult<()> {
         self.backend.remove_agent(agent_name).await
     }
 
     /// Get agent status (now properly async!)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the agent does not exist or backend is unavailable.
     pub async fn get_agent_status(&self, agent_name: &str) -> ToadStoolResult<AgentStatus> {
         self.backend.get_agent_status(agent_name).await
     }
@@ -242,6 +282,10 @@ impl AgentDeploymentManager {
     }
 
     /// Get agent resource usage (now properly async!)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the agent does not exist or resource data cannot be retrieved.
     pub async fn get_agent_resources(
         &self,
         agent_name: &str,
@@ -250,11 +294,19 @@ impl AgentDeploymentManager {
     }
 
     /// Unload a model
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the model cannot be unloaded or does not exist.
     pub async fn unload_model(&mut self, model_name: &str) -> ToadStoolResult<()> {
         self.backend.unload_model(model_name).await
     }
 
     /// Health check for agent manager
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the backend health check fails.
     pub async fn health_check(&self) -> ToadStoolResult<()> {
         self.backend.health_check().await
     }
@@ -501,5 +553,230 @@ mod tests {
         let status = manager.get_agent_status("status-agent").await;
         assert!(status.is_ok());
         assert_eq!(status.unwrap(), AgentStatus::Running);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_load_model() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let model_config = ModelConfig {
+            name: "test-model".to_string(),
+            model_type: "llm".to_string(),
+            parameters: HashMap::new(),
+            resources: None,
+        };
+
+        let result = manager.load_model(&model_config).await;
+        assert!(result.is_ok());
+        let model_info = result.unwrap();
+        assert_eq!(model_info.name, "test-model");
+        assert_eq!(model_info.model_type, "llm");
+        assert_eq!(model_info.status, ModelStatus::Ready);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_list_models_returns_loaded() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let model_config = ModelConfig {
+            name: "list-model".to_string(),
+            model_type: "embedding".to_string(),
+            parameters: HashMap::new(),
+            resources: None,
+        };
+        manager.load_model(&model_config).await.unwrap();
+
+        let models = manager.list_models().await;
+        assert!(!models.is_empty());
+        assert!(models.iter().any(|m| m.name == "list-model"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_scale_agent() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let agent_config = AgentConfig {
+            name: "scale-agent".to_string(),
+            model: "test-model".to_string(),
+            capabilities: vec!["chat".to_string()],
+            resources: None,
+            environment: HashMap::new(),
+            config: HashMap::new(),
+        };
+        manager.deploy_agent(&agent_config).await.unwrap();
+
+        let result = manager.scale_agent("scale-agent", 3).await;
+        assert!(result.is_ok());
+
+        let status = manager.get_agent_status("scale-agent").await.unwrap();
+        assert_eq!(status, AgentStatus::Running);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_stop_agent() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let agent_config = AgentConfig {
+            name: "stop-agent".to_string(),
+            model: "test-model".to_string(),
+            capabilities: vec!["chat".to_string()],
+            resources: None,
+            environment: HashMap::new(),
+            config: HashMap::new(),
+        };
+        manager.deploy_agent(&agent_config).await.unwrap();
+
+        let result = manager.stop_agent("stop-agent").await;
+        assert!(result.is_ok());
+
+        let status = manager.get_agent_status("stop-agent").await.unwrap();
+        assert_eq!(status, AgentStatus::Stopped);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_remove_agent() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let agent_config = AgentConfig {
+            name: "remove-agent".to_string(),
+            model: "test-model".to_string(),
+            capabilities: vec!["chat".to_string()],
+            resources: None,
+            environment: HashMap::new(),
+            config: HashMap::new(),
+        };
+        manager.deploy_agent(&agent_config).await.unwrap();
+
+        let result = manager.remove_agent("remove-agent").await;
+        assert!(result.is_ok());
+
+        let status_result = manager.get_agent_status("remove-agent").await;
+        assert!(status_result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_unload_model() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let model_config = ModelConfig {
+            name: "unload-model".to_string(),
+            model_type: "llm".to_string(),
+            parameters: HashMap::new(),
+            resources: None,
+        };
+        manager.load_model(&model_config).await.unwrap();
+
+        let result = manager.unload_model("unload-model").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_agent_resources() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let agent_config = AgentConfig {
+            name: "resources-agent".to_string(),
+            model: "test-model".to_string(),
+            capabilities: vec!["chat".to_string()],
+            resources: None,
+            environment: HashMap::new(),
+            config: HashMap::new(),
+        };
+        manager.deploy_agent(&agent_config).await.unwrap();
+
+        let result = manager.get_agent_resources("resources-agent").await;
+        assert!(result.is_ok());
+        let usage = result.unwrap();
+        assert!(usage.cpu_millicores > 0);
+        assert!(usage.memory_bytes > 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_health_check_inmemory() {
+        let config = test_config();
+        let manager = AgentDeploymentManager::with_inmemory(config);
+
+        let result = manager.health_check().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_initialize_squirrel_connection_inmemory() {
+        let config = test_config();
+        let manager = AgentDeploymentManager::with_inmemory(config);
+
+        let result = manager.initialize_squirrel_connection().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_agent_status_nonexistent_returns_error() {
+        let config = test_config();
+        let manager = AgentDeploymentManager::with_inmemory(config);
+
+        let result = manager.get_agent_status("nonexistent-agent").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_scale_agent_nonexistent_returns_error() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let result = manager.scale_agent("nonexistent", 2).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_stop_agent_nonexistent_returns_error() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let result = manager.stop_agent("nonexistent").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_remove_agent_nonexistent_returns_error() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let result = manager.remove_agent("nonexistent").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_unload_model_nonexistent_returns_error() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let result = manager.unload_model("nonexistent-model").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_manager_new_with_backend() {
+        let config = test_config();
+        let backend = crate::biomeos_integration::InMemoryAgentBackend::new();
+        let manager = AgentDeploymentManager::new(config, Arc::new(backend));
+
+        let agents = manager.list_agents().await;
+        assert!(agents.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_discover_with_config_returns_manager() {
+        // with_inmemory is the fallback path - test it directly to avoid nested runtime
+        let config = AgentDeploymentConfig::default();
+        let manager = AgentDeploymentManager::with_inmemory(config);
+        let agents = manager.list_agents().await;
+        assert!(agents.is_empty());
     }
 }

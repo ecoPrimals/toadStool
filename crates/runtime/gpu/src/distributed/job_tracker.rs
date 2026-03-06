@@ -181,6 +181,52 @@ impl Default for JobTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::universal::{
+        ComputeRequirements, KernelLanguage, OptimizationHints, UniversalKernel, UniversalWorkload,
+        WorkloadResult,
+    };
+    use std::collections::HashMap;
+    use std::time::Duration;
+
+    fn make_test_workload() -> UniversalWorkload {
+        UniversalWorkload {
+            id: "test-workload".to_string(),
+            requirements: ComputeRequirements::default(),
+            kernel: UniversalKernel::Source {
+                language: KernelLanguage::Wgsl,
+                code: "fn main() {}".to_string(),
+                entry_point: "main".to_string(),
+            },
+            inputs: vec![],
+            output_size: 1024,
+            hints: OptimizationHints::default(),
+        }
+    }
+
+    fn make_test_job_state(job_id: &str) -> DistributedJobState {
+        DistributedJobState {
+            job_id: job_id.to_string(),
+            workload: make_test_workload(),
+            status: JobStatus::Pending,
+            assigned_tower: None,
+            result: None,
+            created_at: std::time::Instant::now(),
+            completed_at: None,
+        }
+    }
+
+    fn make_test_workload_result() -> WorkloadResult {
+        WorkloadResult {
+            outputs: HashMap::new(),
+            metrics: crate::universal::ExecutionMetrics {
+                execution_time: Duration::ZERO,
+                memory_used: 0,
+                energy_joules: None,
+                utilization: 0.0,
+            },
+            messages: vec![],
+        }
+    }
 
     #[tokio::test]
     async fn test_job_tracker_creation() {
@@ -195,5 +241,88 @@ mod tests {
         let stats = tracker.statistics().await;
         assert_eq!(stats.total_jobs, 0);
         assert_eq!(stats.pending_jobs, 0);
+    }
+
+    #[tokio::test]
+    async fn test_register_and_get_job() {
+        let tracker = JobTracker::new();
+        let job = make_test_job_state("job-1");
+        tracker.register_job(job).await;
+        let retrieved = tracker.get_job("job-1").await;
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().job_id, "job-1");
+    }
+
+    #[tokio::test]
+    async fn test_update_status() {
+        let tracker = JobTracker::new();
+        tracker.register_job(make_test_job_state("job-1")).await;
+        tracker.update_status("job-1", JobStatus::Running).await;
+        let job = tracker.get_job("job-1").await.unwrap();
+        assert_eq!(job.status, JobStatus::Running);
+    }
+
+    #[tokio::test]
+    async fn test_assign_to_tower() {
+        let tracker = JobTracker::new();
+        tracker.register_job(make_test_job_state("job-1")).await;
+        tracker
+            .assign_to_tower("job-1", "tower-a".to_string())
+            .await;
+        let job = tracker.get_job("job-1").await.unwrap();
+        assert_eq!(job.assigned_tower, Some("tower-a".to_string()));
+        assert_eq!(job.status, JobStatus::Scheduled);
+    }
+
+    #[tokio::test]
+    async fn test_complete_job() {
+        let tracker = JobTracker::new();
+        tracker.register_job(make_test_job_state("job-1")).await;
+        let result = make_test_workload_result();
+        tracker.complete_job("job-1", result).await;
+        let job = tracker.get_job("job-1").await.unwrap();
+        assert_eq!(job.status, JobStatus::Completed);
+        assert!(job.result.is_some());
+        assert!(job.completed_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_fail_job() {
+        let tracker = JobTracker::new();
+        tracker.register_job(make_test_job_state("job-1")).await;
+        tracker.fail_job("job-1").await;
+        let job = tracker.get_job("job-1").await.unwrap();
+        assert_eq!(job.status, JobStatus::Failed);
+        assert!(job.completed_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_jobs_by_status() {
+        let tracker = JobTracker::new();
+        let mut job1 = make_test_job_state("job-1");
+        job1.status = JobStatus::Pending;
+        let mut job2 = make_test_job_state("job-2");
+        job2.status = JobStatus::Running;
+        tracker.register_job(job1).await;
+        tracker.register_job(job2).await;
+        let pending = tracker.jobs_by_status(JobStatus::Pending).await;
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].job_id, "job-1");
+    }
+
+    #[tokio::test]
+    async fn test_statistics_with_jobs() {
+        let tracker = JobTracker::new();
+        tracker.register_job(make_test_job_state("job-1")).await;
+        tracker.register_job(make_test_job_state("job-2")).await;
+        let stats = tracker.statistics().await;
+        assert_eq!(stats.total_jobs, 2);
+        assert_eq!(stats.pending_jobs, 2);
+    }
+
+    #[tokio::test]
+    async fn test_job_tracker_default() {
+        let tracker = JobTracker::default();
+        assert!(tracker.all_jobs().await.is_empty());
     }
 }

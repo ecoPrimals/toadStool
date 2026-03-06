@@ -5,7 +5,10 @@ use std::collections::HashMap;
 use std::time::Instant;
 use uuid::Uuid;
 
-use super::byob_types::*;
+use super::byob_types::{
+    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, NetworkInfo, NetworkUsage,
+    ResourceUsage,
+};
 
 /// Active deployment tracking
 #[derive(Debug)]
@@ -20,7 +23,7 @@ pub(super) struct ActiveDeployment {
     pub resource_usage: ResourceUsage,
     /// Network information
     pub network_info: NetworkInfo,
-    /// Created timestamp (accessed via elapsed())
+    /// Created timestamp (accessed via `elapsed()`)
     pub created_at: Instant,
     /// Updated timestamp
     pub updated_at: Instant,
@@ -134,6 +137,7 @@ impl ActiveDeployment {
 
 #[cfg(test)]
 mod tests {
+    use super::super::byob_types::{TeamNetworkConfig, TeamResourceQuotas, TeamSecurityConfig};
     use super::*;
     use std::time::SystemTime;
 

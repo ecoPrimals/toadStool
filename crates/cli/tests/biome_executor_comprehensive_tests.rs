@@ -22,8 +22,6 @@ async fn test_biome_executor_creation() {
     // NOTE: Full mock infrastructure test pending
     // Will be added with comprehensive test expansion
     // Priority: P2 (test coverage goal)
-    // let executor = BiomeExecutor::new().await;
-    // assert!(executor.is_ok(), "Executor should create successfully");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

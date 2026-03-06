@@ -46,6 +46,7 @@ impl ResourceEnvConfig {
 
 /// Monitoring and observability configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct MonitoringEnvConfig {
     pub metrics_enabled: bool,
     pub metrics_interval_secs: u64,
@@ -84,6 +85,7 @@ impl MonitoringEnvConfig {
 
 /// Security and auth configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct SecurityEnvConfig {
     pub auth_enabled: bool,
     pub auth_token_expiry_secs: u64,

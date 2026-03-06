@@ -16,6 +16,8 @@ use tokio::time::timeout;
 use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
+#[allow(deprecated)]
+use toadstool_common::constants::ecosystem::well_known;
 use toadstool_config::env_config::EnvironmentConfig;
 
 /// Ecosystem discovery system for finding and configuring primal services
@@ -38,9 +40,9 @@ impl EcosystemDiscoverer {
 
         // Songbird - Network coordination primal
         service_patterns.insert(
-            "songbird".to_string(),
+            well_known::SONGBIRD.to_string(),
             ServicePattern {
-                name: "songbird".to_string(),
+                name: well_known::SONGBIRD.to_string(),
                 description: "Network coordination and orchestration".to_string(),
                 default_ports: vec![config.network.songbird_port],
                 health_endpoints: vec!["/health".to_string(), "/api/health".to_string()],
@@ -51,9 +53,9 @@ impl EcosystemDiscoverer {
 
         // BearDog - Security primal
         service_patterns.insert(
-            "beardog".to_string(),
+            well_known::BEARDOG.to_string(),
             ServicePattern {
-                name: "beardog".to_string(),
+                name: well_known::BEARDOG.to_string(),
                 description: "Security and threat detection".to_string(),
                 default_ports: vec![config.network.beardog_port],
                 health_endpoints: vec!["/health".to_string(), "/api/security/health".to_string()],
@@ -64,9 +66,9 @@ impl EcosystemDiscoverer {
 
         // NestGate - Storage primal
         service_patterns.insert(
-            "nestgate".to_string(),
+            well_known::NESTGATE.to_string(),
             ServicePattern {
-                name: "nestgate".to_string(),
+                name: well_known::NESTGATE.to_string(),
                 description: "Distributed storage and data management".to_string(),
                 default_ports: vec![config.network.nestgate_port],
                 health_endpoints: vec!["/health".to_string(), "/api/storage/health".to_string()],
@@ -77,9 +79,9 @@ impl EcosystemDiscoverer {
 
         // Squirrel - AI primal
         service_patterns.insert(
-            "squirrel".to_string(),
+            well_known::SQUIRREL.to_string(),
             ServicePattern {
-                name: "squirrel".to_string(),
+                name: well_known::SQUIRREL.to_string(),
                 description: "AI and machine learning services".to_string(),
                 default_ports: vec![config.network.squirrel_port],
                 health_endpoints: vec!["/health".to_string(), "/api/ai/health".to_string()],
@@ -90,9 +92,9 @@ impl EcosystemDiscoverer {
 
         // BiomeOS - Universal OS
         service_patterns.insert(
-            "biomeos".to_string(),
+            well_known::BIOMEOS.to_string(),
             ServicePattern {
-                name: "biomeos".to_string(),
+                name: well_known::BIOMEOS.to_string(),
                 description: "Universal operating system and environment management".to_string(),
                 default_ports: vec![8005, 8085, 9005],
                 health_endpoints: vec!["/health".to_string(), "/api/biome/health".to_string()],
@@ -103,9 +105,9 @@ impl EcosystemDiscoverer {
 
         // Other ToadStool instances (recursive hosting)
         service_patterns.insert(
-            "toadstool".to_string(),
+            toadstool_common::constants::primal_identity::PRIMAL_NAME.to_string(),
             ServicePattern {
-                name: "toadstool".to_string(),
+                name: toadstool_common::constants::primal_identity::PRIMAL_NAME.to_string(),
                 description: "Other ToadStool universal compute instances".to_string(),
                 default_ports: vec![config.network.toadstool_port],
                 health_endpoints: vec!["/health".to_string(), "/jsonrpc".to_string()],
@@ -149,8 +151,7 @@ impl EcosystemDiscoverer {
         // Note: cfg!(test) doesn't work in integration tests, so we check thread name
         let is_test = std::thread::current()
             .name()
-            .map(|n| n.contains("test"))
-            .unwrap_or(false)
+            .is_some_and(|n| n.contains("test"))
             || cfg!(test)
             || std::env::var("CI").is_ok()
             || std::env::var("TOADSTOOL_SKIP_DISCOVERY").is_ok();
@@ -177,7 +178,7 @@ impl EcosystemDiscoverer {
             self.discover_local_services(),
             self.discover_network_services(),
             self.discover_wellknown_services(),
-            async { self.discover_mdns_services() },
+            async { Ok::<_, ToadStoolError>(Self::discover_mdns_services()) },
         );
 
         let mut discovered_services = HashMap::new();
@@ -241,7 +242,6 @@ impl EcosystemDiscoverer {
                 debug!("Using {} from environment: {}", service_name, endpoint);
                 if let Ok(service_info) = self.probe_service(&endpoint, pattern).await {
                     services.insert(service_name.clone(), service_info);
-                    continue; // Skip probing if env var provided
                 }
             }
         }
@@ -281,7 +281,7 @@ impl EcosystemDiscoverer {
         let mut services = HashMap::new();
 
         // Get local network ranges to scan
-        let network_ranges = self.get_local_network_ranges()?;
+        let network_ranges = Self::get_local_network_ranges();
 
         for network_range in network_ranges {
             let range_services = self.scan_network_range(&network_range).await?;
@@ -321,7 +321,7 @@ impl EcosystemDiscoverer {
     }
 
     /// Discover services using mDNS/Zeroconf
-    fn discover_mdns_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
+    fn discover_mdns_services() -> HashMap<String, ServiceInfo> {
         let services = HashMap::new();
 
         // This would be implemented with a proper mDNS library
@@ -345,7 +345,7 @@ impl EcosystemDiscoverer {
         }
 
         debug!("mDNS discovery found {} services", services.len());
-        Ok(services)
+        services
     }
 
     /// Probe a service endpoint to see if it's available and get info
@@ -408,7 +408,7 @@ impl EcosystemDiscoverer {
     }
 
     /// Get local network ranges for scanning
-    fn get_local_network_ranges(&self) -> ToadStoolResult<Vec<String>> {
+    fn get_local_network_ranges() -> Vec<String> {
         let ranges = vec![
             "192.168.1.0/24".to_string(),
             "192.168.0.0/24".to_string(),
@@ -422,7 +422,7 @@ impl EcosystemDiscoverer {
         // 3. Use more sophisticated network discovery
 
         debug!("Using default network ranges: {:?}", ranges);
-        Ok(ranges)
+        ranges
     }
 
     /// Scan a network range for services
@@ -610,8 +610,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_network_range_parsing() {
-        let discoverer = EcosystemDiscoverer::new();
-        let ranges = discoverer.get_local_network_ranges().unwrap();
+        let _discoverer = EcosystemDiscoverer::new();
+        let ranges = EcosystemDiscoverer::get_local_network_ranges();
 
         assert!(!ranges.is_empty());
         assert!(ranges.contains(&"192.168.1.0/24".to_string()));
@@ -659,5 +659,225 @@ mod tests {
             let json = serde_json::to_string(&status).unwrap();
             assert!(!json.is_empty());
         }
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability() {
+        let discoverer = EcosystemDiscoverer::new();
+        let storage = discoverer.find_pattern_by_capability("storage");
+        assert!(storage.is_some());
+        assert_eq!(storage.unwrap().name, "nestgate");
+
+        let network = discoverer.find_pattern_by_capability("network");
+        assert!(network.is_some());
+
+        let unknown = discoverer.find_pattern_by_capability("nonexistent_capability_xyz");
+        assert!(unknown.is_none());
+    }
+
+    #[test]
+    fn test_service_type_display() {
+        assert_eq!(
+            ServiceType::NetworkCoordination.to_string(),
+            "Network Coordination"
+        );
+        assert_eq!(ServiceType::Security.to_string(), "Security");
+        assert_eq!(ServiceType::Storage.to_string(), "Storage");
+        assert_eq!(ServiceType::AI.to_string(), "AI");
+        assert_eq!(ServiceType::Compute.to_string(), "Compute");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_discover_services_fast_mode() {
+        let mut discoverer = EcosystemDiscoverer::new();
+        let result = discoverer.discover_services().await;
+        assert!(result.is_ok());
+        let services = result.unwrap();
+        assert_eq!(services.discovered_services.len(), 0);
+        assert!(services
+            .discovery_summary
+            .discovery_methods_used
+            .contains(&"fast_mode".to_string()));
+    }
+
+    #[test]
+    fn test_ecosystem_discoverer_clear_cache() {
+        let mut discoverer = EcosystemDiscoverer::new();
+        discoverer.clear_cache();
+        assert!(discoverer.get_last_discovery().is_none());
+    }
+
+    #[test]
+    fn test_discover_mdns_services_returns_empty() {
+        let services = EcosystemDiscoverer::discover_mdns_services();
+        assert!(services.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_scan_network_range_invalid_cidr_returns_empty() {
+        let discoverer = EcosystemDiscoverer::new();
+        let result = discoverer.scan_network_range("not-a-valid-cidr").await;
+        assert!(result.is_ok());
+        let services = result.unwrap();
+        assert!(services.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_scan_network_range_malformed_ip_returns_empty() {
+        let discoverer = EcosystemDiscoverer::new();
+        let result = discoverer.scan_network_range("1.2.3/24").await;
+        assert!(result.is_ok());
+        let services = result.unwrap();
+        assert!(services.is_empty());
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_machine_learning() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("machine_learning");
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap().name, "squirrel");
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_authentication() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("authentication");
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap().name, "beardog");
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_os_management() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("os_management");
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap().name, "biomeos");
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_compute() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("compute");
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap().name, "toadstool");
+    }
+
+    #[test]
+    fn test_service_type_operating_system_display() {
+        assert_eq!(ServiceType::OperatingSystem.to_string(), "Operating System");
+    }
+
+    #[test]
+    fn test_service_type_unknown_display() {
+        assert_eq!(ServiceType::Unknown.to_string(), "Unknown");
+    }
+
+    #[test]
+    fn test_discovered_services_has_timestamp() {
+        let services = DiscoveredServices {
+            discovered_services: std::collections::HashMap::new(),
+            discovery_summary: DiscoverySummary::default(),
+            discovery_timestamp: std::time::SystemTime::now(),
+        };
+        let _ = services.discovery_timestamp;
+    }
+
+    #[test]
+    fn test_service_pattern_required_capabilities() {
+        let discoverer = EcosystemDiscoverer::new();
+        let songbird = discoverer.service_patterns.get("songbird").unwrap();
+        assert!(songbird
+            .required_capabilities
+            .contains(&"network".to_string()));
+        assert!(songbird
+            .required_capabilities
+            .contains(&"coordination".to_string()));
+
+        let nestgate = discoverer.service_patterns.get("nestgate").unwrap();
+        assert!(nestgate
+            .required_capabilities
+            .contains(&"storage".to_string()));
+    }
+
+    #[test]
+    fn test_service_pattern_default_ports() {
+        let discoverer = EcosystemDiscoverer::new();
+        for (_name, pattern) in &discoverer.service_patterns {
+            assert!(
+                !pattern.default_ports.is_empty(),
+                "{} has no ports",
+                pattern.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_service_pattern_health_endpoints() {
+        let discoverer = EcosystemDiscoverer::new();
+        let songbird = discoverer.service_patterns.get("songbird").unwrap();
+        assert!(songbird
+            .health_endpoints
+            .iter()
+            .any(|e| e.contains("health")));
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_data_management() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("data_management");
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap().name, "nestgate");
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_coordination() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("coordination");
+        assert!(pattern.is_some());
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_environment() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("environment");
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap().name, "biomeos");
+    }
+
+    #[test]
+    fn test_find_pattern_by_capability_universal_execution() {
+        let discoverer = EcosystemDiscoverer::new();
+        let pattern = discoverer.find_pattern_by_capability("universal_execution");
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap().name, "toadstool");
+    }
+
+    #[test]
+    fn test_discovery_summary_serialization() {
+        let mut summary = DiscoverySummary::default();
+        summary.total_services_found = 3;
+        summary.discovery_methods_used = vec!["local".to_string()];
+        summary.services_by_type.insert("compute".to_string(), 1);
+        let json = serde_json::to_value(&summary).unwrap();
+        assert_eq!(json["total_services_found"], 3);
+    }
+
+    #[test]
+    fn test_service_info_deserialization() {
+        let json = serde_json::json!({
+            "name": "test",
+            "endpoint": "http://localhost:8080",
+            "service_type": "Test",
+            "version": "1.0",
+            "capabilities": ["test"],
+            "status": "Healthy",
+            "discovered_via": "test",
+            "response_time_ms": 10
+        });
+        let info: ServiceInfo = serde_json::from_value(json).unwrap();
+        assert_eq!(info.name, "test");
+        assert_eq!(info.endpoint, "http://localhost:8080");
+        assert_eq!(info.response_time_ms, 10);
     }
 }

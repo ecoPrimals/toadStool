@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Registry discovery backend (HTTP + file/unix delegation)
 //!
-//! Registry protocol: GET {endpoint}/services → JSON array of ConfigFileService.
-//! Resolution order: arg → TOADSTOOL_REGISTRY_ENDPOINT env → error.
+//! Registry protocol: GET {endpoint}/services → JSON array of `ConfigFileService`.
+//! Resolution order: arg → `TOADSTOOL_REGISTRY_ENDPOINT` env → error.
 
 use std::time::SystemTime;
 

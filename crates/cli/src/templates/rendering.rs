@@ -64,7 +64,7 @@ pub fn get_template_tags(template: &BiomeTemplate) -> Vec<String> {
 /// - Pure Rust implementation (no C dependencies)
 /// - Better for configuration files
 /// - Native to Rust ecosystem
-#[allow(dead_code)] // Utility function for future CLI commands
+#[cfg(test)]
 pub fn manifest_to_toml(manifest: &BiomeManifest) -> Result<String> {
     let mut toml_str = String::new();
 
@@ -249,5 +249,62 @@ mod tests {
         let tags = get_template_tags(&BiomeTemplate::Distributed);
         assert!(tags.contains(&"cluster".to_string()));
         assert!(tags.contains(&"orchestration".to_string()));
+    }
+
+    #[test]
+    fn test_manifest_to_toml() {
+        use crate::{
+            BiomeManifest, BiomeMetadata, BiomeNetworking, BiomeResources, BiomeSecurity,
+            BiomeStorage,
+        };
+        use std::collections::HashMap;
+
+        let now = std::time::SystemTime::now();
+        let manifest = BiomeManifest {
+            metadata: BiomeMetadata {
+                name: "test-biome".to_string(),
+                version: "1.0".to_string(),
+                description: Some("Test manifest".to_string()),
+                author: None,
+                created: now,
+                updated: now,
+                tags: vec![],
+            },
+            primals: HashMap::new(),
+            services: HashMap::new(),
+            resources: BiomeResources {
+                cpu_limit: Some(4.0),
+                memory_limit: None,
+                storage_limit: None,
+                gpu_limit: None,
+                network_bandwidth: None,
+            },
+            security: BiomeSecurity {
+                isolation_level: "standard".to_string(),
+                trust_level: "medium".to_string(),
+                beardog_required: false,
+                crypto_policies: vec![],
+                allowed_networks: vec![],
+                forbidden_syscalls: vec![],
+            },
+            networking: BiomeNetworking {
+                mode: "bridge".to_string(),
+                dns_servers: vec![],
+                port_mappings: vec![],
+                network_policies: vec![],
+            },
+            storage: BiomeStorage {
+                nestgate_integration: None,
+                datasets: vec![],
+                volumes: vec![],
+                backup_policy: None,
+            },
+        };
+
+        let result = manifest_to_toml(&manifest);
+        assert!(result.is_ok());
+        let toml_str = result.unwrap();
+        assert!(toml_str.contains("test-biome"));
+        assert!(toml_str.contains("Test manifest"));
     }
 }

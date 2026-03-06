@@ -16,7 +16,7 @@ async fn test_operation_with_timeout() {
     // Use tokio::timeout instead of sleep
     let result = tokio::time::timeout(
         std::time::Duration::from_secs(5),
-        executor.list_biomes(false, "table".to_string(), false, None),
+        executor.list_biomes(false, "table", false, None),
     )
     .await;
 
@@ -36,7 +36,7 @@ async fn test_invariant_list_biomes_never_panics() {
         .map(|_| {
             let exec = executor.clone();
             tokio::spawn(async move {
-                exec.list_biomes(false, "table".to_string(), false, None)
+                exec.list_biomes(false, "table", false, None)
                     .await
             })
         })
@@ -54,7 +54,7 @@ async fn test_error_message_clarity() {
 
     // Test that error messages are clear
     let result = executor
-        .down_biome("nonexistent".to_string(), false, 30, false)
+        .down_biome("nonexistent", false, 30, false)
         .await;
 
     assert!(result.is_err());

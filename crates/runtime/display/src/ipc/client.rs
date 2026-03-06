@@ -102,6 +102,10 @@ impl DisplayClient {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no display server endpoint can be discovered or connection fails.
     pub async fn discover() -> Result<Self> {
         tracing::info!("🔍 Discovering display server endpoint (isomorphic mode)...");
 
@@ -263,6 +267,10 @@ impl DisplayClient {
     /// Connect to specific path (backward compatibility)
     ///
     /// **Legacy method**: Use `discover()` for automatic discovery!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if connection to the given path fails.
     pub async fn connect(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into();
         tracing::info!("Connecting to display server: {}", path.display());
@@ -317,6 +325,10 @@ impl DisplayClient {
     }
 
     /// Create a window
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
     pub async fn create_window(&mut self, request: CreateWindowRequest) -> Result<WindowId> {
         let params = serde_json::to_value(request)
             .map_err(|e| DisplayError::IpcError(format!("Failed to serialize request: {e}")))?;
@@ -340,6 +352,10 @@ impl DisplayClient {
     }
 
     /// Destroy a window
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
     pub async fn destroy_window(&mut self, window_id: WindowId) -> Result<()> {
         let req = JsonRpcRequest::new(
             "display.destroy_window",
@@ -358,6 +374,10 @@ impl DisplayClient {
     }
 
     /// Resize a window
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
     pub async fn resize_window(
         &mut self,
         window_id: WindowId,
@@ -385,6 +405,10 @@ impl DisplayClient {
     }
 
     /// Get window information
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
     pub async fn get_window_info(&mut self, window_id: WindowId) -> Result<WindowInfo> {
         let req = JsonRpcRequest::new(
             "display.get_window_info",
@@ -407,6 +431,10 @@ impl DisplayClient {
     }
 
     /// Get display capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
     pub async fn get_capabilities(&mut self) -> Result<DisplayCapabilitiesInfo> {
         let req = JsonRpcRequest::new("display.get_capabilities", None);
 
@@ -451,6 +479,7 @@ impl DisplayClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::window::WindowId;
 
     #[test]
     fn test_jsonrpc_request_creation() {
@@ -458,5 +487,98 @@ mod tests {
         assert_eq!(req.jsonrpc, "2.0");
         assert_eq!(req.method, "display.create_window");
         assert!(req.id.is_some());
+    }
+
+    #[test]
+    fn test_ipc_endpoint_unix_variant() {
+        use std::path::PathBuf;
+        let ep = IpcEndpoint::UnixSocket(PathBuf::from("/tmp/display.sock"));
+        let s = format!("{:?}", ep);
+        assert!(s.contains("UnixSocket") || s.contains("display"));
+    }
+
+    #[test]
+    fn test_ipc_endpoint_tcp_variant() {
+        use std::net::SocketAddr;
+        let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let ep = IpcEndpoint::TcpLocal(addr);
+        let s = format!("{:?}", ep);
+        assert!(s.contains("TcpLocal") || s.contains("127"));
+    }
+
+    #[test]
+    fn test_jsonrpc_request_with_params() {
+        let params = serde_json::json!({"width": 800, "height": 600});
+        let req = JsonRpcRequest::new("display.create_window", Some(params));
+        assert_eq!(req.method, "display.create_window");
+        assert!(req.params.is_some());
+    }
+
+    #[test]
+    fn test_jsonrpc_request_destroy_window_params() {
+        let window_id = WindowId::new();
+        let params = serde_json::json!({"window_id": window_id.as_string()});
+        let req = JsonRpcRequest::new("display.destroy_window", Some(params.clone()));
+        assert_eq!(req.method, "display.destroy_window");
+        assert_eq!(
+            req.params.as_ref().unwrap()["window_id"],
+            window_id.as_string()
+        );
+    }
+
+    #[test]
+    fn test_jsonrpc_request_resize_window_params() {
+        let window_id = WindowId::new();
+        let params = serde_json::json!({
+            "window_id": window_id.as_string(),
+            "width": 1024,
+            "height": 768
+        });
+        let req = JsonRpcRequest::new("display.resize_window", Some(params));
+        assert_eq!(req.method, "display.resize_window");
+        let p = req.params.unwrap();
+        assert_eq!(p["width"], 1024);
+        assert_eq!(p["height"], 768);
+    }
+
+    #[test]
+    fn test_jsonrpc_request_serialization() {
+        let req = JsonRpcRequest::new("display.get_capabilities", None);
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("display.get_capabilities"));
+        assert!(json.contains("2.0"));
+        let parsed: JsonRpcRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.method, req.method);
+    }
+
+    #[test]
+    fn test_jsonrpc_response_parse_success() {
+        let json = r#"{"jsonrpc":"2.0","result":{"window_id":"test-123"},"id":1}"#;
+        let resp: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(resp.result.is_some());
+        assert!(resp.error.is_none());
+        assert_eq!(resp.result.unwrap()["window_id"], "test-123");
+    }
+
+    #[test]
+    fn test_jsonrpc_response_parse_error() {
+        let json = r#"{"jsonrpc":"2.0","error":{"code":-32603,"message":"Internal error"},"id":1}"#;
+        let resp: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(resp.result.is_none());
+        assert!(resp.error.is_some());
+        assert_eq!(resp.error.unwrap().code, -32603);
+    }
+
+    #[tokio::test]
+    async fn test_connect_nonexistent_path_fails() {
+        let result = DisplayClient::connect("/nonexistent/socket/path/display.sock").await;
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(
+                e.to_string().to_lowercase().contains("connection")
+                    || e.to_string().to_lowercase().contains("failed")
+                    || e.to_string().to_lowercase().contains("error")
+            );
+        }
     }
 }

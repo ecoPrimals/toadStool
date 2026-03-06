@@ -92,7 +92,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         access_logs: true,
                         metrics_port: 15090,
                         tracing_endpoint: Some(
-                            std::env::var("TOADSTOOL_TRACING_ENDPOINT")
+                            std::env::var("TOADSTOOL_JAEGER_ENDPOINT")
                                 .unwrap_or_else(|_| "http://jaeger:14268/api/traces".to_string()),
                         ),
                     },

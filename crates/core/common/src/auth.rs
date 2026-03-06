@@ -347,7 +347,7 @@ mod tests {
     fn test_auth_credentials_long_token() {
         let long = "x".repeat(10000);
         let creds = AuthCredentials::bearer(&long);
-        assert_eq!(creds.token.as_ref().map(|s| s.len()), Some(10000));
+        assert_eq!(creds.token.as_ref().map(String::len), Some(10000));
     }
 
     #[test]

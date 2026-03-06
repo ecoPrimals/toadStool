@@ -7,7 +7,7 @@
 //!
 //! - ✅ **Self-Knowledge**: Knows only itself, discovers storage at runtime
 //! - ✅ **Capability-Based**: Discovers ANY storage service with required capability
-//! - ✅ **Vendor-Agnostic**: Works with NestGate, S3, MinIO, GCS, or any storage
+//! - ✅ **Vendor-Agnostic**: Works with NestGate, S3, `MinIO`, GCS, or any storage
 //! - ✅ **Pure Rust**: Unix socket IPC for primal communication
 //!
 //! ## Usage
@@ -46,13 +46,13 @@ use crate::types::{
 ///
 /// - **Self-Knowledge**: Knows only storage capabilities, not specific services
 /// - **Runtime Discovery**: Finds storage services via capability system
-/// - **Vendor-Agnostic**: Works with ANY storage implementing ArtifactStorage capability
+/// - **Vendor-Agnostic**: Works with ANY storage implementing `ArtifactStorage` capability
 /// - **Pure Rust IPC**: Unix socket communication (no HTTP between primals!)
 ///
 /// ## Supported Storage Services
 ///
 /// - NestGate (ecoPrimals storage)
-/// - MinIO (S3-compatible)
+/// - `MinIO` (S3-compatible)
 /// - AWS S3 (via adapter)
 /// - Google Cloud Storage (via adapter)
 /// - Any service advertising `storage:artifact` capability
@@ -61,20 +61,19 @@ pub struct StorageClient {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     config: NestGateConfig,
     /// Discovered service name (for diagnostics)
-    #[allow(dead_code)] // Stored for diagnostics and logging
-    service_name: String,
+    _service_name: String,
 }
 
 impl StorageClient {
     /// Discover storage service via capability-based discovery
     ///
-    /// **TRUE PRIMAL**: Discovers ANY storage service with ArtifactStorage capability
+    /// **TRUE PRIMAL**: Discovers ANY storage service with `ArtifactStorage` capability
     ///
     /// ## Vendor-Agnostic Discovery
     ///
     /// Finds storage services advertising `storage:artifact` capability:
     /// - NestGate (ecoPrimals native storage)
-    /// - MinIO (S3-compatible object storage)
+    /// - `MinIO` (S3-compatible object storage)
     /// - AWS S3 (via capability adapter)
     /// - Google Cloud Storage (via capability adapter)
     /// - Custom storage implementations
@@ -86,7 +85,7 @@ impl StorageClient {
     /// - ✅ How to communicate via unix sockets
     ///
     /// This client does NOT know:
-    /// - ❌ Specific service names (NestGate, MinIO, etc.)
+    /// - ❌ Specific service names (NestGate, `MinIO`, etc.)
     /// - ❌ Hardcoded endpoints or ports
     /// - ❌ Implementation details
     ///
@@ -129,7 +128,7 @@ impl StorageClient {
         let client = Self {
             rpc_client,
             config: NestGateConfig::default(),
-            service_name,
+            _service_name: service_name,
         };
 
         // Verify connectivity
@@ -187,7 +186,7 @@ impl StorageClient {
         let client = Self {
             rpc_client,
             config,
-            service_name,
+            _service_name: service_name,
         };
 
         // Perform initial health check
@@ -206,7 +205,7 @@ impl StorageClient {
         // Modern async RPC pattern
         let _response: serde_json::Value = self
             .rpc_client
-            .call("nestgate.health", serde_json::json!({}))
+            .call("storage.health", serde_json::json!({}))
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
@@ -443,14 +442,16 @@ impl StorageClient {
     }
 
     /// Calculate checksum for data integrity
-    fn calculate_checksum(data: &[u8]) -> String {
+    #[cfg_attr(test, allow(dead_code))]
+    pub(crate) fn calculate_checksum(data: &[u8]) -> String {
         let mut hasher = Sha256::new();
         hasher.update(data);
         format!("{:x}", hasher.finalize())
     }
 
     /// Detect content type from data
-    fn detect_content_type(data: &[u8]) -> String {
+    #[cfg_attr(test, allow(dead_code))]
+    pub(crate) fn detect_content_type(data: &[u8]) -> String {
         // Simple content type detection
         if data.starts_with(b"PK") {
             "application/zip".to_string()
@@ -489,7 +490,7 @@ impl StorageClient {
         Self {
             rpc_client,
             config,
-            service_name,
+            _service_name: service_name,
         }
     }
 }
@@ -648,6 +649,8 @@ mod tests {
         assert!(e.to_string().contains("net"));
         let e = NestGateError::Pipeline("pipe".to_string());
         assert!(e.to_string().contains("pipe"));
+        let e = NestGateError::Storage("storage err".to_string());
+        assert!(e.to_string().contains("storage"));
     }
 
     #[test]
@@ -676,5 +679,146 @@ mod tests {
         };
         let json = serde_json::to_value(&filters).unwrap();
         assert!(json.get("artifact_type").is_some());
+    }
+
+    #[test]
+    fn test_store_artifact_different_content_types() {
+        let client = test_client();
+        let zip = [0x50, 0x4B, 0x03, 0x04];
+        let png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        let jpeg = [0xFF, 0xD8, 0xFF];
+        let r1 = client.store_artifact("a.zip", &zip).unwrap();
+        let r2 = client.store_artifact("b.png", &png).unwrap();
+        let r3 = client.store_artifact("c.jpg", &jpeg).unwrap();
+        let r4 = client.store_artifact("d.bin", b"raw").unwrap();
+        assert!(matches!(r1.status, StorageStatus::Success));
+        assert!(matches!(r2.status, StorageStatus::Success));
+        assert!(matches!(r3.status, StorageStatus::Success));
+        assert!(matches!(r4.status, StorageStatus::Success));
+    }
+
+    #[test]
+    fn test_store_artifact_returns_uuid() {
+        let client = test_client();
+        let result = client.store_artifact("test", b"data").unwrap();
+        assert!(matches!(result.status, StorageStatus::Success));
+        assert!(!result.id.is_nil());
+    }
+
+    #[test]
+    fn test_calculate_checksum_consistent() {
+        let data = b"hello world";
+        let c1 = StorageClient::calculate_checksum(data);
+        let c2 = StorageClient::calculate_checksum(data);
+        assert_eq!(c1, c2);
+        assert_eq!(c1.len(), 64);
+    }
+
+    #[test]
+    fn test_calculate_checksum_different_data() {
+        let c1 = StorageClient::calculate_checksum(b"a");
+        let c2 = StorageClient::calculate_checksum(b"b");
+        assert_ne!(c1, c2);
+    }
+
+    #[test]
+    fn test_detect_content_type_zip() {
+        let zip_magic = [0x50, 0x4B, 0x03, 0x04];
+        assert_eq!(
+            StorageClient::detect_content_type(&zip_magic),
+            "application/zip"
+        );
+    }
+
+    #[test]
+    fn test_detect_content_type_png() {
+        let png_magic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        assert_eq!(StorageClient::detect_content_type(&png_magic), "image/png");
+    }
+
+    #[test]
+    fn test_detect_content_type_jpeg() {
+        let jpeg_magic = [0xFF, 0xD8, 0xFF];
+        assert_eq!(
+            StorageClient::detect_content_type(&jpeg_magic),
+            "image/jpeg"
+        );
+    }
+
+    #[test]
+    fn test_detect_content_type_octet_stream() {
+        assert_eq!(
+            StorageClient::detect_content_type(b"generic"),
+            "application/octet-stream"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_artifact_metadata_unavailable() {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: None,
+        };
+        let client = StorageClient::new_for_testing(config, "nonexistent-storage".to_string());
+        let result = client
+            .get_artifact_metadata(&uuid::Uuid::new_v4().to_string())
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_list_artifacts_unavailable() {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: None,
+        };
+        let client = StorageClient::new_for_testing(config, "nonexistent-storage".to_string());
+        let result = client.list_artifacts(None).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_artifact_unavailable() {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: None,
+        };
+        let client = StorageClient::new_for_testing(config, "nonexistent-storage".to_string());
+        let result = client
+            .delete_artifact(&uuid::Uuid::new_v4().to_string())
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_create_pipeline_unavailable() {
+        let config = NestGateConfig {
+            endpoint: "unix://test".to_string(),
+            timeout: Duration::from_secs(5),
+            max_retries: 2,
+            auth: None,
+            cache: None,
+        };
+        let client = StorageClient::new_for_testing(config, "nonexistent-storage".to_string());
+        let pipeline_config = PipelineConfig {
+            pipeline_id: "p1".to_string(),
+            name: "Test".to_string(),
+            inputs: vec![],
+            outputs: vec![],
+            steps: vec![],
+            schedule: None,
+            resources: None,
+        };
+        let result = client.create_pipeline(pipeline_config).await;
+        assert!(result.is_err());
     }
 }

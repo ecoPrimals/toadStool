@@ -137,7 +137,10 @@ impl ParallelComputeFramework for WebGpuFramework {
                             },
                         },
                         usage: Arc::new(RwLock::new(DeviceUsage::default())),
-                        framework_handle: Some(FrameworkHandle::Placeholder(info.name)),
+                        framework_handle: Some(FrameworkHandle::Unavailable {
+                            name: info.name.clone(),
+                            reason: "wgpu::Device handle deferred until create_session".to_string(),
+                        }),
                     };
 
                     Ok(vec![device])
@@ -343,7 +346,11 @@ impl ParallelComputeFramework for FallbackFramework {
     }
 
     async fn discover_devices(&self) -> ToadStoolResult<Vec<UniversalComputeDevice>> {
-        // Return empty list for unsupported frameworks
+        // Framework requested but not available on this platform — no GPU devices
+        tracing::debug!(
+            "Framework {} not available on this platform, no devices discovered",
+            self.framework_type.name()
+        );
         Ok(vec![])
     }
 

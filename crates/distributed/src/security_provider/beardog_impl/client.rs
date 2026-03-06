@@ -11,6 +11,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+#[allow(deprecated)] // Protocol compatibility: provider metadata
+use toadstool_common::constants::ecosystem::well_known::BEARDOG;
 
 use crate::security_provider::{provider::*, types::*, EncryptionOptions, SigningOptions};
 
@@ -25,8 +27,7 @@ pub struct BearDogSecurityProvider {
     client: Arc<RwLock<Option<Arc<BearDogClient>>>>,
 
     /// Discovery mechanism (for future reconnection logic)
-    #[allow(dead_code)] // Reserved: future reconnection logic
-    discovery: BearDogDiscovery,
+    _discovery: BearDogDiscovery,
 
     /// Provider metadata
     metadata: ProviderMetadata,
@@ -62,11 +63,11 @@ impl BearDogSecurityProvider {
 
         let metadata = ProviderMetadata {
             provider_id: uuid::Uuid::new_v4().to_string(),
-            provider_type: "beardog".to_string(),
+            provider_type: BEARDOG.to_string(),
             provider_version: "2.0.0".to_string(),
             metadata: {
                 let mut m = HashMap::new();
-                m.insert("primal".to_string(), "beardog".to_string());
+                m.insert("primal".to_string(), BEARDOG.to_string());
                 m.insert("discovery".to_string(), "runtime".to_string());
                 m
             },
@@ -83,7 +84,7 @@ impl BearDogSecurityProvider {
 
         Ok(Self {
             client: Arc::new(RwLock::new(client)),
-            discovery,
+            _discovery: discovery,
             metadata,
             capabilities,
         })

@@ -1,4 +1,4 @@
-# Status -- March 3, 2026 (Session 94b)
+# Status -- March 5, 2026 (Deep Debt Execution)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace --lib` | PASS | **5,369 tests, 0 failures** |
+| `cargo test --workspace --lib` | PASS | **18,028 tests, 0 failures** |
 | `cargo llvm-cov` (excl GPU crates) | **70.5%+ line** | JSON-RPC: 97.5%; 47 new tests in S91-92 |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
@@ -16,24 +16,27 @@
 | License compliance | PASS | **AGPL-3.0-or-later: all Cargo.toml + all 2,780+ .rs files have SPDX headers** |
 | Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
 | Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
+| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route |
 
 ## Codebase Metrics
 
 | Metric | Value |
 |--------|-------|
 | WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
-| Rust version | **1.80+** (std::sync::LazyLock) |
+| Rust version | **1.82+** (is_some_and, div_ceil) |
 | `unsafe` blocks | **~60+** (all `// SAFETY:` documented; barracuda + runtime/gpu; GPU APIs, aligned alloc, FFI) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors (NestGate store/retrieve evolved S94b) |
-| Dead code | **~35 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
+| Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (32+ large files smart-refactored to domain modules) |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b) |
+| JSON-RPC methods | **47** (was 44; +transport.discover, transport.list, transport.route) |
+| Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
 | SPDX headers | **100%** — all .rs files have AGPL-3.0-or-later (S90) |
@@ -85,6 +88,18 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### Deep Debt Execution (Mar 5, 2026)
+- **18,028 tests** (up from 5,369): +12,659 tests from deep debt evolution and expanded coverage
+- **Hardware Transport Layer wired**: `transport.discover`, `transport.list`, `transport.route` JSON-RPC methods. `toadstool transport discover/list/status` CLI commands. Pixel format mismatch (AR24) and double-buffer alternation bugs fixed.
+- **Detection stubs evolved**: 11 hardcoded detection functions (CPU, memory, distro, GPU, OpenCL, ROCm, neuromorphic, edge/IoT) → real runtime detection parsing /proc/cpuinfo, /proc/meminfo, /etc/os-release, nvidia-smi, etc.
+- **Smart refactoring**: `security.rs` (771→5 modules), `config_utils/mod.rs` (777→5 modules)
+- **Hardcoding evolved**: 35+ literal primal names → `well_known::*` shared constants across 15 files. Ports/endpoints use config constants.
+- **GPU stubs evolved**: `FrameworkHandle::Placeholder` → `FrameworkHandle::Unavailable { name, reason }`. `FallbackFramework` logs at debug level.
+- **Idiomatic Rust**: `div_ceil`, `is_some_and`, `is_ok_and` patterns. Production `unwrap()` eliminated from frame protocol. Crate-level `#![allow(clippy::unused_async)]` removed from distributed crate. Rust 1.82+.
+- **Dead code cleanup**: 15 struct fields prefixed with `_`, 3 functions gated to `#[cfg(test)]`. `management/resources` crate evolved from placeholder to real `ResourceManager` with sysinfo.
+- **Monitoring evolved**: `collect_biome_status` scans runtime directories for socket/PID files with real process metrics.
+- All quality gates green: 0 clippy warnings, 0 fmt diffs, 18,028 tests passing.
 
 ### Session 94b (Mar 3, 2026) — Deep Debt Execution + Spring Absorption
 - **D-NPU RESOLVED**: Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter in `toadstool-core`. `NpuParameterController` trait absorbed from hotSpring.

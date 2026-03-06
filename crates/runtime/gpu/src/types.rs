@@ -255,7 +255,8 @@ pub enum FrameworkHandle {
     WebGpu(Arc<wgpu::Device>), // Wrap in Arc since wgpu::Device doesn't implement Clone
     // #[cfg(feature = "metal")]
     // Metal(metal::Device), // Not available on Linux
-    Placeholder(String),
+    /// Framework was detected but could not provide a real device handle
+    Unavailable { name: String, reason: String },
 }
 
 impl Clone for FrameworkHandle {
@@ -270,7 +271,10 @@ impl Clone for FrameworkHandle {
             FrameworkHandle::Vulkan(device) => FrameworkHandle::Vulkan(Arc::clone(device)),
             #[cfg(feature = "webgpu")]
             FrameworkHandle::WebGpu(device) => FrameworkHandle::WebGpu(Arc::clone(device)),
-            FrameworkHandle::Placeholder(name) => FrameworkHandle::Placeholder(name.clone()),
+            FrameworkHandle::Unavailable { name, reason } => FrameworkHandle::Unavailable {
+                name: name.clone(),
+                reason: reason.clone(),
+            },
         }
     }
 }

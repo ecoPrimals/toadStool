@@ -361,4 +361,82 @@ mod tests {
         assert_network_metrics_reasonable(&metrics);
         assert_storage_metrics_reasonable(&metrics);
     }
+
+    #[test]
+    fn test_assert_execution_cancelled() {
+        let response = ExecutionResponseBuilder::new().cancelled().build();
+        assert_execution_cancelled(&response);
+    }
+
+    #[test]
+    fn test_assert_output_contains() {
+        let mut output = crate::fixtures::create_test_execution_output();
+        output.data = bytes::Bytes::from(b"hello world".as_slice());
+        let response = ExecutionResponseBuilder::new()
+            .success()
+            .output(output)
+            .build();
+        assert_output_contains(&response, b"world");
+    }
+
+    #[test]
+    fn test_assert_stdout_contains() {
+        let mut output = crate::fixtures::create_test_execution_output();
+        output.stdout = Some("debug output".to_string());
+        let response = ExecutionResponseBuilder::new()
+            .success()
+            .output(output)
+            .build();
+        assert_stdout_contains(&response, "debug");
+    }
+
+    #[test]
+    #[should_panic(expected = "Expected stdout to be present")]
+    fn test_assert_stdout_contains_none_panics() {
+        let mut output = crate::fixtures::create_test_execution_output();
+        output.stdout = None;
+        let response = ExecutionResponseBuilder::new()
+            .success()
+            .output(output)
+            .build();
+        assert_stdout_contains(&response, "x");
+    }
+
+    #[test]
+    fn test_assert_stderr_contains() {
+        let mut output = crate::fixtures::create_test_execution_output();
+        output.stderr = Some("error message".to_string());
+        let response = ExecutionResponseBuilder::new()
+            .success()
+            .output(output)
+            .build();
+        assert_stderr_contains(&response, "error");
+    }
+
+    #[test]
+    fn test_assert_exit_code() {
+        let mut output = crate::fixtures::create_test_execution_output();
+        output.exit_code = Some(0);
+        let response = ExecutionResponseBuilder::new()
+            .success()
+            .output(output)
+            .build();
+        assert_exit_code(&response, 0);
+    }
+
+    #[test]
+    fn test_assert_execution_resource_limit_exceeded() {
+        let response = ExecutionResponseBuilder::new()
+            .resource_limit_exceeded("memory", "1GB", "2GB")
+            .build();
+        assert_execution_resource_limit_exceeded(&response);
+    }
+
+    #[test]
+    fn test_assert_execution_security_violation() {
+        let response = ExecutionResponseBuilder::new()
+            .security_violation("access denied")
+            .build();
+        assert_execution_security_violation(&response);
+    }
 }

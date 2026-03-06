@@ -137,3 +137,40 @@ pub fn unload_kernel_module() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_akida_device_struct() {
+        let device = AkidaDevice {
+            pcie_address: "0000:01:00.0".to_string(),
+            vendor_id: "1e7c".to_string(),
+            device_id: "bca1".to_string(),
+        };
+        assert_eq!(device.pcie_address, "0000:01:00.0");
+        assert_eq!(device.vendor_id, "1e7c");
+        assert_eq!(device.device_id, "bca1");
+    }
+
+    #[test]
+    fn test_discover_akida_devices() {
+        let result = discover_akida_devices();
+        assert!(result.is_ok());
+        let devices = result.unwrap();
+        assert!(devices.iter().all(|d| d.pcie_address.starts_with("0000:")));
+    }
+
+    #[test]
+    fn test_is_module_loaded() {
+        let result = is_module_loaded();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_unload_kernel_module() {
+        let result = unload_kernel_module();
+        assert!(result.is_ok());
+    }
+}

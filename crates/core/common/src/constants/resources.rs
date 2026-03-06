@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_rate_limit_per_sec_times_60_le_per_min() {
-        assert!(API_RATE_LIMIT_PER_SEC as u64 * 60 <= API_RATE_LIMIT_PER_MIN as u64);
+        assert!(u64::from(API_RATE_LIMIT_PER_SEC) * 60 <= u64::from(API_RATE_LIMIT_PER_MIN));
     }
 
     #[test]

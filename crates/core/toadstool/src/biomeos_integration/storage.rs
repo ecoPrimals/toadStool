@@ -69,6 +69,10 @@ impl StorageProvisioningManager {
     /// Create a new manager with capability-based storage service discovery (RECOMMENDED)
     ///
     /// **Deep Debt Compliant**: Discovers storage service by capability, not name.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if storage service discovery fails or the backend cannot be initialized.
     pub async fn with_storage_service(config: StorageProvisioningConfig) -> ToadStoolResult<Self> {
         let backend = super::storage_backend::NestGateBackend::new_async(
             config.storage_tier.clone(),
@@ -118,11 +122,19 @@ impl StorageProvisioningManager {
     ///
     /// For NestGate backend, this tests connectivity.
     /// For in-memory backend, this is a no-op.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the backend connection cannot be established.
     pub async fn initialize_nestgate_connection(&self) -> ToadStoolResult<()> {
         self.backend.initialize().await
     }
 
     /// Provision a volume from manifest configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if provisioning fails or configuration is invalid.
     pub async fn provision_volume(
         &self,
         volume_config: &VolumeConfig,
@@ -131,6 +143,10 @@ impl StorageProvisioningManager {
     }
 
     /// Provision a persistent volume
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if provisioning fails or configuration is invalid.
     pub async fn provision_persistent_volume(
         &self,
         pv_config: &PersistentVolume,
@@ -139,6 +155,10 @@ impl StorageProvisioningManager {
     }
 
     /// Mount a volume to a service
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the volume or service does not exist or mount fails.
     pub async fn mount_volume(
         &self,
         volume_name: &str,
@@ -151,6 +171,10 @@ impl StorageProvisioningManager {
     }
 
     /// Unmount a volume from a service
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if unmount fails or the volume/service does not exist.
     pub async fn unmount_volume(
         &self,
         volume_name: &str,
@@ -160,16 +184,28 @@ impl StorageProvisioningManager {
     }
 
     /// Delete a volume
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deletion fails or the volume does not exist.
     pub async fn delete_volume(&self, volume_name: &str) -> ToadStoolResult<()> {
         self.backend.delete_volume(volume_name).await
     }
 
     /// Get volume status
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the volume does not exist or status cannot be retrieved.
     pub async fn get_volume_status(&self, volume_name: &str) -> ToadStoolResult<VolumeStatus> {
         self.backend.get_volume_status(volume_name).await
     }
 
     /// List all volumes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the backend cannot list volumes.
     pub async fn list_volumes(&self) -> ToadStoolResult<Vec<VolumeInfo>> {
         self.backend.list_volumes().await
     }

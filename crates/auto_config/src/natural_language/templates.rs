@@ -6,9 +6,13 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::types::*;
+use super::types::{
+    ConfigurationTemplate, ExplicitPreferences, ResourcePreferences, RuntimePreferences,
+    RuntimeType, SecurityPreference, UsagePattern,
+};
 
 /// Create default configuration templates
+#[must_use]
 pub fn create_templates() -> HashMap<String, ConfigurationTemplate> {
     let mut templates = HashMap::new();
 
@@ -185,7 +189,8 @@ pub fn create_templates() -> HashMap<String, ConfigurationTemplate> {
 }
 
 /// Get a template by name, returning general purpose if not found
-/// ✅ FIXED: Safe fallback chain - no unwrap() that could panic
+/// ✅ FIXED: Safe fallback chain - no `unwrap()` that could panic
+#[must_use]
 pub fn get_template(
     templates: &HashMap<String, ConfigurationTemplate>,
     name: &str,

@@ -75,12 +75,3 @@ pub use types::{
     DisplayCapabilitiesInfo, DisplayMethod, DisplayResult, JsonRpcError, JsonRpcRequest,
     JsonRpcResponse,
 };
-
-// ✅ Phase 1 COMPLETE: Server-side isomorphic IPC
-// ✅ Phase 2 COMPLETE: Client-side polymorphic discovery
-// ✅ Phase 3 IN PROGRESS: Deployment coordination (health checks added!)
-// - Automatic Unix→TCP fallback
-// - Zero configuration required
-// - Works on Linux AND Android!
-// - Health monitoring with isomorphic client
-// - Deep Debt compliant!

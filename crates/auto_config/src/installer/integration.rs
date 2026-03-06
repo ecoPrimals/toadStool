@@ -82,7 +82,7 @@ pub async fn create_desktop_shortcuts(
             let desktop_dir = format!("{}/Desktop", std::env::var("HOME").unwrap_or_default());
             if Path::new(&desktop_dir).exists() {
                 let desktop_file = format!(
-                    r#"[Desktop Entry]
+                    r"[Desktop Entry]
 Version=1.0
 Type=Application
 Name=ToadStool
@@ -91,7 +91,7 @@ Exec={}/bin/toadstool
 Icon=utilities-terminal
 Terminal=true
 Categories=Development;System;
-"#,
+",
                     installation_path.display()
                 );
 
@@ -205,5 +205,101 @@ mod tests {
                 assert!(!has_gui(Platform::Linux));
             });
         });
+    }
+
+    #[tokio::test]
+    async fn test_add_to_path_linux_creates_export() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let install_path = dir.path().join("toadstool");
+        tokio::fs::create_dir_all(&install_path)
+            .await
+            .expect("create dir");
+        tokio::fs::create_dir_all(install_path.join("bin"))
+            .await
+            .expect("create bin");
+
+        let home = tempfile::tempdir().expect("home tempdir");
+        let home_str = home.path().to_str().unwrap().to_string();
+        let install_path_clone = install_path.clone();
+        temp_env::with_vars(
+            [("HOME", Some(home_str.as_str())), ("DISPLAY", None::<&str>)],
+            || {
+                // Use spawn_blocking to avoid nested runtime - temp_env runs in sync context
+                let result = std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(super::add_to_path(Platform::Linux, &install_path_clone))
+                })
+                .join()
+                .expect("thread");
+                assert!(result.is_ok());
+            },
+        );
+    }
+
+    #[tokio::test]
+    async fn test_setup_shell_completion_creates_files() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let install_path = dir.path().to_path_buf();
+
+        let result = super::setup_shell_completion(&install_path).await;
+        assert!(result.is_ok());
+
+        let completion_dir = install_path.join("completion");
+        assert!(completion_dir.exists());
+        assert!(completion_dir.join("toadstool.bash").exists());
+    }
+
+    #[tokio::test]
+    async fn test_create_desktop_shortcuts_linux() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let install_path = dir.path().join("toadstool");
+        tokio::fs::create_dir_all(&install_path)
+            .await
+            .expect("create dir");
+        tokio::fs::create_dir_all(install_path.join("bin"))
+            .await
+            .expect("create bin");
+
+        let home = tempfile::tempdir().expect("home tempdir");
+        let desktop_dir = home.path().join("Desktop");
+        std::fs::create_dir_all(&desktop_dir).expect("create Desktop");
+
+        let home_str = home.path().to_str().unwrap().to_string();
+        let install_path_clone = install_path.clone();
+        let desktop_file_path = desktop_dir.join("ToadStool.desktop");
+        temp_env::with_var("HOME", Some(home_str.as_str()), || {
+            let result = std::thread::spawn(move || {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(super::create_desktop_shortcuts(
+                    Platform::Linux,
+                    &install_path_clone,
+                ))
+            })
+            .join()
+            .expect("thread");
+            assert!(result.is_ok());
+        });
+        assert!(desktop_file_path.exists());
+    }
+
+    #[tokio::test]
+    async fn test_add_to_path_windows_informational() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let install_path = dir.path().join("toadstool");
+        tokio::fs::create_dir_all(&install_path)
+            .await
+            .expect("create dir");
+        tokio::fs::create_dir_all(install_path.join("bin"))
+            .await
+            .expect("create bin");
+
+        let result = super::add_to_path(Platform::Windows, &install_path).await;
+        assert!(result.is_ok());
     }
 }

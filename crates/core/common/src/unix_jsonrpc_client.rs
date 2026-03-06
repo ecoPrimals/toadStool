@@ -73,7 +73,7 @@ struct JsonRpcError<'a> {
 ///     "algorithm": "aes-256-gcm"
 /// });
 ///
-/// let result = client.call("beardog.encrypt", params).await?;
+/// let result = client.call("crypto.encrypt", params).await?;
 /// ```
 #[derive(Debug, Clone)]
 pub struct UnixJsonRpcClient {
@@ -109,8 +109,8 @@ impl UnixJsonRpcClient {
         // Connect to unix socket
         let stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
             ToadStoolError::network(format!(
-                "Failed to connect to {:?}: {}",
-                self.socket_path, e
+                "Failed to connect to {}: {e}",
+                self.socket_path.display()
             ))
         })?;
 
@@ -190,7 +190,7 @@ impl UnixJsonRpcClient {
     /// }
     ///
     /// let response: EncryptResponse = client
-    ///     .call_typed("beardog.encrypt", params)
+    ///     .call_typed("crypto.encrypt", params)
     ///     .await?;
     /// ```
     ///
@@ -377,7 +377,7 @@ mod tests {
             params: serde_json::json!({}),
         };
 
-        let debug_str = format!("{:?}", request);
+        let debug_str = format!("{request:?}");
         assert!(debug_str.contains("JsonRpcRequest"));
         assert!(debug_str.contains("test"));
     }
@@ -391,7 +391,7 @@ mod tests {
             error: None,
         };
 
-        let debug_str = format!("{:?}", response);
+        let debug_str = format!("{response:?}");
         assert!(debug_str.contains("JsonRpcResponse"));
     }
 
@@ -403,7 +403,7 @@ mod tests {
             data: None,
         };
 
-        let debug_str = format!("{:?}", error);
+        let debug_str = format!("{error:?}");
         assert!(debug_str.contains("JsonRpcError"));
         assert!(debug_str.contains("-32700"));
     }
@@ -453,7 +453,7 @@ mod tests {
     #[test]
     fn test_client_debug() {
         let client = UnixJsonRpcClient::new("/tmp/debug.sock");
-        let debug_str = format!("{:?}", client);
+        let debug_str = format!("{client:?}");
         assert!(debug_str.contains("UnixJsonRpcClient"));
     }
 }

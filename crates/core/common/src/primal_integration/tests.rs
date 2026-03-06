@@ -423,6 +423,37 @@ fn test_discover_service_socket_by_capability_capability_constants() {
     assert_eq!(capabilities::COMPUTE, "compute");
 }
 
+#[tokio::test]
+async fn test_discover_via_filesystem() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let capability_dir = dir.path().join("storage");
+    std::fs::create_dir_all(&capability_dir).expect("create capability dir");
+
+    temp_env::with_var(
+        "TOADSTOOL_SERVICE_DIR",
+        Some(dir.path().to_str().unwrap()),
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = discover_service_by_capability("storage");
+                    assert!(result.is_ok());
+                    let endpoints = result.unwrap();
+                    assert_eq!(endpoints.len(), 1);
+                    assert_eq!(endpoints[0].service_id, "storage-fs");
+                    assert!(endpoints[0].url.starts_with("file://"));
+                    assert!(endpoints[0].url.contains("storage"));
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
+}
+
 #[test]
 fn test_discovery_error_display() {
     let err = DiscoveryError::NoServiceFound {

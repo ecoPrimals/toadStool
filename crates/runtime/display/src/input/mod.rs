@@ -18,7 +18,7 @@
 //! use toadstool_display::input::InputManager;
 //!
 //! # async fn example() -> Result<()> {
-//! let mut manager = InputManager::discover().await?;
+//! let mut manager = InputManager::discover()?;
 //!
 //! // Subscribe to input events
 //! let mut events = manager.subscribe_events();
@@ -76,7 +76,11 @@ impl InputManager {
     /// - ✅ Async streams (modern Rust)
     /// - ✅ Complete implementation (spawns real tasks!)
     /// - ✅ Graceful error handling
-    pub async fn discover() -> Result<Self> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if input device discovery fails.
+    pub fn discover() -> Result<Self> {
         tracing::info!("🔍 Initializing input manager...");
 
         // Discover all input devices (self-knowledge!)
@@ -198,6 +202,10 @@ impl InputManager {
     ///
     /// Returns a receiver for input events. Events are automatically routed
     /// to the focused window.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called more than once (the receiver is consumed on first call).
     pub const fn subscribe_events(&mut self) -> mpsc::Receiver<InputEvent> {
         // Take the receiver (can only be called once)
         // For production, we'd want to support multiple subscribers
@@ -210,10 +218,12 @@ impl InputManager {
     ///
     /// Non-blocking check for pending events.
     ///
-    /// **Priority 3 COMPLETE**: Now returns actual events from async streams!
-    ///
     /// Note: This is a simplified API. For streaming, use `subscribe_events()`.
-    pub async fn poll_events(&mut self) -> Result<Vec<InputEvent>> {
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; reserved for future error cases.
+    pub fn poll_events(&mut self) -> Result<Vec<InputEvent>> {
         // For now, return empty - real streaming happens via subscribe_events()
         // This is here for compatibility with the old API
         Ok(Vec::new())
@@ -288,13 +298,13 @@ mod tests {
     #[tokio::test]
     async fn test_input_manager_creation() {
         // Should succeed even if no devices found
-        let result = InputManager::discover().await;
+        let result = InputManager::discover();
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_focus_management() {
-        let mut manager = InputManager::discover().await.unwrap();
+        let mut manager = InputManager::discover().unwrap();
         assert_eq!(manager.focused_window(), None);
 
         let window_id = WindowId::new();
@@ -307,7 +317,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_event_subscription() {
-        let mut manager = InputManager::discover().await.unwrap();
+        let mut manager = InputManager::discover().unwrap();
         let mut events = manager.subscribe_events();
 
         // Inject a test event
@@ -328,20 +338,3 @@ mod tests {
         assert!(received.is_some());
     }
 }
-
-// ✅ Priority 3 COMPLETE:
-// - InputManager with async event streams!
-// - Device tasks spawned per device
-// - Events flow from evdev → parser → channel
-// - Focus management
-// - Event routing
-// - Async API
-// - Test coverage
-// - Deep Debt compliant!
-//
-// ARCHITECTURE:
-// - Each device gets a tokio task
-// - Each task reads evdev events asynchronously
-// - Events parsed and sent to mpsc channel
-// - InputManager distributes to subscribers
-// - Concurrent, non-blocking, pure Rust!

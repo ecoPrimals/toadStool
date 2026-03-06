@@ -326,6 +326,8 @@ impl Default for UniversalComputeScheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cpu_resource::CpuComputeResource;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn test_scheduler_creation() {
@@ -340,5 +342,82 @@ mod tests {
 
         let result = scheduler.select_resource(&requirements).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_default() {
+        let scheduler = UniversalComputeScheduler::default();
+        let list = scheduler.list_resources().await;
+        assert!(list.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_register_and_list() {
+        let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
+        let cpu = CpuComputeResource::new().expect("CPU resource");
+        scheduler.register_resource(Arc::new(cpu)).await;
+
+        let list = scheduler.list_resources().await;
+        assert!(!list.is_empty());
+        assert!(list[0].contains("CPU"));
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_select_with_cpu() {
+        let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
+        let cpu = CpuComputeResource::new().expect("CPU resource");
+        scheduler.register_resource(Arc::new(cpu)).await;
+
+        let requirements = ComputeRequirements::default();
+        let resource = scheduler.select_resource(&requirements).await;
+        assert!(resource.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_all_policies() {
+        for policy in [
+            SchedulingPolicy::Performance,
+            SchedulingPolicy::Efficiency,
+            SchedulingPolicy::LoadBalance,
+            SchedulingPolicy::CapabilityMatch,
+            SchedulingPolicy::LowLatency,
+        ] {
+            let scheduler = UniversalComputeScheduler::new(policy);
+            let cpu = CpuComputeResource::new().expect("CPU resource");
+            scheduler.register_resource(Arc::new(cpu)).await;
+
+            let requirements = ComputeRequirements::default();
+            let result = scheduler.select_resource(&requirements).await;
+            assert!(result.is_ok(), "policy {:?} should select resource", policy);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_record_performance() {
+        let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::Performance);
+        let cpu = CpuComputeResource::new().expect("CPU resource");
+        let resource_id = cpu.resource_id().to_string();
+        scheduler.register_resource(Arc::new(cpu)).await;
+
+        scheduler
+            .record_performance(
+                &resource_id,
+                &ComputeRequirements::default(),
+                Duration::from_millis(100),
+            )
+            .await;
+
+        let requirements = ComputeRequirements::default();
+        let _ = scheduler.select_resource(&requirements).await;
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_get_resources() {
+        let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
+        let cpu = CpuComputeResource::new().expect("CPU resource");
+        scheduler.register_resource(Arc::new(cpu)).await;
+
+        let resources = scheduler.get_resources().await;
+        assert_eq!(resources.len(), 1);
     }
 }

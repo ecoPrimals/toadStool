@@ -103,7 +103,7 @@ pub trait NpuParameterController: Debug + Send {
     fn safety_clamp(&self) -> &SafetyClamp<Self::Params>;
 
     /// Minimum confidence threshold for applying suggestions.
-    /// Default: 0.3 (from hotSpring's HEAD_TRUST_THRESHOLD).
+    /// Default: 0.3 (from hotSpring's `HEAD_TRUST_THRESHOLD`).
     fn trust_threshold(&self) -> f64 {
         0.3
     }

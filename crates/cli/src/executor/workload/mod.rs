@@ -43,10 +43,10 @@ use runtime::{infer_runtime_type, parse_runtime_hint, register_runtime_engines};
 /// Execute a workload from a specification file
 pub async fn execute_workload(
     workload_path: &PathBuf,
-    runtime_hint: Option<String>,
-    env_overrides: Vec<String>,
+    runtime_hint: Option<&str>,
+    env_overrides: &[String],
     timeout_secs: u64,
-    output_format: String,
+    output_format: &str,
 ) -> Result<()> {
     info!(
         "📖 Loading workload specification: {}",
@@ -83,7 +83,7 @@ pub async fn execute_workload(
 
     // Determine runtime type
     let runtime_type = if let Some(hint) = runtime_hint {
-        parse_runtime_hint(&hint)?
+        parse_runtime_hint(hint)?
     } else {
         infer_runtime_type(&workload_spec)
     };
@@ -112,10 +112,119 @@ pub async fn execute_workload(
     let duration = start_time.elapsed();
 
     // Display results
-    match output_format.as_str() {
+    match output_format {
         "json" => print_json_output(&response, duration)?,
         _ => print_text_output(&workload_file, &response, duration)?,
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[tokio::test]
+    async fn test_execute_workload_file_not_found() {
+        let path = PathBuf::from("/nonexistent/workload-12345.toml");
+        let result = execute_workload(&path, None, &[], 60, "text").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_execute_workload_invalid_toml() {
+        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
+        write!(tmp, "invalid toml [unclosed").unwrap();
+        tmp.flush().unwrap();
+        let path = tmp.path().to_path_buf();
+
+        let result = execute_workload(&path, None, &[], 60, "text").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_execute_workload_native_echo() {
+        let content = r#"
+[metadata]
+name = "echo-test"
+description = "Native echo"
+version = "1.0"
+
+[execution]
+type = "native"
+command = "/bin/echo"
+args = ["hello"]
+"#;
+        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
+        write!(tmp, "{}", content).unwrap();
+        tmp.flush().unwrap();
+        let path = tmp.path().to_path_buf();
+
+        let result = execute_workload(&path, None, &[], 10, "text").await;
+        assert!(result.is_ok(), "execute_workload failed: {:?}", result);
+    }
+
+    #[tokio::test]
+    async fn test_execute_workload_with_runtime_hint() {
+        let content = r#"
+[metadata]
+name = "hint-test"
+version = "1.0"
+
+[execution]
+type = "native"
+command = "/bin/echo"
+"#;
+        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
+        write!(tmp, "{}", content).unwrap();
+        tmp.flush().unwrap();
+        let path = tmp.path().to_path_buf();
+
+        let result = execute_workload(&path, Some("native"), &[], 10, "text").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute_workload_json_output() {
+        let content = r#"
+[metadata]
+name = "json-output-test"
+version = "1.0"
+
+[execution]
+type = "native"
+command = "/bin/echo"
+args = ["test"]
+"#;
+        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
+        write!(tmp, "{}", content).unwrap();
+        tmp.flush().unwrap();
+        let path = tmp.path().to_path_buf();
+
+        let result = execute_workload(&path, None, &[], 10, "json").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute_workload_with_env_overrides() {
+        let content = r#"
+[metadata]
+name = "env-test"
+version = "1.0"
+
+[execution]
+type = "native"
+command = "/bin/echo"
+"#;
+        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
+        write!(tmp, "{}", content).unwrap();
+        tmp.flush().unwrap();
+        let path = tmp.path().to_path_buf();
+
+        let env = vec!["CUSTOM_VAR=value".to_string()];
+        let result = execute_workload(&path, None, &env, 10, "text").await;
+        assert!(result.is_ok());
+    }
 }

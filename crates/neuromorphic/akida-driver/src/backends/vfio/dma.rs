@@ -154,3 +154,23 @@ unsafe impl Send for DmaBuffer {}
 
 // SAFETY: Reads via &self are safe from multiple threads; writes require &mut self.
 unsafe impl Sync for DmaBuffer {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dma_buffer_new_size_zero() {
+        let result = DmaBuffer::new(-1, 0, 0);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("size must be > 0"));
+    }
+
+    #[test]
+    fn test_dma_buffer_iova_size_accessors() {
+        // We can't create a real DmaBuffer without VFIO, but we can test the size zero path
+        let result = DmaBuffer::new(0, 0, 0x1000);
+        assert!(result.is_err());
+    }
+}

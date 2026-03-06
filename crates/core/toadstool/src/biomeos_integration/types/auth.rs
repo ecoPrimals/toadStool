@@ -68,7 +68,7 @@ pub struct AuthenticationConfig {
     pub methods: Vec<String>,
     /// Token settings
     pub token: Option<TokenConfig>,
-    /// OAuth settings
+    /// `OAuth` settings
     pub oauth: Option<OAuthConfig>,
 }
 
@@ -103,14 +103,14 @@ pub struct TokenRefreshConfig {
     pub interval: Duration,
 }
 
-/// OAuth configuration
+/// `OAuth` configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OAuthConfig {
-    /// OAuth provider
+    /// `OAuth` provider
     pub provider: String,
     /// Client ID
     pub client_id: String,
-    /// OAuth scopes
+    /// `OAuth` scopes
     pub scopes: Vec<String>,
 }
 

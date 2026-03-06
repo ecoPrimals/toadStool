@@ -8,7 +8,10 @@ use tracing::debug;
 
 use toadstool::error::ToadStoolResult;
 
-use crate::types::*;
+use crate::types::{
+    PolicyAction, PolicyEvaluationContext, PolicyEvaluationResult, PolicyResult, PolicyWarning,
+    ResourceModification, SecurityModification,
+};
 
 /// Action executor for policy rules
 pub struct ActionExecutor;
@@ -26,7 +29,7 @@ impl ActionExecutor {
     }
 
     /// Execute policy action
-    pub async fn execute_action(
+    pub fn execute_action(
         &self,
         action: &PolicyAction,
         result: &mut PolicyEvaluationResult,

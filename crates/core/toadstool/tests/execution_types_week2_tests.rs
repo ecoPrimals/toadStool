@@ -3,10 +3,7 @@
 #![allow(clippy::all)]
 // Copyright (C) 2025 ecoPrimals
 
-//! Comprehensive tests for execution.rs types
-//!
-//! Test Coverage Sprint - Week 2, Nov 7, 2025
-//! Target: Bring execution.rs from 50% → 65%+
+//! Comprehensive tests for execution.rs types.
 
 use std::collections::HashMap;
 use std::time::Duration;

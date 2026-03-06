@@ -297,4 +297,75 @@ mod tests {
         assert!(json.contains("healthy"));
         assert!(json.contains("OK"));
     }
+
+    #[test]
+    fn test_api_error_resource_conversion() {
+        let err = ToadStoolError::Resource(toadstool::error::ResourceError::allocation_failure(
+            "memory",
+            "out of memory",
+        ));
+        let api_err = ApiError::from(err);
+        assert_eq!(api_err.status, StatusCode::INSUFFICIENT_STORAGE);
+    }
+
+    #[test]
+    fn test_api_error_config_validation() {
+        let err = ToadStoolError::Configuration(toadstool::error::ConfigError::validation_error(
+            "invalid port",
+        ));
+        let api_err = ApiError::from(err);
+        assert_eq!(api_err.status, StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_api_error_not_supported() {
+        let err = ToadStoolError::System(toadstool::error::SystemError::not_supported(
+            "feature X",
+            "not implemented",
+        ));
+        let api_err = ApiError::from(err);
+        assert_eq!(api_err.status, StatusCode::NOT_IMPLEMENTED);
+    }
+
+    #[test]
+    fn test_api_error_limit_exceeded() {
+        let err = ToadStoolError::Resource(toadstool::error::ResourceError::limit_exceeded(
+            "deployments",
+            "11",
+            "10",
+        ));
+        let api_err = ApiError::from(err);
+        assert_eq!(api_err.status, StatusCode::INSUFFICIENT_STORAGE);
+    }
+
+    #[test]
+    fn test_api_error_insufficient() {
+        use toadstool::error::ResourceError;
+        let err = ToadStoolError::Resource(ResourceError::Insufficient {
+            resource: "memory".to_string(),
+            needed: "2GB".to_string(),
+            available: "1GB".to_string(),
+        });
+        let api_err = ApiError::from(err);
+        assert_eq!(api_err.status, StatusCode::INSUFFICIENT_STORAGE);
+    }
+
+    #[test]
+    fn test_api_error_into_response_body() {
+        use axum::response::IntoResponse;
+        let error = ApiError::new(StatusCode::BAD_REQUEST, "Invalid");
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_byob_api_creation() {
+        use toadstool::byob::create_byob_executor;
+        use toadstool_runtime_native::NativeRuntimeEngine;
+
+        let engine = Arc::new(NativeRuntimeEngine::new());
+        let executor = create_byob_executor(engine);
+        let api = ByobApi::new(executor);
+        let _router = api.router();
+    }
 }

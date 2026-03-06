@@ -106,6 +106,7 @@ async fn measure_linux_resources(
 }
 
 #[cfg(target_os = "linux")]
+#[allow(clippy::similar_names)]
 async fn measure_linux_network_stats(
     pid: u32,
 ) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {
@@ -117,10 +118,10 @@ async fn measure_linux_network_stats(
         .or_else(|_| fs::read_to_string("/proc/net/dev")) // Fallback to system-wide stats
         .map_err(|_e| ResourceMonitorError::NetworkMonitoringNotAvailable)?;
 
-    let mut total_rx_bytes = 0u64;
-    let mut total_tx_bytes = 0u64;
-    let mut total_rx_packets = 0u64;
-    let mut total_tx_packets = 0u64;
+    let mut rx_bytes_total = 0u64;
+    let mut tx_bytes_total = 0u64;
+    let mut rx_packets_total = 0u64;
+    let mut tx_packets_total = 0u64;
 
     // Parse network interface statistics
     for line in net_content.lines().skip(2) {
@@ -128,25 +129,25 @@ async fn measure_linux_network_stats(
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 17 {
             // RX bytes, packets, TX bytes, packets
-            if let (Ok(rx_bytes), Ok(rx_packets), Ok(tx_bytes), Ok(tx_packets)) = (
+            if let (Ok(rb), Ok(rp), Ok(tb), Ok(tp)) = (
                 parts[1].parse::<u64>(),
                 parts[2].parse::<u64>(),
                 parts[9].parse::<u64>(),
                 parts[10].parse::<u64>(),
             ) {
-                total_rx_bytes += rx_bytes;
-                total_rx_packets += rx_packets;
-                total_tx_bytes += tx_bytes;
-                total_tx_packets += tx_packets;
+                rx_bytes_total += rb;
+                rx_packets_total += rp;
+                tx_bytes_total += tb;
+                tx_packets_total += tp;
             }
         }
     }
 
     Ok(toadstool::resources::NetworkMetrics {
-        bytes_received: total_rx_bytes,
-        bytes_sent: total_tx_bytes,
-        packets_received: total_rx_packets,
-        packets_sent: total_tx_packets,
+        bytes_received: rx_bytes_total,
+        bytes_sent: tx_bytes_total,
+        packets_received: rx_packets_total,
+        packets_sent: tx_packets_total,
     })
 }
 

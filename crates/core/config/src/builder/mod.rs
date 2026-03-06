@@ -94,6 +94,7 @@ pub trait ToadStoolConfigTrait: Serialize + for<'de> Deserialize<'de> + Default 
     }
 
     /// Merge with defaults (self takes precedence)
+    #[must_use]
     fn with_defaults(self) -> Self {
         self
     }

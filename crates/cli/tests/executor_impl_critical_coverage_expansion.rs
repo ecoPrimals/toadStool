@@ -2,11 +2,7 @@
 //! Critical coverage expansion for executor_impl.rs
 //!
 //! This test file provides comprehensive coverage for BiomeExecutor,
-//! targeting the zero-coverage executor_impl.rs file (1,029 lines).
-//!
-//! Priority: HIGH - Critical execution path coverage
-//! Target: 20-30 tests covering core functionality
-//! Status: Week 3 coverage expansion (Nov 25, 2025)
+//! targeting core execution paths in executor_impl.rs.
 
 use std::collections::HashMap;
 use std::path::PathBuf;

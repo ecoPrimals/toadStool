@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for Container workload builder
-//!
-//! Week 14 Day 4: Container Builder Tests  
-//! Target: Achieve 90%+ coverage of client/builders/container.rs
+//! Comprehensive tests for Container workload builder.
 
 use std::collections::HashMap;
 use std::time::Duration;

@@ -83,3 +83,54 @@ pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStool
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_setup_container_runtime() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path();
+        let result = setup_container_runtime(path).await;
+        assert!(result.is_ok());
+
+        let docker_config_dir = path.join("config").join("docker");
+        if docker_config_dir.exists() {
+            let daemon_json = docker_config_dir.join("daemon.json");
+            assert!(daemon_json.exists());
+            let content = tokio::fs::read_to_string(&daemon_json).await.unwrap();
+            assert!(content.contains("runc"));
+            assert!(content.contains("overlay2"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_setup_container_runtime_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path();
+        let r1 = setup_container_runtime(path).await;
+        let r2 = setup_container_runtime(path).await;
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_setup_gpu_runtime() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path();
+        let result = setup_gpu_runtime(path).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_setup_gpu_runtime_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path();
+        let r1 = setup_gpu_runtime(path).await;
+        let r2 = setup_gpu_runtime(path).await;
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+    }
+}

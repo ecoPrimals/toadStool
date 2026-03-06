@@ -135,7 +135,6 @@ impl UniversalComputeResource for CudaComputeResource {
 }
 
 /// CUDA compute context
-#[allow(dead_code)]
 pub struct CudaComputeContext {
     pub(crate) backend: Arc<CudaBackend>,
     context_id: Uuid,

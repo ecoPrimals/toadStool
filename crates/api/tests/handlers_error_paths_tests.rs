@@ -224,8 +224,7 @@ mod rate_limiting_tests {
         // Instead of sleeping, verify the duration constant is correct
         assert_eq!(window_ms, 100);
 
-        // In real implementation, rate limiter would check:
-        // if now - last_reset >= window_duration { reset() }
+        // In real implementation, rate limiter would check window duration.
         let expected_duration = Duration::from_millis(window_ms);
         assert!(expected_duration >= Duration::from_millis(100));
     }

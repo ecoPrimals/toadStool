@@ -38,3 +38,20 @@ pub(crate) fn read_hwmon_power(pcie_address: &str) -> Option<f32> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_hwmon_power_nonexistent_device() {
+        let result = read_hwmon_power("0000:00:00.0");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_read_hwmon_power_invalid_address() {
+        let result = read_hwmon_power("/invalid/path");
+        assert!(result.is_none());
+    }
+}

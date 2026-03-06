@@ -1,6 +1,45 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
 #![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+#![allow(
+    clippy::doc_markdown,
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::wildcard_imports,
+    clippy::items_after_statements,
+    clippy::map_unwrap_or,
+    clippy::redundant_closure_for_method_calls,
+    clippy::no_effect_underscore_binding,
+    clippy::inefficient_to_string,
+    clippy::unused_self,
+    clippy::ref_option,
+    clippy::explicit_iter_loop,
+    clippy::return_self_not_must_use,
+    clippy::match_same_arms,
+    clippy::unused_async,
+    clippy::uninlined_format_args,
+    clippy::format_push_string,
+    clippy::used_underscore_binding,
+    clippy::unnecessary_wraps,
+    clippy::struct_excessive_bools,
+    clippy::single_match_else,
+    clippy::needless_continue,
+    clippy::manual_let_else,
+    clippy::needless_pass_by_value,
+    clippy::similar_names,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless,
+    clippy::implicit_clone,
+    clippy::implicit_hasher,
+    clippy::fn_params_excessive_bools,
+    clippy::default_trait_access,
+    clippy::case_sensitive_file_extension_comparisons,
+    clippy::assigning_clones,
+    clippy::needless_raw_string_hashes,
+    clippy::redundant_closure
+)]
 
 //! `ToadStool` CLI - Universal Compute Command Center
 //!
@@ -96,7 +135,7 @@ where
     }
 }
 
-pub use commands::{Commands, EcosystemCommands, UniversalCommands};
+pub use commands::{Commands, EcosystemCommands, TransportCommands, UniversalCommands};
 
 /// `ToadStool` - Universal Compute Platform for Sovereign Science
 #[derive(Parser)]

@@ -335,4 +335,31 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_userspace_backend_init_nonexistent() {
+        let result = UserspaceBackend::init("0000:xx:yy.z");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_userspace_register_constants() {
+        assert_eq!(REG_DEVICE_ID, 0x00);
+        assert_eq!(REG_STATUS, 0x14);
+        assert_eq!(STATUS_READY, 1);
+        assert_eq!(STATUS_MODEL_LOADED, 2);
+        assert_eq!(STATUS_INFERENCE_DONE, 4);
+        assert_eq!(STATUS_ERROR, 1 << 31);
+    }
+
+    #[test]
+    fn test_backend_type_userspace() {
+        let pcie_address = "0000:a1:00.0";
+        if let Ok(backend) = UserspaceBackend::init(pcie_address) {
+            assert_eq!(
+                backend.backend_type(),
+                crate::backend::BackendType::Userspace
+            );
+        }
+    }
 }

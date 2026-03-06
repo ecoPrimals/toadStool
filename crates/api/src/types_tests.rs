@@ -593,6 +593,78 @@ fn test_time_range_serialization() {
 // ========================================================================
 
 #[test]
+fn test_api_error_validation_error() {
+    use validator::ValidationErrors;
+
+    let mut errors = ValidationErrors::new();
+    errors.add("field", validator::ValidationError::new("required"));
+    let api_err = ApiError::validation_error(&errors);
+    assert_eq!(api_err.error_code, "VALIDATION_ERROR");
+    assert!(api_err.details.is_some());
+}
+
+#[test]
+fn test_api_error_into_response_status_codes() {
+    let codes = [
+        ("VALIDATION_ERROR", StatusCode::BAD_REQUEST),
+        ("NOT_FOUND", StatusCode::NOT_FOUND),
+        ("UNAUTHORIZED", StatusCode::UNAUTHORIZED),
+        ("FORBIDDEN", StatusCode::FORBIDDEN),
+        ("RATE_LIMITED", StatusCode::TOO_MANY_REQUESTS),
+        ("TIMEOUT", StatusCode::REQUEST_TIMEOUT),
+    ];
+    for (code, expected) in codes {
+        let err = ApiError::new(code, "test");
+        let resp = err.into_response();
+        assert_eq!(
+            resp.status(),
+            expected,
+            "code {} should map to {}",
+            code,
+            expected
+        );
+    }
+}
+
+#[test]
+fn test_execution_request_validation_empty_wasm() {
+    let request = ExecutionRequest {
+        workload: WorkloadSpec::Wasm {
+            module: String::new(),
+            function: "main".to_string(),
+            args: vec![],
+        },
+        runtime_type: RuntimeType::Wasm,
+        priority: 5,
+        timeout_secs: Some(60),
+        resources: None,
+        environment: HashMap::new(),
+        metadata: HashMap::new(),
+        callback_url: None,
+    };
+    assert!(request.validate().is_err());
+}
+
+#[test]
+fn test_execution_request_validation_empty_gpu() {
+    let request = ExecutionRequest {
+        workload: WorkloadSpec::Gpu {
+            kernel: String::new(),
+            platform: "opencl".to_string(),
+            args: vec![],
+        },
+        runtime_type: RuntimeType::Gpu,
+        priority: 5,
+        timeout_secs: Some(60),
+        resources: None,
+        environment: HashMap::new(),
+        metadata: HashMap::new(),
+        callback_url: None,
+    };
+    assert!(request.validate().is_err());
+}
+
+#[test]
 fn test_execution_info_clone() {
     let info = ExecutionInfo {
         execution_id: Uuid::new_v4(),

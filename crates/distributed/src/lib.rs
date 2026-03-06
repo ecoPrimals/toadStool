@@ -7,8 +7,37 @@
 //! - Local resource management
 //! - Service registration and health reporting
 
+#![allow(
+    clippy::assigning_clones,
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::doc_markdown,
+    clippy::if_not_else,
+    clippy::items_after_statements,
+    clippy::manual_is_variant_and,
+    clippy::manual_let_else,
+    clippy::map_unwrap_or,
+    clippy::match_same_arms,
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::needless_continue,
+    clippy::needless_pass_by_value,
+    clippy::return_self_not_must_use,
+    clippy::single_match_else,
+    clippy::str_split_at_newline,
+    clippy::struct_field_names,
+    clippy::uninlined_format_args,
+    clippy::unreadable_literal,
+    clippy::unnecessary_wraps,
+    clippy::unused_async,
+    clippy::unused_self,
+    clippy::wildcard_imports,
+    clippy::zero_sized_map_values
+)]
 #![cfg_attr(test, allow(deprecated))] // Allow deprecated items in tests during transition
-#![allow(clippy::unused_async)] // Many placeholder/stub async fns for future impl; per-function allow in hot paths
 #![deny(unsafe_code)]
 
 // Core modules

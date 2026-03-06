@@ -23,7 +23,8 @@ futures = "0.3"
 md5 = "0.7"
 
 # Edge-specific dependencies
-serialport = "4.3"
+# default-features = false: avoids libudev-sys (C dep) for ecoBin pure-Rust compliance.
+serialport = { version = "4.3", default-features = false }
 embedded-hal = "1.0"
 rppal = { version = "0.17", optional = true }
 esp-idf-sys = { version = "0.34", optional = true }

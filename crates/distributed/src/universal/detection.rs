@@ -92,9 +92,46 @@ impl UniversalSubstrateCapabilities {
 
     /// Detect neuromorphic computing platforms
     async fn detect_neuromorphic_platforms() -> ToadStoolResult<Vec<NeuromorphicPlatform>> {
-        // Neuromorphic platforms are mostly research-level
-        // Detection would require specialized hardware interfaces
-        Ok(vec![])
+        let mut platforms = Vec::new();
+
+        #[cfg(target_os = "linux")]
+        {
+            // Scan for Akida NPU devices
+            let dev_akida = std::path::Path::new("/dev");
+            if dev_akida.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(dev_akida) {
+                    for entry in entries.flatten() {
+                        let name = entry.file_name();
+                        let name_str = name.to_string_lossy();
+                        if name_str.starts_with("akida") {
+                            platforms.push(NeuromorphicPlatform::NeuromorphicChip {
+                                chip_name: "Akida".to_string(),
+                                manufacturer: "BrainChip".to_string(),
+                                core_count: 1,
+                                neuron_count_per_core: 1_000_000,
+                                synapse_count_per_core: 4_000_000,
+                                power_consumption_mw: 500.0,
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+
+            let sys_akida = std::path::Path::new("/sys/class/akida");
+            if platforms.is_empty() && sys_akida.is_dir() {
+                platforms.push(NeuromorphicPlatform::NeuromorphicChip {
+                    chip_name: "Akida".to_string(),
+                    manufacturer: "BrainChip".to_string(),
+                    core_count: 1,
+                    neuron_count_per_core: 1_000_000,
+                    synapse_count_per_core: 4_000_000,
+                    power_consumption_mw: 500.0,
+                });
+            }
+        }
+
+        Ok(platforms)
     }
 
     /// Detect quantum computing platforms
@@ -106,9 +143,55 @@ impl UniversalSubstrateCapabilities {
 
     /// Detect edge/IoT platforms
     async fn detect_edge_iot_platforms() -> ToadStoolResult<Vec<EdgeIoTPlatform>> {
-        // Edge/IoT platforms would be detected via specialized protocols
-        // This would scan networks, check GPIO availability, etc.
-        Ok(vec![])
+        let mut platforms = Vec::new();
+
+        #[cfg(target_os = "linux")]
+        {
+            let has_gpio = std::path::Path::new("/sys/class/gpio").exists();
+
+            let mut serial_count = 0u32;
+            let dev = std::path::Path::new("/dev");
+            if dev.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(dev) {
+                    for entry in entries.flatten() {
+                        let file_name = entry.file_name();
+                        let name = file_name.to_string_lossy();
+                        if name.starts_with("ttyUSB") || name.starts_with("ttyACM") {
+                            serial_count += 1;
+                        }
+                    }
+                }
+            }
+
+            if has_gpio && serial_count > 0 {
+                platforms.push(EdgeIoTPlatform::SingleBoardComputer {
+                    board: "Generic SBC".to_string(),
+                    soc: "unknown".to_string(),
+                    ram_mb: 512,
+                    storage_type: "unknown".to_string(),
+                    connectivity: vec!["GPIO".to_string(), "Serial".to_string()],
+                });
+            } else if has_gpio {
+                platforms.push(EdgeIoTPlatform::SingleBoardComputer {
+                    board: "Generic SBC".to_string(),
+                    soc: "unknown".to_string(),
+                    ram_mb: 512,
+                    storage_type: "unknown".to_string(),
+                    connectivity: vec!["GPIO".to_string()],
+                });
+            } else if serial_count > 0 {
+                platforms.push(EdgeIoTPlatform::Microcontroller {
+                    chip: "USB Serial".to_string(),
+                    architecture: "unknown".to_string(),
+                    flash_kb: 0,
+                    ram_kb: 0,
+                    clock_speed_mhz: 0,
+                    gpio_pins: 0,
+                });
+            }
+        }
+
+        Ok(platforms)
     }
 
     /// Detect container platforms
@@ -305,6 +388,15 @@ impl UniversalSubstrateCapabilities {
         let cores = std::thread::available_parallelism()
             .map(|p| u32::try_from(p.get()).unwrap_or(4))
             .unwrap_or(4);
+
+        #[cfg(target_os = "linux")]
+        {
+            if let Ok(info) = Self::parse_cpuinfo_linux() {
+                return info;
+            }
+        }
+
+        // Fallback for non-Linux or parse failure
         CpuInfo {
             model: "Generic CPU".to_string(),
             cores,
@@ -315,9 +407,86 @@ impl UniversalSubstrateCapabilities {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    fn parse_cpuinfo_linux() -> Result<CpuInfo, ()> {
+        let content = std::fs::read_to_string("/proc/cpuinfo").map_err(|_| ())?;
+
+        let cores = std::thread::available_parallelism()
+            .map(|p| u32::try_from(p.get()).unwrap_or(4))
+            .unwrap_or(4);
+
+        let mut model = "Generic CPU".to_string();
+        let mut cache_mb = 8u32;
+        let mut flags = Vec::new();
+        let mut cpu_parts: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        for block in content.split("\n\n") {
+            for line in block.lines() {
+                if let Some((key, val)) = line.split_once(':') {
+                    let key = key.trim();
+                    let val = val.trim();
+                    match key {
+                        "model name" | "Model" => model = val.to_string(),
+                        "cache size" => {
+                            if let Some(kb_str) = val.split_whitespace().next() {
+                                if let Ok(kb) = kb_str.parse::<u32>() {
+                                    cache_mb = kb.div_ceil(1024);
+                                }
+                            }
+                        }
+                        "flags" | "Features" => {
+                            flags = val
+                                .split_whitespace()
+                                .filter(|s| s.len() > 2)
+                                .map(String::from)
+                                .collect();
+                        }
+                        "CPU part" => {
+                            cpu_parts.insert(val.to_string());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        let features = if flags.is_empty() {
+            vec!["sse4.2".to_string(), "avx2".to_string()]
+        } else {
+            flags
+        };
+
+        let big_little = cpu_parts.len() > 1;
+
+        Ok(CpuInfo {
+            model,
+            cores,
+            threads: cores,
+            cache_mb,
+            big_little,
+            features,
+        })
+    }
+
     /// Get system memory in gigabytes
-    const fn get_memory_gb() -> u32 {
-        // This would use system APIs to get actual memory
+    fn get_memory_gb() -> u32 {
+        #[cfg(target_os = "linux")]
+        {
+            if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
+                for line in content.lines() {
+                    if line.starts_with("MemTotal:") {
+                        if let Some(kb_str) = line.split_whitespace().nth(1) {
+                            if let Ok(kb) = kb_str.parse::<u64>() {
+                                let gb = kb.div_ceil(1024 * 1024);
+                                return gb.min(u32::MAX as u64) as u32;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         8
     }
 
@@ -356,7 +525,30 @@ impl UniversalSubstrateCapabilities {
 
     /// Get Linux distribution name
     fn get_linux_distribution() -> String {
-        "Ubuntu".to_string() // This would read from /etc/os-release
+        #[cfg(target_os = "linux")]
+        {
+            if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
+                for line in content.lines() {
+                    if line.starts_with("PRETTY_NAME=") {
+                        let val = line.trim_start_matches("PRETTY_NAME=").trim_matches('"');
+                        if !val.is_empty() {
+                            return val.to_string();
+                        }
+                        break;
+                    }
+                }
+                for line in content.lines() {
+                    if line.starts_with("NAME=") {
+                        let val = line.trim_start_matches("NAME=").trim_matches('"');
+                        if !val.is_empty() {
+                            return val.to_string();
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        "unknown".to_string()
     }
 
     /// Get kernel version
@@ -410,7 +602,27 @@ impl UniversalSubstrateCapabilities {
 
     /// Get Windows version
     fn get_windows_version() -> String {
-        "10".to_string() // This would use Windows APIs
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = std::process::Command::new("cmd")
+                .args(["/c", "ver"])
+                .output()
+            {
+                let s = String::from_utf8_lossy(&output.stdout);
+                let s = s.trim();
+                // Extract version number from output like "Microsoft Windows [Version 10.0.19045.3803]"
+                if let Some(start) = s.find("Version ") {
+                    let rest = &s[start + 8..];
+                    if let Some(end) = rest.find(']') {
+                        let ver = rest[..end].trim();
+                        if !ver.is_empty() {
+                            return ver.to_string();
+                        }
+                    }
+                }
+            }
+        }
+        "10".to_string()
     }
 
     /// Get Windows features
@@ -436,27 +648,115 @@ impl UniversalSubstrateCapabilities {
 
     /// Get CUDA compute capability
     fn get_cuda_compute_capability() -> String {
-        "7.5".to_string() // This would query the GPU
+        if Self::check_command_exists("nvidia-smi") {
+            if let Ok(output) = std::process::Command::new("nvidia-smi")
+                .args(["--query-gpu=compute_cap", "--format=csv,noheader"])
+                .output()
+            {
+                if output.status.success() {
+                    let s = String::from_utf8_lossy(&output.stdout);
+                    let cap = s.trim().split('\n').next().unwrap_or("").trim();
+                    if !cap.is_empty() {
+                        return cap.to_string();
+                    }
+                }
+            }
+        }
+        "unknown".to_string()
     }
 
     /// Get GPU memory in gigabytes
-    const fn get_gpu_memory_gb() -> u32 {
-        8 // This would query the GPU
+    fn get_gpu_memory_gb() -> u32 {
+        if Self::check_command_exists("nvidia-smi") {
+            if let Ok(output) = std::process::Command::new("nvidia-smi")
+                .args(["--query-gpu=memory.total", "--format=csv,noheader,nounits"])
+                .output()
+            {
+                if output.status.success() {
+                    let s = String::from_utf8_lossy(&output.stdout);
+                    if let Some(mb_str) = s
+                        .trim()
+                        .split('\n')
+                        .next()
+                        .and_then(|l| l.split(',').next())
+                    {
+                        let mb_str = mb_str.trim();
+                        if let Ok(mb) = mb_str.parse::<u32>() {
+                            return mb.div_ceil(1024);
+                        }
+                    }
+                }
+            }
+        }
+        0
     }
 
     /// Get ROCm version
     fn get_rocm_version() -> String {
-        "5.0".to_string() // This would query ROCm
+        if let Ok(ver) = std::fs::read_to_string("/opt/rocm/.info/version") {
+            let ver = ver.trim();
+            if !ver.is_empty() {
+                return ver.to_string();
+            }
+        }
+        if Self::check_command_exists("rocm-smi") {
+            if let Ok(output) = std::process::Command::new("rocm-smi")
+                .arg("--showversion")
+                .output()
+            {
+                if output.status.success() {
+                    let s = String::from_utf8_lossy(&output.stdout);
+                    let first_line = s.lines().next().unwrap_or("").trim();
+                    if !first_line.is_empty() {
+                        return first_line.to_string();
+                    }
+                }
+            }
+        }
+        "unknown".to_string()
     }
 
     /// Get ROCm GFX version
     fn get_rocm_gfx_version() -> String {
-        "gfx906".to_string() // This would query the GPU
+        if Self::check_command_exists("rocm-smi") {
+            if let Ok(output) = std::process::Command::new("rocm-smi")
+                .arg("--showproductname")
+                .output()
+            {
+                if output.status.success() {
+                    let s = String::from_utf8_lossy(&output.stdout);
+                    for line in s.lines() {
+                        let line = line.trim();
+                        if line.contains("gfx") {
+                            if let Some(gfx) =
+                                line.split_whitespace().find(|w| w.starts_with("gfx"))
+                            {
+                                return gfx.to_string();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "unknown".to_string()
     }
 
     /// Check for OpenCL support
-    const fn check_opencl_support() -> bool {
-        false // This would check for OpenCL runtime
+    fn check_opencl_support() -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            let vendors = std::path::Path::new("/etc/OpenCL/vendors");
+            if vendors.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(vendors) {
+                    for entry in entries.flatten() {
+                        if entry.path().extension().is_some_and(|e| e == "icd") {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        Self::check_command_exists("clinfo")
     }
 
     /// Get OpenCL version
@@ -552,7 +852,7 @@ mod tests {
     async fn test_detect_edge_iot_platforms() {
         let platforms = UniversalSubstrateCapabilities::detect_edge_iot_platforms().await;
         assert!(platforms.is_ok());
-        assert!(platforms.unwrap().is_empty());
+        // May be empty (no GPIO/serial) or populated (edge devices detected on Linux)
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -590,7 +890,7 @@ mod tests {
     #[test]
     fn test_get_linux_distribution() {
         let dist = UniversalSubstrateCapabilities::get_linux_distribution();
-        assert_eq!(dist, "Ubuntu");
+        assert!(!dist.is_empty());
     }
 
     #[test]
@@ -614,18 +914,91 @@ mod tests {
     #[test]
     fn test_get_windows_version() {
         let ver = UniversalSubstrateCapabilities::get_windows_version();
-        assert_eq!(ver, "10");
+        assert!(!ver.is_empty());
     }
 
     #[test]
     fn test_check_opencl_support() {
         let support = UniversalSubstrateCapabilities::check_opencl_support();
-        assert!(!support);
+        // Result is environment-dependent; verify it's a valid bool
+        let _ = support;
     }
 
     #[test]
     fn test_get_opencl_compute_units() {
         let units = UniversalSubstrateCapabilities::get_opencl_compute_units();
         assert!(units > 0);
+    }
+
+    #[test]
+    fn test_get_rust_target_triple() {
+        let triple = UniversalSubstrateCapabilities::get_rust_target_triple();
+        assert!(triple == "unknown" || triple.is_empty() || triple.contains("-"));
+    }
+
+    #[test]
+    fn test_get_opencl_version() {
+        let version = UniversalSubstrateCapabilities::get_opencl_version();
+        assert_eq!(version, "2.0");
+    }
+
+    #[test]
+    fn test_get_opencl_device_type() {
+        let device_type = UniversalSubstrateCapabilities::get_opencl_device_type();
+        assert_eq!(device_type, "GPU");
+    }
+
+    #[test]
+    fn test_get_windows_features() {
+        let features = UniversalSubstrateCapabilities::get_windows_features();
+        assert!(!features.is_empty());
+        assert!(features.contains(&"PowerShell".to_string()));
+    }
+
+    #[test]
+    fn test_get_windows_subsystems() {
+        let subsystems = UniversalSubstrateCapabilities::get_windows_subsystems();
+        assert!(!subsystems.is_empty());
+        assert!(subsystems.contains(&"Win32".to_string()));
+    }
+
+    #[test]
+    fn test_get_cuda_version() {
+        let version = UniversalSubstrateCapabilities::get_cuda_version();
+        assert!(!version.is_empty());
+    }
+
+    #[test]
+    fn test_get_cuda_compute_capability() {
+        let cap = UniversalSubstrateCapabilities::get_cuda_compute_capability();
+        assert!(!cap.is_empty());
+    }
+
+    #[test]
+    fn test_get_gpu_memory_gb() {
+        let gb = UniversalSubstrateCapabilities::get_gpu_memory_gb();
+        let _ = gb;
+    }
+
+    #[test]
+    fn test_get_rocm_version() {
+        let version = UniversalSubstrateCapabilities::get_rocm_version();
+        assert!(!version.is_empty());
+    }
+
+    #[test]
+    fn test_get_rocm_gfx_version() {
+        let gfx = UniversalSubstrateCapabilities::get_rocm_gfx_version();
+        assert!(!gfx.is_empty());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_parse_cpuinfo_linux_fallback() {
+        let result = UniversalSubstrateCapabilities::parse_cpuinfo_linux();
+        if let Ok(info) = result {
+            assert!(info.cores > 0);
+            assert!(!info.model.is_empty());
+        }
     }
 }

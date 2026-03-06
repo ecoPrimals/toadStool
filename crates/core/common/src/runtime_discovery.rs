@@ -409,6 +409,7 @@ impl DiscoveryClient for LocalhostDiscoveryClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::primal_identity::{ComputeCapability, StorageCapability};
 
     fn seeded_client() -> LocalhostDiscoveryClient {
         let mut client = LocalhostDiscoveryClient::new();
@@ -438,7 +439,6 @@ mod tests {
         let client = Arc::new(seeded_client());
         let discovery = RuntimeDiscovery::new(client);
 
-        use crate::primal_identity::ComputeCapability;
         let capability = Capability::Compute(ComputeCapability::NativeExecution);
 
         let services = discovery.discover_capability(&capability).await.unwrap();
@@ -528,7 +528,6 @@ mod tests {
     async fn test_service_cache_insert() {
         let mut cache = ServiceCache::new();
 
-        use crate::primal_identity::ComputeCapability;
         let service = DiscoveredService {
             id: Some("test-1".to_string()),
             capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
@@ -545,7 +544,6 @@ mod tests {
     async fn test_service_cache_get_by_capability() {
         let mut cache = ServiceCache::new();
 
-        use crate::primal_identity::ComputeCapability;
         let cap = Capability::Compute(ComputeCapability::NativeExecution);
 
         let service = DiscoveredService {
@@ -567,7 +565,6 @@ mod tests {
     async fn test_service_cache_get_by_capability_none() {
         let cache = ServiceCache::new();
 
-        use crate::primal_identity::StorageCapability;
         let cap = Capability::Storage(StorageCapability::ObjectStorage);
 
         let services = cache.get_by_capability(&cap);
@@ -578,7 +575,6 @@ mod tests {
     async fn test_service_cache_clear() {
         let mut cache = ServiceCache::new();
 
-        use crate::primal_identity::ComputeCapability;
         let service = DiscoveredService {
             id: Some("test-3".to_string()),
             capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
@@ -619,7 +615,6 @@ mod tests {
     async fn test_localhost_discovery_client_discover_by_capability_empty() {
         let client = LocalhostDiscoveryClient::new();
 
-        use crate::primal_identity::ComputeCapability;
         let cap = Capability::Compute(ComputeCapability::NativeExecution);
 
         let services = client.discover_by_capability(&cap).await.unwrap();
@@ -630,7 +625,6 @@ mod tests {
     async fn test_localhost_discovery_client_discover_by_capability_seeded() {
         let client = seeded_client();
 
-        use crate::primal_identity::ComputeCapability;
         let cap = Capability::Compute(ComputeCapability::NativeExecution);
 
         let services = client.discover_by_capability(&cap).await.unwrap();
@@ -641,7 +635,6 @@ mod tests {
     async fn test_localhost_discovery_client_register_service() {
         let client = LocalhostDiscoveryClient::new();
 
-        use crate::primal_identity::ComputeCapability;
         let service = DiscoveredService {
             id: Some("register-test".to_string()),
             capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],

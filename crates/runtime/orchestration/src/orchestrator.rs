@@ -469,4 +469,36 @@ mod tests {
         assert_eq!(request.target, PerformanceTarget::Energy);
         assert_eq!(request.batch_size, Some(100));
     }
+
+    #[tokio::test]
+    async fn test_execute_with_fallback_no_substrates() {
+        let orchestrator = WorkloadOrchestrator::discover().await.unwrap();
+        let request = WorkloadRequest::default();
+        let result = orchestrator.execute_with_fallback(request).await;
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            OrchestrationError::AllSubstratesFailed
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_execute_no_substrates_returns_error() {
+        let orchestrator = WorkloadOrchestrator::discover().await.unwrap();
+        let request = WorkloadRequest::default();
+        let result = orchestrator.execute(request).await;
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            OrchestrationError::NoSubstrates
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_orchestrator_stats() {
+        let orchestrator = WorkloadOrchestrator::discover().await.unwrap();
+        let stats = orchestrator.stats();
+        assert_eq!(stats.substrates_available, 0);
+        assert_eq!(stats.total_executions, 0);
+    }
 }

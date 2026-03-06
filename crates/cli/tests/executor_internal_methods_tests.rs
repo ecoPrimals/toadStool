@@ -292,8 +292,7 @@ async fn test_concurrent_different_biome_operations() {
         let b = Arc::clone(&barrier);
         handles.push(tokio::spawn(async move {
             b.wait().await;
-            exec.list_biomes(false, "json".to_string(), false, None)
-                .await
+            exec.list_biomes(false, "json", false, None).await
         }));
     }
 
@@ -329,7 +328,7 @@ async fn test_list_biomes_all_output_formats_concurrent() {
 
             tokio::spawn(async move {
                 b.wait().await;
-                exec.list_biomes(false, fmt.to_string(), false, None).await
+                exec.list_biomes(false, fmt, false, None).await
             })
         })
         .collect();
@@ -352,9 +351,7 @@ async fn test_timeout_boundary_values() {
     let timeouts = vec![1, 5, 30, 60, 300, 3600]; // 1s to 1h
 
     for timeout in timeouts {
-        let result = executor
-            .down_biome("test".to_string(), false, timeout, false)
-            .await;
+        let result = executor.down_biome("test", false, timeout, false).await;
 
         // All timeout values should be accepted
         assert!(result.is_err(), "Should fail for nonexistent biome");
@@ -446,12 +443,12 @@ async fn test_show_logs_all_parameter_combinations() {
 
             tokio::spawn(async move {
                 exec.show_logs(
-                    format!("biome-{}", i),
+                    format!("biome-{}", i).as_str(),
                     follow,
                     lines,
                     timestamps,
-                    level,
-                    grep,
+                    level.as_deref(),
+                    grep.as_deref(),
                 )
                 .await
             })
@@ -482,14 +479,12 @@ async fn test_property_executor_methods_never_panic() {
                 let _ctx = create_test_context();
 
                 // Mix of all operations with random parameters
+                let _ = exec.list_biomes(i % 2 == 0, "table", false, None).await;
                 let _ = exec
-                    .list_biomes(i % 2 == 0, "table".to_string(), false, None)
+                    .down_biome(format!("biome-{}", i).as_str(), i % 2 == 0, 30, false)
                     .await;
                 let _ = exec
-                    .down_biome(format!("biome-{}", i), i % 2 == 0, 30, false)
-                    .await;
-                let _ = exec
-                    .show_logs(format!("log-{}", i), false, 50, false, None, None)
+                    .show_logs(format!("log-{}", i).as_str(), false, 50, false, None, None)
                     .await;
 
                 Ok::<(), anyhow::Error>(())
@@ -535,7 +530,7 @@ async fn test_stress_list_biomes_different_parameters() {
                 None
             };
 
-            exec.list_biomes(all, format.to_string(), resources, filter)
+            exec.list_biomes(all, format, resources, filter.as_deref())
                 .await
         }));
     }
@@ -662,7 +657,7 @@ async fn test_concurrent_list_operations_consistent_state() {
 
             tokio::spawn(async move {
                 b.wait().await;
-                exec.list_biomes(true, "json".to_string(), true, None).await
+                exec.list_biomes(true, "json", true, None).await
             })
         })
         .collect();
@@ -683,9 +678,7 @@ async fn test_error_messages_are_descriptive() {
     let executor = create_test_executor().await.unwrap();
 
     // Test that error messages provide useful information
-    let result = executor
-        .down_biome("nonexistent".to_string(), false, 30, false)
-        .await;
+    let result = executor.down_biome("nonexistent", false, 30, false).await;
 
     assert!(result.is_err(), "Should fail");
 
@@ -704,9 +697,7 @@ async fn test_down_biome_error_includes_biome_name() {
     let executor = create_test_executor().await.unwrap();
 
     let biome_name = "test-biome-xyz";
-    let result = executor
-        .down_biome(biome_name.to_string(), false, 30, false)
-        .await;
+    let result = executor.down_biome(biome_name, false, 30, false).await;
 
     assert!(result.is_err());
 
@@ -790,9 +781,7 @@ async fn test_biome_name_with_special_characters() {
     ];
 
     for name in special_names {
-        let result = executor
-            .down_biome(name.to_string(), false, 30, false)
-            .await;
+        let result = executor.down_biome(name, false, 30, false).await;
 
         // All should be accepted as valid names
         assert!(result.is_err(), "Should fail for nonexistent biome");
@@ -807,7 +796,7 @@ async fn test_log_lines_boundary_values() {
 
     for lines in line_counts {
         let result = executor
-            .show_logs("test".to_string(), false, lines, false, None, None)
+            .show_logs("test", false, lines, false, None, None)
             .await;
 
         // All line counts should be accepted
@@ -835,12 +824,11 @@ async fn test_stress_executor_creation_and_operations() {
                 let exec = create_test_executor().await?;
 
                 // Perform operations
-                exec.list_biomes(false, "table".to_string(), false, None)
-                    .await?;
+                exec.list_biomes(false, "table", false, None).await?;
                 exec.down_biome(format!("test-{}", i), false, 30, false)
                     .await
                     .ok();
-                exec.show_logs(format!("log-{}", i), false, 50, false, None, None)
+                exec.show_logs(format!("log-{}", i).as_str(), false, 50, false, None, None)
                     .await
                     .ok();
 

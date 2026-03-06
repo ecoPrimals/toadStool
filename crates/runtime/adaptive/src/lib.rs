@@ -234,4 +234,22 @@ mod tests {
             eprintln!("Note: No GPU available for testing");
         }
     }
+
+    #[test]
+    fn test_fallback_strategy_workgroup_sizes() {
+        use crate::selector::FallbackStrategy;
+
+        // Conservative fallback returns safe defaults
+        let wg_small = FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 64);
+        let wg_medium = FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 5000);
+        let wg_large = FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 200_000);
+
+        assert_eq!(wg_small, 64);
+        assert_eq!(wg_medium, 128);
+        assert_eq!(wg_large, 256);
+
+        // Aggressive fallback returns higher values
+        let wg_aggressive = FallbackStrategy::Aggressive.fallback_workgroup(OpType::MatMul, 5000);
+        assert_eq!(wg_aggressive, 256);
+    }
 }

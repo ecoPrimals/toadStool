@@ -1,11 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::doc_markdown,
+    clippy::needless_raw_string_hashes,
+    clippy::unused_async,
+    clippy::unnecessary_wraps,
+    clippy::unused_self,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::struct_excessive_bools,
+    clippy::match_same_arms,
+    clippy::implicit_hasher,
+    clippy::pub_underscore_fields
+)]
 
 //! # `ToadStool` Auto-Configuration Library
 //!
 //! Zero-touch, grandma-friendly auto-configuration system for `ToadStool` Universal Compute Platform.
-//! This library implements Sprint 5's vision of making `ToadStool` so easy that anyone can use it
-//! with zero configuration while being perfectly AI-friendly.
+//! This library makes `ToadStool` so easy that anyone can use it with zero configuration
+//! while being perfectly AI-friendly.
 //!
 //! ## Core Philosophy
 //!
@@ -341,8 +358,7 @@ impl ConfigBuilder {
             info!("⚡ Performance optimization enabled");
             auto_config
                 .platform_optimizer
-                .optimize_for_platform(&hardware)
-                .await?
+                .optimize_for_platform(&hardware)?
         } else {
             info!("⚡ Performance optimization disabled");
             intelligent::PlatformConfig {

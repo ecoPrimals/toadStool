@@ -9,19 +9,21 @@ use tokio::fs;
 use tracing::info;
 use uuid::Uuid;
 
-use super::{BiomeExecutor, BiomeInfo};
+use super::BiomeExecutor;
+#[cfg(test)]
+use super::BiomeInfo;
 
 /// Resource manager for biome data and processes
-#[allow(dead_code)] // Phase 2+: biome CLI purge/resource ops will use this
 pub(super) struct ResourceManager<'a> {
-    executor: &'a BiomeExecutor,
+    _executor: &'a BiomeExecutor,
 }
 
-#[allow(dead_code)] // Phase 2+: biome CLI purge/resource ops will use this
 impl<'a> ResourceManager<'a> {
     /// Create new resource manager
     pub fn new(executor: &'a BiomeExecutor) -> Self {
-        Self { executor }
+        Self {
+            _executor: executor,
+        }
     }
 
     /// Purge all data for a biome
@@ -53,8 +55,9 @@ impl<'a> ResourceManager<'a> {
     /// # Errors
     ///
     /// Returns an error if PID cannot be found
+    #[cfg(test)]
     pub async fn get_actual_pid(&self, biome_name: &str) -> Result<u32> {
-        let biomes = self.executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().await;
 
         if let Some(biome) = biomes.get(biome_name) {
             // Return the first valid PID
@@ -75,7 +78,7 @@ impl<'a> ResourceManager<'a> {
 
     /// Find process by execution ID
     pub async fn find_process_pid(&self, execution_id: &Uuid) -> Option<u32> {
-        let biomes = self.executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().await;
 
         for (_biome_name, biome) in biomes.iter() {
             for process in &biome.process_handles {
@@ -90,13 +93,14 @@ impl<'a> ResourceManager<'a> {
 
     /// Check if biome exists
     pub async fn biome_exists(&self, biome_name: &str) -> bool {
-        let biomes = self.executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().await;
         biomes.contains_key(biome_name)
     }
 
     /// Get biome info (convert from RunningBiome)
+    #[cfg(test)]
     pub async fn get_biome_info(&self, biome_name: &str) -> Option<BiomeInfo> {
-        let biomes = self.executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().await;
         biomes.get(biome_name).map(|rb| rb.info.clone())
     }
 }

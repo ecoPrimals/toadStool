@@ -38,3 +38,18 @@ pub async fn proxy_to_barracuda(method: &str, params: &Value) -> Result<Value, N
         .await
         .map_err(|e| NautilusRpcError::proxy_error(format!("barraCuda unreachable: {e}")))
 }
+
+#[cfg(test)]
+#[cfg(feature = "nautilus")]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_proxy_to_barracuda_unreachable() {
+        let params = serde_json::json!({});
+        let result = proxy_to_barracuda("ai.nautilus.test", &params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("unreachable") || err.message.contains("barraCuda"));
+    }
+}

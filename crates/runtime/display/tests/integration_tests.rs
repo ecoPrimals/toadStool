@@ -25,7 +25,7 @@ async fn test_window_lifecycle() {
         fullscreen: false,
     };
 
-    let window_id = manager.create_window(req).await.unwrap();
+    let window_id = manager.create_window(req).unwrap();
 
     // Get window info
     let info = manager.get_window_info(window_id).unwrap();
@@ -35,7 +35,7 @@ async fn test_window_lifecycle() {
     assert!(info.focused); // First window should be focused
 
     // Destroy window
-    manager.destroy_window(window_id).await.unwrap();
+    manager.destroy_window(window_id).unwrap();
 
     // Window should no longer exist
     assert!(manager.get_window_info(window_id).is_err());
@@ -58,7 +58,6 @@ async fn test_multiple_windows() {
             height: 600,
             ..Default::default()
         })
-        .await
         .unwrap();
 
     let id2 = manager
@@ -67,7 +66,6 @@ async fn test_multiple_windows() {
             height: 768,
             ..Default::default()
         })
-        .await
         .unwrap();
 
     // Check window count
@@ -80,8 +78,8 @@ async fn test_multiple_windows() {
     assert!(windows.contains(&id2));
 
     // Clean up
-    manager.destroy_window(id1).await.unwrap();
-    manager.destroy_window(id2).await.unwrap();
+    manager.destroy_window(id1).unwrap();
+    manager.destroy_window(id2).unwrap();
 }
 
 #[tokio::test]
@@ -97,12 +95,10 @@ async fn test_focus_management() {
     // Create two windows
     let id1 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
 
     let id2 = manager
         .create_window(CreateWindowRequest::default())
-        .await
         .unwrap();
 
     // First window should be focused
@@ -119,13 +115,13 @@ async fn test_focus_management() {
     assert!(info2.focused);
 
     // Clean up
-    manager.destroy_window(id1).await.unwrap();
-    manager.destroy_window(id2).await.unwrap();
+    manager.destroy_window(id1).unwrap();
+    manager.destroy_window(id2).unwrap();
 }
 
 #[tokio::test]
 async fn test_input_manager_integration() {
-    let manager_result = InputManager::discover().await;
+    let manager_result = InputManager::discover();
     assert!(manager_result.is_ok());
 
     let mut manager = manager_result.unwrap();
@@ -138,7 +134,7 @@ async fn test_input_manager_integration() {
     assert_eq!(manager.focused_window(), Some(window_id));
 
     // Poll events (should be empty in test environment)
-    let events = manager.poll_events().await.unwrap();
+    let events = manager.poll_events().unwrap();
     assert!(events.is_empty());
 }
 

@@ -155,9 +155,7 @@ fn test_capability_enum_has_no_primal_names() {
     let _storage = Capability::Storage;
     let _coordination = Capability::Coordination;
 
-    // These would be WRONG (primal-specific):
-    // let _beardog = Capability::BearDog; // Should NOT exist
-    // let _songbird = Capability::Songbird; // Should NOT exist
+    // These would be WRONG (primal-specific): BearDog, Songbird should NOT exist
 }
 
 // ============================================================================
@@ -171,9 +169,7 @@ async fn test_executor_list_biomes_no_hardcoded_clients() {
     // ✅ VERIFY: Core operations work without hardcoded clients
     let executor = BiomeExecutor::new().await.unwrap();
 
-    let result = executor
-        .list_biomes(false, "json".to_string(), false, None)
-        .await;
+    let result = executor.list_biomes(false, "json", false, None).await;
 
     assert!(
         result.is_ok(),
@@ -189,18 +185,14 @@ async fn test_executor_operations_independent_of_registry() {
     let executor = BiomeExecutor::new().await.unwrap();
 
     // These should work without any registry
-    let list_result = executor
-        .list_biomes(false, "table".to_string(), false, None)
-        .await;
+    let list_result = executor.list_biomes(false, "table", false, None).await;
     assert!(list_result.is_ok());
 
-    let down_result = executor
-        .down_biome("nonexistent".to_string(), false, 30, false)
-        .await;
+    let down_result = executor.down_biome("nonexistent", false, 30, false).await;
     assert!(down_result.is_err()); // Fails because biome doesn't exist, not because of registry
 
     let logs_result = executor
-        .show_logs("nonexistent".to_string(), false, 50, false, None, None)
+        .show_logs("nonexistent", false, 50, false, None, None)
         .await;
     assert!(logs_result.is_err()); // Fails because biome doesn't exist, not because of registry
 }
@@ -217,24 +209,13 @@ async fn test_property_no_panic_without_registry() {
     let executor = BiomeExecutor::new().await.unwrap();
 
     // Try various operations - none should panic
+    let _ = executor.list_biomes(false, "json", false, None).await;
     let _ = executor
-        .list_biomes(false, "json".to_string(), false, None)
+        .list_biomes(true, "yaml", true, Some("running"))
         .await;
+    let _ = executor.down_biome("test", false, 30, false).await;
     let _ = executor
-        .list_biomes(true, "yaml".to_string(), true, Some("running".to_string()))
-        .await;
-    let _ = executor
-        .down_biome("test".to_string(), false, 30, false)
-        .await;
-    let _ = executor
-        .show_logs(
-            "test".to_string(),
-            false,
-            100,
-            true,
-            Some("info".to_string()),
-            None,
-        )
+        .show_logs("test", false, 100, true, Some("info"), None)
         .await;
 
     // All operations completed without panic ✅
@@ -269,9 +250,7 @@ async fn test_errors_dont_mention_hardcoded_clients() {
     // ✅ VERIFY: Error messages don't reference hardcoded clients
     let executor = BiomeExecutor::new().await.unwrap();
 
-    let result = executor
-        .down_biome("nonexistent".to_string(), false, 30, false)
-        .await;
+    let result = executor.down_biome("nonexistent", false, 30, false).await;
 
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
@@ -333,22 +312,18 @@ async fn test_no_regression_basic_operations_work() {
     let executor = BiomeExecutor::new().await.unwrap();
 
     // List biomes
-    let list = executor
-        .list_biomes(false, "json".to_string(), false, None)
-        .await;
+    let list = executor.list_biomes(false, "json", false, None).await;
     assert!(list.is_ok(), "list_biomes should still work");
 
     // These should fail gracefully (biome doesn't exist)
-    let down = executor
-        .down_biome("test".to_string(), false, 30, false)
-        .await;
+    let down = executor.down_biome("test", false, 30, false).await;
     assert!(
         down.is_err(),
         "down_biome should fail gracefully for nonexistent biome"
     );
 
     let logs = executor
-        .show_logs("test".to_string(), false, 50, false, None, None)
+        .show_logs("test", false, 50, false, None, None)
         .await;
     assert!(
         logs.is_err(),
@@ -367,10 +342,7 @@ async fn test_no_regression_concurrent_operations() {
     let handles: Vec<_> = (0..5)
         .map(|i| {
             let exec = Arc::clone(&executor);
-            tokio::spawn(async move {
-                exec.list_biomes(i % 2 == 0, "json".to_string(), false, None)
-                    .await
-            })
+            tokio::spawn(async move { exec.list_biomes(i % 2 == 0, "json", false, None).await })
         })
         .collect();
 

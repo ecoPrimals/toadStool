@@ -393,9 +393,72 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_service_url_with_https_prefix() {
+        let addr = parse_service_url("https://127.0.0.1:8443").unwrap();
+        assert_eq!(addr.port(), 8443);
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+    }
+
+    #[test]
+    fn test_parse_service_url_trimmed_whitespace() {
+        let addr = parse_service_url("  http://127.0.0.1:8080  ").unwrap();
+        assert_eq!(addr.port(), 8080);
+    }
+
+    #[test]
     fn test_discover_from_config_no_config_returns_none() {
         // When no config file exists at expected paths, returns None
         let result = discover_from_config("nonexistent_capability_xyz");
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_discover_from_config_with_valid_config() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let config_path = dir.path().join(".toadstool").join("config.toml");
+        std::fs::create_dir_all(config_path.parent().unwrap()).expect("create dir");
+        let config_content = r#"
+[services.crypto]
+url = "http://127.0.0.1:9876"
+priority = 90
+
+[services.storage]
+url = "http://127.0.0.1:8082"
+"#;
+        std::fs::write(&config_path, config_content).expect("write config");
+
+        // discover_from_config checks ~/.toadstool, ./.toadstool, /etc/toadstool
+        // We need to run from the dir containing .toadstool
+        let prev_cwd = std::env::current_dir().ok();
+        std::env::set_current_dir(dir.path()).expect("set cwd");
+        let result = discover_from_config("crypto");
+        if let Some(ref cwd) = prev_cwd {
+            std::env::set_current_dir(cwd).ok();
+        }
+        assert!(
+            result.is_some(),
+            "should find crypto from ./.toadstool/config.toml"
+        );
+        assert_eq!(result.unwrap(), "http://127.0.0.1:9876");
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_verify_service_unreachable_returns_false() {
+        use crate::ecosystem::types::*;
+        use std::sync::Arc;
+
+        // Use a non-routable address that will fail to connect
+        let endpoint = ServiceEndpoint {
+            service_type: EcosystemService::Unknown("test".to_string()),
+            address: "192.0.2.1:1".parse().unwrap(), // TEST-NET, typically unreachable
+            version: Arc::from("1.0"),
+            capabilities: vec![],
+            trust_level: TrustLevel::Discovered,
+        };
+
+        let result = verify_service(&endpoint).await;
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
     }
 }

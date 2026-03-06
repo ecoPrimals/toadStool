@@ -45,3 +45,36 @@ impl PlatformDetector {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_platform_info_default() {
+        let info = PlatformInfo::default();
+        assert_eq!(info.name, "unknown");
+        assert_eq!(info.version, "unknown");
+        assert_eq!(info.architecture, "unknown");
+        assert!(info.features.is_empty());
+        assert!(info.capabilities.is_empty());
+    }
+
+    #[test]
+    fn test_platform_detector_detect() {
+        let info = PlatformDetector::detect();
+        assert!(!info.name.is_empty());
+        assert_eq!(info.version, "unknown");
+        assert!(!info.architecture.is_empty());
+        assert_eq!(info.features, vec!["basic".to_string()]);
+        assert!(info.capabilities.is_empty());
+    }
+
+    #[test]
+    fn test_platform_info_serialization() {
+        let info = PlatformInfo::default();
+        let json = serde_json::to_string(&info).unwrap();
+        let parsed: PlatformInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.name, info.name);
+    }
+}

@@ -79,6 +79,7 @@ pub enum DeviceCapability {
 /// println!("Opened: {}", device.name());
 /// # Ok::<(), toadstool_display::DisplayError>(())
 /// ```
+#[allow(clippy::struct_field_names)] // device_type and evdev_device are standard evdev terminology
 pub struct Device {
     path: PathBuf,
     name: String,
@@ -176,52 +177,40 @@ impl Device {
         // Query actual hardware capabilities
         let has_keys = device
             .supported_keys()
-            .map(|keys| keys.iter().count() > 0)
-            .unwrap_or(false);
+            .is_some_and(|keys| keys.iter().count() > 0);
 
         let has_rel_axes = device
             .supported_relative_axes()
-            .map(|axes| axes.iter().count() > 0)
-            .unwrap_or(false);
+            .is_some_and(|axes| axes.iter().count() > 0);
 
         let has_abs_axes = device
             .supported_absolute_axes()
-            .map(|axes| axes.iter().count() > 0)
-            .unwrap_or(false);
+            .is_some_and(|axes| axes.iter().count() > 0);
 
         // Check for mouse buttons (BTN_LEFT, BTN_RIGHT, BTN_MIDDLE)
-        let has_mouse_buttons = device
-            .supported_keys()
-            .map(|keys| {
-                keys.contains(evdev::KeyCode::BTN_LEFT)
-                    || keys.contains(evdev::KeyCode::BTN_RIGHT)
-                    || keys.contains(evdev::KeyCode::BTN_MIDDLE)
-            })
-            .unwrap_or(false);
+        let has_mouse_buttons = device.supported_keys().is_some_and(|keys| {
+            keys.contains(evdev::KeyCode::BTN_LEFT)
+                || keys.contains(evdev::KeyCode::BTN_RIGHT)
+                || keys.contains(evdev::KeyCode::BTN_MIDDLE)
+        });
 
         // Check for multi-touch (ABS_MT_SLOT, ABS_MT_POSITION_X, ABS_MT_POSITION_Y)
-        let has_multitouch = device
-            .supported_absolute_axes()
-            .map(|axes| {
-                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT)
-                    || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X)
-                    || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_Y)
-            })
-            .unwrap_or(false);
+        let has_multitouch = device.supported_absolute_axes().is_some_and(|axes| {
+            axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT)
+                || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X)
+                || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_Y)
+        });
 
         // Check for gamepad buttons (BTN_GAMEPAD, BTN_SOUTH, BTN_A, etc.)
         // Note: Some button constants may not exist in evdev 0.13
-        let has_gamepad_buttons = device
-            .supported_keys()
-            .map(|keys| {
-                // Check for any gamepad-like buttons
-                keys.iter().any(|key| {
-                    let code = key.code();
-                    // BTN_GAMEPAD = 0x130, BTN_SOUTH = 0x130, BTN_A through BTN_TRIGGER range
-                    (0x130..=0x13f).contains(&code)
-                })
+        let has_gamepad_buttons = device.supported_keys().is_some_and(|keys| {
+            // Check for any gamepad-like buttons
+            keys.iter().any(|key| {
+                let code = key.code();
+                // BTN_GAMEPAD = 0x130, BTN_SOUTH = 0x130, BTN_A through BTN_TRIGGER range
+                (0x130..=0x13f).contains(&code)
             })
-            .unwrap_or(false);
+        });
 
         // Detection heuristics (ordered by specificity)
         if has_multitouch && has_abs_axes {
@@ -252,65 +241,47 @@ impl Device {
         // Check for keys
         if device
             .supported_keys()
-            .map(|k| k.iter().count() > 0)
-            .unwrap_or(false)
+            .is_some_and(|k| k.iter().count() > 0)
         {
             caps.push(DeviceCapability::Keys);
         }
 
         // Check for relative pointer (REL_X, REL_Y - mouse movement)
-        if device
-            .supported_relative_axes()
-            .map(|axes| {
-                axes.contains(evdev::RelativeAxisCode::REL_X)
-                    || axes.contains(evdev::RelativeAxisCode::REL_Y)
-            })
-            .unwrap_or(false)
-        {
+        if device.supported_relative_axes().is_some_and(|axes| {
+            axes.contains(evdev::RelativeAxisCode::REL_X)
+                || axes.contains(evdev::RelativeAxisCode::REL_Y)
+        }) {
             caps.push(DeviceCapability::RelativePointer);
         }
 
         // Check for absolute pointer (ABS_X, ABS_Y)
-        if device
-            .supported_absolute_axes()
-            .map(|axes| {
-                axes.contains(evdev::AbsoluteAxisCode::ABS_X)
-                    || axes.contains(evdev::AbsoluteAxisCode::ABS_Y)
-            })
-            .unwrap_or(false)
-        {
+        if device.supported_absolute_axes().is_some_and(|axes| {
+            axes.contains(evdev::AbsoluteAxisCode::ABS_X)
+                || axes.contains(evdev::AbsoluteAxisCode::ABS_Y)
+        }) {
             caps.push(DeviceCapability::AbsolutePointer);
         }
 
         // Check for multi-touch (ABS_MT_SLOT, ABS_MT_POSITION_X)
-        if device
-            .supported_absolute_axes()
-            .map(|axes| {
-                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT)
-                    || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X)
-            })
-            .unwrap_or(false)
-        {
+        if device.supported_absolute_axes().is_some_and(|axes| {
+            axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT)
+                || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X)
+        }) {
             caps.push(DeviceCapability::MultiTouch);
         }
 
         // Check for scroll wheel (REL_WHEEL, REL_HWHEEL)
-        if device
-            .supported_relative_axes()
-            .map(|axes| {
-                axes.contains(evdev::RelativeAxisCode::REL_WHEEL)
-                    || axes.contains(evdev::RelativeAxisCode::REL_HWHEEL)
-            })
-            .unwrap_or(false)
-        {
+        if device.supported_relative_axes().is_some_and(|axes| {
+            axes.contains(evdev::RelativeAxisCode::REL_WHEEL)
+                || axes.contains(evdev::RelativeAxisCode::REL_HWHEEL)
+        }) {
             caps.push(DeviceCapability::Scroll);
         }
 
         // Check for force feedback
         if device
             .supported_ff()
-            .map(|ff| ff.iter().count() > 0)
-            .unwrap_or(false)
+            .is_some_and(|ff| ff.iter().count() > 0)
         {
             caps.push(DeviceCapability::ForceFeedback);
         }
@@ -319,16 +290,19 @@ impl Device {
     }
 
     /// Get device name
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
     /// Get device type
+    #[must_use]
     pub fn device_type(&self) -> DeviceType {
         self.device_type
     }
 
     /// Get device path
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -340,6 +314,10 @@ impl Device {
     /// - ✅ No hardcoding! (scans /dev/input/)
     /// - ✅ Runtime discovery! (agnostic)
     /// - ✅ Pure Rust! (evdev crate)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `/dev/input` cannot be read.
     ///
     /// # Example
     ///
@@ -402,6 +380,7 @@ impl Device {
     /// **Deep Debt Compliance:**
     /// - ✅ Real capabilities (from hardware)
     /// - ✅ No placeholders
+    #[must_use]
     pub fn info(&self) -> DeviceInfo {
         DeviceInfo {
             path: self.path.clone(),
@@ -421,28 +400,95 @@ impl Device {
     /// Get device vendor and product IDs
     ///
     /// Useful for device-specific handling if needed.
+    #[must_use]
     pub fn device_ids(&self) -> Option<(u16, u16)> {
         let input_id = self.evdev_device.input_id();
         Some((input_id.vendor(), input_id.product()))
     }
 }
 
-// ✅ COMPLETE IMPLEMENTATION!
-//
-// Phase 2 COMPLETE:
-// - ✅ Real evdev device opening (Pure Rust!)
-// - ✅ Type detection from capabilities (runtime self-knowledge!)
-// - ✅ Capability detection (agnostic, no hardcoding!)
-// - ✅ Device vendor/product IDs
-// - ✅ Zero unsafe code
-// - ✅ Zero placeholders
-// - ✅ Zero mocks
-//
-// DEEP DEBT COMPLIANCE: A+
-// - Pure Rust (evdev crate, no FFI)
-// - Self-knowledge (queries actual hardware)
-// - Agnostic design (works with any device)
-// - Complete implementation (no outstanding items)
-// - Modern Rust (clean, idiomatic)
-//
-// This is what Pure Rust gives us - safety AND completeness!
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_device_type_variants() {
+        assert_eq!(DeviceType::Keyboard, DeviceType::Keyboard);
+        assert_eq!(DeviceType::Mouse, DeviceType::Mouse);
+        assert_eq!(DeviceType::Touchscreen, DeviceType::Touchscreen);
+        assert_eq!(DeviceType::Touchpad, DeviceType::Touchpad);
+        assert_eq!(DeviceType::Gamepad, DeviceType::Gamepad);
+        assert_eq!(DeviceType::Other, DeviceType::Other);
+        assert_ne!(DeviceType::Keyboard, DeviceType::Mouse);
+    }
+
+    #[test]
+    fn test_device_capability_variants() {
+        assert_eq!(DeviceCapability::Keys, DeviceCapability::Keys);
+        assert_eq!(
+            DeviceCapability::RelativePointer,
+            DeviceCapability::RelativePointer
+        );
+        assert_eq!(
+            DeviceCapability::AbsolutePointer,
+            DeviceCapability::AbsolutePointer
+        );
+        assert_eq!(DeviceCapability::MultiTouch, DeviceCapability::MultiTouch);
+        assert_eq!(DeviceCapability::Scroll, DeviceCapability::Scroll);
+        assert_eq!(
+            DeviceCapability::ForceFeedback,
+            DeviceCapability::ForceFeedback
+        );
+    }
+
+    #[test]
+    fn test_device_info_creation() {
+        let info = DeviceInfo {
+            path: PathBuf::from("/dev/input/event0"),
+            name: "Test Keyboard".to_string(),
+            device_type: DeviceType::Keyboard,
+            capabilities: vec![DeviceCapability::Keys],
+        };
+        assert_eq!(info.path, PathBuf::from("/dev/input/event0"));
+        assert_eq!(info.name, "Test Keyboard");
+        assert_eq!(info.device_type, DeviceType::Keyboard);
+        assert_eq!(info.capabilities.len(), 1);
+        assert_eq!(info.capabilities[0], DeviceCapability::Keys);
+    }
+
+    #[test]
+    fn test_device_info_clone() {
+        let info = DeviceInfo {
+            path: PathBuf::from("/dev/input/event1"),
+            name: "Test Mouse".to_string(),
+            device_type: DeviceType::Mouse,
+            capabilities: vec![DeviceCapability::RelativePointer, DeviceCapability::Scroll],
+        };
+        let cloned = info.clone();
+        assert_eq!(info.path, cloned.path);
+        assert_eq!(info.name, cloned.name);
+        assert_eq!(info.device_type, cloned.device_type);
+        assert_eq!(info.capabilities.len(), cloned.capabilities.len());
+    }
+
+    #[test]
+    fn test_device_open_nonexistent_path() {
+        let result = Device::open("/dev/input/nonexistent-event-99999");
+        assert!(result.is_err());
+        if let Err(e) = result {
+            let err_str = e.to_string();
+            assert!(err_str.contains("not found") || err_str.contains("Device"));
+        }
+    }
+
+    #[test]
+    fn test_discover_all_returns_result() {
+        let result = Device::discover_all();
+        assert!(result.is_ok());
+        let devices = result.unwrap();
+        assert!(devices
+            .iter()
+            .all(|d| d.path.to_string_lossy().starts_with("/dev/input/")));
+    }
+}

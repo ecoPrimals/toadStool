@@ -27,6 +27,7 @@ toadstool-common = { path = "../../core/common" }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
+temp-env = "0.3"
 
 [lints]
 workspace = true

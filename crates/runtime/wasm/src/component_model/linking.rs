@@ -113,3 +113,75 @@ impl ComponentLinker {
         Ok(true)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::component_model::core::ComponentInterface;
+
+    #[tokio::test]
+    async fn test_component_linker_creation() {
+        let config = ComponentModelConfig::default();
+        let registry = Arc::new(ComponentRegistry::new(config.clone()));
+        let _linker = ComponentLinker::new(config, registry);
+    }
+
+    #[tokio::test]
+    async fn test_link_components_consumer_missing_interface() {
+        let config = ComponentModelConfig::default();
+        let registry = Arc::new(ComponentRegistry::new(config.clone()));
+
+        let iface = ComponentInterface {
+            name: "provider-iface".to_string(),
+            version: "1.0".to_string(),
+            exports: vec![],
+            imports: vec![],
+            types: vec![],
+        };
+        registry.register_interface(iface).await.unwrap();
+        let provider_id = registry.create_instance("provider-iface").await.unwrap();
+
+        let consumer_iface = ComponentInterface {
+            name: "consumer-iface".to_string(),
+            version: "1.0".to_string(),
+            exports: vec![],
+            imports: vec![],
+            types: vec![],
+        };
+        registry.register_interface(consumer_iface).await.unwrap();
+        let consumer_id = registry.create_instance("consumer-iface").await.unwrap();
+
+        let linker = ComponentLinker::new(config, registry);
+        let result = linker
+            .link_components(&consumer_id, &provider_id, "nonexistent")
+            .await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not have interface"));
+    }
+
+    #[tokio::test]
+    async fn test_link_components_success() {
+        let config = ComponentModelConfig::default();
+        let registry = Arc::new(ComponentRegistry::new(config.clone()));
+
+        let iface = ComponentInterface {
+            name: "shared-iface".to_string(),
+            version: "1.0".to_string(),
+            exports: vec![],
+            imports: vec![],
+            types: vec![],
+        };
+        registry.register_interface(iface).await.unwrap();
+        let provider_id = registry.create_instance("shared-iface").await.unwrap();
+        let consumer_id = registry.create_instance("shared-iface").await.unwrap();
+
+        let linker = ComponentLinker::new(config, registry);
+        let result = linker
+            .link_components(&consumer_id, &provider_id, "shared-iface")
+            .await;
+        assert!(result.is_ok());
+    }
+}

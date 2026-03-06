@@ -101,9 +101,8 @@ impl Default for DiscoveryConfig {
             .map(|v| v == "true" || v == "1")
             .unwrap_or(true);
 
-        let require_mdns = std::env::var("TOADSTOOL_MDNS_REQUIRE")
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or_default();
+        let require_mdns =
+            std::env::var("TOADSTOOL_MDNS_REQUIRE").is_ok_and(|v| v == "true" || v == "1");
 
         Self {
             cache_ttl: Duration::from_secs(300), // 5 minutes
@@ -124,9 +123,7 @@ impl DiscoveryConfig {
     /// `toadstool_config::ports::fallback::*` — do not duplicate here.
     fn default_fallbacks() -> HashMap<String, String> {
         let dev_mode = std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
-            || std::env::var("TOADSTOOL_ENV")
-                .map(|e| e == "development")
-                .unwrap_or_default();
+            || std::env::var("TOADSTOOL_ENV").is_ok_and(|e| e == "development");
 
         if !dev_mode {
             return HashMap::new();

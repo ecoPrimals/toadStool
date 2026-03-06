@@ -39,7 +39,7 @@ pub struct AiPreferences {
 /// Resource allocation preferences (AI/MCP specific)
 ///
 /// Distinct from `natural_language::ResourcePreferences` which uses
-/// cpu_intensive/memory_intensive. This type uses strategy strings.
+/// `cpu_intensive/memory_intensive`. This type uses strategy strings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourcePreferences {
     /// CPU allocation strategy

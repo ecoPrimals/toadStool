@@ -655,8 +655,9 @@ mod tests {
     }
 
     #[test]
+    #[allow(path_statements)]
     fn test_mdns_source_default() {
-        let _source = MDNSSource;
+        MDNSSource;
         // Just verify it constructs
     }
 
@@ -756,7 +757,7 @@ mod tests {
     #[test]
     fn test_service_mesh_type_debug() {
         let mesh_type = ServiceMeshType::Auto;
-        let debug = format!("{:?}", mesh_type);
+        let debug = format!("{mesh_type:?}");
         assert!(debug.contains("Auto"));
     }
 

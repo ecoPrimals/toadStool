@@ -348,8 +348,8 @@ impl UniversalComputeManager {
     }
 
     /// Show universal compute capabilities
-    pub async fn show_capabilities(&self, format: String, detailed: bool) -> Result<()> {
-        match format.as_str() {
+    pub async fn show_capabilities(&self, format: &str, detailed: bool) -> Result<()> {
+        match format {
             "json" => {
                 let capabilities = UniversalCapabilities {
                     platforms: self.platforms.clone(),

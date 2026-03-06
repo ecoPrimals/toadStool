@@ -8,7 +8,10 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use super::byob_types::*;
+use super::byob_types::{
+    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, HealthCheck, NetworkInfo,
+    NetworkUsage, ResourceUsage, ServiceEndpoint, ServiceSpec,
+};
 use super::config::ByobExecutorConfig;
 use super::deployment::ActiveDeployment;
 use super::validation::DeploymentValidator;
@@ -62,19 +65,12 @@ impl ByobComputeExecutor {
         }
     }
 
-    /// Validate deployment request
-    ///
-    /// **Design**: Delegated to DeploymentValidator for separation of concerns
-    fn validate_deployment_request(&self, request: &ByobDeploymentRequest) -> ToadStoolResult<()> {
-        DeploymentValidator::validate_deployment(request)
-    }
-
     /// Create execution request for a service
     fn create_service_execution_request(
         &self,
         service: &ServiceSpec,
         _deployment_id: Uuid,
-    ) -> ToadStoolResult<ExecutionRequest> {
+    ) -> ExecutionRequest {
         // ✅ OPTIMIZED: Reduce clones by using references where possible
         let workload = if let Some(image) = &service.image {
             // Container workload
@@ -124,7 +120,7 @@ impl ByobComputeExecutor {
             }
         };
 
-        let execution_request = ExecutionRequest {
+        ExecutionRequest {
             execution_id: Uuid::new_v4(),
             workload,
             runtime_hint: None,
@@ -163,9 +159,7 @@ impl ByobComputeExecutor {
             input_data: crate::ExecutionInput::default(),
             callback_config: None,
             encryption_config: None,
-        };
-
-        Ok(execution_request)
+        }
     }
 
     /// Execute services in a deployment
@@ -194,7 +188,7 @@ impl ByobComputeExecutor {
                 })?;
 
             let execution_request =
-                self.create_service_execution_request(service_spec, deployment_id)?;
+                self.create_service_execution_request(service_spec, deployment_id);
 
             let execution_id = execution_request.execution_id;
 
@@ -370,10 +364,10 @@ impl ByobComputeExecutor {
         let mut deployments = self.active_deployments.write().await;
         if let Some(deployment) = deployments.get_mut(&deployment_id) {
             // Collect resource usage from all services
-            let mut total_cpu = 0.0;
+            let mut cpu_total = 0.0;
             let mut total_memory = 0;
             let mut total_storage = 0;
-            let mut total_gpu = 0;
+            let mut gpu_total = 0;
             let mut total_network_sent = 0;
             let mut total_network_received = 0;
 
@@ -383,7 +377,7 @@ impl ByobComputeExecutor {
                 if let Some(service_spec) = deployment.request.services.get(service_name) {
                     // Simulate CPU usage (50-80% of allocated)
                     if let Some(cpu_cores) = service_spec.resources.cpu_cores {
-                        total_cpu += cpu_cores * 0.65; // Simulate 65% usage
+                        cpu_total += cpu_cores * 0.65; // Simulate 65% usage
                     }
 
                     // Simulate memory usage (60-90% of allocated)
@@ -398,7 +392,7 @@ impl ByobComputeExecutor {
 
                     // Simulate GPU usage
                     if let Some(gpu_count) = service_spec.resources.gpu_count {
-                        total_gpu += gpu_count;
+                        gpu_total += gpu_count;
                     }
 
                     // Simulate network usage (based on service type)
@@ -421,10 +415,10 @@ impl ByobComputeExecutor {
             }
 
             deployment.update_resource_usage(ResourceUsage {
-                cpu_usage: total_cpu,
+                cpu_usage: cpu_total,
                 memory_usage: total_memory,
                 storage_usage: total_storage,
-                gpu_usage: total_gpu,
+                gpu_usage: gpu_total,
                 network_usage: NetworkUsage {
                     bytes_sent: total_network_sent,
                     bytes_received: total_network_received,
@@ -434,7 +428,7 @@ impl ByobComputeExecutor {
             });
 
             debug!("📊 Updated resource usage for deployment {}: CPU: {:.2}, Memory: {}MB, Storage: {}MB", 
-                   deployment_id, total_cpu, total_memory / (1024 * 1024), total_storage / (1024 * 1024));
+                   deployment_id, cpu_total, total_memory / (1024 * 1024), total_storage / (1024 * 1024));
         }
 
         Ok(())
@@ -518,7 +512,7 @@ impl ByobExecutor for ByobComputeExecutor {
         info!("Starting BYOB deployment: {}", request.deployment_id);
 
         // Validate deployment request
-        self.validate_deployment_request(&request)?;
+        DeploymentValidator::validate_deployment(&request)?;
 
         // Check concurrent deployment limit
         {
@@ -653,7 +647,7 @@ impl ByobExecutor for ByobComputeExecutor {
                 }
             })
             .filter(|d| d.is_active() || d.is_completed())
-            .map(|deployment| deployment.to_response())
+            .map(ActiveDeployment::to_response)
             .collect();
 
         Ok(responses)

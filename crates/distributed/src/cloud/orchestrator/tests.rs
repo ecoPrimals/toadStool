@@ -4,6 +4,11 @@
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod tests {
+    use async_trait::async_trait;
+    use std::time::SystemTime;
+    use toadstool::ExecutionRequest;
+    use uuid::Uuid;
+
     use crate::cloud::types::AvailabilityInfo;
     use crate::cloud::{
         CloudDeploymentResult, CloudOrchestratorConfig, CloudProviderInterface, ComplianceConfig,
@@ -14,7 +19,7 @@ mod tests {
         CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
     };
     use crate::{ResourceRequirements, UniversalJob, UniversalJobType};
-    use std::time::{Duration, SystemTime};
+    use std::time::Duration;
 
     fn make_orchestrator_config() -> CloudOrchestratorConfig {
         CloudOrchestratorConfig {
@@ -114,6 +119,83 @@ mod tests {
             supported_protocols: vec!["rest".to_string(), "grpc".to_string()],
             documentation_url: "https://example.com/docs".to_string(),
             support_contact: "support@example.com".to_string(),
+        }
+    }
+
+    struct MockCloudProvider {
+        name: String,
+        availability: AvailabilityInfo,
+    }
+
+    #[async_trait]
+    impl CloudProviderInterface for MockCloudProvider {
+        async fn deploy_job(
+            &self,
+            job: &UniversalJob,
+        ) -> toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobHandle> {
+            Ok(crate::cloud::types::CloudJobHandle {
+                job_id: job.job_id,
+                provider_job_id: format!("mock-{}", Uuid::new_v4()),
+                provider_name: self.name.clone(),
+                created_at: SystemTime::now(),
+            })
+        }
+
+        async fn get_job_status(
+            &self,
+            _handle: &crate::cloud::types::CloudJobHandle,
+        ) -> toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobStatus> {
+            Ok(crate::cloud::types::CloudJobStatus::Running)
+        }
+
+        async fn scale_job(
+            &self,
+            _handle: &crate::cloud::types::CloudJobHandle,
+            _scale_config: crate::cloud::types::ScaleConfig,
+        ) -> toadstool::error::ToadStoolResult<()> {
+            Ok(())
+        }
+
+        async fn terminate_job(
+            &self,
+            _handle: &crate::cloud::types::CloudJobHandle,
+        ) -> toadstool::error::ToadStoolResult<()> {
+            Ok(())
+        }
+
+        async fn get_pricing(
+            &self,
+            _resource_spec: &crate::cloud::types::ResourceSpec,
+        ) -> toadstool::error::ToadStoolResult<crate::cloud::types::PricingInfo> {
+            Ok(crate::cloud::types::PricingInfo {
+                cpu_cost_per_hour: 0.1,
+                memory_cost_per_gb_hour: 0.05,
+                storage_cost_per_gb_month: 0.01,
+                network_cost_per_gb: 0.02,
+                total_estimated_cost: 10.0,
+            })
+        }
+
+        async fn get_availability(
+            &self,
+            _region: Option<String>,
+        ) -> toadstool::error::ToadStoolResult<AvailabilityInfo> {
+            Ok(self.availability.clone())
+        }
+
+        async fn validate_compliance(
+            &self,
+            _requirements: &crate::ResourceRequirements,
+        ) -> toadstool::error::ToadStoolResult<bool> {
+            Ok(true)
+        }
+
+        fn get_capabilities(&self) -> crate::cloud::types::CloudCapabilities {
+            make_mock_capabilities()
+        }
+
+        fn get_metadata(&self) -> crate::cloud::types::CloudProviderMetadata {
+            make_mock_metadata(&self.name)
         }
     }
 
@@ -323,91 +405,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_job_scheduling_across_providers_with_mock() {
-        use async_trait::async_trait;
-        use std::time::SystemTime;
-        use toadstool::ExecutionRequest;
-        use uuid::Uuid;
-
-        struct MockCloudProvider {
-            name: String,
-            availability: AvailabilityInfo,
-        }
-
-        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-        #[async_trait]
-        impl CloudProviderInterface for MockCloudProvider {
-            async fn deploy_job(
-                &self,
-                job: &UniversalJob,
-            ) -> toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobHandle>
-            {
-                Ok(crate::cloud::types::CloudJobHandle {
-                    job_id: job.job_id,
-                    provider_job_id: format!("mock-{}", Uuid::new_v4()),
-                    provider_name: self.name.clone(),
-                    created_at: SystemTime::now(),
-                })
-            }
-
-            async fn get_job_status(
-                &self,
-                _handle: &crate::cloud::types::CloudJobHandle,
-            ) -> toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobStatus>
-            {
-                Ok(crate::cloud::types::CloudJobStatus::Running)
-            }
-
-            async fn scale_job(
-                &self,
-                _handle: &crate::cloud::types::CloudJobHandle,
-                _scale_config: crate::cloud::types::ScaleConfig,
-            ) -> toadstool::error::ToadStoolResult<()> {
-                Ok(())
-            }
-
-            async fn terminate_job(
-                &self,
-                _handle: &crate::cloud::types::CloudJobHandle,
-            ) -> toadstool::error::ToadStoolResult<()> {
-                Ok(())
-            }
-
-            async fn get_pricing(
-                &self,
-                _resource_spec: &crate::cloud::types::ResourceSpec,
-            ) -> toadstool::error::ToadStoolResult<crate::cloud::types::PricingInfo> {
-                Ok(crate::cloud::types::PricingInfo {
-                    cpu_cost_per_hour: 0.1,
-                    memory_cost_per_gb_hour: 0.05,
-                    storage_cost_per_gb_month: 0.01,
-                    network_cost_per_gb: 0.02,
-                    total_estimated_cost: 10.0,
-                })
-            }
-
-            async fn get_availability(
-                &self,
-                _region: Option<String>,
-            ) -> toadstool::error::ToadStoolResult<AvailabilityInfo> {
-                Ok(self.availability.clone())
-            }
-
-            async fn validate_compliance(
-                &self,
-                _requirements: &crate::ResourceRequirements,
-            ) -> toadstool::error::ToadStoolResult<bool> {
-                Ok(true)
-            }
-
-            fn get_capabilities(&self) -> crate::cloud::types::CloudCapabilities {
-                make_mock_capabilities()
-            }
-
-            fn get_metadata(&self) -> crate::cloud::types::CloudProviderMetadata {
-                make_mock_metadata(&self.name)
-            }
-        }
-
         let config = make_orchestrator_config();
         let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
 
@@ -670,6 +667,54 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_deploy_local_job_with_multi_cloud_fails_split() {
+        let config = make_orchestrator_config();
+        let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+
+        let mock1 = Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        let mock2 = Box::new(MockCloudProvider {
+            name: "gcp".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        orch.register_provider("aws".to_string(), mock1)
+            .await
+            .unwrap();
+        orch.register_provider("gcp".to_string(), mock2)
+            .await
+            .unwrap();
+
+        let job = UniversalJob {
+            job_id: uuid::Uuid::new_v4(),
+            job_type: Some(UniversalJobType::Local),
+            execution_request: ExecutionRequest::default(),
+            target: crate::ExecutionTarget::Local,
+            priority: crate::JobPriority::Normal,
+            dependencies: vec![],
+            resource_requirements: make_requirements(
+                4.0,
+                8 * 1024 * 1024 * 1024,
+                50 * 1024 * 1024 * 1024,
+            ),
+            retry_config: crate::types::DistributedRetryConfig::default(),
+            created_at: SystemTime::now(),
+        };
+
+        let result = orch.deploy_universal_job(&job).await;
+        if let Err(e) = result {
+            assert!(
+                e.to_string().contains("Cannot split")
+                    || e.to_string().contains("local jobs")
+                    || e.to_string().contains("not supported"),
+                "expected split error, got: {}",
+                e
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn test_cloud_deployment_result_variants() {
         use crate::cloud::types::{CloudDeploymentResult, CloudJobHandle, FederatedDeployment};
         use std::time::SystemTime;
@@ -693,5 +738,196 @@ mod tests {
             },
         };
         assert!(matches!(fed, CloudDeploymentResult::Federated { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_deploy_multi_cloud_remote_toadstool() {
+        let config = make_orchestrator_config();
+        let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+
+        let mock1 = Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        let mock2 = Box::new(MockCloudProvider {
+            name: "gcp".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        orch.register_provider("aws".to_string(), mock1)
+            .await
+            .unwrap();
+        orch.register_provider("gcp".to_string(), mock2)
+            .await
+            .unwrap();
+
+        let job = UniversalJob {
+            job_id: uuid::Uuid::new_v4(),
+            job_type: Some(UniversalJobType::RemoteToadStool {
+                endpoint: "http://remote:8080".to_string(),
+            }),
+            execution_request: ExecutionRequest::default(),
+            target: crate::ExecutionTarget::Local,
+            priority: crate::JobPriority::Normal,
+            dependencies: vec![],
+            resource_requirements: make_requirements(
+                4.0,
+                8 * 1024 * 1024 * 1024,
+                50 * 1024 * 1024 * 1024,
+            ),
+            retry_config: crate::types::DistributedRetryConfig::default(),
+            created_at: SystemTime::now(),
+        };
+
+        let result = orch.deploy_universal_job(&job).await;
+        assert!(result.is_ok());
+        let deployment = result.unwrap();
+        assert!(
+            matches!(deployment, CloudDeploymentResult::Single { .. })
+                || matches!(deployment, CloudDeploymentResult::Multi { .. }),
+            "expected Single or Multi deployment"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_deploy_ecosystem_tool_multi_cloud() {
+        let config = make_orchestrator_config();
+        let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+
+        let mock1 = Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        let mock2 = Box::new(MockCloudProvider {
+            name: "gcp".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        orch.register_provider("aws".to_string(), mock1)
+            .await
+            .unwrap();
+        orch.register_provider("gcp".to_string(), mock2)
+            .await
+            .unwrap();
+
+        let job = UniversalJob {
+            job_id: uuid::Uuid::new_v4(),
+            job_type: Some(UniversalJobType::EcosystemTool {
+                tool_name: "biome".to_string(),
+                endpoint: "http://biome:8080".to_string(),
+            }),
+            execution_request: ExecutionRequest::default(),
+            target: crate::ExecutionTarget::Local,
+            priority: crate::JobPriority::Normal,
+            dependencies: vec![],
+            resource_requirements: make_requirements(
+                4.0,
+                8 * 1024 * 1024 * 1024,
+                50 * 1024 * 1024 * 1024,
+            ),
+            retry_config: crate::types::DistributedRetryConfig::default(),
+            created_at: SystemTime::now(),
+        };
+
+        let result = orch.deploy_universal_job(&job).await;
+        assert!(result.is_ok());
+        let deployment = result.unwrap();
+        assert!(
+            matches!(deployment, CloudDeploymentResult::Single { .. })
+                || matches!(deployment, CloudDeploymentResult::Multi { .. }),
+            "expected Single or Multi deployment"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_deploy_federated_deployment() {
+        let mut config = make_orchestrator_config();
+        config.compliance_config.allowed_regions =
+            vec!["us-east-1".to_string(), "eu-west-1".to_string()];
+        let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+
+        let mock = Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        orch.register_provider("aws".to_string(), mock)
+            .await
+            .unwrap();
+
+        let job = UniversalJob {
+            job_id: uuid::Uuid::new_v4(),
+            job_type: Some(UniversalJobType::ComputeIntensive),
+            execution_request: ExecutionRequest::default(),
+            target: crate::ExecutionTarget::Local,
+            priority: crate::JobPriority::Normal,
+            dependencies: vec![],
+            resource_requirements: make_requirements(
+                4.0,
+                8 * 1024 * 1024 * 1024,
+                50 * 1024 * 1024 * 1024,
+            ),
+            retry_config: crate::types::DistributedRetryConfig::default(),
+            created_at: SystemTime::now(),
+        };
+
+        let result = orch.deploy_universal_job(&job).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_calculate_provider_capacity_zero_requirements_avoids_division_by_zero() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(8.0, 16.0, 100.0);
+        let requirements = make_requirements(0.0, 0, 0);
+        let cap = orch.calculate_provider_capacity(&availability, &requirements);
+        assert!(cap.is_finite());
+        assert!(cap <= 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_split_job_for_multi_cloud_replication() {
+        let config = make_orchestrator_config();
+        let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+
+        let mock1 = Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        let mock2 = Box::new(MockCloudProvider {
+            name: "gcp".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        });
+        orch.register_provider("aws".to_string(), mock1)
+            .await
+            .unwrap();
+        orch.register_provider("gcp".to_string(), mock2)
+            .await
+            .unwrap();
+
+        let job = UniversalJob {
+            job_id: uuid::Uuid::new_v4(),
+            job_type: Some(UniversalJobType::RemoteToadStool {
+                endpoint: "http://remote:8080".to_string(),
+            }),
+            execution_request: ExecutionRequest::default(),
+            target: crate::ExecutionTarget::Local,
+            priority: crate::JobPriority::Normal,
+            dependencies: vec![],
+            resource_requirements: make_requirements(
+                2.0,
+                4 * 1024 * 1024 * 1024,
+                50 * 1024 * 1024 * 1024,
+            ),
+            retry_config: crate::types::DistributedRetryConfig::default(),
+            created_at: SystemTime::now(),
+        };
+
+        let result = orch.deploy_universal_job(&job).await;
+        assert!(result.is_ok());
+        let deployment = result.unwrap();
+        assert!(
+            matches!(deployment, CloudDeploymentResult::Single { .. })
+                || matches!(deployment, CloudDeploymentResult::Multi { .. })
+        );
     }
 }

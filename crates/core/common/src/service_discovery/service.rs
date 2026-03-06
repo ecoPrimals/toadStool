@@ -175,7 +175,7 @@ impl ServiceDiscovery {
                     id: format!("env-{}", service_name.to_lowercase()),
                     name: service_name.to_lowercase(),
                     version: "unknown".to_string(),
-                    capabilities: self.parse_capabilities(&capabilities_str),
+                    capabilities: Self::parse_capabilities(&capabilities_str),
                     endpoints: vec![ServiceEndpoint::from_url_string(&value)?],
                     metadata: HashMap::new(),
                     discovered_at: SystemTime::now(),
@@ -217,7 +217,7 @@ impl ServiceDiscovery {
         Ok(services)
     }
 
-    pub(crate) fn parse_capabilities(&self, capabilities_str: &str) -> Vec<Capability> {
+    pub(crate) fn parse_capabilities(capabilities_str: &str) -> Vec<Capability> {
         capabilities_str
             .split(',')
             .filter_map(|s| {
@@ -314,15 +314,13 @@ mod tests {
 
     #[test]
     fn test_parse_capabilities_empty() {
-        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
-        let caps = discovery.parse_capabilities("");
+        let caps = ServiceDiscovery::parse_capabilities("");
         assert!(caps.is_empty());
     }
 
     #[test]
     fn test_parse_capabilities_coordination() {
-        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
-        let caps = discovery.parse_capabilities("coordination");
+        let caps = ServiceDiscovery::parse_capabilities("coordination");
         assert_eq!(caps.len(), 1);
         assert!(matches!(
             caps[0],
@@ -332,8 +330,7 @@ mod tests {
 
     #[test]
     fn test_parse_capabilities_storage() {
-        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
-        let caps = discovery.parse_capabilities("storage");
+        let caps = ServiceDiscovery::parse_capabilities("storage");
         assert_eq!(caps.len(), 1);
         assert!(matches!(
             caps[0],
@@ -343,8 +340,7 @@ mod tests {
 
     #[test]
     fn test_parse_capabilities_compute() {
-        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
-        let caps = discovery.parse_capabilities("compute");
+        let caps = ServiceDiscovery::parse_capabilities("compute");
         assert_eq!(caps.len(), 1);
         assert!(matches!(
             caps[0],
@@ -354,15 +350,13 @@ mod tests {
 
     #[test]
     fn test_parse_capabilities_multiple() {
-        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
-        let caps = discovery.parse_capabilities("coordination, storage, compute");
+        let caps = ServiceDiscovery::parse_capabilities("coordination, storage, compute");
         assert_eq!(caps.len(), 3);
     }
 
     #[test]
     fn test_parse_capabilities_unknown_filtered() {
-        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
-        let caps = discovery.parse_capabilities("coordination, unknown_cap, storage");
+        let caps = ServiceDiscovery::parse_capabilities("coordination, unknown_cap, storage");
         assert_eq!(caps.len(), 2);
     }
 

@@ -418,6 +418,130 @@ impl CryptoVerificationContext {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // RFC 8032 Ed25519 test vector - empty message
+    fn test_public_key() -> [u8; 32] {
+        hex::decode("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
+            .unwrap()
+            .try_into()
+            .unwrap()
+    }
+    fn test_signature() -> [u8; 64] {
+        hex::decode("e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b")
+            .unwrap()
+            .try_into()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_verify_ed25519_signature_valid() {
+        let context = CryptoVerificationContext::new();
+        let result = context.verify_ed25519_signature(b"", &test_signature(), &test_public_key());
+        assert_eq!(result.unwrap(), true);
+    }
+
+    #[test]
+    fn test_verify_ed25519_signature_invalid() {
+        let context = CryptoVerificationContext::new();
+        let result = context.verify_ed25519_signature(
+            b"wrong message",
+            &test_signature(),
+            &test_public_key(),
+        );
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_verify_ed25519_signature_invalid_key_length() {
+        let context = CryptoVerificationContext::new();
+        let result = context.verify_ed25519_signature(
+            b"msg", &[0u8; 64], &[0u8; 16], // Wrong length - should be 32
+        );
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid public key"));
+    }
+
+    #[test]
+    fn test_verify_ed25519_signature_invalid_signature_length() {
+        let context = CryptoVerificationContext::new();
+        let result = context.verify_ed25519_signature(
+            b"msg", &[0u8; 32], // Wrong length - should be 64
+            &[0u8; 32],
+        );
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid signature"));
+    }
+
+    #[test]
+    fn test_verify_service_signature_no_trusted_key() {
+        let context = CryptoVerificationContext::new();
+        let response = SignedServiceResponse {
+            service_id: "svc-1".to_string(),
+            service_type: "unknown".to_string(),
+            status: "ok".to_string(),
+            capabilities: vec![],
+            timestamp: std::time::SystemTime::now(),
+            signature: ServiceSignature {
+                algorithm: "ed25519".to_string(),
+                signature: "sig".to_string(),
+                public_key: "key".to_string(),
+                timestamp: std::time::SystemTime::now(),
+                nonce: "nonce".to_string(),
+            },
+        };
+        let result = context.verify_service_signature("unknown", &response);
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_verify_service_signature_revoked_key() {
+        let mut ctx = CryptoVerificationContext::new().with_trusted_key("test", "dGVzdA==");
+        ctx.revoked_keys.push("dGVzdA==".to_string());
+
+        let response = SignedServiceResponse {
+            service_id: "svc-1".to_string(),
+            service_type: "test".to_string(),
+            status: "ok".to_string(),
+            capabilities: vec![],
+            timestamp: std::time::SystemTime::now(),
+            signature: ServiceSignature {
+                algorithm: "ed25519".to_string(),
+                signature: "sig".to_string(),
+                public_key: "key".to_string(),
+                timestamp: std::time::SystemTime::now(),
+                nonce: "nonce".to_string(),
+            },
+        };
+        let result = ctx.verify_service_signature("test", &response);
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_service_endpoint_deserialize_roundtrip() {
+        let endpoint = ServiceEndpoint {
+            service_type: EcosystemService::Songbird,
+            address: "127.0.0.1:8080".parse().unwrap(),
+            version: Arc::from("1.0"),
+            capabilities: vec!["discovery".to_string()],
+            trust_level: TrustLevel::Verified,
+        };
+        let json = serde_json::to_string(&endpoint).unwrap();
+        let restored: ServiceEndpoint = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.version.as_ref(), "1.0");
+        assert!(matches!(restored.service_type, EcosystemService::Songbird));
+    }
+}
+
 // Private helper types (used internally by EcosystemIntegrator)
 // SongbirdRegistration, SongbirdHeartbeat, SongbirdResponse: REMOVED
 // These types were part of the deprecated hardcoded Songbird integration.

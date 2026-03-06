@@ -328,4 +328,36 @@ mod tests {
             ComponentValue::String(_)
         ));
     }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_create_component_instance_when_disabled() {
+        let config = crate::config::WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        assert!(!engine.supports_component_model());
+
+        let result = engine.create_component_instance("test-interface").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("disabled"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_execute_component_function_when_disabled() {
+        let config = crate::config::WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+
+        let result = engine
+            .execute_component_function("inst-1", "add", &[])
+            .await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("disabled"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_component_config_when_not_configured() {
+        let config = crate::config::WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        let cm_config = engine.get_component_config();
+        assert!(!cm_config.enabled);
+        assert_eq!(cm_config.max_instances, 0);
+    }
 }

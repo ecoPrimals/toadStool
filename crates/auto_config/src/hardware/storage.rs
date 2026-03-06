@@ -91,6 +91,7 @@ async fn detect_storage_type() -> ToadStoolResult<StorageType> {
 }
 
 /// Calculate storage performance score
+#[must_use]
 pub fn calculate_storage_score(storage_info: &StorageInfo) -> f64 {
     let capacity_score = (storage_info.total_gb / 1000.0 * 50.0).min(50.0);
     let type_score = match storage_info.storage_type {

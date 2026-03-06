@@ -6,7 +6,7 @@ use async_trait::async_trait;
 
 pub(super) static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-/// Mock DiscoveryClient for testing mDNS code paths without network
+/// Mock `DiscoveryClient` for testing mDNS code paths without network
 pub(super) struct MockDiscoveryClient {
     pub services: std::sync::RwLock<Option<Vec<DiscoveredService>>>,
     pub error: std::sync::RwLock<Option<String>>,

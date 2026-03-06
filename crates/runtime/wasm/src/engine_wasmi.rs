@@ -323,4 +323,40 @@ mod tests {
         // Check async support
         assert_eq!(caps.platform_features.get("async"), Some(&true));
     }
+
+    #[test]
+    fn test_engine_config_accessor() {
+        let config = WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config.clone()).unwrap();
+        let retrieved = engine.config();
+        assert_eq!(retrieved.cache.max_entries, config.cache.max_entries);
+    }
+
+    #[test]
+    fn test_supports_workload() {
+        let config = WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        assert!(engine.supports_workload(&WorkloadType::Wasm));
+        assert!(!engine.supports_workload(&WorkloadType::Native));
+    }
+
+    #[tokio::test]
+    async fn test_initialize_and_shutdown() {
+        let config = WasmRuntimeConfig::default();
+        let mut engine = WasmRuntimeEngine::new(config).unwrap();
+
+        let init_result = engine.initialize(RuntimeConfig::default()).await;
+        assert!(init_result.is_ok());
+
+        let shutdown_result = engine.shutdown().await;
+        assert!(shutdown_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_metrics() {
+        let config = WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        let metrics = engine.get_metrics().await;
+        assert!(metrics.is_ok());
+    }
 }

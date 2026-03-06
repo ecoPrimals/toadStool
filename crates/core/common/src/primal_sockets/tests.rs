@@ -41,7 +41,7 @@ fn socket_path_env_with_runtime_dir() {
 #[test]
 fn socket_path_env_from_env_captures_vars() {
     let env = SocketPathEnv::from_env();
-    let _ = format!("{:?}", env);
+    let _ = format!("{env:?}");
 }
 
 #[test]
@@ -396,7 +396,7 @@ fn test_ensure_biomeos_dir_creates_dir() {
         Some(runtime_dir.to_str().unwrap()),
         || {
             let result = ensure_biomeos_dir();
-            assert!(result.is_ok(), "ensure_biomeos_dir failed: {:?}", result);
+            assert!(result.is_ok(), "ensure_biomeos_dir failed: {result:?}");
             let path = result.unwrap();
             assert!(path.to_string_lossy().contains("biomeos"));
             assert!(path.exists());

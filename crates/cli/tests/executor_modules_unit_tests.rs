@@ -38,7 +38,6 @@ fn test_executor_impl_reduced_size() {
     // This is verified during the refactoring process
 
     // Target: 933 lines → <500 lines
-    // Phase 2 Progress: 503 lines extracted, ~430 remaining
 }
 
 // ============================================================================

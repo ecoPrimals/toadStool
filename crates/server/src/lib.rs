@@ -1,6 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
 #![cfg_attr(test, allow(deprecated))]
+#![allow(
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::doc_comment_double_space_linebreaks,
+    clippy::doc_markdown,
+    clippy::if_not_else,
+    clippy::items_after_statements,
+    clippy::manual_is_variant_and,
+    clippy::manual_let_else,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::match_same_arms,
+    clippy::must_use_candidate,
+    clippy::needless_continue,
+    clippy::needless_pass_by_value,
+    clippy::redundant_closure_for_method_calls,
+    clippy::ref_option,
+    clippy::return_self_not_must_use,
+    clippy::self_only_used_in_recursion,
+    clippy::similar_names,
+    clippy::struct_field_names,
+    clippy::unnecessary_debug_formatting,
+    clippy::unnecessary_wraps,
+    clippy::unreadable_literal,
+    clippy::unused_async,
+    clippy::unused_self,
+    clippy::used_underscore_binding
+)]
 
 //! # `ToadStool` Server Library
 //!
@@ -95,6 +124,13 @@ pub use tarpc_server::TestExecutor;
 // EVOLVED: Test exports properly isolated
 #[cfg(test)]
 pub use mocks::{MockResourceMonitor, MockSystemResourcesWithUsage};
+
+// P0 TRACKING: SIGSEGV on process exit (Vulkan+Nvidia+Linux)
+// Root cause: wgpu adapter drops during process exit can segfault when Vulkan driver
+// cleanup races with other destructors. See gfx-rs/wgpu#4650, #8365.
+// Mitigation: Tests that use wgpu (capabilities, resource_validator, resource_optimizer)
+// use #[tokio::test(flavor = "current_thread")] to avoid multi-threaded drop races.
+// If segfault persists: run with RUST_TEST_THREADS=1 or disable gpu-discovery in tests.
 
 // Module declarations
 pub mod background;

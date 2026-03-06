@@ -53,7 +53,7 @@ impl BiomeExecutor {
         Ok(module_data)
     }
 
-    #[allow(dead_code)] // Reserved: WASM execution; used when feature "wasm" enabled
+    #[cfg(test)]
     pub(super) async fn execute_wasm_module(
         &self,
         module_data: &[u8],
@@ -128,5 +128,74 @@ mod tests {
         let data = b"";
         let expected = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         assert!(verify_sha256(data, &Some(expected.to_string())).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_load_wasm_http_not_implemented() {
+        let executor = super::BiomeExecutor::new().await.expect("executor");
+        let result = executor
+            .load_wasm_with_verification("http://example.com/module.wasm", &None)
+            .await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("HTTP"));
+    }
+
+    #[tokio::test]
+    async fn test_load_wasm_https_not_implemented() {
+        let executor = super::BiomeExecutor::new().await.expect("executor");
+        let result = executor
+            .load_wasm_with_verification("https://example.com/module.wasm", &None)
+            .await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("HTTP"));
+    }
+
+    #[tokio::test]
+    async fn test_load_wasm_nonexistent_file() {
+        let executor = super::BiomeExecutor::new().await.expect("executor");
+        let result = executor
+            .load_wasm_with_verification("/nonexistent/path/module.wasm", &None)
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_load_wasm_with_checksum_verification() {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(b"hello world").expect("write");
+        tmp.flush().expect("flush");
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let executor = super::BiomeExecutor::new().await.expect("executor");
+        let expected =
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9".to_string();
+        let result = executor
+            .load_wasm_with_verification(&path, &Some(expected))
+            .await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), b"hello world");
+    }
+
+    #[tokio::test]
+    async fn test_load_wasm_checksum_mismatch() {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(b"wrong data").expect("write");
+        tmp.flush().expect("flush");
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let executor = super::BiomeExecutor::new().await.expect("executor");
+        let wrong_checksum =
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9".to_string();
+        let result = executor
+            .load_wasm_with_verification(&path, &Some(wrong_checksum))
+            .await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("checksum"));
     }
 }

@@ -234,8 +234,8 @@ fn test_discovered_service_endpoints_for_protocol() {
     let http_endpoints = service.endpoints_for_protocol("http");
     assert_eq!(http_endpoints.len(), 2);
 
-    let https_endpoints = service.endpoints_for_protocol("https");
-    assert_eq!(https_endpoints.len(), 1);
+    let tls_endpoints = service.endpoints_for_protocol("https");
+    assert_eq!(tls_endpoints.len(), 1);
 
     let grpc_endpoints = service.endpoints_for_protocol("grpc");
     assert_eq!(grpc_endpoints.len(), 0);
@@ -438,7 +438,7 @@ fn test_discovered_service_with_coordination_capability() {
 #[test]
 fn test_capability_debug_formatting() {
     let cap = Capability::Compute(ComputeCapability::WasmExecution);
-    let debug_str = format!("{:?}", cap);
+    let debug_str = format!("{cap:?}");
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("Compute"));
     assert!(debug_str.contains("WasmExecution"));
@@ -447,7 +447,7 @@ fn test_capability_debug_formatting() {
         name: "test".to_string(),
         version: "1.0".to_string(),
     };
-    let custom_debug = format!("{:?}", custom);
+    let custom_debug = format!("{custom:?}");
     assert!(!custom_debug.is_empty());
     assert!(custom_debug.contains("Custom"));
 }
@@ -455,7 +455,7 @@ fn test_capability_debug_formatting() {
 #[test]
 fn test_service_endpoint_debug_formatting() {
     let ep = ServiceEndpoint::http("localhost", 8080);
-    let debug_str = format!("{:?}", ep);
+    let debug_str = format!("{ep:?}");
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("localhost"));
 }
@@ -463,7 +463,7 @@ fn test_service_endpoint_debug_formatting() {
 #[test]
 fn test_toadstool_identity_debug_formatting() {
     let identity = ToadStoolIdentity::new();
-    let debug_str = format!("{:?}", identity);
+    let debug_str = format!("{identity:?}");
     assert!(!debug_str.is_empty());
 }
 
@@ -476,7 +476,7 @@ fn test_discovered_service_debug_formatting() {
         healthy: true,
         metadata: HashMap::new(),
     };
-    let debug_str = format!("{:?}", service);
+    let debug_str = format!("{service:?}");
     assert!(!debug_str.is_empty());
 }
 
@@ -673,7 +673,7 @@ fn test_primal_identity_metadata_platform_arch() {
     let meta = identity.metadata();
     assert!(meta.contains_key("platform"));
     assert!(meta.contains_key("arch"));
-    assert!(meta.get("platform").map(|s| !s.is_empty()).unwrap_or(false));
+    assert!(meta.get("platform").is_some_and(|s| !s.is_empty()));
 }
 
 #[test]
@@ -797,14 +797,7 @@ fn test_toadstool_identity_version_contains_semver() {
     let identity = ToadStoolIdentity::new();
     let version = identity.version();
     assert!(!version.is_empty());
-    assert!(
-        version
-            .chars()
-            .next()
-            .map(|c| c.is_ascii_digit())
-            .unwrap_or(false)
-            || version.contains('.')
-    );
+    assert!(version.chars().next().is_some_and(|c| c.is_ascii_digit()) || version.contains('.'));
 }
 
 #[test]

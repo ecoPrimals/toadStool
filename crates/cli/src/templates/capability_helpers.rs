@@ -5,6 +5,9 @@
 //! to capability-based service dependencies in templates.
 
 use std::collections::HashMap;
+#[allow(deprecated)]
+use toadstool_common::constants::ecosystem::well_known;
+use toadstool_common::constants::primal_identity::PRIMAL_NAME;
 
 /// Map service names to their primary capabilities
 ///
@@ -12,12 +15,12 @@ use std::collections::HashMap;
 /// service names and capability-based discovery.
 pub fn service_to_capability(service_name: &str) -> &'static str {
     match service_name.to_lowercase().as_str() {
-        "beardog" => "pki",
-        "songbird" => "orchestration",
-        "nestgate" => "storage",
-        "squirrel" => "ai",
-        "toadstool" => "compute:execution",
-        "biomeos" => "os",
+        s if s == well_known::BEARDOG => "pki",
+        s if s == well_known::SONGBIRD => "orchestration",
+        s if s == well_known::NESTGATE => "storage",
+        s if s == well_known::SQUIRREL => "ai",
+        s if s == PRIMAL_NAME => "compute:execution",
+        s if s == well_known::BIOMEOS => "os",
         _ => "unknown",
     }
 }
@@ -25,12 +28,12 @@ pub fn service_to_capability(service_name: &str) -> &'static str {
 /// Map capabilities to default service names (for backward compatibility)
 pub fn capability_to_service(capability: &str) -> &'static str {
     match capability {
-        "pki" => "beardog",
-        "orchestration" => "songbird",
-        "storage" => "nestgate",
-        "ai" => "squirrel",
-        "compute:execution" => "toadstool",
-        "os" => "biomeos",
+        "pki" => well_known::BEARDOG,
+        "orchestration" => well_known::SONGBIRD,
+        "storage" => well_known::NESTGATE,
+        "ai" => well_known::SQUIRREL,
+        "compute:execution" => PRIMAL_NAME,
+        "os" => well_known::BIOMEOS,
         _ => "unknown",
     }
 }
@@ -65,12 +68,12 @@ pub fn capabilities_to_dependencies(capabilities: &[&str]) -> Vec<String> {
 /// Get all known capability mappings
 pub fn get_capability_mappings() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
-    map.insert("beardog", "pki");
-    map.insert("songbird", "orchestration");
-    map.insert("nestgate", "storage");
-    map.insert("squirrel", "ai");
-    map.insert("toadstool", "compute:execution");
-    map.insert("biomeos", "os");
+    map.insert(well_known::BEARDOG, "pki");
+    map.insert(well_known::SONGBIRD, "orchestration");
+    map.insert(well_known::NESTGATE, "storage");
+    map.insert(well_known::SQUIRREL, "ai");
+    map.insert(PRIMAL_NAME, "compute:execution");
+    map.insert(well_known::BIOMEOS, "os");
     map
 }
 

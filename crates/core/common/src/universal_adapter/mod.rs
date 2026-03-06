@@ -172,7 +172,7 @@ impl UniversalAdapter {
         }
 
         // No provider found - try graceful degradation
-        self.degradation.handle_missing_capability(capability)
+        self.degradation.handle_missing_capability(&capability)
     }
 
     /// Get all available capabilities (for introspection)

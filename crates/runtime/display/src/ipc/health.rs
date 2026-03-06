@@ -47,6 +47,10 @@ pub struct HealthCheckResult {
 /// 3. Sends health check request
 /// 4. Returns detailed status
 ///
+/// # Errors
+///
+/// Returns an error if discovery or connection fails.
+///
 /// ## Example
 ///
 /// ```rust,ignore
@@ -67,6 +71,7 @@ pub async fn check_display_health() -> Result<HealthCheckResult> {
     // 2. Send health check request (getCapabilities)
     let response_time = Instant::now();
     let capabilities = client.get_capabilities().await?;
+    #[allow(clippy::cast_possible_truncation)] // Response times in ms fit in u64
     let response_time_ms = response_time.elapsed().as_millis() as u64;
 
     // 3. Determine health status based on response time
@@ -91,6 +96,10 @@ pub async fn check_display_health() -> Result<HealthCheckResult> {
 
 /// Perform health check with timeout
 ///
+/// # Errors
+///
+/// Returns an error if the health check fails or times out.
+///
 /// ## Example
 ///
 /// ```rust,ignore
@@ -112,6 +121,10 @@ pub async fn check_display_health_with_timeout(timeout: Duration) -> Result<Heal
 /// Monitor display server health continuously
 ///
 /// Performs periodic health checks and returns when status changes.
+///
+/// # Errors
+///
+/// Returns an error if the initial health check fails (the loop runs until then).
 ///
 /// ## Example
 ///

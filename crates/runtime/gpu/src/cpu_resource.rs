@@ -370,6 +370,7 @@ impl CpuComputeContext {
     }
 
     /// Execute parallel compute workload using Rayon
+    #[allow(clippy::unused_async)]
     async fn execute_parallel_compute(
         &self,
         workload: &UniversalWorkload,
@@ -394,6 +395,7 @@ impl CpuComputeContext {
     }
 
     /// Execute reduction operation
+    #[allow(clippy::unused_async)]
     async fn execute_reduction(
         &self,
         workload: &UniversalWorkload,
@@ -417,6 +419,7 @@ impl CpuComputeContext {
     }
 
     /// Execute source code
+    #[allow(clippy::unused_async)]
     async fn execute_source(
         &self,
         language: &KernelLanguage,

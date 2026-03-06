@@ -39,3 +39,51 @@ pub async fn discover_from_registry(
 
     Ok(Vec::new())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ServiceDiscoveryConfig;
+    use crate::types::ServiceInfo;
+    use std::time::Duration;
+
+    fn make_service_info() -> ServiceInfo {
+        ServiceInfo {
+            id: "test-service-1".to_string(),
+            name: "Test Service".to_string(),
+            version: "1.0.0".to_string(),
+            endpoints: vec![],
+            metadata: std::collections::HashMap::new(),
+            health_status: crate::types::HealthStatus::Healthy,
+            last_seen: std::time::SystemTime::now(),
+            capabilities: vec![],
+        }
+    }
+
+    fn make_discovery_config() -> ServiceDiscoveryConfig {
+        ServiceDiscoveryConfig {
+            discovery_type: crate::config::DiscoveryType::Static,
+            registry_endpoint: None,
+            registration_ttl: Duration::from_secs(300),
+            refresh_interval: Duration::from_secs(60),
+            auto_register: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_with_discovery() {
+        let service = make_service_info();
+        let config = make_discovery_config();
+        let result = register_with_discovery(&service, &config).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_discover_from_registry() {
+        let config = make_discovery_config();
+        let result = discover_from_registry("test-service", &config).await;
+        assert!(result.is_ok());
+        let services = result.unwrap();
+        assert!(services.is_empty());
+    }
+}

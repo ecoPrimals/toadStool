@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trait implementations for embedded emulators
 //!
-//! Error-returning stubs until CPU emulation cores are implemented.
-//! All emulation operations return `not_supported` to clearly communicate status.
+//! ## Planned / Future Implementation
+//!
+//! These emulator structs and trait implementations are **infrastructure placeholders**
+//! for future CPU emulation support. They are registered in the embedded adapter
+//! registry and satisfy the type system, but all operations (except no-op `stop` and
+//! `clear_breakpoint`) return `not_supported` until emulator cores are implemented.
+//!
+//! ## Architecture Notes
+//!
+//! - **6502**: Planned cycle-accurate core; common in retro gaming (NES, C64, Apple II)
+//! - **Z80**: Planned integration; used in ZX Spectrum, MSX, Game Boy
+//!
+//! Each emulator will require: CPU core, memory map, peripheral hooks, and debug
+//! interface (breakpoints, register read/write, memory inspection).
 
 use async_trait::async_trait;
 

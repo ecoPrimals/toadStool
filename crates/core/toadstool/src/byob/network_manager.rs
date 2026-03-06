@@ -30,7 +30,7 @@ pub trait NetworkManager: Send + Sync {
     /// - `subnet_cidr`: CIDR notation for subnet (e.g., "10.0.0.0/24")
     /// - `services`: Service specifications for endpoint creation
     ///
-    /// **Returns**: NetworkInfo with endpoints for all services
+    /// **Returns**: `NetworkInfo` with endpoints for all services
     fn create_deployment_network(
         &self,
         team_id: &str,
@@ -62,13 +62,14 @@ pub trait NetworkManager: Send + Sync {
     }
 }
 
-/// Default implementation of NetworkManager for BYOB
+/// Default implementation of `NetworkManager` for BYOB
 pub struct ByobNetworkManager {
     config: Arc<ByobExecutorConfig>,
 }
 
 impl ByobNetworkManager {
     /// Create a new network manager
+    #[must_use]
     pub fn new(config: Arc<ByobExecutorConfig>) -> Self {
         Self { config }
     }

@@ -64,7 +64,7 @@ impl DiscoveryClient {
 
         let nodes: Vec<NodeRegistration> = self
             .rpc_client
-            .call_typed("songbird.discover_nodes", params)
+            .call_typed("coordination.discover_nodes", params)
             .await
             .unwrap_or_else(|e| {
                 debug!("Discovery failed: {e}, returning empty list");

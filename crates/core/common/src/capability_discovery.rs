@@ -144,7 +144,7 @@ impl CapabilityDiscovery {
             Ok(services) if !services.is_empty() => Ok(services),
             Ok(_) if self.enable_localhost_fallback => {
                 // Fallback for development
-                Ok(self.try_localhost_fallback(&capability))
+                Ok(Self::try_localhost_fallback(&capability))
             }
             Ok(_) => Err(DiscoveryError::NoServicesFound(format!("{capability:?}"))),
             Err(e) => Err(DiscoveryError::DiscoveryFailed(e.to_string())),
@@ -231,7 +231,7 @@ impl CapabilityDiscovery {
     }
 
     /// Try localhost fallback for development
-    fn try_localhost_fallback(&self, _capability: &Capability) -> Vec<DiscoveredService> {
+    fn try_localhost_fallback(_capability: &Capability) -> Vec<DiscoveredService> {
         // Return empty for now - localhost fallback should use environment variables
         vec![]
     }
@@ -252,9 +252,7 @@ pub struct DiscoveryConfig {
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
-        let is_production = std::env::var("TOADSTOOL_ENV")
-            .map(|e| e == "production")
-            .unwrap_or_default();
+        let is_production = std::env::var("TOADSTOOL_ENV").is_ok_and(|e| e == "production");
 
         Self {
             timeout: Duration::from_secs(5),
@@ -467,10 +465,12 @@ mod tests {
 
         // In test env with no services, we expect NoServicesFound, Timeout, DiscoveryFailed, or InvalidConfig
         match &result {
-            Err(DiscoveryError::NoServicesFound(_)) => {}
-            Err(DiscoveryError::Timeout) => {}
-            Err(DiscoveryError::DiscoveryFailed(_)) => {}
-            Err(DiscoveryError::InvalidConfig(_)) => {}
+            Err(
+                DiscoveryError::NoServicesFound(_)
+                | DiscoveryError::Timeout
+                | DiscoveryError::DiscoveryFailed(_)
+                | DiscoveryError::InvalidConfig(_),
+            ) => {}
             Ok(services) => assert!(
                 services.is_empty(),
                 "expected no services in test env, got {}",
@@ -535,7 +535,7 @@ mod tests {
         use std::error::Error;
         let err = DiscoveryError::Timeout;
         assert!(err.source().is_none());
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
     }
 
     #[test]
@@ -595,14 +595,14 @@ mod tests {
     #[test]
     fn test_discovery_config_debug() {
         let config = DiscoveryConfig::default();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("DiscoveryConfig"));
     }
 
     #[test]
     fn test_discovery_method_debug() {
         let m = DiscoveryMethod::Auto;
-        let debug_str = format!("{:?}", m);
+        let debug_str = format!("{m:?}");
         assert!(!debug_str.is_empty());
     }
 
@@ -627,10 +627,9 @@ mod tests {
     fn test_try_localhost_fallback_returns_empty() {
         use crate::primal_identity::{Capability, CryptoCapability};
 
-        let config = DiscoveryConfig::default();
-        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
-        let fallback =
-            discovery.try_localhost_fallback(&Capability::Crypto(CryptoCapability::Encryption));
+        let fallback = CapabilityDiscovery::try_localhost_fallback(&Capability::Crypto(
+            CryptoCapability::Encryption,
+        ));
         assert!(fallback.is_empty());
     }
 }

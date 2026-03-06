@@ -14,6 +14,7 @@
 //! - ✅ Modern async/await
 //! - ✅ Capability-based discovery (no hardcoded registry)
 
+use super::resources::ResourceManager;
 use super::*;
 
 /// Public CLI command implementations
@@ -198,26 +199,24 @@ impl BiomeExecutor {
     #[must_use = "Result of down_biome should be checked"]
     pub async fn down_biome(
         &self,
-        biome_name: String,
+        biome_name: impl AsRef<str>,
         force: bool,
         timeout_secs: u64,
         purge: bool,
     ) -> Result<()> {
+        let biome_name = biome_name.as_ref();
         info!("🛑 Stopping biome: {}", biome_name);
         let _timeout_secs = timeout_secs; // For future use
 
         // Check if biome exists
-        {
-            let biomes = self.biomes.read().await;
-            if !biomes.contains_key(&biome_name) {
-                return Err(crate::CliError::Other(format!(
-                    "Biome '{biome_name}' is not running"
-                )));
-            }
+        if !ResourceManager::new(self).biome_exists(biome_name).await {
+            return Err(crate::CliError::Other(format!(
+                "Biome '{biome_name}' is not running"
+            )));
         }
 
         // Stop biome (with timeout, force)
-        self.stop_biome_internal(&biome_name, force, timeout_secs)
+        self.stop_biome_internal(biome_name, force, timeout_secs)
             .await?;
 
         info!("✅ Biome '{}' stopped successfully", biome_name);
@@ -225,7 +224,7 @@ impl BiomeExecutor {
         // Purge data if requested
         if purge {
             info!("🗑️  Purging biome data...");
-            self.purge_biome_data(&biome_name).await?;
+            self.purge_biome_data(biome_name).await?;
             info!("✅ Data purged successfully");
         }
 
@@ -241,9 +240,9 @@ impl BiomeExecutor {
     pub async fn list_biomes(
         &self,
         _all: bool,
-        _format: String,
+        _format: &str,
         show_resources: bool,
-        _status_filter: Option<String>,
+        _status_filter: Option<&str>,
     ) -> Result<()> {
         let biomes = self.biomes.read().await;
 
@@ -271,18 +270,19 @@ impl BiomeExecutor {
     #[must_use = "Result of show_logs should be checked"]
     pub async fn show_logs(
         &self,
-        target: String,
+        target: impl AsRef<str>,
         follow: bool,
         lines: usize,
         timestamps: bool,
-        level_filter: Option<String>,
-        grep_pattern: Option<String>,
+        level_filter: Option<&str>,
+        grep_pattern: Option<&str>,
     ) -> Result<()> {
         // Parse target (biome or biome.service)
+        let target = target.as_ref();
         let (biome_name, service_name) = if let Some((biome, service)) = target.split_once('.') {
-            (biome.to_string(), Some(service.to_string()))
+            (biome.to_owned(), Some(service.to_owned()))
         } else {
-            (target.clone(), None)
+            (target.to_owned(), None)
         };
         // Get biome
         let biomes = self.biomes.read().await;
@@ -322,5 +322,298 @@ impl BiomeExecutor {
             info!("📜 Showing logs: {}", log_file.display());
             self.show_log_file(&log_file, Some(lines)).await
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::CliContext;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+    use tokio::fs;
+
+    async fn create_valid_manifest_file(name: &str) -> (PathBuf, TempDir) {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let manifest_path = temp_dir.path().join("biome.toml");
+
+        let now = std::time::SystemTime::now();
+        let created_secs = now.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+
+        let content = format!(
+            r#"
+[metadata]
+name = "{}"
+version = "1.0.0"
+created = {}
+updated = {}
+tags = []
+
+[primals.test-primal]
+version = "latest"
+enabled = true
+config = {{}}
+dependencies = []
+
+[primals.test-primal.source]
+type = "Container"
+registry = "registry.example.com"
+image = "test-image"
+tag = "latest"
+
+[services]
+
+[resources]
+cpu_limit = 1.0
+
+[security]
+isolation_level = "standard"
+trust_level = "medium"
+beardog_required = false
+crypto_policies = []
+allowed_networks = []
+forbidden_syscalls = []
+
+[networking]
+mode = "bridge"
+dns_servers = []
+port_mappings = []
+network_policies = []
+
+[storage]
+datasets = []
+volumes = []
+"#,
+            name, created_secs, created_secs
+        );
+
+        fs::write(&manifest_path, content)
+            .await
+            .expect("write manifest");
+        (manifest_path, temp_dir)
+    }
+
+    #[tokio::test]
+    async fn test_up_biome_success() {
+        let (manifest_path, _temp) = create_valid_manifest_file("up-test-biome").await;
+        let executor = BiomeExecutor::new().await.expect("executor");
+        let ctx = CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().unwrap(),
+            verbose: false,
+        };
+
+        let opts = UpBiomeOptions {
+            manifest_path: manifest_path.clone(),
+            detach: true,
+            name: None,
+            env: vec![],
+            restart: false,
+            health_interval: 30,
+        };
+
+        let result = executor.up_biome(&ctx, opts).await;
+        assert!(result.is_ok(), "up_biome should succeed: {:?}", result);
+
+        let _ = executor.down_biome("up-test-biome", true, 5, false).await;
+        let _ = executor.purge_biome_data("up-test-biome").await;
+    }
+
+    #[tokio::test]
+    async fn test_up_biome_with_name_override() {
+        let (manifest_path, _temp) = create_valid_manifest_file("manifest-name").await;
+        let executor = BiomeExecutor::new().await.expect("executor");
+        let ctx = CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().unwrap(),
+            verbose: false,
+        };
+
+        let opts = UpBiomeOptions {
+            manifest_path,
+            detach: true,
+            name: Some("custom-name-override".to_string()),
+            env: vec![],
+            restart: false,
+            health_interval: 30,
+        };
+
+        let result = executor.up_biome(&ctx, opts).await;
+        assert!(result.is_ok());
+        let info = executor.list_biomes(false, "table", false, None).await;
+        assert!(info.is_ok());
+
+        let _ = executor
+            .down_biome("custom-name-override", true, 5, false)
+            .await;
+        let _ = executor.purge_biome_data("custom-name-override").await;
+    }
+
+    #[tokio::test]
+    async fn test_up_biome_already_running_returns_err() {
+        let (manifest_path, _temp) = create_valid_manifest_file("already-running").await;
+        let executor = BiomeExecutor::new().await.expect("executor");
+        let ctx = CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().unwrap(),
+            verbose: false,
+        };
+
+        let opts = UpBiomeOptions {
+            manifest_path: manifest_path.clone(),
+            detach: true,
+            name: None,
+            env: vec![],
+            restart: false,
+            health_interval: 30,
+        };
+
+        executor.up_biome(&ctx, opts.clone()).await.unwrap();
+
+        let result = executor.up_biome(&ctx, opts).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("already running"));
+
+        let _ = executor.down_biome("already-running", true, 5, false).await;
+        let _ = executor.purge_biome_data("already-running").await;
+    }
+
+    #[tokio::test]
+    async fn test_down_biome_with_purge() {
+        let (manifest_path, _temp) = create_valid_manifest_file("purge-test").await;
+        let executor = BiomeExecutor::new().await.expect("executor");
+        let ctx = CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().unwrap(),
+            verbose: false,
+        };
+
+        let opts = UpBiomeOptions {
+            manifest_path,
+            detach: true,
+            name: None,
+            env: vec![],
+            restart: false,
+            health_interval: 30,
+        };
+
+        executor.up_biome(&ctx, opts).await.unwrap();
+
+        let result = executor.down_biome("purge-test", false, 10, true).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_list_biomes_with_running_biome() {
+        let (manifest_path, _temp) = create_valid_manifest_file("list-test").await;
+        let executor = BiomeExecutor::new().await.expect("executor");
+        let ctx = CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().unwrap(),
+            verbose: false,
+        };
+
+        let opts = UpBiomeOptions {
+            manifest_path,
+            detach: true,
+            name: None,
+            env: vec![],
+            restart: false,
+            health_interval: 30,
+        };
+
+        executor.up_biome(&ctx, opts).await.unwrap();
+
+        let result = executor.list_biomes(false, "table", true, None).await;
+        assert!(result.is_ok());
+
+        let _ = executor.down_biome("list-test", true, 5, false).await;
+        let _ = executor.purge_biome_data("list-test").await;
+    }
+
+    #[tokio::test]
+    async fn test_show_logs_service_not_found() {
+        let (manifest_path, _temp) = create_valid_manifest_file("logs-service-test").await;
+        let executor = BiomeExecutor::new().await.expect("executor");
+        let ctx = CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().unwrap(),
+            verbose: false,
+        };
+
+        let opts = UpBiomeOptions {
+            manifest_path,
+            detach: true,
+            name: None,
+            env: vec![],
+            restart: false,
+            health_interval: 30,
+        };
+
+        executor.up_biome(&ctx, opts).await.unwrap();
+
+        let result = executor
+            .show_logs(
+                "logs-service-test.nonexistent-service",
+                false,
+                10,
+                false,
+                None,
+                None,
+            )
+            .await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+
+        let _ = executor
+            .down_biome("logs-service-test", true, 5, false)
+            .await;
+        let _ = executor.purge_biome_data("logs-service-test").await;
+    }
+
+    #[tokio::test]
+    async fn test_show_logs_biome_service() {
+        let (manifest_path, _temp) = create_valid_manifest_file("logs-biome-svc").await;
+        let executor = BiomeExecutor::new().await.expect("executor");
+        let ctx = CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().unwrap(),
+            verbose: false,
+        };
+
+        let opts = UpBiomeOptions {
+            manifest_path,
+            detach: true,
+            name: None,
+            env: vec![],
+            restart: false,
+            health_interval: 30,
+        };
+
+        executor.up_biome(&ctx, opts).await.unwrap();
+
+        // Create log file (lifecycle stores path but doesn't create file)
+        let env = toadstool_common::platform_paths::PathEnv::from_env();
+        let paths = toadstool_common::platform_paths::PlatformPaths::new(&env);
+        let log_path = paths
+            .toadstool_log_dir()
+            .join("logs-biome-svc")
+            .join("test-primal.log");
+        if let Some(parent) = log_path.parent() {
+            let _ = fs::create_dir_all(parent).await;
+        }
+        let _ = fs::write(&log_path, "test log line\n").await;
+
+        let result = executor
+            .show_logs("logs-biome-svc.test-primal", false, 10, false, None, None)
+            .await;
+        assert!(
+            result.is_ok(),
+            "show_logs for primal should succeed: {:?}",
+            result
+        );
+
+        let _ = executor.down_biome("logs-biome-svc", true, 5, false).await;
+        let _ = executor.purge_biome_data("logs-biome-svc").await;
     }
 }

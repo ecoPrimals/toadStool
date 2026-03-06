@@ -357,4 +357,66 @@ mod tests {
         .await
         .unwrap();
     }
+
+    #[tokio::test]
+    async fn test_notify_notify_waiters() {
+        let notify = TestNotify::new();
+        let n = notify.clone();
+        let handle = tokio::spawn(async move {
+            n.notified().await;
+        });
+        tokio::task::yield_now().await;
+        notify.notify_waiters();
+        handle.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_notify_timeout() {
+        let notify = TestNotify::new();
+        let result = notify.notified_timeout(Duration::from_millis(10)).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_channel_recv_timeout() {
+        let channel = TestChannel::<i32>::new(1);
+        let result = channel.recv_timeout(Duration::from_millis(10)).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_state_read_timeout() {
+        let state = TestState::new(42);
+        let result = state.read_timeout(Duration::from_secs(1), |v| *v).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    async fn test_wait_for_condition_sync() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let flag = Arc::new(AtomicBool::new(false));
+        let flag_clone = Arc::clone(&flag);
+
+        tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            flag_clone.store(true, Ordering::SeqCst);
+        });
+
+        let result = wait_for_condition(
+            || flag.load(Ordering::SeqCst),
+            Duration::from_secs(1),
+            Duration::from_millis(5),
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_wait_error_display() {
+        let err = WaitError::Timeout;
+        assert!(err.to_string().contains("timeout"));
+    }
 }

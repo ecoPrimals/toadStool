@@ -79,7 +79,6 @@ impl PrimalIntegrationManager {
             if let Some(primal) = self.primals.get(name) {
                 if let Err(e) = primal.validate_dependencies(manifest).await {
                     results.insert(name.clone(), PrimalBootstrapResult::Failed(e.to_string()));
-                    continue;
                 }
             }
         }
@@ -177,7 +176,7 @@ impl PrimalIntegrationManager {
     }
 
     /// Visit a Primal during topological sort
-    #[allow(clippy::only_used_in_recursion)]
+    #[allow(clippy::self_only_used_in_recursion)]
     fn visit_primal(
         &self,
         primal_name: &str,

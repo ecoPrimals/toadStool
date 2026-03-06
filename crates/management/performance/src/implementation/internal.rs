@@ -10,11 +10,12 @@ use toadstool::execution::RuntimeType;
 use crate::types::{PerformanceMetrics, ResourcePrediction};
 
 /// Baseline metrics for a runtime (used in model updates)
+#[allow(clippy::struct_field_names, dead_code)]
 #[derive(Clone)]
 pub(super) struct BaselineMetrics {
-    pub(super) _avg_execution_time: Duration,
-    pub(super) _avg_memory_mb: f64,
-    pub(super) _avg_cpu_percent: f64,
+    pub(super) avg_execution_time: Duration,
+    pub(super) avg_memory_mb: f64,
+    pub(super) avg_cpu_percent: f64,
 }
 
 /// Runtime selector state (for future ML-based selection)
@@ -54,10 +55,7 @@ impl PredictionModel {
 
     /// Update model with a new observation (call once per metric).
     pub(super) fn update(&mut self, metrics: &PerformanceMetrics) {
-        let exec_secs = metrics
-            .execution_duration
-            .map(|d| d.as_secs_f64())
-            .unwrap_or(0.0);
+        let exec_secs = metrics.execution_duration.map_or(0.0, |d| d.as_secs_f64());
         let mem_mb = metrics.resource_metrics.memory.used_bytes as f64 / 1024.0 / 1024.0;
         let cpu = metrics.resource_metrics.cpu.usage_percent;
 
@@ -74,7 +72,7 @@ impl PredictionModel {
         self.sample_count += 1;
     }
 
-    /// Reset and rebuild from metrics (avoids double-counting when update_model is called repeatedly).
+    /// Reset and rebuild from metrics (avoids double-counting when `update_model` is called repeatedly).
     pub(super) fn rebuild_from_metrics(&mut self, metrics: &[&PerformanceMetrics]) {
         *self = Self::new();
         for m in metrics {
@@ -116,7 +114,7 @@ pub(super) fn update_prediction_models_from_history(
         return;
     }
     let mut by_runtime: HashMap<String, Vec<&PerformanceMetrics>> = HashMap::new();
-    for m in history.iter() {
+    for m in history {
         by_runtime
             .entry(format!("{:?}", m.runtime_type))
             .or_default()
@@ -127,5 +125,124 @@ pub(super) fn update_prediction_models_from_history(
             let model = models.entry(key).or_default();
             model.rebuild_from_metrics(&runtime_metrics);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::VecDeque;
+    use toadstool::execution::RuntimeType;
+    use toadstool::resources::{CpuMetrics, MemoryMetrics, RuntimeMetrics, StorageMetrics};
+    use toadstool::resources::{NetworkMetrics, TimingMetrics};
+
+    fn make_metrics(
+        runtime_type: RuntimeType,
+        exec_secs: f64,
+        memory_bytes: u64,
+        cpu_percent: f64,
+    ) -> PerformanceMetrics {
+        let start = std::time::SystemTime::now();
+        let duration = Duration::from_secs_f64(exec_secs);
+        PerformanceMetrics {
+            execution_id: format!("exec-{}", uuid::Uuid::new_v4()),
+            runtime_type,
+            workload_type: "test".to_string(),
+            start_time: start,
+            end_time: Some(start + duration),
+            execution_duration: Some(duration),
+            resource_metrics: RuntimeMetrics {
+                cpu: CpuMetrics {
+                    usage_percent: cpu_percent,
+                    cores_used: 1.0,
+                    cpu_time_seconds: exec_secs,
+                },
+                memory: MemoryMetrics {
+                    usage_percent: 0.0,
+                    used_bytes: memory_bytes,
+                    peak_bytes: memory_bytes,
+                },
+                storage: StorageMetrics::default(),
+                network: NetworkMetrics::default(),
+                gpu: None,
+                timing: TimingMetrics {
+                    start_time: start,
+                    end_time: Some(start + duration),
+                    duration,
+                },
+            },
+            success: true,
+            error_message: None,
+            performance_score: 80.0,
+            efficiency_score: 75.0,
+        }
+    }
+
+    #[test]
+    fn test_prediction_model_new() {
+        let model = PredictionModel::new();
+        assert_eq!(model.sample_count(), 0);
+    }
+
+    #[test]
+    fn test_prediction_model_default() {
+        let model = PredictionModel::default();
+        assert_eq!(model.sample_count(), 0);
+    }
+
+    #[test]
+    fn test_prediction_model_update_and_predict() {
+        let mut model = PredictionModel::new();
+        let metrics = make_metrics(RuntimeType::Native, 2.0, 256 * 1024 * 1024, 50.0);
+        model.update(&metrics);
+        assert_eq!(model.sample_count(), 1);
+        let pred = model.predict();
+        assert!(pred.confidence >= 20.0);
+        assert!(pred.execution_time.as_secs_f64() > 0.0);
+    }
+
+    #[test]
+    fn test_prediction_model_rebuild_from_metrics() {
+        let mut model = PredictionModel::new();
+        let m1 = make_metrics(RuntimeType::Native, 1.0, 100 * 1024 * 1024, 30.0);
+        let m2 = make_metrics(RuntimeType::Native, 3.0, 200 * 1024 * 1024, 70.0);
+        model.rebuild_from_metrics(&[&m1, &m2]);
+        assert_eq!(model.sample_count(), 2);
+    }
+
+    #[test]
+    fn test_runtime_selector_default() {
+        let selector = RuntimeSelector::default();
+        assert!(selector._last_selection.is_none());
+    }
+
+    #[test]
+    fn test_update_prediction_models_from_history_insufficient() {
+        let mut history: VecDeque<PerformanceMetrics> = VecDeque::new();
+        history.push_back(make_metrics(
+            RuntimeType::Native,
+            1.0,
+            100 * 1024 * 1024,
+            50.0,
+        ));
+        let mut models = HashMap::new();
+        update_prediction_models_from_history(&history, &mut models, 10);
+        assert!(models.is_empty());
+    }
+
+    #[test]
+    fn test_update_prediction_models_from_history_sufficient() {
+        let mut history: VecDeque<PerformanceMetrics> = VecDeque::new();
+        for i in 0..15 {
+            history.push_back(make_metrics(
+                RuntimeType::Native,
+                1.0 + i as f64 * 0.1,
+                100 * 1024 * 1024,
+                50.0,
+            ));
+        }
+        let mut models = HashMap::new();
+        update_prediction_models_from_history(&history, &mut models, 10);
+        assert!(!models.is_empty());
     }
 }

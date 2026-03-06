@@ -504,13 +504,6 @@ async fn test_agent_deployment_manager_initialize_squirrel() {
 // 2. Making the manager methods async (architectural change)
 // These methods are tested indirectly through integration tests.
 
-// #[test]
-// fn test_agent_deployment_manager_get_agent_status_nonexistent() { ... }
-// #[test]
-// fn test_agent_deployment_manager_list_agents_empty() { ... }
-// #[test]
-// fn test_agent_deployment_manager_list_models_empty() { ... }
-
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_agent_deployment_manager_health_check() {
     let config = AgentDeploymentConfig {

@@ -66,6 +66,7 @@ moka = { version = "0.12", features = ["future"] }
 
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }
+toadstool-runtime-native = { path = "../runtime/native" }
 tokio-test = "0.4"
 axum-test = "14.0"
 tempfile = "3.8"

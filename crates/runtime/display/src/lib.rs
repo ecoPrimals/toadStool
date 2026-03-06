@@ -82,16 +82,22 @@
 
 // Public modules
 pub mod capabilities;
+pub mod capture_transport;
 pub mod drm;
 pub mod input;
 pub mod ipc;
+pub mod serial_transport;
+pub mod transport;
+pub mod v4l2;
 pub mod window;
 
 // Re-exports
 pub use capabilities::DisplayCapabilities;
+pub use capture_transport::{discover_capture_transports, CaptureTransport};
 pub use drm::DrmBackend;
 pub use input::{InputEvent, InputManager};
 pub use ipc::{DisplayClient, DisplayServer};
+pub use transport::{discover_display_transports, DisplayTransport};
 pub use window::{Window, WindowId, WindowManager};
 
 /// Display backend errors

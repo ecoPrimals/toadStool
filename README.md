@@ -41,7 +41,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 5,369 workspace lib + integration tests |
+| `cargo test --workspace` | 18,028 workspace lib + integration tests |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~60+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
@@ -49,14 +49,15 @@ Nest    = Tower  + NestGate           <- storage
 | Production stubs | 0 -- all evolved to real implementations or proper errors |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 -- all evolved to formal `BLOCKED(reason)` markers or resolved |
-| Dead code | ~400+ lines removed (REST, middleware, dead modules); ~35 justified `#[allow(dead_code)]` remain |
+| Dead code | ~400+ lines removed (REST, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) |
 | Hardcoded primal names | 0 -- all capability-based discovery via `get_socket_path_for_capability()` |
-| `async-trait` migration | 5 crates migrated to native AFIT (Rust 1.80+); remaining uses justified by `dyn Trait` dispatch |
+| `async-trait` migration | 5 crates migrated to native AFIT (Rust 1.82+); remaining uses justified by `dyn Trait` dispatch |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
+| Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files under 1000 lines (32+ god files smart-refactored into domain modules) |
+| File size limit | All production files under 1000 lines (34+ god files smart-refactored into domain modules) |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -121,6 +122,10 @@ ToadStool: Hardware Discovery + Orchestration (THIS REPO)
  RTX    RTX 3090  RX 6950  Akida       WGPU
  4070   (NVIDIA)  XT (AMD) (inference)  software
 (NVIDIA)                                rasterizer
+       |
+Hardware Transport Layer
+HDMI Tx    V4L2 Rx    Serial     TransportRouter
+(DRM)      (Capture)   (USB)     (any-to-any)
 ```
 
 **Routing**: `Device::select_for_workload(&hint)` auto-routes to the optimal device. `Device::select_with_preference(Some(Device::CPU), &hint)` lets callers override. Auto-routing is smart; user choice is sovereign.
@@ -137,7 +142,7 @@ ToadStool: Hardware Discovery + Orchestration (THIS REPO)
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (44 total)
+### JSON-RPC Methods (47 total)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -150,6 +155,7 @@ ToadStool: Hardware Discovery + Orchestration (THIS REPO)
 | `gpu.*` | `info`, `memory` | Hardware info |
 | `ollama.*` | `list_models`, `inference`, `load`, `unload` | Local LLM lifecycle |
 | `gate.*` | `update`, `remove`, `list`, `route` | Distributed routing |
+| `transport.*` | `discover`, `list`, `route` | Hardware transport discovery + routing |
 
 ---
 
@@ -176,7 +182,7 @@ cargo llvm-cov --lib -p toadstool-common --json
 ```
 toadStool/
 +-- crates/
-|   +-- toadstool-core/            Generic hardware traits (NpuDispatch, NpuParameterController)
+|   +-- toadstool-core/            Generic hardware traits (NpuDispatch, HardwareTransport, TransportRouter)
 |   +-- core/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config, port constants)
@@ -190,7 +196,7 @@ toadStool/
 |   |   +-- gpu/                   WGPU device management, unified memory, pinned memory
 |   |   +-- universal/             Universal compute substrate (CPU backends, GpuAdapterInfo)
 |   |   +-- adaptive/              Adaptive optimization, GPU fingerprinting
-|   |   +-- display/               DRM/input backend
+|   |   +-- display/               DRM/KMS backend + Hardware Transport (HDMI/capture/serial)
 |   |   +-- edge/                  Edge device discovery (mDNS, filesystem), serial/TCP comms
 |   |   +-- wasm/                  WebAssembly runtime (wasmi)
 |   |   +-- container/             BYOB container runtime
@@ -231,18 +237,19 @@ toadStool/
 | Clippy warnings (`-D warnings`) | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace lib tests | 5,369 (server + core + distributed + common + config + CLI + testing + API + auto_config) |
-| Full workspace test time | ~6m30s (8 threads, GPU crates have NVK resilience wrappers) |
+| Workspace lib tests | 18,028 (server + core + distributed + common + config + CLI + testing + API + auto_config) |
+| Full workspace test time | ~10m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~60+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
 | Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
 | Production FIXME / HACK | 0 |
-| Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~35 justified `#[allow(dead_code)]` remain |
+| Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
 | External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc` |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
+| Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
 ---
 
@@ -251,11 +258,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 5,369 tests; focus on low-coverage crates
+- **Test coverage** -- pushing toward 90% target; 18,028 tests; focus on low-coverage crates
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **Deep Debt Execution (Mar 5, 2026)**: Hardware Transport Layer wired end-to-end: `transport.discover/list/route` JSON-RPC methods + `toadstool transport discover/list/status` CLI commands. 18,028 tests (from 5,369). Detection stubs evolved to real /proc/cpuinfo/meminfo/os-release parsing. `security.rs` + `config_utils/mod.rs` smart-refactored into domain modules. `FrameworkHandle::Placeholder` → `FrameworkHandle::Unavailable`. 35+ hardcoded primal names → shared `well_known::*` constants. All production `unwrap()` eliminated. Crate-level `unused_async` suppression removed from distributed. Pixel format mismatch + double-buffer alternation bugs fixed. Rust 1.80→1.82.
 - **Session 94b: Deep Debt Execution + Spring Absorption** -- Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. `NpuParameterController` trait (absorbed from hotSpring). `GpuAdapterInfo` for barraCuda driver profiling. Multi-adapter GPU selection (`TOADSTOOL_GPU_ADAPTER` env var). NestGate `store_artifact`/`retrieve_artifact` evolved from mocks to real JSON-RPC with fallback. D-SOV completed: all 7 production callers migrated to `get_socket_path_for_capability()`. Hardcoded ports `8080`/`9090` evolved to config constants. `integration-tests` barracuda dependency made optional. Placeholder `management/resources` crate removed.
 - **Sessions 90–93: Deep Audit + Sovereignty + barraCuda Budding** -- REST API + middleware deleted (JSON-RPC only). 47 new tests (5,369 total). Pure-rust ecoBin build verified. Legacy primal-name APIs deprecated. BearDog strings neutralized. `find_pattern_by_capability()` API added. barraCuda budded to `ecoPrimals/barraCuda/`, barracuda fossil archived.
 - **Sessions 84–86: ComputeDispatch Batches 5–7 + Deep Debt** -- 33 more ops → ComputeDispatch (144 total). God files refactored. Experimental stubs → real probes.
@@ -269,7 +277,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 5,369 tests; focus on low-coverage crates |
+| D-COV | Test coverage → 90% | Active -- 18,028 tests; focus on low-coverage crates |
 | D-S20-003 | neuralSpring `evolved/` migration (~2075 lines) | Blocked -- awaiting neuralSpring team |
 | D-S18-002 | cubecl transitive `dirs-sys` | Blocked -- needs upstream PR |
 
@@ -279,6 +287,12 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 |----|-------------|
 | D-NPU | `NpuDispatch` trait + `AkidaNpuDispatch` adapter implemented |
 | D-SOV | All 7 production callers migrated to capability-based discovery |
+
+### RE-IMPLEMENTED (Mar 5, 2026)
+
+| ID | Description |
+|----|-------------|
+| management/resources | Placeholder evolved to real ResourceManager with sysinfo |
 
 ### Transferred to barraCuda Team (S93)
 
@@ -308,4 +322,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 3, 2026 -- Session 94b. Post-budding: barraCuda is a separate primal. 5,369 workspace lib tests. 44 JSON-RPC methods. D-NPU resolved (NpuDispatch + NpuParameterController). D-SOV resolved (all callers migrated to capability-based discovery). NestGate mocks evolved to real RPC. Hardcoded ports evolved to config constants. Remaining debt: D-COV (90% target). All quality gates green. Rust 1.80+.
+**Last Updated**: March 5, 2026 -- Deep Debt Execution. 18,028 workspace tests. 47 JSON-RPC methods. Hardware Transport Layer (HDMI/capture/serial) wired to daemon + CLI. Rust 1.82+.

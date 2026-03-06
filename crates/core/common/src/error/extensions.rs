@@ -270,7 +270,7 @@ mod tests {
         assert!(err.to_string().contains("Port must be 1-65535"));
     }
 
-    /// Test: Convenience method - not_found error
+    /// Test: Convenience method - `not_found` error
     #[test]
     fn test_convenience_not_found() {
         let err = ToadStoolError::not_found("workload-123");
@@ -278,7 +278,7 @@ mod tests {
         assert!(err.to_string().contains("workload-123"));
     }
 
-    /// Test: Convenience method - permission_denied error
+    /// Test: Convenience method - `permission_denied` error
     #[test]
     fn test_convenience_permission_denied() {
         let err = ToadStoolError::permission_denied("Cannot write to /etc");
@@ -286,7 +286,7 @@ mod tests {
         assert!(err.to_string().contains("Cannot write to /etc"));
     }
 
-    /// Test: Convenience method - not_supported error
+    /// Test: Convenience method - `not_supported` error
     #[test]
     fn test_convenience_not_supported() {
         let err = ToadStoolError::not_supported("CUDA on ARM");

@@ -7,10 +7,8 @@ use crate::{CliContextExt, Result};
 use tracing::info;
 
 /// Signal manager for Unix signal handling
-#[allow(dead_code)] // Phase 2+: biome daemon graceful shutdown via wait_for_interrupt
 pub(super) struct SignalManager;
 
-#[allow(dead_code)] // Phase 2+: biome daemon graceful shutdown via wait_for_interrupt
 impl SignalManager {
     /// Wait for termination signal (SIGTERM or SIGINT)
     ///

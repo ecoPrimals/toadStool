@@ -435,4 +435,94 @@ mod tests {
             task.await.unwrap();
         }
     }
+
+    #[tokio::test]
+    async fn test_wait_for_condition_with_message() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let flag = AtomicBool::new(false);
+        let flag_clone = std::sync::Arc::new(flag);
+
+        tokio::spawn({
+            let flag = std::sync::Arc::clone(&flag_clone);
+            async move {
+                tokio::task::yield_now().await;
+                flag.store(true, Ordering::SeqCst);
+            }
+        });
+
+        let result = wait_for_condition_with_message(
+            move || {
+                let flag = std::sync::Arc::clone(&flag_clone);
+                async move { flag.load(Ordering::SeqCst) }
+            },
+            Duration::from_secs(2),
+            Duration::from_millis(10),
+            "Custom error",
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_wait_for_service_ready() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+
+        let call_count = std::sync::Arc::new(AtomicU32::new(0));
+        let count_clone = std::sync::Arc::clone(&call_count);
+
+        let result = wait_for_service_ready(
+            move || {
+                let c = std::sync::Arc::clone(&count_clone);
+                Box::pin(async move {
+                    c.fetch_add(1, Ordering::SeqCst);
+                    c.load(Ordering::SeqCst) > 2
+                })
+            },
+            Duration::from_secs(1),
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_test_isolation_get_port() {
+        let iso = TestIsolation::new("port_test");
+        let port0 = iso.get_port(0);
+        let port5 = iso.get_port(5);
+        assert_eq!(port5, port0.saturating_add(5));
+    }
+
+    #[tokio::test]
+    async fn test_test_isolation_temp_file() {
+        let iso = TestIsolation::new("tempfile_test");
+        let path = iso.temp_file("test.txt");
+        assert!(path.ends_with("test.txt"));
+    }
+
+    #[tokio::test]
+    async fn test_test_isolation_resource_name() {
+        let iso = TestIsolation::new("res_test");
+        let name = iso.resource_name("prefix");
+        assert!(name.starts_with("prefix_"));
+        assert!(name.contains("res_test"));
+    }
+
+    #[tokio::test]
+    async fn test_test_channels_add_oneshot() {
+        let mut channels = TestChannels::new();
+        let (tx, rx) = channels.add_oneshot();
+        tx.send(()).unwrap();
+        assert!(rx.await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_test_channels_add_mpsc() {
+        let mut channels = TestChannels::new();
+        let (tx, mut rx) = channels.add_mpsc(2);
+        tx.send("hello".to_string()).await.unwrap();
+        assert_eq!(rx.recv().await, Some("hello".to_string()));
+    }
 }

@@ -56,10 +56,11 @@ impl LatencyMetrics {
 
         // Mean
         let total_nanos: u128 = sorted.iter().map(std::time::Duration::as_nanos).sum();
-        let mean_nanos = total_nanos / n as u128;
-        let mean = Duration::from_nanos(mean_nanos as u64);
+        let mean_nanos = total_nanos / u128::try_from(n).unwrap_or(1);
+        let mean = Duration::from_nanos(u64::try_from(mean_nanos).unwrap_or(0));
 
-        // Standard deviation
+        // Standard deviation (f64 for variance; precision loss acceptable for stats)
+        #[allow(clippy::cast_precision_loss)]
         let variance: f64 = sorted
             .iter()
             .map(|d| {
@@ -68,11 +69,13 @@ impl LatencyMetrics {
             })
             .sum::<f64>()
             / n as f64;
-        let std_dev_nanos = variance.sqrt() as u64;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let std_dev_nanos = variance.sqrt().round() as u64;
 
-        // Percentiles
-        let percentile = |p: f64| -> Duration {
-            let idx = ((n as f64 * p) as usize).min(n - 1);
+        // Percentiles (integer math to avoid casts)
+        let percentile = |num: u64, denom: u64| -> Duration {
+            let idx = (n * usize::try_from(num).unwrap_or(0) / usize::try_from(denom).unwrap_or(1))
+                .min(n.saturating_sub(1));
             sorted[idx]
         };
 
@@ -83,11 +86,11 @@ impl LatencyMetrics {
             mean,
             median,
             std_dev_nanos,
-            p50: percentile(0.50),
-            p90: percentile(0.90),
-            p95: percentile(0.95),
-            p99: percentile(0.99),
-            p999: percentile(0.999),
+            p50: percentile(50, 100),
+            p90: percentile(90, 100),
+            p95: percentile(95, 100),
+            p99: percentile(99, 100),
+            p999: percentile(999, 1000),
         }
     }
 }
@@ -118,7 +121,8 @@ impl PowerMetrics {
 
         let min_w = samples.iter().copied().fold(f64::INFINITY, f64::min);
         let max_w = samples.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-        let mean_w = samples.iter().sum::<f64>() / samples.len() as f64;
+        let len = u32::try_from(samples.len()).unwrap_or(1);
+        let mean_w = samples.iter().sum::<f64>() / f64::from(len);
 
         Self {
             samples,
@@ -132,7 +136,7 @@ impl PowerMetrics {
 
     /// Calculate energy per inference given latency
     pub fn with_latency(&mut self, mean_latency: Duration) {
-        let latency_us = mean_latency.as_micros() as f64;
+        let latency_us = mean_latency.as_secs_f64() * 1_000_000.0;
         // Power (W) * time (us) = energy (uJ) / 1e6, so W * us / 1e6 * 1e6 = uJ
         self.energy_per_inference_uj = Some(self.mean_w * latency_us);
     }
@@ -198,14 +202,18 @@ impl AccuracyMetrics {
 
             if class_total > 0 {
                 let class_correct = self.confusion_matrix[class * self.num_classes + class];
-                self.per_class_accuracy[class] = class_correct as f64 / class_total as f64;
+                #[allow(clippy::cast_precision_loss)]
+                let acc = class_correct as f64 / class_total as f64;
+                self.per_class_accuracy[class] = acc;
                 total_correct += class_correct;
                 total_samples += class_total;
             }
         }
 
         if total_samples > 0 {
-            self.top1 = total_correct as f64 / total_samples as f64;
+            #[allow(clippy::cast_precision_loss)]
+            let top1 = total_correct as f64 / total_samples as f64;
+            self.top1 = top1;
         }
     }
 }

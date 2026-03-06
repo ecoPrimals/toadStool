@@ -326,4 +326,69 @@ mod tests {
         };
         assert!(metrics.ready_to_drop_cuda());
     }
+
+    #[test]
+    fn test_specific_framework_available() {
+        let strategy = BackendSelectionStrategy::Specific(GpuFramework::Cuda);
+        let available = vec![GpuFramework::Cuda, GpuFramework::WebGpu];
+        let selected = strategy.select_framework(None, &available);
+        assert_eq!(selected, Some(GpuFramework::Cuda));
+    }
+
+    #[test]
+    fn test_specific_framework_unavailable_falls_back() {
+        let strategy = BackendSelectionStrategy::Specific(GpuFramework::Cuda);
+        let available = vec![GpuFramework::WebGpu, GpuFramework::OpenCl];
+        let selected = strategy.select_framework(None, &available);
+        assert_eq!(selected, Some(GpuFramework::WebGpu));
+    }
+
+    #[test]
+    fn test_automatic_workload_needs_cuda_when_no_webgpu() {
+        let strategy = BackendSelectionStrategy::Automatic;
+        let available = vec![GpuFramework::Cuda, GpuFramework::OpenCl];
+        let workload = WorkloadType::Python;
+        let selected = strategy.select_framework(Some(&workload), &available);
+        assert_eq!(selected, Some(GpuFramework::Cuda));
+    }
+
+    #[test]
+    fn test_automatic_prefers_webgpu_over_cuda_even_for_python() {
+        let strategy = BackendSelectionStrategy::Automatic;
+        let available = vec![GpuFramework::WebGpu, GpuFramework::Cuda];
+        let workload = WorkloadType::Python;
+        let selected = strategy.select_framework(Some(&workload), &available);
+        assert_eq!(selected, Some(GpuFramework::WebGpu));
+    }
+
+    #[test]
+    fn test_automatic_empty_available_returns_none() {
+        let strategy = BackendSelectionStrategy::Automatic;
+        let available: Vec<GpuFramework> = vec![];
+        let selected = strategy.select_framework(None, &available);
+        assert_eq!(selected, None);
+    }
+
+    #[test]
+    fn test_pragmatic_empty_returns_none() {
+        let strategy = BackendSelectionStrategy::Pragmatic;
+        let available: Vec<GpuFramework> = vec![];
+        let selected = strategy.select_framework(None, &available);
+        assert_eq!(selected, None);
+    }
+
+    #[test]
+    fn test_evolution_metrics_default_values() {
+        let m = EvolutionMetrics::default();
+        assert!(m.webgpu_ai_coverage > 0.0);
+        assert!(m.webgpu_performance_ratio > 0.0);
+        assert!(!m.pytorch_webgpu_ready);
+        assert!(m.cuda_usage_percentage > 0.5);
+    }
+
+    #[test]
+    fn test_backend_strategy_default() {
+        let strategy = BackendSelectionStrategy::default();
+        assert!(matches!(strategy, BackendSelectionStrategy::Automatic));
+    }
 }

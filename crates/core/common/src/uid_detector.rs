@@ -193,11 +193,11 @@ mod tests {
     fn test_get_user_id() {
         // Should successfully get UID on Linux
         let result = get_user_id();
-        assert!(result.is_ok(), "Failed to get UID: {:?}", result);
+        assert!(result.is_ok(), "Failed to get UID: {result:?}");
 
         let uid = result.unwrap();
-        assert!(uid > 0, "UID should be positive, got: {}", uid);
-        assert!(uid < 65536, "UID seems unreasonably large: {}", uid);
+        assert!(uid > 0, "UID should be positive, got: {uid}");
+        assert!(uid < 65536, "UID seems unreasonably large: {uid}");
     }
 
     #[test]
@@ -258,15 +258,14 @@ mod tests {
         let _ = get_uid_from_passwd();
         let passwd_time = start.elapsed();
 
-        println!("/proc/self/status: {:?}", proc_time);
-        println!("/etc/passwd: {:?}", passwd_time);
+        println!("/proc/self/status: {proc_time:?}");
+        println!("/etc/passwd: {passwd_time:?}");
 
         // /proc should be faster (typically <0.1ms vs ~1-2ms)
         // Use a generous 50ms threshold to avoid flakiness under load
         assert!(
             proc_time < std::time::Duration::from_millis(50),
-            "/proc/self/status should be fast (<50ms), got: {:?}",
-            proc_time
+            "/proc/self/status should be fast (<50ms), got: {proc_time:?}"
         );
     }
 

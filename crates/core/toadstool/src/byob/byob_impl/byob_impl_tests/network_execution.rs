@@ -3,6 +3,10 @@
 
 use super::super::*;
 use super::common::*;
+use crate::byob::{
+    validation::DeploymentValidator, PortMapping, ServiceResourceRequirements, TeamNetworkConfig,
+    TeamResourceQuotas, TeamSecurityConfig,
+};
 use std::collections::HashMap;
 use std::time::SystemTime;
 use uuid::Uuid;
@@ -219,8 +223,8 @@ fn test_perform_health_check_empty_command() {
         retries: 3,
         start_period: 10,
     };
-    let result = executor.perform_health_check("svc", &health).unwrap();
-    assert!(result);
+    let result = executor.perform_health_check("svc", &health);
+    assert!(result.unwrap());
 }
 
 #[test]
@@ -240,8 +244,8 @@ fn test_perform_health_check_http_commands() {
             retries: 3,
             start_period: 10,
         };
-        let result = executor.perform_health_check("svc", &health).unwrap();
-        assert!(result, "health check for {} should pass", cmd);
+        let result = executor.perform_health_check("svc", &health);
+        assert!(result.unwrap(), "health check for {} should pass", cmd);
     }
 }
 
@@ -256,8 +260,8 @@ fn test_perform_health_check_ping() {
         retries: 3,
         start_period: 10,
     };
-    let result = executor.perform_health_check("svc", &health).unwrap();
-    assert!(result);
+    let result = executor.perform_health_check("svc", &health);
+    assert!(result.unwrap());
 }
 
 #[test]
@@ -271,8 +275,8 @@ fn test_perform_health_check_custom_command() {
         retries: 3,
         start_period: 10,
     };
-    let result = executor.perform_health_check("svc", &health).unwrap();
-    assert!(result);
+    let result = executor.perform_health_check("svc", &health);
+    assert!(result.unwrap());
 }
 
 // ─── create_byob_executor factory ────────────────────────────────────────
@@ -355,9 +359,9 @@ fn test_resource_usage_default_like() {
 fn test_byob_executor_new_initializes_empty_deployments() {
     let engine = create_test_runtime_engine();
     let config = ByobExecutorConfig::default();
-    let executor = ByobComputeExecutor::new(engine, config);
+    let _executor = ByobComputeExecutor::new(engine, config);
     let request = create_test_deployment_request();
-    assert!(executor.validate_deployment_request(&request).is_ok());
+    assert!(DeploymentValidator::validate_deployment(&request).is_ok());
 }
 
 // ─── Network info and service endpoint ────────────────────────────────────

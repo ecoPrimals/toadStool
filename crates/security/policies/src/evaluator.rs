@@ -15,7 +15,7 @@ use tracing::warn;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::workload::WorkloadSpec;
 
-use crate::types::*;
+use crate::types::{LogicalOperator, PolicyCondition, PolicyEvaluationContext};
 
 /// Condition evaluator for policy rules
 pub struct ConditionEvaluator {
@@ -38,10 +38,9 @@ impl ConditionEvaluator {
     }
 
     /// Validate condition structure
-    #[allow(clippy::only_used_in_recursion)]
+    #[allow(clippy::self_only_used_in_recursion, clippy::match_same_arms)]
     pub fn validate_condition(&self, condition: &PolicyCondition) -> Result<(), String> {
         match condition {
-            PolicyCondition::Always | PolicyCondition::Never => Ok(()),
             PolicyCondition::WorkloadType { workload_types } => {
                 if workload_types.is_empty() {
                     Err("Workload types cannot be empty".to_string())
@@ -82,6 +81,7 @@ impl ConditionEvaluator {
                 }
                 Ok(())
             }
+            PolicyCondition::Always | PolicyCondition::Never => Ok(()),
             _ => Ok(()),
         }
     }
@@ -125,7 +125,7 @@ impl ConditionEvaluator {
                 let current_cpu = if cpus.is_empty() {
                     0.0_f32
                 } else {
-                    cpus.iter().map(|c| c.cpu_usage()).sum::<f32>() / cpus.len() as f32
+                    cpus.iter().map(sysinfo::Cpu::cpu_usage).sum::<f32>() / cpus.len() as f32
                 };
                 let current_mem_mb = (sys.used_memory() / (1024 * 1024)) as u32;
 

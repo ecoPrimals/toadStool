@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn test_toadstool_id_debug() {
         let id = ToadStoolId::new();
-        let debug_str = format!("{:?}", id);
+        let debug_str = format!("{id:?}");
         assert!(!debug_str.is_empty());
     }
 

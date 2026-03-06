@@ -48,6 +48,8 @@ doc = false  # Avoid doc collision with toadstool lib (target/doc/toadstool/inde
 # Core ToadStool crates
 toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
+toadstool-core = { path = "../toadstool-core" }
+toadstool-display = { path = "../runtime/display" }
 toadstool-config = { path = "../core/config" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-server = { path = "../server" }  # UniBin Phase 2: Server library integration (library compiles!)

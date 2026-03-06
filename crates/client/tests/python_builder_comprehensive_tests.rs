@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for Python workload builder
-//!
-//! Week 14 Day 3: Python Builder Tests
-//! Target: Achieve 80%+ coverage of client/builders/python.rs
+//! Comprehensive tests for Python workload builder.
 
 use std::collections::HashMap;
 use std::time::Duration;
