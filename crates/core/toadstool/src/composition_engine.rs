@@ -136,6 +136,7 @@ impl CompositionEngine {
 
         // Update stats
         #[allow(clippy::cast_precision_loss)]
+        // Intentional: millis to f64 for stats; precision sufficient
         let duration_ms = start.elapsed().as_millis() as f64;
         self.update_stats(&evaluation, duration_ms).await;
 
@@ -233,6 +234,7 @@ impl CompositionEngine {
                 } else {
                     // Partial satisfaction based on how close we are
                     #[allow(clippy::cast_precision_loss)]
+                    // Intentional: ratio for partial score; precision sufficient
                     let ratio = *preferred_ms as f64 / estimated_latency as f64;
                     ConstraintSatisfaction::Partial(ratio.min(1.0))
                 }
@@ -482,6 +484,7 @@ impl CompositionEngine {
                 let total: f64 = soft_results.iter().map(|s| s.score()).sum();
                 let len = soft_results.len();
                 #[allow(clippy::cast_precision_loss)]
+                // Intentional: len to f64 for average; precision sufficient
                 let result = total / len as f64;
                 result
             }
@@ -506,6 +509,7 @@ impl CompositionEngine {
 
         // Update running average
         #[allow(clippy::cast_precision_loss)]
+        // Intentional: count to f64 for average; precision sufficient
         let total = stats.total_evaluations as f64;
         stats.avg_evaluation_ms = ((stats.avg_evaluation_ms * (total - 1.0)) + duration_ms) / total;
     }

@@ -345,6 +345,7 @@ fn calculate_throughput(bytes: usize, seconds: f64) -> f64 {
     }
 
     #[allow(clippy::cast_precision_loss)]
+    // Intentional: bytes to MB conversion; precision loss acceptable
     let megabytes = bytes as f64 / 1_048_576.0;
     megabytes / seconds
 }
@@ -523,20 +524,20 @@ mod tests {
 
     #[test]
     fn test_estimate_npu_requirement_sizes() {
-        let data_5k = vec![0u8; 5_000];
-        let p = ModelProgram::new(data_5k);
+        let small = vec![0u8; 5_000];
+        let p = ModelProgram::new(small);
         assert_eq!(p.npus_required, 1);
 
-        let data_50k = vec![0u8; 50_000];
-        let p = ModelProgram::new(data_50k);
+        let medium = vec![0u8; 50_000];
+        let p = ModelProgram::new(medium);
         assert_eq!(p.npus_required, 10);
 
-        let data_200k = vec![0u8; 200_000];
-        let p = ModelProgram::new(data_200k);
+        let large = vec![0u8; 200_000];
+        let p = ModelProgram::new(large);
         assert_eq!(p.npus_required, 20);
 
-        let data_2m = vec![0u8; 2_000_000];
-        let p = ModelProgram::new(data_2m);
+        let huge = vec![0u8; 2_000_000];
+        let p = ModelProgram::new(huge);
         assert_eq!(p.npus_required, 80);
     }
 

@@ -327,10 +327,6 @@ mod tests {
     fn test_mmap_region_size_accessors() {
         // MmapRegion::new requires real PCIe device - test documented invariants
         // size(), pcie_address(), bar_index() return stored values
-        assert!(
-            true,
-            "MmapRegion invariants: size>0, bounds checked on read/write"
-        );
     }
 
     #[test]

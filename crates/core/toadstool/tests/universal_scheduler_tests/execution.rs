@@ -675,7 +675,7 @@ async fn test_execute_primal_with_provider_success() {
             .output
             .stdout
             .as_ref()
-            .map_or(false, |s| s.to_lowercase().contains("primal")),
+            .is_some_and(|s| s.to_lowercase().contains("primal")),
         "stdout: {:?}",
         response.output.stdout
     );
@@ -805,7 +805,7 @@ async fn test_execute_biome_os_with_provider_success() {
         .output
         .stdout
         .as_ref()
-        .map_or(false, |s| s.contains("BiomeOS")));
+        .is_some_and(|s| s.contains("BiomeOS")));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

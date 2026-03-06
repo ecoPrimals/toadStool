@@ -8,6 +8,7 @@ use tracing::info;
 use crate::{CliContext, Result};
 
 use super::definitions::Commands;
+use crate::executor::RunBiomeOptions;
 use crate::Cli;
 
 mod biome;
@@ -31,17 +32,16 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             memory_limit,
             security,
         } => {
-            biome::execute_run(
-                ctx,
-                manifest.clone(),
-                name.clone(),
-                env.clone(),
-                *debug,
-                *cpu_limit,
-                memory_limit.clone(),
-                security.clone(),
-            )
-            .await?;
+            let opts = RunBiomeOptions {
+                manifest_path: manifest.clone(),
+                name: name.clone(),
+                env: env.clone(),
+                debug: *debug,
+                cpu_limit: *cpu_limit,
+                memory_limit: memory_limit.clone(),
+                security: security.clone(),
+            };
+            biome::execute_run(ctx, opts).await?;
         }
 
         Commands::Up {

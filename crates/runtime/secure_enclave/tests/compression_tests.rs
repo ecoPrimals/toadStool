@@ -17,9 +17,9 @@ fn compress_lz4(data: &[u8]) -> Vec<u8> {
     lz4_flex::block::compress_prepend_size(data)
 }
 
-// Helper: Create Zstd compressed data (using zstd crate for test data only)
+// Helper: Create Zstd compressed data (using ruzstd - Pure Rust, no C deps!)
 fn compress_zstd(data: &[u8]) -> Vec<u8> {
-    zstd::encode_all(data, 3).expect("zstd compression for test data")
+    ruzstd::encoding::compress_to_vec(data, ruzstd::encoding::CompressionLevel::Fastest)
 }
 
 // =============================================================================

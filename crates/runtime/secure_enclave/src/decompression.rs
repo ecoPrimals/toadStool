@@ -190,8 +190,11 @@ mod tests {
         // Use larger, repetitive data for realistic compression
         let original = b"Hello, world! ".repeat(100); // ~1.3KB repetitive data
 
-        // Compress with zstd crate for testing
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        // Compress with ruzstd (Pure Rust) for testing
+        let compressed = ruzstd::encoding::compress_to_vec(
+            &original[..],
+            ruzstd::encoding::CompressionLevel::Fastest,
+        );
 
         // Decompress in isolated memory
         let (memory, stats) = decompress_isolated(
@@ -236,8 +239,11 @@ mod tests {
     fn test_size_mismatch_error() {
         let original = b"Test data";
 
-        // Compress with ruzstd
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        // Compress with ruzstd (Pure Rust)
+        let compressed = ruzstd::encoding::compress_to_vec(
+            &original[..],
+            ruzstd::encoding::CompressionLevel::Fastest,
+        );
 
         // Expect wrong size
         let result = decompress_isolated(
@@ -253,8 +259,11 @@ mod tests {
     fn test_decompression_stats() {
         let original = vec![0u8; 1024 * 1024]; // 1MB of zeros (highly compressible)
 
-        // Compress with ruzstd
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        // Compress with ruzstd (Pure Rust)
+        let compressed = ruzstd::encoding::compress_to_vec(
+            &original[..],
+            ruzstd::encoding::CompressionLevel::Fastest,
+        );
 
         let (_memory, stats) =
             decompress_isolated(&compressed, CompressionAlgorithm::Zstd, None).unwrap();
@@ -268,8 +277,11 @@ mod tests {
     fn test_memory_isolation() {
         let original = b"Sensitive data";
 
-        // Compress with ruzstd
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        // Compress with ruzstd (Pure Rust)
+        let compressed = ruzstd::encoding::compress_to_vec(
+            &original[..],
+            ruzstd::encoding::CompressionLevel::Fastest,
+        );
 
         let (mut memory, _stats) =
             decompress_isolated(&compressed, CompressionAlgorithm::Zstd, None).unwrap();

@@ -13,6 +13,9 @@
 //! access. `std::alloc::alloc_zeroed` with a custom layout is the standard approach.
 //! External crates (e.g. `aligned-vec`) exist but use std::alloc internally; we avoid
 //! the dependency and document the unsafe invariants explicitly.
+//!
+//! **Audit (2026)**: Verified that `Vec<u8>` cannot provide 64-byte alignment — std has
+//! no API for custom-aligned Vec; `Layout::from_size_align` + raw alloc is necessary.
 
 use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, CpuAllocation, UnifiedMemoryBackend},

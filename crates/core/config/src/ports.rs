@@ -58,6 +58,9 @@ pub mod discovery_fallback {
 
     /// BiomeOS integration - default port for `BIOMEOS_PORT` env fallback
     pub const DEFAULT_BIOMEOS_DISCOVERY_PORT: u16 = 8088;
+
+    /// BiomeOS primary port - default for `BIOMEOS_PORT` env (ecosystem discovery)
+    pub const DEFAULT_BIOMEOS_PRIMARY_PORT: u16 = 8005;
 }
 
 /// Default ports for other primals (for fallback only)

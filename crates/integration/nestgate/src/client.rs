@@ -29,7 +29,7 @@ use uuid::Uuid;
 
 use toadstool_common::primal_identity::{Capability, StorageCapability};
 use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
-#[allow(deprecated)]
+#[allow(deprecated)] // NESTGATE constant deprecated; migration in progress
 use toadstool_config::constants::primals::NESTGATE;
 
 use crate::config::NestGateConfig;
@@ -147,7 +147,7 @@ impl StorageClient {
     ///
     /// # Errors
     /// Returns an error if the client configuration is invalid or connection fails
-    #[allow(deprecated)]
+    #[allow(deprecated)] // connect() uses deprecated discovery; migration in progress
     pub async fn connect(service_name: &str) -> NestGateResult<Self> {
         let socket = toadstool_common::primal_sockets::get_socket_path_for_service(service_name);
         let config = NestGateConfig {
@@ -175,7 +175,7 @@ impl StorageClient {
         let service_name = service_name.unwrap_or_else(|| {
             // Fallback for backward compatibility
             // In production, prefer using discover() which provides the service name
-            #[allow(deprecated)]
+            #[allow(deprecated)] // Service name fallback deprecated; migration in progress
             NESTGATE.to_string()
         });
 

@@ -5,7 +5,40 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 6, 2026 (Sessions 43-96 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline)
+## [Unreleased] - March 6, 2026 (Sessions 43-97 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline)
+
+### Session S97 (Mar 6, 2026) — Spring Absorption: toadStool Evolutions
+
+#### GPU Adapter Evolution
+- **`f64_compute_unreliable`** flag on `GpuAdapterInfo` — detects NVK Volta (Titan V, Tesla V100, Quadro GV100) where f64 compute returns zeros
+- **`has_reliable_f64()`** API — safe check for reliable f64 compute
+- **`min_subgroup_size` / `max_subgroup_size`** fields — warp/wavefront size for workgroup tuning
+- **`max_2d_dispatch()`** helper — maximum safe 2D dispatch dimensions
+- `HardwareFingerprint::from_adapter_info` excludes `F64Native` for NVK Volta
+
+#### NPU Evolution (hotSpring absorption)
+- **`ProxyFeature`** struct — named typed measurement for adaptive simulation control
+- **`AdaptiveSimulationController`** trait — higher-level NPU worker pattern
+- **`NpuInferenceRequest`** struct — typed inference request with priority/batch hints
+- **`dispatch_request()`** default method on `NpuDispatch` trait
+
+#### Science IPC Namespace
+- **10 `science.*` JSON-RPC methods**: compute (submit/status/result/cancel), gpu (dispatch/capabilities), npu (dispatch/capabilities), substrate (discover/probe)
+- Semantic registry + handler implementations + capability advertisement
+- 57 total JSON-RPC methods (was 47)
+
+#### ecoBin Compliance
+- `ring` C FFI completely removed from `Cargo.lock` (reqwest dev-dep removed)
+- `zstd` C FFI replaced with `ruzstd` (pure Rust) in secure_enclave tests/benches
+- 39 clippy warnings resolved; all `#[allow]` justified
+
+#### Test Coverage
+- +59 tests: auto_config hardware (31), server handler (9), GPU adapter (5), toadstool-core (5), semantic registry (9)
+- ~85% line coverage (was ~84%)
+
+#### Hardcoding Evolved
+- BiomeOS ports `[8005, 8085, 9005]` → `config.network.biomeos_port`
+- V4L2 unsafe evolved: `mem::zeroed()` → `MaybeUninit::zeroed().assume_init()`
 
 ### Sessions S95–S96 (Mar 6, 2026) — Spring Absorption + Sovereign Pipeline + Debris Cleanup
 

@@ -291,7 +291,7 @@ impl MonitoringSystem {
         });
     }
 
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async)] // Trait method; sync implementation; async for API consistency
     async fn collect_system_health(&self) -> Result<SystemHealth> {
         let sys_collector = SystemMetricsCollector::new();
         let batch = sys_collector.collect()?;
@@ -431,7 +431,7 @@ impl MonitoringSystem {
         Ok(biomes)
     }
 
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async)] // Trait method; sync implementation; async for API consistency
     async fn collect_resource_usage(&self) -> Result<SystemResourceUsage> {
         let mut system = sysinfo::System::new_all();
         system.refresh_all();
@@ -475,7 +475,7 @@ impl MonitoringSystem {
         })
     }
 
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async)] // Trait method; sync implementation; async for API consistency
     async fn get_active_alerts(&self) -> Result<Vec<ActiveAlert>> {
         let rules = self.alert_rules.read().await;
         let health = self.collect_system_health().await?;
@@ -528,7 +528,7 @@ impl MonitoringSystem {
         Ok(alerts)
     }
 
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async)] // Trait method; sync implementation; async for API consistency
     async fn collect_performance_metrics(&self) -> Result<PerformanceMetrics> {
         let sessions = self.sessions.read().await;
         let active = sessions
@@ -748,7 +748,6 @@ mod tests {
             .await
             .expect("create monitoring system");
         // System is created with default collectors and alert rules
-        assert!(true, "MonitoringSystem created");
         drop(system);
     }
 
@@ -835,7 +834,6 @@ mod tests {
         let _system = MonitoringTarget::System;
         let _platform = MonitoringTarget::Platform("linux".to_string());
         let _fed = MonitoringTarget::Federation;
-        assert!(true);
     }
 
     #[tokio::test]
@@ -844,7 +842,6 @@ mod tests {
         let _paused = SessionStatus::Paused;
         let _stopped = SessionStatus::Stopped;
         let _err = SessionStatus::Error("test".to_string());
-        assert!(true);
     }
 
     #[test]

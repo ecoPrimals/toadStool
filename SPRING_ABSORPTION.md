@@ -1,8 +1,8 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 3, 2026 — Session 94b  
-**Sources**: hotSpring (S68+V0615), neuralSpring (V64+V70), wetSpring (V82+V86+V88), airSpring (V039+V045+V052), groundSpring (V54+V61), wateringHole (updated MAR03)  
-**S94b**: NpuParameterController trait absorbed from hotSpring. Multi-adapter GPU selection absorbed from hotSpring.
+**Date**: March 6, 2026 — Session 97  
+**Sources**: hotSpring (v0.6.17), neuralSpring (V86/S128), wetSpring (V97d), airSpring (V071), groundSpring (V80), wateringHole (updated MAR06)  
+**S97**: NVK Volta f64 probe, subgroup detection, AdaptiveSimulationController, science.* IPC namespace, GPU adapter evolution. 6,176 tests, 0 warnings.
 
 ## S83 Execution Log — Cross-Spring Evolution & Shader Completion
 
@@ -460,6 +460,48 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 - **Device resilience**: All device.poll() paths protected by catch_unwind; errors propagate as Result
 - **NAK sovereignty**: Pure Rust shader pipeline (naga → SPIR-V) bypasses NAK entirely
 - **metalForge = silicon**: Hardware characterization, not Apple Metal. All GPU work is WGSL via wgpu.
+
+---
+
+## S97 Spring Absorption — toadStool Evolutions
+
+### GPU Adapter Discovery (NVK Volta f64 probe)
+- ✅ `f64_compute_unreliable: bool` field on `GpuAdapterInfo` — flags NVK Volta (Titan V, Tesla V100, Quadro GV100) where f64 compute returns zeros despite `SHADER_F64` being advertised
+- ✅ `has_reliable_f64()` method — returns `supports_shader_f64 && !f64_compute_unreliable`; springs use this instead of raw `supports_shader_f64`
+- ✅ `HardwareFingerprint::from_adapter_info` — NVK Volta omits `F64Native` from capabilities, sets `estimated_tflops_f64 = 0.0`
+- ✅ `min_subgroup_size` / `max_subgroup_size` fields on `GpuAdapterInfo` — exposes warp/wavefront size for workgroup tuning
+- ✅ `max_2d_dispatch()` method — returns max 2D dispatch dimensions for NVK workgroup limits
+- ✅ 5 new tests (f64 unreliable NVK Volta, reliable non-Volta, has_reliable_f64, subgroup, 2D dispatch)
+
+### NpuDispatch Evolution (hotSpring absorption)
+- ✅ `ProxyFeature` struct — named typed measurement for adaptive simulation control (name, value, target, weight)
+- ✅ `ProxyFeatureSet` type alias — `Vec<ProxyFeature>`
+- ✅ `ProxyFeature` builder — `new()`, `with_target()`, `with_weight()`
+- ✅ `AdaptiveSimulationController` trait — higher-level trait absorbing hotSpring's NPU worker pattern: `observe_features()`, `suggest_params()`, `is_warmed_up()`, `reset()`
+- ✅ `NpuInferenceRequest` struct — typed inference request with model, input, batch_size_hint, priority
+- ✅ `dispatch_request()` default method on `NpuDispatch` trait — delegates to `dispatch()` with typed request
+- ✅ 5 new tests (ProxyFeature construction, builder, set alias, NpuInferenceRequest)
+
+### Science JSON-RPC Namespace (wetSpring IPC)
+- ✅ 10 `science.*` methods registered in `SemanticMethodRegistry`:
+  - `science.compute.submit/status/result/cancel` — scientific workload lifecycle
+  - `science.gpu.dispatch/capabilities` — GPU compute for science
+  - `science.npu.dispatch/capabilities` — NPU inference for science
+  - `science.substrate.discover/probe` — substrate discovery
+- ✅ All 10 methods wired in JSON-RPC handler with implementations
+- ✅ `discover_capabilities` includes `"science"` in `node_capabilities`
+- ✅ 9 new handler tests (science capabilities, structure, dispatch routing)
+
+### Test Coverage Expansion
+- ✅ `auto_config/hardware/cpu.rs` — 11 tests: parsing /proc/cpuinfo, scoring, serialization
+- ✅ `auto_config/hardware/gpu.rs` — 11 tests: nvidia-smi parsing, vendor detection, scoring
+- ✅ `auto_config/hardware/memory.rs` — 9 tests: /proc/meminfo parsing, scoring
+- ✅ `server/pure_jsonrpc/handler/mod.rs` — 9 tests: science methods, health, version, capabilities
+
+### Quality Gates
+- ✅ `cargo clippy --workspace --all-targets`: 0 warnings
+- ✅ `cargo test --workspace --lib`: 6,176 passed, 0 failed (up from 6,117)
+- ✅ All science methods route correctly through both direct and semantic paths
 
 ---
 

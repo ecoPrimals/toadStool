@@ -62,7 +62,8 @@ fn bench_zstd_decompression(c: &mut Criterion) {
 
     for (size, label) in &sizes {
         let data = vec![42u8; *size];
-        let compressed = zstd::encode_all(&data[..], 3).unwrap();
+        let compressed =
+            ruzstd::encoding::compress_to_vec(&*data, ruzstd::encoding::CompressionLevel::Fastest);
 
         group.throughput(Throughput::Bytes(*size as u64));
         group.bench_with_input(
@@ -165,7 +166,8 @@ fn bench_complete_workflow(c: &mut Criterion) {
     let mut group = c.benchmark_group("complete_workflow");
 
     let data = vec![42u8; 10_240]; // 10KB
-    let compressed = zstd::encode_all(&data[..], 3).unwrap();
+    let compressed =
+        ruzstd::encoding::compress_to_vec(&*data, ruzstd::encoding::CompressionLevel::Fastest);
 
     group.throughput(Throughput::Bytes(data.len() as u64));
     group.bench_function("decompress_process_audit", |b| {

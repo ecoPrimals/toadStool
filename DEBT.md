@@ -74,7 +74,8 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 18,028 tests pass. ~84% line coverage. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
+| D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
+| D-COV | Test coverage → 90% | Medium | ~85% line coverage. 6,176 lib tests (18,028+ total workspace). Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
 

@@ -80,6 +80,9 @@ pub struct NetworkEnvConfig {
         note = "Use RuntimeDiscovery for capability-based service discovery"
     )]
     pub squirrel_port: u16,
+
+    /// BiomeOS primary port (ecosystem discovery)
+    pub biomeos_port: u16,
 }
 
 impl NetworkEnvConfig {
@@ -107,6 +110,10 @@ impl NetworkEnvConfig {
             squirrel_port: get_primal_port(
                 "SQUIRREL",
                 discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT,
+            ),
+            biomeos_port: get_primal_port(
+                "BIOMEOS",
+                discovery_fallback::DEFAULT_BIOMEOS_PRIMARY_PORT,
             ),
             toadstool_port: loader.get_u16("TOADSTOOL_PORT", crate::defaults::network::API_PORT),
             federation_port: loader

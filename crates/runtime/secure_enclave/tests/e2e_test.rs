@@ -17,7 +17,10 @@ fn test_e2e_decompress_and_process() {
 
     // Step 1: Prepare compressed data (simulating NestGate output)
     let original_data = b"Sensitive medical data. ".repeat(100); // ~2.4KB
-    let compressed = zstd::encode_all(&original_data[..], 3).unwrap();
+    let compressed = ruzstd::encoding::compress_to_vec(
+        &original_data[..],
+        ruzstd::encoding::CompressionLevel::Fastest,
+    );
 
     println!(
         "Compressed: {} bytes → {} bytes ({:.1}% ratio)",
@@ -103,7 +106,10 @@ fn test_e2e_compress_encrypt_process() {
     let sensitive = b"Patient genome sequence ACTG".repeat(50); // ~1.4KB
 
     // Step 1: Compress (NestGate)
-    let compressed = zstd::encode_all(&sensitive[..], 3).unwrap();
+    let compressed = ruzstd::encoding::compress_to_vec(
+        &sensitive[..],
+        ruzstd::encoding::CompressionLevel::Fastest,
+    );
     println!(
         "NestGate compression: {} → {} bytes",
         sensitive.len(),
@@ -175,7 +181,10 @@ fn test_e2e_performance_monitoring() {
 
     // Large data (10MB of repetitive data)
     let large_data = vec![42u8; 10 * 1024 * 1024];
-    let compressed = zstd::encode_all(&large_data[..], 3).unwrap();
+    let compressed = ruzstd::encoding::compress_to_vec(
+        &large_data[..],
+        ruzstd::encoding::CompressionLevel::Fastest,
+    );
 
     println!("Data size: {} MB", large_data.len() / 1024 / 1024);
     println!(

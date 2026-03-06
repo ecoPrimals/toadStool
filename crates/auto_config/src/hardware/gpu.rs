@@ -45,37 +45,45 @@ pub async fn detect_gpus(_detector: &HardwareDetector) -> ToadStoolResult<Vec<Gp
     Ok(gpus)
 }
 
-/// Detect NVIDIA GPUs
-async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
+/// Parse nvidia-smi CSV output (--format=csv,noheader,nounits).
+/// Columns: name, memory.total (MB), driver_version
+pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
     let mut gpus = Vec::new();
 
-    if let Ok(output) = tokio::process::Command::new("nvidia-smi")
+    for line in output.lines() {
+        let parts: Vec<&str> = line.split(',').map(str::trim).collect();
+        if parts.len() >= 3 {
+            let name = parts[0].to_string();
+            let mem_mb = parts[1].parse::<f64>().unwrap_or(0.0);
+            let memory_gb = mem_mb / 1024.0;
+
+            gpus.push(GpuInfo {
+                name: name.clone(),
+                vendor: "NVIDIA".to_string(),
+                memory_gb,
+                driver_version: "unknown".to_string(),
+                compute_capability: get_nvidia_compute_capability(&name),
+                supports_cuda: true,
+                supports_opencl: true,
+            });
+        }
+    }
+
+    gpus
+}
+
+/// Detect NVIDIA GPUs
+async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
+    let gpus = if let Ok(output) = tokio::process::Command::new("nvidia-smi")
         .arg("--query-gpu=name,memory.total,driver_version")
         .arg("--format=csv,noheader,nounits")
         .output()
         .await
     {
-        let output_str = String::from_utf8_lossy(&output.stdout);
-        for line in output_str.lines() {
-            let parts: Vec<&str> = line.split(',').map(str::trim).collect();
-            if parts.len() >= 3 {
-                let name = parts[0].to_string();
-                let mem_mb = parts[1].parse::<f64>().unwrap_or(0.0);
-                let memory_gb = mem_mb / 1024.0;
-                let _driver_version = parts[2].to_string();
-
-                gpus.push(GpuInfo {
-                    name: name.clone(),
-                    vendor: "NVIDIA".to_string(),
-                    memory_gb,
-                    driver_version: "unknown".to_string(),
-                    compute_capability: get_nvidia_compute_capability(&name),
-                    supports_cuda: true,
-                    supports_opencl: true,
-                });
-            }
-        }
-    }
+        parse_nvidia_smi_csv(&String::from_utf8_lossy(&output.stdout))
+    } else {
+        Vec::new()
+    };
 
     Ok(gpus)
 }
@@ -131,8 +139,8 @@ async fn detect_intel_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
     Ok(gpus)
 }
 
-/// Get NVIDIA compute capability
-fn get_nvidia_compute_capability(gpu_name: &str) -> String {
+/// Get NVIDIA compute capability from GPU name
+pub(crate) fn get_nvidia_compute_capability(gpu_name: &str) -> String {
     // Simplified mapping of GPU names to compute capabilities
     if gpu_name.contains("RTX 40") || gpu_name.contains("4090") || gpu_name.contains("4080") {
         "8.9".to_string()
@@ -180,4 +188,203 @@ pub fn calculate_gpu_score(gpu_info: &[GpuInfo]) -> f64 {
     let compute_score = if best_gpu.supports_cuda { 10.0 } else { 5.0 };
 
     memory_score + vendor_score + compute_score
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gpu_info_serialization() {
+        let gpu = GpuInfo {
+            name: "NVIDIA GeForce RTX 4090".to_string(),
+            vendor: "NVIDIA".to_string(),
+            memory_gb: 24.0,
+            driver_version: "535.0".to_string(),
+            compute_capability: "8.9".to_string(),
+            supports_cuda: true,
+            supports_opencl: true,
+        };
+
+        let json = serde_json::to_string(&gpu).unwrap();
+        let deserialized: GpuInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name, gpu.name);
+        assert_eq!(deserialized.vendor, gpu.vendor);
+        assert!((deserialized.memory_gb - gpu.memory_gb).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_get_nvidia_compute_capability_rtx40() {
+        assert_eq!(
+            get_nvidia_compute_capability("NVIDIA GeForce RTX 4090"),
+            "8.9"
+        );
+        assert_eq!(get_nvidia_compute_capability("RTX 4080"), "8.9");
+        assert_eq!(get_nvidia_compute_capability("RTX 40 Series"), "8.9");
+    }
+
+    #[test]
+    fn test_get_nvidia_compute_capability_rtx30() {
+        assert_eq!(
+            get_nvidia_compute_capability("NVIDIA GeForce RTX 3090"),
+            "8.6"
+        );
+        assert_eq!(get_nvidia_compute_capability("RTX 3080"), "8.6");
+    }
+
+    #[test]
+    fn test_get_nvidia_compute_capability_rtx20() {
+        assert_eq!(get_nvidia_compute_capability("RTX 2080 Ti"), "7.5");
+        assert_eq!(get_nvidia_compute_capability("GTX 1660"), "7.5");
+        assert_eq!(get_nvidia_compute_capability("GTX 1650"), "7.5");
+    }
+
+    #[test]
+    fn test_get_nvidia_compute_capability_gtx10() {
+        assert_eq!(get_nvidia_compute_capability("GTX 1080"), "6.1");
+        assert_eq!(get_nvidia_compute_capability("GTX 1070"), "6.1");
+    }
+
+    #[test]
+    fn test_get_nvidia_compute_capability_unknown() {
+        assert_eq!(get_nvidia_compute_capability("Unknown GPU"), "Unknown");
+        assert_eq!(get_nvidia_compute_capability("Quadro K2000"), "Unknown");
+    }
+
+    #[test]
+    fn test_parse_nvidia_smi_csv_single_gpu() {
+        let output = "NVIDIA GeForce RTX 4090, 24576, 535.54.03";
+        let gpus = parse_nvidia_smi_csv(output);
+        assert_eq!(gpus.len(), 1);
+        assert_eq!(gpus[0].name, "NVIDIA GeForce RTX 4090");
+        assert!((gpus[0].memory_gb - 24.0).abs() < 0.1);
+        assert_eq!(gpus[0].vendor, "NVIDIA");
+        assert_eq!(gpus[0].compute_capability, "8.9");
+        assert!(gpus[0].supports_cuda);
+    }
+
+    #[test]
+    fn test_parse_nvidia_smi_csv_multiple_gpus() {
+        let output = "NVIDIA GeForce RTX 3080, 10240, 535.0\nNVIDIA GeForce RTX 2080, 8192, 535.0";
+        let gpus = parse_nvidia_smi_csv(output);
+        assert_eq!(gpus.len(), 2);
+        assert_eq!(gpus[0].name, "NVIDIA GeForce RTX 3080");
+        assert!((gpus[0].memory_gb - 10.0).abs() < 0.1);
+        assert_eq!(gpus[1].name, "NVIDIA GeForce RTX 2080");
+        assert!((gpus[1].memory_gb - 8.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_parse_nvidia_smi_csv_empty() {
+        let gpus = parse_nvidia_smi_csv("");
+        assert!(gpus.is_empty());
+    }
+
+    #[test]
+    fn test_parse_nvidia_smi_csv_invalid_memory() {
+        let output = "NVIDIA GeForce RTX 4090, invalid, 535.0";
+        let gpus = parse_nvidia_smi_csv(output);
+        assert_eq!(gpus.len(), 1);
+        assert!((gpus[0].memory_gb - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_parse_nvidia_smi_csv_too_few_columns() {
+        let output = "NVIDIA GeForce RTX 4090, 24576";
+        let gpus = parse_nvidia_smi_csv(output);
+        assert!(gpus.is_empty());
+    }
+
+    #[test]
+    fn test_calculate_gpu_score_empty() {
+        let score = calculate_gpu_score(&[]);
+        assert!((score - 20.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_calculate_gpu_score_nvidia() {
+        let gpus = vec![GpuInfo {
+            name: "NVIDIA GeForce RTX 4090".to_string(),
+            vendor: "NVIDIA".to_string(),
+            memory_gb: 24.0,
+            driver_version: "535.0".to_string(),
+            compute_capability: "8.9".to_string(),
+            supports_cuda: true,
+            supports_opencl: true,
+        }];
+        let score = calculate_gpu_score(&gpus);
+        assert!(score >= 90.0);
+    }
+
+    #[test]
+    fn test_calculate_gpu_score_amd() {
+        let gpus = vec![GpuInfo {
+            name: "AMD Radeon RX 7900 XTX".to_string(),
+            vendor: "AMD".to_string(),
+            memory_gb: 24.0,
+            driver_version: "Unknown".to_string(),
+            compute_capability: "RDNA".to_string(),
+            supports_cuda: false,
+            supports_opencl: true,
+        }];
+        let score = calculate_gpu_score(&gpus);
+        assert!(score >= 80.0);
+    }
+
+    #[test]
+    fn test_calculate_gpu_score_intel() {
+        let gpus = vec![GpuInfo {
+            name: "Intel Integrated Graphics".to_string(),
+            vendor: "Intel".to_string(),
+            memory_gb: 2.0,
+            driver_version: "Unknown".to_string(),
+            compute_capability: "Gen9+".to_string(),
+            supports_cuda: false,
+            supports_opencl: true,
+        }];
+        let score = calculate_gpu_score(&gpus);
+        assert!(score >= 20.0);
+        assert!(score < 50.0);
+    }
+
+    #[test]
+    fn test_calculate_gpu_score_unknown_vendor() {
+        let gpus = vec![GpuInfo {
+            name: "Unknown GPU".to_string(),
+            vendor: "Other".to_string(),
+            memory_gb: 8.0,
+            driver_version: "Unknown".to_string(),
+            compute_capability: "Unknown".to_string(),
+            supports_cuda: false,
+            supports_opencl: false,
+        }];
+        let score = calculate_gpu_score(&gpus);
+        assert!(score >= 15.0);
+    }
+
+    #[test]
+    fn test_calculate_gpu_score_picks_best_by_memory() {
+        let gpus = vec![
+            GpuInfo {
+                name: "NVIDIA GTX 1060".to_string(),
+                vendor: "NVIDIA".to_string(),
+                memory_gb: 6.0,
+                driver_version: "535.0".to_string(),
+                compute_capability: "6.1".to_string(),
+                supports_cuda: true,
+                supports_opencl: true,
+            },
+            GpuInfo {
+                name: "NVIDIA GeForce RTX 4090".to_string(),
+                vendor: "NVIDIA".to_string(),
+                memory_gb: 24.0,
+                driver_version: "535.0".to_string(),
+                compute_capability: "8.9".to_string(),
+                supports_cuda: true,
+                supports_opencl: true,
+            },
+        ];
+        let score = calculate_gpu_score(&gpus);
+        assert!(score >= 90.0);
+    }
 }

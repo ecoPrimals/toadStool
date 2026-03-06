@@ -54,6 +54,7 @@ impl BiomeExecutor {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     pub(super) async fn execute_wasm_module(
         &self,
         module_data: &[u8],

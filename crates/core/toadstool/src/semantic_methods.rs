@@ -168,6 +168,24 @@ impl SemanticMethodRegistry {
         add_mapping("runtime.workload.result", "get_workload_result");
         add_mapping("runtime.workload.list", "list_workloads");
 
+        // ═══════════════════════════════════════════════════════════
+        // SCIENCE DOMAIN - Scientific compute IPC for springs
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("science.compute.submit", "science_compute_submit");
+        add_mapping("science.compute.status", "science_compute_status");
+        add_mapping("science.compute.result", "science_compute_result");
+        add_mapping("science.compute.cancel", "science_compute_cancel");
+
+        add_mapping("science.gpu.dispatch", "science_gpu_dispatch");
+        add_mapping("science.gpu.capabilities", "science_gpu_capabilities");
+
+        add_mapping("science.npu.dispatch", "science_npu_dispatch");
+        add_mapping("science.npu.capabilities", "science_npu_capabilities");
+
+        add_mapping("science.substrate.discover", "science_substrate_discover");
+        add_mapping("science.substrate.probe", "science_substrate_probe");
+
         Self { aliases, reverse }
     }
 
@@ -418,6 +436,42 @@ mod tests {
         assert_eq!(
             registry.resolve("compute.gpu.execute"),
             Some("run_gpu_compute")
+        );
+    }
+
+    #[test]
+    fn test_science_domain_resolution() {
+        let registry = SemanticMethodRegistry::new();
+
+        assert_eq!(
+            registry.resolve("science.compute.submit"),
+            Some("science_compute_submit")
+        );
+        assert_eq!(
+            registry.resolve("science.gpu.dispatch"),
+            Some("science_gpu_dispatch")
+        );
+        assert_eq!(
+            registry.resolve("science.npu.dispatch"),
+            Some("science_npu_dispatch")
+        );
+        assert_eq!(
+            registry.resolve("science.substrate.discover"),
+            Some("science_substrate_discover")
+        );
+    }
+
+    #[test]
+    fn test_science_domain_reverse() {
+        let registry = SemanticMethodRegistry::new();
+
+        assert_eq!(
+            registry.get_semantic("science_gpu_capabilities"),
+            Some("science.gpu.capabilities")
+        );
+        assert_eq!(
+            registry.get_semantic("science_npu_dispatch"),
+            Some("science.npu.dispatch")
         );
     }
 

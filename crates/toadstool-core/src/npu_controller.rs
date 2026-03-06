@@ -14,6 +14,52 @@
 
 use std::fmt::Debug;
 
+/// A single proxy measurement from the simulation state.
+///
+/// NPU controllers observe these to make parameter suggestions.
+/// Generalizes hotSpring's `ProxyFeatures` pattern for adaptive simulation steering.
+#[derive(Debug, Clone)]
+pub struct ProxyFeature {
+    /// Feature name (e.g. "acceptance_rate", "residual_norm", "energy_drift").
+    pub name: &'static str,
+    /// Current value.
+    pub value: f64,
+    /// Optional target value (controller tries to steer toward this).
+    pub target: Option<f64>,
+    /// Weight for multi-feature observation (1.0 = default).
+    pub weight: f64,
+}
+
+impl ProxyFeature {
+    /// Create a proxy feature with name and value.
+    #[must_use]
+    pub fn new(name: &'static str, value: f64) -> Self {
+        Self {
+            name,
+            value,
+            target: None,
+            weight: 1.0,
+        }
+    }
+
+    /// Set the target value the controller should steer toward.
+    #[must_use]
+    pub fn with_target(mut self, target: f64) -> Self {
+        self.target = Some(target);
+        self
+    }
+
+    /// Set the weight for multi-feature observation.
+    #[must_use]
+    pub fn with_weight(mut self, weight: f64) -> Self {
+        self.weight = weight;
+        self
+    }
+}
+
+/// Collection of proxy features for a single observation.
+pub type ProxyFeatureSet = Vec<ProxyFeature>;
+
 /// A parameter suggestion from the NPU controller.
 ///
 /// Generic over the parameter type `P` so springs can define their own
@@ -115,6 +161,28 @@ pub trait NpuParameterController: Debug + Send {
     fn reset(&mut self);
 }
 
+/// Controller for adaptive simulation parameter tuning.
+///
+/// Absorbs the hotSpring npu_worker pattern as a generic primitive.
+/// Combines `NpuParameterController` with simulation-specific lifecycle
+/// and proxy-feature observation.
+pub trait AdaptiveSimulationController: Debug + Send {
+    /// The parameter set being tuned (e.g. timestep, n_md, temperature).
+    type Params: Debug + Clone + Send;
+
+    /// Feed proxy features from the current simulation state.
+    fn observe_features(&mut self, features: &[ProxyFeature]) -> Result<(), ControllerError>;
+
+    /// Get parameter suggestion based on accumulated observations.
+    fn suggest_params(&self) -> Result<Option<ParameterSuggestion<Self::Params>>, ControllerError>;
+
+    /// Whether the controller has enough data to make suggestions.
+    fn is_warmed_up(&self) -> bool;
+
+    /// Reset state for a new simulation run.
+    fn reset(&mut self);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,5 +219,36 @@ mod tests {
 
         let err = ControllerError::ModelNotTrained;
         assert!(err.to_string().contains("not trained"));
+    }
+
+    #[test]
+    fn test_proxy_feature_construction() {
+        let feature = ProxyFeature::new("acceptance_rate", 0.75);
+        assert_eq!(feature.name, "acceptance_rate");
+        assert!((feature.value - 0.75).abs() < f64::EPSILON);
+        assert!(feature.target.is_none());
+        assert!((feature.weight - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_proxy_feature_builder_pattern() {
+        let feature = ProxyFeature::new("residual_norm", 1e-6)
+            .with_target(1e-8)
+            .with_weight(2.0);
+        assert_eq!(feature.name, "residual_norm");
+        assert!((feature.value - 1e-6).abs() < f64::EPSILON);
+        assert_eq!(feature.target, Some(1e-8));
+        assert!((feature.weight - 2.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_proxy_feature_set_type_alias() {
+        let set: ProxyFeatureSet = vec![
+            ProxyFeature::new("energy_drift", 0.001),
+            ProxyFeature::new("acceptance_rate", 0.8).with_target(0.7),
+        ];
+        assert_eq!(set.len(), 2);
+        assert_eq!(set[0].name, "energy_drift");
+        assert_eq!(set[1].name, "acceptance_rate");
     }
 }

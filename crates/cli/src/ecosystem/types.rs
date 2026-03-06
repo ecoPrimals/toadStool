@@ -220,7 +220,7 @@ pub enum ServiceType {
     Generic,
 }
 
-#[allow(deprecated)]
+#[allow(deprecated)] // ServiceType impl; deprecated during migration to capability-based discovery
 impl ServiceType {
     /// Map to capability name (for migration)
     pub fn to_capability(&self) -> &'static str {
@@ -440,7 +440,7 @@ mod tests {
     fn test_verify_ed25519_signature_valid() {
         let context = CryptoVerificationContext::new();
         let result = context.verify_ed25519_signature(b"", &test_signature(), &test_public_key());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
     }
 
     #[test]
@@ -451,7 +451,7 @@ mod tests {
             &test_signature(),
             &test_public_key(),
         );
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
     }
 
     #[test]
@@ -499,7 +499,7 @@ mod tests {
             },
         };
         let result = context.verify_service_signature("unknown", &response);
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
     }
 
     #[test]
@@ -522,7 +522,7 @@ mod tests {
             },
         };
         let result = ctx.verify_service_signature("test", &response);
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
     }
 
     #[test]

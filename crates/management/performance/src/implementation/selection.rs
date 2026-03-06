@@ -241,15 +241,17 @@ mod tests {
             make_runtime_stats(10, Duration::from_millis(50), 80.0, 40.0, 5.0, 1.0, 90.0),
         );
         let available = vec![RuntimeType::Native, RuntimeType::Wasm];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/true"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/true"),
+                },
+                args: None,
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: None,
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -264,15 +266,17 @@ mod tests {
     fn test_select_fallback_when_no_stats() {
         let stats: HashMap<RuntimeType, RuntimeStats> = HashMap::new();
         let available = vec![RuntimeType::Native];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/true"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/true"),
+                },
+                args: None,
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: None,
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -291,15 +295,17 @@ mod tests {
             make_runtime_stats(10, Duration::from_secs(1), 100.0, 50.0, 10.0, 1.0, 80.0),
         );
         let available = vec![RuntimeType::Native, RuntimeType::Wasm];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/echo"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/echo"),
+                },
+                args: Some(vec!["hello".to_string()]),
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: Some(vec!["hello".to_string()]),
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -322,15 +328,17 @@ mod tests {
         stats.insert(RuntimeType::Native, native_stats);
         stats.insert(RuntimeType::Wasm, wasm_stats);
         let available = vec![RuntimeType::Native, RuntimeType::Wasm];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/true"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/true"),
+                },
+                args: None,
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: None,
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -353,15 +361,17 @@ mod tests {
             make_runtime_stats(10, Duration::from_secs(1), 80.0, 30.0, 5.0, 1.0, 85.0),
         );
         let available = vec![RuntimeType::Native, RuntimeType::Wasm];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/true"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/true"),
+                },
+                args: None,
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: None,
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -384,15 +394,17 @@ mod tests {
             make_runtime_stats(10, Duration::from_secs(1), 80.0, 40.0, 5.0, 1.0, 95.0),
         );
         let available = vec![RuntimeType::Native, RuntimeType::Wasm];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/true"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/true"),
+                },
+                args: None,
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: None,
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -430,15 +442,17 @@ mod tests {
             resource_availability: 0.05,
             historical_success_rate: 0.05,
         };
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/true"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/true"),
+                },
+                args: None,
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: None,
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -457,15 +471,17 @@ mod tests {
             make_runtime_stats(10, Duration::from_millis(50), 80.0, 30.0, 10.0, 1.0, 90.0),
         );
         let available = vec![RuntimeType::Wasm];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Native {
-            executable: ExecutableSource::File {
-                path: PathBuf::from("/bin/true"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("/bin/true"),
+                },
+                args: None,
+                working_dir: None,
+                env_vars: Default::default(),
+                user: None,
             },
-            args: None,
-            working_dir: None,
-            env_vars: Default::default(),
-            user: None,
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,
@@ -488,14 +504,16 @@ mod tests {
             make_runtime_stats(10, Duration::from_millis(50), 80.0, 30.0, 5.0, 1.0, 90.0),
         );
         let available = vec![RuntimeType::Native, RuntimeType::Wasm];
-        let mut request = ExecutionRequest::default();
-        request.workload = WorkloadSpec::Wasm {
-            module: WasmModuleSource::File {
-                path: PathBuf::from("/tmp/test.wasm"),
+        let request = ExecutionRequest {
+            workload: WorkloadSpec::Wasm {
+                module: WasmModuleSource::File {
+                    path: PathBuf::from("/tmp/test.wasm"),
+                },
+                args: None,
+                wasi_config: None,
+                env_vars: Default::default(),
             },
-            args: None,
-            wasi_config: None,
-            env_vars: Default::default(),
+            ..Default::default()
         };
         let selected = select_runtime_by_strategy(
             &stats,

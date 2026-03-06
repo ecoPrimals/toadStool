@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 6, 2026 -- S96
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 47 JSON-RPC methods | Hardware Transport Layer wired to daemon + CLI | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | Sovereign pipeline: HardwareFingerprint + SubstrateCapabilityKind | 40+ god files refactored | All files < 1000 lines
-**Latest**: S96 — Sovereign pipeline infrastructure (HardwareFingerprint, is_sovereign_capable, NVK allocation guard). SubstrateType expanded to 8 variants. 5 god files split. crates/api/ orphan resolved. V4L2 SAFETY docs. Debris cleanup. Root docs updated.
+**Updated**: March 6, 2026 -- S97
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 57 JSON-RPC methods | NVK Volta f64 probe active | Hardware Transport Layer wired to daemon + CLI | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | Sovereign pipeline: HardwareFingerprint + SubstrateCapabilityKind | 40+ god files refactored | All files < 1000 lines
+**Latest**: S97 — Spring absorption: NVK Volta f64 probe, subgroup detection, AdaptiveSimulationController, science.* IPC namespace (10 methods), test coverage +59.
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-18,028 tests pass. Focus areas for next push: low-coverage crates in CLI ecosystem
+~85% line coverage. 6,176 lib tests pass. Focus areas for next push: low-coverage crates in CLI ecosystem
 integration, distributed coordination, auto_config installer paths, runtime edge platforms.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)

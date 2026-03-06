@@ -17,6 +17,7 @@ use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
 #[allow(deprecated)]
+// well_known constants deprecated; migration to capability-based discovery
 use toadstool_common::constants::ecosystem::well_known;
 use toadstool_config::env_config::EnvironmentConfig;
 
@@ -96,7 +97,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: well_known::BIOMEOS.to_string(),
                 description: "Universal operating system and environment management".to_string(),
-                default_ports: vec![8005, 8085, 9005],
+                default_ports: vec![config.network.biomeos_port],
                 health_endpoints: vec!["/health".to_string(), "/api/biome/health".to_string()],
                 service_type: ServiceType::OperatingSystem,
                 required_capabilities: vec!["os_management".to_string(), "environment".to_string()],
@@ -805,7 +806,7 @@ mod tests {
     #[test]
     fn test_service_pattern_default_ports() {
         let discoverer = EcosystemDiscoverer::new();
-        for (_name, pattern) in &discoverer.service_patterns {
+        for pattern in discoverer.service_patterns.values() {
             assert!(
                 !pattern.default_ports.is_empty(),
                 "{} has no ports",
@@ -857,9 +858,11 @@ mod tests {
 
     #[test]
     fn test_discovery_summary_serialization() {
-        let mut summary = DiscoverySummary::default();
-        summary.total_services_found = 3;
-        summary.discovery_methods_used = vec!["local".to_string()];
+        let mut summary = DiscoverySummary {
+            total_services_found: 3,
+            discovery_methods_used: vec!["local".to_string()],
+            ..Default::default()
+        };
         summary.services_by_type.insert("compute".to_string(), 1);
         let json = serde_json::to_value(&summary).unwrap();
         assert_eq!(json["total_services_found"], 3);

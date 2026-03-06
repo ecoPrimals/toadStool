@@ -9,6 +9,7 @@
 use crate::{DisplayError, Result};
 use rustix::fd::OwnedFd;
 use rustix::fs;
+use std::mem::MaybeUninit;
 use std::os::unix::io::{AsFd, BorrowedFd};
 use std::path::{Path, PathBuf};
 
@@ -139,9 +140,9 @@ struct MmapBuffer {
     len: usize,
 }
 
-// SAFETY: Raw pointers are unsafe to Send/Sync because Rust cannot verify thread safety.
-// Invariants: ptr/len are only accessed via &mut CaptureDevice (exclusive access); no shared
-// mutable access across threads. Safe Rust cannot express "owned mmap region" without unsafe.
+// SAFETY: MmapBuffer is Send/Sync because: ptr/len are only accessed via &mut CaptureDevice
+// (exclusive access); no shared mutable access across threads. The owned mmap region has no
+// thread-safety issues when moved. Safe Rust cannot express "owned mmap region" without unsafe.
 unsafe impl Send for MmapBuffer {}
 unsafe impl Sync for MmapBuffer {}
 
@@ -245,8 +246,8 @@ impl CaptureDevice {
     ///
     /// Returns an error if the `VIDIOC_S_FMT` ioctl fails.
     pub fn set_format(&mut self, width: u32, height: u32, fourcc: u32) -> Result<CaptureFormat> {
-        // SAFETY: v4l2_format is #[repr(C)] with only primitive types; all-zero is valid.
-        let mut fmt: v4l2_format = unsafe { std::mem::zeroed() };
+        // SAFETY: v4l2_format is #[repr(C)] with only primitive types; zeroed bytes are valid.
+        let mut fmt: v4l2_format = unsafe { MaybeUninit::zeroed().assume_init() };
         fmt.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         fmt.fmt.width = width;
         fmt.fmt.height = height;
@@ -283,8 +284,8 @@ impl CaptureDevice {
     ///
     /// Returns an error if `VIDIOC_REQBUFS` or buffer mapping fails.
     pub fn request_buffers(&mut self, count: u32) -> Result<u32> {
-        // SAFETY: v4l2_requestbuffers is #[repr(C)] with only primitive types; all-zero is valid.
-        let mut req: v4l2_requestbuffers = unsafe { std::mem::zeroed() };
+        // SAFETY: v4l2_requestbuffers is #[repr(C)] with only primitive types; zeroed bytes valid.
+        let mut req: v4l2_requestbuffers = unsafe { MaybeUninit::zeroed().assume_init() };
         req.count = count;
         req.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         req.memory = V4L2_MEMORY_MMAP;
@@ -304,8 +305,8 @@ impl CaptureDevice {
 
         // mmap each buffer
         for i in 0..req.count {
-            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
-            let mut buf: v4l2_buffer = unsafe { std::mem::zeroed() };
+            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
+            let mut buf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
             buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i;
@@ -355,8 +356,8 @@ impl CaptureDevice {
     #[allow(clippy::cast_possible_truncation)] // Buffer index from hardware; loop bound fits u32
     pub fn start_streaming(&mut self) -> Result<()> {
         for i in 0..self.buffers.len() {
-            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
-            let mut buf: v4l2_buffer = unsafe { std::mem::zeroed() };
+            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
+            let mut buf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
             buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i as u32;
@@ -403,8 +404,8 @@ impl CaptureDevice {
             return Err(DisplayError::IoctlFailed("not streaming".into()));
         }
 
-        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
-        let mut buf: v4l2_buffer = unsafe { std::mem::zeroed() };
+        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
+        let mut buf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
         buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory = V4L2_MEMORY_MMAP;
 
@@ -435,8 +436,8 @@ impl CaptureDevice {
         }
 
         // Re-queue
-        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
-        let mut rebuf: v4l2_buffer = unsafe { std::mem::zeroed() };
+        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
+        let mut rebuf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
         rebuf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         rebuf.memory = V4L2_MEMORY_MMAP;
         rebuf.index = buf.index;

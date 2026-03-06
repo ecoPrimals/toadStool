@@ -21,6 +21,9 @@
 //! transfers. `std::alloc::alloc` with a custom layout is the standard way to obtain
 //! such alignment. No safe std alternative exists; external crates (e.g. `aligned-vec`)
 //! use the same approach internally.
+//!
+//! **Audit (2026)**: Verified that `Vec<u8>` cannot provide 64-byte alignment — std has
+//! no API for custom-aligned Vec; raw alloc with `Layout::from_size_align` is necessary.
 
 use std::ptr::NonNull;
 use toadstool::error::{ToadStoolError, ToadStoolResult};

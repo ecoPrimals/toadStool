@@ -51,11 +51,11 @@ pub struct WasmRuntimeEngine {
     metrics: Arc<MetricsCollector>,
 
     /// Module cache (reserved for future use)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Preserved for future module caching
     cache: Arc<ModuleCache>,
 
     /// Module loader (reserved for future use)
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Preserved for future loader features
     loader: Arc<ModuleLoader>,
 
     /// Module executor

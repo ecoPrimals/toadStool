@@ -10,7 +10,7 @@ use toadstool::execution::RuntimeType;
 use crate::types::{PerformanceMetrics, ResourcePrediction};
 
 /// Baseline metrics for a runtime (used in model updates)
-#[allow(clippy::struct_field_names, dead_code)]
+#[allow(clippy::struct_field_names, dead_code)] // Field names match domain; reserved for model updates
 #[derive(Clone)]
 pub(super) struct BaselineMetrics {
     pub(super) avg_execution_time: Duration,

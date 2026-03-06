@@ -12,27 +12,9 @@ use crate::{CliContext, Result};
 use crate::executor::{BiomeExecutor, RunBiomeOptions, UpBiomeOptions};
 
 /// Execute `run` - foreground biome
-pub async fn execute_run(
-    ctx: &CliContext,
-    manifest: PathBuf,
-    name: Option<String>,
-    env: Vec<String>,
-    debug: bool,
-    cpu_limit: Option<f64>,
-    memory_limit: Option<String>,
-    security: String,
-) -> Result<()> {
+pub async fn execute_run(ctx: &CliContext, opts: RunBiomeOptions) -> Result<()> {
     info!("🚀 Starting biome in foreground mode");
     let executor = BiomeExecutor::new().await?;
-    let opts = RunBiomeOptions {
-        manifest_path: manifest,
-        name,
-        env,
-        debug,
-        cpu_limit,
-        memory_limit,
-        security,
-    };
     executor.run_biome(ctx, opts).await
 }
 

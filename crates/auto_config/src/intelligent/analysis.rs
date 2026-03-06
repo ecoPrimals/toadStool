@@ -256,37 +256,51 @@ mod tests {
 
     #[test]
     fn test_usage_hints_is_cpu_intensive() {
-        let mut hints = UsageHints::default();
-        hints.expected_cpu_usage = 0.5;
+        let hints = UsageHints {
+            expected_cpu_usage: 0.5,
+            ..Default::default()
+        };
         assert!(!hints.is_cpu_intensive());
-        hints.expected_cpu_usage = 0.8;
+        let hints = UsageHints {
+            expected_cpu_usage: 0.8,
+            ..Default::default()
+        };
         assert!(hints.is_cpu_intensive());
     }
 
     #[test]
     fn test_usage_hints_is_memory_intensive() {
-        let mut hints = UsageHints::default();
-        hints.expected_memory_usage = 0.5;
+        let hints = UsageHints {
+            expected_memory_usage: 0.5,
+            ..Default::default()
+        };
         assert!(!hints.is_memory_intensive());
-        hints.expected_memory_usage = 0.8;
+        let hints = UsageHints {
+            expected_memory_usage: 0.8,
+            ..Default::default()
+        };
         assert!(hints.is_memory_intensive());
     }
 
     #[test]
     fn test_classify_performance_high_end() {
-        let mut hardware = SystemCapabilities::default();
-        hardware.cpu_cores = 32.0;
-        hardware.memory_gb = 64.0;
-        hardware.gpu_count = 2;
+        let hardware = SystemCapabilities {
+            cpu_cores: 32.0,
+            memory_gb: 64.0,
+            gpu_count: 2,
+            ..Default::default()
+        };
         assert_eq!(classify_performance(&hardware), PerformanceClass::HighEnd);
     }
 
     #[test]
     fn test_classify_performance_mainstream() {
-        let mut hardware = SystemCapabilities::default();
-        hardware.cpu_cores = 8.0;
-        hardware.memory_gb = 16.0;
-        hardware.gpu_count = 0;
+        let hardware = SystemCapabilities {
+            cpu_cores: 8.0,
+            memory_gb: 16.0,
+            gpu_count: 0,
+            ..Default::default()
+        };
         assert_eq!(
             classify_performance(&hardware),
             PerformanceClass::Mainstream
@@ -295,10 +309,12 @@ mod tests {
 
     #[test]
     fn test_classify_performance_low_end() {
-        let mut hardware = SystemCapabilities::default();
-        hardware.cpu_cores = 2.0;
-        hardware.memory_gb = 4.0;
-        hardware.gpu_count = 0;
+        let hardware = SystemCapabilities {
+            cpu_cores: 2.0,
+            memory_gb: 4.0,
+            gpu_count: 0,
+            ..Default::default()
+        };
         assert_eq!(classify_performance(&hardware), PerformanceClass::LowEnd);
     }
 }

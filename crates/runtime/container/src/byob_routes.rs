@@ -168,7 +168,7 @@ pub struct ByobApiError {
 }
 
 impl ByobApiError {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Preserved for API compatibility; error variants
     #[must_use]
     pub fn new(status: StatusCode, message: &str) -> Self {
         Self {

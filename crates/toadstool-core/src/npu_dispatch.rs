@@ -125,6 +125,16 @@ pub trait NpuDispatch: Debug + Send + Sync {
         input: Cow<'_, [f32]>,
     ) -> Result<DispatchResult, NpuDispatchError>;
 
+    /// Dispatch a typed inference request.
+    ///
+    /// Default implementation delegates to `dispatch()`.
+    fn dispatch_request(
+        &mut self,
+        request: NpuInferenceRequest,
+    ) -> Result<DispatchResult, NpuDispatchError> {
+        self.dispatch(request.model, Cow::Owned(request.input))
+    }
+
     /// Measure current power draw in milliwatts.
     ///
     /// # Errors
@@ -133,6 +143,22 @@ pub trait NpuDispatch: Debug + Send + Sync {
 
     /// Check if the device is still reachable and ready.
     fn is_alive(&self) -> bool;
+}
+
+/// Typed inference request for NPU dispatch.
+///
+/// Wraps input data with metadata for routing and validation.
+/// Generalizes hotSpring's `NpuRequest` pattern.
+#[derive(Debug, Clone)]
+pub struct NpuInferenceRequest {
+    /// Model handle to dispatch to.
+    pub model: NpuModelHandle,
+    /// Input features (f32 for NPU compatibility).
+    pub input: Vec<f32>,
+    /// Optional batch size hint for the NPU scheduler.
+    pub batch_size_hint: Option<usize>,
+    /// Priority level (0 = highest).
+    pub priority: u8,
 }
 
 /// Opaque handle to a model loaded on an NPU.
@@ -326,5 +352,33 @@ mod tests {
         let _ = NpuDispatchError::DeviceLost {
             reason: "unplugged".into(),
         };
+    }
+
+    #[test]
+    fn test_npu_inference_request_construction() {
+        let handle = NpuModelHandle::new(1);
+        let request = NpuInferenceRequest {
+            model: handle,
+            input: vec![1.0, 2.0, 3.0],
+            batch_size_hint: Some(4),
+            priority: 0,
+        };
+        assert_eq!(request.model.id(), 1);
+        assert_eq!(request.input.len(), 3);
+        assert_eq!(request.batch_size_hint, Some(4));
+        assert_eq!(request.priority, 0);
+    }
+
+    #[test]
+    fn test_npu_inference_request_minimal() {
+        let request = NpuInferenceRequest {
+            model: NpuModelHandle::new(0),
+            input: vec![],
+            batch_size_hint: None,
+            priority: 255,
+        };
+        assert!(request.input.is_empty());
+        assert!(request.batch_size_hint.is_none());
+        assert_eq!(request.priority, 255);
     }
 }

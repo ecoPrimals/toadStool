@@ -114,7 +114,7 @@ impl BearDogClient {
         since = "0.3.0",
         note = "Use new_async() for capability-based discovery"
     )]
-    #[allow(deprecated)]
+    #[allow(deprecated)] // new() uses deprecated BearDogConfig; migration in progress
     pub fn new(config: BearDogConfig) -> ToadStoolResult<Self> {
         let socket_path = get_socket_path_for_capability("crypto");
         let rpc_client = UnixJsonRpcClient::new(socket_path);

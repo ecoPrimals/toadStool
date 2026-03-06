@@ -20,10 +20,11 @@ pub use hardware_transport::{
     TransportInfo, TransportMedium, FRAME_HEADER_SIZE,
 };
 pub use npu_controller::{
-    ControllerError, NpuParameterController, ParameterSuggestion, SafetyClamp, SuggestionSource,
+    AdaptiveSimulationController, ControllerError, NpuParameterController, ParameterSuggestion,
+    ProxyFeature, ProxyFeatureSet, SafetyClamp, SuggestionSource,
 };
 pub use npu_dispatch::{
-    AkidaNpuDispatch, DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError, NpuInfo,
-    NpuModelHandle,
+    AkidaNpuDispatch, DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError,
+    NpuInferenceRequest, NpuInfo, NpuModelHandle,
 };
 pub use transport_router::{TransportFilter, TransportRouter};

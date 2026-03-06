@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 5, 2026 -- Deep Debt Execution**
+**March 6, 2026 — S96**
 
 ---
 

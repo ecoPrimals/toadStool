@@ -14,7 +14,7 @@ use crate::{ecosystem::EcosystemIntegrator, Result};
 use super::super::definitions::EcosystemCommands;
 
 /// Execute ecosystem integration commands
-#[allow(deprecated)]
+#[allow(deprecated)] // EcosystemCommands uses deprecated types during migration
 pub async fn execute(action: &EcosystemCommands) -> Result<()> {
     let mut integrator = EcosystemIntegrator::new();
 

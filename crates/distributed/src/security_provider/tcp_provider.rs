@@ -146,11 +146,11 @@ struct JsonRpcRequest<P> {
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse<R> {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // JSON-RPC response fields; required for deserialization
     jsonrpc: String,
     result: Option<R>,
     error: Option<JsonRpcError>,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // JSON-RPC response fields; required for deserialization
     id: u64,
 }
 

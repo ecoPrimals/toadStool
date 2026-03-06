@@ -51,6 +51,13 @@ pub struct GpuAdapterInfo {
     pub max_buffer_size: u64,
     /// Whether shader-f64 feature is supported.
     pub supports_shader_f64: bool,
+    /// Whether f64 compute is known to be unreliable on this adapter.
+    /// NVK on Volta (SM70) reports f64 support but produces zeros.
+    pub f64_compute_unreliable: bool,
+    /// Minimum subgroup size (warp size). 0 if unknown.
+    pub min_subgroup_size: u32,
+    /// Maximum subgroup size. 0 if unknown.
+    pub max_subgroup_size: u32,
     /// Hardware fingerprint for backend-agnostic capability comparison.
     pub fingerprint: HardwareFingerprint,
     /// Safe allocation ceiling in bytes (guards against NVK PTE faults).
@@ -126,6 +133,20 @@ impl GpuAdapterInfo {
     pub fn is_nvk(&self) -> bool {
         self.driver.contains("nvk") || self.driver.contains("nouveau")
     }
+
+    /// Whether f64 compute actually works (supported AND reliable).
+    #[must_use]
+    pub fn has_reliable_f64(&self) -> bool {
+        self.supports_shader_f64 && !self.f64_compute_unreliable
+    }
+
+    /// Maximum safe 2D dispatch dimensions (x * y must fit workgroup limit).
+    /// Returns (max_x, max_y) for 2D compute dispatch.
+    #[must_use]
+    pub fn max_2d_dispatch(&self) -> (u32, u32) {
+        let max = self.max_compute_workgroups_per_dimension;
+        (max, max)
+    }
 }
 
 impl HardwareFingerprint {
@@ -138,6 +159,7 @@ impl HardwareFingerprint {
         info: &wgpu::AdapterInfo,
         device_type: GpuDeviceType,
         supports_f64: bool,
+        f64_compute_unreliable: bool,
         max_workgroups: u32,
     ) -> Self {
         let is_nvk = info.driver.contains("nvk") || info.driver.contains("nouveau");
@@ -151,7 +173,8 @@ impl HardwareFingerprint {
             _ => 0.5,
         };
 
-        let estimated_tflops_f64 = if supports_f64 {
+        let f64_reliable = supports_f64 && !f64_compute_unreliable;
+        let estimated_tflops_f64 = if f64_reliable {
             estimated_tflops_f32 / 2.0
         } else {
             0.0
@@ -165,7 +188,7 @@ impl HardwareFingerprint {
 
         let mut capabilities = vec![SubstrateCapabilityKind::NnInference];
 
-        if supports_f64 {
+        if f64_reliable {
             capabilities.push(SubstrateCapabilityKind::F64Native);
         }
         capabilities.push(SubstrateCapabilityKind::Df64Emulation);
@@ -304,6 +327,15 @@ impl WgpuComputeUnit {
         let supports_f64 = adapter.features().contains(wgpu::Features::SHADER_F64);
         let is_nvk = info.driver.contains("nvk") || info.driver.contains("nouveau");
 
+        let is_nvk_volta = is_nvk
+            && (info.name.contains("Titan V")
+                || info.name.contains("Tesla V100")
+                || info.name.contains("Quadro GV100"));
+        let f64_compute_unreliable = is_nvk_volta;
+
+        let min_subgroup_size = limits.min_subgroup_size;
+        let max_subgroup_size = limits.max_subgroup_size;
+
         let safe_alloc = if is_nvk {
             // NVK PTE fault at ~1.2 GB on Nouveau — guard against it
             1_200_000_000_u64
@@ -311,8 +343,13 @@ impl WgpuComputeUnit {
             limits.max_buffer_size
         };
 
-        let fingerprint =
-            HardwareFingerprint::from_adapter_info(&info, device_type, supports_f64, max_wg);
+        let fingerprint = HardwareFingerprint::from_adapter_info(
+            &info,
+            device_type,
+            supports_f64,
+            f64_compute_unreliable,
+            max_wg,
+        );
 
         let adapter_info = GpuAdapterInfo {
             name: name.clone(),
@@ -328,6 +365,9 @@ impl WgpuComputeUnit {
             max_compute_workgroup_size_z: limits.max_compute_workgroup_size_z,
             max_buffer_size: limits.max_buffer_size,
             supports_shader_f64: supports_f64,
+            f64_compute_unreliable,
+            min_subgroup_size,
+            max_subgroup_size,
             fingerprint,
             safe_allocation_limit: safe_alloc,
         };
@@ -382,10 +422,12 @@ mod tests {
     fn make_test_fingerprint(
         device_type: GpuDeviceType,
         supports_f64: bool,
+        f64_compute_unreliable: bool,
         driver: &str,
+        name: &str,
     ) -> HardwareFingerprint {
         let info = wgpu::AdapterInfo {
-            name: "Test GPU".to_owned(),
+            name: name.to_owned(),
             vendor: 0x10de,
             device: 0x2684,
             device_type: wgpu::DeviceType::DiscreteGpu,
@@ -393,12 +435,18 @@ mod tests {
             driver_info: "test".to_owned(),
             backend: wgpu::Backend::Vulkan,
         };
-        HardwareFingerprint::from_adapter_info(&info, device_type, supports_f64, 65535)
+        HardwareFingerprint::from_adapter_info(
+            &info,
+            device_type,
+            supports_f64,
+            f64_compute_unreliable,
+            65535,
+        )
     }
 
     #[test]
     fn test_hardware_fingerprint_discrete_f64() {
-        let fp = make_test_fingerprint(GpuDeviceType::Discrete, true, "nvidia");
+        let fp = make_test_fingerprint(GpuDeviceType::Discrete, true, false, "nvidia", "Test GPU");
         assert!(fp.estimated_tflops_f32 > 0.0);
         assert!(fp.estimated_tflops_f64 > 0.0);
         assert!(fp.sovereign_capable);
@@ -411,7 +459,7 @@ mod tests {
 
     #[test]
     fn test_hardware_fingerprint_integrated_no_f64() {
-        let fp = make_test_fingerprint(GpuDeviceType::Integrated, false, "anv");
+        let fp = make_test_fingerprint(GpuDeviceType::Integrated, false, false, "anv", "Test GPU");
         assert!(fp.estimated_tflops_f32 > 0.0);
         assert_eq!(fp.estimated_tflops_f64, 0.0);
         assert!(!fp
@@ -424,7 +472,7 @@ mod tests {
 
     #[test]
     fn test_hardware_fingerprint_nvk_has_md_force() {
-        let fp = make_test_fingerprint(GpuDeviceType::Discrete, true, "nvk");
+        let fp = make_test_fingerprint(GpuDeviceType::Discrete, true, false, "nvk", "Test GPU");
         assert!(fp.capabilities.contains(&SubstrateCapabilityKind::MdForce));
         assert!(fp.capabilities.contains(&SubstrateCapabilityKind::Eigen));
         assert!(fp.capabilities.contains(&SubstrateCapabilityKind::Cg));
@@ -446,7 +494,10 @@ mod tests {
             max_compute_workgroup_size_z: 64,
             max_buffer_size: 4_294_967_296,
             supports_shader_f64: true,
-            fingerprint: make_test_fingerprint(GpuDeviceType::Discrete, true, "nvk"),
+            f64_compute_unreliable: false,
+            min_subgroup_size: 32,
+            max_subgroup_size: 32,
+            fingerprint: make_test_fingerprint(GpuDeviceType::Discrete, true, false, "nvk", "Test"),
             safe_allocation_limit: 1_200_000_000,
         };
 
@@ -472,7 +523,16 @@ mod tests {
             max_compute_workgroup_size_z: 64,
             max_buffer_size: 4_294_967_296,
             supports_shader_f64: true,
-            fingerprint: make_test_fingerprint(GpuDeviceType::Discrete, true, "nvidia"),
+            f64_compute_unreliable: false,
+            min_subgroup_size: 32,
+            max_subgroup_size: 32,
+            fingerprint: make_test_fingerprint(
+                GpuDeviceType::Discrete,
+                true,
+                false,
+                "nvidia",
+                "Test",
+            ),
             safe_allocation_limit: 4_294_967_296,
         };
 
@@ -496,5 +556,140 @@ mod tests {
             SubstrateCapabilityKind::F64Native,
             SubstrateCapabilityKind::Df64Emulation
         );
+    }
+
+    #[test]
+    fn test_f64_compute_unreliable_nvk_volta() {
+        let fp =
+            make_test_fingerprint(GpuDeviceType::Discrete, true, true, "nvk", "NVIDIA Titan V");
+        assert!(!fp
+            .capabilities
+            .contains(&SubstrateCapabilityKind::F64Native));
+        assert!(fp
+            .capabilities
+            .contains(&SubstrateCapabilityKind::Df64Emulation));
+    }
+
+    #[test]
+    fn test_f64_compute_unreliable_nvk_non_volta() {
+        let fp = make_test_fingerprint(
+            GpuDeviceType::Discrete,
+            true,
+            false,
+            "nvk",
+            "NVIDIA GeForce RTX 3080",
+        );
+        assert!(fp
+            .capabilities
+            .contains(&SubstrateCapabilityKind::F64Native));
+        assert!(fp
+            .capabilities
+            .contains(&SubstrateCapabilityKind::Df64Emulation));
+    }
+
+    #[test]
+    fn test_has_reliable_f64_nvk_volta() {
+        let info = GpuAdapterInfo {
+            name: "NVIDIA Titan V".to_owned(),
+            driver: "nvk".to_owned(),
+            driver_info: String::new(),
+            vendor_id: 0,
+            device_id: 0,
+            backend: "Vulkan".to_owned(),
+            device_type: GpuDeviceType::Discrete,
+            max_compute_workgroups_per_dimension: 65535,
+            max_compute_workgroup_size_x: 256,
+            max_compute_workgroup_size_y: 256,
+            max_compute_workgroup_size_z: 64,
+            max_buffer_size: 4_294_967_296,
+            supports_shader_f64: true,
+            f64_compute_unreliable: true,
+            min_subgroup_size: 32,
+            max_subgroup_size: 32,
+            fingerprint: make_test_fingerprint(
+                GpuDeviceType::Discrete,
+                true,
+                true,
+                "nvk",
+                "NVIDIA Titan V",
+            ),
+            safe_allocation_limit: 1_200_000_000,
+        };
+        assert!(info.supports_shader_f64);
+        assert!(info.f64_compute_unreliable);
+        assert!(!info.has_reliable_f64());
+    }
+
+    #[test]
+    fn test_subgroup_size_fields() {
+        let info_zero = GpuAdapterInfo {
+            name: "Test".to_owned(),
+            driver: "anv".to_owned(),
+            driver_info: String::new(),
+            vendor_id: 0,
+            device_id: 0,
+            backend: "Vulkan".to_owned(),
+            device_type: GpuDeviceType::Integrated,
+            max_compute_workgroups_per_dimension: 65535,
+            max_compute_workgroup_size_x: 256,
+            max_compute_workgroup_size_y: 256,
+            max_compute_workgroup_size_z: 64,
+            max_buffer_size: 4_294_967_296,
+            supports_shader_f64: false,
+            f64_compute_unreliable: false,
+            min_subgroup_size: 0,
+            max_subgroup_size: 0,
+            fingerprint: make_test_fingerprint(
+                GpuDeviceType::Integrated,
+                false,
+                false,
+                "anv",
+                "Test",
+            ),
+            safe_allocation_limit: 4_294_967_296,
+        };
+        assert_eq!(info_zero.min_subgroup_size, 0);
+        assert_eq!(info_zero.max_subgroup_size, 0);
+
+        let info_populated = GpuAdapterInfo {
+            min_subgroup_size: 32,
+            max_subgroup_size: 32,
+            ..info_zero.clone()
+        };
+        assert_eq!(info_populated.min_subgroup_size, 32);
+        assert_eq!(info_populated.max_subgroup_size, 32);
+    }
+
+    #[test]
+    fn test_max_2d_dispatch() {
+        let info = GpuAdapterInfo {
+            name: "Test".to_owned(),
+            driver: "nvidia".to_owned(),
+            driver_info: String::new(),
+            vendor_id: 0,
+            device_id: 0,
+            backend: "Vulkan".to_owned(),
+            device_type: GpuDeviceType::Discrete,
+            max_compute_workgroups_per_dimension: 4096,
+            max_compute_workgroup_size_x: 256,
+            max_compute_workgroup_size_y: 256,
+            max_compute_workgroup_size_z: 64,
+            max_buffer_size: 4_294_967_296,
+            supports_shader_f64: true,
+            f64_compute_unreliable: false,
+            min_subgroup_size: 32,
+            max_subgroup_size: 32,
+            fingerprint: make_test_fingerprint(
+                GpuDeviceType::Discrete,
+                true,
+                false,
+                "nvidia",
+                "Test",
+            ),
+            safe_allocation_limit: 4_294_967_296,
+        };
+        let (max_x, max_y) = info.max_2d_dispatch();
+        assert_eq!(max_x, 4096);
+        assert_eq!(max_y, 4096);
     }
 }

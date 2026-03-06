@@ -1,4 +1,4 @@
-# Status -- March 6, 2026 (S96)
+# Status -- March 6, 2026 (S97)
 
 ## Quality Gates
 
@@ -9,7 +9,7 @@
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
 | `cargo test --workspace --lib` | PASS | **18,028 tests, 0 failures** |
-| `cargo llvm-cov` (excl GPU crates) | **~84% line** | JSON-RPC: 97.5%; expanded S95-S96 |
+| `cargo llvm-cov` (excl GPU crates) | **~85% line** | JSON-RPC: 97.5%; expanded S95-S97 |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
@@ -35,7 +35,7 @@
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b) |
-| JSON-RPC methods | **47** (was 44; +transport.discover, transport.list, transport.route) |
+| JSON-RPC methods | **57** (was 47; +10 science.* methods) |
 | Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
@@ -88,6 +88,19 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S97: Spring Absorption — toadStool Evolutions (Mar 6, 2026)
+- **NVK Volta f64 probe**: `f64_compute_unreliable` flag on `GpuAdapterInfo` detects Titan V/V100/GV100 where f64 compute returns zeros. `has_reliable_f64()` API. `HardwareFingerprint` excludes `F64Native` for NVK Volta.
+- **Subgroup size detection**: `min_subgroup_size` / `max_subgroup_size` fields on `GpuAdapterInfo` for workgroup tuning.
+- **2D dispatch threshold**: `max_2d_dispatch()` helper for NVK workgroup limits.
+- **AdaptiveSimulationController trait**: Higher-level trait absorbing hotSpring's NPU worker pattern. `ProxyFeature` struct with builder. `NpuInferenceRequest` typed dispatch.
+- **`science.*` JSON-RPC namespace**: 10 new methods (science.compute.submit/status/result/cancel, science.gpu.dispatch/capabilities, science.npu.dispatch/capabilities, science.substrate.discover/probe). Full semantic registry + handler implementations.
+- **Test coverage expansion**: +59 tests (auto_config hardware: 31, server handler: 9, GPU adapter: 5, toadstool-core: 5, semantic registry: 9). 6,176 lib tests, 0 failures.
+- **ecoBin: ring removed**: `reqwest` dev-dep removed; `zstd` → `ruzstd` (pure Rust).
+- **Clippy zero**: 39 warnings resolved. All `#[allow]` justified.
+- **Hardcoded BiomeOS ports evolved**: `[8005, 8085, 9005]` → `config.network.biomeos_port`.
+- **Unsafe evolved**: V4L2 `mem::zeroed()` → `MaybeUninit::zeroed().assume_init()`.
+- All quality gates green: 0 clippy, 0 fmt, 0 doc warnings.
 
 ### S95–S96: Spring Absorption + Sovereign Pipeline + Debris Cleanup (Mar 6, 2026)
 - **Sovereign pipeline infrastructure**: `HardwareFingerprint` struct (estimated_tflops_f32/f64, sovereign_capable flag), `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE fault mitigation), 12-variant `SubstrateCapabilityKind` enum.

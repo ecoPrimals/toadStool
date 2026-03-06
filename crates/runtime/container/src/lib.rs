@@ -754,7 +754,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_container_engine_default_fallback() {
         let engine = ContainerRuntimeEngine::default();
-        assert!(engine.capabilities.supported_architectures.len() >= 1);
+        assert!(!engine.capabilities.supported_architectures.is_empty());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -801,7 +801,6 @@ mod tests {
                 }
             }
             let _engine = engine.with_resource_monitor(Arc::new(MockMonitor));
-            assert!(true);
         }
     }
 
@@ -875,7 +874,7 @@ mod tests {
             caps.platform_features.contains_key("volume_mounts")
                 || caps.platform_features.is_empty()
         );
-        assert!(caps.supported_architectures.len() >= 1);
+        assert!(!caps.supported_architectures.is_empty());
     }
 }
 

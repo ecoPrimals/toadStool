@@ -1,17 +1,17 @@
 # Spring Absorption Tracker
 
-**Session**: S95 Deep Debt + Debris Cleanup (March 6, 2026)
-**ToadStool**: master, ~84% line coverage. D-DF64/D-CD transferred to barraCuda team. D-NPU/D-SOV resolved. Hardware Transport Layer wired. Clippy pedantic clean. JSON-RPC handler decomposed.
+**Session**: S97 Spring Absorption (March 6, 2026)
+**ToadStool**: master, ~85% line coverage (6,176 tests). D-DF64/D-CD transferred to barraCuda team. D-NPU/D-SOV resolved. Hardware Transport Layer wired. Clippy pedantic clean. JSON-RPC handler decomposed. Science IPC namespace live. NVK Volta f64 probe active.
 
 ## Spring Pin Status
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.17 | S80→S87 | S87→S95 | 669 | Lattice QCD, MD reservoir, NPU, gradient flow, Verlet |
-| groundSpring | V80 | V68→S87 | V80→S95 | 812+390 | 87 (51 CPU + 36 GPU), metalForge 30 workloads |
-| neuralSpring | V86/S128 | V75/S113→S87 | V86/S128→S95 | 4,100+ | 42 WGSL, gpu_dispatch, coralForge |
-| wetSpring | V97d | V92F→S87 | V97d→S95 | 1,047+200 | 150+ primitives, 0 local WGSL (fully lean) |
-| airSpring | V071 | V063→S87 | V071→S95 | 827+1,498 | 25 Tier A GPU + 6 universal, 3 local WGSL ops |
+| hotSpring | v0.6.17 | S87→S95 | S95→S97 | 669 | Lattice QCD, MD reservoir, NPU, gradient flow, Verlet |
+| groundSpring | V80 | V68→S95 | V80→S97 | 812+390 | 87 (51 CPU + 36 GPU), metalForge 30 workloads |
+| neuralSpring | V86/S128 | V75/S113→S95 | V86/S128→S97 | 4,100+ | 42 WGSL, gpu_dispatch, coralForge |
+| wetSpring | V97d | V92F→S95 | V97d→S97 | 1,047+200 | 150+ primitives, 0 local WGSL (fully lean) |
+| airSpring | V071 | V063→S95 | V071→S97 | 827+1,498 | 25 Tier A GPU + 6 universal, 3 local WGSL ops |
 
 ## Absorption Status
 
@@ -44,11 +44,17 @@
 
 | Item | Source | Status |
 |------|--------|--------|
-| `is_sovereign_capable` API on GPU adapter | coralReef/hotSpring | **IN PROGRESS** |
-| `HardwareFingerprint` with estimated TFLOPS | hotSpring V0617 | **IN PROGRESS** |
-| NVK ~1.2 GB allocation guard in `GpuAdapterInfo` | hotSpring/Titan V gaps | **IN PROGRESS** |
+| `is_sovereign_capable` API on GPU adapter | coralReef/hotSpring | **DONE** S96 |
+| `HardwareFingerprint` with estimated TFLOPS | hotSpring V0617 | **DONE** S96 |
+| NVK ~1.2 GB allocation guard in `GpuAdapterInfo` | hotSpring/Titan V gaps | **DONE** S96 |
+| NVK Volta f64-returns-zeros detection | airSpring/hotSpring | **DONE** S97 |
+| Subgroup size detection in `GpuAdapterInfo` | airSpring V071 | **DONE** S97 |
+| 2D dispatch threshold helper | hotSpring | **DONE** S97 |
+| `AdaptiveSimulationController` trait | hotSpring NPU worker | **DONE** S97 |
+| `ProxyFeature` / `NpuInferenceRequest` types | hotSpring NPU worker | **DONE** S97 |
+| `science.*` JSON-RPC namespace (10 methods) | wetSpring IPC | **DONE** S97 |
 | coralDriver routing for sovereign dispatch | coralReef Phase 5 | Tracked (blocked on coralDriver) |
-| Substrate capability expansion (4→12 variants) | metalForge (all springs) | **IN PROGRESS** |
+| Substrate capability expansion (4→12 variants) | metalForge (all springs) | **DONE** S96 |
 
 ### P3 — Shader Evolution (tracked)
 

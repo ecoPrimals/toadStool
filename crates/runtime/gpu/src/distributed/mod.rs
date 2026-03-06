@@ -462,9 +462,7 @@ mod tests {
     #[tokio::test]
     async fn test_execute_distributed_single() {
         use crate::cpu_resource::CpuComputeResource;
-        use crate::universal::{
-            KernelLanguage, OptimizationHints, UniversalKernel, UniversalWorkload,
-        };
+        use crate::universal::{OptimizationHints, UniversalKernel, UniversalWorkload};
 
         let local = Arc::new(UniversalComputeScheduler::new(
             SchedulingPolicy::CapabilityMatch,
@@ -495,9 +493,7 @@ mod tests {
     #[tokio::test]
     async fn test_execute_distributed_data_parallel() {
         use crate::cpu_resource::CpuComputeResource;
-        use crate::universal::{
-            KernelLanguage, OptimizationHints, UniversalKernel, UniversalWorkload,
-        };
+        use crate::universal::{OptimizationHints, UniversalKernel, UniversalWorkload};
 
         let local = Arc::new(UniversalComputeScheduler::new(
             SchedulingPolicy::CapabilityMatch,
@@ -528,9 +524,7 @@ mod tests {
     #[tokio::test]
     async fn test_execute_distributed_pipeline() {
         use crate::cpu_resource::CpuComputeResource;
-        use crate::universal::{
-            KernelLanguage, OptimizationHints, UniversalKernel, UniversalWorkload,
-        };
+        use crate::universal::{OptimizationHints, UniversalKernel, UniversalWorkload};
 
         let local = Arc::new(UniversalComputeScheduler::new(
             SchedulingPolicy::CapabilityMatch,

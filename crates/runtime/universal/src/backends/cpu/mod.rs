@@ -467,7 +467,7 @@ mod tests {
     #[tokio::test]
     async fn test_cpu_execute_conv2d() {
         let cpu = CpuComputeUnit::discover();
-        let input = vec![1.0f32; 1 * 2 * 4 * 4];
+        let input = vec![1.0f32; 32];
         let kernel = vec![1.0f32 / 9.0; 2 * 2 * 3 * 3];
         let w = make_workload(
             OperationType::Conv,
