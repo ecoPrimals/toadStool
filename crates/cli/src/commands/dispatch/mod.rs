@@ -1,0 +1,236 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Command routing and dispatch
+//!
+//! Routes parsed CLI commands to their implementations.
+
+use tracing::info;
+
+use crate::{CliContext, Result};
+
+use super::definitions::Commands;
+use crate::Cli;
+
+mod biome;
+mod ecosystem;
+mod manifest;
+mod server;
+mod universal;
+
+#[cfg(test)]
+mod tests;
+
+/// Execute the main CLI command based on parsed arguments
+pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
+    match &cli.command {
+        Commands::Run {
+            manifest,
+            name,
+            env,
+            debug,
+            cpu_limit,
+            memory_limit,
+            security,
+        } => {
+            biome::execute_run(
+                ctx,
+                manifest.clone(),
+                name.clone(),
+                env.clone(),
+                *debug,
+                *cpu_limit,
+                memory_limit.clone(),
+                security.clone(),
+            )
+            .await?;
+        }
+
+        Commands::Up {
+            manifest,
+            detach,
+            name,
+            env,
+            restart,
+            health_interval,
+        } => {
+            biome::execute_up(
+                ctx,
+                manifest.clone(),
+                *detach,
+                name.clone(),
+                env.clone(),
+                *restart,
+                *health_interval,
+            )
+            .await?;
+        }
+
+        Commands::Down {
+            biome,
+            force,
+            timeout,
+            purge,
+        } => {
+            biome::execute_down(biome.as_str(), *force, *timeout, *purge).await?;
+        }
+
+        Commands::Ps {
+            all,
+            format,
+            resources,
+            status,
+        } => {
+            biome::execute_ps(*all, format.as_str(), *resources, status.as_deref()).await?;
+        }
+
+        Commands::Logs {
+            target,
+            follow,
+            lines,
+            timestamps,
+            level,
+            grep,
+        } => {
+            biome::execute_logs(
+                target.as_str(),
+                *follow,
+                *lines,
+                *timestamps,
+                level.as_deref(),
+                grep.as_deref(),
+            )
+            .await?;
+        }
+
+        Commands::Validate {
+            manifest,
+            check_resources,
+            check_security,
+            format,
+        } => {
+            info!("🔍 Validating biome manifest: {}", manifest.display());
+            manifest::execute_validate(manifest, *check_resources, *check_security, format).await?;
+        }
+
+        Commands::Init {
+            path,
+            template,
+            force,
+        } => {
+            info!("📝 Initializing new biome manifest");
+            manifest::execute_init(path, template, *force).await?;
+        }
+
+        Commands::Capabilities {
+            format,
+            detailed,
+            test_platform,
+        } => {
+            info!("🌍 Showing system capabilities");
+            universal::execute_capabilities(format, *detailed, test_platform).await?;
+        }
+
+        Commands::Ecosystem { action } => {
+            ecosystem::execute(action).await?;
+        }
+
+        Commands::Universal { operation } => {
+            universal::execute(operation).await?;
+        }
+
+        Commands::Transport { action } => {
+            super::transport::execute_transport_command(action).await?;
+        }
+
+        Commands::Server {
+            register,
+            port,
+            socket,
+            config,
+            max_workloads,
+            biomeos_socket,
+            family_id,
+        }
+        | Commands::Daemon {
+            register,
+            port,
+            socket,
+            config,
+            max_workloads,
+            biomeos_socket,
+            family_id,
+        } => {
+            let is_server = matches!(&cli.command, Commands::Server { .. });
+
+            if is_server {
+                info!("🍄 ToadStool Server Mode (UniBin Standard)");
+            } else {
+                info!("🍄 ToadStool Daemon Mode (backward compat)");
+                info!("💡 TIP: Use 'toadstool server' for ecosystem standard naming");
+            }
+
+            info!(
+                "   Register: {}",
+                if *register { "enabled" } else { "disabled" }
+            );
+            info!("   Port: {}", port);
+            if let Some(sock) = socket {
+                info!("   Socket: {}", sock.display());
+            }
+            if let Some(cfg) = config {
+                info!("   Config: {}", cfg.display());
+            }
+            info!("   Max workloads: {}", max_workloads);
+            if let Some(biomeos) = biomeos_socket {
+                info!("   BiomeOS: {}", biomeos.display());
+            }
+            if let Some(fid) = family_id {
+                info!("   Family ID: {}", fid);
+            }
+
+            server::run_server_daemon(family_id.clone()).await?;
+        }
+
+        Commands::Execute {
+            workload,
+            runtime,
+            env,
+            timeout,
+            format,
+        } => {
+            info!("🚀 Executing workload: {}", workload.display());
+            crate::executor::workload::execute_workload(
+                workload,
+                runtime.as_deref(),
+                env.as_slice(),
+                *timeout,
+                format.as_str(),
+            )
+            .await?;
+        }
+
+        Commands::ByobServer { bind, port, config } => {
+            server::run_byob_server(bind.clone(), *port, config.clone()).await?;
+        }
+
+        Commands::Doctor {
+            all,
+            hardware,
+            ecosystem,
+            config,
+            format,
+            fix,
+        } => {
+            info!("🩺 Running system diagnostics");
+            super::doctor::run_doctor(
+                *all || *hardware,
+                *all || *ecosystem,
+                *all || *config,
+                format,
+                *fix,
+            )
+            .await?;
+        }
+    }
+
+    Ok(())
+}

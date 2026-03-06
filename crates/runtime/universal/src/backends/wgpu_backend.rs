@@ -51,6 +51,146 @@ pub struct GpuAdapterInfo {
     pub max_buffer_size: u64,
     /// Whether shader-f64 feature is supported.
     pub supports_shader_f64: bool,
+    /// Hardware fingerprint for backend-agnostic capability comparison.
+    pub fingerprint: HardwareFingerprint,
+    /// Safe allocation ceiling in bytes (guards against NVK PTE faults).
+    pub safe_allocation_limit: u64,
+}
+
+/// Backend-agnostic hardware fingerprint for capability comparison
+/// across heterogeneous substrates. Aligned with metalForge's
+/// substrate characterization model.
+#[derive(Debug, Clone)]
+pub struct HardwareFingerprint {
+    /// Estimated single-precision TFLOPS.
+    pub estimated_tflops_f32: f64,
+    /// Estimated double-precision TFLOPS (0.0 if no f64 support).
+    pub estimated_tflops_f64: f64,
+    /// Whether the sovereign pipeline (coralReef + coralDriver) can
+    /// drive this GPU without vendor toolchains.
+    pub sovereign_capable: bool,
+    /// Substrate capabilities discovered at runtime.
+    pub capabilities: Vec<SubstrateCapabilityKind>,
+}
+
+/// Substrate capability kinds aligned with metalForge's 12-variant model.
+///
+/// Each capability represents a concrete compute primitive that the
+/// substrate can execute. Discovered at runtime, not hardcoded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SubstrateCapabilityKind {
+    /// Native f64 arithmetic in shaders.
+    F64Native,
+    /// DF64 (double-float f32 pairs) emulation.
+    Df64Emulation,
+    /// Sparse matrix operations (SpMV, SpMM).
+    Spmv,
+    /// Dense eigenvalue solvers.
+    Eigen,
+    /// Conjugate gradient / iterative solvers.
+    Cg,
+    /// FFT / spectral operations.
+    Fft,
+    /// Molecular dynamics force kernels.
+    MdForce,
+    /// Monte Carlo / stochastic operations.
+    MonteCarlo,
+    /// Neural network inference (matmul, activation).
+    NnInference,
+    /// Reservoir computing (ESN update).
+    ReservoirCompute,
+    /// Homomorphic encryption primitives (NTT, bootstrap).
+    Fhe,
+    /// Subgroup / warp-level operations.
+    SubgroupOps,
+}
+
+impl GpuAdapterInfo {
+    /// Whether this adapter is safe to allocate `size` bytes on.
+    ///
+    /// Guards against NVK PTE faults and driver-reported lies about
+    /// `max_buffer_size`.
+    #[must_use]
+    pub fn is_allocation_safe(&self, size_bytes: u64) -> bool {
+        size_bytes <= self.safe_allocation_limit
+    }
+
+    /// Whether the sovereign compute pipeline can drive this GPU.
+    #[must_use]
+    pub fn is_sovereign_capable(&self) -> bool {
+        self.fingerprint.sovereign_capable
+    }
+
+    /// Whether this adapter uses the NVK (Nouveau Vulkan) driver.
+    #[must_use]
+    pub fn is_nvk(&self) -> bool {
+        self.driver.contains("nvk") || self.driver.contains("nouveau")
+    }
+}
+
+impl HardwareFingerprint {
+    /// Build a fingerprint from wgpu adapter info.
+    ///
+    /// TFLOPS estimates use workgroup count as a proxy for shader core count.
+    /// Real benchmarks should replace these estimates — this provides a
+    /// conservative baseline for capability-based routing.
+    pub(crate) fn from_adapter_info(
+        info: &wgpu::AdapterInfo,
+        device_type: GpuDeviceType,
+        supports_f64: bool,
+        max_workgroups: u32,
+    ) -> Self {
+        let is_nvk = info.driver.contains("nvk") || info.driver.contains("nouveau");
+
+        // Estimate TFLOPS from device type and workgroup count.
+        // Discrete GPUs: ~10-80 TFLOPS f32, ~0.3-40 TFLOPS f64
+        // Integrated: ~1-4 TFLOPS f32
+        let estimated_tflops_f32 = match device_type {
+            GpuDeviceType::Discrete => (max_workgroups as f64 / 65535.0) * 40.0,
+            GpuDeviceType::Integrated => (max_workgroups as f64 / 65535.0) * 4.0,
+            _ => 0.5,
+        };
+
+        let estimated_tflops_f64 = if supports_f64 {
+            estimated_tflops_f32 / 2.0
+        } else {
+            0.0
+        };
+
+        // Sovereign capable = can be driven by WGSL→SPIR-V without vendor tools.
+        // Currently: all Vulkan adapters are sovereign-capable via wgpu+naga.
+        // NVK has limitations (PTE faults, NAK f64 crashes) but the sovereign
+        // compiler pipeline (naga→SPIR-V passthrough) bypasses NAK entirely.
+        let sovereign_capable = !info.driver.is_empty();
+
+        let mut capabilities = vec![SubstrateCapabilityKind::NnInference];
+
+        if supports_f64 {
+            capabilities.push(SubstrateCapabilityKind::F64Native);
+        }
+        capabilities.push(SubstrateCapabilityKind::Df64Emulation);
+
+        if matches!(device_type, GpuDeviceType::Discrete) {
+            capabilities.extend_from_slice(&[
+                SubstrateCapabilityKind::Fft,
+                SubstrateCapabilityKind::MonteCarlo,
+                SubstrateCapabilityKind::Spmv,
+            ]);
+        }
+
+        if is_nvk || info.driver.contains("nvidia") {
+            capabilities.push(SubstrateCapabilityKind::MdForce);
+            capabilities.push(SubstrateCapabilityKind::Eigen);
+            capabilities.push(SubstrateCapabilityKind::Cg);
+        }
+
+        Self {
+            estimated_tflops_f32,
+            estimated_tflops_f64,
+            sovereign_capable,
+            capabilities,
+        }
+    }
 }
 
 /// GPU device type classification.
@@ -161,6 +301,19 @@ impl WgpuComputeUnit {
             _ => GpuDeviceType::Other,
         };
 
+        let supports_f64 = adapter.features().contains(wgpu::Features::SHADER_F64);
+        let is_nvk = info.driver.contains("nvk") || info.driver.contains("nouveau");
+
+        let safe_alloc = if is_nvk {
+            // NVK PTE fault at ~1.2 GB on Nouveau — guard against it
+            1_200_000_000_u64
+        } else {
+            limits.max_buffer_size
+        };
+
+        let fingerprint =
+            HardwareFingerprint::from_adapter_info(&info, device_type, supports_f64, max_wg);
+
         let adapter_info = GpuAdapterInfo {
             name: name.clone(),
             driver: info.driver.clone(),
@@ -174,7 +327,9 @@ impl WgpuComputeUnit {
             max_compute_workgroup_size_y: limits.max_compute_workgroup_size_y,
             max_compute_workgroup_size_z: limits.max_compute_workgroup_size_z,
             max_buffer_size: limits.max_buffer_size,
-            supports_shader_f64: adapter.features().contains(wgpu::Features::SHADER_F64),
+            supports_shader_f64: supports_f64,
+            fingerprint,
+            safe_allocation_limit: safe_alloc,
         };
 
         Ok(Self {

@@ -139,14 +139,18 @@ struct MmapBuffer {
     len: usize,
 }
 
-// SAFETY: MmapBuffer pointers are only accessed behind &mut CaptureDevice.
+// SAFETY: Raw pointers are unsafe to Send/Sync because Rust cannot verify thread safety.
+// Invariants: ptr/len are only accessed via &mut CaptureDevice (exclusive access); no shared
+// mutable access across threads. Safe Rust cannot express "owned mmap region" without unsafe.
 unsafe impl Send for MmapBuffer {}
 unsafe impl Sync for MmapBuffer {}
 
 impl Drop for MmapBuffer {
     fn drop(&mut self) {
         if !self.ptr.is_null() {
-            // SAFETY: ptr and len come from a successful mmap call.
+            // SAFETY: munmap is unsafe: wrong ptr/len can corrupt process or cause UB. Invariants:
+            // ptr and len come from a successful mmap; we own this mapping exclusively. No safe
+            // munmap in std; rustix::mm::munmap is the correct low-level API.
             unsafe {
                 rustix::mm::munmap(self.ptr.cast(), self.len).ok();
             }
@@ -197,6 +201,9 @@ impl CaptureDevice {
     /// Returns an error if the `VIDIOC_QUERYCAP` ioctl fails.
     pub fn query_capabilities(&self) -> Result<V4l2Capability> {
         // VIDIOC_QUERYCAP = _IOR('V', 0, struct v4l2_capability)
+        // SAFETY: ioctl is an FFI call to the kernel; the kernel writes into a v4l2_capability
+        // buffer we provide. Invariants: fd is a valid open V4L2 device; the Getter passes a
+        // properly sized/aligned buffer. Safe Rust has no ioctl abstraction for V4L2.
         let cap = unsafe {
             rustix::ioctl::ioctl(
                 &self.fd,
@@ -238,6 +245,7 @@ impl CaptureDevice {
     ///
     /// Returns an error if the `VIDIOC_S_FMT` ioctl fails.
     pub fn set_format(&mut self, width: u32, height: u32, fourcc: u32) -> Result<CaptureFormat> {
+        // SAFETY: v4l2_format is #[repr(C)] with only primitive types; all-zero is valid.
         let mut fmt: v4l2_format = unsafe { std::mem::zeroed() };
         fmt.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         fmt.fmt.width = width;
@@ -245,6 +253,8 @@ impl CaptureDevice {
         fmt.fmt.pixelformat = fourcc;
 
         // VIDIOC_S_FMT = _IOWR('V', 5, struct v4l2_format)
+        // SAFETY: ioctl is an FFI call; kernel reads our fmt and may write back. Invariants: fd
+        // is valid, fmt is properly initialized. No safe Rust API for V4L2 ioctls.
         unsafe {
             rustix::ioctl::ioctl(
                 &self.fd,
@@ -273,12 +283,14 @@ impl CaptureDevice {
     ///
     /// Returns an error if `VIDIOC_REQBUFS` or buffer mapping fails.
     pub fn request_buffers(&mut self, count: u32) -> Result<u32> {
+        // SAFETY: v4l2_requestbuffers is #[repr(C)] with only primitive types; all-zero is valid.
         let mut req: v4l2_requestbuffers = unsafe { std::mem::zeroed() };
         req.count = count;
         req.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         req.memory = V4L2_MEMORY_MMAP;
 
         // VIDIOC_REQBUFS = _IOWR('V', 8, struct v4l2_requestbuffers)
+        // SAFETY: ioctl FFI; kernel reads req and writes back. Invariants: fd valid, req initialized.
         unsafe {
             rustix::ioctl::ioctl(
                 &self.fd,
@@ -292,12 +304,14 @@ impl CaptureDevice {
 
         // mmap each buffer
         for i in 0..req.count {
+            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
             let mut buf: v4l2_buffer = unsafe { std::mem::zeroed() };
             buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i;
 
             // VIDIOC_QUERYBUF = _IOWR('V', 9, struct v4l2_buffer)
+            // SAFETY: ioctl FFI; kernel fills buf with buffer info. Invariants: fd valid, buf init'd.
             unsafe {
                 rustix::ioctl::ioctl(
                     &self.fd,
@@ -309,7 +323,9 @@ impl CaptureDevice {
             }
             .map_err(|e| DisplayError::IoctlFailed(format!("VIDIOC_QUERYBUF: {e}")))?;
 
-            // SAFETY: mmap of a V4L2 buffer with validated offset and length.
+            // SAFETY: mmap returns raw pointer; wrong args can cause UB or security issues.
+            // Invariants: fd is valid V4L2 device, buf.m_offset/length from kernel via QUERYBUF.
+            // No safe mmap in std; rustix exposes the syscall.
             let ptr = unsafe {
                 rustix::mm::mmap(
                     std::ptr::null_mut(),
@@ -339,12 +355,14 @@ impl CaptureDevice {
     #[allow(clippy::cast_possible_truncation)] // Buffer index from hardware; loop bound fits u32
     pub fn start_streaming(&mut self) -> Result<()> {
         for i in 0..self.buffers.len() {
+            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
             let mut buf: v4l2_buffer = unsafe { std::mem::zeroed() };
             buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i as u32;
 
             // VIDIOC_QBUF = _IOWR('V', 15, struct v4l2_buffer)
+            // SAFETY: ioctl FFI; kernel reads buf to queue. Invariants: fd valid, buf initialized.
             unsafe {
                 rustix::ioctl::ioctl(
                     &self.fd,
@@ -358,6 +376,7 @@ impl CaptureDevice {
         }
 
         // VIDIOC_STREAMON = _IOW('V', 18, int)
+        // SAFETY: ioctl FFI; kernel starts streaming. Invariants: fd valid, buffer type is u32.
         unsafe {
             rustix::ioctl::ioctl(
                 &self.fd,
@@ -384,11 +403,13 @@ impl CaptureDevice {
             return Err(DisplayError::IoctlFailed("not streaming".into()));
         }
 
+        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
         let mut buf: v4l2_buffer = unsafe { std::mem::zeroed() };
         buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory = V4L2_MEMORY_MMAP;
 
         // VIDIOC_DQBUF = _IOWR('V', 17, struct v4l2_buffer)
+        // SAFETY: ioctl FFI; kernel fills buf with dequeued buffer info. Invariants: fd valid.
         unsafe {
             rustix::ioctl::ioctl(
                 &self.fd,
@@ -406,16 +427,20 @@ impl CaptureDevice {
 
         if idx < self.buffers.len() {
             let mbuf = &self.buffers[idx];
-            // SAFETY: mbuf.ptr is a valid mmap'd region of at least mbuf.len bytes.
+            // SAFETY: from_raw_parts is unsafe: invalid ptr/len causes UB. Invariants: ptr from
+            // mmap, len from kernel; buffer is valid and we read only up to copy_len. No safe way
+            // to create a slice from mmap'd memory without unsafe.
             let src = unsafe { std::slice::from_raw_parts(mbuf.ptr, mbuf.len) };
             out[..copy_len].copy_from_slice(&src[..copy_len]);
         }
 
         // Re-queue
+        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; all-zero is valid.
         let mut rebuf: v4l2_buffer = unsafe { std::mem::zeroed() };
         rebuf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         rebuf.memory = V4L2_MEMORY_MMAP;
         rebuf.index = buf.index;
+        // SAFETY: ioctl FFI; kernel reads rebuf to re-queue. Invariants: fd valid, rebuf init'd.
         unsafe {
             rustix::ioctl::ioctl(
                 &self.fd,
@@ -441,6 +466,7 @@ impl CaptureDevice {
         }
 
         // VIDIOC_STREAMOFF = _IOW('V', 19, int)
+        // SAFETY: ioctl FFI; kernel stops streaming. Invariants: fd valid, buffer type is u32.
         unsafe {
             rustix::ioctl::ioctl(
                 &self.fd,

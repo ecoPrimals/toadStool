@@ -248,10 +248,12 @@ impl EcosystemDiscoverer {
 
         // Fallback: Probe local IPs
         let config = EnvironmentConfig::from_env();
+        let discovery_bind_fallback =
+            std::env::var("TOADSTOOL_DISCOVERY_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0".to_owned());
         let local_ips = vec![
             config.network.bind_address.clone(),
             toadstool_common::constants::network::LOCALHOST_IPV4.to_string(),
-            "0.0.0.0".to_string(),
+            discovery_bind_fallback,
         ];
 
         for ip in local_ips {

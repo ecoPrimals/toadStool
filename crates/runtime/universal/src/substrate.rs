@@ -105,14 +105,30 @@ pub trait ComputeSubstrate: Send + Sync {
     }
 }
 
-/// Substrate types
+/// Substrate types — aligned with metalForge's hardware characterization model.
+///
+/// The 4 original types (CPU, GPU, NPU, TPU) are expanded with finer-grained
+/// variants for mixed-silicon environments where different substrates within
+/// the same category have qualitatively different capabilities.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SubstrateType {
+    /// General-purpose CPU.
     Cpu,
+    /// Discrete GPU (PCIe, dedicated VRAM).
     Gpu,
+    /// Integrated GPU (shared memory with CPU).
+    IntegratedGpu,
+    /// Neural Processing Unit (e.g. AKD1000, int8/int4 inference).
     Npu,
+    /// Tensor Processing Unit (e.g. Google TPU, systolic array).
     Tpu,
+    /// FPGA (reconfigurable logic, e.g. Xilinx, Intel).
+    Fpga,
+    /// Digital Signal Processor.
+    Dsp,
+    /// Quantum compute substrate (simulators or real QPUs).
+    Quantum,
 }
 
 impl SubstrateType {
@@ -120,9 +136,28 @@ impl SubstrateType {
         match self {
             Self::Cpu => "cpu",
             Self::Gpu => "gpu",
+            Self::IntegratedGpu => "igpu",
             Self::Npu => "npu",
             Self::Tpu => "tpu",
+            Self::Fpga => "fpga",
+            Self::Dsp => "dsp",
+            Self::Quantum => "quantum",
         }
+    }
+
+    /// Whether this substrate type is suitable for batch compute workloads.
+    #[must_use]
+    pub const fn is_batch_oriented(&self) -> bool {
+        matches!(self, Self::Gpu | Self::Tpu | Self::Fpga)
+    }
+
+    /// Whether this substrate type is suitable for low-latency inference.
+    #[must_use]
+    pub const fn is_latency_oriented(&self) -> bool {
+        matches!(
+            self,
+            Self::Cpu | Self::Npu | Self::Dsp | Self::IntegratedGpu
+        )
     }
 }
 
@@ -183,6 +218,16 @@ impl SubstrateCapabilities {
                 best_for_energy: false,
                 best_for_continuous: true,
             },
+            SubstrateType::IntegratedGpu => Self {
+                substrate_type,
+                power_watts: 15.0,
+                throughput_ops_per_sec: 1e11,
+                latency_ms: 1.0,
+                best_for_batch: false,
+                best_for_latency: true,
+                best_for_energy: true,
+                best_for_continuous: true,
+            },
             SubstrateType::Npu => Self {
                 substrate_type,
                 power_watts: 2.0,
@@ -202,6 +247,36 @@ impl SubstrateCapabilities {
                 best_for_latency: false,
                 best_for_energy: false,
                 best_for_continuous: true,
+            },
+            SubstrateType::Fpga => Self {
+                substrate_type,
+                power_watts: 25.0,
+                throughput_ops_per_sec: 1e10,
+                latency_ms: 0.5,
+                best_for_batch: false,
+                best_for_latency: true,
+                best_for_energy: true,
+                best_for_continuous: true,
+            },
+            SubstrateType::Dsp => Self {
+                substrate_type,
+                power_watts: 5.0,
+                throughput_ops_per_sec: 1e9,
+                latency_ms: 0.2,
+                best_for_batch: false,
+                best_for_latency: true,
+                best_for_energy: true,
+                best_for_continuous: true,
+            },
+            SubstrateType::Quantum => Self {
+                substrate_type,
+                power_watts: 15_000.0,
+                throughput_ops_per_sec: 1e6,
+                latency_ms: 100.0,
+                best_for_batch: false,
+                best_for_latency: false,
+                best_for_energy: false,
+                best_for_continuous: false,
             },
         }
     }
@@ -308,8 +383,12 @@ impl PowerMeasurement {
         let watts = match substrate_type {
             SubstrateType::Cpu => 65.0,
             SubstrateType::Gpu => 250.0,
+            SubstrateType::IntegratedGpu => 15.0,
             SubstrateType::Npu => 2.0,
             SubstrateType::Tpu => 200.0,
+            SubstrateType::Fpga => 25.0,
+            SubstrateType::Dsp => 5.0,
+            SubstrateType::Quantum => 15_000.0,
         };
 
         Self {
@@ -366,9 +445,12 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
     fn convert_capabilities(caps: &SubstrateCapabilities) -> Capabilities {
         let unit_type = match caps.substrate_type {
             SubstrateType::Cpu => ComputeUnitType::Cpu,
-            SubstrateType::Gpu => ComputeUnitType::GpuWgpu,
+            SubstrateType::Gpu | SubstrateType::IntegratedGpu => ComputeUnitType::GpuWgpu,
             SubstrateType::Npu => ComputeUnitType::Neuromorphic,
-            SubstrateType::Tpu => ComputeUnitType::Custom(1),
+            SubstrateType::Tpu
+            | SubstrateType::Fpga
+            | SubstrateType::Dsp
+            | SubstrateType::Quantum => ComputeUnitType::Custom(1),
         };
 
         let power_profile = if caps.power_watts < 1.0 {
@@ -552,5 +634,26 @@ mod tests {
         let npu_caps = SubstrateCapabilities::default_for_type(SubstrateType::Npu);
         assert_eq!(npu_caps.substrate_type, SubstrateType::Npu);
         assert!(npu_caps.best_for_energy);
+
+        let igpu_caps = SubstrateCapabilities::default_for_type(SubstrateType::IntegratedGpu);
+        assert_eq!(igpu_caps.substrate_type, SubstrateType::IntegratedGpu);
+        assert!(igpu_caps.best_for_energy);
+
+        let fpga_caps = SubstrateCapabilities::default_for_type(SubstrateType::Fpga);
+        assert!(fpga_caps.best_for_latency);
+
+        let quantum_caps = SubstrateCapabilities::default_for_type(SubstrateType::Quantum);
+        assert!(!quantum_caps.best_for_batch);
+    }
+
+    #[test]
+    fn test_substrate_type_classification() {
+        assert!(SubstrateType::Gpu.is_batch_oriented());
+        assert!(SubstrateType::Tpu.is_batch_oriented());
+        assert!(!SubstrateType::Cpu.is_batch_oriented());
+
+        assert!(SubstrateType::Cpu.is_latency_oriented());
+        assert!(SubstrateType::Npu.is_latency_oriented());
+        assert!(!SubstrateType::Gpu.is_latency_oriented());
     }
 }

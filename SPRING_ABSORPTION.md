@@ -198,12 +198,12 @@
 | SparseGemmF64 (CSR × dense for NMF) | wetSpring V82 | ✅ Exists |
 | ESN 36-head MultiHeadEsn + ExportedWeights | hotSpring V0615 | ✅ S79 |
 | StatefulPipeline (water balance day-over-day state) | airSpring V039 | ✅ S80 |
+| `TensorSession::fused_mlp` | wateringHole V69 | ✅ S80 |
 | NPU substrate kind in metalForge | neuralSpring V60 | ☐ |
 | Streaming FASTQ/mzML/MS2 (bio I/O) | wateringHole V69 | ☐ |
 | Pseudofermion HMC (477 lines) | wateringHole V69 | ☐ |
 | Omelyan integrator | wateringHole V69 | ☐ |
 | Richards PDE (12 USDA textures) | wateringHole V69 | ☐ |
-| `TensorSession::fused_mlp` | wateringHole V69 | ✅ S80 |
 
 ---
 
@@ -211,11 +211,11 @@
 
 | Spring | Version | Key Metric |
 |--------|---------|------------|
-| neuralSpring | V64 | 39/39 CPU↔GPU parity, 41/41 NUCLEUS atomics |
-| wetSpring | V82 | 85 primitives consumed, 42/42 Exp247 |
-| airSpring | V039 | 57 experiments, 26/26 GPU rewire, 640 barracuda tests |
-| groundSpring | V54 | 95/95 three-tier parity, 283/283 CPU validation |
-| hotSpring | S68 | Dual GPU + NPU pipeline, brain lattice + CG solver |
+| hotSpring | v0.6.17 | 669 tests, 39/39 suites, gradient flow + brain + Verlet |
+| groundSpring | V80 | 812+390 tests, 395/395 validation, 187 metalForge checks |
+| neuralSpring | V86/S128 | 4,100+ tests, 218/218 validate_all, 42 WGSL |
+| wetSpring | V97d | 1,047+200 tests, 0 local WGSL (fully lean), 150+ primitives |
+| airSpring | V071 | 827+1,498 tests, wgpu 28, 3 local WGSL ops remaining |
 
 ---
 
@@ -466,6 +466,39 @@ quenched→dynamical transfer. Validated for QCD phase classification.
 - **Concurrency-first**: No sleeps in non-chaos tests; test issues are production issues
 - **Device resilience**: All device.poll() paths protected by catch_unwind; errors propagate as Result
 - **NAK sovereignty**: Pure Rust shader pipeline (naga → SPIR-V) bypasses NAK entirely
+- **metalForge = silicon**: Hardware characterization, not Apple Metal. All GPU work is WGSL via wgpu.
+
+---
+
+## S95 Spring Sync & Debris Cleanup Log
+
+### Spring Version Bump
+- hotSpring: pinned at v0.6.17 (gradient flow, brain.rs, Verlet shaders)
+- groundSpring: V68 → V80 (fused correlation GPU, Welford stats, 30 metalForge workloads)
+- neuralSpring: V75/S113 → V86/S128 (modern rewire, VarianceF64, 46 upstream rewires)
+- wetSpring: V92F → V97d (fused ops chain, coralNAK sync, fully lean)
+- airSpring: V063 → V071 (wgpu 28, subgroup detection, barraCuda HEAD sync)
+
+### New Absorption Tracking (from Mar 5-6 handoffs)
+- Sovereign pipeline: `is_sovereign_capable`, `HardwareFingerprint`, NVK allocation guard
+- Substrate capability expansion: 4→12 variants aligned with metalForge
+- New shader tracking: fused LSTM, autocorrelation GPU, R² GPU, SCS-CN/Stewart/Blaney-Criddle
+- Verlet shaders (6 WGSL) tracked for barraCuda absorption
+
+### Debris Cleanup
+- Removed dead root test specs (fossilized to ecoPrimals/fossil/)
+- Removed dangling test shims, stale completion markers, date-based markers
+- Removed stale songbird workspace comment
+- Cleaned "COMPLETE IMPLEMENTATION" blocks from display/distributed crates
+
+### Quality Gates
+- ✅ `cargo check --workspace`: 0 errors
+- ✅ `cargo fmt --check`: 0 diffs
+- ✅ All lib tests pass
+- ✅ ~84% line coverage
+
+---
+
 ## S79 Spring Absorption Execution Log
 
 ### P0 Bugs Fixed
