@@ -27,6 +27,7 @@
 // Module declarations
 pub mod types;
 
+mod byob_routes;
 pub mod byob_server;
 
 use std::collections::HashMap;

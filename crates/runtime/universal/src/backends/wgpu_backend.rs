@@ -374,3 +374,127 @@ impl ComputeUnit for WgpuComputeUnit {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_test_fingerprint(
+        device_type: GpuDeviceType,
+        supports_f64: bool,
+        driver: &str,
+    ) -> HardwareFingerprint {
+        let info = wgpu::AdapterInfo {
+            name: "Test GPU".to_owned(),
+            vendor: 0x10de,
+            device: 0x2684,
+            device_type: wgpu::DeviceType::DiscreteGpu,
+            driver: driver.to_owned(),
+            driver_info: "test".to_owned(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        HardwareFingerprint::from_adapter_info(&info, device_type, supports_f64, 65535)
+    }
+
+    #[test]
+    fn test_hardware_fingerprint_discrete_f64() {
+        let fp = make_test_fingerprint(GpuDeviceType::Discrete, true, "nvidia");
+        assert!(fp.estimated_tflops_f32 > 0.0);
+        assert!(fp.estimated_tflops_f64 > 0.0);
+        assert!(fp.sovereign_capable);
+        assert!(fp
+            .capabilities
+            .contains(&SubstrateCapabilityKind::F64Native));
+        assert!(fp.capabilities.contains(&SubstrateCapabilityKind::MdForce));
+        assert!(fp.capabilities.contains(&SubstrateCapabilityKind::Fft));
+    }
+
+    #[test]
+    fn test_hardware_fingerprint_integrated_no_f64() {
+        let fp = make_test_fingerprint(GpuDeviceType::Integrated, false, "anv");
+        assert!(fp.estimated_tflops_f32 > 0.0);
+        assert_eq!(fp.estimated_tflops_f64, 0.0);
+        assert!(!fp
+            .capabilities
+            .contains(&SubstrateCapabilityKind::F64Native));
+        assert!(fp
+            .capabilities
+            .contains(&SubstrateCapabilityKind::Df64Emulation));
+    }
+
+    #[test]
+    fn test_hardware_fingerprint_nvk_has_md_force() {
+        let fp = make_test_fingerprint(GpuDeviceType::Discrete, true, "nvk");
+        assert!(fp.capabilities.contains(&SubstrateCapabilityKind::MdForce));
+        assert!(fp.capabilities.contains(&SubstrateCapabilityKind::Eigen));
+        assert!(fp.capabilities.contains(&SubstrateCapabilityKind::Cg));
+    }
+
+    #[test]
+    fn test_gpu_adapter_info_allocation_guard() {
+        let info = GpuAdapterInfo {
+            name: "Test".to_owned(),
+            driver: "nvk".to_owned(),
+            driver_info: String::new(),
+            vendor_id: 0,
+            device_id: 0,
+            backend: "Vulkan".to_owned(),
+            device_type: GpuDeviceType::Discrete,
+            max_compute_workgroups_per_dimension: 65535,
+            max_compute_workgroup_size_x: 256,
+            max_compute_workgroup_size_y: 256,
+            max_compute_workgroup_size_z: 64,
+            max_buffer_size: 4_294_967_296,
+            supports_shader_f64: true,
+            fingerprint: make_test_fingerprint(GpuDeviceType::Discrete, true, "nvk"),
+            safe_allocation_limit: 1_200_000_000,
+        };
+
+        assert!(info.is_allocation_safe(1_000_000_000));
+        assert!(!info.is_allocation_safe(2_000_000_000));
+        assert!(info.is_nvk());
+        assert!(info.is_sovereign_capable());
+    }
+
+    #[test]
+    fn test_gpu_adapter_info_non_nvk() {
+        let info = GpuAdapterInfo {
+            name: "Test".to_owned(),
+            driver: "nvidia".to_owned(),
+            driver_info: String::new(),
+            vendor_id: 0,
+            device_id: 0,
+            backend: "Vulkan".to_owned(),
+            device_type: GpuDeviceType::Discrete,
+            max_compute_workgroups_per_dimension: 65535,
+            max_compute_workgroup_size_x: 256,
+            max_compute_workgroup_size_y: 256,
+            max_compute_workgroup_size_z: 64,
+            max_buffer_size: 4_294_967_296,
+            supports_shader_f64: true,
+            fingerprint: make_test_fingerprint(GpuDeviceType::Discrete, true, "nvidia"),
+            safe_allocation_limit: 4_294_967_296,
+        };
+
+        assert!(info.is_allocation_safe(4_000_000_000));
+        assert!(!info.is_nvk());
+    }
+
+    #[test]
+    fn test_gpu_device_type_variants() {
+        assert_eq!(GpuDeviceType::Discrete, GpuDeviceType::Discrete);
+        assert_ne!(GpuDeviceType::Discrete, GpuDeviceType::Integrated);
+    }
+
+    #[test]
+    fn test_substrate_capability_kind_equality() {
+        assert_eq!(
+            SubstrateCapabilityKind::F64Native,
+            SubstrateCapabilityKind::F64Native
+        );
+        assert_ne!(
+            SubstrateCapabilityKind::F64Native,
+            SubstrateCapabilityKind::Df64Emulation
+        );
+    }
+}

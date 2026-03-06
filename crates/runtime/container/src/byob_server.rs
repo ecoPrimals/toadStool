@@ -16,7 +16,8 @@ use toadstool::{
     byob::{create_byob_executor, ByobExecutor, ByobExecutorConfig},
     RuntimeEngine, ToadStoolError, ToadStoolResult,
 };
-use toadstool_api::byob::ByobApi;
+
+use crate::byob_routes::ByobApi;
 use toadstool_common::constants::network::{BIND_ALL_IPV4, BYOB_DEFAULT_PORT};
 
 use crate::ContainerRuntimeEngine;

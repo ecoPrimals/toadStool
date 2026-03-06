@@ -355,25 +355,18 @@ The entire NAK bypass is implemented in pure Rust and active on NVK:
 integer arithmetic (u8→int4), 5.3% LOO generalization error, 540× cost reduction for
 quenched→dynamical transfer. Validated for QCD phase classification.
 
-### Pending Absorption Items
+### Pending Absorption Items (Reconciled S96)
 
-| Component | Source | Priority |
-|-----------|--------|----------|
-| NautilusBrain API (`ai.nautilus.*` JSON-RPC) | hotSpring V0615 | HIGH |
-| bingoCube-nautilus workspace dependency | hotSpring V0615 | HIGH |
-| ESN reservoir module (11-head) | hotSpring S68 | MEDIUM |
-| ESN WGSL shader (`esn_reservoir_update.wgsl`) | hotSpring S68 | MEDIUM |
-| NPU worker pattern (typed channels) | hotSpring V0615 | MEDIUM |
-| Drift monitor integration | hotSpring V0615 | MEDIUM |
-| NAK-optimized eigensolve shader | hotSpring S68 | LOW |
-| Board populations → AKD1000 int4 | hotSpring V0615 | LOW |
-
-### Test Validation
-- 66/66 lattice QCD tests pass
-- 32/32 sovereign compiler tests pass
-- 16/16 driver profile + probe tests pass
-- 2761/2773 barracuda tests pass (12 ignored)
-- 0 failures across full workspace
+| Component | Source | Status |
+|-----------|--------|--------|
+| NautilusBrain API (`ai.nautilus.*` JSON-RPC) | hotSpring V0615 | ✅ S80 — 8 methods wired |
+| bingoCube-nautilus workspace dependency | hotSpring V0615 | ✅ S80 — standalone module |
+| ESN reservoir module (36-head MultiHeadEsn) | hotSpring S68 | ✅ S79 — ExportedWeights + HeadGroup |
+| ESN WGSL shader (`esn_reservoir_update.wgsl`) | hotSpring S68 | ✅ Already absorbed |
+| NPU worker pattern (typed channels) | hotSpring V0615 | ✅ S80 — feature-gated nautilus |
+| Drift monitor integration | hotSpring V0615 | ✅ S80 — NautilusBrain.detect_concept_edges() |
+| NAK-optimized eigensolve shader | hotSpring S68 | ☐ Tracked P3 |
+| Board populations → AKD1000 int4 | hotSpring V0615 | ☐ Tracked P4 |
 
 ---
 
