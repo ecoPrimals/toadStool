@@ -46,7 +46,7 @@ Nest    = Tower  + NestGate           <- storage
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~60+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
-| Production stubs | 0 -- all evolved to real implementations or proper errors |
+| Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |

@@ -1,17 +1,17 @@
 # Spring Absorption Tracker
 
-**Session**: S97 Spring Absorption (March 6, 2026)
-**ToadStool**: master, ~85% line coverage (6,176 tests). D-DF64/D-CD transferred to barraCuda team. D-NPU/D-SOV resolved. Hardware Transport Layer wired. Clippy pedantic clean. JSON-RPC handler decomposed. Science IPC namespace live. NVK Volta f64 probe active.
+**Session**: S128 Deep Debt Evolution (March 6, 2026)
+**ToadStool**: master, ~85% line coverage. D-DF64/D-CD transferred to barraCuda team. D-NPU/D-SOV resolved. Hardware Transport Layer wired. Clippy pedantic clean. JSON-RPC handler decomposed. Science IPC namespace live. NVK Volta f64 probe active. f64 shared-memory routing absorbed (groundSpring V84-V85). Shader compile IPC. Architecture stubs evolved to typed implementations.
 
 ## Spring Pin Status
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.17 | S87→S95 | S95→S97 | 669 | Lattice QCD, MD reservoir, NPU, gradient flow, Verlet |
-| groundSpring | V80 | V68→S95 | V80→S97 | 812+390 | 87 (51 CPU + 36 GPU), metalForge 30 workloads |
-| neuralSpring | V86/S128 | V75/S113→S95 | V86/S128→S97 | 4,100+ | 42 WGSL, gpu_dispatch, coralForge |
-| wetSpring | V97d | V92F→S95 | V97d→S97 | 1,047+200 | 150+ primitives, 0 local WGSL (fully lean) |
-| airSpring | V071 | V063→S95 | V071→S97 | 827+1,498 | 25 Tier A GPU + 6 universal, 3 local WGSL ops |
+| hotSpring | v0.6.17 | S95→S97 | S97→S128 | 669 | Lattice QCD, MD reservoir, NPU, gradient flow, Verlet |
+| groundSpring | V85 | V80→S97 | V85→S128 | 812+390 | 87 (51 CPU + 36 GPU), metalForge 30 workloads, f64 shared-mem bug |
+| neuralSpring | V86/S128 | V86/S128→S97 | V86/S128→S128 | 4,100+ | 42 WGSL, gpu_dispatch, coralForge |
+| wetSpring | V97d | V97d→S97 | V97d→S128 | 1,047+200 | 150+ primitives, 0 local WGSL (fully lean) |
+| airSpring | V071 | V071→S97 | V071→S128 | 827+1,498 | 25 Tier A GPU + 6 universal, 3 local WGSL ops |
 
 ## Absorption Status
 
@@ -55,6 +55,13 @@
 | `science.*` JSON-RPC namespace (10 methods) | wetSpring IPC | **DONE** S97 |
 | coralDriver routing for sovereign dispatch | coralReef Phase 5 | Tracked (blocked on coralDriver) |
 | Substrate capability expansion (4→12 variants) | metalForge (all springs) | **DONE** S96 |
+| `f64_shared_memory_reliable` on `GpuAdapterInfo` | groundSpring V84-V85 | **DONE** S128 |
+| `sovereign_binary_capable` on `HardwareFingerprint` | groundSpring V85 | **DONE** S128 |
+| `PrecisionRoutingAdvice` enum + `precision_routing()` | groundSpring V84-V85 | **DONE** S128 |
+| `shader.compile.*` JSON-RPC namespace (4 methods) | coralReef handoff | **DONE** S128 |
+| `discover_capabilities` dynamically from registry | deep debt | **DONE** S128 |
+| `query_available_backends()` runtime probing | deep debt | **DONE** S128 |
+| Architecture stubs → typed implementations | deep debt | **DONE** S128 |
 
 ### P3 — Shader Evolution (tracked)
 

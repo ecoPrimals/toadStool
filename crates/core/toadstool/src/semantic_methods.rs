@@ -186,6 +186,15 @@ impl SemanticMethodRegistry {
         add_mapping("science.substrate.discover", "science_substrate_discover");
         add_mapping("science.substrate.probe", "science_substrate_probe");
 
+        // ═══════════════════════════════════════════════════════════
+        // SHADER DOMAIN - Shader compilation IPC (coralReef pipeline)
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("shader.compile.wgsl", "shader_compile_wgsl");
+        add_mapping("shader.compile.spirv", "shader_compile_spirv");
+        add_mapping("shader.compile.status", "shader_compile_status");
+        add_mapping("shader.compile.capabilities", "shader_compile_capabilities");
+
         Self { aliases, reverse }
     }
 
@@ -472,6 +481,42 @@ mod tests {
         assert_eq!(
             registry.get_semantic("science_npu_dispatch"),
             Some("science.npu.dispatch")
+        );
+    }
+
+    #[test]
+    fn test_shader_domain_resolution() {
+        let registry = SemanticMethodRegistry::new();
+
+        assert_eq!(
+            registry.resolve("shader.compile.wgsl"),
+            Some("shader_compile_wgsl")
+        );
+        assert_eq!(
+            registry.resolve("shader.compile.spirv"),
+            Some("shader_compile_spirv")
+        );
+        assert_eq!(
+            registry.resolve("shader.compile.status"),
+            Some("shader_compile_status")
+        );
+        assert_eq!(
+            registry.resolve("shader.compile.capabilities"),
+            Some("shader_compile_capabilities")
+        );
+    }
+
+    #[test]
+    fn test_shader_domain_reverse() {
+        let registry = SemanticMethodRegistry::new();
+
+        assert_eq!(
+            registry.get_semantic("shader_compile_wgsl"),
+            Some("shader.compile.wgsl")
+        );
+        assert_eq!(
+            registry.get_semantic("shader_compile_spirv"),
+            Some("shader.compile.spirv")
         );
     }
 

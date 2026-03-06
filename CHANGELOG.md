@@ -5,7 +5,39 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 6, 2026 (Sessions 43-97 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline)
+## [Unreleased] - March 6, 2026 (Sessions 43-128 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery)
+
+### Session S128 (Mar 6, 2026) — Deep Debt Evolution: f64 Routing + Shader Compile IPC + Architecture Completion
+
+#### GPU Adapter Evolution (groundSpring V84-V85 absorption)
+- **`f64_shared_memory_reliable: bool`** on `GpuAdapterInfo` — tracks naga/SPIR-V f64 shared-memory reduction bug (returns zeros on all tested GPUs)
+- **`sovereign_binary_capable: bool`** on `HardwareFingerprint` — tracks coralDriver native binary submission readiness
+- **`PrecisionRoutingAdvice`** enum (`F64Native`, `F64NativeNoSharedMem`, `Df64Only`, `F32Only`) — callers get actionable routing without understanding driver quirks
+- **`precision_routing()`** method on `GpuAdapterInfo` — single-call precision path selection
+- `HardwareFingerprint`, `PrecisionRoutingAdvice`, `SubstrateCapabilityKind` exported from `backends/mod.rs`
+
+#### Shader Compile IPC (coralReef pipeline preparation)
+- **4 `shader.compile.*` JSON-RPC methods**: `wgsl`, `spirv`, `status`, `capabilities`
+- Semantic registry expanded to 70 methods (was 66)
+- Handler validates parameters (source required for WGSL, spirv_binary for SPIR-V)
+- `shader.compile.capabilities` reports naga pipeline status, coralReef/coralDriver availability
+
+#### Capability-Based Evolution (deep debt)
+- **`discover_capabilities`** evolved from hardcoded method list to dynamically built from semantic registry
+- **`science.gpu.capabilities`** evolved from hardcoded `["vulkan", "metal", "dx12"]` to runtime-probed `query_available_backends()`
+- **`gpu.info`** compute_backends evolved from hardcoded to runtime-discovered
+- **`query_available_backends()`** — probes `/proc/driver/nvidia`, `/dev/dri`, platform detection
+- `science.gpu.capabilities` now includes `precision_notes` (f64_shared_memory_reliable, routing_advice)
+
+#### Architecture Stubs → Typed Implementations
+- **`common::auth`** evolved: `TrustLevel` enum (Untrusted→MutuallyVerified), `CapabilityToken` struct with expiry/capability checks
+- **`common::scheduling`** evolved: `SchedulingPriority` enum, `PlacementConstraint` struct, `SchedulingDecision` enum (ExecuteLocal/Delegate/Reject)
+- Both modules now export types and have full test coverage
+
+#### Quality Gates
+- **0 clippy warnings** (was 0)
+- **0 test failures** — all new code has tests
+- +25 tests: GPU adapter (6), server handler (6), semantic registry (4), auth (4), scheduling (4), gpu_system (1)
 
 ### Session S97 (Mar 6, 2026) — Spring Absorption: toadStool Evolutions
 

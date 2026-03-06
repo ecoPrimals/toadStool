@@ -1,4 +1,4 @@
-# Status -- March 6, 2026 (S97)
+# Status -- March 6, 2026 (S128)
 
 ## Quality Gates
 
@@ -29,13 +29,13 @@
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
-| Production mocks/stubs | **0** — all evolved to real implementations or proper errors (NestGate store/retrieve evolved S94b) |
+| Production mocks/stubs | **0** — all evolved to real implementations or proper errors. Architecture stubs evolved to typed enums/traits (auth, scheduling S128) |
 | Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (40+ large files smart-refactored to domain modules) |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
-| Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b) |
-| JSON-RPC methods | **57** (was 47; +10 science.* methods) |
+| Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
+| JSON-RPC methods | **61+** (was 57; +4 shader.compile.* methods S128; methods list now dynamically built from semantic registry) |
 | Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |

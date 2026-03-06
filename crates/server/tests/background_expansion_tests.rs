@@ -16,7 +16,6 @@ use toadstool_server::{
     ServerStatistics,
 };
 use tokio::sync::{broadcast, RwLock};
-// ✅ MODERNIZED: Removed tokio::time::sleep import - using event-based patterns!
 
 /// Helper to create test server state with config
 fn create_test_state_with_config(config: ServerConfig) -> ServerState {

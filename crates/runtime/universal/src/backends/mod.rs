@@ -17,4 +17,7 @@ pub use cpu::CpuComputeUnit;
 pub use opencl::OpenClComputeUnit;
 
 #[cfg(feature = "wgpu-backend")]
-pub use wgpu_backend::{GpuAdapterInfo, GpuDeviceType, WgpuComputeUnit};
+pub use wgpu_backend::{
+    GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, PrecisionRoutingAdvice,
+    SubstrateCapabilityKind, WgpuComputeUnit,
+};

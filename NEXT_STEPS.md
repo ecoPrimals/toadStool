@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 6, 2026 -- S97
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 57 JSON-RPC methods | NVK Volta f64 probe active | Hardware Transport Layer wired to daemon + CLI | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | Sovereign pipeline: HardwareFingerprint + SubstrateCapabilityKind | 40+ god files refactored | All files < 1000 lines
-**Latest**: S97 — Spring absorption: NVK Volta f64 probe, subgroup detection, AdaptiveSimulationController, science.* IPC namespace (10 methods), test coverage +59.
+**Updated**: March 6, 2026 -- S128
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 61+ JSON-RPC methods (dynamically built) | f64 shared-memory routing | Shader compile IPC | NVK Volta f64 probe active | Hardware Transport Layer wired | Sovereignty: capability-based | ecoBin pure-rust verified | Architecture stubs evolved to typed impls | All files < 1000 lines
+**Latest**: S128 — f64 shared-memory bug absorbed (groundSpring V84-V85), PrecisionRoutingAdvice, shader.compile.* IPC (4 methods), architecture stubs evolved, capability-based handler evolution.
 
 ---
 

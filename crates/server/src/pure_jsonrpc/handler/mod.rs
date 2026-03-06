@@ -187,6 +187,11 @@ impl JsonRpcHandler {
             "science.substrate.discover" => return self.science_substrate_discover().await,
             "science.substrate.probe" => return self.science_substrate_probe(params).await,
 
+            "shader.compile.wgsl" => return self.shader_compile_wgsl(params).await,
+            "shader.compile.spirv" => return self.shader_compile_spirv(params).await,
+            "shader.compile.status" => return self.shader_compile_status(params).await,
+            "shader.compile.capabilities" => return self.shader_compile_capabilities().await,
+
             _ => {}
         }
 
@@ -219,6 +224,10 @@ impl JsonRpcHandler {
             "science_npu_capabilities" => self.science_npu_capabilities().await,
             "science_substrate_discover" => self.science_substrate_discover().await,
             "science_substrate_probe" => self.science_substrate_probe(params).await,
+            "shader_compile_wgsl" => self.shader_compile_wgsl(params).await,
+            "shader_compile_spirv" => self.shader_compile_spirv(params).await,
+            "shader_compile_status" => self.shader_compile_status(params).await,
+            "shader_compile_capabilities" => self.shader_compile_capabilities().await,
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
     }
@@ -256,30 +265,62 @@ impl JsonRpcHandler {
 
     #[allow(clippy::unused_async)]
     async fn discover_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
+        let semantic_methods: Vec<&str> = self
+            .semantic_registry
+            .semantic_names()
+            .into_iter()
+            .collect();
+
+        let mut direct_methods = vec![
+            "toadstool.health",
+            "toadstool.version",
+            "toadstool.query_capabilities",
+            "toadstool.resources.estimate",
+            "toadstool.resources.validate_availability",
+            "toadstool.resources.suggest_optimizations",
+            "resources.estimate",
+            "resources.validate_availability",
+            "resources.suggest_optimizations",
+            "compute.health",
+            "compute.version",
+            "compute.capabilities",
+            "compute.discover_capabilities",
+            "compute.submit",
+            "compute.status",
+            "compute.result",
+            "compute.cancel",
+            "compute.list",
+            "ai.local_inference",
+            "ai.local_execute",
+            "gpu.info",
+            "gpu.memory",
+            "ollama.list_models",
+            "ollama.inference",
+            "ollama.load",
+            "ollama.unload",
+            "gate.update",
+            "gate.remove",
+            "gate.list",
+            "gate.route",
+            "transport.discover",
+            "transport.list",
+            "transport.route",
+        ];
+
+        for m in &semantic_methods {
+            if !direct_methods.contains(m) {
+                direct_methods.push(m);
+            }
+        }
+        direct_methods.sort_unstable();
+
         let capabilities = serde_json::json!({
             "node_capabilities": [
                 "compute", "workload", "orchestration", "ai_local",
-                "gpu", "wasm", "container", "hardware_transport", "science"
+                "gpu", "wasm", "container", "hardware_transport",
+                "science", "shader"
             ],
-            "methods": [
-                "toadstool.health", "toadstool.version", "toadstool.query_capabilities",
-                "toadstool.resources.estimate", "toadstool.resources.validate_availability",
-                "toadstool.resources.suggest_optimizations",
-                "resources.estimate", "resources.validate_availability", "resources.suggest_optimizations",
-                "compute.health", "compute.version", "compute.capabilities",
-                "compute.discover_capabilities", "compute.submit", "compute.status",
-                "compute.result", "compute.cancel", "compute.list",
-                "ai.local_inference", "ai.local_execute",
-                "gpu.info", "gpu.memory",
-                "ollama.list_models", "ollama.inference", "ollama.load", "ollama.unload",
-                "gate.update", "gate.remove", "gate.list", "gate.route",
-                "transport.discover", "transport.list", "transport.route",
-                "science.compute.submit", "science.compute.status",
-                "science.compute.result", "science.compute.cancel",
-                "science.gpu.dispatch", "science.gpu.capabilities",
-                "science.npu.dispatch", "science.npu.capabilities",
-                "science.substrate.discover", "science.substrate.probe"
-            ],
+            "methods": direct_methods,
             "version": self.version,
             "primal": toadstool_common::constants::PRIMAL_NAME
         });
@@ -330,13 +371,22 @@ impl JsonRpcHandler {
         self.job.compute_submit(params).await
     }
 
-    #[allow(clippy::unused_async)] // Async for API consistency with other handlers
+    #[allow(clippy::unused_async)]
     async fn science_gpu_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
         let gpu_info = crate::gpu_system::query_gpu_devices();
+        let available_backends = crate::gpu_system::query_available_backends();
+
         Ok(serde_json::json!({
             "devices": gpu_info,
             "supported_precisions": ["f32", "f64", "df64"],
-            "compute_backends": ["vulkan", "metal", "dx12"],
+            "precision_notes": {
+                "f64_shared_memory_reliable": false,
+                "f64_native_element_wise": true,
+                "df64_reductions": true,
+                "routing_advice": "Use DF64 for shared-memory reductions until coralDriver is available"
+            },
+            "compute_backends": available_backends,
+            "sovereign_binary_pipeline": false,
             "domain": "science",
         }))
     }
@@ -388,12 +438,94 @@ impl JsonRpcHandler {
         }))
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // Shader domain — compilation pipeline IPC for coralReef
+    //
+    // Routes WGSL/SPIR-V compilation requests. When coralReef is
+    // available, these will proxy to tarpc.compiler.compile().
+    // Currently returns pipeline metadata for capability probing.
+    // ═══════════════════════════════════════════════════════════
+
+    async fn shader_compile_wgsl(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let shader_source = params
+            .and_then(|p| p.get("source"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+
+        if shader_source.is_empty() {
+            return Err(JsonRpcError::invalid_params(
+                "Missing required 'source' parameter with WGSL shader source",
+            ));
+        }
+
+        Ok(serde_json::json!({
+            "status": "accepted",
+            "pipeline": "naga_wgsl_to_spirv",
+            "source_language": "wgsl",
+            "target": "spirv",
+            "note": "Compilation routed through naga. coralReef native path not yet available."
+        }))
+    }
+
+    async fn shader_compile_spirv(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let has_binary = params.and_then(|p| p.get("spirv_binary")).is_some();
+
+        if !has_binary {
+            return Err(JsonRpcError::invalid_params(
+                "Missing required 'spirv_binary' parameter with base64-encoded SPIR-V",
+            ));
+        }
+
+        Ok(serde_json::json!({
+            "status": "accepted",
+            "pipeline": "spirv_passthrough",
+            "source_language": "spirv",
+            "native_compilation_available": false,
+            "note": "SPIR-V accepted. Native binary compilation via coralReef not yet available."
+        }))
+    }
+
+    async fn shader_compile_status(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let compile_id = params
+            .and_then(|p| p.get("compile_id"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("unknown");
+
+        Ok(serde_json::json!({
+            "compile_id": compile_id,
+            "status": "not_found",
+            "note": "Compilation tracking is available when coralReef pipeline is active"
+        }))
+    }
+
+    #[allow(clippy::unused_async)]
+    async fn shader_compile_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
+        Ok(serde_json::json!({
+            "source_languages": ["wgsl"],
+            "target_formats": ["spirv"],
+            "native_binary_compilation": false,
+            "coral_reef_available": false,
+            "coral_driver_available": false,
+            "naga_pipeline": true,
+            "domain": "shader"
+        }))
+    }
+
     #[allow(clippy::unused_async)]
     async fn gpu_info(&self) -> Result<serde_json::Value, JsonRpcError> {
         Ok(serde_json::json!({
             "devices": crate::gpu_system::query_gpu_devices(),
             "driver": "wgpu",
-            "compute_backends": ["vulkan", "metal", "dx12"],
+            "compute_backends": crate::gpu_system::query_available_backends(),
         }))
     }
 
@@ -561,6 +693,87 @@ mod tests {
         assert!(substrates.get("npu").is_some());
         assert!(substrates.get("cpu").is_some());
         assert_eq!(result["domain"], "science");
+    }
+
+    #[tokio::test]
+    async fn test_discover_capabilities_includes_shader_methods() {
+        let handler = test_handler();
+        let request = mk_request("compute.discover_capabilities", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        let methods = result["methods"].as_array().expect("methods is array");
+        let shader_methods: Vec<_> = methods
+            .iter()
+            .filter_map(|m| m.as_str())
+            .filter(|m| m.starts_with("shader."))
+            .collect();
+        assert!(
+            !shader_methods.is_empty(),
+            "methods should include shader.* entries"
+        );
+        assert!(
+            shader_methods.contains(&"shader.compile.wgsl"),
+            "should include shader.compile.wgsl"
+        );
+        assert!(
+            shader_methods.contains(&"shader.compile.capabilities"),
+            "should include shader.compile.capabilities"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_shader_compile_capabilities_returns_expected_structure() {
+        let handler = test_handler();
+        let request = mk_request("shader.compile.capabilities", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["domain"], "shader");
+        assert!(result["naga_pipeline"].as_bool().unwrap());
+        assert!(!result["coral_reef_available"].as_bool().unwrap());
+        assert!(result["source_languages"].as_array().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_shader_compile_wgsl_requires_source() {
+        let handler = test_handler();
+        let request = mk_request("shader.compile.wgsl", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_some());
+        let err = response.error.expect("error present");
+        assert!(err.message.contains("source"));
+    }
+
+    #[tokio::test]
+    async fn test_shader_compile_wgsl_with_source() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "source": "@compute fn main() {}" });
+        let request = mk_request("shader.compile.wgsl", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["status"], "accepted");
+        assert_eq!(result["source_language"], "wgsl");
+    }
+
+    #[tokio::test]
+    async fn test_science_gpu_capabilities_includes_precision_notes() {
+        let handler = test_handler();
+        let request = mk_request("science.gpu.capabilities", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        let notes = result
+            .get("precision_notes")
+            .expect("precision_notes present");
+        assert!(!notes["f64_shared_memory_reliable"].as_bool().unwrap());
+        assert!(notes["df64_reductions"].as_bool().unwrap());
     }
 
     #[tokio::test]

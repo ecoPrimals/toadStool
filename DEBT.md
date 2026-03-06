@@ -106,7 +106,18 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 ---
 
-## Recently Resolved (S95–S96 — Mar 6, 2026)
+## Recently Resolved (S128 — Mar 6, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| f64 shared-memory bug tracking | `f64_shared_memory_reliable: bool` on `GpuAdapterInfo` — groundSpring V84-V85 discovered naga/SPIR-V f64 shared-memory reductions return zeros on all GPUs |
+| Sovereign binary tracking | `sovereign_binary_capable: bool` on `HardwareFingerprint` — tracks coralDriver readiness |
+| f64 precision routing | `PrecisionRoutingAdvice` enum + `precision_routing()` — single API for callers (F64Native/F64NativeNoSharedMem/Df64Only/F32Only) |
+| Shader compile IPC | 4 `shader.compile.*` methods (wgsl, spirv, status, capabilities) — coralReef pipeline preparation |
+| Hardcoded capability lists | `discover_capabilities` now dynamically built from `SemanticMethodRegistry`; `science.gpu.capabilities` backends runtime-probed |
+| Architecture stubs | `common::auth` (TrustLevel, CapabilityToken) and `common::scheduling` (SchedulingPriority, PlacementConstraint, SchedulingDecision) — real typed implementations with tests |
+
+## Recently Resolved (S95–S97 — Mar 6, 2026)
 
 | Item | Resolution |
 |------|-----------|

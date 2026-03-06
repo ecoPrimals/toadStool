@@ -54,6 +54,13 @@ pub struct GpuAdapterInfo {
     /// Whether f64 compute is known to be unreliable on this adapter.
     /// NVK on Volta (SM70) reports f64 support but produces zeros.
     pub f64_compute_unreliable: bool,
+    /// Whether f64 shared-memory reductions produce correct results.
+    ///
+    /// groundSpring V84-V85 discovered that naga/SPIR-V f64 shared-memory
+    /// reductions return zeros on ALL tested GPUs (NVIDIA proprietary + NVK).
+    /// DF64 paths and f32 shared-memory work correctly.
+    /// Currently `false` for all adapters via naga/SPIR-V pipeline.
+    pub f64_shared_memory_reliable: bool,
     /// Minimum subgroup size (warp size). 0 if unknown.
     pub min_subgroup_size: u32,
     /// Maximum subgroup size. 0 if unknown.
@@ -76,6 +83,11 @@ pub struct HardwareFingerprint {
     /// Whether the sovereign pipeline (coralReef + coralDriver) can
     /// drive this GPU without vendor toolchains.
     pub sovereign_capable: bool,
+    /// Whether a coralDriver binary submission path exists for this GPU.
+    /// `true` when coralReef can compile SPIR-V to native binaries
+    /// and coralDriver can submit them. Currently `false` for all GPUs
+    /// until coralDriver reaches production readiness.
+    pub sovereign_binary_capable: bool,
     /// Substrate capabilities discovered at runtime.
     pub capabilities: Vec<SubstrateCapabilityKind>,
 }
@@ -112,6 +124,23 @@ pub enum SubstrateCapabilityKind {
     SubgroupOps,
 }
 
+/// Precision routing advice for f64 workloads.
+///
+/// Callers (barraCuda, springs) use this to select the correct compute
+/// path without needing to understand driver-level quirks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrecisionRoutingAdvice {
+    /// Native f64 is reliable for all operations including shared memory.
+    F64Native,
+    /// f64 arithmetic works but shared-memory reductions fail (return zeros).
+    /// Use DF64 for reductions, native f64 for element-wise ops.
+    F64NativeNoSharedMem,
+    /// f64 is unreliable — use DF64 (double-float f32 pairs) for all operations.
+    Df64Only,
+    /// No f64 support at all — f32 only.
+    F32Only,
+}
+
 impl GpuAdapterInfo {
     /// Whether this adapter is safe to allocate `size` bytes on.
     ///
@@ -138,6 +167,25 @@ impl GpuAdapterInfo {
     #[must_use]
     pub fn has_reliable_f64(&self) -> bool {
         self.supports_shader_f64 && !self.f64_compute_unreliable
+    }
+
+    /// Route f64 workloads to the correct precision path.
+    ///
+    /// Encapsulates the groundSpring V84-V85 discovery: naga/SPIR-V f64
+    /// shared-memory reductions return zeros on all tested GPUs. This
+    /// method tells callers exactly which path to use.
+    #[must_use]
+    pub fn precision_routing(&self) -> PrecisionRoutingAdvice {
+        if !self.supports_shader_f64 {
+            return PrecisionRoutingAdvice::F32Only;
+        }
+        if self.f64_compute_unreliable {
+            return PrecisionRoutingAdvice::Df64Only;
+        }
+        if !self.f64_shared_memory_reliable {
+            return PrecisionRoutingAdvice::F64NativeNoSharedMem;
+        }
+        PrecisionRoutingAdvice::F64Native
     }
 
     /// Maximum safe 2D dispatch dimensions (x * y must fit workgroup limit).
@@ -211,6 +259,7 @@ impl HardwareFingerprint {
             estimated_tflops_f32,
             estimated_tflops_f64,
             sovereign_capable,
+            sovereign_binary_capable: false,
             capabilities,
         }
     }
@@ -351,6 +400,11 @@ impl WgpuComputeUnit {
             max_wg,
         );
 
+        // groundSpring V84-V85: naga/SPIR-V f64 shared-memory reductions return
+        // zeros on ALL tested GPUs. Until coralDriver provides a native binary
+        // path, this is always false via the standard wgpu/naga pipeline.
+        let f64_shared_memory_reliable = false;
+
         let adapter_info = GpuAdapterInfo {
             name: name.clone(),
             driver: info.driver.clone(),
@@ -366,6 +420,7 @@ impl WgpuComputeUnit {
             max_buffer_size: limits.max_buffer_size,
             supports_shader_f64: supports_f64,
             f64_compute_unreliable,
+            f64_shared_memory_reliable,
             min_subgroup_size,
             max_subgroup_size,
             fingerprint,
@@ -478,11 +533,17 @@ mod tests {
         assert!(fp.capabilities.contains(&SubstrateCapabilityKind::Cg));
     }
 
-    #[test]
-    fn test_gpu_adapter_info_allocation_guard() {
-        let info = GpuAdapterInfo {
-            name: "Test".to_owned(),
-            driver: "nvk".to_owned(),
+    fn make_test_adapter_info(
+        name: &str,
+        driver: &str,
+        supports_f64: bool,
+        f64_unreliable: bool,
+        f64_shared_mem: bool,
+        safe_alloc: u64,
+    ) -> GpuAdapterInfo {
+        GpuAdapterInfo {
+            name: name.to_owned(),
+            driver: driver.to_owned(),
             driver_info: String::new(),
             vendor_id: 0,
             device_id: 0,
@@ -493,13 +554,25 @@ mod tests {
             max_compute_workgroup_size_y: 256,
             max_compute_workgroup_size_z: 64,
             max_buffer_size: 4_294_967_296,
-            supports_shader_f64: true,
-            f64_compute_unreliable: false,
+            supports_shader_f64: supports_f64,
+            f64_compute_unreliable: f64_unreliable,
+            f64_shared_memory_reliable: f64_shared_mem,
             min_subgroup_size: 32,
             max_subgroup_size: 32,
-            fingerprint: make_test_fingerprint(GpuDeviceType::Discrete, true, false, "nvk", "Test"),
-            safe_allocation_limit: 1_200_000_000,
-        };
+            fingerprint: make_test_fingerprint(
+                GpuDeviceType::Discrete,
+                supports_f64,
+                f64_unreliable,
+                driver,
+                name,
+            ),
+            safe_allocation_limit: safe_alloc,
+        }
+    }
+
+    #[test]
+    fn test_gpu_adapter_info_allocation_guard() {
+        let info = make_test_adapter_info("Test", "nvk", true, false, false, 1_200_000_000);
 
         assert!(info.is_allocation_safe(1_000_000_000));
         assert!(!info.is_allocation_safe(2_000_000_000));
@@ -509,32 +582,7 @@ mod tests {
 
     #[test]
     fn test_gpu_adapter_info_non_nvk() {
-        let info = GpuAdapterInfo {
-            name: "Test".to_owned(),
-            driver: "nvidia".to_owned(),
-            driver_info: String::new(),
-            vendor_id: 0,
-            device_id: 0,
-            backend: "Vulkan".to_owned(),
-            device_type: GpuDeviceType::Discrete,
-            max_compute_workgroups_per_dimension: 65535,
-            max_compute_workgroup_size_x: 256,
-            max_compute_workgroup_size_y: 256,
-            max_compute_workgroup_size_z: 64,
-            max_buffer_size: 4_294_967_296,
-            supports_shader_f64: true,
-            f64_compute_unreliable: false,
-            min_subgroup_size: 32,
-            max_subgroup_size: 32,
-            fingerprint: make_test_fingerprint(
-                GpuDeviceType::Discrete,
-                true,
-                false,
-                "nvidia",
-                "Test",
-            ),
-            safe_allocation_limit: 4_294_967_296,
-        };
+        let info = make_test_adapter_info("Test", "nvidia", true, false, false, 4_294_967_296);
 
         assert!(info.is_allocation_safe(4_000_000_000));
         assert!(!info.is_nvk());
@@ -589,65 +637,22 @@ mod tests {
 
     #[test]
     fn test_has_reliable_f64_nvk_volta() {
-        let info = GpuAdapterInfo {
-            name: "NVIDIA Titan V".to_owned(),
-            driver: "nvk".to_owned(),
-            driver_info: String::new(),
-            vendor_id: 0,
-            device_id: 0,
-            backend: "Vulkan".to_owned(),
-            device_type: GpuDeviceType::Discrete,
-            max_compute_workgroups_per_dimension: 65535,
-            max_compute_workgroup_size_x: 256,
-            max_compute_workgroup_size_y: 256,
-            max_compute_workgroup_size_z: 64,
-            max_buffer_size: 4_294_967_296,
-            supports_shader_f64: true,
-            f64_compute_unreliable: true,
-            min_subgroup_size: 32,
-            max_subgroup_size: 32,
-            fingerprint: make_test_fingerprint(
-                GpuDeviceType::Discrete,
-                true,
-                true,
-                "nvk",
-                "NVIDIA Titan V",
-            ),
-            safe_allocation_limit: 1_200_000_000,
-        };
+        let info =
+            make_test_adapter_info("NVIDIA Titan V", "nvk", true, true, false, 1_200_000_000);
         assert!(info.supports_shader_f64);
         assert!(info.f64_compute_unreliable);
         assert!(!info.has_reliable_f64());
+        assert_eq!(info.precision_routing(), PrecisionRoutingAdvice::Df64Only);
     }
 
     #[test]
     fn test_subgroup_size_fields() {
-        let info_zero = GpuAdapterInfo {
-            name: "Test".to_owned(),
-            driver: "anv".to_owned(),
-            driver_info: String::new(),
-            vendor_id: 0,
-            device_id: 0,
-            backend: "Vulkan".to_owned(),
-            device_type: GpuDeviceType::Integrated,
-            max_compute_workgroups_per_dimension: 65535,
-            max_compute_workgroup_size_x: 256,
-            max_compute_workgroup_size_y: 256,
-            max_compute_workgroup_size_z: 64,
-            max_buffer_size: 4_294_967_296,
-            supports_shader_f64: false,
-            f64_compute_unreliable: false,
-            min_subgroup_size: 0,
-            max_subgroup_size: 0,
-            fingerprint: make_test_fingerprint(
-                GpuDeviceType::Integrated,
-                false,
-                false,
-                "anv",
-                "Test",
-            ),
-            safe_allocation_limit: 4_294_967_296,
-        };
+        let mut info_zero =
+            make_test_adapter_info("Test", "anv", false, false, false, 4_294_967_296);
+        info_zero.device_type = GpuDeviceType::Integrated;
+        info_zero.min_subgroup_size = 0;
+        info_zero.max_subgroup_size = 0;
+
         assert_eq!(info_zero.min_subgroup_size, 0);
         assert_eq!(info_zero.max_subgroup_size, 0);
 
@@ -662,34 +667,63 @@ mod tests {
 
     #[test]
     fn test_max_2d_dispatch() {
-        let info = GpuAdapterInfo {
-            name: "Test".to_owned(),
-            driver: "nvidia".to_owned(),
-            driver_info: String::new(),
-            vendor_id: 0,
-            device_id: 0,
-            backend: "Vulkan".to_owned(),
-            device_type: GpuDeviceType::Discrete,
-            max_compute_workgroups_per_dimension: 4096,
-            max_compute_workgroup_size_x: 256,
-            max_compute_workgroup_size_y: 256,
-            max_compute_workgroup_size_z: 64,
-            max_buffer_size: 4_294_967_296,
-            supports_shader_f64: true,
-            f64_compute_unreliable: false,
-            min_subgroup_size: 32,
-            max_subgroup_size: 32,
-            fingerprint: make_test_fingerprint(
-                GpuDeviceType::Discrete,
-                true,
-                false,
-                "nvidia",
-                "Test",
-            ),
-            safe_allocation_limit: 4_294_967_296,
-        };
+        let mut info = make_test_adapter_info("Test", "nvidia", true, false, false, 4_294_967_296);
+        info.max_compute_workgroups_per_dimension = 4096;
         let (max_x, max_y) = info.max_2d_dispatch();
         assert_eq!(max_x, 4096);
         assert_eq!(max_y, 4096);
+    }
+
+    #[test]
+    fn test_precision_routing_f32_only() {
+        let info = make_test_adapter_info("Intel iGPU", "anv", false, false, false, 4_294_967_296);
+        assert_eq!(info.precision_routing(), PrecisionRoutingAdvice::F32Only);
+    }
+
+    #[test]
+    fn test_precision_routing_df64_only() {
+        let info =
+            make_test_adapter_info("NVIDIA Titan V", "nvk", true, true, false, 1_200_000_000);
+        assert_eq!(info.precision_routing(), PrecisionRoutingAdvice::Df64Only);
+    }
+
+    #[test]
+    fn test_precision_routing_no_shared_mem() {
+        let info = make_test_adapter_info(
+            "NVIDIA RTX 4070",
+            "nvidia",
+            true,
+            false,
+            false,
+            4_294_967_296,
+        );
+        assert_eq!(
+            info.precision_routing(),
+            PrecisionRoutingAdvice::F64NativeNoSharedMem
+        );
+    }
+
+    #[test]
+    fn test_precision_routing_full_native() {
+        let info = make_test_adapter_info("Future GPU", "nvidia", true, false, true, 4_294_967_296);
+        assert_eq!(info.precision_routing(), PrecisionRoutingAdvice::F64Native);
+    }
+
+    #[test]
+    fn test_f64_shared_memory_reliable_field() {
+        let info = make_test_adapter_info("Test", "nvidia", true, false, false, 4_294_967_296);
+        assert!(!info.f64_shared_memory_reliable);
+        assert!(info.has_reliable_f64());
+        assert_eq!(
+            info.precision_routing(),
+            PrecisionRoutingAdvice::F64NativeNoSharedMem
+        );
+    }
+
+    #[test]
+    fn test_sovereign_binary_capable_field() {
+        let info = make_test_adapter_info("Test", "nvidia", true, false, false, 4_294_967_296);
+        assert!(!info.fingerprint.sovereign_binary_capable);
+        assert!(info.fingerprint.sovereign_capable);
     }
 }

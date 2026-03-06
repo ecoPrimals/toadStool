@@ -290,8 +290,9 @@ fn test_get_semantic_name_unknown_returns_none() {
 #[test]
 fn test_list_semantic_methods_count_and_contents() {
     let methods = list_semantic_methods();
-    assert_eq!(methods.len(), 66);
+    assert_eq!(methods.len(), 70);
     assert!(methods.contains(&"compute.execute".to_string()));
+    assert!(methods.contains(&"shader.compile.wgsl".to_string()));
 }
 
 #[test]

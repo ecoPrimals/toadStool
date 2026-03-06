@@ -64,12 +64,10 @@ mod tests {
             capability_provider: None,
         };
 
-        let handle = tokio::spawn(async move {
-            run(state).await;
-        });
-
-        tokio::time::sleep(Duration::from_millis(50)).await;
-        handle.abort();
-        let _ = handle.await;
+        let result = tokio::time::timeout(Duration::from_millis(100), run(state)).await;
+        assert!(
+            result.is_err(),
+            "run() should loop indefinitely until cancelled"
+        );
     }
 }

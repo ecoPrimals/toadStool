@@ -492,6 +492,22 @@ mod tests {
         assert!(response.contains("HTTP/1.1 200 OK"));
     }
 
+    async fn await_unix_socket(path: &std::path::Path) -> UnixStream {
+        let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(5);
+        let mut backoff = tokio::time::Duration::from_millis(1);
+        loop {
+            match UnixStream::connect(path).await {
+                Ok(stream) => return stream,
+                Err(_) if tokio::time::Instant::now() < deadline => {
+                    tokio::task::yield_now().await;
+                    backoff = (backoff * 2).min(tokio::time::Duration::from_millis(50));
+                    tokio::time::sleep(backoff).await;
+                }
+                Err(e) => panic!("Unix socket not ready within deadline: {e}"),
+            }
+        }
+    }
+
     #[tokio::test]
     async fn test_serve_unix_accepts_raw_json() {
         let handler = Arc::new(test_handler());
@@ -503,9 +519,8 @@ mod tests {
         let _server = tokio::spawn(async move {
             serve_unix(server_handler, sock_path).await.expect("serve");
         });
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-        let mut stream = UnixStream::connect(&socket_path).await.expect("connect");
+        let mut stream = await_unix_socket(&socket_path).await;
         let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n";
         stream.write_all(request).await.expect("write");
         stream.shutdown().await.ok();
@@ -527,7 +542,6 @@ mod tests {
         let _server = tokio::spawn(async move {
             serve_unix(server_handler, sock_path).await.expect("serve");
         });
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
         let body = r#"{"jsonrpc":"2.0","method":"toadstool.version","id":2}"#;
         let http = format!(
@@ -536,7 +550,7 @@ mod tests {
             body
         );
 
-        let mut stream = UnixStream::connect(&socket_path).await.expect("connect");
+        let mut stream = await_unix_socket(&socket_path).await;
         stream.write_all(http.as_bytes()).await.expect("write");
         stream.shutdown().await.ok();
 

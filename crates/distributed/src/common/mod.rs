@@ -15,11 +15,11 @@ pub mod capacity;
 pub mod distribution;
 pub mod load_balancing;
 
-// Placeholders for future phases
 pub mod auth;
 pub mod scheduling;
 
-// Re-export key types for convenience
+pub use auth::{CapabilityToken, TrustLevel};
 pub use capacity::{AvailableCapacity, CapacityConfig, CapacityInfo, CapacityRequirement};
 pub use distribution::{DistributionConfig, DistributionPlan, DistributionStrategy};
 pub use load_balancing::{LoadBalancerConfig, LoadBalancingStrategy};
+pub use scheduling::{PlacementConstraint, SchedulingDecision, SchedulingPriority};

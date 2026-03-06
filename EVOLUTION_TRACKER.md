@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 6, 2026 — S96
+**Date**: March 6, 2026 — S128
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -44,6 +44,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Deep execution S94b | toadStool | ✅ S94b evolved | **NpuDispatch trait** (generic + AkidaNpuDispatch adapter); **NpuParameterController trait** (hotSpring absorption); **GpuAdapterInfo** (driver/f64/workgroup for barraCuda); Multi-adapter selection (`TOADSTOOL_GPU_ADAPTER`); NestGate mock→real RPC; placeholder crate removed; production mock audit complete; **D-SOV sovereignty migration** (7 callers → capability-based); hardcoded ports → config constants; integration-tests barracuda dep → optional |
 | Debris + coverage S95 | toadStool | ✅ S95 evolved | Root `tests/` stubs removed; stale checklists cleaned (11 files); false-positive TODOs removed; sprint/date doc comments cleaned; management/resources re-added as real ResourceManager; clippy pedantic resolved |
 | Sovereign pipeline S96 | toadStool | ✅ S96 evolved | **HardwareFingerprint** (TFLOPS, sovereign_capable); **SubstrateCapabilityKind** (12 variants); **SubstrateType** 4→8 variants; 5 god files split (dispatch, detection, engine, protocols, templates); crates/api/ orphan resolved; V4L2 SAFETY docs; hardcoded IP → env var |
+| Spring absorption S97 | toadStool | ✅ S97 evolved | NVK Volta f64 probe (`f64_compute_unreliable`, `has_reliable_f64()`); subgroup size detection; `AdaptiveSimulationController` trait; `ProxyFeature` struct; `NpuInferenceRequest`; science.* IPC namespace (10 methods); ecoBin compliance (ring/zstd removed); +59 tests |
+| Deep debt S128 | toadStool | ✅ S128 evolved | **f64_shared_memory_reliable** on GpuAdapterInfo (groundSpring V84-V85 bug); **sovereign_binary_capable** on HardwareFingerprint; **PrecisionRoutingAdvice** enum + `precision_routing()` method; shader.compile.* IPC (4 methods); `discover_capabilities` dynamically built from registry; `query_available_backends()` runtime probing; architecture stubs evolved (auth TrustLevel/CapabilityToken, scheduling Priority/PlacementConstraint/Decision); +25 tests |
 
 ---
 

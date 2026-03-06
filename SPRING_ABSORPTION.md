@@ -1,8 +1,29 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 6, 2026 — Session 97  
-**Sources**: hotSpring (v0.6.17), neuralSpring (V86/S128), wetSpring (V97d), airSpring (V071), groundSpring (V80), wateringHole (updated MAR06)  
+**Date**: March 6, 2026 — Session 128  
+**Sources**: hotSpring (v0.6.17), neuralSpring (V86/S128), wetSpring (V97d), airSpring (V071), groundSpring (V85), wateringHole (updated MAR06)  
+**S128**: f64 shared-memory bug absorbed (groundSpring V84-V85), PrecisionRoutingAdvice, sovereign_binary_capable, shader.compile.* IPC, capability-based handler evolution, architecture stub completion.  
 **S97**: NVK Volta f64 probe, subgroup detection, AdaptiveSimulationController, science.* IPC namespace, GPU adapter evolution. 6,176 tests, 0 warnings.
+
+## S128 Execution Log — Deep Debt Evolution & groundSpring Absorption
+
+### Tier 0: GPU Capability Evolution (groundSpring V84-V85)
+- **`f64_shared_memory_reliable: bool`** on `GpuAdapterInfo` — groundSpring discovered naga/SPIR-V f64 shared-memory reductions return zeros on ALL tested GPUs (NVIDIA proprietary + NVK). Always `false` via standard wgpu/naga pipeline.
+- **`sovereign_binary_capable: bool`** on `HardwareFingerprint` — `false` until coralDriver reaches production. Tracks whether coralReef can compile SPIR-V → native and coralDriver can submit.
+- **`PrecisionRoutingAdvice`** enum — actionable routing: `F64Native` (all works), `F64NativeNoSharedMem` (f64 ok but shared-mem reductions fail), `Df64Only` (all f64 unreliable), `F32Only` (no f64 support).
+- **`precision_routing()`** method — single API call encapsulates all driver quirks. barraCuda/springs call this instead of inspecting individual flags.
+- `HardwareFingerprint`, `PrecisionRoutingAdvice`, `SubstrateCapabilityKind` exported from `backends/mod.rs` for cross-crate use.
+
+### Tier 1: Shader Compile IPC (coralReef pipeline)
+- **4 `shader.compile.*` methods**: `wgsl` (validates source), `spirv` (validates binary), `status` (compile tracking), `capabilities` (reports naga/coralReef/coralDriver availability).
+- Semantic registry: 70 methods total (was 66).
+- Handler parameter validation: missing `source` → `InvalidParams`, missing `spirv_binary` → `InvalidParams`.
+
+### Deep Debt: Capability-Based Evolution
+- **`discover_capabilities`** — method list now dynamically built from `SemanticMethodRegistry`, not hardcoded. Adding methods to the registry automatically adds them to capability advertisement.
+- **`science_gpu_capabilities`** — compute backends now runtime-probed via `query_available_backends()`. Includes `precision_notes` with f64 routing advice.
+- **`gpu_info`** — compute backends runtime-discovered.
+- **Architecture stubs evolved** — `common::auth` now has `TrustLevel`, `CapabilityToken`; `common::scheduling` now has `SchedulingPriority`, `PlacementConstraint`, `SchedulingDecision`. All with tests.
 
 ## S83 Execution Log — Cross-Spring Evolution & Shader Completion
 
