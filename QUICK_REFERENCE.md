@@ -553,4 +553,4 @@ Scientific middleware has moved to barraCuda. See `cargo doc -p barracuda --open
 
 ---
 
-**Last Updated**: March 3, 2026 — Session 94b
+**Last Updated**: March 6, 2026 — S96

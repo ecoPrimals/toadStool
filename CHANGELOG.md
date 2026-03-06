@@ -5,7 +5,76 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 3, 2026 (Sessions 43-93 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution)
+## [Unreleased] - March 6, 2026 (Sessions 43-96 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline)
+
+### Sessions S95–S96 (Mar 6, 2026) — Spring Absorption + Sovereign Pipeline + Debris Cleanup
+
+#### Sovereign Pipeline Infrastructure
+- **`HardwareFingerprint`** struct in `runtime/universal`: `estimated_tflops_f32`, `estimated_tflops_f64`, `sovereign_capable` flag, `SubstrateCapabilityKind` set
+- **`SubstrateCapabilityKind`** enum (12 variants): F64Native, Df64Emulation, Spmv, Eigen, Cg, Fft, MdForce, MonteCarlo, NnInference, ReservoirCompute, Fhe, SubgroupOps
+- **`GpuAdapterInfo`** extended with `fingerprint: HardwareFingerprint` and `safe_allocation_limit: u64`
+- **`is_sovereign_capable()`**, **`is_allocation_safe()`**, **`is_nvk()`** helper methods
+- **`SubstrateType`** expanded from 4→8 variants: IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum added
+- **`is_batch_oriented()`** / **`is_latency_oriented()`** classification helpers on SubstrateType
+
+#### God File Smart-Splits (5 files)
+- `cli/commands/dispatch.rs` (1252L) → 7 domain modules (mod, biome, ecosystem, manifest, server, universal, tests)
+- `distributed/universal/detection.rs` (1004L) → 3 modules (mod, helpers, gpu)
+- `runtime/gpu/engine.rs` (1098L) → 2 modules (mod, tests)
+- `integration/protocols/lib.rs` (985L) → 2 modules (lib, bear_dog)
+- `cli/templates/specialized_templates.rs` (924L) → 4 modules (ml_science, infrastructure, custom, mod)
+
+#### API Orphan Resolution
+- `crates/api/` ByobApi route logic extracted to `crates/runtime/container/src/byob_routes.rs`
+- `toadstool-api` dependency removed from `runtime/container/Cargo.toml`
+
+#### Unsafe & Hardcoding Evolution
+- All `unsafe` blocks in `v4l2/device.rs` documented with `// SAFETY:` comments
+- `0.0.0.0` discovery fallback → `TOADSTOOL_DISCOVERY_BIND_ADDR` environment variable
+
+#### Debris Cleanup
+- Root `tests/` stubs removed; spec docs fossilized to `ecoPrimals/fossil/toadStool/root-tests-spec-mar06/`
+- Stale `✅ COMPLETE` checklists cleaned from 11 files
+- False-positive TODO in `input/parser.rs` removed
+- Sprint/date doc comments cleaned in test files
+- Commented-out `[[test]]` entries removed from `integration-tests/Cargo.toml`
+- Dangling test shim files removed from `crates/testing/tests/`
+
+#### Re-additions
+- `management/resources` re-added to workspace as real `ResourceManager` with sysinfo
+
+#### Quality
+- Clippy pedantic resolved across workspace
+- Spring absorption tracker updated to current versions (hotSpring v0.6.17, groundSpring V80, neuralSpring V86/S128, wetSpring V97d, airSpring V071)
+- All quality gates green: 0 clippy, 0 fmt, 0 doc warnings, 18,028 tests
+
+### Session 94b (Mar 3, 2026) — Deep Debt Execution + Spring Absorption
+
+#### NPU & GPU Evolution
+- **`NpuDispatch` trait** — generic neuromorphic compute interface (`toadstool-core`)
+- **`AkidaNpuDispatch`** — Akida adapter for NpuDispatch
+- **`NpuParameterController` trait** — NPU-driven autonomous parameter tuning (hotSpring absorption)
+- **`GpuAdapterInfo`** — detailed GPU adapter info for barraCuda driver profiling
+- Multi-adapter GPU selection via `TOADSTOOL_GPU_ADAPTER` env var
+
+#### Sovereignty (D-SOV RESOLVED)
+- All 7 production callers migrated to `get_socket_path_for_capability()`
+- Hardcoded CLI ports `8080`/`9090` → config constants
+
+#### Mock Evolution
+- NestGate `store_artifact`/`retrieve_artifact` evolved from stubs to real JSON-RPC with graceful fallback
+
+#### Cleanup
+- `management/resources` placeholder excluded from workspace
+- `integration-tests` barracuda dependency made optional
+
+### Session 94 (Mar 3, 2026) — Fossilization + Deletion + Refactoring
+
+- Dead barracuda dependency removed from `core/toadstool/Cargo.toml`
+- `crates/barracuda/` (15MB) fossilized to `ecoPrimals/fossil/toadStool/barracuda-fossil-S94b/`
+- `manual_jsonrpc` module deleted (8 files); `pure_jsonrpc` is canonical
+- `vfio.rs` (971L) smart-refactored into `vfio/` directory
+- 17,986 tests, 0 failures
 
 ### Session 93 (Mar 3, 2026) — D-DF64 Transfer & Root Doc Cleanup
 

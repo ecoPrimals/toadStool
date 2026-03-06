@@ -5,6 +5,8 @@ Pure Rust. Any hardware. No vendor lock.
 
 **Full spec**: [`specs/SOVEREIGN_COMPUTE_EVOLUTION.md`](specs/SOVEREIGN_COMPUTE_EVOLUTION.md)
 
+> **Note (S94):** Sovereign compiler Phases 0–4 and all shader/math infrastructure transferred to **barraCuda** (`ecoPrimals/barraCuda/`). File paths below refer to that repository. ToadStool continues to provide hardware discovery and capability probing that feeds the sovereign pipeline.
+
 ---
 
 ## The North Star
@@ -270,4 +272,4 @@ Zero central coordinator required for network formation.
 
 *"The mycelium is the internet of the forest. ToadStool is the mycelium of compute."*
 
-*Last updated: March 2, 2026 — Session 86. Phases 0–4 complete and live. Phase 4 sovereign compiler (naga-IR optimizer + SPIR-V passthrough) wired into `compile_shader_f64()`. FMA fusion eliminates NAK Deficiency 4 at IR level. 10 sovereign tests.*
+*Last updated: March 6, 2026 — Session 96. Phases 0–4 complete and live in barraCuda (transferred S93–S94). ToadStool provides HardwareFingerprint, is_sovereign_capable(), and GpuAdapterInfo to feed the sovereign pipeline.*

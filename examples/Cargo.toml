@@ -10,8 +10,8 @@ readme = "../README.md"
 keywords = ["examples", "demos", "tutorials", "compute"]
 categories = ["development-tools"]
 
-# Note: Examples currently excluded from documentation due to incomplete dependencies
-# (toadstool-api, toadstool-management-analytics not in workspace)
+# Note: Examples currently excluded from documentation
+# (toadstool-management-analytics not in workspace)
 # Examples compile as standalone binaries but not as documentation
 [package.metadata.docs.rs]
 # Skip this package when building workspace documentation

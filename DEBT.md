@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 3, 2026
+**Date**: March 6, 2026
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -21,7 +21,7 @@ Every f64 transcendental fails through SPIR-V on NVK/NAK, NVIDIA proprietary (Ad
 Lanczos gamma, Horner polynomials). Auto-injected by `compile_shader_f64()`. No vendor
 dependencies, works on every GPU, ships with the crate, testable in CI without hardware.
 
-**Files**:
+**Files** (in `ecoPrimals/barraCuda/`):
 - `crates/barracuda/src/shaders/math/math_f64.wgsl` — 28 polyfill functions
 - `crates/barracuda/src/shaders/precision/mod.rs` — `inject_missing_math_f64()`, `patch_transcendentals_in_code()`
 - `crates/barracuda/src/device/wgpu_device/capabilities.rs` — `needs_f64_exp_log_workaround()`
@@ -74,7 +74,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 18,028 tests pass. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
+| D-COV | Test coverage → 90% | Medium | 18,028 tests pass. ~84% line coverage. Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
 
@@ -104,6 +104,21 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (S95–S96 — Mar 6, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| Sovereign pipeline infrastructure | `HardwareFingerprint`, `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE guard), 12-variant `SubstrateCapabilityKind` |
+| `SubstrateType` expansion | 4→8 variants: IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum (metalForge alignment) |
+| God file splits (5) | `dispatch.rs` (1252→7 modules), `detection.rs` (1004→3), `engine.rs` (1098→2), `protocols/lib.rs` (985→2), `specialized_templates.rs` (924→4) |
+| `crates/api/` orphan | ByobApi extracted to `container/src/byob_routes.rs`; api crate no longer a dependency |
+| V4L2 `// SAFETY:` documentation | All `unsafe` blocks in `v4l2/device.rs` documented with invariants |
+| Hardcoded discovery IP | `0.0.0.0` → `TOADSTOOL_DISCOVERY_BIND_ADDR` env var |
+| Root `tests/` debris | Stale test stubs removed; spec docs fossilized to `ecoPrimals/fossil/` |
+| Stale completion checklists | Removed trailing `✅ COMPLETE` blocks from 11 files |
+| `management/resources` re-added | Real `ResourceManager` with sysinfo (was placeholder removed in S94b) |
+| Clippy pedantic | Resolved across workspace; `cargo clippy --lib -- -W clippy::pedantic` clean |
 
 ## Recently Resolved (Deep Debt Execution — Mar 5, 2026)
 

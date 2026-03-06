@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 5, 2026 — Deep Debt Execution
+**Date**: March 6, 2026 — S96
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
 
 ---
@@ -26,11 +26,11 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | Spring | Version | Status | Key Deliverables |
 |--------|---------|--------|-----------------|
-| neuralSpring | V75/S113 | ✅ Core absorbed | 39/39 CPU↔GPU parity, AlphaFold2 17 shaders, HillGateGpu, SwarmNnGpu, DF64 ML primitives |
-| wetSpring | V92F | ✅ Core absorbed | 144 primitives, ValidationHarness, 52 papers |
-| airSpring | V063 | ✅ Core absorbed | Ops 0-8, seasonal pipeline, 72 experiments, 25 Tier A GPU |
-| groundSpring | V68 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, tissue_anderson |
-| hotSpring | V0617 | ✅ Core absorbed | NVK serialization, brain arch, 31 experiments, NPU controlled params |
+| neuralSpring | V86/S128 | ✅ Core absorbed | 39/39 CPU↔GPU parity, AlphaFold2 17 shaders, HillGateGpu, SwarmNnGpu, DF64 ML primitives |
+| wetSpring | V97d | ✅ Core absorbed | 144 primitives, ValidationHarness, 52 papers |
+| airSpring | V071 | ✅ Core absorbed | Ops 0-8, seasonal pipeline, 72 experiments, 25 Tier A GPU |
+| groundSpring | V80 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, tissue_anderson |
+| hotSpring | v0.6.17 | ✅ Core absorbed | NVK serialization, brain arch, 31 experiments, NPU controlled params |
 | wateringHole | V69 | ✅ Core absorbed | Chi-squared batch, MC ET0 propagate |
 | groundSpring | V61 | ✅ S81 absorbed | InterconnectTopology, SubstratePipeline, BandwidthTier (PCIe P2P routing) |
 | neuralSpring | V70 | ✅ S81 absorbed | IFFT/NTT/INTT buffer fixes, `enable f64;` stripping |
@@ -42,6 +42,8 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Coverage + debt S92 | toadStool | ✅ S92 evolved | +47 tests → 5,369; dead middleware eliminated (~131 KB); sovereignty deprecations formalized; BearDog strings neutralized; ecoBin pure-rust verified; `find_pattern_by_capability()` API |
 | Deep debt S94 | toadStool | ✅ S94 evolved | Dead barracuda dep removed; crates/barracuda fossilized (15MB→archive); manual_jsonrpc deleted (8 files); vfio.rs 971L→4-module directory; all files <1000L; 17,986 tests pass |
 | Deep execution S94b | toadStool | ✅ S94b evolved | **NpuDispatch trait** (generic + AkidaNpuDispatch adapter); **NpuParameterController trait** (hotSpring absorption); **GpuAdapterInfo** (driver/f64/workgroup for barraCuda); Multi-adapter selection (`TOADSTOOL_GPU_ADAPTER`); NestGate mock→real RPC; placeholder crate removed; production mock audit complete; **D-SOV sovereignty migration** (7 callers → capability-based); hardcoded ports → config constants; integration-tests barracuda dep → optional |
+| Debris + coverage S95 | toadStool | ✅ S95 evolved | Root `tests/` stubs removed; stale checklists cleaned (11 files); false-positive TODOs removed; sprint/date doc comments cleaned; management/resources re-added as real ResourceManager; clippy pedantic resolved |
+| Sovereign pipeline S96 | toadStool | ✅ S96 evolved | **HardwareFingerprint** (TFLOPS, sovereign_capable); **SubstrateCapabilityKind** (12 variants); **SubstrateType** 4→8 variants; 5 god files split (dispatch, detection, engine, protocols, templates); crates/api/ orphan resolved; V4L2 SAFETY docs; hardcoded IP → env var |
 
 ---
 
@@ -105,27 +107,27 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
-| D-NPU | NpuDispatch trait (generic NPU interface) | Medium | Design phase |
-| D-COV | Test coverage → 90% | Medium | 5,369 tests; +47 in S92; gap in GPU ops, neuromorphic |
-| D-SOV | Sovereignty deprecation migration | Medium | 3 APIs deprecated; NestGate migrated; remaining callers to follow |
+| D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
+| D-COV | Test coverage → 90% | Medium | 18,028 tests; ~84% line coverage. Focus: CLI, distributed, auto_config, edge |
+| D-SOV | ~~Sovereignty migration~~ | **RESOLVED S94b** | All 7 production callers migrated to `get_socket_path_for_capability()` |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
-| — | vfio.rs smart refactoring | Medium | 971 lines — split by domain: vfio_api, dma, interrupts, iommu |
+| — | ~~vfio.rs smart refactoring~~ | **RESOLVED S94** | 971L → `vfio/` directory (types.rs, ioctl.rs, dma.rs, mod.rs) |
 
 **Transferred to barraCuda team (S93):** D-CD (ComputeDispatch, ~139 remaining), D-DF64 (precision strategy), naga-IR optimizer Phases 4+, barraCuda budding Phases 1-4.
 
-### God Files Remaining (>600 lines)
+### God Files — All Resolved
 
-| File | Lines | Domain | Priority | Status |
-|------|-------|--------|----------|--------|
-| `barracuda/src/device/wgpu_device/mod.rs` | ~520 | GPU device (post-compilation.rs extract) | ✅ S76 | Refactored |
-| `barracuda/src/device/driver_profile/` | ~370 | Driver detection + workarounds + arches | ✅ S76 | → directory |
-| `barracuda/src/device/probe/` | ~120 | GPU probing → 5 modules | ✅ S76 | → directory |
-| `api/src/jsonrpc/` | ~230 | JSON-RPC → types + handlers + dispatch | ✅ S76 | → directory |
-| `barracuda/src/ops/batched_elementwise_f64/` | ~967→4 files | Batched GPU ops (13 ops) | ✅ S77 | → directory (op, cpu_ref, executor, mod) |
-| `barracuda/src/device/capabilities/` | ~912→3 files | Device caps + info | ✅ S77 | → directory (wgpu, device_info, mod) |
-| `barracuda/tests/fhe_shader_unit_tests.rs` | 1028→8 files | FHE shader tests | ✅ S77 | → tests/fhe/ (ntt, intt, pointwise, etc.) |
-| `core/toadstool/src/workload/mod.rs` | 699 | Workload spec | Low | Recently refactored |
-| `management/monitoring/src/lib.rs` | 679 | Monitoring | Low | Recently refactored |
+40+ god files smart-refactored across S69–S96. All production files under 1000 lines. Recent splits (S96):
+
+| File | Original | Result | Session |
+|------|----------|--------|---------|
+| `cli/commands/dispatch.rs` | 1252L | 7 domain modules | S96 |
+| `distributed/universal/detection.rs` | 1004L | 3 modules (helpers, gpu, mod) | S96 |
+| `runtime/gpu/engine.rs` | 1098L | 2 modules (mod, tests) | S96 |
+| `integration/protocols/lib.rs` | 985L | 2 modules (bear_dog extracted) | S96 |
+| `cli/templates/specialized_templates.rs` | 924L | 4 modules (ml_science, infrastructure, custom, mod) | S96 |
+
+Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) transferred to barraCuda (S93–S94).
 
 ### Dependency Evolution
 
@@ -175,22 +177,33 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Gate | Status |
 |------|--------|
 | `cargo check --workspace` | ✅ 0 errors |
-| `cargo clippy --workspace -- -D warnings` | ✅ S77: deprecated discovery calls removed |
-| `cargo fmt --all -- --check` | ✅ S77: 340 diffs fixed |
-| `cargo test -p barracuda --lib` | ✅ 2,866+ passed, hardware_verification 13/13 (S87: 3 pre-existing failures fixed) |
-| Workspace lib tests | ✅ 5,369 passed (S93) |
+| `cargo clippy --workspace -- -D warnings` | ✅ 0 warnings (S96: clippy pedantic resolved) |
+| `cargo fmt --all -- --check` | ✅ 0 diffs |
+| `cargo doc --workspace --no-deps` | ✅ 0 warnings |
+| Workspace lib tests | ✅ 18,028 passed (S96) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
-| Production mocks/stubs | ✅ Evolved (S84: frameworks.rs echo→error, experimental.rs stub→real probes; S86: deployment.rs docs→capability-discovery, wgpu_backend.rs magic numbers→device-limits) |
-| WGSL shaders | 845 (0 orphans, 0 f32-only, 37 DF64, 15 folding, 2 bitcast-fixed) |
-| God files refactored | 37+ (S84: hydrology.rs 690→mod.rs ~310 + gpu.rs ~280) |
-| `cargo doc` | ✅ S77/S78: private intra-doc links fixed (ToadStoolError in universal_adapter, discovery_integration) |
-| e2e runtime nesting | ✅ S77: `run_gpu_resilient_async` evolved to dedicated runtime |
-| Zero-copy anti-patterns | ✅ S77: All `cast_slice().to_vec()` verified necessary, documented |
-| Test coverage (llvm-cov) | 70.5%+ lines | S90: 70.5% line / 73% function (excl GPU crates). Target: 90% |
-| Compile bottleneck analysis | S78 | tfhe+tfhe-fft = 30.6% CPU (showcase); wgpu 22/23 duplication wastes ~90s |
+| Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |
+| God files refactored | 40+ (all production files < 1000 lines) |
+| Test coverage (llvm-cov) | ~84% lines (excl GPU crates with SIGSEGV). Target: 90% |
+| `unsafe` blocks | ~60+ — all `// SAFETY:` documented (S96: V4L2 added) |
+| File size limit | All < 1000 lines |
 
 ---
+
+### Sessions S95–S96 (Mar 6, 2026)
+
+| Category | Change |
+|----------|--------|
+| Sovereign pipeline | `HardwareFingerprint`, `is_sovereign_capable()`, `safe_allocation_limit`, `SubstrateCapabilityKind` (12 variants) |
+| Substrate expansion | `SubstrateType` 4→8 variants (IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum) |
+| God file splits | dispatch.rs, detection.rs, engine.rs, protocols/lib.rs, specialized_templates.rs |
+| API orphan | crates/api/ ByobApi → container; dependency removed |
+| Unsafe docs | V4L2 `// SAFETY:` on all blocks |
+| Debris cleanup | Root tests/ stubs, stale checklists (11 files), false-positive TODOs |
+| management/resources | Re-added as real ResourceManager with sysinfo |
+| Root docs | All updated to S96 |
+| Spring tracker | Updated to current versions (hotSpring v0.6.17, groundSpring V80, neuralSpring V86/S128, wetSpring V97d, airSpring V071) |
 
 ### Session 93 (Mar 3, 2026)
 

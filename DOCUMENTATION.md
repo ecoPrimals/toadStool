@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 5, 2026 -- Deep Debt Execution
+**Last Updated**: March 6, 2026 -- S96
 
 ---
 
@@ -31,7 +31,7 @@
 
 ---
 
-## Current State (Session 94b — March 3, 2026)
+## Current State (S96 — March 6, 2026)
 
 **Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration.
 
@@ -40,13 +40,14 @@
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, ~60+ justified `unsafe` blocks (all SAFETY documented), zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `unimplemented!()`, zero FIXME/HACK, zero `dbg!()`. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
 - **Sovereignty RESOLVED** — All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated.
+- **Sovereign pipeline** — `HardwareFingerprint`, `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE guard), 12-variant `SubstrateCapabilityKind`, 8-variant `SubstrateType`.
 - **NPU dispatch** — Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. `NpuParameterController` trait (absorbed from hotSpring).
 - **GPU capability probing** — `GpuAdapterInfo` struct exposes detailed adapter info for barraCuda. Multi-adapter selection via `TOADSTOOL_GPU_ADAPTER`.
 - **NestGate integration** — Real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback.
-- **Module architecture** — 35+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
+- **Module architecture** — 40+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
-- **5,369 workspace lib tests** | all quality gates green (0 warnings)
-- **44 JSON-RPC methods** across 9 domains
+- **18,028 workspace lib tests** | all quality gates green (0 warnings)
+- **47 JSON-RPC methods** across 9 domains
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 
 ---

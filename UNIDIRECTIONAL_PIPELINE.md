@@ -4,6 +4,8 @@
 **Status**: Phases 0-4 Complete (Software Simulation Ready)  
 **Goal**: Eliminate GPU round-trip latency through data flow discipline
 
+> **Note (S94):** Unidirectional pipeline implementation (ring buffer, staging, benchmarks) lives in **barraCuda** (`ecoPrimals/barraCuda/`). File paths below refer to that repository. ToadStool provides the Hardware Transport Layer (DRM, V4L2, serial) that feeds physical I/O into this pipeline.
+
 ---
 
 ## Quick Links

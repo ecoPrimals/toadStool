@@ -2,8 +2,8 @@
 //! # BYOB HTTP routes for container runtime
 //!
 //! HTTP API endpoints for handling BYOB deployment requests from Songbird.
-//! Extracted from toadstool-api to avoid REST/axum/utoipa dependency chain.
-//! The container runtime only needs these routes; the full API crate is JSON-RPC-first.
+//! Extracted from toadstool-api (S96) to avoid REST/axum/utoipa dependency chain.
+//! The API crate has been fossilized; this is the canonical BYOB route implementation.
 
 use axum::{
     extract::{Path, State},

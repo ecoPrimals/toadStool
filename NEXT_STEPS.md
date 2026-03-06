@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 3, 2026 -- Session 94b
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 47 JSON-RPC methods | Hardware Transport Layer wired to daemon + CLI | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | D-DF64 transferred to barraCuda | **EMBEDDED BARRACUDA FOSSILIZED** | **NpuDispatch + NpuParameterController traits** | **GpuAdapterInfo for barraCuda** | **NestGate mock→RPC**
-**Latest**: S94b — NpuDispatch generic trait, NpuParameterController (hotSpring absorption), GpuAdapterInfo driver probing, multi-adapter selection (TOADSTOOL_GPU_ADAPTER), NestGate evolved to real RPC, placeholder crate removed, production mock audit complete.
+**Updated**: March 6, 2026 -- S96
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 47 JSON-RPC methods | Hardware Transport Layer wired to daemon + CLI | REST + middleware removed | Sovereignty: capability-based canonical | ecoBin pure-rust verified | Sovereign pipeline: HardwareFingerprint + SubstrateCapabilityKind | 40+ god files refactored | All files < 1000 lines
+**Latest**: S96 — Sovereign pipeline infrastructure (HardwareFingerprint, is_sovereign_capable, NVK allocation guard). SubstrateType expanded to 8 variants. 5 god files split. crates/api/ orphan resolved. V4L2 SAFETY docs. Debris cleanup. Root docs updated.
 
 ---
 
@@ -92,6 +92,13 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Smart refactoring** -- vfio.rs (971L) smart-refactored into `vfio/` directory (S94)
 - [x] **manual_jsonrpc removal** -- deleted, pure_jsonrpc is canonical (S94)
 - [x] **Barracuda fossilization** -- dead dep removed, crates/barracuda → archive/ (S94)
+- [x] **Sovereign pipeline** -- HardwareFingerprint, is_sovereign_capable, safe_allocation_limit, SubstrateCapabilityKind (S96)
+- [x] **SubstrateType expansion** -- 4→8 variants: IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum (S96)
+- [x] **God file splits (round 3)** -- dispatch.rs, detection.rs, engine.rs, protocols/lib.rs, specialized_templates.rs (S96)
+- [x] **API orphan resolved** -- crates/api/ ByobApi extracted to container crate (S96)
+- [x] **V4L2 unsafe docs** -- All SAFETY comments on unsafe blocks (S96)
+- [x] **Debris cleanup** -- root tests/ stubs, stale checklists, false-positive TODOs (S95)
+- [x] **management/resources re-added** -- real ResourceManager with sysinfo (S95)
 
 ### Cross-Repo Debt
 
@@ -100,7 +107,19 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-94)
+## Completed This Session (S90-96)
+
+### Sessions S95–S96: Spring Absorption + Sovereign Pipeline + Debris Cleanup (Mar 6, 2026)
+- **Sovereign pipeline**: `HardwareFingerprint` (estimated TFLOPS f32/f64, sovereign_capable flag), `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE fault mitigation), 12-variant `SubstrateCapabilityKind` (F64Native, Df64Emulation, Spmv, Eigen, Cg, Fft, MdForce, MonteCarlo, NnInference, ReservoirCompute, Fhe, SubgroupOps).
+- **SubstrateType expansion**: 4→8 variants (Cpu, Gpu, IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum) with `is_batch_oriented()` / `is_latency_oriented()` helpers.
+- **God file splits (5)**: `dispatch.rs` (1252L→7 modules), `detection.rs` (1004L→3 modules), `engine.rs` (1098L→2 modules), `protocols/lib.rs` (985L→2 modules), `specialized_templates.rs` (924L→4 modules).
+- **API orphan resolved**: `crates/api/` ByobApi route logic extracted to `crates/runtime/container/src/byob_routes.rs`; toadstool-api dependency removed from container.
+- **V4L2 unsafe documentation**: All `unsafe` blocks in `v4l2/device.rs` documented with `// SAFETY:` comments.
+- **Hardcoded IP evolved**: `0.0.0.0` fallback → `TOADSTOOL_DISCOVERY_BIND_ADDR` env var.
+- **Debris cleanup**: Root `tests/` stubs removed (fossilized to ecoPrimals/fossil/). Stale `✅ COMPLETE` checklists cleaned from 11 files. False-positive TODO in `input/parser.rs` removed. Sprint/date doc comments cleaned in test files.
+- **management/resources re-added**: Real `ResourceManager` with sysinfo re-added to workspace.
+- **Clippy pedantic**: Resolved across workspace. `cargo clippy --lib -- -W clippy::pedantic` clean.
+- **Spring absorption tracker**: Updated to current spring versions (hotSpring v0.6.17, groundSpring V80, neuralSpring V86/S128, wetSpring V97d, airSpring V071).
 
 ### Session 94b: Deep Execution + Spring Absorption
 - **NpuDispatch trait** (`toadstool-core::npu_dispatch`): generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. Vendor-agnostic, capability-based, zero-copy `Cow` input. `NpuModelHandle`, `DispatchResult`, `NpuCapability` enum, `NpuInfo` struct.

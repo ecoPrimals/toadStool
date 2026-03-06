@@ -1,4 +1,4 @@
-# Status -- March 5, 2026 (Deep Debt Execution)
+# Status -- March 6, 2026 (S96)
 
 ## Quality Gates
 
@@ -9,7 +9,7 @@
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
 | `cargo test --workspace --lib` | PASS | **18,028 tests, 0 failures** |
-| `cargo llvm-cov` (excl GPU crates) | **70.5%+ line** | JSON-RPC: 97.5%; 47 new tests in S91-92 |
+| `cargo llvm-cov` (excl GPU crates) | **~84% line** | JSON-RPC: 97.5%; expanded S95-S96 |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
@@ -31,7 +31,7 @@
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors (NestGate store/retrieve evolved S94b) |
 | Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
-| File size limit | **All < 1000 lines** (32+ large files smart-refactored to domain modules) |
+| File size limit | **All < 1000 lines** (40+ large files smart-refactored to domain modules) |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b) |
@@ -88,6 +88,19 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S95–S96: Spring Absorption + Sovereign Pipeline + Debris Cleanup (Mar 6, 2026)
+- **Sovereign pipeline infrastructure**: `HardwareFingerprint` struct (estimated_tflops_f32/f64, sovereign_capable flag), `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE fault mitigation), 12-variant `SubstrateCapabilityKind` enum.
+- **SubstrateType expansion**: 4→8 variants (Cpu, Gpu, IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum) with `is_batch_oriented()` / `is_latency_oriented()` helpers.
+- **God file splits (5)**: `dispatch.rs` (1252→7 modules), `detection.rs` (1004→3), `engine.rs` (1098→2), `protocols/lib.rs` (985→2), `specialized_templates.rs` (924→4).
+- **API orphan resolved**: `crates/api/` ByobApi extracted to container; toadstool-api dep removed.
+- **V4L2 unsafe documentation**: All `// SAFETY:` comments added to `v4l2/device.rs` blocks.
+- **Hardcoding evolved**: `0.0.0.0` → `TOADSTOOL_DISCOVERY_BIND_ADDR` env var.
+- **Debris cleanup**: Root `tests/` stubs removed (fossilized). Stale completion checklists cleaned from 11 files. False-positive TODOs removed. Sprint/date comments cleaned in test files.
+- **management/resources re-added**: Real ResourceManager with sysinfo re-added to workspace.
+- **Clippy pedantic**: Resolved across workspace.
+- **Spring absorption tracker**: Updated to current spring versions.
+- All quality gates green: 0 clippy warnings, 0 fmt diffs, 0 doc warnings, 18,028 tests passing.
 
 ### Deep Debt Execution (Mar 5, 2026)
 - **18,028 tests** (up from 5,369): +12,659 tests from deep debt evolution and expanded coverage

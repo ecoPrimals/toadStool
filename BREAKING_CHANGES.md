@@ -3,6 +3,27 @@
 Per-session log of API changes that may affect downstream springs.
 Springs: check this file after updating your toadStool pin.
 
+## S95–S96 (March 6, 2026)
+
+### Breaking Changes
+
+- **`management/resources` crate re-added to workspace** — evolved from placeholder to real `ResourceManager` with sysinfo. Springs that pinned a workspace without this member should update.
+- **`SubstrateType` enum expanded** — 4→8 variants (`IntegratedGpu`, `Npu`, `Tpu`, `Fpga`, `Dsp`, `Quantum` added). Non-exhaustive match arms on `SubstrateType` need updating.
+- **`GpuAdapterInfo` fields added** — `fingerprint: HardwareFingerprint` and `safe_allocation_limit: u64` fields added.
+
+### New APIs (non-breaking)
+
+- `HardwareFingerprint` struct — estimated TFLOPS, sovereign capability flag
+- `SubstrateCapabilityKind` enum (12 variants) — fine-grained capability classification
+- `GpuAdapterInfo::is_sovereign_capable()` / `is_allocation_safe()` / `is_nvk()` helper methods
+- `SubstrateType::is_batch_oriented()` / `is_latency_oriented()` classification helpers
+
+### Internal (non-breaking)
+
+- 5 god files smart-split into domain modules (public APIs preserved via re-exports)
+- `crates/api/` ByobApi extracted to container crate (api crate was not in workspace)
+- `TOADSTOOL_DISCOVERY_BIND_ADDR` env var for configurable discovery bind address
+
 ## S94b (March 3, 2026)
 
 ### Breaking Changes
