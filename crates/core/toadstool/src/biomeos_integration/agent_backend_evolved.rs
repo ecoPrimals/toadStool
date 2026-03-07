@@ -683,4 +683,62 @@ mod tests {
             let _ = serde_json::to_string(&parsed).unwrap();
         }
     }
+
+    // ── Additional coverage: AgentBackendError::Capability, edge cases ────────
+
+    #[test]
+    fn test_agent_backend_error_capability_rpc_failed() {
+        use toadstool_common::capability_provider::CapabilityError;
+        let err = CapabilityError::RpcFailed("connection refused".to_string());
+        let agent_err: AgentBackendError = err.into();
+        assert!(
+            agent_err.to_string().contains("connection")
+                || agent_err.to_string().contains("provider")
+        );
+    }
+
+    #[test]
+    fn test_agent_backend_error_capability_invalid_response() {
+        use toadstool_common::capability_provider::CapabilityError;
+        let err = CapabilityError::InvalidResponse("malformed".to_string());
+        let agent_err: AgentBackendError = err.into();
+        assert!(!agent_err.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_deploy_agent_request_empty_capabilities() {
+        let req = DeployAgentRequest {
+            name: "minimal".to_string(),
+            model: "tiny".to_string(),
+            replicas: 0,
+            capabilities: vec![],
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["replicas"], 0);
+        assert!(json["capabilities"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_load_model_request_empty_source() {
+        let req = LoadModelRequest {
+            name: "local".to_string(),
+            model_type: "custom".to_string(),
+            source: "".to_string(),
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["source"], "");
+    }
+
+    #[test]
+    fn test_agent_status_eq_and_ne() {
+        assert_eq!(AgentStatus::Deploying, AgentStatus::Deploying);
+        assert_ne!(AgentStatus::Deploying, AgentStatus::Running);
+        assert_ne!(AgentStatus::Failed, AgentStatus::Stopped);
+    }
+
+    #[test]
+    fn test_model_status_eq_and_ne() {
+        assert_eq!(ModelStatus::Ready, ModelStatus::Ready);
+        assert_ne!(ModelStatus::Loading, ModelStatus::Unloading);
+    }
 }

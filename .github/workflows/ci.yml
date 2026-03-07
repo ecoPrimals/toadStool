@@ -18,6 +18,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config libwayland-dev
       - name: Check workspace (all features)
         run: cargo check --workspace --all-features --all-targets
       - name: Check workspace (no features — feature-gate discipline)
@@ -74,6 +78,10 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config libwayland-dev
       - name: Run clippy
         run: cargo clippy --workspace --all-features --all-targets -- -D warnings
 
@@ -84,6 +92,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config libwayland-dev
       - name: Check documentation
         run: cargo doc --workspace --all-features --no-deps
         env:
@@ -124,18 +136,17 @@ jobs:
         run: |
           cargo llvm-cov report --json --output-path coverage.json
           cargo llvm-cov report
-      - name: Check coverage threshold
+      - name: Check coverage threshold (hard gate)
         run: |
           COVERAGE=$(cargo llvm-cov report | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
           THRESHOLD=90
           echo "Coverage: ${COVERAGE}%"
           echo "Threshold: ${THRESHOLD}%"
           if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-            echo "::warning::Coverage ${COVERAGE}% is below target ${THRESHOLD}%"
-            # Note: Currently a warning, can be changed to error when 90% is achieved
-            # exit 1
+            echo "::error::Coverage ${COVERAGE}% is below required ${THRESHOLD}%"
+            exit 1
           else
-            echo "✅ Coverage meets threshold"
+            echo "Coverage meets threshold"
           fi
 
   security-audit:

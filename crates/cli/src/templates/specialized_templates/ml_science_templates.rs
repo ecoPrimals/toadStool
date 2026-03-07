@@ -26,9 +26,9 @@ pub fn create_science_template() -> TemplateComponents {
     let (_, _, mut primals, mut services, mut resources, security, networking, mut storage) =
         super::super::basic_templates::create_basic_template();
 
-    // Add NestGate for data management
+    // Add storage capability provider for data management
     primals.insert(
-        service_names::NESTGATE.to_string(),
+        "capability:storage".to_string(),
         PrimalConfig {
             version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
@@ -40,12 +40,22 @@ pub fn create_science_template() -> TemplateComponents {
             enabled: true,
             config: HashMap::new(),
             dependencies: vec!["capability:pki".to_string()],
-            health_check: Some(HealthCheck {
-                command: vec!["nestgate".to_string(), "health".to_string()],
-                interval: 30,
-                timeout: 10,
-                retries: 3,
-                start_period: 60,
+            health_check: Some({
+                let config = EnvironmentConfig::from_env();
+                HealthCheck {
+                    command: vec![
+                        super::super::constants::commands::CURL.to_string(),
+                        "-f".to_string(),
+                        format!(
+                            "http://{}:{}/health",
+                            config.network.bind_address, config.network.nestgate_port
+                        ),
+                    ],
+                    interval: 30,
+                    timeout: 10,
+                    retries: 3,
+                    start_period: 60,
+                }
             }),
         },
     );
@@ -189,7 +199,7 @@ pub fn create_science_template() -> TemplateComponents {
 
 /// Create AI research template with GPU support
 pub fn create_ai_research_template() -> TemplateComponents {
-    use super::super::constants::{registries, service_names, template_names, versions};
+    use super::super::constants::{registries, template_names, versions};
 
     let name = template_names::AI_RESEARCH.to_string();
     let description =
@@ -225,7 +235,7 @@ pub fn create_ai_research_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec![service_names::BEARDOG.to_string()],
+            dependencies: vec!["capability:pki".to_string()],
             health_check: None,
         },
     );
@@ -287,7 +297,7 @@ pub fn create_ai_research_template() -> TemplateComponents {
 
 /// Create quantum computing template
 pub fn create_quantum_template() -> TemplateComponents {
-    use super::super::constants::{registries, service_names, template_names, versions};
+    use super::super::constants::{registries, template_names, versions};
 
     let name = template_names::QUANTUM.to_string();
     let description = "Quantum computing research with Qiskit and simulators".to_string();
@@ -322,7 +332,7 @@ pub fn create_quantum_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec![service_names::BEARDOG.to_string()],
+            dependencies: vec!["capability:pki".to_string()],
             health_check: None,
         },
     );
@@ -346,7 +356,7 @@ pub fn create_quantum_template() -> TemplateComponents {
 
 /// Create genomics/bioinformatics template
 pub fn create_genomics_template() -> TemplateComponents {
-    use super::super::constants::{registries, service_names, template_names, versions};
+    use super::super::constants::{registries, template_names, versions};
 
     let name = template_names::GENOMICS.to_string();
     let description = "Bioinformatics and genomics analysis with enhanced security".to_string();
@@ -382,8 +392,8 @@ pub fn create_genomics_template() -> TemplateComponents {
             }],
             volumes: vec![],
             dependencies: vec![
-                service_names::BEARDOG.to_string(),
-                service_names::NESTGATE.to_string(),
+                "capability:pki".to_string(),
+                "capability:storage".to_string(),
             ],
             health_check: None,
         },
@@ -428,7 +438,7 @@ pub fn create_genomics_template() -> TemplateComponents {
 
 /// Create computer vision template
 pub fn create_vision_template() -> TemplateComponents {
-    use super::super::constants::{registries, service_names, template_names, versions};
+    use super::super::constants::{registries, template_names, versions};
 
     let name = template_names::VISION.to_string();
     let description = "Computer vision and image processing with GPU acceleration".to_string();
@@ -463,7 +473,7 @@ pub fn create_vision_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec![service_names::BEARDOG.to_string()],
+            dependencies: vec!["capability:pki".to_string()],
             health_check: None,
         },
     );

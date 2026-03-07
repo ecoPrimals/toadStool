@@ -381,4 +381,76 @@ mod tests {
         assert!(request.batch_size_hint.is_none());
         assert_eq!(request.priority, 255);
     }
+
+    #[test]
+    fn test_npu_model_handle_equality() {
+        let h1 = NpuModelHandle::new(1);
+        let h2 = NpuModelHandle::new(1);
+        let h3 = NpuModelHandle::new(2);
+        assert_eq!(h1, h2);
+        assert_ne!(h1, h3);
+    }
+
+    #[test]
+    fn test_npu_capability_supports_logic() {
+        let info = NpuInfo {
+            name: "Test".into(),
+            vendor: "v".into(),
+            processing_elements: 4,
+            memory_bytes: 4096,
+            capabilities: vec![NpuCapability::Inference, NpuCapability::BatchInference],
+        };
+        assert!(info.capabilities.contains(&NpuCapability::Inference));
+        assert!(!info.capabilities.contains(&NpuCapability::OnChipLearning));
+    }
+
+    #[test]
+    fn test_npu_dispatch_error_model_load_failed() {
+        let err = NpuDispatchError::ModelLoadFailed {
+            reason: "invalid format".into(),
+        };
+        assert!(err.to_string().contains("format") || err.to_string().contains("load"));
+    }
+
+    #[test]
+    fn test_npu_dispatch_error_device_lost() {
+        let err = NpuDispatchError::DeviceLost {
+            reason: "unplugged".into(),
+        };
+        assert!(err.to_string().contains("unplugged") || err.to_string().contains("lost"));
+    }
+
+    #[test]
+    fn test_dispatch_result_power_none() {
+        let result = DispatchResult {
+            output: vec![1.0],
+            latency_us: 50,
+            power_mw: None,
+        };
+        assert!(result.power_mw.is_none());
+    }
+
+    #[test]
+    fn test_npu_inference_request_cow_borrowed() {
+        let input: [f32; 3] = [1.0, 2.0, 3.0];
+        let request = NpuInferenceRequest {
+            model: NpuModelHandle::new(1),
+            input: input.to_vec(),
+            batch_size_hint: Some(1),
+            priority: 0,
+        };
+        assert_eq!(request.input.len(), 3);
+    }
+
+    #[test]
+    fn test_npu_info_memory_bytes() {
+        let info = NpuInfo {
+            name: "A".into(),
+            vendor: "B".into(),
+            processing_elements: 8,
+            memory_bytes: 16 * 1024 * 1024,
+            capabilities: vec![NpuCapability::Inference],
+        };
+        assert_eq!(info.memory_bytes, 16 * 1024 * 1024);
+    }
 }

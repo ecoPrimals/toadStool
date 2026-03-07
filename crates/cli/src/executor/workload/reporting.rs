@@ -130,7 +130,7 @@ mod tests {
         toadstool::ExecutionResponse {
             execution_id: Uuid::new_v4(),
             status: ExecutionStatus::Failed {
-                error: "Test error".to_string(),
+                error: std::borrow::Cow::Borrowed("Test error"),
             },
             output: ExecutionOutput {
                 exit_code: Some(1),

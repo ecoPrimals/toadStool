@@ -239,7 +239,7 @@ impl ExecutionResponseBuilder {
     #[must_use]
     pub fn failed(mut self, error: &str) -> Self {
         self.status = Some(ExecutionStatus::Failed {
-            error: error.to_string(),
+            error: error.to_string().into(),
         });
         self
     }
@@ -264,7 +264,8 @@ impl ExecutionResponseBuilder {
         self.status = Some(ExecutionStatus::Failed {
             error: format!(
                 "Resource limit exceeded: {resource} (limit: {limit}, actual: {actual})"
-            ),
+            )
+            .into(),
         });
         self
     }
@@ -273,7 +274,7 @@ impl ExecutionResponseBuilder {
     #[must_use]
     pub fn security_violation(mut self, violation: &str) -> Self {
         self.status = Some(ExecutionStatus::Failed {
-            error: format!("Security violation: {violation}"),
+            error: format!("Security violation: {violation}").into(),
         });
         self
     }

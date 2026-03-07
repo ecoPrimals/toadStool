@@ -85,7 +85,7 @@ fn test_authentication_manager_new() {
     let _manager = AuthenticationManager::new(config, Arc::new(backend));
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "current_thread")]
 async fn test_manager_with_inmemory_backend() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
@@ -95,7 +95,7 @@ async fn test_manager_with_inmemory_backend() {
     assert_eq!(token.issuer, well_known::BEARDOG);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "current_thread")]
 async fn test_sign_token_request_mock() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
@@ -154,7 +154,7 @@ fn config_signature_validation_disabled() -> AuthManagerConfig {
     }
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "current_thread")]
 async fn test_sign_token_request_disabled_returns_signature_disabled() {
     let config = config_signature_validation_disabled();
     let manager = AuthenticationManager::with_inmemory(config);
@@ -165,7 +165,7 @@ async fn test_sign_token_request_disabled_returns_signature_disabled() {
     assert_eq!(sig, "signature_disabled");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "current_thread")]
 async fn test_sign_verification_request_disabled_returns_signature_disabled() {
     let config = config_signature_validation_disabled();
     let manager = AuthenticationManager::with_inmemory(config);
@@ -207,7 +207,7 @@ fn test_get_public_key_wrong_length_returns_none() {
     assert!(manager.get_public_key().is_none());
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "current_thread")]
 async fn test_sign_payload_invalid_base64_returns_error() {
     let config = AuthManagerConfig {
         beardog_endpoint: String::new(),
@@ -224,7 +224,7 @@ async fn test_sign_payload_invalid_base64_returns_error() {
     assert!(result.is_err());
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "current_thread")]
 async fn test_sign_payload_wrong_key_length_returns_error() {
     use base64::{engine::general_purpose, Engine as _};
     let bad_len = general_purpose::STANDARD.encode([0u8; 64]);
@@ -264,7 +264,7 @@ fn test_default_token_audience_self_and_platform_when_no_env() {
     });
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "current_thread")]
 async fn test_start_and_stop_token_refresh() {
     let mut config = test_config();
     config.token_refresh_interval = std::time::Duration::from_secs(3600);

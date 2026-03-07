@@ -46,8 +46,8 @@
 - **NestGate integration** — Real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback.
 - **Module architecture** — 40+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
-- **18,028 workspace lib tests** | all quality gates green (0 warnings)
-- **47 JSON-RPC methods** across 9 domains
+- **19,109 workspace tests** | all quality gates green (0 warnings)
+- **61+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 
 ---

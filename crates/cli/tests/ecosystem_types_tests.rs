@@ -7,6 +7,7 @@
 
 #![allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 
+use base64::Engine;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -19,21 +20,21 @@ use uuid::Uuid;
 // ============================================================================
 
 #[test]
-fn test_ecosystem_service_songbird() {
-    let service = EcosystemService::Songbird;
-    assert!(matches!(service, EcosystemService::Songbird));
+fn test_ecosystem_service_discovery() {
+    let service = EcosystemService::Discovery;
+    assert!(matches!(service, EcosystemService::Discovery));
 }
 
 #[test]
-fn test_ecosystem_service_beardog() {
-    let service = EcosystemService::BearDog;
-    assert!(matches!(service, EcosystemService::BearDog));
+fn test_ecosystem_service_crypto() {
+    let service = EcosystemService::Crypto;
+    assert!(matches!(service, EcosystemService::Crypto));
 }
 
 #[test]
-fn test_ecosystem_service_nestgate() {
-    let service = EcosystemService::NestGate;
-    assert!(matches!(service, EcosystemService::NestGate));
+fn test_ecosystem_service_storage() {
+    let service = EcosystemService::Storage;
+    assert!(matches!(service, EcosystemService::Storage));
 }
 
 #[test]
@@ -49,9 +50,9 @@ fn test_ecosystem_service_unknown() {
 
 #[test]
 fn test_ecosystem_service_clone() {
-    let service = EcosystemService::Songbird;
+    let service = EcosystemService::Discovery;
     let cloned = service.clone();
-    assert!(matches!(cloned, EcosystemService::Songbird));
+    assert!(matches!(cloned, EcosystemService::Discovery));
 }
 
 // ============================================================================
@@ -106,34 +107,34 @@ fn test_trust_level_progression_ecosystem() {
 // ============================================================================
 
 #[test]
-fn test_service_type_songbird() {
-    let service_type = ServiceType::Songbird;
-    assert!(matches!(service_type, ServiceType::Songbird));
+fn test_service_type_discovery() {
+    let service_type = ServiceType::Discovery;
+    assert!(matches!(service_type, ServiceType::Discovery));
 }
 
 #[test]
-fn test_service_type_beardog() {
-    let service_type = ServiceType::BearDog;
-    assert!(matches!(service_type, ServiceType::BearDog));
+fn test_service_type_crypto() {
+    let service_type = ServiceType::Crypto;
+    assert!(matches!(service_type, ServiceType::Crypto));
 }
 
 #[test]
-fn test_service_type_nestgate() {
-    let service_type = ServiceType::NestGate;
-    assert!(matches!(service_type, ServiceType::NestGate));
+fn test_service_type_storage() {
+    let service_type = ServiceType::Storage;
+    assert!(matches!(service_type, ServiceType::Storage));
 }
 
 #[test]
-fn test_service_type_toadstool() {
-    let service_type = ServiceType::ToadStool;
-    assert!(matches!(service_type, ServiceType::ToadStool));
+fn test_service_type_compute() {
+    let service_type = ServiceType::Compute;
+    assert!(matches!(service_type, ServiceType::Compute));
 }
 
 #[test]
 fn test_service_type_clone() {
-    let service_type = ServiceType::Songbird;
+    let service_type = ServiceType::Discovery;
     let cloned = service_type;
-    assert!(matches!(cloned, ServiceType::Songbird));
+    assert!(matches!(cloned, ServiceType::Discovery));
 }
 
 // ============================================================================
@@ -143,7 +144,7 @@ fn test_service_type_clone() {
 #[test]
 fn test_service_endpoint_creation() {
     let endpoint = ServiceEndpoint {
-        service_type: EcosystemService::Songbird,
+        service_type: EcosystemService::Discovery,
         address: "127.0.0.1:8080".parse().unwrap(),
         version: Arc::from("1.0.0"),
         capabilities: vec!["discovery".to_string(), "routing".to_string()],
@@ -157,7 +158,7 @@ fn test_service_endpoint_creation() {
 #[test]
 fn test_service_endpoint_clone() {
     let endpoint = ServiceEndpoint {
-        service_type: EcosystemService::BearDog,
+        service_type: EcosystemService::Crypto,
         address: "192.168.1.1:9000".parse().unwrap(),
         version: Arc::from("2.0.0"),
         capabilities: vec![],
@@ -188,7 +189,7 @@ fn test_discovery_result_empty() {
 #[test]
 fn test_discovery_result_with_services() {
     let endpoint = ServiceEndpoint {
-        service_type: EcosystemService::Songbird,
+        service_type: EcosystemService::Discovery,
         address: "127.0.0.1:8080".parse().unwrap(),
         version: Arc::from("1.0.0"),
         capabilities: vec![],
@@ -325,14 +326,14 @@ fn test_nestgate_mount_admin_mode() {
 #[test]
 fn test_discovered_service_creation() {
     let service = DiscoveredService {
-        service_type: ServiceType::Songbird,
+        service_type: ServiceType::Discovery,
         address: "10.0.0.1:8080".parse().unwrap(),
         trust_level: TrustLevel::Discovered,
         capabilities: HashMap::new(),
         last_seen: std::time::SystemTime::now(),
     };
 
-    assert!(matches!(service.service_type, ServiceType::Songbird));
+    assert!(matches!(service.service_type, ServiceType::Discovery));
     assert!(matches!(service.trust_level, TrustLevel::Discovered));
 }
 
@@ -343,7 +344,7 @@ fn test_discovered_service_with_capabilities() {
     capabilities.insert("protocol".to_string(), "http".to_string());
 
     let service = DiscoveredService {
-        service_type: ServiceType::BearDog,
+        service_type: ServiceType::Crypto,
         address: "192.168.1.100:9000".parse().unwrap(),
         trust_level: TrustLevel::Verified,
         capabilities,
@@ -357,7 +358,7 @@ fn test_discovered_service_with_capabilities() {
 #[test]
 fn test_discovered_service_clone() {
     let service = DiscoveredService {
-        service_type: ServiceType::NestGate,
+        service_type: ServiceType::Storage,
         address: "127.0.0.1:7000".parse().unwrap(),
         trust_level: TrustLevel::Sovereign,
         capabilities: HashMap::new(),
@@ -365,7 +366,7 @@ fn test_discovered_service_clone() {
     };
 
     let cloned = service.clone();
-    assert!(matches!(cloned.service_type, ServiceType::NestGate));
+    assert!(matches!(cloned.service_type, ServiceType::Storage));
 }
 
 // ============================================================================
@@ -406,9 +407,9 @@ fn test_service_signature_with_different_algorithm() {
 #[test]
 fn test_all_ecosystem_services() {
     let services = [
-        EcosystemService::Songbird,
-        EcosystemService::BearDog,
-        EcosystemService::NestGate,
+        EcosystemService::Discovery,
+        EcosystemService::Crypto,
+        EcosystemService::Storage,
         EcosystemService::Unknown("Test".to_string()),
     ];
 
@@ -418,10 +419,10 @@ fn test_all_ecosystem_services() {
 #[test]
 fn test_all_service_types() {
     let types = [
-        ServiceType::Songbird,
-        ServiceType::BearDog,
-        ServiceType::NestGate,
-        ServiceType::ToadStool,
+        ServiceType::Discovery,
+        ServiceType::Crypto,
+        ServiceType::Storage,
+        ServiceType::Compute,
     ];
 
     assert_eq!(types.len(), 4);
@@ -441,4 +442,298 @@ fn test_trust_level_hierarchy() {
     assert_eq!(levels.len(), 5);
     assert!(matches!(levels[0], TrustLevel::Unknown));
     assert!(matches!(levels[4], TrustLevel::Sovereign));
+}
+
+// ============================================================================
+// ServiceType::from_capability - all variants
+// ============================================================================
+
+#[test]
+fn test_service_type_from_capability_discovery() {
+    assert!(matches!(
+        ServiceType::from_capability("discovery"),
+        ServiceType::Discovery
+    ));
+    assert!(matches!(
+        ServiceType::from_capability("orchestration"),
+        ServiceType::Discovery
+    ));
+    assert!(matches!(
+        ServiceType::from_capability("coordination"),
+        ServiceType::Discovery
+    ));
+}
+
+#[test]
+fn test_service_type_from_capability_crypto() {
+    assert!(matches!(
+        ServiceType::from_capability("crypto"),
+        ServiceType::Crypto
+    ));
+    assert!(matches!(
+        ServiceType::from_capability("pki"),
+        ServiceType::Crypto
+    ));
+    assert!(matches!(
+        ServiceType::from_capability("security"),
+        ServiceType::Crypto
+    ));
+}
+
+#[test]
+fn test_service_type_from_capability_storage() {
+    assert!(matches!(
+        ServiceType::from_capability("storage"),
+        ServiceType::Storage
+    ));
+}
+
+#[test]
+fn test_service_type_from_capability_compute() {
+    assert!(matches!(
+        ServiceType::from_capability("compute"),
+        ServiceType::Compute
+    ));
+    assert!(matches!(
+        ServiceType::from_capability("compute:execution"),
+        ServiceType::Compute
+    ));
+}
+
+#[test]
+fn test_service_type_from_capability_generic() {
+    assert!(matches!(
+        ServiceType::from_capability("unknown"),
+        ServiceType::Generic
+    ));
+    assert!(matches!(
+        ServiceType::from_capability("custom"),
+        ServiceType::Generic
+    ));
+}
+
+// ============================================================================
+// ServiceType::from_name - legacy primal names
+// ============================================================================
+
+#[test]
+fn test_service_type_from_name_songbird() {
+    assert!(matches!(
+        ServiceType::from_name("songbird"),
+        ServiceType::Discovery
+    ));
+}
+
+#[test]
+fn test_service_type_from_name_beardog() {
+    assert!(matches!(
+        ServiceType::from_name("beardog"),
+        ServiceType::Crypto
+    ));
+}
+
+#[test]
+fn test_service_type_from_name_nestgate() {
+    assert!(matches!(
+        ServiceType::from_name("nestgate"),
+        ServiceType::Storage
+    ));
+}
+
+#[test]
+fn test_service_type_from_name_toadstool() {
+    assert!(matches!(
+        ServiceType::from_name("toadstool"),
+        ServiceType::Compute
+    ));
+}
+
+#[test]
+fn test_service_type_from_name_squirrel() {
+    assert!(matches!(
+        ServiceType::from_name("squirrel"),
+        ServiceType::Compute
+    ));
+}
+
+#[test]
+fn test_service_type_from_name_case_insensitive() {
+    assert!(matches!(
+        ServiceType::from_name("SONGBIRD"),
+        ServiceType::Discovery
+    ));
+    assert!(matches!(
+        ServiceType::from_name("BearDog"),
+        ServiceType::Crypto
+    ));
+}
+
+// ============================================================================
+// CryptoVerificationContext - verify_service_signature paths
+// ============================================================================
+
+#[test]
+fn test_verify_service_signature_response_too_old() {
+    use std::time::Duration;
+
+    let ctx = CryptoVerificationContext::new().with_trusted_key(
+        "test",
+        &base64::engine::general_purpose::STANDARD.encode([0u8; 32]),
+    );
+    let old_timestamp = std::time::SystemTime::now() - Duration::from_secs(600);
+    let response = SignedServiceResponse {
+        service_id: "svc-1".to_string(),
+        service_type: "test".to_string(),
+        status: "ok".to_string(),
+        capabilities: vec![],
+        timestamp: old_timestamp,
+        signature: ServiceSignature {
+            algorithm: "ed25519".to_string(),
+            signature: base64::engine::general_purpose::STANDARD.encode([0u8; 64]),
+            public_key: "key".to_string(),
+            timestamp: old_timestamp,
+            nonce: "nonce".to_string(),
+        },
+    };
+    let result = ctx.verify_service_signature("test", &response);
+    assert!(result.is_ok());
+    assert!(!result.unwrap());
+}
+
+#[test]
+fn test_verify_service_signature_invalid_base64_public_key() {
+    let ctx = CryptoVerificationContext::new().with_trusted_key("test", "not-valid-base64!!!");
+    let response = SignedServiceResponse {
+        service_id: "svc-1".to_string(),
+        service_type: "test".to_string(),
+        status: "ok".to_string(),
+        capabilities: vec![],
+        timestamp: std::time::SystemTime::now(),
+        signature: ServiceSignature {
+            algorithm: "ed25519".to_string(),
+            signature: "sig".to_string(),
+            public_key: "key".to_string(),
+            timestamp: std::time::SystemTime::now(),
+            nonce: "nonce".to_string(),
+        },
+    };
+    let result = ctx.verify_service_signature("test", &response);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_verify_service_signature_invalid_base64_signature() {
+    let ctx = CryptoVerificationContext::new().with_trusted_key(
+        "test",
+        &base64::engine::general_purpose::STANDARD.encode([0u8; 32]),
+    );
+    let response = SignedServiceResponse {
+        service_id: "svc-1".to_string(),
+        service_type: "test".to_string(),
+        status: "ok".to_string(),
+        capabilities: vec![],
+        timestamp: std::time::SystemTime::now(),
+        signature: ServiceSignature {
+            algorithm: "ed25519".to_string(),
+            signature: "!!!invalid-base64!!!".to_string(),
+            public_key: "key".to_string(),
+            timestamp: std::time::SystemTime::now(),
+            nonce: "nonce".to_string(),
+        },
+    };
+    let result = ctx.verify_service_signature("test", &response);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_crypto_verification_context_default_with_env_vars() {
+    temp_env::with_vars(
+        [
+            ("CRYPTO_PROVIDER_PUBLIC_KEY", Some("dGVzdA==")),
+            ("STORAGE_PROVIDER_PUBLIC_KEY", None::<&str>),
+            ("DISCOVERY_PROVIDER_PUBLIC_KEY", None::<&str>),
+        ],
+        || {
+            let ctx = CryptoVerificationContext::default();
+            assert!(ctx.trusted_public_keys.contains_key("crypto"));
+            assert!(ctx.trusted_public_keys.contains_key("beardog"));
+        },
+    );
+}
+
+#[test]
+fn test_service_type_to_capability_all() {
+    assert_eq!(ServiceType::Discovery.to_capability(), "discovery");
+    assert_eq!(ServiceType::Crypto.to_capability(), "crypto");
+    assert_eq!(ServiceType::Storage.to_capability(), "storage");
+    assert_eq!(ServiceType::Compute.to_capability(), "compute");
+    assert_eq!(ServiceType::Generic.to_capability(), "generic");
+}
+
+// ============================================================================
+// CryptoVerificationContext::with_trusted_key builder
+// ============================================================================
+
+#[test]
+fn test_crypto_verification_context_with_trusted_key() {
+    let ctx = CryptoVerificationContext::new()
+        .with_trusted_key("myservice", "dGVzdA==")
+        .with_trusted_key("other", "YWJj");
+    assert!(ctx.trusted_public_keys.contains_key("myservice"));
+    assert!(ctx.trusted_public_keys.contains_key("other"));
+}
+
+// ============================================================================
+// SignedServiceResponse and create_canonical_message (via verify_service_signature)
+// ============================================================================
+
+#[test]
+fn test_verify_service_signature_exercises_canonical_message() {
+    let valid_32 = base64::engine::general_purpose::STANDARD.encode([1u8; 32]);
+    let valid_64 = base64::engine::general_purpose::STANDARD.encode([0u8; 64]);
+    let ctx = CryptoVerificationContext::new().with_trusted_key("test", &valid_32);
+    let response = SignedServiceResponse {
+        service_id: "svc-1".to_string(),
+        service_type: "test".to_string(),
+        status: "ok".to_string(),
+        capabilities: vec!["read".to_string()],
+        timestamp: std::time::SystemTime::now(),
+        signature: ServiceSignature {
+            algorithm: "ed25519".to_string(),
+            signature: valid_64,
+            public_key: "key".to_string(),
+            timestamp: std::time::SystemTime::now(),
+            nonce: "nonce".to_string(),
+        },
+    };
+    let result = ctx.verify_service_signature("test", &response);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_signed_service_response_serde_roundtrip() {
+    let response = SignedServiceResponse {
+        service_id: "svc-1".to_string(),
+        service_type: "crypto".to_string(),
+        status: "ok".to_string(),
+        capabilities: vec!["encrypt".to_string()],
+        timestamp: std::time::SystemTime::now(),
+        signature: ServiceSignature {
+            algorithm: "ed25519".to_string(),
+            signature: "sig".to_string(),
+            public_key: "pubkey".to_string(),
+            timestamp: std::time::SystemTime::now(),
+            nonce: "n".to_string(),
+        },
+    };
+    let json = serde_json::to_string(&response).unwrap();
+    let parsed: SignedServiceResponse = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.service_id, response.service_id);
+}
+
+#[test]
+fn test_crypto_verification_context_new() {
+    let ctx = CryptoVerificationContext::new();
+    assert!(ctx.revoked_keys.is_empty());
+    assert_eq!(ctx.max_age_minutes, 5);
 }

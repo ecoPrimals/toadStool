@@ -158,14 +158,15 @@ impl BiomeOrchestrator {
             return Ok(ExecutionResponse {
                 execution_id: job.id,
                 status: ExecutionStatus::Failed {
-                    error: "BiomeOS integration not configured: set enabled=true and endpoint in config. \
-                             Full deployment pipeline requires biomeOS service."
-                        .to_string(),
+                    error: std::borrow::Cow::Borrowed(
+                        "BiomeOS integration not configured: set enabled=true and endpoint in config. \
+                         Full deployment pipeline requires biomeOS service.",
+                    ),
                 },
                 output: ExecutionOutput::default(),
                 metrics: crate::RuntimeMetrics::default(),
                 duration: Duration::ZERO,
-                runtime_used: RuntimeType::Custom("biomeos".to_string()),
+                runtime_used: RuntimeType::from(toadstool_common::interned_strings::runtime_types::BIOMEOS),
                 warnings: vec![
                     "BiomeOS integration disabled - validation passed but deployment not executed"
                         .to_string(),
@@ -181,7 +182,9 @@ impl BiomeOrchestrator {
             output: ExecutionOutput::default(),
             metrics: crate::RuntimeMetrics::default(),
             duration: Duration::ZERO,
-            runtime_used: RuntimeType::Custom("biomeos".to_string()),
+            runtime_used: RuntimeType::from(
+                toadstool_common::interned_strings::runtime_types::BIOMEOS,
+            ),
             warnings: Vec::new(),
         })
     }

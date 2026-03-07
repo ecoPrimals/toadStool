@@ -885,6 +885,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_can_handle_full_job_minimum_boundary() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(1.0, 0.000000001, 0.000000001);
+        let requirements = make_requirements(
+            1.0, 1, // 1 byte
+            1, // 1 byte
+        );
+        assert!(orch.can_handle_full_job(&availability, &requirements));
+    }
+
+    #[tokio::test]
+    async fn test_calculate_provider_capacity_inf_avoids_panic() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(f64::INFINITY, f64::INFINITY, f64::INFINITY);
+        let requirements = make_requirements(1.0, 1024, 1024);
+        let cap = orch.calculate_provider_capacity(&availability, &requirements);
+        assert!(cap <= 1.0);
+        assert!(cap.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_register_provider_twice_overwrites() {
+        let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let mock1 = Box::new(MockCloudProvider {
+            name: "dup".to_string(),
+            availability: make_availability(4.0, 8.0, 50.0),
+        });
+        orch.register_provider("dup".to_string(), mock1)
+            .await
+            .unwrap();
+        let mock2 = Box::new(MockCloudProvider {
+            name: "dup".to_string(),
+            availability: make_availability(8.0, 16.0, 100.0),
+        });
+        let result = orch.register_provider("dup".to_string(), mock2).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
     async fn test_split_job_for_multi_cloud_replication() {
         let config = make_orchestrator_config();
         let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();

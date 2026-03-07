@@ -49,47 +49,47 @@ fn test_ecosystem_integrator_can_create_multiple() {
 // ============================================================================
 
 #[test]
-fn test_service_endpoint_songbird() {
+fn test_service_endpoint_discovery() {
     let endpoint = ServiceEndpoint {
-        service_type: EcosystemService::Songbird,
+        service_type: EcosystemService::Discovery,
         address: "127.0.0.1:8080".parse().unwrap(),
         version: Arc::from("1.0.0"),
         capabilities: vec!["discovery".to_string(), "coordination".to_string()],
         trust_level: TrustLevel::Verified,
     };
 
-    assert!(matches!(endpoint.service_type, EcosystemService::Songbird));
+    assert!(matches!(endpoint.service_type, EcosystemService::Discovery));
     assert_eq!(endpoint.version, Arc::from("1.0.0"));
     assert_eq!(endpoint.capabilities.len(), 2);
     assert!(endpoint.capabilities.contains(&"discovery".to_string()));
 }
 
 #[test]
-fn test_service_endpoint_beardog() {
+fn test_service_endpoint_crypto() {
     let endpoint = ServiceEndpoint {
-        service_type: EcosystemService::BearDog,
+        service_type: EcosystemService::Crypto,
         address: "192.168.1.100:8443".parse().unwrap(),
         version: Arc::from("2.0.0"),
         capabilities: vec!["auth".to_string(), "crypto".to_string()],
         trust_level: TrustLevel::Sovereign,
     };
 
-    assert!(matches!(endpoint.service_type, EcosystemService::BearDog));
+    assert!(matches!(endpoint.service_type, EcosystemService::Crypto));
     assert_eq!(endpoint.address.port(), 8443);
     assert!(matches!(endpoint.trust_level, TrustLevel::Sovereign));
 }
 
 #[test]
-fn test_service_endpoint_nestgate() {
+fn test_service_endpoint_storage() {
     let endpoint = ServiceEndpoint {
-        service_type: EcosystemService::NestGate,
+        service_type: EcosystemService::Storage,
         address: "10.0.0.50:9000".parse().unwrap(),
         version: Arc::from("1.5.0"),
         capabilities: vec!["storage".to_string(), "zfs".to_string()],
         trust_level: TrustLevel::Verified,
     };
 
-    assert!(matches!(endpoint.service_type, EcosystemService::NestGate));
+    assert!(matches!(endpoint.service_type, EcosystemService::Storage));
     assert_eq!(endpoint.address.ip().to_string(), "10.0.0.50");
     assert!(endpoint.capabilities.contains(&"zfs".to_string()));
 }
@@ -105,14 +105,14 @@ fn test_discovered_service_creation() {
     capabilities.insert("protocol".to_string(), "http".to_string());
 
     let service = DiscoveredService {
-        service_type: ServiceType::Songbird,
+        service_type: ServiceType::Discovery,
         address: "127.0.0.1:8080".parse().unwrap(),
         trust_level: TrustLevel::Discovered,
         capabilities: capabilities.clone(),
         last_seen: std::time::SystemTime::now(),
     };
 
-    assert!(matches!(service.service_type, ServiceType::Songbird));
+    assert!(matches!(service.service_type, ServiceType::Discovery));
     assert_eq!(service.capabilities.len(), 2);
     assert!(matches!(service.trust_level, TrustLevel::Discovered));
 }
@@ -120,7 +120,7 @@ fn test_discovered_service_creation() {
 #[test]
 fn test_discovered_service_with_empty_capabilities() {
     let service = DiscoveredService {
-        service_type: ServiceType::BearDog,
+        service_type: ServiceType::Crypto,
         address: "192.168.1.1:8443".parse().unwrap(),
         trust_level: TrustLevel::Unknown,
         capabilities: HashMap::new(),
@@ -140,7 +140,7 @@ fn test_discovered_service_multiple_capabilities() {
     capabilities.insert("crypto".to_string(), "ed25519".to_string());
 
     let service = DiscoveredService {
-        service_type: ServiceType::BearDog,
+        service_type: ServiceType::Crypto,
         address: "10.0.0.1:8443".parse().unwrap(),
         trust_level: TrustLevel::Verified,
         capabilities,
@@ -176,7 +176,7 @@ fn test_discovery_result_empty() {
 #[test]
 fn test_discovery_result_with_services() {
     let endpoint1 = ServiceEndpoint {
-        service_type: EcosystemService::Songbird,
+        service_type: EcosystemService::Discovery,
         address: "127.0.0.1:8080".parse().unwrap(),
         version: Arc::from("1.0.0"),
         capabilities: vec!["discovery".to_string()],
@@ -184,7 +184,7 @@ fn test_discovery_result_with_services() {
     };
 
     let endpoint2 = ServiceEndpoint {
-        service_type: EcosystemService::BearDog,
+        service_type: EcosystemService::Crypto,
         address: "127.0.0.1:8443".parse().unwrap(),
         version: Arc::from("2.0.0"),
         capabilities: vec!["auth".to_string()],

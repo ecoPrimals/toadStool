@@ -145,7 +145,7 @@ fn test_server_event_execution_failed() {
     let event = ServerEvent::ExecutionCompleted {
         execution_id,
         status: ExecutionStatus::Failed {
-            error: "Test error".to_string(),
+            error: "Test error".into(),
         },
         duration_ms: 1000,
         timestamp,

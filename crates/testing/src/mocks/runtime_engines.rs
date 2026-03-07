@@ -140,7 +140,7 @@ impl MockRuntimeEngine {
                 Ok(ExecutionResponse {
                     execution_id: request.execution_id,
                     status: ExecutionStatus::Failed {
-                        error: "Mock execution failure".to_string(),
+                        error: std::borrow::Cow::Borrowed("Mock execution failure"),
                     },
                     output: create_test_execution_output(),
                     metrics: create_test_runtime_metrics(),
@@ -276,7 +276,9 @@ impl MockRuntimeEngine {
                 Ok(ExecutionResponse {
                     execution_id: request.execution_id,
                     status: ExecutionStatus::Failed {
-                        error: "Resource limit exceeded: memory limit 1GB, actual 2GB".to_string(),
+                        error: std::borrow::Cow::Borrowed(
+                            "Resource limit exceeded: memory limit 1GB, actual 2GB",
+                        ),
                     },
                     output: create_test_execution_output(),
                     metrics: create_test_runtime_metrics(),
@@ -321,8 +323,9 @@ impl MockRuntimeEngine {
                 Ok(ExecutionResponse {
                     execution_id: request.execution_id,
                     status: ExecutionStatus::Failed {
-                        error: "Security violation: Attempted to access restricted file"
-                            .to_string(),
+                        error: std::borrow::Cow::Borrowed(
+                            "Security violation: Attempted to access restricted file",
+                        ),
                     },
                     output: create_test_execution_output(),
                     metrics: create_test_runtime_metrics(),
@@ -451,7 +454,7 @@ mod tests {
     use super::*;
     use crate::fixtures::create_test_execution_request;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_successful_mock() {
         let mut mock = MockRuntimeEngine::new_successful();
 
@@ -482,7 +485,7 @@ mod tests {
         assert!(mock.shutdown().await.is_ok());
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_failure_mocks() {
         // Test initialization failure
         let mut init_fail_mock = MockRuntimeEngine::new_init_failure();
@@ -503,7 +506,7 @@ mod tests {
         assert!(matches!(response.status, ExecutionStatus::Failed { .. }));
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_timeout_mock() {
         let mut mock = MockRuntimeEngine::new_timeout();
         assert!(mock
@@ -517,7 +520,7 @@ mod tests {
         assert_eq!(response.duration.as_secs(), 30);
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_resource_limit_mock() {
         let mut mock = MockRuntimeEngine::new_resource_limit_exceeded();
         assert!(mock
@@ -530,7 +533,7 @@ mod tests {
         assert!(matches!(response.status, ExecutionStatus::Failed { .. }));
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_security_violation_mock() {
         let mut mock = MockRuntimeEngine::new_security_violation();
         assert!(mock
@@ -543,7 +546,7 @@ mod tests {
         assert!(matches!(response.status, ExecutionStatus::Failed { .. }));
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_cancelled_mock() {
         let mut mock = MockRuntimeEngine::new_cancelled();
         assert!(mock
@@ -556,7 +559,7 @@ mod tests {
         assert_eq!(response.status, ExecutionStatus::Cancelled);
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_limited_support_mock() {
         let mut mock = MockRuntimeEngine::new_limited_support();
         assert!(mock

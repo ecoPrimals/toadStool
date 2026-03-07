@@ -55,6 +55,10 @@ const V4L2_BUF_TYPE_VIDEO_CAPTURE: u32 = 1;
 const V4L2_MEMORY_MMAP: u32 = 1;
 
 // ---- Raw V4L2 structures (Linux UAPI layout) ----
+//
+// All V4L2 structs below are #[repr(C)] with only primitive types (u8, u32, i32, i64, arrays).
+// Zero-initialization is valid for all fields: 0 is valid for integers, null for pointers,
+// and padding bytes are unobserved. MaybeUninit::zeroed().assume_init() is safe for these.
 
 #[repr(C)]
 struct v4l2_capability {

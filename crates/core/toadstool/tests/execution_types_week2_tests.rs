@@ -23,7 +23,7 @@ fn test_execution_status_success() {
 #[test]
 fn test_execution_status_failed() {
     let status = ExecutionStatus::Failed {
-        error: "Test error".to_string(),
+        error: std::borrow::Cow::Borrowed("Test error"),
     };
 
     match status {
@@ -63,13 +63,13 @@ fn test_execution_status_equality() {
     assert_ne!(ExecutionStatus::Success, ExecutionStatus::Cancelled);
 
     let failed1 = ExecutionStatus::Failed {
-        error: "error1".to_string(),
+        error: std::borrow::Cow::Borrowed("error1"),
     };
     let failed2 = ExecutionStatus::Failed {
-        error: "error1".to_string(),
+        error: std::borrow::Cow::Borrowed("error1"),
     };
     let failed3 = ExecutionStatus::Failed {
-        error: "error2".to_string(),
+        error: std::borrow::Cow::Borrowed("error2"),
     };
 
     assert_eq!(failed1, failed2);
@@ -79,7 +79,7 @@ fn test_execution_status_equality() {
 #[test]
 fn test_execution_status_clone() {
     let status = ExecutionStatus::Failed {
-        error: "test".to_string(),
+        error: std::borrow::Cow::Borrowed("test"),
     };
     let cloned = status.clone();
     assert_eq!(status, cloned);
@@ -96,7 +96,7 @@ fn test_runtime_type_variants() {
     let container = RuntimeType::Container;
     let gpu = RuntimeType::Gpu;
     let python = RuntimeType::Python;
-    let custom = RuntimeType::Custom("tensorflow".to_string());
+    let custom = RuntimeType::from("tensorflow");
 
     assert!(matches!(native, RuntimeType::Native));
     assert!(matches!(wasm, RuntimeType::Wasm));
@@ -112,9 +112,9 @@ fn test_runtime_type_equality() {
     assert_eq!(RuntimeType::Wasm, RuntimeType::Wasm);
     assert_ne!(RuntimeType::Native, RuntimeType::Wasm);
 
-    let custom1 = RuntimeType::Custom("pytorch".to_string());
-    let custom2 = RuntimeType::Custom("pytorch".to_string());
-    let custom3 = RuntimeType::Custom("jax".to_string());
+    let custom1 = RuntimeType::from("pytorch");
+    let custom2 = RuntimeType::from("pytorch");
+    let custom3 = RuntimeType::from("jax");
 
     assert_eq!(custom1, custom2);
     assert_ne!(custom1, custom3);
@@ -137,7 +137,7 @@ fn test_runtime_type_hash() {
 
 #[test]
 fn test_runtime_type_clone() {
-    let rt = RuntimeType::Custom("custom_runtime".to_string());
+    let rt = RuntimeType::from("custom_runtime");
     let cloned = rt.clone();
     assert_eq!(rt, cloned);
 }
@@ -408,7 +408,7 @@ fn test_execution_response_failed() {
     let response = ExecutionResponse {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Failed {
-            error: "Out of memory".to_string(),
+            error: std::borrow::Cow::Borrowed("Out of memory"),
         },
         output: ExecutionOutput::default(),
         metrics: Default::default(),
@@ -699,7 +699,7 @@ fn test_runtime_types_collection() {
         RuntimeType::Container,
         RuntimeType::Gpu,
         RuntimeType::Python,
-        RuntimeType::Custom("julia".to_string()),
+        RuntimeType::from("julia"),
     ];
 
     assert_eq!(runtimes.len(), 6);

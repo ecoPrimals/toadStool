@@ -50,7 +50,7 @@ storage:
 "#
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_validate_valid_manifest() {
         let temp_dir = TempDir::new().expect("temp dir");
         let manifest_path = temp_dir.path().join("biome.yaml");
@@ -79,7 +79,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_validate_json_format() {
         let temp_dir = TempDir::new().expect("temp dir");
         let manifest_path = temp_dir.path().join("biome.yaml");
@@ -108,7 +108,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_validate_nonexistent_manifest() {
         let cli = Cli {
             command: Commands::Validate {
@@ -127,7 +127,7 @@ storage:
         assert!(result.is_err(), "validate nonexistent should fail");
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_init_science_template() {
         let temp_dir = TempDir::new().expect("temp dir");
         let cli = Cli {
@@ -150,7 +150,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_init_basic_template() {
         let temp_dir = TempDir::new().expect("temp dir");
         let output_dir = temp_dir.path().to_path_buf();
@@ -176,7 +176,7 @@ storage:
         assert!(output_dir.join("biome.yaml").exists());
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_init_invalid_template() {
         let temp_dir = TempDir::new().expect("temp dir");
         let cli = Cli {
@@ -195,7 +195,7 @@ storage:
         assert!(result.is_err(), "init invalid template should fail");
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_capabilities() {
         let cli = Cli {
             command: Commands::Capabilities {
@@ -217,7 +217,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_capabilities_with_test_platform() {
         let cli = Cli {
             command: Commands::Capabilities {
@@ -239,7 +239,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_ecosystem_discover() {
         let cli = Cli {
             command: Commands::Ecosystem {
@@ -262,7 +262,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_ecosystem_discover_empty_services() {
         let cli = Cli {
             command: Commands::Ecosystem {
@@ -285,7 +285,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_ecosystem_register_error_path() {
         let cli = Cli {
             command: Commands::Ecosystem {
@@ -307,7 +307,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_ecosystem_auth_error_path() {
         let cli = Cli {
             command: Commands::Ecosystem {
@@ -329,7 +329,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_ecosystem_storage_error_path() {
         let cli = Cli {
             command: Commands::Ecosystem {
@@ -352,7 +352,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_universal_detect() {
         let cli = Cli {
             command: Commands::Universal {
@@ -376,7 +376,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_universal_benchmark() {
         let cli = Cli {
             command: Commands::Universal {
@@ -400,7 +400,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_universal_migrate_error_path() {
         let cli = Cli {
             command: Commands::Universal {
@@ -424,7 +424,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_universal_federate() {
         let cli = Cli {
             command: Commands::Universal {
@@ -448,7 +448,7 @@ storage:
         );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_down_nonexistent() {
         let cli = Cli {
             command: Commands::Down {
@@ -467,7 +467,7 @@ storage:
         assert!(result.is_err(), "down nonexistent should fail");
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_ps() {
         let cli = Cli {
             command: Commands::Ps {
@@ -486,7 +486,7 @@ storage:
         assert!(result.is_ok(), "ps should succeed: {:?}", result.err());
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_execute_command_doctor() {
         let cli = Cli {
             command: Commands::Doctor {
@@ -745,5 +745,148 @@ storage:
         assert_eq!(opts.manifest_path, PathBuf::from("biome.yaml"));
         assert!(opts.detach);
         assert_eq!(opts.health_interval, 30);
+    }
+
+    #[test]
+    fn test_commands_server_variant() {
+        let cmd = Commands::Server {
+            register: true,
+            port: 8080,
+            socket: None,
+            config: None,
+            max_workloads: 10,
+            biomeos_socket: None,
+            family_id: None,
+        };
+        match &cmd {
+            Commands::Server {
+                register,
+                port,
+                max_workloads,
+                ..
+            } => {
+                assert!(*register);
+                assert_eq!(*port, 8080);
+                assert_eq!(*max_workloads, 10);
+            }
+            _ => panic!("Expected Server variant"),
+        }
+    }
+
+    #[test]
+    fn test_commands_byob_server_variant() {
+        let cmd = Commands::ByobServer {
+            bind: Some("0.0.0.0".to_string()),
+            port: Some(8084),
+            config: None,
+        };
+        match &cmd {
+            Commands::ByobServer { bind, port, .. } => {
+                assert_eq!(bind.as_deref(), Some("0.0.0.0"));
+                assert_eq!(*port, Some(8084));
+            }
+            _ => panic!("Expected ByobServer variant"),
+        }
+    }
+
+    #[test]
+    fn test_commands_transport_variant() {
+        use crate::commands::definitions::TransportCommands;
+        let cmd = Commands::Transport {
+            action: TransportCommands::List {
+                format: "text".to_string(),
+            },
+        };
+        match &cmd {
+            Commands::Transport { action } => {
+                assert!(matches!(action, TransportCommands::List { .. }));
+            }
+            _ => panic!("Expected Transport variant"),
+        }
+    }
+
+    #[test]
+    fn test_commands_execute_variant() {
+        let cmd = Commands::Execute {
+            workload: PathBuf::from("workload.wasm"),
+            runtime: Some("wasm".to_string()),
+            env: vec!["KEY=val".to_string()],
+            timeout: 30,
+            format: "json".to_string(),
+        };
+        match &cmd {
+            Commands::Execute {
+                workload,
+                runtime,
+                env,
+                timeout,
+                format,
+            } => {
+                assert_eq!(workload, &PathBuf::from("workload.wasm"));
+                assert_eq!(runtime.as_deref(), Some("wasm"));
+                assert_eq!(env.len(), 1);
+                assert_eq!(*timeout, 30);
+                assert_eq!(format, "json");
+            }
+            _ => panic!("Expected Execute variant"),
+        }
+    }
+
+    #[test]
+    fn test_commands_logs_variant() {
+        let cmd = Commands::Logs {
+            target: "biome".to_string(),
+            follow: false,
+            lines: 100,
+            timestamps: true,
+            level: Some("info".to_string()),
+            grep: None,
+        };
+        match &cmd {
+            Commands::Logs {
+                target,
+                follow,
+                lines,
+                timestamps,
+                level,
+                ..
+            } => {
+                assert_eq!(target, "biome");
+                assert!(!*follow);
+                assert_eq!(*lines, 100);
+                assert!(*timestamps);
+                assert_eq!(level.as_deref(), Some("info"));
+            }
+            _ => panic!("Expected Logs variant"),
+        }
+    }
+
+    #[test]
+    fn test_commands_doctor_all_flags() {
+        let cmd = Commands::Doctor {
+            all: true,
+            hardware: true,
+            ecosystem: true,
+            config: true,
+            format: "json".to_string(),
+            fix: true,
+        };
+        match &cmd {
+            Commands::Doctor {
+                all,
+                hardware,
+                ecosystem,
+                config,
+                fix,
+                ..
+            } => {
+                assert!(*all);
+                assert!(*hardware);
+                assert!(*ecosystem);
+                assert!(*config);
+                assert!(*fix);
+            }
+            _ => panic!("Expected Doctor variant"),
+        }
     }
 }

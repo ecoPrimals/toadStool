@@ -138,7 +138,6 @@ toadstool-runtime-gpu = { path = "../crates/runtime/gpu" } # Re-enabled - archit
 
 # Ecosystem Integration
 toadstool-distributed = { path = "../crates/distributed" }
-toadstool-testing = { path = "../crates/testing" }
 
 # Management and Monitoring
 toadstool-management-monitoring = { path = "../crates/management/monitoring" }

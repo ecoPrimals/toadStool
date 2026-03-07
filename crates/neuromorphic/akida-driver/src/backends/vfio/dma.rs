@@ -71,6 +71,7 @@ impl DmaBuffer {
         );
 
         // SAFETY: container_fd is valid from VFIO container open; borrow_raw requires valid fd.
+        // Caller guarantees: container_fd is an open VFIO container fd, valid for this call.
         let container_borrowed = unsafe { BorrowedFd::borrow_raw(container_fd) };
         if let Err(e) = ioctl::dma_map(container_borrowed, &dma_map_arg) {
             tracing::warn!("DMA map failed: {e}");
@@ -136,7 +137,8 @@ impl Drop for DmaBuffer {
             size: self.size as u64,
         };
 
-        // SAFETY: container_fd still valid — DmaBuffer dropped before container.
+        // SAFETY: container_fd still valid — DmaBuffer is dropped before the VFIO container
+        // (Drop order: DmaBuffer fields, then parent VfioBackend). borrow_raw requires valid fd.
         let container_borrowed = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
         let _ = ioctl::dma_unmap(container_borrowed, &dma_unmap);
 

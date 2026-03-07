@@ -75,7 +75,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | ~85% line coverage. 6,176 lib tests (18,028+ total workspace). Focus: low-coverage crates (CLI, distributed, auto_config, edge). |
+| D-COV | Test coverage → 90% | Medium | ~83% line coverage (170K lines). 19,109 tests passing. Need ~12K more lines covered. Focus: hardware-dependent code (display/drm, GPU backends) hard to unit-test. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
 
@@ -105,6 +105,21 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (S129 — Mar 7, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| C dependency debt (`flate2`, `procfs`) | `flate2` switched to `rust_backend`; `procfs` disabled default features; eliminated `miniz-sys` transitive C dep |
+| Hardcoded primal ports | `capability_fallback` module: `COORDINATION`/`SECURITY`/`STORAGE`/`PLATFORM`/`ECOSYSTEM`. `resolve_capability_or_legacy_port()` for graceful migration |
+| Hardcoded primal discovery URLs | `primal_discovery_complete` now supports `TOADSTOOL_COORDINATION_URL` alongside legacy `SONGBIRD_URL` |
+| God files (5 over 800 lines) | `ipc/server.rs` 987→428, `container/lib.rs` 981→582, `ecosystem.rs` 963→556, `handler/mod.rs` 832→610, `nestgate/client.rs` 824→555 |
+| BYOB API double-`with_state` | `ByobApi::router(self)` vs `ByobApi::routes()` — clean state ownership |
+| Incorrect "Pure Rust" comments | Fixed `sysinfo` (uses libc/FFI), `drm`/`evdev` (kernel FFI) descriptions |
+| Coverage tests (~200+ new) | 5 batches across sub-50%, 50-70%, 70-85% files. 19,109 tests passing |
+| Unsafe audit | All unsafe in kernel/FFI/hardware code — no safe replacements possible |
+| Generated artifacts in git | Removed `actual_gpu_validation.json`, `pipeline_validation_actual_hardware.json` |
+| `toadstool-testing` dep in examples | Removed unused dependency |
 
 ## Recently Resolved (S128 — Mar 6, 2026)
 

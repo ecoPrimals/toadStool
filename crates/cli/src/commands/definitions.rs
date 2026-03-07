@@ -314,9 +314,9 @@ pub enum Commands {
         #[arg(short, long)]
         bind: Option<String>,
 
-        /// Server port
-        #[arg(short, long, default_value_t = toadstool_config::ports::toadstool::DAEMON_API)]
-        port: u16,
+        /// Server port (default from TOADSTOOL_DAEMON_API_PORT or config)
+        #[arg(short, long)]
+        port: Option<u16>,
 
         /// Configuration file path (TOML)
         #[arg(short, long)]

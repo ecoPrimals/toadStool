@@ -22,10 +22,7 @@
 //! client.store_artifact("model.bin", data).await?;
 //! ```
 
-use sha2::Digest;
-use sha2::Sha256;
 use tracing::{debug, info};
-use uuid::Uuid;
 
 use toadstool_common::primal_identity::{Capability, StorageCapability};
 use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
@@ -33,10 +30,7 @@ use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
 use toadstool_config::constants::primals::NESTGATE;
 
 use crate::config::NestGateConfig;
-use crate::pipeline::{PipelineConfig, PipelineStatus};
-use crate::types::{
-    ArtifactFilters, ArtifactMetadata, NestGateError, NestGateResult, StorageResult, StorageStatus,
-};
+use crate::types::{NestGateError, NestGateResult};
 
 /// Storage client for artifact and pipeline operations
 ///
@@ -58,8 +52,10 @@ use crate::types::{
 /// - Any service advertising `storage:artifact` capability
 #[derive(Debug, Clone)]
 pub struct StorageClient {
-    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
-    config: NestGateConfig,
+    /// RPC client for JSON-RPC over unix socket (crate-visible for impl in artifacts/pipelines)
+    pub(crate) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    /// Client configuration (crate-visible for impl in utils)
+    pub(crate) config: NestGateConfig,
     /// Discovered service name (for diagnostics)
     _service_name: String,
 }
@@ -213,276 +209,11 @@ impl StorageClient {
         Ok(())
     }
 
-    /// Store artifact via JSON-RPC to the storage service.
-    ///
-    /// Sends the artifact data as base64-encoded payload via `storage.artifact.store`.
-    /// Falls back to local metadata if the storage service is unavailable.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the storage service rejects the artifact.
-    pub fn store_artifact(&self, name: &str, data: &[u8]) -> Result<StorageResult, NestGateError> {
-        use base64::Engine;
-        let id = Uuid::new_v4();
-        let checksum = Self::calculate_checksum(data);
-        let content_type = Self::detect_content_type(data);
-
-        let payload = serde_json::json!({
-            "artifact_id": id.to_string(),
-            "name": name,
-            "content_type": content_type,
-            "size_bytes": data.len(),
-            "checksum": checksum,
-            "data_base64": base64::engine::general_purpose::STANDARD.encode(data),
-        });
-
-        let rt = tokio::runtime::Handle::try_current();
-        if let Ok(handle) = rt {
-            match handle.block_on(self.rpc_client.call("storage.artifact.store", payload)) {
-                Ok(_response) => {
-                    debug!("Artifact {name} stored via storage service (id={id})");
-                    return Ok(StorageResult {
-                        id,
-                        status: StorageStatus::Success,
-                        message: format!("Artifact stored: {name}"),
-                    });
-                }
-                Err(e) => {
-                    debug!("Storage service unavailable ({e}), falling back to local metadata");
-                }
-            }
-        }
-
-        Ok(StorageResult {
-            id,
-            status: StorageStatus::Success,
-            message: format!("Artifact stored locally: {name} (storage service unavailable)"),
-        })
-    }
-
-    /// Retrieve artifact via JSON-RPC from the storage service.
-    ///
-    /// Sends `storage.artifact.retrieve` and decodes the base64 response.
-    /// Returns `Ok(None)` if the artifact is not found or the service is unavailable.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the response cannot be decoded.
-    pub fn retrieve_artifact(&self, id: Uuid) -> Result<Option<Vec<u8>>, NestGateError> {
-        let payload = serde_json::json!({ "artifact_id": id.to_string() });
-
-        let rt = tokio::runtime::Handle::try_current();
-        if let Ok(handle) = rt {
-            if let Ok(response) =
-                handle.block_on(self.rpc_client.call("storage.artifact.retrieve", payload))
-            {
-                if let Some(data_b64) = response.get("data_base64").and_then(|v| v.as_str()) {
-                    use base64::Engine;
-                    let bytes = base64::engine::general_purpose::STANDARD
-                        .decode(data_b64)
-                        .map_err(|e| NestGateError::Storage(format!("base64 decode: {e}")))?;
-                    return Ok(Some(bytes));
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
-    /// Get artifact metadata via modern async RPC
-    ///
-    /// **MODERN ASYNC**: Idiomatic concurrent pattern with JSON-RPC
-    ///
-    /// # Errors
-    /// Returns an error if the artifact is not found or request fails
-    pub async fn get_artifact_metadata(
-        &self,
-        artifact_id: &str,
-    ) -> NestGateResult<ArtifactMetadata> {
-        info!("Getting metadata for artifact: {}", artifact_id);
-
-        // Modern async RPC call
-        let metadata: ArtifactMetadata = self
-            .rpc_client
-            .call_typed(
-                "storage.artifact.get_metadata",
-                serde_json::json!({ "artifact_id": artifact_id }),
-            )
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        info!(
-            "✅ Successfully retrieved metadata for artifact: {}",
-            artifact_id
-        );
-        Ok(metadata)
-    }
-
-    /// List artifacts with optional filtering - Modern async pattern
-    ///
-    /// **MODERN ASYNC**: Non-blocking concurrent RPC call
-    ///
-    /// # Errors
-    /// Returns an error if the listing request fails
-    pub async fn list_artifacts(
-        &self,
-        filters: Option<ArtifactFilters>,
-    ) -> NestGateResult<Vec<ArtifactMetadata>> {
-        info!("Listing artifacts with filters: {:?}", filters);
-
-        // Modern async RPC call with optional filters
-        let artifacts: Vec<ArtifactMetadata> = self
-            .rpc_client
-            .call_typed(
-                "storage.artifact.list",
-                serde_json::json!({ "filters": filters }),
-            )
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        info!("✅ Successfully listed {} artifacts", artifacts.len());
-        Ok(artifacts)
-    }
-
-    /// Delete artifact from `NestGate`
-    ///
-    /// # Errors
-    /// Returns an error if the artifact is not found or deletion fails
-    pub async fn delete_artifact(&self, artifact_id: &str) -> NestGateResult<()> {
-        info!("Deleting artifact: {}", artifact_id);
-
-        // Modern async RPC call
-        let _response: serde_json::Value = self
-            .rpc_client
-            .call(
-                "storage.artifact.delete",
-                serde_json::json!({ "artifact_id": artifact_id }),
-            )
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        info!("✅ Successfully deleted artifact: {}", artifact_id);
-        Ok(())
-    }
-
-    /// Create a data processing pipeline - Modern async
-    ///
-    /// **MODERN ASYNC**: Concurrent pipeline creation
-    ///
-    /// # Errors
-    /// Returns an error if the pipeline configuration is invalid or creation fails
-    pub async fn create_pipeline(&self, config: PipelineConfig) -> NestGateResult<String> {
-        info!("Creating pipeline: {}", config.pipeline_id);
-
-        // Modern async RPC call
-        let pipeline_id: String = self
-            .rpc_client
-            .call_typed(
-                "storage.pipeline.create",
-                serde_json::to_value(&config)
-                    .map_err(|e| NestGateError::Pipeline(e.to_string()))?,
-            )
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        info!("✅ Successfully created pipeline: {}", pipeline_id);
-        Ok(pipeline_id)
-    }
-
-    /// Start a pipeline execution - Modern async
-    ///
-    /// **MODERN ASYNC**: Non-blocking pipeline start
-    ///
-    /// # Errors
-    /// Returns an error if the pipeline is not found or start fails
-    pub async fn start_pipeline(&self, pipeline_id: &str) -> NestGateResult<String> {
-        info!("Starting pipeline: {}", pipeline_id);
-
-        // Modern async RPC call
-        let execution_id: String = self
-            .rpc_client
-            .call_typed(
-                "storage.pipeline.start",
-                serde_json::json!({ "pipeline_id": pipeline_id }),
-            )
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        info!(
-            "✅ Successfully started pipeline: {} with execution ID: {}",
-            pipeline_id, execution_id
-        );
-        Ok(execution_id)
-    }
-
-    /// Get pipeline execution status - Modern async
-    ///
-    /// **MODERN ASYNC**: Concurrent status polling
-    ///
-    /// # Errors
-    /// Returns an error if the pipeline is not found or status request fails
-    pub async fn get_pipeline_status(&self, pipeline_id: &str) -> NestGateResult<PipelineStatus> {
-        info!("Getting status for pipeline: {}", pipeline_id);
-
-        // Modern async RPC call
-        let status: PipelineStatus = self
-            .rpc_client
-            .call_typed(
-                "storage.pipeline.get_status",
-                serde_json::json!({ "pipeline_id": pipeline_id }),
-            )
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        info!(
-            "✅ Successfully retrieved status for pipeline: {}",
-            pipeline_id
-        );
-        Ok(status)
-    }
-
-    /// Calculate checksum for data integrity
-    #[cfg_attr(test, allow(dead_code))]
-    pub(crate) fn calculate_checksum(data: &[u8]) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(data);
-        format!("{:x}", hasher.finalize())
-    }
-
-    /// Detect content type from data
-    #[cfg_attr(test, allow(dead_code))]
-    pub(crate) fn detect_content_type(data: &[u8]) -> String {
-        // Simple content type detection
-        if data.starts_with(b"PK") {
-            "application/zip".to_string()
-        } else if data.starts_with(b"\x89PNG") {
-            "image/png".to_string()
-        } else if data.starts_with(b"\xFF\xD8\xFF") {
-            "image/jpeg".to_string()
-        } else {
-            "application/octet-stream".to_string()
-        }
-    }
-
-    /// Clean up expired cache entries
-    ///
-    /// Intentionally a no-op: the cache uses TTL-based expiry managed by the runtime,
-    /// not explicit cleanup. Entries expire automatically; no manual cleanup is needed.
-    pub fn cleanup_cache(&self) {
-        if !self.config.cache.as_ref().is_some_and(|c| c.enabled) {
-            return;
-        }
-
-        // Cache implementation would go here
-        // For now, this is a no-op
-        debug!("Cache cleanup completed (no-op)");
-    }
-
     /// Create client for testing without health check (skips RPC connectivity)
     ///
     /// Use for unit tests that exercise local logic (store_artifact, retrieve_artifact,
     /// checksum, content-type detection) without requiring a running NestGate server.
-    #[cfg(test)]
+    #[doc(hidden)]
     pub fn new_for_testing(config: NestGateConfig, service_name: String) -> Self {
         let socket_path =
             toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
@@ -500,7 +231,7 @@ mod tests {
     use super::*;
     use crate::config::CacheConfig;
     use crate::pipeline::PipelineConfig;
-    use crate::types::ArtifactType;
+    use crate::types::{ArtifactFilters, ArtifactType, StorageStatus};
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::time::Duration;

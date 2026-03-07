@@ -22,7 +22,7 @@ members = [
     "crates/management/analytics",
     "crates/runtime/adaptive",        # NEW: Adaptive optimization (Jan 15, 2026)
     "crates/runtime/container",
-    "crates/runtime/display",         # NEW: 100% Pure Rust display backend for petalTongue (Jan 19, 2026) 🍄🌸
+    "crates/runtime/display",         # Display backend for petalTongue (drm/evdev use kernel FFI)
     "crates/runtime/gpu",
     # "crates/runtime/specialty",  # Future feature (P3) - incomplete trait implementations
     # "crates/runtime/edge",          # Excluded: serialport→libudev (C dep). Add to members + install libudev-dev to build.
@@ -124,11 +124,8 @@ toml = "0.8"
 # RPC Protocols - PRIMARY (following Songbird pattern)
 # tarpc: High-performance binary RPC for primal-to-primal (Rust-to-Rust)
 tarpc = { version = "0.34", features = ["tokio1", "serde-transport", "serde-transport-json"] }
-# ⚠️ REMOVED: jsonrpsee pulls ring (C dependency)
-# jsonrpsee = { version = "0.21", features = ["server", "client", "macros"] }
-# ✅ EVOLVED: Use manual_jsonrpc.rs or pure_jsonrpc.rs instead (Pure Rust!)
-# See: crates/server/src/manual_jsonrpc.rs (Unix sockets)
-# See: crates/server/src/pure_jsonrpc.rs (BearDog pattern)
+# jsonrpsee removed (pulls ring C dependency). Pure Rust JSON-RPC via pure_jsonrpc.
+# See: crates/server/src/pure_jsonrpc/ (canonical JSON-RPC handler)
 
 # HTTP and networking - FALLBACK (enabled but not primary)
 # PURE RUST: reqwest removed - all primal communication uses unix sockets!

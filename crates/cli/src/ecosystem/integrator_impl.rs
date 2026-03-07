@@ -69,17 +69,17 @@ impl EcosystemIntegrator {
                 capability_categories::ORCHESTRATION.to_string(), // Orchestration capabilities
             ]
         } else {
-            // Migration bridge: map legacy primal names to capabilities.
-            // Callers that already pass capability names (e.g. "crypto", "storage")
-            // fall through to the identity arm unchanged.
+            // Capability-based: pass through capability names.
+            // Legacy primal names resolved via capability discovery.
             service_types.into_iter()
                 .map(|st| {
-                    use crate::ecosystem::constants::{capability_categories, service_names};
-                    #[allow(deprecated)]
+                    use crate::ecosystem::constants::capability_categories;
                     match st.as_str() {
-                        service_names::SONGBIRD => capability_categories::NETWORK.to_string(),
-                        service_names::BEARDOG => capability_categories::CRYPTO.to_string(),
-                        service_names::NESTGATE => capability_categories::STORAGE.to_string(),
+                        "songbird" | "orchestration" | "coordination" => {
+                            capability_categories::NETWORK.to_string()
+                        }
+                        "beardog" | "pki" | "security" => capability_categories::CRYPTO.to_string(),
+                        "nestgate" => capability_categories::STORAGE.to_string(),
                         _ => st, // Already a capability name — pass through
                     }
                 })
@@ -106,11 +106,13 @@ impl EcosystemIntegrator {
                         
                         // Convert DiscoveredService to ServiceEndpoint format
                         if let Ok(addr) = discovered.endpoint.parse() {
-                            // Map capabilities to known service types where possible
+                            // Map capabilities to service types (capability-based)
                             let service_type = match capability.as_str() {
-                                "network" => EcosystemService::Songbird,
-                                "crypto" => EcosystemService::BearDog,
-                                "storage" => EcosystemService::NestGate,
+                                "network" | "discovery" | "orchestration" | "coordination" => {
+                                    EcosystemService::Discovery
+                                }
+                                "crypto" | "pki" | "security" => EcosystemService::Crypto,
+                                "storage" => EcosystemService::Storage,
                                 _ => EcosystemService::Unknown(capability.clone()),
                             };
                             
@@ -232,7 +234,7 @@ impl EcosystemIntegrator {
                 #[allow(deprecated)]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
-                        service_type: EcosystemService::Songbird, // Backward compat
+                        service_type: EcosystemService::Discovery,
                         address: addr,
                         version: Arc::from("unknown"),
                         capabilities: vec!["discovery".to_string(), "coordination".to_string()],
@@ -334,7 +336,7 @@ impl EcosystemIntegrator {
                 #[allow(deprecated)]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
-                        service_type: EcosystemService::NestGate, // Backward compat
+                        service_type: EcosystemService::Storage,
                         address: addr,
                         version: Arc::from("unknown"),
                         capabilities: vec!["storage".to_string(), "zfs".to_string()],

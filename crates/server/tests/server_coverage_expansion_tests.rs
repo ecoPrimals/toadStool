@@ -243,7 +243,7 @@ fn test_server_event_execution_completed_to_json() {
     let event = ServerEvent::ExecutionCompleted {
         execution_id: exec_id,
         status: ExecutionStatus::Failed {
-            error: "test error".to_string(),
+            error: "test error".into(),
         },
         duration_ms: 5000,
         timestamp: std::time::SystemTime::now(),

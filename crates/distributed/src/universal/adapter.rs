@@ -182,7 +182,7 @@ mod tests {
         let response = toadstool::ExecutionResponse {
             execution_id: Uuid::new_v4(),
             status: ExecutionStatus::Failed {
-                error: "test error".to_string(),
+                error: std::borrow::Cow::Borrowed("test error"),
             },
             output: ExecutionOutput::default(),
             metrics: toadstool::RuntimeMetrics::default(),

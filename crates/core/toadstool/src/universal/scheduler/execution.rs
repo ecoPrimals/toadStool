@@ -122,12 +122,14 @@ impl UniversalScheduler {
                 status: match response.status {
                     ResponseStatus::Success => crate::execution::ExecutionStatus::Success,
                     ResponseStatus::Error { message, .. } => {
-                        crate::execution::ExecutionStatus::Failed { error: message }
+                        crate::execution::ExecutionStatus::Failed {
+                            error: message.into(),
+                        }
                     }
                     ResponseStatus::Timeout => crate::execution::ExecutionStatus::TimedOut,
                     ResponseStatus::ServiceUnavailable => {
                         crate::execution::ExecutionStatus::Failed {
-                            error: "Service unavailable".to_string(),
+                            error: std::borrow::Cow::Borrowed("Service unavailable"),
                         }
                     }
                 },
@@ -208,7 +210,7 @@ impl UniversalScheduler {
                         crate::execution::ExecutionStatus::Success
                     } else {
                         crate::execution::ExecutionStatus::Failed {
-                            error: format!("process exited with code {exit_code}"),
+                            error: format!("process exited with code {exit_code}").into(),
                         }
                     };
                     Ok(ExecutionResponse {
@@ -240,7 +242,9 @@ impl UniversalScheduler {
                     let error_for_stderr = error_msg.clone();
                     Ok(ExecutionResponse {
                         execution_id,
-                        status: crate::execution::ExecutionStatus::Failed { error: error_msg },
+                        status: crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.into(),
+                        },
                         output: crate::execution::ExecutionOutput {
                             data: bytes::Bytes::new(),
                             stdout: None,
@@ -316,7 +320,7 @@ impl UniversalScheduler {
         Ok(ExecutionResponse {
             execution_id: Uuid::new_v4(),
             status: crate::execution::ExecutionStatus::Failed {
-                error: error_msg,
+                error: error_msg.into(),
             },
             output: crate::execution::ExecutionOutput {
                 data: bytes::Bytes::new(),
@@ -391,7 +395,9 @@ impl UniversalScheduler {
                             ResponseStatus::ServiceUnavailable => "Service unavailable".to_string(),
                             ResponseStatus::Success => "Unknown error".to_string(),
                         };
-                        crate::execution::ExecutionStatus::Failed { error: error_msg }
+                        crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.into(),
+                        }
                     };
 
                     Ok(ExecutionResponse {
@@ -419,7 +425,9 @@ impl UniversalScheduler {
                     let error_for_stderr = error_msg.clone();
                     Ok(ExecutionResponse {
                         execution_id,
-                        status: crate::execution::ExecutionStatus::Failed { error: error_msg },
+                        status: crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.into(),
+                        },
                         output: crate::execution::ExecutionOutput {
                             data: bytes::Bytes::new(),
                             stdout: None,
@@ -455,7 +463,9 @@ impl UniversalScheduler {
             let error_for_stderr = error_msg.clone();
             Ok(ExecutionResponse {
                 execution_id,
-                status: crate::execution::ExecutionStatus::Failed { error: error_msg },
+                status: crate::execution::ExecutionStatus::Failed {
+                    error: error_msg.into(),
+                },
                 output: crate::execution::ExecutionOutput {
                     data: bytes::Bytes::new(),
                     stdout: None,
@@ -531,7 +541,9 @@ impl UniversalScheduler {
                             }
                             ResponseStatus::Success => "Unknown error".to_string(),
                         };
-                        crate::execution::ExecutionStatus::Failed { error: error_msg }
+                        crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.into(),
+                        }
                     };
 
                     Ok(ExecutionResponse {
@@ -561,7 +573,9 @@ impl UniversalScheduler {
                     let error_for_stderr = error_msg.clone();
                     Ok(ExecutionResponse {
                         execution_id,
-                        status: crate::execution::ExecutionStatus::Failed { error: error_msg },
+                        status: crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.into(),
+                        },
                         output: crate::execution::ExecutionOutput {
                             data: bytes::Bytes::new(),
                             stdout: None,
@@ -587,7 +601,9 @@ impl UniversalScheduler {
             let error_for_stderr = error_msg.clone();
             Ok(ExecutionResponse {
                 execution_id,
-                status: crate::execution::ExecutionStatus::Failed { error: error_msg },
+                status: crate::execution::ExecutionStatus::Failed {
+                    error: error_msg.into(),
+                },
                 output: crate::execution::ExecutionOutput {
                     data: bytes::Bytes::new(),
                     stdout: None,

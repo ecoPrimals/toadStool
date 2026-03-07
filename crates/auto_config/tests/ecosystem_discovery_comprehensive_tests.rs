@@ -5,7 +5,9 @@
 //! coverage for the ecosystem service discovery system.
 
 use std::collections::HashMap;
-use toadstool_auto_config::ecosystem::{DiscoverySummary, ServiceStatus, ServiceType};
+use toadstool_auto_config::ecosystem::{
+    DiscoverySummary, ServicePattern, ServiceStatus, ServiceType,
+};
 use toadstool_auto_config::{DiscoveredServices, EcosystemDiscoverer, ServiceInfo};
 
 /// Test that ecosystem discoverer can be created
@@ -328,7 +330,7 @@ fn test_service_version_formats() {
 }
 
 /// Test concurrent service discovery (should be thread-safe)
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test]
 async fn test_concurrent_discovery() {
     use std::sync::Arc;
     use tokio::sync::Semaphore;
@@ -632,4 +634,151 @@ fn test_discovered_via_validation() {
         // Should be lowercase with underscores
         assert!(method.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
     }
+}
+
+/// Test ServicePattern creation and serialization
+#[test]
+fn test_service_pattern_creation() {
+    let pattern = ServicePattern {
+        name: "crypto".to_string(),
+        description: "Cryptographic operations".to_string(),
+        default_ports: vec![9876, 9877],
+        health_endpoints: vec!["/health".to_string(), "/api/health".to_string()],
+        service_type: ServiceType::Security,
+        required_capabilities: vec!["security".to_string(), "pki".to_string()],
+    };
+    assert_eq!(pattern.name, "crypto");
+    assert_eq!(pattern.default_ports.len(), 2);
+    assert!(pattern
+        .required_capabilities
+        .contains(&"security".to_string()));
+}
+
+/// Test ServicePattern clone
+#[test]
+fn test_service_pattern_clone() {
+    let pattern = ServicePattern {
+        name: "storage".to_string(),
+        description: "Storage service".to_string(),
+        default_ports: vec![8082],
+        health_endpoints: vec!["/health".to_string()],
+        service_type: ServiceType::Storage,
+        required_capabilities: vec!["storage".to_string()],
+    };
+    let cloned = pattern.clone();
+    assert_eq!(pattern.name, cloned.name);
+    assert_eq!(pattern.default_ports, cloned.default_ports);
+    assert_eq!(
+        pattern.service_type.to_string(),
+        cloned.service_type.to_string()
+    );
+}
+
+/// Test discover_services with TOADSTOOL_SKIP_DISCOVERY env (fast mode)
+#[tokio::test]
+async fn test_discover_services_skip_discovery_env() {
+    let old = std::env::var("TOADSTOOL_SKIP_DISCOVERY").ok();
+    std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1");
+
+    let mut discoverer = EcosystemDiscoverer::new();
+    let result = discoverer.discover_services().await;
+
+    if let Some(v) = old {
+        std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", v);
+    } else {
+        std::env::remove_var("TOADSTOOL_SKIP_DISCOVERY");
+    }
+
+    assert!(result.is_ok());
+    let services = result.unwrap();
+    assert!(services
+        .discovery_summary
+        .discovery_methods_used
+        .contains(&"fast_mode".to_string()));
+}
+
+/// Test find_pattern_by_capability returns correct pattern
+#[test]
+fn test_find_pattern_by_capability_security() {
+    let discoverer = EcosystemDiscoverer::new();
+    let pattern = discoverer.find_pattern_by_capability("security");
+    assert!(pattern.is_some());
+    assert_eq!(pattern.unwrap().name, "crypto");
+}
+
+/// Test get_last_discovery returns cached result
+#[tokio::test]
+async fn test_get_last_discovery_after_discover() {
+    let mut discoverer = EcosystemDiscoverer::new();
+    assert!(discoverer.get_last_discovery().is_none());
+    let _ = discoverer.discover_services().await.unwrap();
+    let cached = discoverer.get_last_discovery();
+    assert!(cached.is_some());
+}
+
+/// Test clear_cache clears last discovery
+#[tokio::test]
+async fn test_clear_cache() {
+    let mut discoverer = EcosystemDiscoverer::new();
+    let _ = discoverer.discover_services().await.unwrap();
+    discoverer.clear_cache();
+    assert!(discoverer.get_last_discovery().is_none());
+}
+
+/// Test DiscoverySummary with discovery_errors
+#[test]
+fn test_discovery_summary_with_errors() {
+    let summary = DiscoverySummary {
+        total_services_found: 0,
+        discovery_methods_used: vec!["local".to_string()],
+        services_by_type: HashMap::new(),
+        discovery_errors: vec!["Connection refused".to_string()],
+    };
+    assert_eq!(summary.discovery_errors.len(), 1);
+    assert!(summary.discovery_errors[0].contains("Connection"));
+}
+
+/// Test ServiceType Unknown display
+#[test]
+fn test_service_type_unknown_display() {
+    assert_eq!(ServiceType::Unknown.to_string(), "Unknown");
+}
+
+/// Test DiscoveredServices full serialization
+#[test]
+fn test_discovered_services_full_serialization() {
+    let mut services = HashMap::new();
+    services.insert(
+        "test".to_string(),
+        ServiceInfo {
+            name: "test".to_string(),
+            endpoint: "http://127.0.0.1:8080".to_string(),
+            service_type: "Compute".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec!["compute".to_string()],
+            status: ServiceStatus::Healthy,
+            discovered_via: "env".to_string(),
+            response_time_ms: 10,
+        },
+    );
+    let discovered = DiscoveredServices {
+        discovered_services: services,
+        discovery_summary: DiscoverySummary {
+            total_services_found: 1,
+            discovery_methods_used: vec!["env".to_string()],
+            services_by_type: HashMap::new(),
+            discovery_errors: vec![],
+        },
+        discovery_timestamp: std::time::SystemTime::now(),
+    };
+    let json = serde_json::to_value(&discovered).unwrap();
+    assert_eq!(json["discovery_summary"]["total_services_found"], 1);
+}
+
+/// Test EcosystemDiscoverer default
+#[test]
+fn test_ecosystem_discoverer_default() {
+    let discoverer = EcosystemDiscoverer::default();
+    assert!(discoverer.find_pattern_by_capability("storage").is_some());
+    assert!(discoverer.find_pattern_by_capability("network").is_some());
 }

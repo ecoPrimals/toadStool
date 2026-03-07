@@ -33,8 +33,9 @@
 //! - ✅ Zero unsafe
 //! - ✅ Modern async (tokio)
 
-use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
-use crate::window::{CreateWindowRequest, Size, WindowId, WindowManager};
+use super::dispatch;
+use super::platform;
+use crate::window::WindowManager;
 use crate::{DisplayError, Result};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -82,26 +83,13 @@ impl DisplayServer {
     #[must_use]
     pub fn new(manager: WindowManager) -> Self {
         // Default socket path (capability-based discovery!)
-        let socket_path = Self::discover_socket_path();
+        let socket_path = platform::discover_socket_path();
 
         Self {
             manager: Arc::new(RwLock::new(manager)),
             socket_path,
             transport: Arc::new(RwLock::new(None)),
         }
-    }
-
-    /// Discover socket path from environment
-    ///
-    /// **Capability-based**: Uses `XDG_RUNTIME_DIR`, no hardcoding!
-    fn discover_socket_path() -> PathBuf {
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
-
-        let mut path = PathBuf::from(runtime_dir);
-        path.push("toadstool");
-        path.push("display.sock");
-
-        path
     }
 
     /// Start server (ISOMORPHIC - Try→Detect→Adapt→Succeed)
@@ -127,7 +115,7 @@ impl DisplayServer {
             Ok(()) => Ok(()),
 
             // 2. DETECT platform constraints
-            Err(e) if Self::is_platform_constraint(&e) => {
+            Err(e) if platform::is_platform_constraint(&e) => {
                 tracing::warn!("⚠️  Unix sockets unavailable: {}", e);
                 tracing::warn!("   Detected platform constraint, adapting...");
 
@@ -205,7 +193,7 @@ impl DisplayServer {
         tracing::info!("✅ TCP IPC listening on {}", local_addr);
 
         // Write discovery file for clients
-        Self::write_tcp_discovery_file(&local_addr);
+        platform::write_tcp_discovery_file(&local_addr);
 
         // Update transport
         *self.transport.write().await = Some(IpcTransport::TcpFallback(local_addr));
@@ -225,65 +213,6 @@ impl DisplayServer {
                 }
                 Err(e) => {
                     tracing::error!("TCP accept error: {}", e);
-                }
-            }
-        }
-    }
-
-    /// Detect platform constraints (not real errors!)
-    ///
-    /// Platform constraints should trigger TCP fallback, not failure.
-    fn is_platform_constraint(error: &DisplayError) -> bool {
-        // Extract IO error from DisplayError
-        let error_str = error.to_string();
-
-        // Check for permission denied + SELinux
-        if error_str.contains("Permission denied") && Self::is_selinux_enforcing() {
-            tracing::debug!("   Platform constraint: SELinux enforcing (Android?)");
-            return true;
-        }
-
-        // Check for unsupported operation (platform lacks Unix sockets)
-        if error_str.contains("Unsupported") || error_str.contains("not supported") {
-            tracing::debug!("   Platform constraint: Unix sockets not supported");
-            return true;
-        }
-
-        false
-    }
-
-    /// Check if `SELinux` is enforcing (common on Android)
-    fn is_selinux_enforcing() -> bool {
-        std::fs::read_to_string("/sys/fs/selinux/enforce")
-            .ok()
-            .and_then(|s| s.trim().parse::<u8>().ok())
-            .is_some_and(|v| v == 1)
-    }
-
-    /// Write TCP discovery file for clients
-    ///
-    /// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, HOME, /tmp
-    fn write_tcp_discovery_file(addr: &SocketAddr) {
-        // XDG-compliant discovery file paths
-        let discovery_dirs: Vec<Option<String>> = vec![
-            std::env::var("XDG_RUNTIME_DIR").ok(),
-            std::env::var("HOME")
-                .ok()
-                .map(|h| format!("{h}/.local/share")),
-            Some("/tmp".to_string()),
-        ];
-
-        for dir in discovery_dirs.iter().filter_map(|d| d.as_ref()) {
-            // Create directory if needed
-            if matches!(std::fs::create_dir_all(dir), Ok(())) {
-                let discovery_file = format!("{dir}/toadstool-ipc-port");
-
-                if let Ok(mut f) = std::fs::File::create(&discovery_file) {
-                    use std::io::Write;
-                    // Write in format: tcp:127.0.0.1:PORT
-                    writeln!(f, "tcp:{addr}").ok();
-                    tracing::info!("📁 TCP discovery file: {}", discovery_file);
-                    break;
                 }
             }
         }
@@ -309,7 +238,7 @@ impl DisplayServer {
                 }
                 Ok(_) => {
                     // Process request
-                    let response = Self::handle_request(&line, &self.manager).await;
+                    let response = dispatch::handle_request(&line, &self.manager).await;
 
                     // Send response
                     let response_json = serde_json::to_string(&response)
@@ -353,7 +282,7 @@ impl DisplayServer {
                 }
                 Ok(_) => {
                     // Process request (SAME as Unix!)
-                    let response = Self::handle_request(&line, &self.manager).await;
+                    let response = dispatch::handle_request(&line, &self.manager).await;
 
                     // Send response
                     let response_json = serde_json::to_string(&response)
@@ -377,133 +306,6 @@ impl DisplayServer {
         Ok(())
     }
 
-    /// Handle a single JSON-RPC request
-    async fn handle_request(
-        request_str: &str,
-        manager: &Arc<RwLock<WindowManager>>,
-    ) -> JsonRpcResponse {
-        // Parse request
-        let request: JsonRpcRequest = match serde_json::from_slice(request_str.as_bytes()) {
-            Ok(req) => req,
-            Err(_) => {
-                return JsonRpcResponse::error(
-                    serde_json::json!(null),
-                    JsonRpcError::parse_error(),
-                );
-            }
-        };
-
-        let id = request.id.clone().unwrap_or(serde_json::json!(null));
-
-        // Dispatch method (needs self reference for capabilities)
-        // Since we're in a static context, we'll pass needed data
-        let result = Self::dispatch_method_static(&request, manager).await;
-
-        match result {
-            Ok(value) => JsonRpcResponse::success(id, value),
-            Err(e) => JsonRpcResponse::error(id, JsonRpcError::internal_error(&e.to_string())),
-        }
-    }
-
-    /// Dispatch method to handler (static version for compatibility)
-    async fn dispatch_method_static(
-        request: &JsonRpcRequest,
-        manager: &Arc<RwLock<WindowManager>>,
-    ) -> Result<serde_json::Value> {
-        match request.method.as_str() {
-            "display.create_window" => {
-                let params: CreateWindowRequest = request
-                    .params
-                    .as_ref()
-                    .and_then(|p| serde_json::from_value(p.clone()).ok())
-                    .unwrap_or_default();
-
-                let mut mgr = manager.write().await;
-                let window_id = mgr.create_window(params)?;
-
-                Ok(serde_json::json!({
-                    "window_id": window_id.as_string()
-                }))
-            }
-            "display.destroy_window" => {
-                let window_id_str = request
-                    .params
-                    .as_ref()
-                    .and_then(|p| p.get("window_id"))
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
-                let window_id = WindowId::from_string(window_id_str)?;
-
-                let mut mgr = manager.write().await;
-                mgr.destroy_window(window_id)?;
-
-                Ok(serde_json::json!({"destroyed": true}))
-            }
-            "display.resize_window" => {
-                let params = request
-                    .params
-                    .as_ref()
-                    .ok_or_else(|| DisplayError::IpcError("Missing params".to_string()))?;
-                let window_id_str = params["window_id"]
-                    .as_str()
-                    .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
-                let window_id = WindowId::from_string(window_id_str)?;
-                #[allow(clippy::cast_possible_truncation)] // Display dimensions fit in u32
-                let width = params["width"]
-                    .as_u64()
-                    .ok_or_else(|| DisplayError::IpcError("Missing width".to_string()))?
-                    as u32;
-                #[allow(clippy::cast_possible_truncation)] // Display dimensions fit in u32
-                let height = params["height"]
-                    .as_u64()
-                    .ok_or_else(|| DisplayError::IpcError("Missing height".to_string()))?
-                    as u32;
-
-                let mut mgr = manager.write().await;
-                mgr.resize_window(window_id, Size { width, height })?;
-
-                Ok(serde_json::json!({"resized": true}))
-            }
-            "display.get_window_info" => {
-                let window_id_str = request
-                    .params
-                    .as_ref()
-                    .and_then(|p| p.get("window_id"))
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
-                let window_id = WindowId::from_string(window_id_str)?;
-
-                let mgr = manager.read().await;
-                let info = mgr.get_window_info(window_id)?;
-
-                Ok(serde_json::to_value(info)
-                    .map_err(|e| DisplayError::IpcError(format!("Serialization error: {e}")))?)
-            }
-            "display.get_capabilities" => {
-                let mgr = manager.read().await;
-
-                // Runtime-determined capabilities (basic version for static dispatch)
-                Ok(serde_json::json!({
-                    "primal_id": "toadstool-primary",
-                    "socket_path": Self::discover_socket_path().display().to_string(),
-                    "transport": "isomorphic",  // Will be unix or tcp
-                    "max_windows": 16,
-                    "supported_formats": ["RGBA8888", "BGRA8888"],
-                    "has_gpu_acceleration": true,
-                    "vsync_available": true,
-                    "display_count": 1,
-                    "input_device_count": 0,
-                    "window_count": mgr.window_count(),
-                    "isomorphic": true,  // Isomorphic IPC support
-                }))
-            }
-            _ => Err(DisplayError::IpcError(format!(
-                "Unknown method: {}",
-                request.method
-            ))),
-        }
-    }
-
     /// Get socket path
     #[must_use]
     pub const fn socket_path(&self) -> &PathBuf {
@@ -519,29 +321,7 @@ impl DisplayServer {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_socket_path_discovery() {
-        let path = DisplayServer::discover_socket_path();
-        assert!(path.to_string_lossy().contains("toadstool"));
-        assert!(path.to_string_lossy().ends_with("display.sock"));
-    }
-
-    #[test]
-    fn test_socket_path_has_toadstool_and_display_sock() {
-        let path = DisplayServer::discover_socket_path();
-        let path_str = path.to_string_lossy();
-        assert!(
-            path_str.contains("toadstool"),
-            "path should contain toadstool: {}",
-            path_str
-        );
-        assert!(
-            path_str.ends_with("display.sock"),
-            "path should end with display.sock: {}",
-            path_str
-        );
-    }
+    use crate::ipc::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 
     #[tokio::test]
     async fn test_jsonrpc_parsing() {
@@ -550,123 +330,9 @@ mod tests {
         assert_eq!(request.method, "display.get_capabilities");
     }
 
-    /// Create a manager for tests; skips (returns None) when DRM is unavailable.
-    async fn test_manager() -> Option<Arc<RwLock<WindowManager>>> {
-        WindowManager::new()
-            .await
-            .ok()
-            .map(RwLock::new)
-            .map(Arc::new)
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_parse_error() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
-        };
-        let response = DisplayServer::handle_request("not valid json {{{", &manager).await;
-        assert!(
-            response.error.is_some(),
-            "parse error should return error response"
-        );
-        let err = response.error.unwrap();
-        assert_eq!(err.code, -32700, "parse error code");
-        assert!(err.message.to_lowercase().contains("parse"));
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_empty_string_parse_error() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
-        };
-        let response = DisplayServer::handle_request("", &manager).await;
-        assert!(response.error.is_some());
-        assert_eq!(response.error.unwrap().code, -32700);
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_unknown_method() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
-        };
-        let request_str = r#"{"jsonrpc":"2.0","method":"display.nonexistent","params":{},"id":1}"#;
-        let response = DisplayServer::handle_request(request_str, &manager).await;
-        assert!(
-            response.error.is_some(),
-            "unknown method should return error"
-        );
-        let err = response.error.unwrap();
-        assert_eq!(err.code, -32603, "internal error code for unknown method");
-        assert!(err.message.contains("Unknown method"));
-        assert!(err.message.contains("display.nonexistent"));
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_get_capabilities() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
-        };
-        let request_str =
-            r#"{"jsonrpc":"2.0","method":"display.get_capabilities","params":{},"id":42}"#;
-        let response = DisplayServer::handle_request(request_str, &manager).await;
-        assert!(
-            response.error.is_none(),
-            "get_capabilities should succeed: {:?}",
-            response.error
-        );
-        let result = response.result.expect("success response has result");
-        assert_eq!(result["primal_id"], "toadstool-primary");
-        assert_eq!(result["max_windows"], 16);
-        assert_eq!(result["isomorphic"], true);
-        assert!(result["socket_path"]
-            .as_str()
-            .unwrap()
-            .contains("toadstool"));
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_destroy_window_missing_params() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
-        };
-        let request_str =
-            r#"{"jsonrpc":"2.0","method":"display.destroy_window","params":{},"id":1}"#;
-        let response = DisplayServer::handle_request(request_str, &manager).await;
-        assert!(response.error.is_some());
-        assert!(response
-            .error
-            .unwrap()
-            .message
-            .contains("Missing window_id"));
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_resize_window_missing_params() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
-        };
-        let request_str =
-            r#"{"jsonrpc":"2.0","method":"display.resize_window","params":{},"id":1}"#;
-        let response = DisplayServer::handle_request(request_str, &manager).await;
-        assert!(response.error.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_null_id_uses_null_in_response() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
-        };
-        let request_str = r#"{"jsonrpc":"2.0","method":"display.get_capabilities","id":null}"#;
-        let response = DisplayServer::handle_request(request_str, &manager).await;
-        assert!(response.error.is_none());
-        assert!(response.result.is_some());
+    /// Create an owned manager for DisplayServer::new tests.
+    async fn test_manager_owned() -> Option<WindowManager> {
+        WindowManager::new().await.ok()
     }
 
     #[test]
@@ -686,89 +352,156 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_handle_request_create_window_default_params() {
-        let manager = match test_manager().await {
+    async fn test_display_server_new_socket_path() {
+        let manager = match test_manager_owned().await {
             Some(m) => m,
             None => return,
         };
-        let request_str =
-            r#"{"jsonrpc":"2.0","method":"display.create_window","params":{},"id":1}"#;
-        let response = DisplayServer::handle_request(request_str, &manager).await;
-        assert!(
-            response.error.is_none(),
-            "create_window with empty params should succeed: {:?}",
-            response.error
+        let server = DisplayServer::new(manager);
+        let path = server.socket_path();
+        assert!(path.to_string_lossy().contains("toadstool"));
+        assert!(path.to_string_lossy().ends_with("display.sock"));
+    }
+
+    #[test]
+    fn test_jsonrpc_error_constructors() {
+        let parse = JsonRpcError::parse_error();
+        assert_eq!(parse.code, -32700);
+        assert!(parse.message.to_lowercase().contains("parse"));
+
+        let invalid = JsonRpcError::invalid_request();
+        assert_eq!(invalid.code, -32600);
+
+        let not_found = JsonRpcError::method_not_found("foo.bar");
+        assert_eq!(not_found.code, -32601);
+        assert!(not_found.message.contains("foo.bar"));
+
+        let invalid_params = JsonRpcError::invalid_params("bad");
+        assert_eq!(invalid_params.code, -32602);
+        assert!(invalid_params.message.contains("bad"));
+
+        let internal = JsonRpcError::internal_error("oops");
+        assert_eq!(internal.code, -32603);
+        assert!(internal.message.contains("oops"));
+    }
+
+    #[test]
+    fn test_jsonrpc_response_success_roundtrip() {
+        let resp = JsonRpcResponse::success(
+            serde_json::json!(1),
+            serde_json::json!({"window_id": "test-123"}),
         );
-        assert!(response.result.is_some());
-        let result = response.result.unwrap();
-        assert!(result.get("window_id").is_some());
+        let json = serde_json::to_string(&resp).unwrap();
+        let parsed: JsonRpcResponse = serde_json::from_str(&json).unwrap();
+        assert!(parsed.result.is_some());
+        assert_eq!(parsed.result.unwrap()["window_id"], "test-123");
     }
 
     #[tokio::test]
-    async fn test_handle_request_resize_window_missing_width() {
-        let manager = match test_manager().await {
+    async fn test_transport_initially_none() {
+        let manager = match test_manager_owned().await {
             Some(m) => m,
             None => return,
         };
-        let window_id = crate::window::WindowId::new();
-        let request_str = format!(
-            r#"{{"jsonrpc":"2.0","method":"display.resize_window","params":{{"window_id":"{}","height":600}},"id":1}}"#,
-            window_id.as_string()
-        );
-        let response = DisplayServer::handle_request(&request_str, &manager).await;
-        assert!(response.error.is_some());
+        let server = DisplayServer::new(manager);
+        let transport = server.transport().await;
+        assert!(transport.is_none());
+    }
+
+    #[test]
+    fn test_ipc_transport_clone() {
+        let t = IpcTransport::UnixSocket;
+        let t2 = t.clone();
+        assert!(matches!(
+            (t, t2),
+            (IpcTransport::UnixSocket, IpcTransport::UnixSocket)
+        ));
+
+        let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let t3 = IpcTransport::TcpFallback(addr);
+        let t4 = t3.clone();
+        assert!(matches!(
+            (t3, t4),
+            (IpcTransport::TcpFallback(_), IpcTransport::TcpFallback(_))
+        ));
+    }
+
+    #[test]
+    fn test_ipc_transport_tcp_fallback_addr() {
+        let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let t = IpcTransport::TcpFallback(addr);
+        let s = format!("{:?}", t);
+        assert!(s.contains("12345") || s.contains("127"));
+    }
+
+    #[test]
+    fn test_jsonrpc_request_parse_valid() {
+        let req = r#"{"jsonrpc":"2.0","method":"display.get_capabilities","id":1}"#;
+        let parsed: JsonRpcRequest = serde_json::from_str(req).unwrap();
+        assert_eq!(parsed.method, "display.get_capabilities");
+        assert_eq!(parsed.id, Some(serde_json::json!(1)));
+    }
+
+    #[test]
+    fn test_jsonrpc_response_error_roundtrip() {
+        let err = JsonRpcError::internal_error("test");
+        let resp = JsonRpcResponse::error(serde_json::json!(1), err);
+        let json = serde_json::to_string(&resp).unwrap();
+        let parsed: JsonRpcResponse = serde_json::from_str(&json).unwrap();
+        assert!(parsed.error.is_some());
+        assert!(parsed.result.is_none());
+    }
+
+    #[test]
+    fn test_jsonrpc_error_method_not_found() {
+        let err = JsonRpcError::method_not_found("display.unknown");
+        assert_eq!(err.code, -32601);
+        assert!(err.message.contains("display.unknown"));
+    }
+
+    #[test]
+    fn test_jsonrpc_error_internal_error() {
+        let err = JsonRpcError::internal_error("oops");
+        assert_eq!(err.code, -32603);
+        assert!(err.message.contains("oops"));
     }
 
     #[tokio::test]
-    async fn test_handle_request_get_window_info_missing_params() {
-        let manager = match test_manager().await {
+    async fn test_display_server_socket_path_contains_toadstool() {
+        let manager = match test_manager_owned().await {
             Some(m) => m,
             None => return,
         };
-        let request_str =
-            r#"{"jsonrpc":"2.0","method":"display.get_window_info","params":{},"id":1}"#;
-        let response = DisplayServer::handle_request(request_str, &manager).await;
+        let server = DisplayServer::new(manager);
+        let path_str = server.socket_path().to_string_lossy();
+        assert!(path_str.contains("toadstool") || path_str.contains("display"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_with_empty_line() {
+        use crate::ipc::dispatch;
+        use tokio::sync::RwLock;
+
+        let manager = match test_manager_owned().await {
+            Some(m) => m,
+            None => return,
+        };
+        let manager = Arc::new(RwLock::new(manager));
+        let response = dispatch::handle_request("", &manager).await;
+        assert!(response.error.is_some() || response.result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_handle_request_invalid_json() {
+        use crate::ipc::dispatch;
+        use tokio::sync::RwLock;
+
+        let manager = match test_manager_owned().await {
+            Some(m) => m,
+            None => return,
+        };
+        let manager = Arc::new(RwLock::new(manager));
+        let response = dispatch::handle_request("not valid json", &manager).await;
         assert!(response.error.is_some());
-        assert!(response
-            .error
-            .unwrap()
-            .message
-            .contains("Missing window_id"));
-    }
-
-    #[test]
-    fn test_discover_socket_path_format() {
-        let path = DisplayServer::discover_socket_path();
-        let components: Vec<_> = path.components().collect();
-        assert!(!components.is_empty());
-        assert_eq!(path.file_name().unwrap(), "display.sock");
-    }
-
-    #[test]
-    fn test_is_platform_constraint_permission_denied() {
-        let err = crate::DisplayError::IpcError("Permission denied".to_string());
-        let result = DisplayServer::is_platform_constraint(&err);
-        assert!(!result);
-    }
-
-    #[test]
-    fn test_is_platform_constraint_unsupported() {
-        let err = crate::DisplayError::IpcError("Unsupported operation".to_string());
-        let result = DisplayServer::is_platform_constraint(&err);
-        assert!(result);
-    }
-
-    #[test]
-    fn test_is_platform_constraint_not_supported() {
-        let err = crate::DisplayError::IpcError("not supported".to_string());
-        let result = DisplayServer::is_platform_constraint(&err);
-        assert!(result);
-    }
-
-    #[test]
-    fn test_is_platform_constraint_other_error() {
-        let err = crate::DisplayError::IpcError("Connection refused".to_string());
-        let result = DisplayServer::is_platform_constraint(&err);
-        assert!(!result);
     }
 }

@@ -153,8 +153,8 @@ fn test_runtime_selection_strategy_in_vec() {
 
 #[test]
 fn test_runtime_type_custom_different_values() {
-    let rt1 = RuntimeType::Custom("legacy".to_string());
-    let rt2 = RuntimeType::Custom("custom".to_string());
+    let rt1 = RuntimeType::from("legacy");
+    let rt2 = RuntimeType::from("custom");
 
     // Different custom types should be different
     assert_ne!(rt1, rt2);
@@ -162,21 +162,21 @@ fn test_runtime_type_custom_different_values() {
 
 #[test]
 fn test_runtime_type_custom_same_value() {
-    let rt1 = RuntimeType::Custom("test".to_string());
-    let rt2 = RuntimeType::Custom("test".to_string());
+    let rt1 = RuntimeType::from("test");
+    let rt2 = RuntimeType::from("test");
 
     assert_eq!(rt1, rt2);
 }
 
 #[test]
 fn test_runtime_type_custom_empty_string() {
-    let rt = RuntimeType::Custom(String::new());
-    assert_eq!(rt, RuntimeType::Custom(String::new()));
+    let rt = RuntimeType::from("");
+    assert_eq!(rt, RuntimeType::from(""));
 }
 
 #[test]
 fn test_runtime_type_custom_serialization() {
-    let rt = RuntimeType::Custom("legacy".to_string());
+    let rt = RuntimeType::from("legacy");
     let json = serde_json::to_string(&rt).unwrap();
     let deserialized: RuntimeType = serde_json::from_str(&json).unwrap();
     assert_eq!(rt, deserialized);
@@ -184,14 +184,14 @@ fn test_runtime_type_custom_serialization() {
 
 #[test]
 fn test_runtime_type_custom_clone() {
-    let rt1 = RuntimeType::Custom("test".to_string());
+    let rt1 = RuntimeType::from("test");
     let rt2 = rt1.clone();
     assert_eq!(rt1, rt2);
 }
 
 #[test]
 fn test_runtime_type_custom_debug() {
-    let rt = RuntimeType::Custom("legacy".to_string());
+    let rt = RuntimeType::from("legacy");
     let debug_str = format!("{:?}", rt);
     assert!(debug_str.contains("Custom"));
 }
@@ -213,30 +213,27 @@ fn test_runtime_type_all_types_unique() {
 
 #[test]
 fn test_runtime_type_match_custom() {
-    let rt = RuntimeType::Custom("test".to_string());
+    let rt = RuntimeType::from("test");
 
     match rt {
-        RuntimeType::Custom(name) => assert_eq!(name, "test"),
+        RuntimeType::Custom(name) => assert_eq!(name.as_ref(), "test"),
         _ => panic!("Should match Custom"),
     }
 }
 
 #[test]
 fn test_runtime_type_vec_contains_custom() {
-    let types = [
-        RuntimeType::Container,
-        RuntimeType::Custom("test".to_string()),
-    ];
+    let types = [RuntimeType::Container, RuntimeType::from("test")];
 
-    assert!(!types.contains(&RuntimeType::Custom("other".to_string())));
+    assert!(!types.contains(&RuntimeType::from("other")));
 }
 
 #[test]
 fn test_runtime_type_option_custom() {
-    let some_rt: Option<RuntimeType> = Some(RuntimeType::Custom("test".to_string()));
+    let some_rt: Option<RuntimeType> = Some(RuntimeType::from("test"));
 
     match some_rt {
-        Some(RuntimeType::Custom(name)) => assert_eq!(name, "test"),
+        Some(RuntimeType::Custom(name)) => assert_eq!(name.as_ref(), "test"),
         _ => panic!("Should be Some(Custom)"),
     }
 }

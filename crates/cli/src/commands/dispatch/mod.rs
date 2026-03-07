@@ -209,7 +209,8 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         }
 
         Commands::ByobServer { bind, port, config } => {
-            server::run_byob_server(bind.clone(), *port, config.clone()).await?;
+            let port = port.unwrap_or_else(toadstool_config::ports::daemon_port);
+            server::run_byob_server(bind.clone(), port, config.clone()).await?;
         }
 
         Commands::Doctor {

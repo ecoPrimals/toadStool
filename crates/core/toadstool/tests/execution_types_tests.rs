@@ -88,7 +88,7 @@ fn execution_response_with_all_fields() {
     let resp = ExecutionResponse {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Failed {
-            error: "oops".to_string(),
+            error: std::borrow::Cow::Borrowed("oops"),
         },
         output: ExecutionOutput {
             stdout: Some("hello".to_string()),
@@ -122,7 +122,7 @@ fn execution_response_clone() {
 fn execution_status_all_variants() {
     let success = ExecutionStatus::Success;
     let failed = ExecutionStatus::Failed {
-        error: "test error".to_string(),
+        error: std::borrow::Cow::Borrowed("test error"),
     };
     let cancelled = ExecutionStatus::Cancelled;
     let timed_out = ExecutionStatus::TimedOut;
@@ -143,23 +143,23 @@ fn execution_status_comparisons() {
     assert_ne!(
         ExecutionStatus::Success,
         ExecutionStatus::Failed {
-            error: "x".to_string(),
+            error: std::borrow::Cow::Borrowed("x"),
         }
     );
     assert_ne!(
         ExecutionStatus::Failed {
-            error: "a".to_string(),
+            error: std::borrow::Cow::Borrowed("a"),
         },
         ExecutionStatus::Failed {
-            error: "b".to_string(),
+            error: std::borrow::Cow::Borrowed("b"),
         }
     );
     assert_eq!(
         ExecutionStatus::Failed {
-            error: "same".to_string(),
+            error: std::borrow::Cow::Borrowed("same"),
         },
         ExecutionStatus::Failed {
-            error: "same".to_string(),
+            error: std::borrow::Cow::Borrowed("same"),
         }
     );
 }
@@ -180,23 +180,17 @@ fn runtime_type_all_variants() {
     let _container = RuntimeType::Container;
     let _gpu = RuntimeType::Gpu;
     let _python = RuntimeType::Python;
-    let custom = RuntimeType::Custom("my-runtime".to_string());
+    let custom = RuntimeType::from("my-runtime");
 
-    assert_eq!(custom, RuntimeType::Custom("my-runtime".to_string()));
+    assert_eq!(custom, RuntimeType::from("my-runtime"));
 }
 
 #[test]
 fn runtime_type_comparisons() {
     assert_eq!(RuntimeType::Native, RuntimeType::Native);
     assert_ne!(RuntimeType::Native, RuntimeType::Wasm);
-    assert_eq!(
-        RuntimeType::Custom("x".to_string()),
-        RuntimeType::Custom("x".to_string())
-    );
-    assert_ne!(
-        RuntimeType::Custom("x".to_string()),
-        RuntimeType::Custom("y".to_string())
-    );
+    assert_eq!(RuntimeType::from("x"), RuntimeType::from("x"));
+    assert_ne!(RuntimeType::from("x"), RuntimeType::from("y"));
 }
 
 #[test]
@@ -397,7 +391,7 @@ fn execution_status_serialization_roundtrip() {
     let statuses = [
         ExecutionStatus::Success,
         ExecutionStatus::Failed {
-            error: "err".to_string(),
+            error: std::borrow::Cow::Borrowed("err"),
         },
         ExecutionStatus::Cancelled,
         ExecutionStatus::TimedOut,
@@ -420,7 +414,7 @@ fn runtime_type_serialization_roundtrip() {
         RuntimeType::Container,
         RuntimeType::Gpu,
         RuntimeType::Python,
-        RuntimeType::Custom("custom-rt".to_string()),
+        RuntimeType::from("custom-rt"),
     ];
 
     for rt in types {

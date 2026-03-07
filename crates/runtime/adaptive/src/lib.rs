@@ -252,4 +252,175 @@ mod tests {
         let wg_aggressive = FallbackStrategy::Aggressive.fallback_workgroup(OpType::MatMul, 5000);
         assert_eq!(wg_aggressive, 256);
     }
+
+    #[test]
+    fn test_fallback_strategy_vendor_hint() {
+        use crate::selector::FallbackStrategy;
+
+        let wg_matmul = FallbackStrategy::VendorHint.fallback_workgroup(OpType::MatMul, 1000);
+        let wg_conv = FallbackStrategy::VendorHint.fallback_workgroup(OpType::Conv2D, 1000);
+        let wg_add = FallbackStrategy::VendorHint.fallback_workgroup(OpType::Add, 1000);
+
+        assert_eq!(wg_matmul, 256);
+        assert_eq!(wg_conv, 256);
+        assert_eq!(wg_add, 128);
+    }
+
+    #[test]
+    fn test_fallback_strategy_conservative_boundaries() {
+        use crate::selector::FallbackStrategy;
+
+        assert_eq!(
+            FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 999),
+            64
+        );
+        assert_eq!(
+            FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 1000),
+            128
+        );
+        assert_eq!(
+            FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 99_999),
+            128
+        );
+        assert_eq!(
+            FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 100_000),
+            256
+        );
+    }
+
+    #[test]
+    fn test_fallback_strategy_aggressive_boundaries() {
+        use crate::selector::FallbackStrategy;
+
+        assert_eq!(
+            FallbackStrategy::Aggressive.fallback_workgroup(OpType::Add, 500),
+            128
+        );
+        assert_eq!(
+            FallbackStrategy::Aggressive.fallback_workgroup(OpType::Add, 50_000),
+            256
+        );
+        assert_eq!(
+            FallbackStrategy::Aggressive.fallback_workgroup(OpType::Add, 500_000),
+            512
+        );
+    }
+
+    #[test]
+    fn test_op_type_variants() {
+        let _ = OpType::MatMul;
+        let _ = OpType::LayerNorm;
+        let _ = OpType::GELU;
+        let _ = OpType::Softmax;
+        let _ = OpType::Add;
+        let _ = OpType::Conv2D;
+    }
+
+    #[test]
+    fn test_size_class_variants() {
+        let _ = SizeClass::Tiny;
+        let _ = SizeClass::Small;
+        let _ = SizeClass::Medium;
+        let _ = SizeClass::Large;
+        let _ = SizeClass::Huge;
+    }
+
+    #[test]
+    fn test_size_class_from_size() {
+        assert_eq!(SizeClass::from_size(500), SizeClass::Tiny);
+        assert_eq!(SizeClass::from_size(5_000), SizeClass::Small);
+        assert_eq!(SizeClass::from_size(500_000), SizeClass::Medium);
+    }
+
+    #[test]
+    fn test_size_class_representative_size() {
+        assert_eq!(SizeClass::Small.representative_size(), 10_000);
+        assert_eq!(SizeClass::Large.representative_size(), 5_000_000);
+    }
+
+    #[test]
+    fn test_size_class_all_variants_representative_size() {
+        let _ = SizeClass::Tiny.representative_size();
+        let _ = SizeClass::Medium.representative_size();
+        let _ = SizeClass::Huge.representative_size();
+    }
+
+    #[test]
+    fn test_size_class_from_size_boundaries() {
+        assert_eq!(SizeClass::from_size(0), SizeClass::Tiny);
+        assert_eq!(SizeClass::from_size(1_000), SizeClass::Small);
+        assert_eq!(SizeClass::from_size(100_000), SizeClass::Medium);
+        assert_eq!(SizeClass::from_size(5_000_000), SizeClass::Large);
+        assert_eq!(SizeClass::from_size(10_000_000), SizeClass::Huge);
+        assert_eq!(SizeClass::from_size(100_000_000), SizeClass::Huge);
+    }
+
+    #[test]
+    fn test_fallback_strategy_all_op_types() {
+        use crate::selector::FallbackStrategy;
+
+        for op in [
+            OpType::MatMul,
+            OpType::LayerNorm,
+            OpType::GELU,
+            OpType::Softmax,
+            OpType::Add,
+            OpType::Conv2D,
+        ] {
+            let _ = FallbackStrategy::Conservative.fallback_workgroup(op, 1000);
+            let _ = FallbackStrategy::Aggressive.fallback_workgroup(op, 1000);
+            let _ = FallbackStrategy::VendorHint.fallback_workgroup(op, 1000);
+        }
+    }
+
+    #[test]
+    fn test_fallback_strategy_zero_size() {
+        use crate::selector::FallbackStrategy;
+
+        let wg = FallbackStrategy::Conservative.fallback_workgroup(OpType::MatMul, 0);
+        assert!(wg >= 32);
+        assert!(wg <= 1024);
+    }
+
+    #[test]
+    fn test_op_type_debug() {
+        let s = format!("{:?}", OpType::MatMul);
+        assert!(s.contains("MatMul"));
+    }
+
+    #[test]
+    fn test_size_class_debug() {
+        let s = format!("{:?}", SizeClass::Small);
+        assert!(s.contains("Small"));
+    }
+
+    #[test]
+    fn test_adaptive_error_other_display() {
+        use crate::AdaptiveError;
+        let err = AdaptiveError::Other("test error".to_string());
+        let s = err.to_string();
+        assert!(s.contains("test error"));
+    }
+
+    #[test]
+    fn test_config_selector_new() {
+        use crate::cache::OptimizationCache;
+        use crate::fingerprint::{GpuFingerprint, GpuVendor};
+        use crate::selector::{ConfigSelector, FallbackStrategy};
+        use std::sync::Arc;
+
+        let gpu = GpuFingerprint {
+            vendor: GpuVendor::Unknown,
+            architecture: "test".to_string(),
+            model_class: "test".to_string(),
+            driver_version: "0.0".to_string(),
+            backend: "test".to_string(),
+            memory_size_gb: 0,
+        };
+        let cache = Arc::new(tokio::sync::RwLock::new(OptimizationCache::new(gpu)));
+        let selector = ConfigSelector::new(cache, FallbackStrategy::Conservative);
+        let wg = selector.select_workgroup(OpType::MatMul, 1024);
+        assert!(wg >= 32);
+        assert!(wg <= 1024);
+    }
 }

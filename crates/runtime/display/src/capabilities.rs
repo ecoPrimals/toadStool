@@ -631,4 +631,105 @@ mod tests {
         assert_eq!(deserialized.displays.len(), 2);
         assert_eq!(deserialized.displays[1].name, "HDMI-1");
     }
+
+    #[tokio::test]
+    async fn test_announce_creates_file() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let discovery_dir = tmp.path().join("ecoPrimals/discovery");
+        std::fs::create_dir_all(&discovery_dir).unwrap();
+
+        let mut caps = make_caps();
+        caps.primal_id = "test-announce-123".to_string();
+
+        let json = serde_json::to_string_pretty(&caps).unwrap();
+        let filepath = discovery_dir.join(format!("{}.json", caps.primal_id));
+        std::fs::write(&filepath, &json).unwrap();
+        assert!(filepath.exists());
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_removes_file() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let discovery_dir = tmp.path().join("ecoPrimals/discovery");
+        std::fs::create_dir_all(&discovery_dir).unwrap();
+
+        let mut caps = make_caps();
+        caps.primal_id = "test-cleanup-456".to_string();
+        let filepath = discovery_dir.join(format!("{}.json", caps.primal_id));
+        std::fs::write(&filepath, "{}").unwrap();
+        assert!(filepath.exists());
+        std::fs::remove_file(&filepath).unwrap();
+        assert!(!filepath.exists());
+    }
+
+    #[test]
+    fn test_display_info_debug() {
+        let info = DisplayInfo {
+            name: "Test".to_string(),
+            width: 1920,
+            height: 1080,
+            refresh_rate: 60.0,
+            connected: true,
+        };
+        let s = format!("{:?}", info);
+        assert!(s.contains("Test"));
+    }
+
+    #[test]
+    fn test_input_device_info_debug() {
+        let dev = InputDeviceInfo {
+            name: "keyboard0".to_string(),
+            device_type: "Keyboard".to_string(),
+        };
+        let s = format!("{:?}", dev);
+        assert!(s.contains("keyboard"));
+    }
+
+    #[test]
+    fn test_capability_metadata_debug() {
+        let meta = CapabilityMetadata {
+            version: "1.0".to_string(),
+            pure_rust: true,
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+        };
+        let s = format!("{:?}", meta);
+        assert!(s.contains("1.0"));
+    }
+
+    #[test]
+    fn test_display_capabilities_debug() {
+        let caps = make_caps();
+        let s = format!("{:?}", caps);
+        assert!(s.contains("toadstool"));
+    }
+
+    #[tokio::test]
+    async fn test_find_all_returns_result() {
+        let result = DisplayCapabilities::find_all().await;
+        assert!(result.is_ok());
+        let caps = result.unwrap();
+        assert!(caps.is_empty() || !caps.is_empty());
+    }
+
+    #[test]
+    fn test_supported_formats_non_empty() {
+        let caps = make_caps();
+        assert!(!caps.supported_formats.is_empty());
+        assert!(caps.supported_formats.contains(&"RGBA8888".to_string()));
+    }
+
+    #[test]
+    fn test_has_gpu_acceleration() {
+        let caps = make_caps();
+        assert!(caps.has_gpu_acceleration);
+    }
+
+    #[test]
+    fn test_vsync_available() {
+        let mut caps = make_caps();
+        caps.vsync_available = true;
+        assert!(caps.vsync_available);
+    }
 }

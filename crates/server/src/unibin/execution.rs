@@ -177,7 +177,7 @@ async fn start_tcp_servers(
     Ok(())
 }
 
-pub(crate) fn is_platform_constraint_str(error_str: &str) -> bool {
+pub fn is_platform_constraint_str(error_str: &str) -> bool {
     if (error_str.contains("Permission denied") || error_str.contains("Operation not permitted"))
         && is_selinux_enforcing()
     {
@@ -196,7 +196,7 @@ pub(crate) fn is_platform_constraint_str(error_str: &str) -> bool {
     false
 }
 
-pub(crate) fn is_selinux_enforcing() -> bool {
+pub fn is_selinux_enforcing() -> bool {
     std::fs::read_to_string("/sys/fs/selinux/enforce")
         .ok()
         .and_then(|s| s.trim().parse::<u8>().ok())
@@ -235,10 +235,7 @@ pub async fn wait_for_shutdown_signal() -> super::ShutdownSignal {
     }
 }
 
-pub(crate) fn write_tcp_discovery_file(
-    filename: &str,
-    addr: &std::net::SocketAddr,
-) -> ServerResult<()> {
+pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> ServerResult<()> {
     use std::env;
     use std::fs;
 

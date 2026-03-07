@@ -13,7 +13,7 @@ use uuid::Uuid;
 #[test]
 fn test_execution_status_failed_empty_error() {
     let status = ExecutionStatus::Failed {
-        error: String::new(),
+        error: String::new().into(),
     };
 
     match status {
@@ -28,7 +28,7 @@ fn test_execution_status_failed_empty_error() {
 fn test_execution_status_failed_long_error() {
     let long_error = "a".repeat(10000);
     let status = ExecutionStatus::Failed {
-        error: long_error.clone(),
+        error: long_error.clone().into(),
     };
 
     match status {
@@ -44,7 +44,7 @@ fn test_execution_status_serialization_roundtrip() {
     let statuses = vec![
         ExecutionStatus::Success,
         ExecutionStatus::Failed {
-            error: "test error".to_string(),
+            error: std::borrow::Cow::Borrowed("test error"),
         },
         ExecutionStatus::Cancelled,
         ExecutionStatus::TimedOut,
@@ -70,7 +70,7 @@ fn test_execution_status_debug_format() {
 fn test_execution_status_ordering() {
     let success = ExecutionStatus::Success;
     let failed = ExecutionStatus::Failed {
-        error: "error".to_string(),
+        error: std::borrow::Cow::Borrowed("error"),
     };
 
     // Just verify they can be compared
@@ -453,7 +453,7 @@ fn test_execution_request_all_runtime_types() {
         RuntimeType::Container,
         RuntimeType::Gpu,
         RuntimeType::Python,
-        RuntimeType::Custom("custom".to_string()),
+        RuntimeType::from("custom"),
     ];
 
     for runtime in runtimes {
@@ -537,13 +537,13 @@ fn test_execution_response_many_warnings() {
 #[test]
 fn test_execution_response_custom_runtime() {
     let response = ExecutionResponse {
-        runtime_used: RuntimeType::Custom("MyCustomRuntime".to_string()),
+        runtime_used: RuntimeType::from("MyCustomRuntime"),
         ..Default::default()
     };
 
     match response.runtime_used {
         RuntimeType::Custom(name) => {
-            assert_eq!(name, "MyCustomRuntime");
+            assert_eq!(name.as_ref(), "MyCustomRuntime");
         }
         _ => panic!("Expected Custom runtime"),
     }
@@ -573,7 +573,7 @@ fn test_execution_response_debug_format() {
 fn test_execution_response_failed_with_warnings() {
     let response = ExecutionResponse {
         status: ExecutionStatus::Failed {
-            error: "Critical error".to_string(),
+            error: std::borrow::Cow::Borrowed("Critical error"),
         },
         warnings: vec![
             "Warning 1".to_string(),
@@ -605,9 +605,9 @@ fn test_runtime_type_equality() {
 
 #[test]
 fn test_runtime_type_custom_variants() {
-    let custom1 = RuntimeType::Custom("runtime1".to_string());
-    let custom2 = RuntimeType::Custom("runtime2".to_string());
-    let custom3 = RuntimeType::Custom("runtime1".to_string());
+    let custom1 = RuntimeType::from("runtime1");
+    let custom2 = RuntimeType::from("runtime2");
+    let custom3 = RuntimeType::from("runtime1");
 
     assert_ne!(custom1, custom2);
     assert_eq!(custom1, custom3);
@@ -633,7 +633,7 @@ fn test_runtime_type_serialization() {
         RuntimeType::Container,
         RuntimeType::Gpu,
         RuntimeType::Python,
-        RuntimeType::Custom("test".to_string()),
+        RuntimeType::from("test"),
     ];
 
     for runtime in runtimes {

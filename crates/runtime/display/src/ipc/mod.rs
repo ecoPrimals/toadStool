@@ -60,7 +60,9 @@
 //! ```
 
 pub mod client;
+mod dispatch;
 pub mod health;
+mod platform;
 pub mod server;
 pub mod types;
 

@@ -427,4 +427,48 @@ mod tests {
         assert!((quality.machine_quality - 0.9).abs() < f32::EPSILON);
         assert!((quality.human_quality - 0.5).abs() < f32::EPSILON);
     }
+
+    #[test]
+    fn test_seed_request_custom_source() {
+        let request = SeedRequest {
+            source: EntropySource::Human,
+            mixing: EntropyMixing::beardog_standard(),
+            min_quality: 0.9,
+        };
+        assert_eq!(request.source, EntropySource::Human);
+        assert!((request.min_quality - 0.9).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_entropy_source_variants() {
+        let _ = EntropySource::Machine;
+        let _ = EntropySource::Human;
+        let _ = EntropySource::Mixed;
+    }
+
+    #[tokio::test]
+    async fn test_entropy_client_with_endpoint_available_false() {
+        let socket_path =
+            toadstool_common::primal_sockets::get_biomeos_dir().join("nonexistent.sock");
+        let client = EntropyClient {
+            endpoint: Some("unix:///tmp/beardog.sock".to_string()),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+            available: false,
+        };
+        let seed = client.generate_seed().await;
+        assert!(seed.is_ok());
+        assert_eq!(seed.unwrap().source, EntropySource::Machine);
+    }
+
+    #[test]
+    fn test_seed_request_serialization_roundtrip() {
+        let request = SeedRequest {
+            source: EntropySource::Mixed,
+            mixing: EntropyMixing::beardog_standard(),
+            min_quality: 0.8,
+        };
+        let json = serde_json::to_string(&request).unwrap();
+        let parsed: SeedRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(request.source, parsed.source);
+    }
 }

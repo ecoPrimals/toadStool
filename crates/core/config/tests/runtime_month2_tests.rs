@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Runtime configuration tests - Month 2 Week 2 Day 4
+//! Runtime configuration tests
 //!
 //! Tier 1 tests: Coverage-measured runtime config tests
 //! Focus: Runtime defaults, overrides, validation, edge cases

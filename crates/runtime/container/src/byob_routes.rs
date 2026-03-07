@@ -33,8 +33,14 @@ impl ByobApi {
         Self { executor }
     }
 
-    /// Create router for BYOB API
-    pub fn router(&self) -> Router<Arc<dyn ByobExecutor>> {
+    /// Create router for BYOB API with state already applied.
+    pub fn router(self) -> Router {
+        Self::routes().with_state(self.executor)
+    }
+
+    /// Build BYOB route definitions without applying state.
+    /// The caller is responsible for providing `Arc<dyn ByobExecutor>` via `with_state`.
+    pub fn routes() -> Router<Arc<dyn ByobExecutor>> {
         Router::new()
             .route("/byob/deploy", post(deploy_biome))
             .route("/byob/deployments", get(list_deployments))
@@ -51,7 +57,6 @@ impl ByobApi {
                 get(get_resource_usage),
             )
             .route("/byob/health", get(health_check))
-            .with_state(Arc::clone(&self.executor))
     }
 }
 

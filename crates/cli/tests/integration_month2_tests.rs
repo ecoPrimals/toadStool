@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used)] // expect() is idiomatic in tests
-//! CLI integration tests - Month 2 Week 1 Day 2
+//! CLI integration tests
 //!
 //! Tier 1 tests: Coverage-measured integration tests
 //! Focus: Cross-module interactions, command execution, state management

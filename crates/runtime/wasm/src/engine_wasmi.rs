@@ -210,7 +210,7 @@ impl RuntimeEngine for WasmRuntimeEngine {
                 toadstool::execution::ExecutionStatus::Success
             } else {
                 toadstool::execution::ExecutionStatus::Failed {
-                    error: format!("Exit code: {}", output.exit_code.unwrap_or(-1)),
+                    error: format!("Exit code: {}", output.exit_code.unwrap_or(-1)).into(),
                 }
             };
 

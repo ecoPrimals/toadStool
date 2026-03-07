@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/ecoPrimals/toadStool"
 authors = ["Toadstool Team"]
-description = "100% Pure Rust display and input backend for ecoPrimals"
+description = "Display and input backend for ecoPrimals (drm/evdev use kernel FFI via libc)"
 license.workspace = true
 keywords = ["display", "input", "drm", "evdev", "pure-rust"]
 categories = ["gui", "graphics", "hardware-support"]
@@ -55,6 +55,7 @@ tokio-test = "0.4"
 criterion = "0.5"
 tracing-subscriber = "0.3"
 tempfile = "3"
+temp-env = "0.3"
 toadstool-core = { path = "../../toadstool-core" }
 
 

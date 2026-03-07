@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
-use toadstool::workload::RegistryAuth;
+use toadstool::workload::{PortMapping, RegistryAuth, VolumeMount};
 
 #[cfg(feature = "docker")]
 use bollard::API_DEFAULT_VERSION;
@@ -288,4 +288,33 @@ impl Default for ImageConfig {
             cleanup_interval: Duration::from_secs(3600), // 1 hour
         }
     }
+}
+
+/// Type alias for container resource limits
+pub type ContainerResources = ContainerResourceLimits;
+
+/// Type alias for container security configuration
+pub type ContainerSecurity = ContainerSecurityConfig;
+
+/// Configuration for a single container execution
+#[derive(Debug, Clone, Default)]
+pub struct ContainerExecutionConfig {
+    /// Container image to run
+    pub image: String,
+    /// Command arguments
+    pub args: Vec<String>,
+    /// Working directory inside the container
+    pub working_dir: Option<String>,
+    /// Environment variables
+    pub env_vars: HashMap<String, String>,
+    /// Volume mounts
+    pub volumes: Vec<VolumeMount>,
+    /// Port mappings
+    pub ports: Vec<PortMapping>,
+    /// Resource limits for this execution
+    pub resources: ContainerResources,
+    /// Security settings for this execution
+    pub security: ContainerSecurity,
+    /// Registry authentication for private images
+    pub registry_auth: Option<RegistryAuth>,
 }

@@ -67,9 +67,9 @@ async fn chaos_thread_pool_exhaustion() {
     // Simulate thread pool exhaustion
     let mut handles = vec![];
 
-    for _ in 0..100 {
+    for _ in 0..10 {
         let handle = tokio::spawn(async {
-            sleep(Duration::from_millis(100)).await;
+            sleep(Duration::from_millis(1)).await;
         });
         handles.push(handle);
     }

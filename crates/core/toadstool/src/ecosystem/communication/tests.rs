@@ -907,3 +907,73 @@ async fn test_communication_manager_new_uses_default_timeout() {
     let channels = manager.get_all_channels().await;
     assert!(channels.is_empty());
 }
+
+// ─── Additional coverage: create_channel, send_heartbeat, edge cases ───────────
+
+#[cfg(not(feature = "networking"))]
+#[tokio::test]
+async fn test_create_channel_with_http_endpoint() {
+    use std::collections::HashMap;
+    use std::time::SystemTime;
+    use toadstool_common::primal_identity::ServiceEndpoint;
+    use toadstool_common::service_discovery::DiscoveredService;
+
+    let manager = CommunicationManager::new();
+    let service = DiscoveredService {
+        id: "http-svc".to_string(),
+        name: "HttpService".to_string(),
+        version: "1.0".to_string(),
+        capabilities: vec![],
+        endpoints: vec![ServiceEndpoint::http("127.0.0.1", 12345)],
+        metadata: HashMap::new(),
+        discovered_at: SystemTime::now(),
+        last_seen: SystemTime::now(),
+        healthy: true,
+    };
+    let result = manager.create_channel(&service).await;
+    assert!(result.is_ok());
+    let channel = result.unwrap();
+    assert_eq!(channel.service_id, "http-svc");
+    assert_eq!(channel.endpoint, "http://127.0.0.1:12345");
+}
+
+#[cfg(not(feature = "networking"))]
+#[tokio::test]
+async fn test_send_heartbeat_updates_last_heartbeat() {
+    let manager = CommunicationManager::new();
+    let channel = ServiceChannel {
+        service_id: "hb-svc".to_string(),
+        service_name: "HeartbeatSvc".to_string(),
+        endpoint: "http://localhost:1".to_string(),
+        client: ServiceClient::Disabled,
+        last_heartbeat: std::time::SystemTime::UNIX_EPOCH,
+        status: ServiceStatus::Connected,
+    };
+
+    {
+        let mut channels = manager.channels.write().await;
+        channels.insert("hb-svc".to_string(), channel.clone());
+    }
+
+    let result = manager.send_heartbeat("hb-svc").await;
+    assert!(result.is_ok());
+
+    let updated = manager.get_channel("hb-svc").await.unwrap();
+    assert!(updated.last_heartbeat > channel.last_heartbeat);
+}
+
+#[test]
+fn test_ecosystem_message_type_error_variant() {
+    use super::super::types::EcosystemMessageType;
+
+    let mt = EcosystemMessageType::Error;
+    let json = serde_json::to_value(&mt).expect("serialize");
+    let _: EcosystemMessageType = serde_json::from_value(json).expect("deserialize");
+}
+
+#[test]
+fn test_service_status_disconnected_is_not_usable() {
+    use super::super::types::ServiceStatus;
+
+    assert!(!ServiceStatus::Disconnected.is_usable());
+}

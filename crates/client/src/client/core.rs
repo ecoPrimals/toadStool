@@ -325,7 +325,7 @@ impl ToadStoolClient {
     }
 
     /// Test-only constructor that skips health check (no real network).
-    #[cfg(test)]
+    #[doc(hidden)]
     pub fn new_for_testing(config: ClientConfig) -> ClientResult<Self> {
         if !config.base_url.starts_with("unix:") {
             let _ = Url::parse(&config.base_url)?;

@@ -325,7 +325,7 @@ impl NativeRuntimeEngine {
             ExecutionStatus::Success
         } else {
             ExecutionStatus::Failed {
-                error: format!("Process exited with code: {:?}", output.status.code()),
+                error: format!("Process exited with code: {:?}", output.status.code()).into(),
             }
         };
 
@@ -427,7 +427,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
                 return Ok(ExecutionResponse {
                     execution_id: request.execution_id,
                     status: ExecutionStatus::Failed {
-                        error: "Maximum concurrent processes exceeded".to_string(),
+                        error: std::borrow::Cow::Borrowed("Maximum concurrent processes exceeded"),
                     },
                     output: ExecutionOutput::default(),
                     metrics: RuntimeMetrics::default(),

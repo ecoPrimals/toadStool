@@ -110,6 +110,8 @@
 pub mod ai_mcp_interface;
 pub mod capability_traits;
 pub mod ecosystem;
+mod ecosystem_network;
+mod ecosystem_types;
 pub mod hardware;
 pub mod installer;
 pub mod intelligent;

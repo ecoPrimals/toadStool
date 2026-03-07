@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Security policy tests - Month 2 Week 2 Day 4
+//! Security policy tests
 //!
 //! Tier 1 tests: Coverage-measured security tests
 //! Focus: Policy validation, enforcement, isolation

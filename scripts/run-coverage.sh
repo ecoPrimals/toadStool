@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🍄 ToadStool Coverage Runner - Month 2"
+echo "ToadStool Coverage Runner"
 echo "======================================"
 echo ""
 
@@ -33,21 +33,34 @@ run_tier1() {
         "toadstool"
         "toadstool-core"
         "toadstool-cli"
+        "toadstool-client"
         "toadstool-server"
         "toadstool-distributed"
         "toadstool-auto-config"
         "toadstool-security-sandbox"
         "toadstool-security-policies"
+        "toadstool-security-monitoring"
         "toadstool-management-performance"
         "toadstool-management-monitoring"
         "toadstool-management-analytics"
+        "toadstool-management-resources"
         "toadstool-runtime-wasm"
         "toadstool-runtime-container"
         "toadstool-runtime-gpu"
         "toadstool-runtime-universal"
+        "toadstool-runtime-adaptive"
+        "toadstool-runtime-display"
+        "toadstool-runtime-native"
+        "toadstool-runtime-orchestration"
+        "toadstool-runtime-python"
+        "toadstool-runtime-secure-enclave"
+        "toadstool-runtime-edge"
+        "toadstool-runtime-specialty"
+        "toadstool-integration-beardog"
         "toadstool-integration-primals"
         "toadstool-integration-nestgate"
         "toadstool-integration-protocols"
+        "toadstool-testing"
     )
     
     # Clean previous coverage data

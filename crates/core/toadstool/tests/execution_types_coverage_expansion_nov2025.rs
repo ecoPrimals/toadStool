@@ -25,7 +25,7 @@ fn test_execution_status_success_creation() {
 #[test]
 fn test_execution_status_failed_creation() {
     let status = ExecutionStatus::Failed {
-        error: "Connection timeout".to_string(),
+        error: std::borrow::Cow::Borrowed("Connection timeout"),
     };
     assert!(matches!(status, ExecutionStatus::Failed { .. }));
 }
@@ -61,10 +61,10 @@ fn test_execution_status_equality() {
     assert_eq!(status1, status2);
 
     let status3 = ExecutionStatus::Failed {
-        error: "test".to_string(),
+        error: std::borrow::Cow::Borrowed("test"),
     };
     let status4 = ExecutionStatus::Failed {
-        error: "test".to_string(),
+        error: std::borrow::Cow::Borrowed("test"),
     };
     assert_eq!(status3, status4);
 }
@@ -72,7 +72,7 @@ fn test_execution_status_equality() {
 #[test]
 fn test_execution_status_serialization() {
     let status = ExecutionStatus::Failed {
-        error: "Test error".to_string(),
+        error: std::borrow::Cow::Borrowed("Test error"),
     };
     let serialized = serde_json::to_string(&status).expect("Failed to serialize");
     let deserialized: ExecutionStatus =
@@ -292,7 +292,7 @@ fn test_runtime_type_python() {
 
 #[test]
 fn test_runtime_type_custom() {
-    let rt = RuntimeType::Custom("V8".to_string());
+    let rt = RuntimeType::from("V8");
     assert!(matches!(rt, RuntimeType::Custom(_)));
 }
 
@@ -302,14 +302,14 @@ fn test_runtime_type_equality() {
     let rt2 = RuntimeType::Native;
     assert_eq!(rt1, rt2);
 
-    let rt3 = RuntimeType::Custom("Deno".to_string());
-    let rt4 = RuntimeType::Custom("Deno".to_string());
+    let rt3 = RuntimeType::from("Deno");
+    let rt4 = RuntimeType::from("Deno");
     assert_eq!(rt3, rt4);
 }
 
 #[test]
 fn test_runtime_type_serialization() {
-    let rt = RuntimeType::Custom("LLVM".to_string());
+    let rt = RuntimeType::from("LLVM");
     let serialized = serde_json::to_string(&rt).expect("Failed to serialize");
     let deserialized: RuntimeType =
         serde_json::from_str(&serialized).expect("Failed to deserialize");

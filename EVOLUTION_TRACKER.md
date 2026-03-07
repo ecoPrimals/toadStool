@@ -1,7 +1,7 @@
 # Evolution Tracker
 
-**Date**: March 6, 2026 — S128
-**Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only.
+**Date**: March 7, 2026 — S129
+**Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only. Zero-cost abstractions.
 
 ---
 
@@ -46,6 +46,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Sovereign pipeline S96 | toadStool | ✅ S96 evolved | **HardwareFingerprint** (TFLOPS, sovereign_capable); **SubstrateCapabilityKind** (12 variants); **SubstrateType** 4→8 variants; 5 god files split (dispatch, detection, engine, protocols, templates); crates/api/ orphan resolved; V4L2 SAFETY docs; hardcoded IP → env var |
 | Spring absorption S97 | toadStool | ✅ S97 evolved | NVK Volta f64 probe (`f64_compute_unreliable`, `has_reliable_f64()`); subgroup size detection; `AdaptiveSimulationController` trait; `ProxyFeature` struct; `NpuInferenceRequest`; science.* IPC namespace (10 methods); ecoBin compliance (ring/zstd removed); +59 tests |
 | Deep debt S128 | toadStool | ✅ S128 evolved | **f64_shared_memory_reliable** on GpuAdapterInfo (groundSpring V84-V85 bug); **sovereign_binary_capable** on HardwareFingerprint; **PrecisionRoutingAdvice** enum + `precision_routing()` method; shader.compile.* IPC (4 methods); `discover_capabilities` dynamically built from registry; `query_available_backends()` runtime probing; architecture stubs evolved (auth TrustLevel/CapabilityToken, scheduling Priority/PlacementConstraint/Decision); +25 tests |
+| Deep debt S129 | toadStool | ✅ S129 evolved | **C dep elimination** (flate2→rust_backend, procfs default features disabled); **Capability-based ports** (`resolve_capability_or_legacy_port()`); 5 god files refactored (ipc/server 987→428, container/lib 981→582, ecosystem 963→556, handler/mod 832→610, nestgate/client 824→555); **Zero-copy hot paths** (Cow/Arc<str>); BYOB API state ownership split; 200+ coverage tests; long-running test debt (1,237x speedup); 19,109 tests, 0 failures |
 
 ---
 
@@ -110,7 +111,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 18,028 tests; ~84% line coverage. Focus: CLI, distributed, auto_config, edge |
+| D-COV | Test coverage → 90% | Medium | 19,109 tests; ~83% line coverage (170K lines). Focus: hardware-dependent code |
 | D-SOV | ~~Sovereignty migration~~ | **RESOLVED S94b** | All 7 production callers migrated to `get_socket_path_for_capability()` |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
 | — | ~~vfio.rs smart refactoring~~ | **RESOLVED S94** | 971L → `vfio/` directory (types.rs, ioctl.rs, dma.rs, mod.rs) |
@@ -182,7 +183,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | `cargo clippy --workspace -- -D warnings` | ✅ 0 warnings (S96: clippy pedantic resolved) |
 | `cargo fmt --all -- --check` | ✅ 0 diffs |
 | `cargo doc --workspace --no-deps` | ✅ 0 warnings |
-| Workspace lib tests | ✅ 18,028 passed (S96) |
+| Workspace tests | ✅ 19,109 passed (S129) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |

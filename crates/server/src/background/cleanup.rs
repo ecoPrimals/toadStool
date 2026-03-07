@@ -46,7 +46,7 @@ pub(super) async fn run(state: ServerState) {
                     .send(ServerEvent::ExecutionCompleted {
                         execution_id: id,
                         status: toadstool::ExecutionStatus::Failed {
-                            error: "Execution timed out".to_string(),
+                            error: std::borrow::Cow::Borrowed("Execution timed out"),
                         },
                         duration_ms: u64::try_from(execution.timeout.as_millis()).unwrap_or(0),
                         timestamp: now,

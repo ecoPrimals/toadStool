@@ -1,4 +1,4 @@
-# Status -- March 6, 2026 (S128)
+# Status -- March 7, 2026 (S129)
 
 ## Quality Gates
 
@@ -8,8 +8,8 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace --lib` | PASS | **18,028 tests, 0 failures** |
-| `cargo llvm-cov` (excl GPU crates) | **~85% line** | JSON-RPC: 97.5%; expanded S95-S97 |
+| `cargo test --workspace` | PASS | **19,109 tests, 0 failures** (203 intentional ignores for GPU hardware) |
+| `cargo llvm-cov` (excl GPU crates) | **~83% line** | 170K lines. Focus: hardware-dependent code hard to unit-test |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |

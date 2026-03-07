@@ -46,7 +46,7 @@ thiserror = { workspace = true }
 # (reqwest dependency completely removed for pure Rust)
 tempfile = { workspace = true }
 tar = "0.4"
-flate2 = "1.0"
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 
 # New dependencies
@@ -54,7 +54,7 @@ axum = "0.7"
 clap = { version = "4.0", features = ["derive"] }
 tracing-subscriber = "0.3"
 toml = "0.8"
-tower = "0.4"
+tower = { version = "0.4", features = ["util"] }
 
 [features]
 default = ["docker"]

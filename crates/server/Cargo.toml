@@ -38,9 +38,7 @@ tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 
 # JSON-RPC server
-# ⚠️ REMOVED: jsonrpsee pulls ring (C dependency) - Evolved to Pure Rust!
-# jsonrpsee = { version = "0.21", features = ["server", "macros"] }
-# ✅ NOW USING: pure_jsonrpc (canonical). manual_jsonrpc deprecated (100% Pure Rust!)
+# jsonrpsee removed (pulls ring C dependency). pure_jsonrpc is canonical (Pure Rust).
 
 # tarpc for high-performance RPC
 tarpc = { workspace = true }
@@ -85,7 +83,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # System info - Pure Rust Evolution (Jan 17, 2026)
 # OLD: sys-info = "0.9" (C dependency, blocked ARM cross-compilation)
-# NEW: sysinfo (100% Pure Rust, cross-platform, better maintained)
+# sysinfo: cross-platform system monitoring (uses libc/core-foundation-sys/ntapi FFI)
 # Migration: sys_info::mem_info() → System::new_all() + refresh_memory()
 sysinfo = { workspace = true }
 

@@ -42,8 +42,8 @@ fn test_runtime_type_gpu() {
 
 #[test]
 fn test_runtime_type_custom() {
-    let rt = RuntimeType::Custom("legacy".to_string());
-    assert_eq!(rt, RuntimeType::Custom("legacy".to_string()));
+    let rt = RuntimeType::from("legacy");
+    assert_eq!(rt, RuntimeType::from("legacy"));
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn test_runtime_type_all_variants() {
         RuntimeType::Native,
         RuntimeType::Python,
         RuntimeType::Gpu,
-        RuntimeType::Custom("test".to_string()),
+        RuntimeType::from("test"),
     ];
     assert_eq!(types.len(), 6);
 }
@@ -146,7 +146,7 @@ fn test_runtime_type_debug_all_variants() {
         RuntimeType::Native,
         RuntimeType::Python,
         RuntimeType::Gpu,
-        RuntimeType::Custom("test".to_string()),
+        RuntimeType::from("test"),
     ];
 
     for rt in types {
@@ -163,7 +163,7 @@ fn test_runtime_type_serialization_all() {
         RuntimeType::Native,
         RuntimeType::Python,
         RuntimeType::Gpu,
-        RuntimeType::Custom("test".to_string()),
+        RuntimeType::from("test"),
     ];
 
     for rt in types {
@@ -195,7 +195,7 @@ fn test_runtime_type_clone_all() {
         RuntimeType::Native,
         RuntimeType::Python,
         RuntimeType::Gpu,
-        RuntimeType::Custom("test".to_string()),
+        RuntimeType::from("test"),
     ];
 
     for rt in types {

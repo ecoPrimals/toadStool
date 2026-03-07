@@ -29,7 +29,7 @@ use toadstool::{ExecutionInput, ExecutionOutput, RuntimeMetrics, SecurityContext
 fn test_execution_status_creation() {
     let status_success = ExecutionStatus::Success;
     let status_failed = ExecutionStatus::Failed {
-        error: "Test error".to_string(),
+        error: std::borrow::Cow::Borrowed("Test error"),
     };
     let status_cancelled = ExecutionStatus::Cancelled;
     let status_timeout = ExecutionStatus::TimedOut;
@@ -69,7 +69,7 @@ fn test_execution_status_transitions_failure_path() {
     assert_eq!(state, ExecutionStatus::Running);
 
     let state = ExecutionStatus::Failed {
-        error: "Execution error".to_string(),
+        error: std::borrow::Cow::Borrowed("Execution error"),
     };
 
     match state {
@@ -206,7 +206,7 @@ fn test_execution_response_creation() {
 fn test_execution_response_with_failure() {
     let response = ExecutionResponse {
         status: ExecutionStatus::Failed {
-            error: "Test failure".to_string(),
+            error: std::borrow::Cow::Borrowed("Test failure"),
         },
         ..ExecutionResponse::default()
     };
@@ -353,7 +353,7 @@ fn test_execution_status_serialization() {
 #[test]
 fn test_execution_status_failed_serialization() {
     let status = ExecutionStatus::Failed {
-        error: "Test error".to_string(),
+        error: std::borrow::Cow::Borrowed("Test error"),
     };
     let serialized = serde_json::to_string(&status).unwrap();
 
@@ -460,7 +460,7 @@ fn test_valid_state_transition_running_to_success() {
 fn test_valid_state_transition_running_to_failed() {
     let from = ExecutionStatus::Running;
     let to = ExecutionStatus::Failed {
-        error: "Error".to_string(),
+        error: std::borrow::Cow::Borrowed("Error"),
     };
 
     assert_ne!(from, to);
@@ -548,7 +548,7 @@ fn test_execution_status_all_variants_serialization() {
     let statuses = vec![
         ExecutionStatus::Success,
         ExecutionStatus::Failed {
-            error: "Test".to_string(),
+            error: std::borrow::Cow::Borrowed("Test"),
         },
         ExecutionStatus::Cancelled,
         ExecutionStatus::TimedOut,
@@ -594,7 +594,7 @@ fn test_execution_state_cleanup() {
 fn test_failed_execution_state_cleanup() {
     let response = ExecutionResponse {
         status: ExecutionStatus::Failed {
-            error: "Test failure".to_string(),
+            error: std::borrow::Cow::Borrowed("Test failure"),
         },
         ..ExecutionResponse::default()
     };

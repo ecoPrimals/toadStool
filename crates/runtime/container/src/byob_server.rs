@@ -18,7 +18,8 @@ use toadstool::{
 };
 
 use crate::byob_routes::ByobApi;
-use toadstool_common::constants::network::{BIND_ALL_IPV4, BYOB_DEFAULT_PORT};
+use toadstool_common::constants::network::BIND_ALL_IPV4;
+use toadstool_config::ports::daemon_port;
 
 use crate::ContainerRuntimeEngine;
 
@@ -51,7 +52,7 @@ fn default_bind_address() -> String {
 }
 
 fn default_port() -> u16 {
-    BYOB_DEFAULT_PORT
+    daemon_port()
 }
 
 /// Run the BYOB server. Binds to the configured address and serves until shutdown.
@@ -73,7 +74,7 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     let app = Router::new()
         .route("/", get(root_handler))
         .route("/health", get(health_handler))
-        .merge(ByobApi::new(Arc::clone(&byob_executor)).router())
+        .merge(ByobApi::routes())
         .with_state(byob_executor);
 
     let addr: SocketAddr = format!("{bind_address}:{port}")

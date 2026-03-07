@@ -45,10 +45,13 @@
 //! ```
 
 // Module declarations
+mod artifacts;
 pub mod client;
 pub mod config;
 pub mod pipeline;
+mod pipelines;
 pub mod types;
+mod utils;
 
 // Re-export core types and functionality
 pub use types::{

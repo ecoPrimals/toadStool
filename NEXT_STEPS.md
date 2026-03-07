@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 6, 2026 -- S128
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | all tests pass | 61+ JSON-RPC methods (dynamically built) | f64 shared-memory routing | Shader compile IPC | NVK Volta f64 probe active | Hardware Transport Layer wired | Sovereignty: capability-based | ecoBin pure-rust verified | Architecture stubs evolved to typed impls | All files < 1000 lines
-**Latest**: S128 — f64 shared-memory bug absorbed (groundSpring V84-V85), PrecisionRoutingAdvice, shader.compile.* IPC (4 methods), architecture stubs evolved, capability-based handler evolution.
+**Updated**: March 7, 2026 -- S129
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | 19,109 tests (0 failures) | 61+ JSON-RPC methods (dynamically built) | Capability-based port resolution | Pure Rust C dep elimination | All files < 1000 lines | 45+ god files refactored
+**Latest**: S129 — Deep debt execution: C deps evolved (flate2/procfs pure Rust), capability-based `resolve_capability_or_legacy_port()`, 5 more god files smart-refactored, 200+ coverage tests, `String` → `Cow`/`Arc<str>` in hot paths.
 
 ---
 
@@ -28,8 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-~85% line coverage. 6,176 lib tests pass. Focus areas for next push: low-coverage crates in CLI ecosystem
-integration, distributed coordination, auto_config installer paths, runtime edge platforms.
+~83% line coverage (170K lines). 19,109 tests pass. Focus areas: hardware-dependent code (display/drm, GPU backends, V4L2, Akida VFIO) that requires physical hardware to exercise. Need ~12K more lines covered.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -84,7 +83,12 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **ComputeDispatch migration** -- transferred to barraCuda team (lives in barraCuda crate)
 - [x] **DF64 default path** -- transferred to barraCuda team (S93)
 - [x] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
-- [ ] **Test coverage target 90%** -- 18,028 tests; focus on low-coverage crates (toadStool D-COV)
+- [ ] **Test coverage target 90%** -- 19,109 tests; focus on hardware-dependent code (toadStool D-COV)
+- [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
+- [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
+- [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
+- [x] **Zero-copy hot paths** -- `Cow<'static, str>`, `Arc<str>` in execution types (S129)
+- [x] **Generated artifacts cleaned** -- removed tracked JSON files from git (S129)
 - [x] **Sovereignty migration** -- remaining callers to capability-based APIs (toadStool D-SOV)
 - [x] **Hardware Transport wiring** -- transport.discover/list/route JSON-RPC + CLI commands
 - [x] **Detection stubs evolved** -- 11 functions → real /proc + command-based detection
@@ -107,7 +111,19 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-96)
+## Completed This Session (S90-129)
+
+### Session S129: Deep Debt Execution + Coverage + C Dep Evolution (Mar 7, 2026)
+- **C dependency evolution**: `flate2` switched to `rust_backend` (eliminates miniz-sys C dep); `procfs` disabled default features; corrected "Pure Rust" comments on `sysinfo`/`drm`/`evdev`.
+- **Capability-based port resolution**: New `capability_fallback` module with COORDINATION/SECURITY/STORAGE/PLATFORM/ECOSYSTEM ports. `resolve_capability_or_legacy_port()` for graceful migration. All `env_config/network.rs`, `config_utils/network.rs`, `primal_discovery_complete` updated.
+- **God file refactoring (round 4)**: `ipc/server.rs` 987→428L (extracted platform.rs, dispatch.rs), `container/lib.rs` 981→582L (extracted docker.rs, engine.rs, types.rs), `ecosystem.rs` 963→556L (extracted ecosystem_types.rs, ecosystem_network.rs), `handler/mod.rs` 832→610L (extracted science.rs, core.rs), `nestgate/client.rs` 824→555L (extracted artifacts.rs, pipelines.rs, utils.rs).
+- **BYOB API state ownership**: `ByobApi::router(self)` vs `ByobApi::routes()` split — clean state management.
+- **Zero-copy hot paths**: `ExecutionStatus::Failed.error` → `Cow<'static, str>`, `RuntimeType::Custom` → `Arc<str>`, const assertions for frame protocol.
+- **Coverage expansion**: 200+ new tests across 5 batches. 19,109 tests passing, 0 failures, 203 intentional GPU hardware ignores.
+- **Long-running test debt**: `dispatch_coverage_tests.rs` completely rewritten (594s → 0.48s, 1,237x speedup). Sleep durations reduced in chaos/protocol tests.
+- **Generated artifacts**: Removed `actual_gpu_validation.json`, `pipeline_validation_actual_hardware.json` from git.
+- **`toadstool-testing` dep**: Removed from examples crate (unused).
+- Verification: `cargo fmt` ✅ `cargo clippy -D warnings` ✅ `cargo doc` ✅ `cargo test` ✅ (19,109 pass, 0 fail)
 
 ### Sessions S95–S96: Spring Absorption + Sovereign Pipeline + Debris Cleanup (Mar 6, 2026)
 - **Sovereign pipeline**: `HardwareFingerprint` (estimated TFLOPS f32/f64, sovereign_capable flag), `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE fault mitigation), 12-variant `SubstrateCapabilityKind` (F64Native, Df64Emulation, Spmv, Eigen, Cg, Fft, MdForce, MonteCarlo, NnInference, ReservoirCompute, Fhe, SubgroupOps).

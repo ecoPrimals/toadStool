@@ -307,7 +307,7 @@ async fn test_execution_state_across_runtimes() {
 async fn test_runtime_failure_state_propagation() {
     // Test that failures propagate correctly from runtimes
     let failure = ExecutionStatus::Failed {
-        error: "Runtime execution failed".to_string(),
+        error: std::borrow::Cow::Borrowed("Runtime execution failed"),
     };
 
     match failure {

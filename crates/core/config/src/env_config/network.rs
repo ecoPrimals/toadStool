@@ -90,30 +90,35 @@ impl NetworkEnvConfig {
     #[must_use]
     #[allow(deprecated)] // Struct fields deprecated; from_env still needed for bootstrap
     pub fn from_env() -> Self {
-        use crate::ports::{discovery_fallback, get_primal_port};
+        use crate::ports::{capability_fallback, resolve_capability_or_legacy_port};
 
         let loader = EnvConfigLoader::new();
 
         Self {
-            songbird_port: get_primal_port(
+            songbird_port: resolve_capability_or_legacy_port(
+                "COORDINATION",
                 "SONGBIRD",
-                discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT,
+                capability_fallback::COORDINATION,
             ),
-            beardog_port: get_primal_port(
+            beardog_port: resolve_capability_or_legacy_port(
+                "SECURITY",
                 "BEARDOG",
-                discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT,
+                capability_fallback::SECURITY,
             ),
-            nestgate_port: get_primal_port(
+            nestgate_port: resolve_capability_or_legacy_port(
+                "STORAGE",
                 "NESTGATE",
-                discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT,
+                capability_fallback::STORAGE,
             ),
-            squirrel_port: get_primal_port(
+            squirrel_port: resolve_capability_or_legacy_port(
+                "PLATFORM",
                 "SQUIRREL",
-                discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT,
+                capability_fallback::PLATFORM,
             ),
-            biomeos_port: get_primal_port(
+            biomeos_port: resolve_capability_or_legacy_port(
+                "ECOSYSTEM",
                 "BIOMEOS",
-                discovery_fallback::DEFAULT_BIOMEOS_PRIMARY_PORT,
+                capability_fallback::ECOSYSTEM_PRIMARY,
             ),
             toadstool_port: loader.get_u16("TOADSTOOL_PORT", crate::defaults::network::API_PORT),
             federation_port: loader

@@ -11,39 +11,67 @@ use toadstool_integration_primals::*;
 // ============================================================================
 
 #[test]
-fn test_primal_type_toadstool() {
-    let primal_type = PrimalType::ToadStool;
-    assert!(matches!(primal_type, PrimalType::ToadStool));
+fn test_primal_type_self_identity() {
+    let primal_type = PrimalType::SelfIdentity;
+    assert!(matches!(primal_type, PrimalType::SelfIdentity));
 }
 
 #[test]
-fn test_primal_type_songbird() {
-    let primal_type = PrimalType::Songbird;
-    assert!(matches!(primal_type, PrimalType::Songbird));
+fn test_primal_type_discovery() {
+    let primal_type = PrimalType::Discovery;
+    assert!(matches!(primal_type, PrimalType::Discovery));
 }
 
 #[test]
-fn test_primal_type_beardog() {
-    let primal_type = PrimalType::BearDog;
-    assert!(matches!(primal_type, PrimalType::BearDog));
+fn test_primal_type_crypto() {
+    let primal_type = PrimalType::Crypto;
+    assert!(matches!(primal_type, PrimalType::Crypto));
 }
 
 #[test]
-fn test_primal_type_nestgate() {
-    let primal_type = PrimalType::NestGate;
-    assert!(matches!(primal_type, PrimalType::NestGate));
+fn test_primal_type_storage() {
+    let primal_type = PrimalType::Storage;
+    assert!(matches!(primal_type, PrimalType::Storage));
 }
 
 #[test]
-fn test_primal_type_squirrel() {
-    let primal_type = PrimalType::Squirrel;
-    assert!(matches!(primal_type, PrimalType::Squirrel));
+fn test_primal_type_compute() {
+    let primal_type = PrimalType::Compute;
+    assert!(matches!(primal_type, PrimalType::Compute));
 }
 
 #[test]
-fn test_primal_type_biomeos() {
-    let primal_type = PrimalType::BiomeOS;
-    assert!(matches!(primal_type, PrimalType::BiomeOS));
+fn test_primal_type_orchestration() {
+    let primal_type = PrimalType::Orchestration;
+    assert!(matches!(primal_type, PrimalType::Orchestration));
+}
+
+#[test]
+fn test_primal_type_parse_legacy_names() {
+    assert_eq!(
+        PrimalType::parse_type("toadstool").unwrap(),
+        PrimalType::SelfIdentity
+    );
+    assert_eq!(
+        PrimalType::parse_type("songbird").unwrap(),
+        PrimalType::Discovery
+    );
+    assert_eq!(
+        PrimalType::parse_type("beardog").unwrap(),
+        PrimalType::Crypto
+    );
+    assert_eq!(
+        PrimalType::parse_type("nestgate").unwrap(),
+        PrimalType::Storage
+    );
+    assert_eq!(
+        PrimalType::parse_type("squirrel").unwrap(),
+        PrimalType::Compute
+    );
+    assert_eq!(
+        PrimalType::parse_type("biomeos").unwrap(),
+        PrimalType::Orchestration
+    );
 }
 
 #[test]
@@ -57,8 +85,8 @@ fn test_primal_type_custom() {
 
 #[test]
 fn test_primal_type_equality() {
-    let p1 = PrimalType::ToadStool;
-    let p2 = PrimalType::ToadStool;
+    let p1 = PrimalType::SelfIdentity;
+    let p2 = PrimalType::SelfIdentity;
     assert_eq!(p1, p2);
 }
 

@@ -118,9 +118,8 @@ impl DiscoveryConfig {
     /// Build fallbacks from environment. Fallbacks are only populated when
     /// `TOADSTOOL_DISCOVERY_FALLBACKS` is set or `TOADSTOOL_ENV=development`.
     ///
-    /// Each service URL is resolved from a dedicated env var first (e.g.
-    /// `SONGBIRD_URL`), falling back to `{bind_host}:{port}`. Ports mirror
-    /// `toadstool_config::ports::fallback::*` — do not duplicate here.
+    /// Each capability URL is resolved from env vars, falling back to
+    /// `{bind_host}:{port}` using `toadstool_config::ports::capability_fallback`.
     fn default_fallbacks() -> HashMap<String, String> {
         let dev_mode = std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
             || std::env::var("TOADSTOOL_ENV").is_ok_and(|e| e == "development");
@@ -133,17 +132,38 @@ impl DiscoveryConfig {
             .or_else(|_| std::env::var("BIND_HOST"))
             .unwrap_or_else(|_| crate::constants::network::DEFAULT_HOSTNAME.to_string());
 
-        // Capability → (env_var, default_port, capability_keys)
-        let specs: &[(&str, u16, &[&str])] = &[
-            ("SONGBIRD_URL", 8080, &["orchestration", "coordination"]),
-            ("BEARDOG_URL", 8081, &["security", "authentication"]),
-            ("NESTGATE_URL", 8082, &["storage"]),
+        // (capability_env, legacy_env, fallback_port, capability_keys)
+        // Ports mirror toadstool_config::ports::capability_fallback — keep in sync.
+        const COORDINATION_PORT: u16 = 8080;
+        const SECURITY_PORT: u16 = 8081;
+        const STORAGE_PORT: u16 = 8082;
+
+        let specs: &[(&str, &str, u16, &[&str])] = &[
+            (
+                "TOADSTOOL_COORDINATION_URL",
+                "SONGBIRD_URL",
+                COORDINATION_PORT,
+                &["orchestration", "coordination"],
+            ),
+            (
+                "TOADSTOOL_SECURITY_URL",
+                "BEARDOG_URL",
+                SECURITY_PORT,
+                &["security", "authentication"],
+            ),
+            (
+                "TOADSTOOL_STORAGE_URL",
+                "NESTGATE_URL",
+                STORAGE_PORT,
+                &["storage"],
+            ),
         ];
 
         let mut fallbacks = HashMap::new();
-        for (env_var, port, keys) in specs {
-            let url =
-                std::env::var(env_var).unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
+        for (cap_env, legacy_env, port, keys) in specs {
+            let url = std::env::var(cap_env)
+                .or_else(|_| std::env::var(legacy_env))
+                .unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
             for key in *keys {
                 fallbacks.insert((*key).to_string(), url.clone());
             }

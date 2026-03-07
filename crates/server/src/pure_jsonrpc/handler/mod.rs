@@ -6,20 +6,19 @@
 //! before dispatch, enabling both legacy `toadstool.*` names and the
 //! standard `{domain}.{operation}` naming convention.
 
+mod core;
 mod job;
 mod ollama;
 mod resources;
+mod science;
 mod transport;
 mod workload;
 
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use toadstool::semantic_methods::SemanticMethodRegistry;
 use tracing::{debug, error, info};
-
-use crate::rpc_types::HealthStatus;
 
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JSONRPC_VERSION};
 
@@ -133,8 +132,10 @@ impl JsonRpcHandler {
             "toadstool.cancel_workload" => return self.workload.cancel_workload(params).await,
             "toadstool.list_workloads" => return self.job.list_workloads(params).await,
             "toadstool.query_capabilities" => return self.workload.query_capabilities().await,
-            "toadstool.health" => return self.health().await,
-            "toadstool.version" => return self.version_info().await,
+            "toadstool.health" => {
+                return core::health(&self.version, self.start_time, &self.error_count).await
+            }
+            "toadstool.version" => return core::version_info(&self.version).await,
 
             "toadstool.resources.estimate" | "resources.estimate" | "ai.local_inference" => {
                 return self.resources.resources_estimate(params).await
@@ -148,10 +149,14 @@ impl JsonRpcHandler {
                 return self.resources.resources_suggest_optimizations(params).await
             }
 
-            "compute.health" => return self.health().await,
-            "compute.version" => return self.version_info().await,
+            "compute.health" => {
+                return core::health(&self.version, self.start_time, &self.error_count).await
+            }
+            "compute.version" => return core::version_info(&self.version).await,
             "compute.capabilities" => return self.workload.query_capabilities().await,
-            "compute.discover_capabilities" => return self.discover_capabilities().await,
+            "compute.discover_capabilities" => {
+                return core::discover_capabilities(&self.semantic_registry, &self.version).await
+            }
 
             "compute.submit" => return self.job.compute_submit(params).await,
             "compute.status" => return self.job.compute_status(params).await,
@@ -159,8 +164,8 @@ impl JsonRpcHandler {
             "compute.cancel" => return self.job.compute_cancel(params).await,
             "compute.list" => return self.job.compute_list(params).await,
 
-            "gpu.info" => return self.gpu_info().await,
-            "gpu.memory" => return self.gpu_memory().await,
+            "gpu.info" => return core::gpu_info().await,
+            "gpu.memory" => return core::gpu_memory().await,
 
             "ollama.list_models" => return self.ollama.ollama_list_models().await,
             "ollama.inference" => return self.ollama.ollama_inference(params).await,
@@ -176,16 +181,28 @@ impl JsonRpcHandler {
             "transport.list" => return self.transport.transport_list().await,
             "transport.route" => return self.transport.transport_route(params).await,
 
-            "science.compute.submit" => return self.science_compute_submit(params).await,
-            "science.compute.status" => return self.science_compute_status(params).await,
-            "science.compute.result" => return self.science_compute_result(params).await,
-            "science.compute.cancel" => return self.science_compute_cancel(params).await,
-            "science.gpu.dispatch" => return self.science_gpu_dispatch(params).await,
-            "science.gpu.capabilities" => return self.science_gpu_capabilities().await,
-            "science.npu.dispatch" => return self.science_npu_dispatch(params).await,
-            "science.npu.capabilities" => return self.science_npu_capabilities().await,
-            "science.substrate.discover" => return self.science_substrate_discover().await,
-            "science.substrate.probe" => return self.science_substrate_probe(params).await,
+            "science.compute.submit" => {
+                return science::science_compute_submit(&self.job, params).await
+            }
+            "science.compute.status" => {
+                return science::science_compute_status(&self.job, params).await
+            }
+            "science.compute.result" => {
+                return science::science_compute_result(&self.job, params).await
+            }
+            "science.compute.cancel" => {
+                return science::science_compute_cancel(&self.job, params).await
+            }
+            "science.gpu.dispatch" => {
+                return science::science_gpu_dispatch(&self.job, params).await
+            }
+            "science.gpu.capabilities" => return science::science_gpu_capabilities().await,
+            "science.npu.dispatch" => {
+                return science::science_npu_dispatch(&self.job, params).await
+            }
+            "science.npu.capabilities" => return science::science_npu_capabilities().await,
+            "science.substrate.discover" => return science::science_substrate_discover().await,
+            "science.substrate.probe" => return science::science_substrate_probe(params).await,
 
             "shader.compile.wgsl" => return self.shader_compile_wgsl(params).await,
             "shader.compile.spirv" => return self.shader_compile_spirv(params).await,
@@ -214,228 +231,22 @@ impl JsonRpcHandler {
             "cancel_workload" => self.workload.cancel_workload(params).await,
             "list_workloads" => self.job.list_workloads(params).await,
             "query_capabilities" => self.workload.query_capabilities().await,
-            "science_compute_submit" => self.science_compute_submit(params).await,
-            "science_compute_status" => self.science_compute_status(params).await,
-            "science_compute_result" => self.science_compute_result(params).await,
-            "science_compute_cancel" => self.science_compute_cancel(params).await,
-            "science_gpu_dispatch" => self.science_gpu_dispatch(params).await,
-            "science_gpu_capabilities" => self.science_gpu_capabilities().await,
-            "science_npu_dispatch" => self.science_npu_dispatch(params).await,
-            "science_npu_capabilities" => self.science_npu_capabilities().await,
-            "science_substrate_discover" => self.science_substrate_discover().await,
-            "science_substrate_probe" => self.science_substrate_probe(params).await,
+            "science_compute_submit" => science::science_compute_submit(&self.job, params).await,
+            "science_compute_status" => science::science_compute_status(&self.job, params).await,
+            "science_compute_result" => science::science_compute_result(&self.job, params).await,
+            "science_compute_cancel" => science::science_compute_cancel(&self.job, params).await,
+            "science_gpu_dispatch" => science::science_gpu_dispatch(&self.job, params).await,
+            "science_gpu_capabilities" => science::science_gpu_capabilities().await,
+            "science_npu_dispatch" => science::science_npu_dispatch(&self.job, params).await,
+            "science_npu_capabilities" => science::science_npu_capabilities().await,
+            "science_substrate_discover" => science::science_substrate_discover().await,
+            "science_substrate_probe" => science::science_substrate_probe(params).await,
             "shader_compile_wgsl" => self.shader_compile_wgsl(params).await,
             "shader_compile_spirv" => self.shader_compile_spirv(params).await,
             "shader_compile_status" => self.shader_compile_status(params).await,
             "shader_compile_capabilities" => self.shader_compile_capabilities().await,
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
-    }
-
-    #[allow(clippy::unused_async)]
-    async fn health(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let uptime = self.start_time.elapsed();
-        #[allow(clippy::cast_possible_truncation)]
-        let error_count = self.error_count.load(Ordering::Relaxed) as usize;
-        let status = HealthStatus {
-            healthy: true,
-            version: self.version.to_string(),
-            uptime_secs: uptime.as_secs(),
-            active_workloads: 0,
-            queued_workloads: 0,
-            error_count,
-            resource_utilization: 0.0,
-        };
-        serde_json::to_value(status)
-            .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
-    }
-
-    #[allow(clippy::unused_async)]
-    async fn version_info(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let mut info = HashMap::new();
-        info.insert("version".to_string(), self.version.to_string());
-        info.insert("protocol".to_string(), "JSON-RPC 2.0".to_string());
-        info.insert("service".to_string(), "ToadStool Compute".to_string());
-        info.insert(
-            "implementation".to_string(),
-            "Pure Rust (ecoPrimals sovereign pattern)".to_string(),
-        );
-        Ok(serde_json::json!(info))
-    }
-
-    #[allow(clippy::unused_async)]
-    async fn discover_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let semantic_methods: Vec<&str> = self
-            .semantic_registry
-            .semantic_names()
-            .into_iter()
-            .collect();
-
-        let mut direct_methods = vec![
-            "toadstool.health",
-            "toadstool.version",
-            "toadstool.query_capabilities",
-            "toadstool.resources.estimate",
-            "toadstool.resources.validate_availability",
-            "toadstool.resources.suggest_optimizations",
-            "resources.estimate",
-            "resources.validate_availability",
-            "resources.suggest_optimizations",
-            "compute.health",
-            "compute.version",
-            "compute.capabilities",
-            "compute.discover_capabilities",
-            "compute.submit",
-            "compute.status",
-            "compute.result",
-            "compute.cancel",
-            "compute.list",
-            "ai.local_inference",
-            "ai.local_execute",
-            "gpu.info",
-            "gpu.memory",
-            "ollama.list_models",
-            "ollama.inference",
-            "ollama.load",
-            "ollama.unload",
-            "gate.update",
-            "gate.remove",
-            "gate.list",
-            "gate.route",
-            "transport.discover",
-            "transport.list",
-            "transport.route",
-        ];
-
-        for m in &semantic_methods {
-            if !direct_methods.contains(m) {
-                direct_methods.push(m);
-            }
-        }
-        direct_methods.sort_unstable();
-
-        let capabilities = serde_json::json!({
-            "node_capabilities": [
-                "compute", "workload", "orchestration", "ai_local",
-                "gpu", "wasm", "container", "hardware_transport",
-                "science", "shader"
-            ],
-            "methods": direct_methods,
-            "version": self.version,
-            "primal": toadstool_common::constants::PRIMAL_NAME
-        });
-        Ok(capabilities)
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // Science domain — IPC integration for springs
-    //
-    // These route scientific compute through toadStool's workload
-    // infrastructure. Springs (wetSpring, airSpring, hotSpring, etc.)
-    // call these methods to request GPU/NPU compute without coupling
-    // to barraCuda directly.
-    // ═══════════════════════════════════════════════════════════
-
-    async fn science_compute_submit(
-        &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        self.job.compute_submit(params).await
-    }
-
-    async fn science_compute_status(
-        &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        self.job.compute_status(params).await
-    }
-
-    async fn science_compute_result(
-        &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        self.job.compute_result(params).await
-    }
-
-    async fn science_compute_cancel(
-        &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        self.job.compute_cancel(params).await
-    }
-
-    async fn science_gpu_dispatch(
-        &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        self.job.compute_submit(params).await
-    }
-
-    #[allow(clippy::unused_async)]
-    async fn science_gpu_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let gpu_info = crate::gpu_system::query_gpu_devices();
-        let available_backends = crate::gpu_system::query_available_backends();
-
-        Ok(serde_json::json!({
-            "devices": gpu_info,
-            "supported_precisions": ["f32", "f64", "df64"],
-            "precision_notes": {
-                "f64_shared_memory_reliable": false,
-                "f64_native_element_wise": true,
-                "df64_reductions": true,
-                "routing_advice": "Use DF64 for shared-memory reductions until coralDriver is available"
-            },
-            "compute_backends": available_backends,
-            "sovereign_binary_pipeline": false,
-            "domain": "science",
-        }))
-    }
-
-    async fn science_npu_dispatch(
-        &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        self.job.compute_submit(params).await
-    }
-
-    #[allow(clippy::unused_async)] // Async for API consistency with other handlers
-    async fn science_npu_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
-        Ok(serde_json::json!({
-            "available": false,
-            "domain": "science",
-            "supported_models": [],
-            "note": "NPU capabilities discovered at runtime via NpuDispatch trait",
-        }))
-    }
-
-    #[allow(clippy::unused_async)] // Async for API consistency with other handlers
-    async fn science_substrate_discover(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let gpu_info = crate::gpu_system::query_gpu_devices();
-        Ok(serde_json::json!({
-            "substrates": {
-                "gpu": gpu_info,
-                "npu": [],
-                "cpu": { "available": true },
-            },
-            "domain": "science",
-        }))
-    }
-
-    async fn science_substrate_probe(
-        &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        let capability = params
-            .and_then(|p| p.get("capability"))
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("unknown");
-
-        Ok(serde_json::json!({
-            "capability": capability,
-            "available": true,
-            "domain": "science",
-            "note": "Probe delegates to runtime substrate detection",
-        }))
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -517,22 +328,6 @@ impl JsonRpcHandler {
             "coral_driver_available": false,
             "naga_pipeline": true,
             "domain": "shader"
-        }))
-    }
-
-    #[allow(clippy::unused_async)]
-    async fn gpu_info(&self) -> Result<serde_json::Value, JsonRpcError> {
-        Ok(serde_json::json!({
-            "devices": crate::gpu_system::query_gpu_devices(),
-            "driver": "wgpu",
-            "compute_backends": crate::gpu_system::query_available_backends(),
-        }))
-    }
-
-    #[allow(clippy::unused_async)]
-    async fn gpu_memory(&self) -> Result<serde_json::Value, JsonRpcError> {
-        Ok(serde_json::json!({
-            "devices": crate::gpu_system::query_gpu_memory(),
         }))
     }
 }

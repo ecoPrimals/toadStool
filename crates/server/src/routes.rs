@@ -62,7 +62,7 @@ pub fn build_router(config: &ServerConfig, state: ServerState) -> Router {
 
 #[cfg(all(test, feature = "api"))]
 mod tests {
-    // Test helper uses MockResourceMonitor for predictable behavior. Production
+    // Test helper uses SystemResourceMonitor (real implementation). Production
     // routes receive ServerState from ToadStoolServer::new() which uses SystemResourceMonitor.
     use super::*;
     use std::collections::HashMap;
@@ -70,7 +70,7 @@ mod tests {
     use tokio::sync::{broadcast, RwLock};
 
     use crate::state::{ServerState, ServerStatistics};
-    use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
+    use toadstool::SystemResourceMonitor;
 
     fn create_test_state(config: ServerConfig) -> ServerState {
         let (event_broadcaster, _) = broadcast::channel(100);
@@ -79,7 +79,7 @@ mod tests {
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             event_broadcaster,
             config,
-            resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+            resource_monitor: Arc::new(SystemResourceMonitor::new()),
             stats: Arc::new(RwLock::new(ServerStatistics::default())),
             capability_provider: None,
         }

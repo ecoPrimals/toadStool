@@ -196,10 +196,10 @@ fn test_data_processing_template_has_storage() {
         "Distributed biome should have storage configured"
     );
 
-    // Should have NestGate primal for data management
+    // Should have storage capability for data management
     assert!(
-        primals.contains_key("nestgate"),
-        "Should have NestGate primal"
+        primals.contains_key("capability:storage"),
+        "Should have storage capability primal"
     );
 }
 

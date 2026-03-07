@@ -123,7 +123,7 @@ fn test_execution_status_success() {
 #[test]
 fn test_execution_status_failed() {
     let status = ExecutionStatus::Failed {
-        error: "Test error".to_string(),
+        error: std::borrow::Cow::Borrowed("Test error"),
     };
 
     match status {
@@ -208,7 +208,7 @@ fn test_execution_response_with_output() {
 fn test_execution_response_with_error() {
     let mut response = ExecutionResponse::default();
     response.status = ExecutionStatus::Failed {
-        error: "Execution failed".to_string(),
+        error: std::borrow::Cow::Borrowed("Execution failed"),
     };
     response.output.stderr = Some("Error occurred".to_string());
     response.output.exit_code = Some(1);
@@ -464,7 +464,7 @@ fn test_complete_lifecycle_failure() {
     assert_eq!(status, ExecutionStatus::Running);
 
     let status = ExecutionStatus::Failed {
-        error: "Test failure".to_string(),
+        error: std::borrow::Cow::Borrowed("Test failure"),
     };
 
     match status {

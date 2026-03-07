@@ -41,7 +41,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 18,028 workspace lib + integration tests |
+| `cargo test --workspace` | 19,109 workspace tests (0 failures, 203 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~60+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (47 total)
+### JSON-RPC Methods (61+ dynamically built)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -236,8 +236,8 @@ toadStool/
 | Clippy warnings (`-D warnings`) | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace lib tests | 18,028 (server + core + distributed + common + config + CLI + testing + API + auto_config) |
-| Full workspace test time | ~10m (8 threads, GPU crates have NVK resilience wrappers) |
+| Workspace tests | 19,109 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~60+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -257,17 +257,17 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 18,028 tests; focus on low-coverage crates
+- **Test coverage** -- pushing toward 90% target; 19,109 tests; focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
-- **S95–S96 (Mar 6, 2026)**: Spring absorption tracker updated. Sovereign pipeline: `HardwareFingerprint`, `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE guard), 12-variant `SubstrateCapabilityKind`. `SubstrateType` expanded to 8 variants (IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum). 5 god files smart-split (dispatch.rs, detection.rs, engine.rs, protocols/lib.rs, specialized_templates.rs). `crates/api/` orphan resolved (ByobApi extracted to container crate). `// SAFETY:` on all V4L2 `unsafe` blocks. Hardcoded discovery IP → `TOADSTOOL_DISCOVERY_BIND_ADDR` env var. Debris cleanup: root `tests/` stubs removed, stale completion checklists cleaned, false-positive TODOs removed. Clippy pedantic and doc warnings resolved. `management/resources` re-added as real `ResourceManager` with sysinfo.
-- **Deep Debt Execution (Mar 5, 2026)**: Hardware Transport Layer wired end-to-end: `transport.discover/list/route` JSON-RPC methods + `toadstool transport discover/list/status` CLI commands. 18,028 tests (from 5,369). Detection stubs evolved to real /proc/cpuinfo/meminfo/os-release parsing. `security.rs` + `config_utils/mod.rs` smart-refactored into domain modules. `FrameworkHandle::Placeholder` → `FrameworkHandle::Unavailable`. 35+ hardcoded primal names → shared `well_known::*` constants. All production `unwrap()` eliminated. Pixel format mismatch + double-buffer alternation bugs fixed.
-- **Session 94b: Deep Debt Execution + Spring Absorption** -- Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. `NpuParameterController` trait (absorbed from hotSpring). `GpuAdapterInfo` for barraCuda driver profiling. Multi-adapter GPU selection (`TOADSTOOL_GPU_ADAPTER` env var). NestGate `store_artifact`/`retrieve_artifact` evolved from mocks to real JSON-RPC with fallback. D-SOV completed: all 7 production callers migrated to `get_socket_path_for_capability()`. Hardcoded ports `8080`/`9090` evolved to config constants. `integration-tests` barracuda dependency made optional.
-- **Sessions 90–93: Deep Audit + Sovereignty + barraCuda Budding** -- REST API + middleware deleted (JSON-RPC only). 47 new tests (5,369 total). Pure-rust ecoBin build verified. Legacy primal-name APIs deprecated. BearDog strings neutralized. `find_pattern_by_capability()` API added. barraCuda budded to `ecoPrimals/barraCuda/`, barracuda fossil archived.
-- **Sessions 84–86: ComputeDispatch Batches 5–7 + Deep Debt** -- 33 more ops → ComputeDispatch (144 total). God files refactored. Experimental stubs → real probes.
-- **Sessions 69–80: Cross-spring absorption + architecture evolution** -- 5 spring handoffs absorbed. metalForge streaming. manual_jsonrpc → pure_jsonrpc. 16+ large files refactored. rust-version 1.75→1.80. anyhow + chrono + pollster + serde_yaml eliminated.
+- **S129 (Mar 7, 2026)**: Deep debt execution. C dependency evolution (`flate2` → pure Rust backend, `procfs` default features disabled). Capability-based port resolution (`resolve_capability_or_legacy_port`). 5 god files smart-refactored (ipc/server.rs 987→428, container/lib.rs 981→582, ecosystem.rs 963→556, handler/mod.rs 832→610, nestgate/client.rs 824→555). 200+ coverage tests added. 19,109 tests passing, 0 failures. `String` → `Cow<'static, str>` / `Arc<str>` in hot paths. Const assertions for frame protocol. Generated artifacts removed from git.
+- **S128 (Mar 6, 2026)**: f64 shared-memory bug absorbed (groundSpring V84-V85). `PrecisionRoutingAdvice` enum. 4 `shader.compile.*` IPC methods (coralReef preparation). Architecture stubs evolved to typed implementations (auth, scheduling). Capability-based handler evolution.
+- **S95–S96 (Mar 6, 2026)**: Sovereign pipeline: `HardwareFingerprint`, `SubstrateCapabilityKind`. 5 god files split. `crates/api/` orphan resolved. V4L2 unsafe documented. Debris cleanup.
+- **S94b (Mar 5, 2026)**: Generic `NpuDispatch` trait + `AkidaNpuDispatch`. NestGate mocks → real RPC. D-SOV completed. All hardcoded ports evolved.
+- **S90–93**: REST API deleted (JSON-RPC only). barraCuda budded to own primal. ecoBin verified.
+- **S69–86**: 5 spring handoffs. metalForge streaming. 16+ large files refactored. rust-version 1.75→1.82.
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -277,7 +277,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 18,028 tests; focus on low-coverage crates |
+| D-COV | Test coverage → 90% | Active -- 19,109 tests; focus on hardware-dependent code |
 | D-S20-003 | neuralSpring `evolved/` migration (~2075 lines) | Blocked -- awaiting neuralSpring team |
 | D-S18-002 | cubecl transitive `dirs-sys` | Blocked -- needs upstream PR |
 
@@ -322,4 +322,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 6, 2026 -- S96. 18,028 workspace tests. 47 JSON-RPC methods. Hardware Transport Layer (HDMI/capture/serial) wired to daemon + CLI. Sovereign pipeline infrastructure (HardwareFingerprint, SubstrateCapabilityKind). 40+ god files refactored. Rust 1.80+ (MSRV).
+**Last Updated**: March 7, 2026 -- S129. 19,109 workspace tests. 61+ JSON-RPC methods (dynamically built). Capability-based port resolution. 45+ god files refactored. Pure Rust C dep elimination. Rust 1.82+ (MSRV).

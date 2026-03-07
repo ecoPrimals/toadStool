@@ -57,9 +57,7 @@ mod tests {
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             event_broadcaster,
             config: ServerConfig::default(),
-            resource_monitor: Arc::new(
-                toadstool_testing::mocks::resource_monitors::MockResourceMonitor::new_successful(),
-            ),
+            resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
             stats: Arc::new(RwLock::new(ServerStatistics::default())),
             capability_provider: None,
         };

@@ -19,7 +19,7 @@ use toadstool::execution::*;
 fn test_execution_status_variants() {
     let success = ExecutionStatus::Success;
     let failed = ExecutionStatus::Failed {
-        error: "Test error".to_string(),
+        error: std::borrow::Cow::Borrowed("Test error"),
     };
     let cancelled = ExecutionStatus::Cancelled;
     let timed_out = ExecutionStatus::TimedOut;
@@ -79,14 +79,14 @@ fn test_runtime_type_variants() {
     let container = RuntimeType::Container;
     let gpu = RuntimeType::Gpu;
     let python = RuntimeType::Python;
-    let custom = RuntimeType::Custom("MyRuntime".to_string());
+    let custom = RuntimeType::from("MyRuntime");
 
     assert_eq!(native, RuntimeType::Native);
     assert_eq!(wasm, RuntimeType::Wasm);
     assert_eq!(container, RuntimeType::Container);
     assert_eq!(gpu, RuntimeType::Gpu);
     assert_eq!(python, RuntimeType::Python);
-    assert_eq!(custom, RuntimeType::Custom("MyRuntime".to_string()));
+    assert_eq!(custom, RuntimeType::from("MyRuntime"));
 }
 
 #[test]
@@ -121,9 +121,9 @@ fn test_runtime_type_serialization() {
 
 #[test]
 fn test_runtime_type_custom() {
-    let custom1 = RuntimeType::Custom("Runtime1".to_string());
-    let custom2 = RuntimeType::Custom("Runtime1".to_string());
-    let custom3 = RuntimeType::Custom("Runtime2".to_string());
+    let custom1 = RuntimeType::from("Runtime1");
+    let custom2 = RuntimeType::from("Runtime1");
+    let custom3 = RuntimeType::from("Runtime2");
 
     assert_eq!(custom1, custom2);
     assert_ne!(custom1, custom3);
@@ -472,7 +472,7 @@ fn test_execution_response_default() {
 fn test_execution_response_with_failure() {
     let response = ExecutionResponse {
         status: ExecutionStatus::Failed {
-            error: "Test failure".to_string(),
+            error: std::borrow::Cow::Borrowed("Test failure"),
         },
         ..Default::default()
     };

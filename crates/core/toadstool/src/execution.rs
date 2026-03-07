@@ -2,10 +2,12 @@
 //! Execution types and runtime engine interface
 
 use bytes::Bytes;
+use std::borrow::Cow;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::future::Future;
 use std::pin::Pin;
 use toadstool_common::constants::timeouts;
@@ -93,8 +95,8 @@ impl Default for ExecutionResponse {
 pub enum ExecutionStatus {
     /// Execution completed successfully
     Success,
-    /// Execution failed
-    Failed { error: String },
+    /// Execution failed (Cow for zero-copy static error messages)
+    Failed { error: Cow<'static, str> },
     /// Execution was cancelled
     Cancelled,
     /// Execution timed out
@@ -165,6 +167,21 @@ pub enum CallbackEvent {
     Progress,
 }
 
+fn serialize_arc_str<S>(s: &Arc<str>, ser: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    ser.serialize_str(s)
+}
+
+fn deserialize_arc_str<'de, D>(de: D) -> Result<Arc<str>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(de)?;
+    Ok(Arc::from(s))
+}
+
 /// Types of runtime engines
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RuntimeType {
@@ -178,8 +195,26 @@ pub enum RuntimeType {
     Gpu,
     /// Python runtime
     Python,
-    /// Custom runtime
-    Custom(String),
+    /// Custom runtime (`Arc<str>` for zero-copy sharing across threads)
+    Custom(
+        #[serde(
+            serialize_with = "serialize_arc_str",
+            deserialize_with = "deserialize_arc_str"
+        )]
+        Arc<str>,
+    ),
+}
+
+impl From<String> for RuntimeType {
+    fn from(s: String) -> Self {
+        Self::Custom(Arc::from(s))
+    }
+}
+
+impl From<&str> for RuntimeType {
+    fn from(s: &str) -> Self {
+        Self::Custom(Arc::from(s))
+    }
 }
 
 /// Runtime engine capabilities
@@ -290,7 +325,7 @@ pub struct LoggingConfig {
 ///             status: ExecutionStatus::Success,
 ///             output,
 ///             duration,
-///             runtime_used: RuntimeType::Custom("my-runtime".to_string()),
+///             runtime_used: RuntimeType::from("my-runtime"),
 ///             metrics: self.collect_metrics(),
 ///             warnings: Vec::new(),
 ///         })
@@ -298,7 +333,7 @@ pub struct LoggingConfig {
 ///     
 ///     fn get_capabilities(&self) -> RuntimeCapabilities {
 ///         RuntimeCapabilities {
-///             runtime_type: RuntimeType::Custom("my-runtime".to_string()),
+///             runtime_type: RuntimeType::from("my-runtime"),
 ///             supported_workload_types: vec![WorkloadType::Custom],
 ///             max_concurrent_executions: 10,
 ///             supports_gpu: false,
@@ -492,10 +527,10 @@ mod tests {
         assert_eq!(ExecutionStatus::Pending, ExecutionStatus::Pending);
         assert_eq!(
             ExecutionStatus::Failed {
-                error: "test".to_string()
+                error: std::borrow::Cow::Borrowed("test")
             },
             ExecutionStatus::Failed {
-                error: "test".to_string()
+                error: std::borrow::Cow::Borrowed("test")
             }
         );
     }
@@ -505,7 +540,7 @@ mod tests {
         assert_ne!(
             ExecutionStatus::Success,
             ExecutionStatus::Failed {
-                error: "error".to_string()
+                error: std::borrow::Cow::Borrowed("error")
             }
         );
         assert_ne!(ExecutionStatus::Success, ExecutionStatus::Cancelled);
@@ -520,7 +555,7 @@ mod tests {
             ExecutionStatus::Running,
             ExecutionStatus::Pending,
             ExecutionStatus::Failed {
-                error: "test error".to_string(),
+                error: std::borrow::Cow::Borrowed("test error"),
             },
         ];
 
@@ -539,8 +574,8 @@ mod tests {
         assert_eq!(RuntimeType::Gpu, RuntimeType::Gpu);
         assert_eq!(RuntimeType::Python, RuntimeType::Python);
         assert_eq!(
-            RuntimeType::Custom("my-runtime".to_string()),
-            RuntimeType::Custom("my-runtime".to_string())
+            RuntimeType::from("my-runtime"),
+            RuntimeType::from("my-runtime")
         );
     }
 
@@ -553,11 +588,11 @@ mod tests {
         set.insert(RuntimeType::Container);
         set.insert(RuntimeType::Gpu);
         set.insert(RuntimeType::Python);
-        set.insert(RuntimeType::Custom("custom".to_string()));
+        set.insert(RuntimeType::from("custom"));
 
         assert_eq!(set.len(), 6);
         assert!(set.contains(&RuntimeType::Native));
-        assert!(set.contains(&RuntimeType::Custom("custom".to_string())));
+        assert!(set.contains(&RuntimeType::from("custom")));
     }
 
     #[test]
@@ -568,7 +603,7 @@ mod tests {
             RuntimeType::Container,
             RuntimeType::Gpu,
             RuntimeType::Python,
-            RuntimeType::Custom("my-custom".to_string()),
+            RuntimeType::from("my-custom"),
         ];
 
         for runtime_type in types {

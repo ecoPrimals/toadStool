@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Server integration tests - Month 2 Week 1 Day 3
+//! Server integration tests
 //!
 //! Tier 1 tests: Coverage-measured integration tests
 //! Focus: WebSocket integration, background tasks, state synchronization

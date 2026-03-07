@@ -34,69 +34,82 @@ pub mod toadstool {
     pub const DAEMON_API: u16 = 8084;
 }
 
-/// Discovery fallback ports for initial connection before runtime discovery
+/// Capability-based fallback ports for cold-start bootstrap.
 ///
-/// **Purpose**: DEFAULT/FALLBACK ports for cold-start bootstrap only.
-/// Used when capability-based discovery (Songbird, mDNS) is not yet available.
+/// These are fallback defaults used ONLY before runtime discovery is available.
+/// Production systems use `RuntimeDiscovery::discover_capability()` instead.
 ///
-/// **Production**: Use `RuntimeDiscovery::discover_capability()` instead.
-/// These exist only for initial connection to bootstrap discovery.
-///
-/// **Naming**: `DEFAULT_*_DISCOVERY_PORT` = fallback for `{PRIMAL}_PORT` env var.
-pub mod discovery_fallback {
-    /// Songbird coordination - default port for `SONGBIRD_PORT` env fallback
-    pub const DEFAULT_SONGBIRD_DISCOVERY_PORT: u16 = 8080;
+/// Capabilities map to port ranges rather than primal-specific assignments.
+/// Each capability resolves via: env var → config file → this fallback.
+pub mod capability_fallback {
+    /// Coordination capability (orchestration, scheduling) — e.g. Songbird
+    pub const COORDINATION: u16 = 8080;
 
-    /// BearDog security - default port for `BEARDOG_PORT` env fallback
-    pub const DEFAULT_BEARDOG_DISCOVERY_PORT: u16 = 8081;
+    /// Security capability (auth, policy, zero-trust) — e.g. BearDog
+    pub const SECURITY: u16 = 8081;
 
-    /// NestGate storage - default port for `NESTGATE_PORT` env fallback
-    pub const DEFAULT_NESTGATE_DISCOVERY_PORT: u16 = 8082;
+    /// Storage capability (artifacts, pipelines) — e.g. NestGate
+    pub const STORAGE: u16 = 8082;
 
-    /// Squirrel MCP - default port for `SQUIRREL_PORT` env fallback
-    pub const DEFAULT_SQUIRREL_DISCOVERY_PORT: u16 = 8083;
+    /// Platform capability (MCP, model hosting) — e.g. Squirrel
+    pub const PLATFORM: u16 = 8083;
 
-    /// BiomeOS integration - default port for `BIOMEOS_PORT` env fallback
-    pub const DEFAULT_BIOMEOS_DISCOVERY_PORT: u16 = 8088;
+    /// Ecosystem integration capability (biome management)
+    pub const ECOSYSTEM: u16 = 8088;
 
-    /// BiomeOS primary port - default for `BIOMEOS_PORT` env (ecosystem discovery)
-    pub const DEFAULT_BIOMEOS_PRIMARY_PORT: u16 = 8005;
+    /// Ecosystem primary port (UI/API gateway)
+    pub const ECOSYSTEM_PRIMARY: u16 = 8005;
 }
 
-/// Default ports for other primals (for fallback only)
+/// Legacy primal-name aliases for backward compatibility during migration.
 ///
-/// **Design Philosophy**: These are FALLBACK values only.
-/// Production systems MUST use runtime discovery via Songbird.
-///
-/// **Self-Knowledge Violation**: Having these at all violates self-knowledge.
-/// They exist temporarily to support transition period.
-///
-/// ⚠️ **DEPRECATED**: Use `discovery_fallback::DEFAULT_*_DISCOVERY_PORT` instead.
+/// **DEPRECATED**: Use `capability_fallback::*` or runtime capability discovery.
 #[deprecated(
     since = "0.1.0",
-    note = "Use discovery_fallback::DEFAULT_*_DISCOVERY_PORT or runtime capability discovery. \
-            See `toadstool_common::runtime_discovery` for proper usage."
+    note = "Use capability_fallback::* or runtime capability discovery."
+)]
+pub mod discovery_fallback {
+    #[deprecated(note = "Use capability_fallback::COORDINATION")]
+    pub const DEFAULT_SONGBIRD_DISCOVERY_PORT: u16 = super::capability_fallback::COORDINATION;
+
+    #[deprecated(note = "Use capability_fallback::SECURITY")]
+    pub const DEFAULT_BEARDOG_DISCOVERY_PORT: u16 = super::capability_fallback::SECURITY;
+
+    #[deprecated(note = "Use capability_fallback::STORAGE")]
+    pub const DEFAULT_NESTGATE_DISCOVERY_PORT: u16 = super::capability_fallback::STORAGE;
+
+    #[deprecated(note = "Use capability_fallback::PLATFORM")]
+    pub const DEFAULT_SQUIRREL_DISCOVERY_PORT: u16 = super::capability_fallback::PLATFORM;
+
+    #[deprecated(note = "Use capability_fallback::ECOSYSTEM")]
+    pub const DEFAULT_BIOMEOS_DISCOVERY_PORT: u16 = super::capability_fallback::ECOSYSTEM;
+
+    #[deprecated(note = "Use capability_fallback::ECOSYSTEM_PRIMARY")]
+    pub const DEFAULT_BIOMEOS_PRIMARY_PORT: u16 = super::capability_fallback::ECOSYSTEM_PRIMARY;
+}
+
+/// Legacy primal-name port constants for backward compatibility.
+///
+/// **DEPRECATED**: Use `capability_fallback::*` or runtime capability discovery.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use capability_fallback::* or runtime capability discovery."
 )]
 pub mod fallback {
-    /// Songbird coordination service (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT")]
-    pub const SONGBIRD: u16 = super::discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT;
+    #[deprecated(note = "Use capability_fallback::COORDINATION")]
+    pub const SONGBIRD: u16 = super::capability_fallback::COORDINATION;
 
-    /// Squirrel MCP platform (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT")]
-    pub const SQUIRREL: u16 = super::discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT;
+    #[deprecated(note = "Use capability_fallback::PLATFORM")]
+    pub const SQUIRREL: u16 = super::capability_fallback::PLATFORM;
 
-    /// BearDog security service (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT")]
-    pub const BEARDOG: u16 = super::discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT;
+    #[deprecated(note = "Use capability_fallback::SECURITY")]
+    pub const BEARDOG: u16 = super::capability_fallback::SECURITY;
 
-    /// NestGate storage service (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT")]
-    pub const NESTGATE: u16 = super::discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT;
+    #[deprecated(note = "Use capability_fallback::STORAGE")]
+    pub const NESTGATE: u16 = super::capability_fallback::STORAGE;
 
-    /// BiomeOS integration (FALLBACK - discover at runtime!)
-    #[deprecated(note = "Use discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT")]
-    pub const BIOMEOS: u16 = super::discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT;
+    #[deprecated(note = "Use capability_fallback::ECOSYSTEM")]
+    pub const BIOMEOS: u16 = super::capability_fallback::ECOSYSTEM;
 }
 
 /// Port registry for runtime configuration
@@ -221,32 +234,57 @@ pub fn get_toadstool_port(name: &str, default: u16) -> u16 {
     get_port_with_env(default, &format!("TOADSTOOL_{name}_PORT"))
 }
 
-/// Get other primal port with environment override
+/// Resolve port for a capability via env var with fallback default.
 ///
-/// **Phase 2: Environment Overrides (FALLBACK)**
+/// Resolution order:
+/// 1. `TOADSTOOL_{CAPABILITY}_PORT` env var (e.g. `TOADSTOOL_SECURITY_PORT`)
+/// 2. Legacy `{PRIMAL}_PORT` env var (backward compatibility)
+/// 3. `capability_fallback::*` default
 ///
-/// **Note**: This is a FALLBACK mechanism. Production systems should use
-/// runtime discovery via Songbird for true capability-based architecture.
+/// Prefer `get_capability_port` over the deprecated `get_primal_port`.
+#[must_use]
+pub fn get_capability_port(capability: &str, fallback_port: u16) -> u16 {
+    let capability_env = format!("TOADSTOOL_{capability}_PORT");
+    if let Ok(v) = std::env::var(&capability_env) {
+        if let Ok(p) = v.parse::<u16>() {
+            return p;
+        }
+    }
+    fallback_port
+}
+
+/// Get primal port with environment override (legacy — prefer `get_capability_port`).
 ///
-/// Checks `{PRIMAL}_PORT` environment variable first.
-///
-/// # Self-Knowledge Principle
-///
-/// Port fallbacks exist for bootstrapping before Songbird is available.
-/// Once Songbird is running, primals discover each other via capability
-/// registration — these env-var fallbacks are the cold-start path only.
-///
-/// # Examples
-/// ```
-/// use toadstool_config::ports::{get_primal_port, fallback};
-///
-/// // SONGBIRD_PORT=9080 cargo run
-/// let port = get_primal_port("SONGBIRD", fallback::SONGBIRD);
-/// // Returns 9080 if env var set, otherwise 8080
-/// ```
+/// Checks `{PRIMAL}_PORT` environment variable first, falls back to default.
+/// This exists for backward compatibility during migration to capability-based ports.
 #[must_use]
 pub fn get_primal_port(primal: &str, fallback_port: u16) -> u16 {
     get_port_with_env(fallback_port, &format!("{primal}_PORT"))
+}
+
+/// Resolve port by trying capability env var first, then legacy primal env var, then fallback.
+///
+/// Resolution order:
+/// 1. `TOADSTOOL_{CAPABILITY}_PORT` (e.g. `TOADSTOOL_SECURITY_PORT`)
+/// 2. `{LEGACY_NAME}_PORT` (e.g. `BEARDOG_PORT`) — backward compatibility
+/// 3. `fallback_port` — hardcoded default from `capability_fallback::*`
+#[must_use]
+pub fn resolve_capability_or_legacy_port(
+    capability: &str,
+    legacy_name: &str,
+    fallback_port: u16,
+) -> u16 {
+    if let Ok(v) = std::env::var(format!("TOADSTOOL_{capability}_PORT")) {
+        if let Ok(p) = v.parse::<u16>() {
+            return p;
+        }
+    }
+    if let Ok(v) = std::env::var(format!("{legacy_name}_PORT")) {
+        if let Ok(p) = v.parse::<u16>() {
+            return p;
+        }
+    }
+    fallback_port
 }
 
 /// Get primal endpoint with environment override

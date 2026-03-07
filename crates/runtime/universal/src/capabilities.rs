@@ -353,4 +353,78 @@ mod tests {
         let _ = ThroughputRequirement::Medium;
         let _ = ThroughputRequirement::High;
     }
+
+    #[tokio::test]
+    async fn test_discover_all_returns_units() {
+        let units = CapabilityDiscovery::discover_all().await;
+        // Should have at least CPU on default features
+        #[cfg(feature = "cpu")]
+        assert!(!units.is_empty(), "Should discover at least CPU");
+        #[cfg(not(feature = "cpu"))]
+        let _ = units;
+    }
+
+    #[test]
+    fn test_workload_size_boundary_1000() {
+        let w = make_workload(1000);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Small);
+    }
+
+    #[test]
+    fn test_workload_size_boundary_1001() {
+        let w = make_workload(1001);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Medium);
+    }
+
+    #[test]
+    fn test_workload_size_boundary_1_000_000() {
+        let w = make_workload(1_000_000);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Medium);
+    }
+
+    #[test]
+    fn test_workload_size_boundary_1_000_001() {
+        let w = make_workload(1_000_001);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Large);
+    }
+
+    #[test]
+    fn test_workload_size_zero() {
+        let w = make_workload(0);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Small);
+    }
+
+    #[test]
+    fn test_select_best_unit_skips_incompatible() {
+        let w = Workload {
+            operation: OperationType::MatMul,
+            data_type: DataType::F32,
+            num_operations: 1000,
+            required_memory: 0,
+            input: WorkloadData::F32Vec(vec![]),
+            params: WorkloadParams::default(),
+        };
+        let profile = WorkloadProfile::from_workload(&w);
+        let cpu = crate::backends::CpuComputeUnit::discover();
+        let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+        let best = profile.select_best_unit(&units, &w);
+        // CPU may or may not support MatMul
+        let _ = best;
+    }
+
+    #[test]
+    fn test_select_best_unit_prefers_higher_score() {
+        let w = make_workload(100);
+        let profile = WorkloadProfile::from_workload(&w);
+        let cpu1 = crate::backends::CpuComputeUnit::discover();
+        let cpu2 = crate::backends::CpuComputeUnit::discover();
+        let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu1), Box::new(cpu2)];
+        let best = profile.select_best_unit(&units, &w);
+        assert!(best.is_some());
+    }
 }

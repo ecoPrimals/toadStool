@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Type serialization tests - Month 2 Week 1 Day 2
+//! Type serialization tests
 //!
 //! Tier 1 tests: Coverage-measured type and serialization tests
 //! Focus: DistributedConfig, Job types, serialization roundtrips

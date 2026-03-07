@@ -26,18 +26,18 @@ use crate::network;
     note = "Use capability-based discovery via infant_discovery instead of primal-name port lookup"
 )]
 pub fn get_primal_default_port(primal_name: &str) -> u16 {
-    use crate::ports::{discovery_fallback, get_primal_port};
+    use crate::ports::{capability_fallback, resolve_capability_or_legacy_port};
 
-    let fallback = match primal_name {
-        "SONGBIRD" => discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT,
-        "BEARDOG" => discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT,
-        "NESTGATE" => discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT,
-        "SQUIRREL" => discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT,
-        "BIOMEOS" => discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT,
-        _ => crate::defaults::network::API_PORT, // Unknown primal: use ToadStool default
+    let (capability, fallback) = match primal_name {
+        "SONGBIRD" => ("COORDINATION", capability_fallback::COORDINATION),
+        "BEARDOG" => ("SECURITY", capability_fallback::SECURITY),
+        "NESTGATE" => ("STORAGE", capability_fallback::STORAGE),
+        "SQUIRREL" => ("PLATFORM", capability_fallback::PLATFORM),
+        "BIOMEOS" => ("ECOSYSTEM", capability_fallback::ECOSYSTEM),
+        _ => return crate::defaults::network::API_PORT,
     };
 
-    get_primal_port(primal_name, fallback)
+    resolve_capability_or_legacy_port(capability, primal_name, fallback)
 }
 
 /// Get Songbird port from environment or default

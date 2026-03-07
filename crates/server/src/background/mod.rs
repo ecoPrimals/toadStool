@@ -68,7 +68,8 @@ pub async fn start_background_services(state: ServerState) {
 
 #[cfg(test)]
 mod tests {
-    // Test helpers use MockResourceMonitor and MockRuntimeEngine for predictable behavior.
+    // Test helpers use SystemResourceMonitor (real implementation) for create_test_state.
+    // MockResourceMonitor is used only when tests need specific behavior (failure, predictable CPU).
     // Production background services receive ServerState from ToadStoolServer::new()
     // which uses SystemResourceMonitor; runtime engines are registered by the application.
     use super::*;
@@ -79,7 +80,7 @@ mod tests {
 
     use crate::config::{HealthCheckConfig, ServerConfig};
     use crate::state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerStatistics};
-    use toadstool::{ExecutionStatus, RuntimeType};
+    use toadstool::{ExecutionStatus, RuntimeType, SystemResourceMonitor};
     use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
     use toadstool_testing::mocks::runtime_engines::MockRuntimeEngine;
     use uuid::Uuid;
@@ -93,7 +94,7 @@ mod tests {
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             event_broadcaster,
             config,
-            resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+            resource_monitor: Arc::new(SystemResourceMonitor::new()),
             stats: Arc::new(RwLock::new(ServerStatistics::default())),
             capability_provider: None,
         }
@@ -144,24 +145,27 @@ mod tests {
             },
             ..ServerConfig::default()
         };
-        let state = create_test_state(config);
+        let mut state = create_test_state(config);
+        state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
         let healthy = perform_health_check(&state).await;
         assert!(!healthy);
     }
 
     #[tokio::test]
     async fn test_perform_health_check_memory_threshold_exceeded_returns_false() {
+        // MockResourceMonitor::new_successful() returns memory_usage_percent: 50.0
         let config = ServerConfig {
             health_check: HealthCheckConfig {
                 check_resources: true,
                 check_runtime_engines: false,
                 cpu_threshold_percent: 95.0,
-                memory_threshold_percent: 40.0, // 45 > 40
+                memory_threshold_percent: 40.0, // 50 > 40
                 ..HealthCheckConfig::default()
             },
             ..ServerConfig::default()
         };
-        let state = create_test_state(config);
+        let mut state = create_test_state(config);
+        state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
         let healthy = perform_health_check(&state).await;
         assert!(!healthy);
     }
@@ -297,7 +301,7 @@ mod tests {
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             event_broadcaster,
             config,
-            resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+            resource_monitor: Arc::new(SystemResourceMonitor::new()),
             stats: Arc::new(RwLock::new(ServerStatistics::default())),
             capability_provider: Some(Arc::new(CapabilityProvider::default())),
         };
@@ -427,7 +431,7 @@ mod tests {
         let event = ServerEvent::ExecutionCompleted {
             execution_id: Uuid::new_v4(),
             status: ExecutionStatus::Failed {
-                error: "timeout".to_string(),
+                error: std::borrow::Cow::Borrowed("timeout"),
             },
             duration_ms: 5000,
             timestamp: std::time::SystemTime::now(),

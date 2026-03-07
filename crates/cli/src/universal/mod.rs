@@ -156,4 +156,201 @@ mod tests {
         let result = manager.show_capabilities("yaml", false).await;
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    async fn test_detect_platforms_empty_categories_uses_defaults() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager.detect_platforms(vec![], false, None).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_with_test_platforms() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["traditional".to_string()], true, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_container_category() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["container".to_string()], false, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_language_category() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["language".to_string()], false, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_gpu_category() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["gpu".to_string()], false, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_quantum_category() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["quantum".to_string()], false, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_edge_category() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["edge".to_string()], false, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_biological_category() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["biological".to_string()], false, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_detect_platforms_neuromorphic_category() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .detect_platforms(vec!["neuromorphic".to_string()], false, None)
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_run_benchmarks_json_format() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .run_benchmarks("basic".to_string(), vec![], "json".to_string())
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_run_benchmarks_with_target_platforms() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let _ = manager
+            .detect_platforms(vec!["traditional".to_string()], false, None)
+            .await;
+        // Use specific platform IDs - may not exist but exercises the code path
+        let result = manager
+            .run_benchmarks(
+                "basic".to_string(),
+                vec![
+                    "traditional_linux".to_string(),
+                    "traditional_unknown".to_string(),
+                ],
+                "table".to_string(),
+            )
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_run_benchmarks_unknown_format_defaults_to_table() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager
+            .run_benchmarks("basic".to_string(), vec![], "unknown".to_string())
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_migrate_workload_target_not_found() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let _ = manager
+            .detect_platforms(vec!["traditional".to_string()], false, None)
+            .await;
+        let platforms: Vec<String> = manager.platforms.keys().cloned().collect();
+        let source = platforms
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "traditional_linux".to_string());
+        let result = manager
+            .migrate_workload(source, "nonexistent-target-xyz".to_string(), false, false)
+            .await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Target platform"));
+    }
+
+    #[tokio::test]
+    async fn test_migrate_workload_success_cold_migration() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let _ = manager
+            .detect_platforms(vec!["traditional".to_string()], false, None)
+            .await;
+        let platforms: Vec<String> = manager.platforms.keys().cloned().collect();
+        if platforms.len() >= 2 {
+            let result = manager
+                .migrate_workload(platforms[0].clone(), platforms[1].clone(), false, false)
+                .await;
+            assert!(result.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_migrate_workload_with_pause_source() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let _ = manager
+            .detect_platforms(vec!["traditional".to_string()], false, None)
+            .await;
+        let platforms: Vec<String> = manager.platforms.keys().cloned().collect();
+        if platforms.len() >= 2 {
+            let result = manager
+                .migrate_workload(platforms[0].clone(), platforms[1].clone(), true, false)
+                .await;
+            assert!(result.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_migrate_workload_with_verify() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let _ = manager
+            .detect_platforms(vec!["traditional".to_string()], false, None)
+            .await;
+        let platforms: Vec<String> = manager.platforms.keys().cloned().collect();
+        if platforms.len() >= 2 {
+            let result = manager
+                .migrate_workload(platforms[0].clone(), platforms[1].clone(), false, true)
+                .await;
+            assert!(result.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_show_capabilities_default_format() {
+        let manager = UniversalComputeManager::new().await.unwrap();
+        let result = manager.show_capabilities("unknown_format", false).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_show_capabilities_with_platforms() {
+        let mut manager = UniversalComputeManager::new().await.unwrap();
+        let _ = manager
+            .detect_platforms(vec!["traditional".to_string()], false, None)
+            .await;
+        let result = manager.show_capabilities("json", true).await;
+        assert!(result.is_ok());
+    }
 }

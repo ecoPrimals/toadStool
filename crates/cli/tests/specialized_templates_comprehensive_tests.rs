@@ -26,12 +26,12 @@ fn test_science_template_name() {
 }
 
 #[test]
-fn test_science_template_has_nestgate() {
+fn test_science_template_has_storage_capability() {
     let (_, _, primals, _, _, _, _, _) = create_science_template();
 
-    // Science needs NestGate for data management
-    assert!(primals.contains_key("nestgate"));
-    assert!(primals.get("nestgate").unwrap().enabled);
+    // Science needs storage capability for data management
+    assert!(primals.contains_key("capability:storage"));
+    assert!(primals.get("capability:storage").unwrap().enabled);
 }
 
 #[test]
@@ -227,17 +227,17 @@ fn test_distributed_template_name() {
 }
 
 #[test]
-fn test_distributed_template_has_songbird() {
+fn test_distributed_template_has_discovery_capability() {
     let (_, _, primals, _, _, _, _, _) = create_distributed_template();
 
-    assert!(primals.contains_key("songbird"));
+    assert!(primals.contains_key("capability:discovery"));
 }
 
 #[test]
-fn test_distributed_template_has_nestgate() {
+fn test_distributed_template_has_storage_capability() {
     let (_, _, primals, _, _, _, _, _) = create_distributed_template();
 
-    assert!(primals.contains_key("nestgate"));
+    assert!(primals.contains_key("capability:storage"));
 }
 
 #[test]

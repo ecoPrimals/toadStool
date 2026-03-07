@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal configuration and resource types for the integration trait.
+//!
+//! ## WateringHole Sovereignty: Capability-Based Types
+//!
+//! PrimalType represents **capability categories**, not primal names. ToadStool
+//! only has self-knowledge; other primals are discovered at runtime by capability.
+//! Use `SelfIdentity` for this primal; discover others via capability queries.
 
 use std::collections::HashMap;
 
@@ -10,13 +16,13 @@ use serde::{Deserialize, Serialize};
 pub struct PrimalConfig {
     /// Primal name
     pub name: String,
-    /// Primal type
+    /// Primal type (capability category)
     pub primal_type: PrimalType,
     /// Enable flag
     pub enabled: bool,
     /// Resource allocation
     pub resources: Option<PrimalResources>,
-    /// Dependencies on other Primals
+    /// Dependencies on other Primals (use "capability:storage" format)
     pub dependencies: Vec<String>,
     /// Custom configuration
     pub config: HashMap<String, serde_json::Value>,
@@ -28,91 +34,74 @@ pub struct PrimalConfig {
     pub annotations: HashMap<String, String>,
 }
 
-/// Types of Primals in the ecosystem
+/// Capability categories for primal discovery (WateringHole sovereignty).
+///
+/// Represents WHAT a primal does, not WHO it is. ToadStool only knows itself
+/// (SelfIdentity); other primals are discovered at runtime by capability.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum PrimalType {
-    /// `ToadStool` - Universal Compute
-    ToadStool,
-    /// Songbird - Network Coordination
-    Songbird,
-    /// `BearDog` - Security
-    BearDog,
-    /// `NestGate` - Storage
-    NestGate,
-    /// Squirrel - AI
-    Squirrel,
-    /// biomeOS - Universal OS
-    BiomeOS,
-    /// Custom Primal
+    /// Cryptographic operations (key derivation, encryption, signing)
+    Crypto,
+    /// Persistent storage and data management
+    Storage,
+    /// Service discovery and coordination
+    Discovery,
+    /// Orchestration and system monitoring
+    Orchestration,
+    /// Compute execution (native, WASM, GPU, ML)
+    Compute,
+    /// Self-identity (this primal only — ToadStool knows it IS ToadStool)
+    SelfIdentity,
+    /// Custom capability (discovered at runtime)
     Custom(String),
 }
 
 impl PrimalType {
-    /// Convert `PrimalType` to its string representation
-    ///
-    /// # Examples
-    /// ```
-    /// use toadstool_integration_primals::PrimalType;
-    ///
-    /// assert_eq!(PrimalType::Songbird.as_str(), "songbird");
-    /// assert_eq!(PrimalType::NestGate.as_str(), "nestgate");
-    /// ```
+    /// Convert `PrimalType` to its capability string representation
     #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
-            PrimalType::ToadStool => "toadstool",
-            PrimalType::Songbird => "songbird",
-            PrimalType::BearDog => "beardog",
-            PrimalType::NestGate => "nestgate",
-            PrimalType::Squirrel => "squirrel",
-            PrimalType::BiomeOS => "biomeos",
+            PrimalType::Crypto => "crypto",
+            PrimalType::Storage => "storage",
+            PrimalType::Discovery => "discovery",
+            PrimalType::Orchestration => "orchestration",
+            PrimalType::Compute => "compute",
+            PrimalType::SelfIdentity => "self",
             PrimalType::Custom(s) => s.as_str(),
         }
     }
 
-    /// Parse a string into a `PrimalType`
+    /// Parse a string into a `PrimalType`.
     ///
-    /// # Examples
-    /// ```
-    /// use toadstool_integration_primals::PrimalType;
-    ///
-    /// let primal = PrimalType::parse_type("songbird").unwrap();
-    /// assert_eq!(primal, PrimalType::Songbird);
-    /// ```
+    /// Accepts both capability names ("crypto", "storage") and legacy primal
+    /// names for backward compatibility when parsing manifests ("beardog",
+    /// "nestgate"). Legacy names map to their capability category.
     pub fn parse_type(s: &str) -> Result<Self, String> {
         match s.to_lowercase().as_str() {
-            "toadstool" => Ok(PrimalType::ToadStool),
-            "songbird" => Ok(PrimalType::Songbird),
-            "beardog" => Ok(PrimalType::BearDog),
-            "nestgate" => Ok(PrimalType::NestGate),
-            "squirrel" => Ok(PrimalType::Squirrel),
-            "biomeos" => Ok(PrimalType::BiomeOS),
+            "crypto" | "beardog" | "pki" | "security" => Ok(PrimalType::Crypto),
+            "storage" | "nestgate" => Ok(PrimalType::Storage),
+            "discovery" | "songbird" | "coordination" => Ok(PrimalType::Discovery),
+            "orchestration" | "biomeos" | "network" => Ok(PrimalType::Orchestration),
+            "compute" | "squirrel" | "ai" | "ml" => Ok(PrimalType::Compute),
+            "self" | "self_identity" | "toadstool" => Ok(PrimalType::SelfIdentity),
             other => Ok(PrimalType::Custom(other.to_string())),
         }
     }
 
-    /// Get all standard primal types (excluding Custom)
-    ///
-    /// # Examples
-    /// ```
-    /// use toadstool_integration_primals::PrimalType;
-    ///
-    /// let primals = PrimalType::standard_variants();
-    /// assert_eq!(primals.len(), 6);
-    /// ```
+    /// Get all standard capability categories (excluding Custom)
     #[must_use]
     pub fn standard_variants() -> &'static [PrimalType] {
         &[
-            PrimalType::ToadStool,
-            PrimalType::Songbird,
-            PrimalType::BearDog,
-            PrimalType::NestGate,
-            PrimalType::Squirrel,
-            PrimalType::BiomeOS,
+            PrimalType::Crypto,
+            PrimalType::Storage,
+            PrimalType::Discovery,
+            PrimalType::Orchestration,
+            PrimalType::Compute,
+            PrimalType::SelfIdentity,
         ]
     }
 
-    /// Check if this is a standard primal type
+    /// Check if this is a standard capability category
     #[must_use]
     pub fn is_standard(&self) -> bool {
         !matches!(self, PrimalType::Custom(_))
@@ -170,12 +159,12 @@ mod tests {
 
     #[test]
     fn test_primal_type_as_str() {
-        assert_eq!(PrimalType::ToadStool.as_str(), "toadstool");
-        assert_eq!(PrimalType::Songbird.as_str(), "songbird");
-        assert_eq!(PrimalType::BearDog.as_str(), "beardog");
-        assert_eq!(PrimalType::NestGate.as_str(), "nestgate");
-        assert_eq!(PrimalType::Squirrel.as_str(), "squirrel");
-        assert_eq!(PrimalType::BiomeOS.as_str(), "biomeos");
+        assert_eq!(PrimalType::Crypto.as_str(), "crypto");
+        assert_eq!(PrimalType::Storage.as_str(), "storage");
+        assert_eq!(PrimalType::Discovery.as_str(), "discovery");
+        assert_eq!(PrimalType::Orchestration.as_str(), "orchestration");
+        assert_eq!(PrimalType::Compute.as_str(), "compute");
+        assert_eq!(PrimalType::SelfIdentity.as_str(), "self");
         assert_eq!(PrimalType::Custom("foo".to_string()).as_str(), "foo");
     }
 
@@ -183,15 +172,19 @@ mod tests {
     fn test_primal_type_parse_type() {
         assert_eq!(
             PrimalType::parse_type("toadstool").unwrap(),
-            PrimalType::ToadStool
+            PrimalType::SelfIdentity
         );
         assert_eq!(
             PrimalType::parse_type("SONGBIRD").unwrap(),
-            PrimalType::Songbird
+            PrimalType::Discovery
         );
         assert_eq!(
             PrimalType::parse_type("Beardog").unwrap(),
-            PrimalType::BearDog
+            PrimalType::Crypto
+        );
+        assert_eq!(
+            PrimalType::parse_type("nestgate").unwrap(),
+            PrimalType::Storage
         );
         assert_eq!(
             PrimalType::parse_type("custom_type").unwrap(),
@@ -203,34 +196,35 @@ mod tests {
     fn test_primal_type_standard_variants() {
         let variants = PrimalType::standard_variants();
         assert_eq!(variants.len(), 6);
-        assert!(variants.contains(&PrimalType::ToadStool));
-        assert!(variants.contains(&PrimalType::Songbird));
+        assert!(variants.contains(&PrimalType::Crypto));
+        assert!(variants.contains(&PrimalType::Storage));
+        assert!(variants.contains(&PrimalType::SelfIdentity));
     }
 
     #[test]
     fn test_primal_type_is_standard() {
-        assert!(PrimalType::ToadStool.is_standard());
-        assert!(PrimalType::Songbird.is_standard());
+        assert!(PrimalType::SelfIdentity.is_standard());
+        assert!(PrimalType::Storage.is_standard());
         assert!(!PrimalType::Custom("x".to_string()).is_standard());
     }
 
     #[test]
     fn test_primal_type_display() {
-        assert_eq!(format!("{}", PrimalType::ToadStool), "toadstool");
-        assert_eq!(format!("{}", PrimalType::NestGate), "nestgate");
+        assert_eq!(format!("{}", PrimalType::SelfIdentity), "self");
+        assert_eq!(format!("{}", PrimalType::Storage), "storage");
     }
 
     #[test]
     fn test_primal_type_from_str() {
-        let p: PrimalType = "songbird".parse().unwrap();
-        assert_eq!(p, PrimalType::Songbird);
+        let p: PrimalType = "storage".parse().unwrap();
+        assert_eq!(p, PrimalType::Storage);
     }
 
     #[test]
     fn test_primal_config_serialization() {
         let config = PrimalConfig {
             name: "test".to_string(),
-            primal_type: PrimalType::ToadStool,
+            primal_type: PrimalType::SelfIdentity,
             enabled: true,
             resources: None,
             dependencies: vec![],

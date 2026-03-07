@@ -24,9 +24,9 @@ pub fn create_distributed_template() -> TemplateComponents {
     let (_, _, mut primals, mut services, mut resources, security, mut networking, mut storage) =
         super::super::basic_templates::create_basic_template();
 
-    // Add Songbird for orchestration
+    // Add discovery capability provider for orchestration
     primals.insert(
-        service_names::SONGBIRD.to_string(),
+        "capability:discovery".to_string(),
         PrimalConfig {
             version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
@@ -37,23 +37,31 @@ pub fn create_distributed_template() -> TemplateComponents {
             },
             enabled: true,
             config: HashMap::new(),
-            dependencies: vec![service_names::BEARDOG.to_string()],
-            health_check: Some(HealthCheck {
-                command: vec![
-                    service_names::SONGBIRD.to_string(),
-                    commands::HEALTH.to_string(),
-                ],
-                interval: 30,
-                timeout: 10,
-                retries: 3,
-                start_period: 60,
+            dependencies: vec!["capability:pki".to_string()],
+            health_check: Some({
+                let config = EnvironmentConfig::from_env();
+                HealthCheck {
+                    command: vec![
+                        commands::CURL.to_string(),
+                        "-f".to_string(),
+                        format!(
+                            "http://{}:{}/health",
+                            config.network.bind_address, config.network.songbird_port
+                        ),
+                    ],
+                    interval: 30,
+                    timeout: 10,
+                    retries: 3,
+                    start_period: 60,
+                }
             }),
         },
     );
 
-    // Add NestGate for distributed storage
+    // Add storage capability provider (image from registry; discovered by capability at runtime)
+    let storage_key = "capability:storage";
     primals.insert(
-        service_names::NESTGATE.to_string(),
+        storage_key.to_string(),
         PrimalConfig {
             version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
@@ -65,12 +73,22 @@ pub fn create_distributed_template() -> TemplateComponents {
             enabled: true,
             config: HashMap::new(),
             dependencies: vec!["capability:pki".to_string()],
-            health_check: Some(HealthCheck {
-                command: vec!["nestgate".to_string(), "health".to_string()],
-                interval: 30,
-                timeout: 10,
-                retries: 3,
-                start_period: 60,
+            health_check: Some({
+                let config = EnvironmentConfig::from_env();
+                HealthCheck {
+                    command: vec![
+                        commands::CURL.to_string(),
+                        "-f".to_string(),
+                        format!(
+                            "http://{}:{}/health",
+                            config.network.bind_address, config.network.nestgate_port
+                        ),
+                    ],
+                    interval: 30,
+                    timeout: 10,
+                    retries: 3,
+                    start_period: 60,
+                }
             }),
         },
     );
@@ -96,8 +114,8 @@ pub fn create_distributed_template() -> TemplateComponents {
             ports: vec![],
             volumes: vec![],
             dependencies: vec![
-                service_names::BEARDOG.to_string(),
-                service_names::SONGBIRD.to_string(),
+                "capability:pki".to_string(),
+                "capability:discovery".to_string(),
             ],
             health_check: Some({
                 let config = EnvironmentConfig::from_env();

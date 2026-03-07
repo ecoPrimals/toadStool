@@ -8,8 +8,8 @@
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **18,028 workspace tests** (0 failures, all concurrent)
-- **47 JSON-RPC methods** — REST + middleware removed; +transport.discover/list/route
+- **19,109 workspace tests** (0 failures, all concurrent)
+- **61+ JSON-RPC methods** (dynamically built from semantic registry)
 - **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport
 - **Capability-based discovery** — sovereignty: all production callers migrated
 - **ecoBin pure-rust verified** — zero C FFI deps

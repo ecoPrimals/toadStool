@@ -81,53 +81,37 @@ impl<'de> Deserialize<'de> for ServiceEndpoint {
     }
 }
 
-/// ⚠️ DEPRECATED: Hardcoded service names enum
+/// ⚠️ DEPRECATED: Use capability-based ServiceType instead.
 ///
-/// **Use `ServiceType` instead.**
-///
-/// This enum hardcodes service names, violating the infant discovery principle.
-/// Services should be identified by capabilities, not by hardcoded names.
-///
-/// # Migration Guide
-/// ```rust,ignore
-/// // ❌ OLD: Hardcoded enum
-/// let service = EcosystemService::BearDog;
-/// match service {
-///     EcosystemService::BearDog => handle_crypto(),
-///     _ => {}
-/// }
-///
-/// // ✅ NEW: Capability-based ServiceType
-/// let service_type = ServiceType::from_capability_list(capabilities);
-/// if service_type.provides_crypto() {
-///     handle_crypto();
-/// }
-/// ```
-///
-/// See: `crate::ecosystem::service_type::ServiceType` for the replacement.
+/// Evolved to use capability categories for WateringHole sovereignty.
 #[deprecated(
     since = "0.1.0",
-    note = "Use ServiceType instead. This enum hardcodes service names, violating infant discovery principles."
+    note = "Use ServiceType::from_capability() instead. Capability-based discovery."
 )]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub enum EcosystemService {
-    Songbird, // Service discovery and coordination
-    BearDog,  // Cryptographic security
-    NestGate, // Distributed storage
+    /// Discovery/coordination capability (legacy: Songbird)
+    #[serde(alias = "Songbird")]
+    Discovery,
+    /// Crypto/security capability (legacy: BearDog)
+    #[serde(alias = "BearDog")]
+    Crypto,
+    /// Storage capability (legacy: NestGate)
+    #[serde(alias = "NestGate")]
+    Storage,
+    /// Unknown capability (discovered at runtime)
     Unknown(String),
 }
 
 #[allow(deprecated)] // Implementation of deprecated EcosystemService
 impl EcosystemService {
-    // Removed parse() - unused helper. Services are constructed directly.
-
-    /// ⚠️ DEPRECATED: Use `ServiceType::display_name()` instead
-    #[deprecated(since = "0.1.0", note = "Use ServiceType::display_name() instead")]
+    /// Capability string for this service type
     pub(super) fn name(&self) -> &str {
         match self {
-            EcosystemService::Songbird => "songbird",
-            EcosystemService::BearDog => "beardog",
-            EcosystemService::NestGate => "nestgate",
+            EcosystemService::Discovery => "discovery",
+            EcosystemService::Crypto => "crypto",
+            EcosystemService::Storage => "storage",
             EcosystemService::Unknown(name) => name,
         }
     }
@@ -212,47 +196,53 @@ pub struct DiscoveredService {
 )]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ServiceType {
-    Songbird,
-    BearDog,
-    NestGate,
-    ToadStool,
+    /// Discovery/coordination capability
+    Discovery,
+    /// Crypto/security capability
+    Crypto,
+    /// Storage capability
+    Storage,
+    /// Compute capability (self-identity)
+    Compute,
     /// Generic service identified by capabilities
     Generic,
 }
 
 #[allow(deprecated)] // ServiceType impl; deprecated during migration to capability-based discovery
 impl ServiceType {
-    /// Map to capability name (for migration)
+    /// Map to capability name
     pub fn to_capability(&self) -> &'static str {
         match self {
-            ServiceType::Songbird => "orchestration",
-            ServiceType::BearDog => "pki",
-            ServiceType::NestGate => "storage",
-            ServiceType::ToadStool => "compute:execution",
+            ServiceType::Discovery => "discovery",
+            ServiceType::Crypto => "crypto",
+            ServiceType::Storage => "storage",
+            ServiceType::Compute => "compute",
             ServiceType::Generic => "generic",
         }
     }
 
-    /// Create from capability (for migration)
+    /// Create from capability (capability-based discovery)
     pub fn from_capability(capability: &str) -> Self {
         match capability {
-            "orchestration" => ServiceType::Songbird,
-            "pki" => ServiceType::BearDog,
-            "storage" => ServiceType::NestGate,
-            "compute:execution" | "compute" => ServiceType::ToadStool,
+            "discovery" | "orchestration" | "coordination" => ServiceType::Discovery,
+            "crypto" | "pki" | "security" => ServiceType::Crypto,
+            "storage" => ServiceType::Storage,
+            "compute" | "compute:execution" => ServiceType::Compute,
             _ => ServiceType::Generic,
         }
     }
 
-    /// Create from service name (for migration/backward compatibility)
+    /// Create from service name (backward compatibility when parsing discovered services).
+    /// Resolves legacy primal names to capability categories.
     pub fn from_name(name: &str) -> Self {
-        match name.to_lowercase().as_str() {
-            "songbird" | "orchestration" => ServiceType::Songbird,
-            "beardog" | "pki" => ServiceType::BearDog,
-            "nestgate" | "storage" => ServiceType::NestGate,
-            "toadstool" | "compute" => ServiceType::ToadStool,
-            _ => ServiceType::Generic,
-        }
+        Self::from_capability(match name.to_lowercase().as_str() {
+            "songbird" => "discovery",
+            "beardog" => "crypto",
+            "nestgate" => "storage",
+            "toadstool" => "compute",
+            "squirrel" => "compute",
+            other => other,
+        })
     }
 }
 
@@ -291,15 +281,27 @@ impl Default for CryptoVerificationContext {
         // Load trusted public keys from environment or configuration
         let mut trusted_keys = HashMap::new();
 
-        // Production keys should be loaded from secure configuration
-        if let Ok(songbird_key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
-            trusted_keys.insert("songbird".to_string(), songbird_key);
+        // Capability-based env vars (WateringHole sovereignty)
+        if let Ok(key) = std::env::var("CRYPTO_PROVIDER_PUBLIC_KEY") {
+            trusted_keys.insert("crypto".to_string(), key.clone());
+            trusted_keys.insert("beardog".to_string(), key); // backward compat
+        } else if let Ok(key) = std::env::var("BEARDOG_PUBLIC_KEY") {
+            trusted_keys.insert("crypto".to_string(), key.clone());
+            trusted_keys.insert("beardog".to_string(), key);
         }
-        if let Ok(beardog_key) = std::env::var("BEARDOG_PUBLIC_KEY") {
-            trusted_keys.insert("beardog".to_string(), beardog_key);
+        if let Ok(key) = std::env::var("STORAGE_PROVIDER_PUBLIC_KEY") {
+            trusted_keys.insert("storage".to_string(), key.clone());
+            trusted_keys.insert("nestgate".to_string(), key); // backward compat
+        } else if let Ok(key) = std::env::var("NESTGATE_PUBLIC_KEY") {
+            trusted_keys.insert("storage".to_string(), key.clone());
+            trusted_keys.insert("nestgate".to_string(), key);
         }
-        if let Ok(nestgate_key) = std::env::var("NESTGATE_PUBLIC_KEY") {
-            trusted_keys.insert("nestgate".to_string(), nestgate_key);
+        if let Ok(key) = std::env::var("DISCOVERY_PROVIDER_PUBLIC_KEY") {
+            trusted_keys.insert("discovery".to_string(), key.clone());
+            trusted_keys.insert("songbird".to_string(), key); // backward compat
+        } else if let Ok(key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
+            trusted_keys.insert("discovery".to_string(), key.clone());
+            trusted_keys.insert("songbird".to_string(), key);
         }
 
         Self {
@@ -529,7 +531,7 @@ mod tests {
     #[allow(deprecated)]
     fn test_service_endpoint_deserialize_roundtrip() {
         let endpoint = ServiceEndpoint {
-            service_type: EcosystemService::Songbird,
+            service_type: EcosystemService::Discovery,
             address: "127.0.0.1:8080".parse().unwrap(),
             version: Arc::from("1.0"),
             capabilities: vec!["discovery".to_string()],
@@ -538,7 +540,7 @@ mod tests {
         let json = serde_json::to_string(&endpoint).unwrap();
         let restored: ServiceEndpoint = serde_json::from_str(&json).unwrap();
         assert_eq!(restored.version.as_ref(), "1.0");
-        assert!(matches!(restored.service_type, EcosystemService::Songbird));
+        assert!(matches!(restored.service_type, EcosystemService::Discovery));
     }
 }
 

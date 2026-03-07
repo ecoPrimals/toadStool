@@ -64,7 +64,7 @@ pub async fn cancel_all_executions(state: &ServerState) -> ServerResult<()> {
 
 #[cfg(test)]
 mod tests {
-    // Test helper uses MockResourceMonitor for predictable behavior. Production
+    // Test helper uses SystemResourceMonitor (real implementation). Production
     // lifecycle receives ServerState from ToadStoolServer::new() which uses SystemResourceMonitor.
     use super::*;
     use std::collections::HashMap;
@@ -76,7 +76,7 @@ mod tests {
     use crate::state::{ActiveExecution, ClientInfo, ServerState, ServerStatistics};
     use toadstool::ExecutionStatus;
     use toadstool::RuntimeType;
-    use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
+    use toadstool::SystemResourceMonitor;
 
     fn create_test_state() -> ServerState {
         let (event_broadcaster, _) = broadcast::channel(100);
@@ -85,7 +85,7 @@ mod tests {
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             event_broadcaster,
             config: crate::config::ServerConfig::default(),
-            resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+            resource_monitor: Arc::new(SystemResourceMonitor::new()),
             stats: Arc::new(RwLock::new(ServerStatistics::default())),
             capability_provider: None,
         }

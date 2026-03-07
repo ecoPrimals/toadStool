@@ -217,6 +217,24 @@ pub mod content_types {
     pub const BINARY: &str = "application/octet-stream";
 }
 
+/// Runtime type names (for RuntimeType::Custom and display)
+///
+/// Use these when converting RuntimeType to string for logging, metrics, or IPC.
+pub mod runtime_types {
+    /// Native process execution
+    pub const NATIVE: &str = "native";
+    /// WebAssembly execution
+    pub const WASM: &str = "wasm";
+    /// Container execution
+    pub const CONTAINER: &str = "container";
+    /// GPU acceleration
+    pub const GPU: &str = "gpu";
+    /// Python runtime
+    pub const PYTHON: &str = "python";
+    /// BiomeOS integration runtime
+    pub const BIOMEOS: &str = "biomeos";
+}
+
 /// Common discovery sources
 pub mod discovery_sources {
     pub const MDNS: &str = "mdns";
@@ -274,5 +292,15 @@ mod tests {
     fn test_content_types() {
         assert_eq!(content_types::JSON, "application/json");
         assert_eq!(content_types::YAML, "application/yaml");
+    }
+
+    #[test]
+    fn test_runtime_types() {
+        assert_eq!(runtime_types::NATIVE, "native");
+        assert_eq!(runtime_types::WASM, "wasm");
+        assert_eq!(runtime_types::CONTAINER, "container");
+        assert_eq!(runtime_types::GPU, "gpu");
+        assert_eq!(runtime_types::PYTHON, "python");
+        assert_eq!(runtime_types::BIOMEOS, "biomeos");
     }
 }

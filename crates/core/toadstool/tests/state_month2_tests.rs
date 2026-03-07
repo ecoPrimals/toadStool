@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! State management tests - Month 2 Week 2 Day 4
+//! State management tests
 //!
 //! Tier 1 tests: Coverage-measured state management tests
 //! Focus: State consistency, transitions, persistence, concurrent access

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used)] // expect() is idiomatic in tests
-//! Capability system tests - Month 2 Week 2 Day 4
+//! Capability system tests
 //!
 //! Tier 1 tests: Coverage-measured capability tests
 //! Focus: Capability detection, registration, resolution, priority

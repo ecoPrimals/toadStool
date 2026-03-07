@@ -127,29 +127,29 @@ mod tests {
     #[test]
     #[allow(deprecated)] // Testing deprecated ServiceType during migration
     fn test_service_type_variants() {
-        assert!(matches!(ServiceType::Songbird, ServiceType::Songbird));
-        assert!(matches!(ServiceType::BearDog, ServiceType::BearDog));
-        assert!(matches!(ServiceType::NestGate, ServiceType::NestGate));
-        assert!(matches!(ServiceType::ToadStool, ServiceType::ToadStool));
+        assert!(matches!(ServiceType::Discovery, ServiceType::Discovery));
+        assert!(matches!(ServiceType::Crypto, ServiceType::Crypto));
+        assert!(matches!(ServiceType::Storage, ServiceType::Storage));
+        assert!(matches!(ServiceType::Compute, ServiceType::Compute));
         assert!(matches!(ServiceType::Generic, ServiceType::Generic));
 
         // Test capability mapping
-        assert_eq!(ServiceType::Songbird.to_capability(), "orchestration");
-        assert_eq!(ServiceType::BearDog.to_capability(), "pki");
-        assert_eq!(ServiceType::NestGate.to_capability(), "storage");
+        assert_eq!(ServiceType::Discovery.to_capability(), "discovery");
+        assert_eq!(ServiceType::Crypto.to_capability(), "crypto");
+        assert_eq!(ServiceType::Storage.to_capability(), "storage");
 
-        // Test from_name migration helper
+        // Test from_name migration helper (legacy primal names -> capability)
         assert!(matches!(
             ServiceType::from_name("songbird"),
-            ServiceType::Songbird
+            ServiceType::Discovery
         ));
         assert!(matches!(
             ServiceType::from_name("orchestration"),
-            ServiceType::Songbird
+            ServiceType::Discovery
         ));
         assert!(matches!(
-            ServiceType::from_name("pki"),
-            ServiceType::BearDog
+            ServiceType::from_name("beardog"),
+            ServiceType::Crypto
         ));
         assert!(matches!(
             ServiceType::from_name("unknown"),
@@ -161,14 +161,14 @@ mod tests {
     #[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
     fn test_service_endpoint_creation() {
         let endpoint = ServiceEndpoint {
-            service_type: EcosystemService::Songbird,
+            service_type: EcosystemService::Discovery,
             address: "127.0.0.1:8080".parse().unwrap(),
             version: Arc::from("1.0.0"),
             capabilities: vec!["discovery".to_string(), "coordination".to_string()],
             trust_level: TrustLevel::Verified,
         };
 
-        assert!(matches!(endpoint.service_type, EcosystemService::Songbird));
+        assert!(matches!(endpoint.service_type, EcosystemService::Discovery));
         assert_eq!(endpoint.version.as_ref(), "1.0.0");
         assert_eq!(endpoint.capabilities.len(), 2);
         assert!(matches!(endpoint.trust_level, TrustLevel::Verified));
@@ -178,7 +178,7 @@ mod tests {
     #[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
     fn test_service_endpoint_serialization() {
         let endpoint = ServiceEndpoint {
-            service_type: EcosystemService::BearDog,
+            service_type: EcosystemService::Crypto,
             address: format!(
                 "{}:{}",
                 toadstool_common::constants::LOCALHOST_IPV4,
@@ -250,14 +250,14 @@ mod tests {
         capabilities.insert("version".to_string(), "1.0.0".to_string());
 
         let service = DiscoveredService {
-            service_type: ServiceType::Songbird,
+            service_type: ServiceType::Discovery,
             address: "127.0.0.1:8080".parse().unwrap(),
             trust_level: TrustLevel::Verified,
             capabilities,
             last_seen: std::time::SystemTime::now(),
         };
 
-        assert!(matches!(service.service_type, ServiceType::Songbird));
+        assert!(matches!(service.service_type, ServiceType::Discovery));
         assert_eq!(service.capabilities.len(), 1);
     }
 
@@ -414,7 +414,7 @@ mod tests {
     #[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
     fn test_discovery_result_with_services() {
         let endpoint = ServiceEndpoint {
-            service_type: EcosystemService::Songbird,
+            service_type: EcosystemService::Discovery,
             address: "127.0.0.1:8080".parse().unwrap(),
             version: Arc::from("1.0.0"),
             capabilities: vec!["discovery".to_string()],

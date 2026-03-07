@@ -7,6 +7,12 @@ mod capabilities;
 mod execution;
 mod format;
 
+// Re-export for integration tests (coverage)
+pub use execution::{
+    create_executor, is_platform_constraint_str, is_selinux_enforcing, start_servers_with_fallback,
+    write_tcp_discovery_file,
+};
+
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tracing::{error, info, warn};

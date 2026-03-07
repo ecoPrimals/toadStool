@@ -1,18 +1,17 @@
 # Testing Status
 
-**Last Updated**: February 26, 2026 -- Session 68+
+**Last Updated**: March 7, 2026 -- Session 129
 
 ## Quick Status
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Barracuda Tests** | **2,546+** | 122 shader-specific (unit/e2e/chaos/fault) |
-| **Workspace Tests** | **21,599+** | Full workspace lib tests |
-| **Shader Tests** | **122** | Unit + e2e + chaos (15) + fault (13) |
+| **Workspace Tests** | **19,109** | 0 failures, 203 intentional GPU ignores |
+| **BarraCuda Tests** | Separate primal | Budded to `ecoPrimals/barraCuda/` (S93) |
 | **Unit Tests** | Comprehensive | All critical paths covered |
 | **Integration Tests** | Complete | Multi-primal, distributed, security |
 | **Chaos Tests** | Complete | Network, resource, fault injection |
-| **Four Springs** | 4,000+ acceptance checks | hotSpring, neuralSpring, airSpring, groundSpring |
+| **Five Springs** | 5,000+ acceptance checks | hotSpring, neuralSpring, airSpring, groundSpring, wetSpring |
 
 ## Test Coverage Evolution
 

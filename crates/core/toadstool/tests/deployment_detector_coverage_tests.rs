@@ -619,7 +619,7 @@ async fn test_detector_azure_region_fallback() {
     );
 }
 
-// ── DetectionError Display ──────────────────────────────────────────────────────
+// ── DetectionError Display and variants ─────────────────────────────────────────
 
 #[test]
 fn test_detection_error_display() {
@@ -627,4 +627,105 @@ fn test_detection_error_display() {
     let err = DetectionError::ContainerIdNotFound;
     let s = format!("{}", err);
     assert!(s.contains("Container") || s.contains("not found") || !s.is_empty());
+}
+
+#[test]
+fn test_detection_error_io_display() {
+    use std::io;
+    use toadstool::deployment_layer::DetectionError;
+    let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
+    let err = DetectionError::Io(io_err);
+    let s = format!("{}", err);
+    assert!(!s.is_empty());
+}
+
+#[test]
+fn test_detection_error_detection_failed_display() {
+    use toadstool::deployment_layer::DetectionError;
+    let err = DetectionError::DetectionFailed("timeout".to_string());
+    let s = format!("{}", err);
+    assert!(s.contains("timeout") || s.contains("Failed"));
+}
+
+#[test]
+fn test_detection_error_external_http_disabled() {
+    use toadstool::deployment_layer::DetectionError;
+    let err = DetectionError::ExternalHttpDisabled;
+    let s = format!("{}", err);
+    assert!(!s.is_empty());
+}
+
+// ── LayerDetector detect returns valid variant (bare metal fallback) ─────────────
+
+#[tokio::test]
+async fn test_detector_bare_metal_fallback_with_no_cloud_container_vm() {
+    temp_env::with_vars(
+        [
+            ("AWS_EXECUTION_ENV", None::<&str>),
+            ("GCP_PROJECT", None::<&str>),
+            ("AZURE_SUBSCRIPTION_ID", None::<&str>),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let layer = detector.detect().await.expect("detect succeeds");
+                    assert!(
+                        matches!(
+                            layer,
+                            DeploymentLayer::BareMetalOS
+                                | DeploymentLayer::ContainerLayer { .. }
+                                | DeploymentLayer::CloudLayer { .. }
+                                | DeploymentLayer::VMLayer { .. }
+                                | DeploymentLayer::MiddlewareLayer { .. }
+                                | DeploymentLayer::ServiceLayer { .. }
+                        ),
+                        "layer must be a valid variant: {:?}",
+                        layer
+                    );
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
+}
+
+// ── CloudProvider Display (via DeploymentLayer) ─────────────────────────────────
+
+#[test]
+fn test_cloud_provider_oracle_variant() {
+    let layer = DeploymentLayer::CloudLayer {
+        provider: CloudProvider::Oracle,
+        instance_type: None,
+        region: None,
+    };
+    let s = format!("{}", layer);
+    assert!(s.contains("Oracle") || s.contains("Cloud"));
+}
+
+#[test]
+fn test_cloud_provider_digital_ocean_variant() {
+    let layer = DeploymentLayer::CloudLayer {
+        provider: CloudProvider::DigitalOcean,
+        instance_type: None,
+        region: None,
+    };
+    let s = format!("{}", layer);
+    assert!(s.contains("DigitalOcean") || s.contains("Cloud"));
+}
+
+#[test]
+fn test_cloud_provider_custom_variant() {
+    let layer = DeploymentLayer::CloudLayer {
+        provider: CloudProvider::Custom("my-cloud".to_string()),
+        instance_type: None,
+        region: None,
+    };
+    let s = format!("{}", layer);
+    assert!(s.contains("my-cloud") || s.contains("Cloud"));
 }

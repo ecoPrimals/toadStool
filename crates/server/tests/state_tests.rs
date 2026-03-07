@@ -350,7 +350,7 @@ fn test_active_execution_with_all_execution_statuses() {
         ExecutionStatus::Running,
         ExecutionStatus::Success,
         ExecutionStatus::Failed {
-            error: "test error".to_string(),
+            error: "test error".into(),
         },
         ExecutionStatus::Cancelled,
     ];

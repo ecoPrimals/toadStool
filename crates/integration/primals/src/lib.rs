@@ -204,7 +204,7 @@ mod tests {
                     "test".to_string(),
                     PrimalConfig {
                         name: "test".to_string(),
-                        primal_type: PrimalType::Custom("test".to_string()),
+                        primal_type: PrimalType::Compute,
                         enabled: true,
                         resources: None,
                         dependencies: vec![],

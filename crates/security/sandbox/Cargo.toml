@@ -55,7 +55,7 @@ thiserror = { workspace = true }
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 [target.'cfg(target_os = "linux")'.dependencies]
 caps = "0.5"
-procfs = "0.16"
+procfs = { version = "0.16", default-features = false }
 # Pure Rust seccomp implementation (used by Firecracker)
 seccompiler = { version = "0.5", optional = true }
 

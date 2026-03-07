@@ -9,39 +9,29 @@
 //! This module contains legacy well-known constants. For new code, use the
 //! capability-based discovery system to find primals at runtime.
 
-/// # ⚠️ DEPRECATED: Default network ports for ecosystem primals
-///
-/// **Consolidated in `toadstool_config::ports::discovery_fallback`**.
-/// Use `ports::discovery_fallback::DEFAULT_*_DISCOVERY_PORT` for discovery fallback ports.
-///
-/// **Production**: Use `RuntimeDiscovery::discover_capability()` for capability-based discovery.
+/// **DEPRECATED**: Use `toadstool_config::ports::capability_fallback` for port defaults,
+/// or `RuntimeDiscovery::discover_capability()` for production.
 #[deprecated(
     since = "0.3.0",
-    note = "Use toadstool_config::ports::discovery_fallback for discovery ports. \
-            Use RuntimeDiscovery::discover_capability() for production."
+    note = "Use toadstool_config::ports::capability_fallback for port defaults."
 )]
 pub mod ports {
-    use crate::ports::discovery_fallback;
+    use crate::ports::capability_fallback;
 
-    /// Default Songbird service mesh port
-    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT")]
-    pub const SONGBIRD: u16 = discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT;
+    #[deprecated(note = "Use ports::capability_fallback::COORDINATION")]
+    pub const SONGBIRD: u16 = capability_fallback::COORDINATION;
 
-    /// Default BearDog security service port
-    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT")]
-    pub const BEARDOG: u16 = discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT;
+    #[deprecated(note = "Use ports::capability_fallback::SECURITY")]
+    pub const BEARDOG: u16 = capability_fallback::SECURITY;
 
-    /// Default NestGate storage service port
-    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT")]
-    pub const NESTGATE: u16 = discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT;
+    #[deprecated(note = "Use ports::capability_fallback::STORAGE")]
+    pub const NESTGATE: u16 = capability_fallback::STORAGE;
 
-    /// Default ToadStool compute service port (port 0 = OS-assigned)
     #[deprecated(note = "Use defaults::network::API_PORT for ToadStool self-config")]
     pub const TOADSTOOL: u16 = 0;
 
-    /// Default Squirrel MCP platform port
-    #[deprecated(note = "Use ports::discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT")]
-    pub const SQUIRREL: u16 = discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT;
+    #[deprecated(note = "Use ports::capability_fallback::PLATFORM")]
+    pub const SQUIRREL: u16 = capability_fallback::PLATFORM;
 }
 
 /// # ⚠️ DEPRECATED: Ecosystem primal service names

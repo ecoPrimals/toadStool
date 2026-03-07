@@ -369,3 +369,108 @@ async fn test_engine_no_fallback_fails_on_first_error() {
     let result = UniversalGpuEngine::with_config(config).await;
     assert!(result.is_err());
 }
+
+#[tokio::test]
+async fn test_engine_execute_gpu_workload_no_devices() {
+    use toadstool::workload::GpuProgramSource;
+    let engine = UniversalGpuEngine::default();
+    let request = ExecutionRequest {
+        execution_id: Uuid::new_v4(),
+        workload: WorkloadSpec::Gpu {
+            program: GpuProgramSource::OpenCL {
+                source: "void kernel main() {}".to_string(),
+            },
+            kernel_name: "main".to_string(),
+            global_work_size: (1, 1, 1),
+            work_group_size: Some((1, 1, 1)),
+            args: vec![],
+        },
+        runtime_hint: None,
+        resources: Default::default(),
+        security_context: Default::default(),
+        timeout: None,
+        environment: Default::default(),
+        input_data: Default::default(),
+        callback_config: None,
+        encryption_config: None,
+    };
+    let result = engine.execute(request).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_engine_get_statistics_with_sessions() {
+    let engine = UniversalGpuEngine::default();
+    let stats = engine.get_statistics().await;
+    assert_eq!(stats.total_devices, 0);
+    assert_eq!(stats.active_sessions, 0);
+    assert_eq!(stats.frameworks_available, 0);
+}
+
+#[test]
+fn test_engine_capabilities_platform_features() {
+    let engine = UniversalGpuEngine::default();
+    let caps = engine.get_capabilities();
+    assert!(caps
+        .platform_features
+        .get("parallel_compute")
+        .copied()
+        .unwrap_or(false));
+    assert!(caps
+        .platform_features
+        .get("recursive_execution")
+        .copied()
+        .unwrap_or(false));
+    assert!(caps.supported_architectures.contains(&"x86_64".to_string()));
+}
+
+#[test]
+fn test_engine_capabilities_version() {
+    let engine = UniversalGpuEngine::default();
+    let caps = engine.get_capabilities();
+    assert_eq!(caps.version, "1.0.0");
+}
+
+#[tokio::test]
+async fn test_engine_with_metal_only() {
+    let mut config = UniversalGpuConfig::default();
+    config.discovery.enabled_frameworks = vec![GpuFramework::Metal];
+    config.discovery.auto_fallback = true;
+    let result = UniversalGpuEngine::with_config(config).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_engine_with_rocm_only() {
+    let mut config = UniversalGpuConfig::default();
+    config.discovery.enabled_frameworks = vec![GpuFramework::Rocm];
+    config.discovery.auto_fallback = true;
+    let result = UniversalGpuEngine::with_config(config).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_engine_with_direct_compute_only() {
+    let mut config = UniversalGpuConfig::default();
+    config.discovery.enabled_frameworks = vec![GpuFramework::DirectCompute];
+    config.discovery.auto_fallback = true;
+    let result = UniversalGpuEngine::with_config(config).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_engine_with_cuda_only() {
+    let mut config = UniversalGpuConfig::default();
+    config.discovery.enabled_frameworks = vec![GpuFramework::Cuda];
+    config.discovery.auto_fallback = true;
+    let result = UniversalGpuEngine::with_config(config).await;
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_engine_default_has_capabilities() {
+    let engine = UniversalGpuEngine::default();
+    let caps = engine.get_capabilities();
+    assert!(!caps.supported_workloads.is_empty());
+    assert!(caps.max_concurrent_executions.is_some());
+}
