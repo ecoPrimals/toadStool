@@ -1,10 +1,34 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 7, 2026 — Session 130  
-**Sources**: hotSpring (v0.6.17), neuralSpring (V86/S128), wetSpring (V97d), airSpring (V071), groundSpring (V85), wateringHole (updated MAR07)  
+**Date**: March 7, 2026 — Session 130+  
+**Sources**: hotSpring (v0.6.19), neuralSpring (V87/S129), wetSpring (V97d+), airSpring (V071), groundSpring (V95), wateringHole (updated MAR07)  
+**S130+**: Clippy pedantic clean (workspace-wide, 0 warnings). Spring sync: all 5 springs confirm zero API breakage against toadStool S130. Pin versions updated. 19,536 tests, 0 failures.  
 **S130**: Cross-spring shader rewiring — `shader.compile.*` stubs evolved to real coralReef proxy with capability-based discovery. `CoralReefClient` with lazy connection. `cross_spring_provenance.rs` (17+ flows, `toadstool.provenance` method). 31 new tests.  
 **S129**: Deep debt execution — C dep evolution, capability-based port resolution, 5 god files refactored, 200+ coverage tests, zero-copy hot paths. 19,109 tests, 0 failures.  
 **S128**: f64 shared-memory bug absorbed (groundSpring V84-V85), PrecisionRoutingAdvice, sovereign_binary_capable, shader.compile.* IPC, capability-based handler evolution, architecture stub completion.
+
+## S130+ Spring Sync — All Springs Current, No New Absorption Needed
+
+Reviewed 8 handoffs across all 5 springs + wateringHole (Mar 5-7, 2026). All springs confirm zero API breakage against toadStool S130. No new shaders or code changes needed for toadStool.
+
+### Pin Updates
+- hotSpring v0.6.17 → **v0.6.19**: DF64 compilation fully delegated to barraCuda, 3 Chuna papers CPU-complete, cross-spring GPU benchmarks
+- groundSpring V85 → **V95**: coralReef Phase 11 push buffer encoding fixed (5/5 GPU method tests pass on Titan V), 102 delegations (was 87)
+- neuralSpring V86/S128 → **V87/S129**: struct-based API migration complete, `#![forbid(unsafe_code)]` enforced, 883 lib + 240 bins
+- wetSpring V97d → **V97d+**: ecosystem sync validated (1,347 tests, 0 failures, zero API breakage), streaming I/O deprecation
+- airSpring V071: NVK zero-output detection + CPU fallback, Kokkos validation gap documented, cargo-deny added
+
+### Key Findings
+- **neuralSpring V87**: 12 GPU test failures on llvmpipe — fused shaders return 0.0. Hypothesis: wgpu 28 + llvmpipe interaction. Action: barraCuda investigation.
+- **groundSpring V95**: coralReef Phase 11 breakthrough — push buffer count/method field swap fixed. QMD CBUF binding is next P0 blocker. Also: `SumReduceF64`/`VarianceReduceF64` missing Fp64Strategy branching (barraCuda P0).
+- **airSpring V071**: Recommends generic `NvkZeroGuard` in barraCuda. Kokkos gap dominated by wgpu dispatch overhead (100x-2600x). toadStool's `PrecisionRoutingAdvice` already routes around NVK issues.
+- **hotSpring v0.6.19**: DF64 delegation complete. `GpuView<T>` and `mean_variance_buffer()` are future adoption targets for physics. Edition 2024 migration planned.
+- **wetSpring V97d+**: Zero API breakage. New barraCuda primitives available but not yet consumed (`BatchedOdeRK45F64`, provenance module). Write-phase candidates for barraCuda: `special::{erf, ln_gamma, dot, l2_norm}`.
+
+### Verdict
+toadStool is current. All absorption through S130 is confirmed. Remaining work is barraCuda-owned (fused shader fixes, Kokkos gaps, NVK zero-output guard) or coralReef-owned (QMD CBUF binding, sovereign pipeline completion).
+
+---
 
 ## S128 Execution Log — Deep Debt Evolution & groundSpring Absorption
 

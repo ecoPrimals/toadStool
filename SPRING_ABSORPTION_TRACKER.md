@@ -1,17 +1,17 @@
 # Spring Absorption Tracker
 
-**Session**: S130 Cross-Spring Shader Rewiring (March 7, 2026)
-**ToadStool**: master, ~83% line coverage (170K lines). 19,140+ tests, 0 failures. coralReef shader proxy with capability-based discovery. Cross-spring provenance tracking. 45+ god files refactored. All quality gates passing.
+**Session**: S130+ Clippy Pedantic Clean + Spring Sync (March 7, 2026)
+**ToadStool**: master, ~83% line coverage (576K lines, 1,868 .rs files). 19,536 tests, 0 failures. Clippy pedantic clean. coralReef shader proxy with capability-based discovery. Cross-spring provenance tracking. 45+ god files refactored. All quality gates passing.
 
 ## Spring Pin Status
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.17 | S95→S97 | S97→S128 | 669 | Lattice QCD, MD reservoir, NPU, gradient flow, Verlet |
-| groundSpring | V85 | V80→S97 | V85→S128 | 812+390 | 87 (51 CPU + 36 GPU), metalForge 30 workloads, f64 shared-mem bug |
-| neuralSpring | V86/S128 | V86/S128→S97 | V86/S128→S128 | 4,100+ | 42 WGSL, gpu_dispatch, coralForge |
-| wetSpring | V97d | V97d→S97 | V97d→S128 | 1,047+200 | 150+ primitives, 0 local WGSL (fully lean) |
-| airSpring | V071 | V071→S97 | V071→S128 | 827+1,498 | 25 Tier A GPU + 6 universal, 3 local WGSL ops |
+| hotSpring | v0.6.19 | S97→S128 | S128→S130+ | 724 lib + 19 integration | Lattice QCD, MD reservoir, NPU, gradient flow, Verlet, DF64 delegation complete, 3 Chuna papers CPU-validated |
+| groundSpring | V95 | V85→S128 | V95→S130+ | 907 + 390 forge | 102 (61 CPU + 41 GPU), metalForge 30 workloads, coralReef Phase 11 push buffer fix |
+| neuralSpring | V87/S129 | V86/S128→S128 | V87/S129→S130+ | 883 lib + 240 bins | 46 upstream rewires, struct-based API migration complete, `#![forbid(unsafe_code)]` |
+| wetSpring | V97d+ | V97d→S128 | V97d+→S130+ | 1,047 + 200 forge | 150+ primitives, 0 local WGSL (fully lean), zero API breakage confirmed |
+| airSpring | V071 | V071→S128 | V071→S130+ | 850 + 61 forge | 21 Tier A GPU + 6 universal, 3 local WGSL ops, NVK zero-output detection |
 
 ## Absorption Status
 
@@ -62,6 +62,10 @@
 | `discover_capabilities` dynamically from registry | deep debt | **DONE** S128 |
 | `query_available_backends()` runtime probing | deep debt | **DONE** S128 |
 | Architecture stubs → typed implementations | deep debt | **DONE** S128 |
+| coralReef shader proxy (`shader.compile.*` → real proxy) | coralReef Phase 10, S130 | **DONE** S130 |
+| Cross-spring provenance tracking (17+ flows) | all springs | **DONE** S130 |
+| `toadstool.provenance` JSON-RPC method | cross-spring | **DONE** S130 |
+| Clippy pedantic zero (workspace-wide) | deep debt | **DONE** S130+ |
 
 ### P3 — Shader Evolution (tracked)
 
@@ -69,14 +73,16 @@
 |------|--------|--------|
 | Flash attention WGSL | neuralSpring | Tracked |
 | Fused LayerNorm+GELU WGSL | neuralSpring | Tracked |
-| Fused LSTM cell WGSL (streaming) | neuralSpring V86 | Tracked (NEW) |
+| Fused LSTM cell WGSL (streaming) | neuralSpring V86 | Tracked |
 | Deformed HFB full wiring (5 WGSL) | hotSpring | Tracked |
 | Abelian Higgs U(1)+Higgs (3 WGSL) | hotSpring | Tracked |
 | Richards PDE GPU full wiring | airSpring, groundSpring | Tracked |
 | Multi-GPU interconnect | neuralSpring | Tracked |
-| Autocorrelation GPU op | neuralSpring V86 | Tracked (NEW) |
-| R² score GPU op | neuralSpring V86 | Tracked (NEW) |
-| SCS-CN, Stewart, Blaney-Criddle (3 ops) | airSpring local WGSL | Tracked (NEW) |
+| Autocorrelation GPU op | neuralSpring V86 | Tracked |
+| R² score GPU op | neuralSpring V86 | Tracked |
+| SCS-CN, Stewart, Blaney-Criddle (3 ops) | airSpring local WGSL | Tracked |
+| Fused GPU seasonal pipeline (chain ops 0→7→1, no CPU round-trips) | airSpring V071 | Tracked (NEW) |
+| `UnidirectionalPipeline` for atlas_stream multi-year streaming | airSpring V071 | Tracked (NEW) |
 
 ### P4 — Future (lower priority)
 
@@ -88,6 +94,69 @@
 | Omelyan integrator | wateringHole | Open |
 | Richards PDE (12 USDA textures) | wateringHole | Open |
 | Provenance tags | hotSpring, groundSpring, neuralSpring | Open |
+| Generic `NvkZeroGuard` wrapper concept | airSpring V071 NVK pattern | Open (barraCuda-owned) |
+| llvmpipe fused shader dispatch investigation (12 tests return 0.0) | neuralSpring V87 | Open (barraCuda-owned) |
+| `CoralReefDevice` backend in barraCuda (sovereign SASS dispatch) | groundSpring V95 | Open (barraCuda-owned) |
+| QMD constant buffer binding (coralReef P0 blocker) | groundSpring V95 | Open (coralReef-owned) |
+| `SumReduceF64` / `VarianceReduceF64` Fp64Strategy branching fix | groundSpring V95 | Open (barraCuda-owned) |
+| wetSpring `special::{erf, ln_gamma, dot, l2_norm}` absorption | wetSpring V97d | Open (barraCuda-owned) |
+
+## New Handoff Items (Mar 7, 2026)
+
+### From hotSpring v0.6.19
+
+| Item | Impact |
+|------|--------|
+| DF64 compilation fully delegated to barraCuda | No toadStool action — hotSpring now calls `compile_shader_universal(Precision::Df64)` |
+| 3 Chuna papers (43-45) CPU-complete | GPU promotion is barraCuda-owned |
+| Cross-spring GPU benchmarks (Autocorrelation, Mean+Variance, Correlation, Chi-squared) | Benchmarked via barraCuda APIs; validates cross-spring evolution |
+| `GpuView<T>` adoption target | Eliminate per-call buffer upload/download for MD; barraCuda-owned |
+| Edition 2024 migration candidate | Align with barraCuda edition |
+
+### From groundSpring V95
+
+| Item | Impact |
+|------|--------|
+| coralReef Phase 11: push buffer encoding fixed | `[PBENTRY]` bug was count/method field swap in Kepler+ Type 1 headers. All 5 GPU method tests pass on Titan V. coralReef-owned. |
+| NVIF constants aligned to Mesa `nvif/ioctl.h` | `ROUTE_NVIF=0x00`, `ROUTE_HIDDEN=0xFF`, `OWNER_NVIF=0x00`, `OWNER_ANY=0xFF` |
+| P0 barraCuda fixes: `SumReduceF64`/`VarianceReduceF64` missing Fp64Strategy | Consumer GPUs produce wrong values; barraCuda-owned |
+| `multinomial_sample_cpu` outside `cfg(gpu)` | CPU fallback gated behind GPU feature; barraCuda-owned |
+| Sovereign pipeline E2E: QMD CBUF binding is next blocker | coralReef-owned |
+
+### From neuralSpring V87/S129
+
+| Item | Impact |
+|------|--------|
+| Struct-based API migration complete (HmmForwardArgs, GillespieModel, etc.) | neuralSpring consuming barraCuda APIs; no toadStool action |
+| 12 GPU test failures on llvmpipe (fused shaders return 0.0) | wgpu 28 + llvmpipe interaction; barraCuda investigation needed |
+| `#![forbid(unsafe_code)]` enforced | neuralSpring internal quality gate |
+| 883 lib + 240 bin tests; 218/218 validate_all PASS | Confirms evolution chain health |
+
+### From wetSpring V97d/V97d+
+
+| Item | Impact |
+|------|--------|
+| Zero API breakage against toadStool S130 + barraCuda `2a6c072` | 1,347 tests pass; ecosystem sync confirmed |
+| New barraCuda primitives available: `BatchedOdeRK45F64`, provenance module, `mean_variance_to_buffer()` | wetSpring adoption targets; no toadStool action |
+| I/O API deprecation: `parse_fastq`/`parse_mzml`/`parse_ms2` → streaming iterators | wetSpring internal evolution |
+| 104 bare `.unwrap()` → contextual `.expect()` across 17 validators | Crash diagnostics improvement |
+
+### From airSpring V071
+
+| Item | Impact |
+|------|--------|
+| NVK zero-output detection + CPU fallback in `gpu::bootstrap` | Recommends generic `NvkZeroGuard` in barraCuda; toadStool's `PrecisionRoutingAdvice` already routes around this |
+| Kokkos validation gap (100x-2600x dispatch overhead for stats ops) | Phase 1: persistent buffers + fused reductions; barraCuda-owned |
+| Provenance convention: benchmark JSON `_provenance.baseline_commit` as authoritative | Good practice note for all springs |
+| `cargo-deny` license enforcement added | airSpring internal quality gate |
+
+### From Sovereign Pipeline (coralReef Phase 10-11)
+
+| Item | Impact |
+|------|--------|
+| `shader.compile.*` IPC contract aligned across 3 primals | toadStool, barraCuda, coralReef all on `shader.compile.*` namespace |
+| coralReef Phase 11: push buffer + NVIF encoding fixed | 5/5 GPU method tests pass on Titan V; remaining blocker is QMD CBUF binding |
+| coralReef Iteration 5-7: debt reduction, deep internalization, safety boundaries | 856 tests, zero warnings; AGPL-3.0 sovereign compiler |
 
 ## New Handoff Items (Mar 5-6, 2026)
 
@@ -164,20 +233,24 @@
 
 | Handoff | From | Key Items |
 |---------|------|-----------|
+| `NEURALSPRING_TOADSTOOL_V87_S129_API_SYNC_MAR07` | neuralSpring V87 | Struct-based API sync, 12 llvmpipe failures, `#![forbid(unsafe_code)]` |
+| `AIRSPRING_V071_DEEP_DEBT_NVK_TOADSTOOL_MAR07` | airSpring V071 | NVK zero-output detection, Kokkos gap, provenance convention |
+| `GROUNDSPRING_V95_TOADSTOOL_BARRACUDA_CORALREEF_MAR07` | groundSpring V95 | coralReef Phase 11 push buffer fix, 102 delegations, Fp64Strategy gaps |
+| `WETSPRING_V97D_DEEP_AUDIT_EVOLUTION_MAR07` | wetSpring V97d | Zero unsafe, streaming I/O deprecation, forge dispatch |
+| `WETSPRING_V97D_ECOSYSTEM_SYNC_MAR07` | wetSpring V97d+ | Zero API breakage vs S130, new primitives available |
+| `HOTSPRING_V0619_BARRACUDA_REWIRE_MAR06` | hotSpring v0.6.19 | DF64 delegation complete, `GpuView<T>` target |
+| `HOTSPRING_V0619_CROSS_SPRING_EVOLUTION_MAR06` | hotSpring v0.6.19 | 3 Chuna papers, cross-spring GPU benchmarks |
+| `CROSS_PRIMAL_IPC_REWIRE_SHADER_COMPILE_MAR07` | coralReef/ecosystem | `shader.compile.*` contract aligned across 3 primals |
 | `SOVEREIGN_TITAN_V_PIPELINE_GAPS_MAR06` | hotSpring/coralReef | is_sovereign_capable, NVK allocation guard |
 | `SOVEREIGN_PIPELINE_CROSS_PRIMAL_MAR05` | wateringHole | coralDriver routing, vendor-agnostic IR |
-| `HOTSPRING_VERLET_EVOLUTION_MAR05` | hotSpring | 6 Verlet WGSL shaders (→barraCuda) |
-| `HOTSPRING_V0617_ASYMMETRIC_LATTICE_MAR05` | hotSpring | HardwareFingerprint, TFLOPS estimation |
-| `GROUNDSPRING_V80_FUSED_OPS_MAR05` | groundSpring | Welford GPU, metalForge 30 workloads |
-| `NEURALSPRING_V86_S128_MODERN_REWIRE_MAR05` | neuralSpring | Fused LSTM, autocorrelation, R² GPU |
-| `WETSPRING_V97C_FUSED_OPS_CHAIN_MAR05` | wetSpring | DF64 dispatch routing, fused ops |
-| `AIRSPRING_V071_BARRACUDA_HEAD_SYNC_MAR05` | airSpring | wgpu 28, subgroup, 3 local WGSL ops |
 
 ### Outgoing (from ToadStool)
 
 | Handoff | To | Session |
 |---------|----|---------|
-| `TOADSTOOL_S95_SPRING_SYNC` | Ecosystem | S95 |
+| `TOADSTOOL_S130_DEEP_DEBT_CLIPPY_PEDANTIC_MAR07` | Ecosystem | S130+ |
+| `TOADSTOOL_S128_DEEP_DEBT_EVOLUTION_MAR06` | Ecosystem | S128 |
+| `TOADSTOOL_S97_SPRING_ABSORPTION_MAR06` | Ecosystem | S97 |
 
 ## metalForge Clarification
 
