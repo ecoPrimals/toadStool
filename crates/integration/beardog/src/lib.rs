@@ -48,7 +48,7 @@ mod error;
 mod seed;
 mod types;
 
-pub use discovery::EntropyClient;
+pub use discovery::{EntropyClient, SeedRequest};
 pub use error::BeardogError;
 pub use seed::{EphemeralSeed, SeedQuality};
 pub use types::{EntropyMixing, EntropySource};

@@ -617,4 +617,61 @@ mod tests {
         // Test that display doesn't panic
         summary.display();
     }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_config_builder_build_with_all_disabled() {
+        let builder = ConfigBuilder::new()
+            .with_hardware_detection(false)
+            .with_ecosystem_discovery(false)
+            .with_performance_optimization(false)
+            .with_usage_learning(false);
+        let result = builder.build().await;
+        assert!(result.is_ok());
+        let config = result.unwrap();
+        assert!(config.runtime.max_concurrent_executions > 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_config_builder_build_with_ecosystem_disabled() {
+        let builder = ConfigBuilder::new().with_ecosystem_discovery(false);
+        let result = builder.build().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_system_summary() {
+        let result = get_system_summary().await;
+        assert!(result.is_ok());
+        let summary = result.unwrap();
+        assert!(!summary.cpu_info.is_empty());
+        assert!(!summary.memory_info.is_empty());
+        assert!(!summary.performance_class.is_empty());
+    }
+
+    #[test]
+    fn test_system_summary_from_capabilities_with_ecosystem_services() {
+        let mut discovered = std::collections::HashMap::new();
+        discovered.insert(
+            "songbird".to_string(),
+            ServiceInfo {
+                name: "songbird".to_string(),
+                endpoint: "http://localhost:8080".to_string(),
+                service_type: "NetworkCoordination".to_string(),
+                version: "1.0".to_string(),
+                capabilities: vec![],
+                status: ecosystem::ServiceStatus::Healthy,
+                discovered_via: "test".to_string(),
+                response_time_ms: 0,
+            },
+        );
+        let ecosystem = DiscoveredServices {
+            discovered_services: discovered,
+            discovery_summary: ecosystem::DiscoverySummary::default(),
+            discovery_timestamp: std::time::SystemTime::now(),
+        };
+        let capabilities = SystemCapabilities::default();
+        let summary = SystemSummary::from_capabilities(&capabilities, &ecosystem);
+        assert_eq!(summary.ecosystem_services.len(), 1);
+        assert!(summary.ecosystem_services.contains(&"songbird".to_string()));
+    }
 }

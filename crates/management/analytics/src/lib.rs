@@ -61,9 +61,9 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_data_point_collection() {
+    async fn test_data_point_collection() -> Result<(), Box<dyn std::error::Error>> {
         let config = AnalyticsConfig::default();
-        let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
+        let engine = IntelligentAnalyticsEngine::new(config).await?;
 
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
@@ -77,12 +77,13 @@ mod tests {
 
         let result = engine.collect_data_point(data_point).await;
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_dashboard_creation() {
+    async fn test_dashboard_creation() -> Result<(), Box<dyn std::error::Error>> {
         let config = AnalyticsConfig::default();
-        let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
+        let engine = IntelligentAnalyticsEngine::new(config).await?;
 
         let dashboard = Dashboard {
             id: Uuid::new_v4(),
@@ -103,5 +104,6 @@ mod tests {
 
         let result = engine.create_dashboard(dashboard).await;
         assert!(result.is_ok());
+        Ok(())
     }
 }

@@ -25,6 +25,7 @@ mutex_atomic = "warn"
 [features]
 default = []
 channels = []
+testing = []  # Exposes new_for_testing for integration tests
 
 [dependencies]
 # Core ToadStool dependencies
@@ -74,6 +75,16 @@ sysinfo = { workspace = true }
 
 # Configuration
 config = "0.14" 
+[[test]]
+name = "coordination_rpc_coverage_tests"
+required-features = ["testing"]
+
+[[test]]
+name = "beardog_client_coverage_tests"
+
+[[test]]
+name = "access_control_coverage_tests"
+
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }
 tokio-test = "0.4"

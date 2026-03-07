@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -12,6 +13,7 @@
 //! Coverage tests for daemon/server.rs — config and startup paths.
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use toadstool_cli::daemon::{DaemonConfig, DaemonServer};
 
@@ -99,4 +101,39 @@ async fn daemon_server_start_with_custom_port() {
     };
     let result: std::result::Result<DaemonServer, _> = DaemonServer::start(config).await;
     assert!(result.is_ok());
+}
+
+/// Verify socket path resolution when socket_path is None uses PlatformPaths
+#[test]
+fn daemon_socket_path_resolution_uses_platform_paths_when_none() {
+    use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+    let config = DaemonConfig::default();
+    assert!(config.socket_path.is_none());
+    let env = PathEnv::from_env();
+    let paths = PlatformPaths::new(&env);
+    let socket = paths.toadstool_socket();
+    assert!(!socket.as_os_str().is_empty());
+}
+
+/// Run daemon briefly and verify it shuts down on SIGINT (Unix only)
+#[cfg(unix)]
+#[tokio::test]
+async fn daemon_server_run_shuts_down_on_sigint() {
+    let temp = tempfile::tempdir().expect("temp dir");
+    let socket = temp.path().join("daemon_run.sock");
+    let config = DaemonConfig {
+        socket_path: Some(socket),
+        ..DaemonConfig::default()
+    };
+    let server = DaemonServer::start(config).await.expect("start");
+    let handle = tokio::spawn(async move { server.run().await });
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        let pid = rustix::process::getpid();
+        let _ = rustix::process::kill_process(pid, rustix::process::Signal::Int);
+    });
+    let result = tokio::time::timeout(Duration::from_secs(5), handle).await;
+    assert!(result.is_ok(), "run should complete within timeout");
+    let run_result = result.unwrap();
+    assert!(run_result.is_ok(), "run should succeed");
 }

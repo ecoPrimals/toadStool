@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn write_tcp_discovery_file_fails_on_readonly_dir() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/proc/self"), || {
-            let addr: std::net::SocketAddr = "127.0.0.1:0".parse().expect("valid addr");
+            let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 0));
             let result = write_tcp_discovery_file("toadstool-test-readonly", &addr);
             assert!(result.is_err(), "writing to /proc/self should fail");
         });
@@ -415,7 +415,7 @@ mod tests {
             "XDG_RUNTIME_DIR",
             Some(temp_dir.to_string_lossy().as_ref()),
             || {
-                let addr: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
+                let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 12345));
                 let result = write_tcp_discovery_file("test-toadstool-port", &addr);
                 assert!(result.is_ok());
                 let path = temp_dir.join("test-toadstool-port");
@@ -431,7 +431,7 @@ mod tests {
     #[test]
     fn write_tcp_discovery_file_fallback_tmp() {
         temp_env::with_var("XDG_RUNTIME_DIR", None::<&str>, || {
-            let addr: std::net::SocketAddr = "127.0.0.1:0".parse().unwrap();
+            let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 0));
             let result = write_tcp_discovery_file("toadstool-test-fallback", &addr);
             assert!(result.is_ok());
             let path = std::path::PathBuf::from("/tmp").join("toadstool-test-fallback");

@@ -26,7 +26,7 @@ pub mod types;
 
 // Internal modules
 mod connection;
-mod discovery;
+pub mod discovery;
 
 // Public re-exports
 #[allow(deprecated)] // Re-exporting deprecated EcosystemService for backward compatibility

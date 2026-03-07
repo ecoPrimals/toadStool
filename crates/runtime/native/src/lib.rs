@@ -97,6 +97,7 @@ impl NativeRuntimeEngine {
     }
 
     /// Validate executable source and return the executable path
+    // &self retained for future config-based resolution
     #[allow(clippy::unused_self)]
     fn resolve_executable(&self, source: &ExecutableSource) -> ToadStoolResult<PathBuf> {
         match source {
@@ -135,6 +136,7 @@ impl NativeRuntimeEngine {
     }
 
     /// Apply security context to the command
+    // &self retained for future config-based resolution
     #[allow(clippy::unused_self)]
     fn apply_security_context(
         &self,

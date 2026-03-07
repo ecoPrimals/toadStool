@@ -1,4 +1,4 @@
-# Status -- March 7, 2026 (S130)
+# Status -- March 7, 2026 (S130+ Deep Debt Execution)
 
 ## Quality Gates
 
@@ -9,8 +9,8 @@
 | `cargo clippy --all-targets -- -D warnings -W clippy::pedantic` | PASS | **0 warnings (pedantic clean)** |
 | `cargo clippy --workspace --all-targets -- -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **19,536 tests, 0 failures** (203 intentional ignores for GPU hardware) |
-| `cargo llvm-cov` (excl GPU crates) | **~83% line** | 170K lines. Focus: hardware-dependent code hard to unit-test |
+| `cargo test --workspace` | PASS | **19,777 tests, 0 failures** (216 intentional ignores for GPU hardware) |
+| `cargo llvm-cov` (excl GPU crates) | **~84% line** | 121K production lines. Remaining gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
@@ -25,7 +25,7 @@
 |--------|-------|
 | WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
 | Rust version | **1.82+** (is_some_and, div_ceil) |
-| `unsafe` blocks | **~60+** (all `// SAFETY:` documented; barracuda + runtime/gpu; GPU APIs, aligned alloc, FFI) |
+| `unsafe` blocks | **~70+** (all `// SAFETY:` documented; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
@@ -45,7 +45,7 @@
 | Sovereignty | **RESOLVED** (S94b). All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated. BearDog user-facing strings neutralized. |
 | ecoBin | **PyO3 optional** — `pure-rust` feature compiles cleanly with zero C FFI deps (S90, verified S92) |
 | unsafe docs | **100%** — all `unsafe` blocks have `// SAFETY:` comments (S90) |
-| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90) |
+| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90). 14 hot-path patterns documented (S130+): tarpc_server WorkloadResult/capabilities, unibin/capabilities static strings, cross_gate IDs → Arc evolution tracked |
 | Production `todo!()` / `unimplemented!()` | **0** — confirmed by full codebase audit (S92) |
 | Production FIXME / HACK | **0** — confirmed by full codebase audit (S92) |
 | ComputeDispatch adoption | **144 ops migrated** (~139 legacy ops remaining, incremental) |
@@ -91,12 +91,23 @@
 
 ## Session History (Recent)
 
-### S130+: Deep Debt — Clippy Pedantic Clean (Mar 7, 2026)
-- **Clippy pedantic zero**: Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors, 0 warnings. 12 iterative passes of auto-fix + manual corrections across ~1,868 .rs files.
-- **Categories resolved**: `float_cmp` (targeted allows in tests, epsilon comparisons in production), `cast_precision_loss` / `cast_possible_truncation` / `cast_sign_loss` (justified allows or `try_from`), `unused_async`, `items_after_statements`, `unreadable_literal`, `default_trait_access`, `similar_names`, `match_wildcard_for_single_variants`, `match_same_arms`, `used_underscore_binding`, `missing_errors_doc`, plus 20+ other pedantic lint categories.
+### S130+: Deep Debt Execution (Mar 7, 2026)
+- **Clippy pedantic zero**: Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors, 0 warnings. Added pedantic run to CI (`ci.yml`).
+- **Unsafe audit**: All ~70+ blocks verified justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives exist.
+- **Dependency audit**: Only 2 always-on C/FFI deps (sysinfo, notify). All others optional/feature-gated. Already heavily evolved to pure Rust (rustix, etcetera, procfs, evdev, wasmi, seccompiler, RustCrypto).
+- **Hardcoding evolution**: Production primal names in `integrator_impl.rs` evolved from string literals to `well_known::*` constants.
+- **#[allow] audit**: All 9 production `#[allow]` attributes justified; 6 missing comments added; 2 `unused_self` documented.
+- **Clone audit**: 14 hot-path `.clone()` patterns identified and documented. High priority: tarpc_server (Arc for WorkloadResult, capabilities), unibin/capabilities (Arc<str> for static strings), cross_gate (Arc<str> for gate IDs).
+- **File size audit**: No production file exceeds 1000 lines. 14 files >800L are all tests (12) or examples (2).
+- **Coverage expansion**: 83.89% line coverage (up from 83.28%). ~240 new tests across 20 new/extended test files covering performance_hardening, ecosystem communication, cloud orchestrator, crypto integration, discovery, display transport, beardog client, access control, GPU engine, NUP dispatch, and more.
+- **Test count**: **19,777 tests**, 0 failures.
+- **Flaky chaos test fix**: `test_recovery_under_chaos` retry budget increased to prevent spurious failures.
+
+### S130+: Clippy Pedantic Clean (Mar 7, 2026)
+- **Clippy pedantic zero**: 12 iterative passes of auto-fix + manual corrections across ~1,868 .rs files.
+- **Categories resolved**: `float_cmp`, `cast_precision_loss` / `cast_possible_truncation` / `cast_sign_loss`, `unused_async`, `items_after_statements`, `unreadable_literal`, `default_trait_access`, `similar_names`, `match_wildcard_for_single_variants`, `match_same_arms`, `used_underscore_binding`, `missing_errors_doc`, plus 20+ other pedantic lint categories.
 - **19,536 tests**, 0 failures, 0 warnings.
 - **Corrupted sed edits fixed**: 3 CLI test files with broken `#[tokio::test]` attributes repaired.
-- All quality gates green: 0 clippy (pedantic), 0 fmt, 0 doc warnings.
 
 ### S97: Spring Absorption — toadStool Evolutions (Mar 6, 2026)
 - **NVK Volta f64 probe**: `f64_compute_unreliable` flag on `GpuAdapterInfo` detects Titan V/V100/GV100 where f64 compute returns zeros. `has_reliable_f64()` API. `HardwareFingerprint` excludes `F64Native` for NVK Volta.

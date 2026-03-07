@@ -476,4 +476,82 @@ mod tests {
         assert!(stats.total_memory > 0);
         assert!(stats.total_compute_throughput > 0.0);
     }
+
+    #[tokio::test]
+    async fn test_runtime_stats_display_neuromorphic_custom() {
+        use crate::error::SubstrateError;
+        use crate::substrate::{
+            BufferOperation, BufferOutput, ComputeSubstrate, SubstrateAdapter, SubstrateType,
+        };
+
+        struct NpuMock;
+        #[async_trait::async_trait]
+        impl ComputeSubstrate for NpuMock {
+            fn name(&self) -> &'static str {
+                "Test NPU"
+            }
+            fn substrate_type(&self) -> SubstrateType {
+                SubstrateType::Npu
+            }
+            async fn execute_buffer_op(
+                &self,
+                op: BufferOperation,
+            ) -> Result<BufferOutput, SubstrateError> {
+                Ok(BufferOutput {
+                    data: vec![0; op.buffer_size()],
+                    metadata: crate::substrate::BufferMetadata::default(),
+                })
+            }
+        }
+        struct FpgaMock;
+        #[async_trait::async_trait]
+        impl ComputeSubstrate for FpgaMock {
+            fn name(&self) -> &'static str {
+                "Test FPGA"
+            }
+            fn substrate_type(&self) -> SubstrateType {
+                SubstrateType::Fpga
+            }
+            async fn execute_buffer_op(
+                &self,
+                op: BufferOperation,
+            ) -> Result<BufferOutput, SubstrateError> {
+                Ok(BufferOutput {
+                    data: vec![0; op.buffer_size()],
+                    metadata: crate::substrate::BufferMetadata::default(),
+                })
+            }
+        }
+        let units: Vec<Box<dyn ComputeUnit>> = vec![
+            Box::new(SubstrateAdapter::new(NpuMock)),
+            Box::new(SubstrateAdapter::new(FpgaMock)),
+        ];
+        let runtime = UniversalRuntime::new(units);
+        let stats = runtime.stats();
+        assert_eq!(stats.num_neuromorphic, 1);
+        assert_eq!(stats.num_custom, 1);
+        let s = format!("{stats}");
+        assert!(s.contains("Neuromorphic units: 1"));
+        assert!(s.contains("Custom units: 1"));
+    }
+
+    #[tokio::test]
+    async fn test_runtime_stats_display_all_zero() {
+        let stats = RuntimeStats::default();
+        let s = format!("{stats}");
+        assert!(s.contains("CPU units: 0"));
+        assert!(s.contains("GPU units: 0"));
+        assert!(s.contains("Neuromorphic units: 0"));
+        assert!(s.contains("Custom units: 0"));
+    }
+
+    #[tokio::test]
+    async fn test_runtime_units_accessor() {
+        let cpu = crate::backends::CpuComputeUnit::discover();
+        let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+        let runtime = UniversalRuntime::new(units);
+        let units_ref = runtime.units();
+        assert_eq!(units_ref.len(), 1);
+        assert!(!units_ref[0].name().is_empty());
+    }
 }

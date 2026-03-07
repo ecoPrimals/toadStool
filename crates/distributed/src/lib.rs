@@ -161,7 +161,7 @@ pub use primal_capabilities::{
 };
 pub use security_provider::ExternalTarget;
 
-// Re-export deprecated songbird types for backward compatibility
+// Re-export deprecated Songbird types for backward compatibility
 #[allow(deprecated)]
 pub use songbird_integration::{
     JobCoordinator, NetworkRequirements as SongbirdNetworkRequirements, SongbirdIntegrationConfig,

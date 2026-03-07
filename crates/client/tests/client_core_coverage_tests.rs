@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::pedantic)]
 //! Comprehensive tests for `ToadStoolClient` (client/core.rs)
 //!
 //! Target: crates/client/src/client/core.rs — 90% coverage
@@ -230,6 +231,51 @@ fn new_for_testing_with_custom_headers() {
     let config = ClientConfig {
         base_url: "unix:///tmp/sock".to_string(),
         custom_headers: headers,
+        ..Default::default()
+    };
+    let result = ToadStoolClient::new_for_testing(config);
+    assert!(result.is_ok());
+}
+
+// ============================================================================
+// ClientConfig timeout and connection setup
+// ============================================================================
+
+#[test]
+fn new_for_testing_with_request_timeout() {
+    let config = ClientConfig {
+        base_url: "unix:///tmp/sock".to_string(),
+        request_timeout: std::time::Duration::from_secs(60),
+        ..Default::default()
+    };
+    let result = ToadStoolClient::new_for_testing(config);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn new_for_testing_unix_double_slash_path() {
+    let config = ClientConfig {
+        base_url: "unix:///run/toadstool.sock".to_string(),
+        ..Default::default()
+    };
+    let result = ToadStoolClient::new_for_testing(config);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn new_for_testing_unix_single_colon_path() {
+    let config = ClientConfig {
+        base_url: "unix:/tmp/toadstool.sock".to_string(),
+        ..Default::default()
+    };
+    let result = ToadStoolClient::new_for_testing(config);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn new_for_testing_empty_unix_prefix() {
+    let config = ClientConfig {
+        base_url: "unix:".to_string(),
         ..Default::default()
     };
     let result = ToadStoolClient::new_for_testing(config);

@@ -105,6 +105,7 @@ pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerSta
     since = "2.2.0",
     note = "Use pure_jsonrpc::JsonRpcHandler — no TCP hardcoding"
 )]
+// Re-export deprecated tarpc types for backward compatibility
 #[allow(deprecated)]
 pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 

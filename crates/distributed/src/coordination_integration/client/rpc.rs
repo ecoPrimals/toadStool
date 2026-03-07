@@ -64,7 +64,7 @@ impl CoordinationClient {
     }
 
     /// Create client with custom socket path (for testing error paths when service unavailable)
-    #[cfg(test)]
+    #[cfg(any(test, feature = "testing"))]
     pub fn new_for_testing(socket_path: std::path::PathBuf, timeout: Duration) -> Self {
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
         let endpoint = toadstool_common::primal_identity::ServiceEndpoint {

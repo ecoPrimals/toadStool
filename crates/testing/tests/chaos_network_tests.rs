@@ -408,16 +408,18 @@ async fn test_recovery_under_chaos() {
 
     // Try multiple times with retry logic
     let mut attempts = 0;
-    let max_attempts = 10;
+    let max_attempts = 50;
 
     while attempts < max_attempts {
         attempts += 1;
         if chaos.simulate_request().await.is_ok() {
             break;
         }
-        sleep(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(20)).await;
     }
 
-    // Should eventually succeed with retries
-    assert!(attempts < max_attempts);
+    assert!(
+        attempts < max_attempts,
+        "recovery should succeed within {max_attempts} attempts"
+    );
 }

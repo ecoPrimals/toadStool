@@ -467,7 +467,7 @@ fn test_service_channel_debug_clone() {
     };
     let ch2 = ch.clone();
     assert_eq!(ch.service_id, ch2.service_id);
-    assert_eq!(format!("{:?}", ch).len(), format!("{:?}", ch2).len());
+    assert_eq!(format!("{ch:?}").len(), format!("{ch2:?}").len());
 }
 
 // ─── Additional message type, serialization, protocol tests ─────────────────
@@ -808,7 +808,7 @@ fn test_service_channel_debug_impl() {
         last_heartbeat: std::time::SystemTime::now(),
         status: ServiceStatus::Discovered,
     };
-    let debug_str = format!("{:?}", ch);
+    let debug_str = format!("{ch:?}");
     assert!(debug_str.contains("debug-svc"));
     assert!(debug_str.contains("Debug Svc"));
 }

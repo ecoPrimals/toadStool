@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic)]
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for cloud orchestrator (cloud/orchestrator/mod.rs) - coverage target 90%
 //!
@@ -550,4 +551,246 @@ async fn test_deploy_over_provisioned_resources() {
         .unwrap();
     let job = make_job(UniversalJobType::ComputeIntensive);
     let _result = orch.deploy_universal_job(&job).await;
+}
+
+// ============================================================================
+// Provider not found - scheduler returns "aws" but we register "gcp" only
+// ============================================================================
+
+#[tokio::test]
+async fn test_deploy_provider_not_found_scheduler_mismatch() {
+    let config = make_orchestrator_config();
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    // Scheduler returns "aws" but we only register "gcp" - provider lookup fails
+    let mock = Box::new(MockCloudProvider {
+        name: "gcp".to_string(),
+        availability: make_availability(16.0, 32.0, 200.0),
+    });
+    orch.register_provider("gcp".to_string(), mock)
+        .await
+        .unwrap();
+    let job = make_job(UniversalJobType::ComputeIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_err());
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("not found") || err_msg.contains("Cloud provider"),
+        "expected provider not found error, got: {}",
+        err_msg
+    );
+}
+
+// ============================================================================
+// Cost config and optimization coverage
+// ============================================================================
+
+#[tokio::test]
+async fn test_orchestrator_with_budget_limit() {
+    let mut config = make_orchestrator_config();
+    config.cost_config.budget_limit = Some(1000.0);
+    config.cost_config.spot_instance_preference = 0.8;
+    let orch = UniversalCloudOrchestrator::new(config).await;
+    assert!(orch.is_ok());
+}
+
+#[tokio::test]
+async fn test_orchestrator_cost_optimized_strategy() {
+    let mut config = make_orchestrator_config();
+    config.scheduling_strategy = HybridSchedulingStrategy::CostOptimized;
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::ComputeIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_orchestrator_performance_optimized_strategy() {
+    let mut config = make_orchestrator_config();
+    config.scheduling_strategy = HybridSchedulingStrategy::PerformanceOptimized;
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::ComputeIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_orchestrator_compliance_first_strategy() {
+    let mut config = make_orchestrator_config();
+    config.scheduling_strategy = HybridSchedulingStrategy::ComplianceFirst;
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::ComputeIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_orchestrator_geographic_affinity_strategy() {
+    let mut config = make_orchestrator_config();
+    config.scheduling_strategy = HybridSchedulingStrategy::GeographicAffinity {
+        preferred_regions: vec!["us-east-1".to_string(), "eu-west-1".to_string()],
+    };
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::ComputeIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_orchestrator_latency_sensitive_strategy() {
+    let mut config = make_orchestrator_config();
+    config.scheduling_strategy = HybridSchedulingStrategy::LatencySensitive {
+        max_latency_ms: 50,
+        target_regions: vec!["us-east-1".to_string()],
+    };
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::ComputeIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_orchestrator_sustainability_strategy() {
+    let mut config = make_orchestrator_config();
+    config.scheduling_strategy = HybridSchedulingStrategy::SustainabilityFocused {
+        renewable_energy_preference: 0.9,
+    };
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::ComputeIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+// ============================================================================
+// Federation config coverage
+// ============================================================================
+
+#[tokio::test]
+async fn test_orchestrator_with_federation_config() {
+    let mut config = make_orchestrator_config();
+    config.federation_config.discovery_endpoints = vec!["https://fed.example.com".to_string()];
+    config.federation_config.trust_anchors = vec!["anchor-1".to_string()];
+    let orch = UniversalCloudOrchestrator::new(config).await;
+    assert!(orch.is_ok());
+}
+
+// ============================================================================
+// Local job type - split_job_for_multi_cloud error path (when MultiCloud selected)
+// Note: Current scheduler returns single provider, so Local jobs deploy to single cloud.
+// This test verifies Local job deploys (succeeds to single cloud when aws registered).
+// ============================================================================
+
+#[tokio::test]
+async fn test_deploy_local_job_single_cloud_succeeds() {
+    let config = make_orchestrator_config();
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::Local);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+// ============================================================================
+// Network-intensive job type
+// ============================================================================
+
+#[tokio::test]
+async fn test_deploy_network_intensive_job() {
+    let config = make_orchestrator_config();
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::NetworkIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
+}
+
+// ============================================================================
+// Memory-intensive job type
+// ============================================================================
+
+#[tokio::test]
+async fn test_deploy_memory_intensive_job() {
+    let config = make_orchestrator_config();
+    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    orch.register_provider(
+        "aws".to_string(),
+        Box::new(MockCloudProvider {
+            name: "aws".to_string(),
+            availability: make_availability(16.0, 32.0, 200.0),
+        }),
+    )
+    .await
+    .unwrap();
+    let job = make_job(UniversalJobType::MemoryIntensive);
+    let result = orch.deploy_universal_job(&job).await;
+    assert!(result.is_ok());
 }

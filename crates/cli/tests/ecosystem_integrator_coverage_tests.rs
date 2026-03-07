@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -169,5 +170,53 @@ async fn discover_services_single_capability() {
     let result = i
         .discover_services(vec!["coordination".to_string()], 1)
         .await;
+    assert!(result.is_ok());
+}
+
+// ─── Capability mapping coverage (legacy names, pass-through) ───────────────
+
+#[tokio::test(flavor = "current_thread")]
+async fn discover_services_with_nestgate_legacy_name() {
+    let mut i = EcosystemIntegrator::new();
+    let result = i.discover_services(vec!["nestgate".to_string()], 1).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn discover_services_with_pki_alias() {
+    let mut i = EcosystemIntegrator::new();
+    let result = i.discover_services(vec!["pki".to_string()], 1).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn discover_services_with_pass_through_capability() {
+    let mut i = EcosystemIntegrator::new();
+    let result = i
+        .discover_services(vec!["custom_capability".to_string()], 1)
+        .await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn discover_services_result_has_expected_fields() {
+    let mut i = EcosystemIntegrator::new();
+    let result = i.discover_services(vec![], 1).await.unwrap();
+    assert!(result.services.is_empty() || !result.services.is_empty());
+    assert_eq!(result.total_discovered, result.services.len());
+    assert!(result.verified_count <= result.total_discovered);
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn show_status_json_output_valid() {
+    let i = EcosystemIntegrator::new();
+    let result = i.show_ecosystem_status("json").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn show_status_table_output_empty_integrator() {
+    let i = EcosystemIntegrator::new();
+    let result = i.show_ecosystem_status("table").await;
     assert!(result.is_ok());
 }

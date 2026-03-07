@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 7, 2026 -- S130
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | clippy::pedantic clean | 19,536 tests (0 failures) | 65+ JSON-RPC methods (dynamically built) | coralReef shader proxy | Cross-spring provenance tracking | All files < 1000 lines | 45+ god files refactored
-**Latest**: S130 — Cross-spring shader rewiring: `shader.compile.*` stubs evolved to real coralReef proxy with capability-based discovery. `CoralReefClient` with lazy connection. `cross_spring_provenance.rs` (17+ flows, matrix, `toadstool.provenance` method). 31 new tests.
+**Updated**: March 7, 2026 -- S130+ Deep Debt Execution
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,777 tests (0 failures) | 83.89% coverage | 65+ JSON-RPC methods | CI pedantic gate | All unsafe justified | 2 C/FFI deps remaining (sysinfo, notify)
+**Latest**: S130+ — Deep debt execution: unsafe audit (70+ blocks justified), dep audit (pure Rust evolved), hardcoding→constants, #[allow] audit, clone audit (14 hot-path patterns), CI pedantic gate, 240 new coverage tests.
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-~83% line coverage (170K lines). 19,536 tests pass. Focus areas: hardware-dependent code (display/drm, GPU backends, V4L2, Akida VFIO) that requires physical hardware to exercise. Need ~12K more lines covered.
+**83.89% line coverage** (121K production lines). 19,777 tests pass. Software-only modules at ~89% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -114,9 +114,19 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-130)
+## Completed This Session (S90-130+)
 
-### Session S130+: Deep Debt — Clippy Pedantic Clean (Mar 7, 2026)
+### Session S130+: Deep Debt Execution (Mar 7, 2026)
+- **Unsafe audit**: All ~70+ blocks justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives.
+- **Dependency audit**: 2 always-on C/FFI deps (sysinfo, notify). All others optional/feature-gated. Already evolved to pure Rust.
+- **Hardcoding→constants**: Production primal names in `integrator_impl.rs` evolved to `well_known::*` constants.
+- **#[allow] audit**: All 9 justified, 6 comments added, 2 `unused_self` documented.
+- **Clone audit**: 14 hot-path patterns documented (tarpc_server, unibin/capabilities, cross_gate → Arc evolution tracked).
+- **CI pedantic gate**: Added `clippy::pedantic` to CI workflow.
+- **Coverage**: 83.28% → 83.89%, 240 new tests, 19,777 total.
+- **Flaky test fix**: `test_recovery_under_chaos` stabilized.
+
+### Session S130+: Clippy Pedantic Clean (Mar 7, 2026)
 - **Clippy pedantic clean**: Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with zero errors, zero warnings. 12 iterative passes of auto-fix + manual corrections across 1,868 .rs files (~30 pedantic lint categories resolved).
 - **Test count**: 19,536 tests passing, 0 failures.
 - **Corrupted test attributes**: 3 CLI test files with sed-corrupted `#[tokio::test]` attributes repaired.

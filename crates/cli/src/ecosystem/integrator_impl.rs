@@ -25,7 +25,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{info, warn};
 
-// Allow deprecated function calls within this legacy integration layer
+// Legacy integration layer; uses deprecated EcosystemService for ServiceConnection migration
 #[allow(deprecated)]
 impl EcosystemIntegrator {
     #[must_use]
@@ -71,15 +71,18 @@ impl EcosystemIntegrator {
         } else {
             // Capability-based: pass through capability names.
             // Legacy primal names resolved via capability discovery.
+            use toadstool_common::constants::ecosystem::well_known;
             service_types.into_iter()
                 .map(|st| {
                     use crate::ecosystem::constants::capability_categories;
                     match st.as_str() {
-                        "songbird" | "orchestration" | "coordination" => {
+                        s if s == well_known::SONGBIRD || s == "orchestration" || s == "coordination" => {
                             capability_categories::NETWORK.to_string()
                         }
-                        "beardog" | "pki" | "security" => capability_categories::CRYPTO.to_string(),
-                        "nestgate" => capability_categories::STORAGE.to_string(),
+                        s if s == well_known::BEARDOG || s == "pki" || s == "security" => {
+                            capability_categories::CRYPTO.to_string()
+                        }
+                        s if s == well_known::NESTGATE => capability_categories::STORAGE.to_string(),
                         _ => st, // Already a capability name — pass through
                     }
                 })
@@ -231,6 +234,7 @@ impl EcosystemIntegrator {
                     .context(format!("Invalid endpoint: {endpoint}"))?;
 
                 // Store connection (capability-based, not hardcoded)
+                // ServiceConnection requires deprecated EcosystemService enum during migration
                 #[allow(deprecated)]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
@@ -333,6 +337,7 @@ impl EcosystemIntegrator {
                     .context(format!("Invalid endpoint: {endpoint}"))?;
 
                 // Store connection (capability-based, not hardcoded)
+                // ServiceConnection requires deprecated EcosystemService enum during migration
                 #[allow(deprecated)]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {

@@ -36,7 +36,6 @@
 
 // Module declarations
 pub mod agent_backend;
-#[cfg(test)]
 pub mod agent_backend_evolved;
 pub mod agents;
 pub mod auth;
@@ -59,7 +58,6 @@ pub use storage_backend::{InMemoryBackend, NestGateBackend, StorageBackend, Volu
 pub use types::*;
 
 // Re-export evolved backends (RECOMMENDED for new code)
-#[cfg(test)]
 pub use agent_backend_evolved::AgentBackend as AgentBackendEvolved;
 #[cfg(test)]
 pub use auth_backend_evolved::AuthBackend as AuthBackendEvolved;

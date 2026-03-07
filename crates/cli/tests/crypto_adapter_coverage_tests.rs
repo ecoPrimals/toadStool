@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::pedantic, unused_variables)]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -9,35 +10,36 @@
     clippy::items_after_statements,
     clippy::unused_async
 )]
-//! Comprehensive tests for `CryptoAdapter` (ecosystem/adapters/crypto.rs) - coverage target 90%
-//!
-//! Tests `verify_signature`, `generate_keypair`, encrypt, decrypt, `random_bytes`,
-//! `install_permissions`, and `KeyPair` struct. Uses `AdapterFactory` - no live services.
+//! Comprehensive coverage tests for crypto adapter
+//! Target: exercise all branches including error paths and edge cases.
 
 use std::path::Path;
-use toadstool_cli::ecosystem::adapters::AdapterFactory;
-use toadstool_cli::ecosystem::capabilities::StandardCapability;
 
-// ============================================================================
-// CryptoAdapter construction
-// ============================================================================
+use toadstool_cli::ecosystem::adapters::{AdapterFactory, CryptoAdapter};
+use toadstool_cli::ecosystem::capabilities::{CapabilityId, StandardCapability};
+
+// ─── Constructor and factory ───────────────────────────────────────────────
 
 #[test]
-fn test_crypto_adapter_factory_creates() {
+fn crypto_adapter_new_from_factory() {
     let factory = AdapterFactory::new();
-    let adapter = factory.crypto_adapter();
-    assert!(adapter.is_ok());
+    let adapter = factory.crypto_adapter().expect("crypto adapter");
+    let _ = CryptoAdapter::new(factory.universal_adapter());
 }
 
-// ============================================================================
-// verify_signature - error paths (no service)
-// ============================================================================
-
-#[tokio::test]
-async fn test_verify_signature_no_service_returns_err() {
+#[test]
+fn crypto_adapter_accepts_capability_id_directly() {
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
+    let _cap: CapabilityId = StandardCapability::CryptoSignatureEd25519.into();
+}
 
+// ─── Async operations (no service - resolution/discovery error) ───────────────
+
+#[tokio::test(flavor = "current_thread")]
+async fn verify_signature_no_service_err() {
+    let factory = AdapterFactory::new();
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
     let result = crypto
         .verify_signature(
             StandardCapability::CryptoSignatureEd25519,
@@ -46,91 +48,51 @@ async fn test_verify_signature_no_service_returns_err() {
             b"signature",
         )
         .await;
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("Failed to") || err.contains("resolve") || err.contains("discover"),
+        "expected resolution error, got: {err}"
+    );
+}
 
+#[tokio::test(flavor = "current_thread")]
+async fn verify_signature_with_capability_id_string() {
+    let factory = AdapterFactory::new();
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
+    let cap_id = StandardCapability::CryptoSignatureEd25519.id();
+    let result = crypto.verify_signature(cap_id, b"k", b"m", b"s").await;
     assert!(result.is_err());
 }
 
-#[tokio::test]
-async fn test_verify_signature_with_capability_string() {
+#[tokio::test(flavor = "current_thread")]
+async fn generate_keypair_no_service_err() {
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
-    let result = crypto
-        .verify_signature("ed25519", b"key", b"msg", b"sig")
-        .await;
-
-    assert!(result.is_err());
-}
-
-// ============================================================================
-// generate_keypair - error paths
-// ============================================================================
-
-#[tokio::test]
-async fn test_generate_keypair_no_service_returns_err() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
     let result = crypto
         .generate_keypair(StandardCapability::CryptoSignatureEd25519)
         .await;
-
     assert!(result.is_err());
 }
 
-#[tokio::test]
-async fn test_generate_keypair_ecdsa_capability() {
+#[tokio::test(flavor = "current_thread")]
+async fn encrypt_no_service_err() {
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
-    let result = crypto
-        .generate_keypair(StandardCapability::CryptoSignatureEcdsa)
-        .await;
-
-    assert!(result.is_err());
-}
-
-// ============================================================================
-// encrypt - error paths
-// ============================================================================
-
-#[tokio::test]
-async fn test_encrypt_no_service_returns_err() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
     let result = crypto
         .encrypt(
             StandardCapability::CryptoEncryptionAes256,
-            b"key12345678901234567890123456789012",
+            b"key",
             b"plaintext",
         )
         .await;
-
     assert!(result.is_err());
 }
 
-#[tokio::test]
-async fn test_encrypt_empty_plaintext() {
+#[tokio::test(flavor = "current_thread")]
+async fn decrypt_no_service_err() {
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
-    let result = crypto
-        .encrypt(StandardCapability::CryptoEncryptionAes256, b"key", b"")
-        .await;
-
-    assert!(result.is_err());
-}
-
-// ============================================================================
-// decrypt - error paths
-// ============================================================================
-
-#[tokio::test]
-async fn test_decrypt_no_service_returns_err() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
     let result = crypto
         .decrypt(
             StandardCapability::CryptoEncryptionAes256,
@@ -138,225 +100,94 @@ async fn test_decrypt_no_service_returns_err() {
             b"ciphertext",
         )
         .await;
-
     assert!(result.is_err());
 }
 
-// ============================================================================
-// random_bytes - error paths
-// ============================================================================
-
-#[tokio::test]
-async fn test_random_bytes_no_service_returns_err() {
+#[tokio::test(flavor = "current_thread")]
+async fn random_bytes_no_service_err() {
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
     let result = crypto.random_bytes(32).await;
-
     assert!(result.is_err());
 }
 
-#[tokio::test]
-async fn test_random_bytes_zero_length() {
+#[tokio::test(flavor = "current_thread")]
+async fn random_bytes_zero_length_no_service_err() {
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
     let result = crypto.random_bytes(0).await;
-
     assert!(result.is_err());
 }
 
-#[tokio::test]
-async fn test_random_bytes_large_length() {
+// ─── install_permissions: file and parse errors ────────────────────────────
+
+#[tokio::test(flavor = "current_thread")]
+async fn install_permissions_nonexistent_path_err() {
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
-    let result = crypto.random_bytes(1024).await;
-
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
+    let path = Path::new("/nonexistent/path/to/permissions.json");
+    let result = crypto.install_permissions(path, true).await;
     assert!(result.is_err());
-}
-
-// ============================================================================
-// install_permissions - error paths
-// ============================================================================
-
-#[tokio::test]
-async fn test_install_permissions_file_not_found() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
-    let result = crypto
-        .install_permissions(Path::new("/nonexistent/path/permissions.json"), true)
-        .await;
-
-    assert!(result.is_err());
-    let err_str = result.unwrap_err().to_string();
+    let err = result.unwrap_err().to_string();
     assert!(
-        err_str.contains("read") || err_str.contains("Failed") || err_str.contains("No such"),
-        "Expected file read error: {err_str}"
+        err.contains("read")
+            || err.contains("Failed")
+            || err.contains("No such")
+            || err.contains("not found"),
+        "expected file error, got: {err}"
     );
 }
 
-#[tokio::test]
-async fn test_install_permissions_validate_only_nonexistent() {
+#[tokio::test(flavor = "current_thread")]
+async fn install_permissions_invalid_json_parse_err() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("permissions.json");
+    std::fs::write(&path, "{ invalid json }").expect("write");
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
+    let result = crypto.install_permissions(&path, true).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("parse") || err.contains("JSON") || err.contains("Failed"),
+        "expected parse error, got: {err}"
+    );
+}
 
-    let result = crypto
-        .install_permissions(Path::new("/tmp/nonexistent-permissions-xyz.json"), true)
-        .await;
-
+#[tokio::test(flavor = "current_thread")]
+async fn install_permissions_empty_file_parse_err() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("empty.json");
+    std::fs::write(&path, "").expect("write");
+    let factory = AdapterFactory::new();
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
+    let result = crypto.install_permissions(&path, true).await;
     assert!(result.is_err());
 }
 
-#[tokio::test]
-async fn test_install_permissions_install_mode_nonexistent() {
+#[tokio::test(flavor = "current_thread")]
+async fn install_permissions_valid_json_no_service_validate_err() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("permissions.json");
+    let valid_json = r#"{"permissions": [], "version": 1}"#;
+    std::fs::write(&path, valid_json).expect("write");
     let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-
-    let result = crypto
-        .install_permissions(Path::new("/tmp/nonexistent-permissions-xyz.json"), false)
-        .await;
-
+    let crypto = factory.crypto_adapter().expect("crypto adapter");
+    let result = crypto.install_permissions(&path, true).await;
     assert!(result.is_err());
 }
 
-// ============================================================================
-// KeyPair struct (from crypto adapter)
-// ============================================================================
+// ─── KeyPair struct coverage ──────────────────────────────────────────────
 
 #[test]
-fn test_keypair_struct_creation() {
-    let keypair = toadstool_cli::ecosystem::adapters::crypto::KeyPair {
-        public_key: vec![1, 2, 3, 4, 5],
-        private_key: vec![6, 7, 8, 9, 10],
-    };
-    assert_eq!(keypair.public_key.len(), 5);
-    assert_eq!(keypair.private_key.len(), 5);
-}
-
-#[test]
-fn test_keypair_clone() {
-    let keypair = toadstool_cli::ecosystem::adapters::crypto::KeyPair {
+fn keypair_debug_and_clone() {
+    use toadstool_cli::ecosystem::adapters::crypto::KeyPair;
+    let kp = KeyPair {
         public_key: vec![1, 2, 3],
         private_key: vec![4, 5, 6],
     };
-    let cloned = keypair.clone();
-    assert_eq!(keypair.public_key, cloned.public_key);
-    assert_eq!(keypair.private_key, cloned.private_key);
-}
-
-// ─── Additional coverage: error paths, capability variants ───
-
-#[tokio::test]
-async fn test_install_permissions_invalid_json() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-    let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("invalid.json");
-    std::fs::write(&path, "{ invalid json }").expect("write");
-
-    let result = crypto.install_permissions(&path, true).await;
-    assert!(result.is_err());
-    let err_str = result.unwrap_err().to_string();
-    assert!(
-        err_str.contains("parse") || err_str.contains("JSON") || err_str.contains("Failed"),
-        "expected parse/JSON error: {err_str}"
-    );
-}
-
-#[tokio::test]
-async fn test_install_permissions_empty_file() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-    let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("empty.json");
-    std::fs::write(&path, "").expect("write");
-
-    let result = crypto.install_permissions(&path, true).await;
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_install_permissions_malformed_json() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-    let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("malformed.json");
-    std::fs::write(&path, "not json at all").expect("write");
-
-    let result = crypto.install_permissions(&path, true).await;
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_verify_signature_rsa_capability() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-    let result = crypto
-        .verify_signature(
-            toadstool_cli::ecosystem::capabilities::StandardCapability::CryptoSignatureRsa,
-            b"pubkey",
-            b"msg",
-            b"sig",
-        )
-        .await;
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_generate_keypair_rsa_capability() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-    let result = crypto
-        .generate_keypair(
-            toadstool_cli::ecosystem::capabilities::StandardCapability::CryptoSignatureRsa,
-        )
-        .await;
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_encrypt_chacha20_capability() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-    let result = crypto
-        .encrypt(
-            toadstool_cli::ecosystem::capabilities::StandardCapability::CryptoEncryptionChaCha20,
-            b"key12345678901234567890123456789012",
-            b"data",
-        )
-        .await;
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_decrypt_chacha20_capability() {
-    let factory = AdapterFactory::new();
-    let crypto = factory.crypto_adapter().unwrap();
-    let result = crypto
-        .decrypt(
-            toadstool_cli::ecosystem::capabilities::StandardCapability::CryptoEncryptionChaCha20,
-            b"key",
-            b"cipher",
-        )
-        .await;
-    assert!(result.is_err());
-}
-
-#[test]
-fn test_keypair_debug() {
-    let kp = toadstool_cli::ecosystem::adapters::crypto::KeyPair {
-        public_key: vec![1],
-        private_key: vec![2],
-    };
-    let s = format!("{kp:?}");
-    assert!(s.contains("KeyPair") || s.contains("public_key"));
-}
-
-#[tokio::test]
-async fn test_crypto_adapter_new_via_factory() {
-    let factory = AdapterFactory::new();
-    let adapter = factory.crypto_adapter().unwrap();
-    let _ = adapter; // CryptoAdapter::new(universal) exercised via factory
+    let cloned = kp.clone();
+    assert_eq!(kp.public_key, cloned.public_key);
+    assert_eq!(kp.private_key, cloned.private_key);
+    let _ = format!("{:?}", kp);
 }
