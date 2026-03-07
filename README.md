@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (61+ dynamically built)
+### JSON-RPC Methods (65+ dynamically built)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -156,6 +156,8 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 | `ollama.*` | `list_models`, `inference`, `load`, `unload` | Local LLM lifecycle |
 | `gate.*` | `update`, `remove`, `list`, `route` | Distributed routing |
 | `transport.*` | `discover`, `list`, `route` | Hardware transport discovery + routing |
+| `shader.compile.*` | `wgsl`, `spirv`, `status`, `capabilities` | coralReef proxy (capability-based discovery, naga fallback) |
+| `toadstool.provenance` | cross-spring flow matrix | Cross-spring evolution introspection API |
 
 ---
 
@@ -262,6 +264,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S130 (Mar 7, 2026)**: Cross-spring shader rewiring. `shader.compile.*` stubs evolved to real coralReef proxy handlers with capability-based discovery. `CoralReefClient` with env → XDG manifest → socket fallback. `cross_spring_provenance.rs` with 17+ documented cross-spring flows and `toadstool.provenance` JSON-RPC method. `SHADER_COMPILER` capability added to port resolution. 31 new tests (proxy, provenance, benchmark validation). Cross-spring evolution narrative handoff.
 - **S129 (Mar 7, 2026)**: Deep debt execution. C dependency evolution (`flate2` → pure Rust backend, `procfs` default features disabled). Capability-based port resolution (`resolve_capability_or_legacy_port`). 5 god files smart-refactored (ipc/server.rs 987→428, container/lib.rs 981→582, ecosystem.rs 963→556, handler/mod.rs 832→610, nestgate/client.rs 824→555). 200+ coverage tests added. 19,109 tests passing, 0 failures. `String` → `Cow<'static, str>` / `Arc<str>` in hot paths. Const assertions for frame protocol. Generated artifacts removed from git.
 - **S128 (Mar 6, 2026)**: f64 shared-memory bug absorbed (groundSpring V84-V85). `PrecisionRoutingAdvice` enum. 4 `shader.compile.*` IPC methods (coralReef preparation). Architecture stubs evolved to typed implementations (auth, scheduling). Capability-based handler evolution.
 - **S95–S96 (Mar 6, 2026)**: Sovereign pipeline: `HardwareFingerprint`, `SubstrateCapabilityKind`. 5 god files split. `crates/api/` orphan resolved. V4L2 unsafe documented. Debris cleanup.
@@ -322,4 +325,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 7, 2026 -- S129. 19,109 workspace tests. 61+ JSON-RPC methods (dynamically built). Capability-based port resolution. 45+ god files refactored. Pure Rust C dep elimination. Rust 1.82+ (MSRV).
+**Last Updated**: March 7, 2026 -- S130. 19,140+ workspace tests. 65+ JSON-RPC methods (dynamically built). coralReef shader proxy with capability-based discovery. Cross-spring provenance tracking. 45+ god files refactored. Pure Rust C dep elimination. Rust 1.82+ (MSRV).

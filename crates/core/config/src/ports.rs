@@ -59,6 +59,9 @@ pub mod capability_fallback {
 
     /// Ecosystem primary port (UI/API gateway)
     pub const ECOSYSTEM_PRIMARY: u16 = 8005;
+
+    /// Shader compiler capability (WGSL/SPIR-V → native binary) — e.g. coralReef
+    pub const SHADER_COMPILER: u16 = 8090;
 }
 
 /// Legacy primal-name aliases for backward compatibility during migration.

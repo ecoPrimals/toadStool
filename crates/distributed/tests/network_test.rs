@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Network module
 //!
-//! Day 2 of Month 1 test expansion - focusing on network types and fault tolerance
+//! Tests for network types and fault tolerance
 
 use std::time::Duration;
 use toadstool_distributed::network::load_balancer::{

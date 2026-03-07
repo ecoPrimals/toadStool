@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for executor_impl.rs (Month 1 Coverage Expansion)
+//! Comprehensive tests for executor_impl.rs
 //!
-//! Target: Add 20-30 tests covering BiomeExecutor functionality
-//! Status: Month 1 execution (Week 1)
-//! Priority: Critical zero-coverage file (1,028 lines)
+//! Covers BiomeExecutor functionality (20-30 tests).
 
 // Mock types to test compilation and structure
 #[allow(dead_code)]

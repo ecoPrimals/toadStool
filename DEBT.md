@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 6, 2026
+**Date**: March 7, 2026
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -105,6 +105,14 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (S130 — Mar 7, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| `shader.compile.*` stubs | Evolved to real coralReef proxy handlers with capability-based discovery and naga fallback. `CoralReefClient` discovers coralReef via env vars → XDG manifest → socket |
+| Cross-spring provenance tracking | `cross_spring_provenance.rs` with 17+ documented flows, `cross_spring_matrix()`, `provenance_json()`. New `toadstool.provenance` JSON-RPC method |
+| SHADER_COMPILER capability | Added to `capability_fallback` module (port 8090) alongside existing capabilities |
 
 ## Recently Resolved (S129 — Mar 7, 2026)
 

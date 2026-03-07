@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 6, 2026 -- S128
+**Last Updated**: March 7, 2026 -- S130
 
 ---
 
@@ -17,7 +17,7 @@
 | Roadmap and next steps | [NEXT_STEPS.md](NEXT_STEPS.md) |
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
-| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-47-total) |
+| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-65-total) |
 | Hardware Transport Layer | [specs/HARDWARE_TRANSPORT_SPEC.md](specs/HARDWARE_TRANSPORT_SPEC.md) |
 | Dual-Fabric Architecture | [specs/DUAL_FABRIC_ARCHITECTURE.md](specs/DUAL_FABRIC_ARCHITECTURE.md) |
 | Try GPU operations | See barraCuda (`ecoPrimals/barraCuda/`) |
@@ -31,9 +31,9 @@
 
 ---
 
-## Current State (S96 — March 6, 2026)
+## Current State (S130 — March 7, 2026)
 
-**Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration.
+**Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration. coralReef shader compilation proxy with capability-based discovery.
 
 - **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery via `poll_safe()`.
 - **ecoBin verified** — `pure-rust` feature compiles with zero C FFI dependencies. PyO3 feature-gated.
@@ -44,10 +44,12 @@
 - **NPU dispatch** — Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. `NpuParameterController` trait (absorbed from hotSpring).
 - **GPU capability probing** — `GpuAdapterInfo` struct exposes detailed adapter info for barraCuda. Multi-adapter selection via `TOADSTOOL_GPU_ADAPTER`.
 - **NestGate integration** — Real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback.
-- **Module architecture** — 40+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
+- **Module architecture** — 45+ large files refactored into domain modules. Wildcard re-exports narrowed in 13 crates.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
-- **19,109 workspace tests** | all quality gates green (0 warnings)
-- **61+ JSON-RPC methods** (dynamically built from semantic registry)
+- **coralReef shader proxy** — `shader.compile.*` handlers proxy to coralReef with capability-based discovery and graceful naga fallback.
+- **Cross-spring provenance** — `toadstool.provenance` JSON-RPC method exposes 17+ documented cross-spring flows for ecosystem introspection.
+- **19,140+ workspace tests** | all quality gates green (0 warnings)
+- **65+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 
 ---

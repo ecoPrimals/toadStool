@@ -7,7 +7,7 @@
 //! - Network + Load Balancer
 //! - Full system integration
 //!
-//! Following Month 1 test expansion plan - Day 4
+//! Integration tests for coordinator functionality
 
 use std::time::Duration;
 use tokio::time::timeout;

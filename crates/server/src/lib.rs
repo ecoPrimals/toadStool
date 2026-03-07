@@ -159,6 +159,8 @@ pub mod ollama;
 #[cfg(test)]
 pub mod mocks;
 
+pub mod coral_reef_client; // coralReef shader compiler IPC client
+
 // ✅ CANONICAL: JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
 pub mod lifecycle; // Server startup and shutdown
 pub mod pure_jsonrpc;

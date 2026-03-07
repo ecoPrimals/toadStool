@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for DistributedCoordinator
 //!
-//! Following Month 1 test expansion plan - focusing on core coordinator functionality
+//! Tests for core coordinator functionality
 
 use toadstool_distributed::core::config::{DistributedConfig, SongbirdConfig, StandaloneConfig};
 use toadstool_distributed::core::coordinator::DistributedCoordinator;

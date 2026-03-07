@@ -1,6 +1,6 @@
 # ToadStool Specifications
 
-## Current Status (March 5, 2026 — Deep Debt Execution)
+## Current Status (March 7, 2026 — S130)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -8,25 +8,14 @@
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **19,109 workspace tests** (0 failures, all concurrent)
-- **61+ JSON-RPC methods** (dynamically built from semantic registry)
+- **19,140+ workspace tests** (0 failures, all concurrent)
+- **65+ JSON-RPC methods** (dynamically built from semantic registry)
 - **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport
+- **coralReef shader proxy** — capability-based discovery, naga fallback
+- **Cross-spring provenance** — 17+ documented flows via `toadstool.provenance`
 - **Capability-based discovery** — sovereignty: all production callers migrated
 - **ecoBin pure-rust verified** — zero C FFI deps
 - **Rust 1.82+** — `is_some_and`, `div_ceil`, modern idiomatic patterns
-
-**Latest (Mar 5 — Deep Debt Execution):**
-
-| Update | Impact |
-|--------|--------|
-| **Hardware Transport wired** | `transport.discover/list/route` JSON-RPC + `toadstool transport discover/list/status` CLI |
-| **18,028 tests** | Up from 5,369 — expanded coverage across detection, monitoring, transport |
-| **Detection stubs evolved** | 11 functions → real /proc/cpuinfo, meminfo, os-release, nvidia-smi parsing |
-| **Smart refactoring** | `security.rs` (771→5 modules), `config_utils/mod.rs` (777→5 modules) |
-| **Hardcoding eliminated** | 35+ primal names → `well_known::*` constants; framework placeholders → explicit Unavailable |
-| **Dual-Fabric Architecture** | Spec for hardware backbone (HDMI/serial) + network plane (Songbird) multi-machine deployments |
-| **Airgapped data diode** | Hardware-enforced unidirectional data flow via HDMI — commodity GPU + capture card |
-| **Pixel format + buffer bugs fixed** | CaptureTransport AR24 alignment; DisplayTransport double-buffer alternation |
 
 **Remaining toadStool debt:** D-COV (90% target)
 
@@ -57,10 +46,10 @@
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
 | **[HYBRID_FP64_CORE_STREAMING.md](./HYBRID_FP64_CORE_STREAMING.md)** | DF64 core streaming — hybrid FP32/FP64 | **Feb 23** | ✅ barraCuda team |
-| **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks | **Feb 16** | ✅ barraCuda team |
+| ~~BARRACUDA_PARITY_ROADMAP~~ | Performance evolution, benchmarks | Feb 16 | Transferred to barraCuda |
 | **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, fossil functions | **Feb 23** | ✅ barraCuda team |
 | **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** | Cross-vendor workload strategy (GPU + NPU) | Feb 13 | ✅ Current |
-| **[CROSS_VENDOR_BENCHMARK_SPEC.md](./CROSS_VENDOR_BENCHMARK_SPEC.md)** | Benchmark methodology and validation | Feb 13 | ✅ Current |
+| ~~CROSS_VENDOR_BENCHMARK_SPEC~~ | Benchmark methodology and validation | Feb 13 | Transferred to barraCuda |
 
 ### NPU & Multi-Tenant
 
@@ -69,7 +58,7 @@
 | **[NPU_DRIVER_ARCHITECTURE.md](./NPU_DRIVER_ARCHITECTURE.md)** | Pure Rust VFIO NPU driver design | Feb 8 | ✅ Current |
 | **[NPU_MULTI_TENANT_ARCHITECTURE.md](./NPU_MULTI_TENANT_ARCHITECTURE.md)** | Multi-tenant NPU resource partitioning | Feb 8 | ✅ Current |
 | **[MULTITENANT_COMPUTE_ARCHITECTURE.md](./MULTITENANT_COMPUTE_ARCHITECTURE.md)** | Compute multi-tenancy across GPU/NPU/CPU | Feb 8 | ✅ Current |
-| **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** | Universal tensor ops (CPU, GPU, NPU) | Feb 2 | ✅ Current |
+| ~~BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2~~ | Universal tensor ops (CPU, GPU, NPU) | Feb 2 | Transferred to barraCuda |
 
 ### Hardware Transport & Dual-Fabric (S94b)
 
@@ -83,7 +72,7 @@
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
-| **[RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md)** | Neuromorphic reservoir computing ops | Jan 29 | 📋 Planned |
+| ~~RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS~~ | Neuromorphic reservoir computing ops | Jan 29 | Transferred to barraCuda |
 | **[PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md)** | Capability-based discovery | Nov 2025 | ✅ Implemented |
 
 ---

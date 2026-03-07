@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for job types and queues
 //!
-//! Day 3 of Month 1 test expansion - focusing on job management
+//! Tests for job management types and lifecycle
 
 use toadstool_distributed::types::{
     CompatibilityMode, ExecutionTarget, JobPriority, LoadBalancingStrategy, UniversalJobQueue,

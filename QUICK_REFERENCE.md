@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 7, 2026 — S129**
+**March 7, 2026 — S130**
 
 ---
 
@@ -68,7 +68,7 @@ cd showcase/cross-platform && cargo run --release
 
 ---
 
-## JSON-RPC Methods (47 total)
+## JSON-RPC Methods (65+ total, dynamically built)
 
 ### Core (`toadstool.*`)
 
@@ -160,6 +160,35 @@ cd showcase/cross-platform && cargo run --release
 | `gate.remove` | Remove offline gate |
 | `gate.list` | List all known gates |
 | `gate.route` | Preview routing decision for a model |
+
+### Science (`science.*`)
+
+| Method | Description |
+|--------|-------------|
+| `science.compute` | Submit scientific compute workload |
+| `science.status` | Check scientific compute status |
+| `science.result` | Retrieve scientific compute result |
+| `science.gpu.dispatch` | GPU scientific dispatch |
+| `science.gpu.capabilities` | GPU capabilities for science (precision routing) |
+| `science.npu.dispatch` | NPU scientific dispatch |
+| `science.npu.capabilities` | NPU capabilities for science |
+| `science.substrate.discover` | Discover compute substrates |
+| `science.substrate.probe` | Probe substrate capabilities |
+
+### Shader Compilation (`shader.compile.*`) — coralReef Proxy
+
+| Method | Description |
+|--------|-------------|
+| `shader.compile.wgsl` | Compile WGSL to native binary (proxy to coralReef, naga fallback) |
+| `shader.compile.spirv` | Compile SPIR-V to native binary (proxy to coralReef, naga fallback) |
+| `shader.compile.status` | Check compilation status |
+| `shader.compile.capabilities` | Report available compilation pipelines and architectures |
+
+### Provenance (`toadstool.provenance`)
+
+| Method | Description |
+|--------|-------------|
+| `toadstool.provenance` | Cross-spring evolution flow matrix (17+ documented flows across 5 springs) |
 
 ---
 

@@ -68,6 +68,7 @@ pub mod biomeos_integration;
 pub mod byob;
 pub mod cloud_provider_trait;
 pub mod composition_constraints;
+pub mod cross_spring_provenance;
 pub mod composition_engine;
 pub mod deployment_layer;
 pub mod discovery;

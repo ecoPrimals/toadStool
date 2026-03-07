@@ -3,7 +3,7 @@
 //!
 //! Tests error scenarios and recovery behavior across distributed components
 //!
-//! Following Month 1 test expansion plan - Day 4 (Error Handling)
+//! Integration tests for error handling and fault tolerance
 
 use std::time::Duration;
 use tokio::time::timeout;

@@ -21,6 +21,7 @@ use toadstool::semantic_methods::SemanticMethodRegistry;
 use tracing::{debug, error, info};
 
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JSONRPC_VERSION};
+use crate::coral_reef_client::SharedCoralReefClient;
 
 use job::JobHandler;
 use ollama::OllamaHandler;
@@ -43,6 +44,7 @@ pub struct JsonRpcHandler {
     resources: ResourceHandler,
     transport: TransportHandler,
     ollama: OllamaHandler,
+    coral_reef: SharedCoralReefClient,
 }
 
 impl JsonRpcHandler {
@@ -68,6 +70,7 @@ impl JsonRpcHandler {
             resources: ResourceHandler::new(),
             transport: TransportHandler::new(),
             ollama: OllamaHandler::new(),
+            coral_reef: crate::coral_reef_client::create_coral_reef_client(),
         }
     }
 
@@ -209,6 +212,8 @@ impl JsonRpcHandler {
             "shader.compile.status" => return self.shader_compile_status(params).await,
             "shader.compile.capabilities" => return self.shader_compile_capabilities().await,
 
+            "toadstool.provenance" => return Self::toadstool_provenance().await,
+
             _ => {}
         }
 
@@ -245,16 +250,26 @@ impl JsonRpcHandler {
             "shader_compile_spirv" => self.shader_compile_spirv(params).await,
             "shader_compile_status" => self.shader_compile_status(params).await,
             "shader_compile_capabilities" => self.shader_compile_capabilities().await,
+            "toadstool_provenance" => Self::toadstool_provenance().await,
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
     }
 
     // ═══════════════════════════════════════════════════════════
+    // Provenance domain — cross-spring evolution introspection
+    // ═══════════════════════════════════════════════════════════
+
+    #[allow(clippy::unused_async)]
+    async fn toadstool_provenance() -> Result<serde_json::Value, JsonRpcError> {
+        Ok(toadstool::cross_spring_provenance::provenance_json())
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // Shader domain — compilation pipeline IPC for coralReef
     //
-    // Routes WGSL/SPIR-V compilation requests. When coralReef is
-    // available, these will proxy to tarpc.compiler.compile().
-    // Currently returns pipeline metadata for capability probing.
+    // Proxies WGSL/SPIR-V compilation requests to coralReef when
+    // available. Falls back to naga-only pipeline metadata when
+    // coralReef is not discovered at runtime.
     // ═══════════════════════════════════════════════════════════
 
     async fn shader_compile_wgsl(
@@ -272,12 +287,33 @@ impl JsonRpcHandler {
             ));
         }
 
+        let arch = params.and_then(|p| p.get("arch")).and_then(|v| v.as_str());
+        let opt_level = params
+            .and_then(|p| p.get("opt_level"))
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+
+        if let Some(result) = self
+            .coral_reef
+            .compile_wgsl(shader_source, arch, opt_level)
+            .await
+        {
+            return Ok(serde_json::json!({
+                "status": "compiled",
+                "pipeline": "coralreef_native",
+                "source_language": "wgsl",
+                "coral_reef_available": true,
+                "result": result
+            }));
+        }
+
         Ok(serde_json::json!({
             "status": "accepted",
             "pipeline": "naga_wgsl_to_spirv",
             "source_language": "wgsl",
             "target": "spirv",
-            "note": "Compilation routed through naga. coralReef native path not yet available."
+            "coral_reef_available": false,
+            "note": "Compilation routed through naga. coralReef not available for native binary."
         }))
     }
 
@@ -285,20 +321,41 @@ impl JsonRpcHandler {
         &self,
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let has_binary = params.and_then(|p| p.get("spirv_binary")).is_some();
+        let spirv_binary = params.and_then(|p| p.get("spirv_binary"));
 
-        if !has_binary {
+        if spirv_binary.is_none() {
             return Err(JsonRpcError::invalid_params(
                 "Missing required 'spirv_binary' parameter with base64-encoded SPIR-V",
             ));
+        }
+
+        let arch = params.and_then(|p| p.get("arch")).and_then(|v| v.as_str());
+
+        if let Some(words) = spirv_binary
+            .and_then(|b| b.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_u64().map(|n| n as u32))
+                    .collect::<Vec<u32>>()
+            })
+        {
+            if let Some(result) = self.coral_reef.compile_spirv(&words, arch).await {
+                return Ok(serde_json::json!({
+                    "status": "compiled",
+                    "pipeline": "coralreef_native",
+                    "source_language": "spirv",
+                    "coral_reef_available": true,
+                    "result": result
+                }));
+            }
         }
 
         Ok(serde_json::json!({
             "status": "accepted",
             "pipeline": "spirv_passthrough",
             "source_language": "spirv",
-            "native_compilation_available": false,
-            "note": "SPIR-V accepted. Native binary compilation via coralReef not yet available."
+            "coral_reef_available": false,
+            "note": "SPIR-V accepted. coralReef not available for native binary compilation."
         }))
     }
 
@@ -311,20 +368,38 @@ impl JsonRpcHandler {
             .and_then(serde_json::Value::as_str)
             .unwrap_or("unknown");
 
+        let coral_available = self.coral_reef.is_available().await;
+
         Ok(serde_json::json!({
             "compile_id": compile_id,
-            "status": "not_found",
-            "note": "Compilation tracking is available when coralReef pipeline is active"
+            "status": if coral_available { "tracking_available" } else { "not_found" },
+            "coral_reef_available": coral_available,
+            "note": if coral_available {
+                "coralReef pipeline active. Compilation results available synchronously."
+            } else {
+                "coralReef not available. Compilation tracking requires active compiler."
+            }
         }))
     }
 
-    #[allow(clippy::unused_async)]
     async fn shader_compile_capabilities(&self) -> Result<serde_json::Value, JsonRpcError> {
+        let health = self.coral_reef.health().await;
+        let coral_available = health.is_some();
+
+        let mut target_formats = vec!["spirv"];
+        let mut supported_archs = Vec::<String>::new();
+        if let Some(h) = &health {
+            target_formats.push("native");
+            supported_archs = h.supported_archs.clone();
+        }
+
         Ok(serde_json::json!({
             "source_languages": ["wgsl"],
-            "target_formats": ["spirv"],
-            "native_binary_compilation": false,
-            "coral_reef_available": false,
+            "target_formats": target_formats,
+            "native_binary_compilation": coral_available,
+            "coral_reef_available": coral_available,
+            "coral_reef_version": health.as_ref().map(|h| h.version.as_str()),
+            "supported_archs": supported_archs,
             "coral_driver_available": false,
             "naga_pipeline": true,
             "domain": "shader"

@@ -1,7 +1,8 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 7, 2026 — Session 129  
+**Date**: March 7, 2026 — Session 130  
 **Sources**: hotSpring (v0.6.17), neuralSpring (V86/S128), wetSpring (V97d), airSpring (V071), groundSpring (V85), wateringHole (updated MAR07)  
+**S130**: Cross-spring shader rewiring — `shader.compile.*` stubs evolved to real coralReef proxy with capability-based discovery. `CoralReefClient` with lazy connection. `cross_spring_provenance.rs` (17+ flows, `toadstool.provenance` method). 31 new tests.  
 **S129**: Deep debt execution — C dep evolution, capability-based port resolution, 5 god files refactored, 200+ coverage tests, zero-copy hot paths. 19,109 tests, 0 failures.  
 **S128**: f64 shared-memory bug absorbed (groundSpring V84-V85), PrecisionRoutingAdvice, sovereign_binary_capable, shader.compile.* IPC, capability-based handler evolution, architecture stub completion.
 
@@ -16,7 +17,7 @@
 
 ### Tier 1: Shader Compile IPC (coralReef pipeline)
 - **4 `shader.compile.*` methods**: `wgsl` (validates source), `spirv` (validates binary), `status` (compile tracking), `capabilities` (reports naga/coralReef/coralDriver availability).
-- Semantic registry: 70 methods total (was 66).
+- Semantic registry: 71 methods total (was 66; +1 `toadstool.provenance` S130).
 - Handler parameter validation: missing `source` → `InvalidParams`, missing `spirv_binary` → `InvalidParams`.
 
 ### Deep Debt: Capability-Based Evolution

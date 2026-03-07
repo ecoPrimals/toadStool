@@ -195,6 +195,12 @@ impl SemanticMethodRegistry {
         add_mapping("shader.compile.status", "shader_compile_status");
         add_mapping("shader.compile.capabilities", "shader_compile_capabilities");
 
+        // ═══════════════════════════════════════════════════════════
+        // PROVENANCE DOMAIN - Cross-spring evolution tracking
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("toadstool.provenance", "toadstool_provenance");
+
         Self { aliases, reverse }
     }
 

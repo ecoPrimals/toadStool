@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 7, 2026 -- S129
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | 19,109 tests (0 failures) | 61+ JSON-RPC methods (dynamically built) | Capability-based port resolution | Pure Rust C dep elimination | All files < 1000 lines | 45+ god files refactored
-**Latest**: S129 — Deep debt execution: C deps evolved (flate2/procfs pure Rust), capability-based `resolve_capability_or_legacy_port()`, 5 more god files smart-refactored, 200+ coverage tests, `String` → `Cow`/`Arc<str>` in hot paths.
+**Updated**: March 7, 2026 -- S130
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | 19,140+ tests (0 failures) | 65+ JSON-RPC methods (dynamically built) | coralReef shader proxy | Cross-spring provenance tracking | All files < 1000 lines | 45+ god files refactored
+**Latest**: S130 — Cross-spring shader rewiring: `shader.compile.*` stubs evolved to real coralReef proxy with capability-based discovery. `CoralReefClient` with lazy connection. `cross_spring_provenance.rs` (17+ flows, matrix, `toadstool.provenance` method). 31 new tests.
 
 ---
 
@@ -89,6 +89,8 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
 - [x] **Zero-copy hot paths** -- `Cow<'static, str>`, `Arc<str>` in execution types (S129)
 - [x] **Generated artifacts cleaned** -- removed tracked JSON files from git (S129)
+- [x] **coralReef shader proxy** -- `shader.compile.*` stubs evolved to real proxy with capability-based discovery (S130)
+- [x] **Cross-spring provenance** -- `cross_spring_provenance.rs`, `toadstool.provenance` JSON-RPC method (S130)
 - [x] **Sovereignty migration** -- remaining callers to capability-based APIs (toadStool D-SOV)
 - [x] **Hardware Transport wiring** -- transport.discover/list/route JSON-RPC + CLI commands
 - [x] **Detection stubs evolved** -- 11 functions → real /proc + command-based detection
@@ -111,7 +113,14 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-129)
+## Completed This Session (S90-130)
+
+### Session S130: Cross-Spring Shader Rewiring + Provenance (Mar 7, 2026)
+- **coralReef proxy**: `shader.compile.*` stubs evolved to real coralReef proxy handlers with capability-based discovery. `CoralReefClient` discovers via env vars → XDG manifest → socket fallback. Dynamic `coral_reef_available` in capabilities. Graceful naga-only fallback when coralReef unavailable.
+- **Cross-spring provenance**: `cross_spring_provenance.rs` with 17+ documented flows across all 5 springs. `CrossSpringFlow` struct, `cross_spring_matrix()`, `provenance_json()`. New `toadstool.provenance` JSON-RPC method for ecosystem introspection.
+- **Capability port**: `SHADER_COMPILER` added to `capability_fallback` module (port 8090).
+- **Tests**: 31 new tests — 12 shader proxy tests, 6 benchmark validation tests, 13 provenance integration tests. Cross-spring WGSL samples from all 5 domains validated.
+- **Documentation**: Cross-spring evolution narrative handoff doc at wateringHole.
 
 ### Session S129: Deep Debt Execution + Coverage + C Dep Evolution (Mar 7, 2026)
 - **C dependency evolution**: `flate2` switched to `rust_backend` (eliminates miniz-sys C dep); `procfs` disabled default features; corrected "Pure Rust" comments on `sysinfo`/`drm`/`evdev`.

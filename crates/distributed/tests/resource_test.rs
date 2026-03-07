@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for resource types and requirements
 //!
-//! Day 3 of Month 1 test expansion - focusing on resource management
+//! Tests for resource management types and operations
 
 use toadstool_distributed::types::{
     BackoffStrategy, CpuRequirements, DistributedRetryConfig, GpuRequirements, MemoryRequirements,

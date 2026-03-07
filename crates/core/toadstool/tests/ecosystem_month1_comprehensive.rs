@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for ecosystem.rs (Month 1 Coverage Expansion)
+//! Comprehensive tests for ecosystem.rs
 //!
-//! Target: Add 15-20 tests covering EcosystemCoordinator functionality
-//! Status: Month 1 execution (Week 1)
-//! Priority: Critical zero-coverage file (643 lines)
+//! Covers EcosystemCoordinator functionality (15-20 tests).
 
 use std::collections::HashMap;
 use std::time::Duration;
