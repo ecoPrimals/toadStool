@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Critical coverage expansion for `executor_impl.rs`
 //!
 //! This test file provides comprehensive coverage for `BiomeExecutor`,
@@ -136,13 +146,12 @@ mod executor_impl_coverage_tests {
         let manifest_name = "manifest-name";
 
         // Simulate runtime option that could have a value
-        fn get_user_name(_manifest: &str) -> Option<String> {
-            Some("override-name".to_string())
+        fn get_user_name(_manifest: &str) -> String {
+            "override-name".to_string()
         }
 
         // Should use user-provided name
-        let user_name = get_user_name(manifest_name);
-        let effective_name = user_name.unwrap_or_else(|| manifest_name.to_string());
+        let effective_name = get_user_name(manifest_name);
         assert_eq!(effective_name, "override-name");
     }
 

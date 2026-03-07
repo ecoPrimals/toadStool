@@ -1,6 +1,10 @@
 // Copyright (C) 2024-2025 ToadStool Project
 // SPDX-License-Identifier: AGPL-3.0-or-later
-
+#![allow(
+    clippy::float_cmp,
+    clippy::cast_precision_loss,
+    clippy::unreadable_literal
+)]
 //! Chaos Tests for Fractal Composition
 //!
 //! Tests system behavior under random, extreme, and unexpected inputs.
@@ -58,8 +62,8 @@ async fn test_extreme_memory_values() {
     // Huge memory (impossible)
     let req =
         CompositionRequest::new("huge-mem").with_constraint(Constraint::min_memory_gb(999999.0));
-    let _eval = engine.evaluate(&req).await.unwrap();
-    assert!(!_eval.is_feasible); // Should be infeasible
+    let eval = engine.evaluate(&req).await.unwrap();
+    assert!(!eval.is_feasible); // Should be infeasible
 }
 
 /// Test: Extreme CPU values

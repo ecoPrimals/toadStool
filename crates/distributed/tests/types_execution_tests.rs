@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for distributed execution types
 
+#![allow(clippy::float_cmp)]
+
 use std::collections::HashMap;
 use std::time::SystemTime;
 use toadstool_distributed::types::execution::*;

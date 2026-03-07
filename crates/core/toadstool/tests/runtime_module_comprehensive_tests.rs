@@ -231,9 +231,9 @@ fn test_all_strategy_variants_match() {
 
     for strategy in strategies {
         match strategy {
-            RuntimeSelectionStrategy::FirstAvailable => {}
-            RuntimeSelectionStrategy::LoadBalanced => {}
-            RuntimeSelectionStrategy::OptimalMatch => {}
+            RuntimeSelectionStrategy::FirstAvailable
+            | RuntimeSelectionStrategy::LoadBalanced
+            | RuntimeSelectionStrategy::OptimalMatch => {}
         }
     }
 }

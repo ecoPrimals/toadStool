@@ -2,7 +2,7 @@
 //! Cloud orchestrator tests
 
 #[cfg(test)]
-#[allow(clippy::module_inception)]
+#[allow(clippy::float_cmp, clippy::module_inception)]
 mod tests {
     use async_trait::async_trait;
     use std::time::SystemTime;

@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Background services logic tests
+
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::float_cmp,
+    clippy::struct_field_names,
+    clippy::unreadable_literal
+)]
 //!
 //! Tests cover background.rs functionality (0% → 25%+ target)
 //! Focus: Monitoring tasks, health checks, resource tracking, cleanup

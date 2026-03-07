@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::redundant_closure_for_method_calls)]
+
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
@@ -7,6 +9,7 @@ use toadstool::universal::{
     get_platform_status, JobPriority, NetworkLocation, PrimalCapability, PrimalContext,
     PrimalRequest, SecurityLevel, UniversalComputePlatform, UniversalJob, UniversalJobType,
 };
+use toadstool::UniversalResourceRequirements;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             env: HashMap::new(),
         },
         priority: JobPriority::Normal,
-        resources: Default::default(),
+        resources: UniversalResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
         created_at: SystemTime::now(),
         context: PrimalContext {
@@ -72,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             env: HashMap::new(),
         },
         priority: JobPriority::High,
-        resources: Default::default(),
+        resources: UniversalResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
         created_at: SystemTime::now(),
         context: PrimalContext {
@@ -106,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             team_id: "test-team".to_string(),
         },
         priority: JobPriority::Normal,
-        resources: Default::default(),
+        resources: UniversalResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
         created_at: SystemTime::now(),
         context: PrimalContext {

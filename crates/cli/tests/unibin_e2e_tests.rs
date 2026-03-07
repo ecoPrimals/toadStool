@@ -1,4 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! `UniBin` Architecture E2E Tests
 //!
 //! End-to-end tests for ToadStool's `UniBin` implementation.
@@ -50,7 +61,7 @@ async fn wait_for_socket(path: &Path, timeout_duration: Duration) -> bool {
 // ============================================================================
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_mode_starts() {
     // Test that server mode starts successfully
     let mut cmd = Command::new("cargo")
@@ -66,7 +77,7 @@ async fn test_server_mode_starts() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_mode_with_socket() {
     // Test server mode with Unix socket
     let socket_path = "/tmp/toadstool-test.sock";
@@ -101,7 +112,7 @@ async fn test_server_mode_with_socket() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_daemon_mode_backward_compat() {
     // Test that daemon mode still works (backward compatibility)
     let mut cmd = Command::new("cargo")
@@ -117,7 +128,7 @@ async fn test_daemon_mode_backward_compat() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_mode_with_all_options() {
     // Test server mode with all options
     let socket_path = "/tmp/toadstool-full-test.sock";
@@ -162,7 +173,7 @@ async fn test_server_mode_with_all_options() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore] // Requires built binary and server running
+#[ignore = "requires built binary and server running"]
 async fn test_cli_to_server_communication() {
     // Test that CLI commands can communicate with running server
 
@@ -191,7 +202,7 @@ async fn test_cli_to_server_communication() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_multiple_cli_commands_to_server() {
     // Test multiple concurrent CLI commands to server
 
@@ -235,7 +246,7 @@ async fn test_multiple_cli_commands_to_server() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_graceful_shutdown() {
     // Test server graceful shutdown on SIGTERM
     let mut cmd = Command::new("cargo")
@@ -270,7 +281,7 @@ async fn test_server_graceful_shutdown() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_restart_after_crash() {
     // Test server can restart after crash
 
@@ -310,7 +321,7 @@ async fn test_server_restart_after_crash() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore] // Requires built binary and test manifest
+#[ignore = "requires built binary and test manifest"]
 async fn test_server_executes_workload() {
     // Test server can execute workloads
 
@@ -366,7 +377,7 @@ memory_limit = "256M"
 // ============================================================================
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_multiple_servers_different_ports() {
     // Test multiple server instances on different ports
     let ports = vec![8094, 8095, 8096];
@@ -396,7 +407,7 @@ async fn test_multiple_servers_different_ports() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_handles_concurrent_requests() {
     // Test server handles many concurrent CLI requests
 
@@ -456,7 +467,7 @@ async fn test_server_handles_concurrent_requests() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_single_binary_multiple_modes() {
     // Test UniBin principle: one binary, multiple modes
 
@@ -483,7 +494,7 @@ async fn test_single_binary_multiple_modes() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_and_daemon_equivalence() {
     // Test that server and daemon modes are functionally equivalent
 
@@ -518,7 +529,7 @@ async fn test_server_and_daemon_equivalence() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_recovers_from_invalid_request() {
     // Test server recovers from invalid requests
 
@@ -549,7 +560,7 @@ async fn test_server_recovers_from_invalid_request() {
 }
 
 #[tokio::test]
-#[ignore] // Requires built binary
+#[ignore = "requires built binary"]
 async fn test_server_handles_port_already_in_use() {
     // Test server handles port already in use gracefully
 

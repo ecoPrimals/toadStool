@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Dot Product and Elementwise Binary Operations Demo
+
+#![allow(clippy::cast_precision_loss)]
 //!
 //! Demonstrates fundamental vector operations:
 //! - Dot Product: Inner product of two vectors
@@ -9,7 +11,7 @@
 
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
-    ComputeUnit, DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+    DataType, OperationType, Workload, WorkloadData, WorkloadParams,
 };
 use toadstool_runtime_universal::ComputeError;
 

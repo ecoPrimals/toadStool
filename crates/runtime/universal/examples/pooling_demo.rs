@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pooling Operations Demo (`MaxPool2D`, `AvgPool2D`)
+
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
 //!
 //! Demonstrates:
 //! - `MaxPool2D`: Downsampling by taking maximum

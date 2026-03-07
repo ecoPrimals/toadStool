@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! BYOB Module Data Structures Coverage Tests - November 7, 2025
 
-#![allow(clippy::all)]
+#![allow(clippy::all, clippy::float_cmp)]
 //!
 //! Target: Push byob.rs coverage from 35.22% → 60%+
 //! Focus: Data structures, serialization, validation, edge cases

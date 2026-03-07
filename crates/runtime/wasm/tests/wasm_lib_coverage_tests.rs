@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive Coverage Tests for WASM Runtime Lib
 //!
 //! Targeting lib.rs to increase coverage from 48.72% to 60%+
@@ -315,7 +316,7 @@ async fn test_capabilities_supported_architectures() {
 
     let caps = engine.get_capabilities();
     // wasmi is architecture-agnostic
-    let _arch_list = &caps.supported_architectures;
+    let _ = &caps.supported_architectures;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -356,7 +357,7 @@ async fn test_short_execution_timeout() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_long_execution_timeout() {
     let config = WasmRuntimeConfig {
-        execution_timeout_ms: 300000, // 5 minutes
+        execution_timeout_ms: 300_000, // 5 minutes
         ..Default::default()
     };
     let engine = WasmRuntimeEngine::new(config).unwrap();

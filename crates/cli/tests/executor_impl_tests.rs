@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Comprehensive tests for `BiomeExecutor` implementation
 //!
 //! Tests cover `executor_impl.rs` functionality (0% → 30%+ target)
@@ -493,7 +503,9 @@ async fn test_wasm_module_path_validation() {
     ];
 
     for path in wasm_paths {
-        assert!(path.ends_with(".wasm"));
+        assert!(std::path::Path::new(path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("wasm")));
         let path_buf = PathBuf::from(path);
         assert!(path_buf.extension().and_then(|s| s.to_str()) == Some("wasm"));
     }

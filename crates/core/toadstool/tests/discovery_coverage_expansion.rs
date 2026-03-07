@@ -202,8 +202,8 @@ async fn test_discovery_timeout_behavior() {
                 }
             }
         }
-        Err(_) => {
-            panic!("Discovery timed out - should fail faster");
+        Err(e) => {
+            panic!("Discovery timed out - should fail faster: {e}");
         }
     }
 

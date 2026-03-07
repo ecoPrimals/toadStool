@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::default_trait_access,
+    clippy::float_cmp,
+    clippy::items_after_statements,
+    clippy::no_effect_underscore_binding,
+    clippy::unreadable_literal
+)]
 //! Comprehensive tests for collaborative intelligence resource planning
 //!
 //! Tests complex graph scenarios, edge cases, and integration with ToadStool systems.

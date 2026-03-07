@@ -12,6 +12,7 @@
 //! - Health checking and monitoring
 //! - Configuration validation
 //! - Error handling and recovery
+#![allow(clippy::no_effect_underscore_binding)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

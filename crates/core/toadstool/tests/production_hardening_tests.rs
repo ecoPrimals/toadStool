@@ -262,6 +262,7 @@ async fn test_memory_pressure_handler_creation() {
     // Creation should not panic
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_config_default() {
     let config = MemoryPressureConfig::default();
@@ -272,6 +273,7 @@ async fn test_memory_pressure_config_default() {
     assert_eq!(config.check_interval, Duration::from_secs(10));
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_config_clone() {
     let config = MemoryPressureConfig::default();
@@ -313,6 +315,7 @@ async fn test_memory_pressure_level_clone() {
     assert_eq!(level, cloned);
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_default_memory_pressure_callback() {
     let callback = DefaultMemoryPressureCallback;
@@ -505,6 +508,7 @@ async fn test_custom_circuit_breaker_config() {
     assert_eq!(config.half_open_max_requests, 2);
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_memory_pressure_config() {
     let config = MemoryPressureConfig {
@@ -520,6 +524,7 @@ async fn test_custom_memory_pressure_config() {
     assert_eq!(config.check_interval, Duration::from_secs(5));
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_requirements_in_allocation() {
     let requirements = ResourceRequirements::default();

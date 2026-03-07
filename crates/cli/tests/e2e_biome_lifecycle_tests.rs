@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! 🚀 E2E Integration Tests - Biome Lifecycle
 //!
 //! **Philosophy**: Test real-world workflows end-to-end
@@ -176,13 +186,11 @@ async fn e2e_mixed_concurrent_operations() -> Result<()> {
             let result = match i % 3 {
                 0 => {
                     // List biomes
-                    exec.list_biomes(false, "text", false, None)
-                        .await
+                    exec.list_biomes(false, "text", false, None).await
                 }
                 1 => {
                     // Try to stop nonexistent biome (expected to fail)
-                    exec.down_biome(format!("test-{i}"), false, 30, false)
-                        .await
+                    exec.down_biome(format!("test-{i}"), false, 30, false).await
                 }
                 _ => {
                     // Try to show logs (expected to fail)

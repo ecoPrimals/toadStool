@@ -462,7 +462,9 @@ mod tests {
     #[tokio::test]
     async fn test_execute_distributed_single() {
         use crate::cpu_resource::CpuComputeResource;
-        use crate::universal::{OptimizationHints, UniversalKernel, UniversalWorkload};
+        use crate::universal::{
+            ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
+        };
 
         let local = Arc::new(UniversalComputeScheduler::new(
             SchedulingPolicy::CapabilityMatch,
@@ -474,10 +476,10 @@ mod tests {
 
         let workload = UniversalWorkload {
             id: "test-workload".to_string(),
-            requirements: Default::default(),
+            requirements: ComputeRequirements::default(),
             kernel: UniversalKernel::Operation {
                 operation: crate::universal::Operation::GeneralCompute,
-                parameters: Default::default(),
+                parameters: std::collections::HashMap::default(),
             },
             inputs: vec![],
             output_size: 0,
@@ -493,7 +495,9 @@ mod tests {
     #[tokio::test]
     async fn test_execute_distributed_data_parallel() {
         use crate::cpu_resource::CpuComputeResource;
-        use crate::universal::{OptimizationHints, UniversalKernel, UniversalWorkload};
+        use crate::universal::{
+            ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
+        };
 
         let local = Arc::new(UniversalComputeScheduler::new(
             SchedulingPolicy::CapabilityMatch,
@@ -505,10 +509,10 @@ mod tests {
 
         let workload = UniversalWorkload {
             id: "test-dp".to_string(),
-            requirements: Default::default(),
+            requirements: ComputeRequirements::default(),
             kernel: UniversalKernel::Operation {
                 operation: crate::universal::Operation::GeneralCompute,
-                parameters: Default::default(),
+                parameters: std::collections::HashMap::default(),
             },
             inputs: vec![],
             output_size: 0,
@@ -524,7 +528,9 @@ mod tests {
     #[tokio::test]
     async fn test_execute_distributed_pipeline() {
         use crate::cpu_resource::CpuComputeResource;
-        use crate::universal::{OptimizationHints, UniversalKernel, UniversalWorkload};
+        use crate::universal::{
+            ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
+        };
 
         let local = Arc::new(UniversalComputeScheduler::new(
             SchedulingPolicy::CapabilityMatch,
@@ -536,10 +542,10 @@ mod tests {
 
         let workload = UniversalWorkload {
             id: "test-pipeline".to_string(),
-            requirements: Default::default(),
+            requirements: ComputeRequirements::default(),
             kernel: UniversalKernel::Operation {
                 operation: crate::universal::Operation::GeneralCompute,
-                parameters: Default::default(),
+                parameters: std::collections::HashMap::default(),
             },
             inputs: vec![],
             output_size: 0,

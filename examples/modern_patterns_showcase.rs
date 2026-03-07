@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Modern Rust Patterns Showcase
+
+#![allow(clippy::missing_errors_doc, clippy::needless_pass_by_value)]
 //!
 //! This example demonstrates the modern, idiomatic patterns we're evolving toward
 //! in the ToadStool codebase. Use this as a reference for refactoring.
@@ -89,11 +91,13 @@ impl ServiceConfigBuilder {
         Self::default()
     }
 
+    #[must_use]
     pub fn name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
 
+    #[must_use]
     pub fn endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.endpoint = Some(endpoint.into());
         self

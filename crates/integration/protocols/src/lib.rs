@@ -6,7 +6,8 @@
     clippy::doc_markdown,
     clippy::unused_async,
     clippy::needless_pass_by_value,
-    clippy::assigning_clones
+    clippy::assigning_clones,
+    clippy::unreadable_literal
 )]
 
 //! # `ToadStool` Protocol Integration Layer

@@ -9,6 +9,10 @@
 
 #![allow(
     clippy::assigning_clones,
+    clippy::default_trait_access,
+    clippy::match_wildcard_for_single_variants,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,

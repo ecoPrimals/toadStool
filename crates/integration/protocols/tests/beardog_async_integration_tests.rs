@@ -279,7 +279,7 @@ async fn test_authz_request_with_complex_context() {
     let mut context = HashMap::new();
     context.insert("ip_address".to_string(), serde_json::json!("192.168.1.1"));
     context.insert("user_agent".to_string(), serde_json::json!("ToadStool/1.0"));
-    context.insert("request_time".to_string(), serde_json::json!(1234567890));
+    context.insert("request_time".to_string(), serde_json::json!(1_234_567_890));
     context.insert(
         "session_id".to_string(),
         serde_json::json!("session-abc-123"),

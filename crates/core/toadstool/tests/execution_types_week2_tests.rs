@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 use toadstool::execution::*;
+use toadstool::RuntimeMetrics;
 use uuid::Uuid;
 
 // ============================================================================
@@ -371,7 +372,7 @@ fn test_execution_response_success() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Success,
         output: ExecutionOutput::default(),
-        metrics: Default::default(),
+        metrics: RuntimeMetrics::default(),
         duration: Duration::from_millis(123),
         runtime_used: RuntimeType::Wasm,
         warnings: vec![],
@@ -393,7 +394,7 @@ fn test_execution_response_with_warnings() {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Success,
         output: ExecutionOutput::default(),
-        metrics: Default::default(),
+        metrics: RuntimeMetrics::default(),
         duration: Duration::from_secs(1),
         runtime_used: RuntimeType::Native,
         warnings: warnings.clone(),
@@ -411,7 +412,7 @@ fn test_execution_response_failed() {
             error: std::borrow::Cow::Borrowed("Out of memory"),
         },
         output: ExecutionOutput::default(),
-        metrics: Default::default(),
+        metrics: RuntimeMetrics::default(),
         duration: Duration::from_secs(5),
         runtime_used: RuntimeType::Container,
         warnings: vec![],
@@ -663,7 +664,7 @@ fn test_execution_request_to_response_workflow() {
             result: HashMap::new(),
             metadata: HashMap::new(),
         },
-        metrics: Default::default(),
+        metrics: RuntimeMetrics::default(),
         duration: Duration::from_millis(250),
         runtime_used: RuntimeType::Native,
         warnings: vec![],
@@ -706,12 +707,12 @@ fn test_runtime_types_collection() {
 
     for runtime in &runtimes {
         match runtime {
-            RuntimeType::Native => { /* Valid */ }
-            RuntimeType::Wasm => { /* Valid */ }
-            RuntimeType::Container => { /* Valid */ }
-            RuntimeType::Gpu => { /* Valid */ }
-            RuntimeType::Python => { /* Valid */ }
-            RuntimeType::Custom(_) => { /* Valid */ }
+            RuntimeType::Native
+            | RuntimeType::Wasm
+            | RuntimeType::Container
+            | RuntimeType::Gpu
+            | RuntimeType::Python
+            | RuntimeType::Custom(_) => { /* Valid */ }
         }
     }
 }

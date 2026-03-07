@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Business Logic Tests for Squirrel MCP Interface
 //!
 //! Target: Test business logic, helper methods, and edge cases WITHOUT I/O

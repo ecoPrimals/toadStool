@@ -37,6 +37,7 @@ fn test_system_resource_monitor_multiple_instances() {
 // ResourceRequirements Tests - Construction & Defaults
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_default() {
     let requirements = ResourceRequirements::default();
@@ -47,6 +48,7 @@ fn test_resource_requirements_default() {
     assert!(requirements.gpu.is_none());
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_clone() {
     let requirements = ResourceRequirements::default();
@@ -68,6 +70,7 @@ fn test_resource_requirements_serialization() {
     assert!(json.contains("storage"));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_deserialization() {
     let json = r#"{
@@ -120,6 +123,7 @@ fn test_resource_requirements_with_network_constraints() {
 // CpuRequirements Tests
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_default() {
     let cpu = CpuRequirements::default();
@@ -129,6 +133,7 @@ fn test_cpu_requirements_default() {
     assert!(cpu.architecture.is_none());
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_with_max_cores() {
     let cpu = CpuRequirements {
@@ -152,6 +157,7 @@ fn test_cpu_requirements_with_architecture() {
     assert_eq!(cpu.architecture, Some("x86_64".to_string()));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_clone() {
     let cpu = CpuRequirements {
@@ -446,6 +452,7 @@ fn test_system_resources_clone() {
 // Metrics Tests - Defaults & Construction
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_default() {
     let metrics = CpuMetrics::default();
@@ -469,6 +476,7 @@ fn test_storage_metrics_default() {
     assert_eq!(metrics.bytes_read, 0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_gpu_metrics_default() {
     let metrics = GpuMetrics::default();
@@ -481,7 +489,7 @@ fn test_timing_metrics_default() {
     let metrics = TimingMetrics::default();
 
     // start_time is a DateTime, not an Option
-    let _time = metrics.start_time;
+    let _ = metrics.start_time;
     // Test passes if no panic occurs when accessing start_time
 }
 
@@ -605,6 +613,7 @@ fn test_resource_requirements_huge_memory() {
     assert_eq!(requirements.memory.min_bytes, huge);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_fractional_cores() {
     let cpu = CpuRequirements {
@@ -617,6 +626,7 @@ fn test_cpu_requirements_fractional_cores() {
     assert_eq!(cpu.max_cores, Some(2.5));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_many_cores() {
     let cpu = CpuRequirements {

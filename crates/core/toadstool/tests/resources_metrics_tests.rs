@@ -10,6 +10,7 @@ use toadstool::resources::*;
 // RuntimeMetrics Tests (10 tests)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_default() {
     let metrics = RuntimeMetrics::default();
@@ -18,6 +19,7 @@ fn test_runtime_metrics_default() {
     assert!(metrics.gpu.is_none());
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_with_data() {
     let metrics = RuntimeMetrics {
@@ -41,6 +43,7 @@ fn test_runtime_metrics_with_data() {
     assert_eq!(metrics.memory.usage_percent, 75.0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_clone() {
     let metrics1 = RuntimeMetrics::default();
@@ -56,6 +59,7 @@ fn test_runtime_metrics_serialization() {
     assert!(json.contains("cpu"));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_deserialization() {
     let metrics = RuntimeMetrics::default();
@@ -64,6 +68,7 @@ fn test_runtime_metrics_deserialization() {
     assert_eq!(metrics.cpu.usage_percent, deserialized.cpu.usage_percent);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_with_gpu() {
     let metrics = RuntimeMetrics {
@@ -91,6 +96,7 @@ fn test_runtime_metrics_debug() {
     assert!(debug_str.contains("RuntimeMetrics"));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_all_components() {
     let metrics = RuntimeMetrics {
@@ -165,6 +171,7 @@ fn test_runtime_metrics_network_activity() {
 // CpuMetrics Tests (8 tests)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_default() {
     let metrics = CpuMetrics::default();
@@ -173,6 +180,7 @@ fn test_cpu_metrics_default() {
     assert_eq!(metrics.cpu_time_seconds, 0.0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_custom() {
     let metrics = CpuMetrics {
@@ -183,6 +191,7 @@ fn test_cpu_metrics_custom() {
     assert_eq!(metrics.usage_percent, 75.5);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_clone() {
     let metrics1 = CpuMetrics::default();
@@ -207,6 +216,7 @@ fn test_cpu_metrics_high_usage() {
     assert!(metrics.usage_percent > 90.0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_fractional_cores() {
     let metrics = CpuMetrics {
@@ -238,6 +248,7 @@ fn test_cpu_metrics_time_tracking() {
 // MemoryMetrics Tests (8 tests)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_default() {
     let metrics = MemoryMetrics::default();
@@ -246,6 +257,7 @@ fn test_memory_metrics_default() {
     assert_eq!(metrics.peak_bytes, 0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_custom() {
     let metrics = MemoryMetrics {
@@ -312,6 +324,7 @@ fn test_memory_metrics_high_usage() {
 // StorageMetrics Tests (8 tests)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_storage_metrics_default() {
     let metrics = StorageMetrics::default();
@@ -321,6 +334,7 @@ fn test_storage_metrics_default() {
     assert_eq!(metrics.bytes_written, 0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_storage_metrics_custom() {
     let metrics = StorageMetrics {
@@ -445,6 +459,7 @@ fn test_network_metrics_debug() {
 // GpuMetrics Tests (6 tests)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_gpu_metrics_basic() {
     let metrics = GpuMetrics {
@@ -467,6 +482,7 @@ fn test_gpu_metrics_no_temperature() {
     assert!(metrics.temperature_celsius.is_none());
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_gpu_metrics_clone() {
     let metrics1 = GpuMetrics {
@@ -514,6 +530,7 @@ fn test_gpu_metrics_debug() {
     assert!(debug_str.contains("GpuMetrics"));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_gpu_metrics_default() {
     let metrics = GpuMetrics::default();

@@ -147,7 +147,7 @@ async fn deploy_biome_returns_200() {
             "dns_config": null,
             "load_balancer": null
         },
-        "created_at": 1704067200_u64
+        "created_at": 1_704_067_200_u64
     });
     let req = Request::builder()
         .method("POST")

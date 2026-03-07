@@ -345,7 +345,10 @@ mod interval_calculation_tests {
         for (granularity, expected_per_sec) in intervals {
             let interval = granularity.to_duration();
             let per_second = Duration::from_secs(1).as_micros() / interval.as_micros();
-            assert_eq!(per_second as u32, expected_per_sec);
+            assert_eq!(
+                u32::try_from(per_second).expect("per_second fits in u32"),
+                expected_per_sec
+            );
         }
     }
 

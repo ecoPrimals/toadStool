@@ -31,10 +31,10 @@ async fn test_orchestrator_new_optimal_match() {
 
 #[test]
 fn test_orchestrator_creation_strategies() {
-    // Test all strategy types
-    let _strategy1 = RuntimeSelectionStrategy::FirstAvailable;
-    let _strategy2 = RuntimeSelectionStrategy::LoadBalanced;
-    let _strategy3 = RuntimeSelectionStrategy::OptimalMatch;
+    // Test all strategy types - just verify they exist
+    let _ = RuntimeSelectionStrategy::FirstAvailable;
+    let _ = RuntimeSelectionStrategy::LoadBalanced;
+    let _ = RuntimeSelectionStrategy::OptimalMatch;
 
     // All should create without panic
 }

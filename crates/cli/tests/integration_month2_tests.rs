@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(clippy::expect_used)] // expect() is idiomatic in tests
+#![allow(clippy::expect_used, clippy::unused_async)] // expect() is idiomatic in tests
 //! CLI integration tests
 //!
 //! Tier 1 tests: Coverage-measured integration tests
@@ -36,11 +36,11 @@ async fn test_executor_state_management() {
 
     assert_eq!(executor.active_tasks().await, 0);
 
-    let _task = executor.start_task("task-1").await.unwrap();
+    let task = executor.start_task("task-1").await.unwrap();
     assert_eq!(executor.active_tasks().await, 1);
 
     // Task cleanup
-    drop(_task);
+    drop(task);
     // ✅ MODERNIZED: Use barrier or check directly - no sleep needed
     // Active tasks should update immediately after drop
     assert_eq!(executor.active_tasks().await, 0);
@@ -306,7 +306,7 @@ impl TestExecutor {
     }
 }
 
-#[allow(dead_code)]
+#[allow(clippy::unused_async)]
 struct MockTask {
     active_tasks: Arc<AtomicUsize>,
     allocated_memory: Option<(Arc<AtomicUsize>, usize)>, // (shared mem, amount)

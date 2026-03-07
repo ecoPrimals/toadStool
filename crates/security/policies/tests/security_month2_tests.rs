@@ -217,6 +217,7 @@ enum SecurityLevel {
     Strict,
 }
 
+#[allow(clippy::struct_excessive_bools)] // Policy flags for different permission dimensions
 #[derive(Clone)]
 struct SecurityPolicy {
     level: SecurityLevel,
@@ -296,6 +297,7 @@ impl SecurityPolicy {
         Ok(())
     }
 
+    #[allow(clippy::unused_self)] // Part of policy API surface
     fn can_access_network(&self) -> bool {
         self.allow_network
     }
@@ -304,6 +306,7 @@ impl SecurityPolicy {
         self.allow_filesystem_write
     }
 
+    #[allow(clippy::unused_self)]
     fn can_read_filesystem(&self) -> bool {
         true
     }
@@ -351,7 +354,7 @@ impl Permission {
     fn allows_host(&self, host: &str) -> bool {
         match self {
             Permission::NetworkAccess { allowed_hosts } => allowed_hosts.iter().any(|h| h == host),
-            _ => false,
+            Permission::FilesystemAccess { .. } => false,
         }
     }
 
@@ -360,14 +363,14 @@ impl Permission {
             Permission::FilesystemAccess { allowed_paths, .. } => {
                 allowed_paths.iter().any(|p| path.starts_with(p))
             }
-            _ => false,
+            Permission::NetworkAccess { .. } => false,
         }
     }
 
     fn is_read_only(&self) -> bool {
         match self {
             Permission::FilesystemAccess { read_only, .. } => *read_only,
-            _ => false,
+            Permission::NetworkAccess { .. } => false,
         }
     }
 }

@@ -44,7 +44,7 @@ async fn create_test_executor() -> Result<BiomeExecutor> {
     Ok(BiomeExecutor::new().await?)
 }
 
-#[allow(dead_code)]
+#[allow(clippy::unused_async, dead_code)]
 fn create_minimal_manifest(name: &str) -> BiomeManifest {
     BiomeManifest {
         metadata: BiomeMetadata {

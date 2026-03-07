@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::cast_precision_loss, clippy::float_cmp)]
 //! Type serialization tests
 //!
 //! Tier 1 tests: Coverage-measured type and serialization tests

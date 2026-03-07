@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Simple CLI Executor Coverage Tests
 //!
 //! Target: Improve executor coverage from 1.81% with simple, passing tests
@@ -308,7 +318,9 @@ fn test_string_contains_checks() {
 
     assert!(manifest_path.contains("biome.yaml"));
     assert!(manifest_path.starts_with("/path"));
-    assert!(manifest_path.ends_with(".yaml"));
+    assert!(std::path::Path::new(manifest_path)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("yaml")));
 }
 
 #[test]

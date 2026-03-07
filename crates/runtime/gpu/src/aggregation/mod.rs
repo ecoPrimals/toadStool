@@ -72,6 +72,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     fn test_aggregated_result_complete() {
         let result = AggregatedResult {
             data: vec![1, 2, 3],
@@ -91,6 +92,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     fn test_aggregated_result_partial() {
         let result = AggregatedResult {
             data: vec![1, 2, 3],

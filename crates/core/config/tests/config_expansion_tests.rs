@@ -160,16 +160,16 @@ fn test_env_config_loader_get_u32_from_env() {
 #[test]
 fn test_env_config_loader_get_u64_default() {
     let loader = env_config::EnvConfigLoader::new();
-    let value = loader.get_u64("NONEXISTENT_U64", 100000);
-    assert_eq!(value, 100000);
+    let value = loader.get_u64("NONEXISTENT_U64", 100_000);
+    assert_eq!(value, 100_000);
 }
 
 #[test]
 fn test_env_config_loader_get_u64_from_env() {
     env::set_var("TOADSTOOL_TEST_U64", "200000");
     let loader = env_config::EnvConfigLoader::new();
-    let value = loader.get_u64("TEST_U64", 100000);
-    assert_eq!(value, 200000);
+    let value = loader.get_u64("TEST_U64", 100_000);
+    assert_eq!(value, 200_000);
     env::remove_var("TOADSTOOL_TEST_U64");
 }
 

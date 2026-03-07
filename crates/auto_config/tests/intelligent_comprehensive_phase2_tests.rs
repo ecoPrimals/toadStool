@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::float_cmp,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::unreadable_literal
+)]
 //! Comprehensive tests for Intelligent Auto-Configuration (Phase 2)
 //! Target: `auto_config/src/intelligent.rs` (586 lines, 8.70% → 50%+)
 //! Goal: Add 50-60 tests focusing on core auto-config logic

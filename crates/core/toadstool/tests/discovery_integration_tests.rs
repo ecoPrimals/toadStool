@@ -10,6 +10,7 @@
 //! - Service caching and expiration
 //! - Multi-service discovery scenarios
 //! - Error handling and edge cases
+#![allow(clippy::single_match_else)]
 
 use std::time::{Duration, SystemTime};
 use toadstool::discovery::{DiscoveredService, MdnsDiscoveryService};
@@ -18,9 +19,7 @@ use toadstool::self_identity::{Capability, SelfIdentity};
 #[tokio::test]
 async fn test_mdns_service_lifecycle() {
     // Test creation
-    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
-        m
-    } else {
+    let Ok(mdns) = MdnsDiscoveryService::new() else {
         eprintln!("⚠️  Skipping: mDNS not available in test environment");
         return;
     };
@@ -46,9 +45,7 @@ async fn test_mdns_service_lifecycle() {
 
 #[tokio::test]
 async fn test_capability_based_discovery() {
-    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
-        m
-    } else {
+    let Ok(mdns) = MdnsDiscoveryService::new() else {
         eprintln!("⚠️  Skipping: mDNS not available");
         return;
     };
@@ -68,17 +65,14 @@ async fn test_capability_based_discovery() {
     // Retry discovery until mDNS advertisement propagates (bounded loop instead of fixed sleep)
     let mut result = None;
     for _attempt in 0..5 {
-        match tokio::time::timeout(
+        if let Ok(Ok(found)) = tokio::time::timeout(
             Duration::from_millis(100),
             mdns.discover_by_capability("storage", Duration::from_millis(50)),
         )
         .await
         {
-            Ok(Ok(found)) => {
-                result = Some(Ok(found));
-                break;
-            }
-            _ => continue, // retry on timeout or transient failure
+            result = Some(Ok(found));
+            break;
         }
     }
     let result = match result {
@@ -133,9 +127,7 @@ async fn test_discovered_service_has_capability() {
 
 #[tokio::test]
 async fn test_mdns_without_network_identity() {
-    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
-        m
-    } else {
+    let Ok(mdns) = MdnsDiscoveryService::new() else {
         eprintln!("⚠️  Skipping: mDNS not available");
         return;
     };
@@ -156,9 +148,7 @@ async fn test_mdns_without_network_identity() {
 
 #[tokio::test]
 async fn test_discover_all_services() {
-    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
-        m
-    } else {
+    let Ok(mdns) = MdnsDiscoveryService::new() else {
         eprintln!("⚠️  Skipping: mDNS not available");
         return;
     };
@@ -176,9 +166,7 @@ async fn test_discover_all_services() {
 
 #[tokio::test]
 async fn test_cached_services() {
-    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
-        m
-    } else {
+    let Ok(mdns) = MdnsDiscoveryService::new() else {
         eprintln!("⚠️  Skipping: mDNS not available");
         return;
     };

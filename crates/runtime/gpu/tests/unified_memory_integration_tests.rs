@@ -2,7 +2,12 @@
 //! Integration tests for unified memory system
 //!
 //! These tests verify interactions between multiple components.
-#![allow(clippy::expect_used)] // In tests, expect() gives clear failure messages for setup/assertions
+#![allow(
+    clippy::expect_used,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::items_after_statements
+)] // In tests, expect() gives clear failure messages for setup/assertions
 
 use toadstool_runtime_gpu::unified_memory::{BackendStrategy, BackendType, UniversalUnifiedMemory};
 

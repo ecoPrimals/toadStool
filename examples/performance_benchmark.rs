@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::useless_format)]
-#![allow(clippy::redundant_pattern_matching)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::field_reassign_with_default,
+    clippy::redundant_pattern_matching,
+    clippy::useless_format,
+    dead_code,
+    unused_variables
+)]
 //! # ToadStool Universal Architecture Performance Benchmark
 //!
 //! This benchmark demonstrates the performance characteristics of the

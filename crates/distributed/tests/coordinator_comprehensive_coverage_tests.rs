@@ -8,9 +8,12 @@
 //! - Error handling and edge cases
 //! - Concurrent operations
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use toadstool::{ExecutionRequest, SecurityContext, WorkloadSpec};
+use toadstool::{
+    ExecutionInput, ExecutionRequest, SecurityContext, UniversalResourceRequirements, WorkloadSpec,
+};
 use toadstool_distributed::core::{
     DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
 };
@@ -102,11 +105,11 @@ fn create_execution_request() -> ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::default(),
         runtime_hint: None,
-        resources: Default::default(),
+        resources: UniversalResourceRequirements::default(),
         security_context: SecurityContext::default(),
         timeout: Some(Duration::from_secs(60)),
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: HashMap::default(),
+        input_data: ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     }

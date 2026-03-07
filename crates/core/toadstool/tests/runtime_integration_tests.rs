@@ -265,9 +265,9 @@ async fn test_runtime_resource_limits() {
         (RuntimeType::Container, 4096),
     ];
 
-    for (_runtime, _memory_mb) in runtime_limits {
+    for (_, memory_mb) in runtime_limits {
         // Verify memory limits are positive
-        assert!(_memory_mb > 0);
+        assert!(memory_mb > 0);
     }
 }
 

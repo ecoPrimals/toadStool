@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Extended Coverage Tests for Intelligent Auto-Configuration
 //!
 //! Comprehensive tests targeting 27% → 70% coverage increase
 //! Focus: Actual code execution paths, platform detection, configuration generation
 
-use toadstool_auto_config::hardware::SystemCapabilities;
+use toadstool_auto_config::hardware::{
+    CpuInfo, MemoryInfo, NetworkInfo, StorageInfo, SystemCapabilities,
+};
 use toadstool_auto_config::intelligent::{
     IntelligentAutoConfig, PlatformConfig, PlatformInfo, PlatformOptimization, PlatformOptimizer,
     PlatformSupport, UsageHints, UsageLearner,
@@ -409,9 +412,9 @@ async fn test_platform_optimizer_optimize_linux() {
     let optimizer = PlatformOptimizer::new();
 
     let hardware = SystemCapabilities {
-        cpu_info: Default::default(),
+        cpu_info: CpuInfo::default(),
         cpu_cores: 8.0,
-        memory_info: Default::default(),
+        memory_info: MemoryInfo::default(),
         memory_gb: 16.0,
         gpu_info: vec![toadstool_auto_config::hardware::GpuInfo {
             name: "Test GPU".to_string(),
@@ -424,9 +427,9 @@ async fn test_platform_optimizer_optimize_linux() {
         }],
         gpu_count: 1,
         gpu_memory_gb: Some(8.0),
-        storage_info: Default::default(),
+        storage_info: StorageInfo::default(),
         storage_gb: 512.0,
-        network_info: Default::default(),
+        network_info: NetworkInfo::default(),
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
@@ -450,16 +453,16 @@ async fn test_platform_optimizer_high_core_optimization() {
     let optimizer = PlatformOptimizer::new();
 
     let hardware = SystemCapabilities {
-        cpu_info: Default::default(),
+        cpu_info: CpuInfo::default(),
         cpu_cores: 16.0, // >= 8 cores triggers parallel compilation
-        memory_info: Default::default(),
+        memory_info: MemoryInfo::default(),
         memory_gb: 16.0,
         gpu_info: Vec::new(),
         gpu_count: 0,
         gpu_memory_gb: None,
-        storage_info: Default::default(),
+        storage_info: StorageInfo::default(),
         storage_gb: 512.0,
-        network_info: Default::default(),
+        network_info: NetworkInfo::default(),
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
@@ -485,16 +488,16 @@ async fn test_platform_optimizer_high_memory_optimization() {
     let optimizer = PlatformOptimizer::new();
 
     let hardware = SystemCapabilities {
-        cpu_info: Default::default(),
+        cpu_info: CpuInfo::default(),
         cpu_cores: 8.0,
-        memory_info: Default::default(),
+        memory_info: MemoryInfo::default(),
         memory_gb: 32.0, // >= 16GB triggers large buffer optimization
         gpu_info: Vec::new(),
         gpu_count: 0,
         gpu_memory_gb: None,
-        storage_info: Default::default(),
+        storage_info: StorageInfo::default(),
         storage_gb: 512.0,
-        network_info: Default::default(),
+        network_info: NetworkInfo::default(),
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
@@ -588,9 +591,9 @@ async fn test_intelligent_autoconfig_generate_optimal_config_high_end() {
     let mut config = IntelligentAutoConfig::new();
 
     let hardware = SystemCapabilities {
-        cpu_info: Default::default(),
+        cpu_info: CpuInfo::default(),
         cpu_cores: 16.0,
-        memory_info: Default::default(),
+        memory_info: MemoryInfo::default(),
         memory_gb: 32.0,
         gpu_info: vec![
             toadstool_auto_config::hardware::GpuInfo {
@@ -614,9 +617,9 @@ async fn test_intelligent_autoconfig_generate_optimal_config_high_end() {
         ],
         gpu_count: 2,
         gpu_memory_gb: Some(16.0),
-        storage_info: Default::default(),
+        storage_info: StorageInfo::default(),
         storage_gb: 1000.0,
-        network_info: Default::default(),
+        network_info: NetworkInfo::default(),
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
@@ -682,16 +685,16 @@ async fn test_intelligent_autoconfig_generate_optimal_config_low_end() {
     let mut config = IntelligentAutoConfig::new();
 
     let hardware = SystemCapabilities {
-        cpu_info: Default::default(),
+        cpu_info: CpuInfo::default(),
         cpu_cores: 2.0,
-        memory_info: Default::default(),
+        memory_info: MemoryInfo::default(),
         memory_gb: 4.0,
         gpu_info: Vec::new(),
         gpu_count: 0,
         gpu_memory_gb: None,
-        storage_info: Default::default(),
+        storage_info: StorageInfo::default(),
         storage_gb: 128.0,
-        network_info: Default::default(),
+        network_info: NetworkInfo::default(),
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 
@@ -751,9 +754,9 @@ async fn test_config_validation_valid() {
     let mut config = IntelligentAutoConfig::new();
 
     let hardware = SystemCapabilities {
-        cpu_info: Default::default(),
+        cpu_info: CpuInfo::default(),
         cpu_cores: 8.0,
-        memory_info: Default::default(),
+        memory_info: MemoryInfo::default(),
         memory_gb: 16.0,
         gpu_info: vec![toadstool_auto_config::hardware::GpuInfo {
             name: "Test GPU".to_string(),
@@ -766,9 +769,9 @@ async fn test_config_validation_valid() {
         }],
         gpu_count: 1,
         gpu_memory_gb: Some(8.0),
-        storage_info: Default::default(),
+        storage_info: StorageInfo::default(),
         storage_gb: 512.0,
-        network_info: Default::default(),
+        network_info: NetworkInfo::default(),
         performance_class: toadstool_auto_config::hardware::PerformanceClass::Mainstream,
     };
 

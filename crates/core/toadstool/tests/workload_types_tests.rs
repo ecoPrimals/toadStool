@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive tests for workload types
 
 use std::collections::HashMap;
@@ -580,8 +581,7 @@ fn test_port_protocol_clone() {
     let protocol2 = protocol1.clone();
 
     match (protocol1, protocol2) {
-        (PortProtocol::Tcp, PortProtocol::Tcp) => {}
-        (PortProtocol::Udp, PortProtocol::Udp) => {}
+        (PortProtocol::Tcp, PortProtocol::Tcp) | (PortProtocol::Udp, PortProtocol::Udp) => {}
         _ => panic!("Clone failed"),
     }
 }
@@ -614,9 +614,9 @@ fn test_volume_mount_type_clone() {
     let mount_type2 = mount_type1.clone();
 
     match (mount_type1, mount_type2) {
-        (VolumeMountType::Bind, VolumeMountType::Bind) => {}
-        (VolumeMountType::Volume, VolumeMountType::Volume) => {}
-        (VolumeMountType::Tmpfs, VolumeMountType::Tmpfs) => {}
+        (VolumeMountType::Bind, VolumeMountType::Bind)
+        | (VolumeMountType::Volume, VolumeMountType::Volume)
+        | (VolumeMountType::Tmpfs, VolumeMountType::Tmpfs) => {}
         _ => panic!("Clone failed"),
     }
 }

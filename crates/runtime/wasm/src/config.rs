@@ -230,10 +230,10 @@ mod tests {
     fn test_builder() {
         let config = WasmRuntimeConfig::builder()
             .max_memory_mb(256)
-            .fuel_limit(Some(5000000))
+            .fuel_limit(Some(5_000_000))
             .build();
 
         assert_eq!(config.max_memory_mb, 256);
-        assert_eq!(config.fuel_limit, Some(5000000));
+        assert_eq!(config.fuel_limit, Some(5_000_000));
     }
 }

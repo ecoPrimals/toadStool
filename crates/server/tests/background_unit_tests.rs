@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::needless_continue,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::unreadable_literal
+)]
 //! Unit tests for Background services module
 //!
 //! These tests target the background.rs module to achieve 40%+ coverage

@@ -54,14 +54,14 @@ fn test_protocol_config_has_connection_pool() {
 fn test_protocol_config_has_routing_config() {
     let config = ProtocolConfig::default();
     // RoutingConfig should exist
-    let _routing = &config.routing_config;
+    let _ = &config.routing_config;
 }
 
 #[test]
 fn test_protocol_config_has_health_config() {
     let config = ProtocolConfig::default();
     // HealthConfig should exist
-    let _health = &config.health_config;
+    let _ = &config.health_config;
 }
 
 #[test]

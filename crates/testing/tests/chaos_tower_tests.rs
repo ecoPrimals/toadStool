@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::cast_precision_loss, clippy::missing_errors_doc)]
 //! Chaos Testing - Tower Failures
 //!
 //! Tests system behavior under tower chaos:
@@ -7,6 +8,12 @@
 //! - Slow towers
 //! - Byzantine towers (malicious behavior)
 //! - Partial failures
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements
+)]
 
 use std::time::Duration;
 use tokio::time::sleep;
@@ -95,10 +102,9 @@ impl SimulatedTower {
                     self.state = TowerState::Failed;
                     return;
                 }
-                TowerFailure::Slow { .. } | TowerFailure::PartialFailure { .. } => {
-                    self.state = TowerState::Degraded;
-                }
-                TowerFailure::Byzantine => {
+                TowerFailure::Slow { .. }
+                | TowerFailure::PartialFailure { .. }
+                | TowerFailure::Byzantine => {
                     self.state = TowerState::Degraded;
                 }
             }

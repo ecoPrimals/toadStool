@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Direct function tests for executor/workload.rs.
 //!
 //! These tests directly call the actual functions from workload.rs
@@ -339,9 +349,9 @@ fn test_infer_runtime_type_native() {
         WorkloadSpec::Python { .. } => RuntimeType::Python,
         WorkloadSpec::Wasm { .. } => RuntimeType::Wasm,
         WorkloadSpec::Container { .. } => RuntimeType::Container,
-        WorkloadSpec::Gpu { .. } => RuntimeType::Gpu,
-        WorkloadSpec::AiMl { .. } => RuntimeType::Gpu,
-        WorkloadSpec::Cuda { .. } => RuntimeType::Gpu,
+        WorkloadSpec::Gpu { .. } | WorkloadSpec::AiMl { .. } | WorkloadSpec::Cuda { .. } => {
+            RuntimeType::Gpu
+        }
     };
 
     assert!(matches!(inferred, RuntimeType::Native));
@@ -366,9 +376,9 @@ fn test_infer_runtime_type_python() {
         WorkloadSpec::Python { .. } => RuntimeType::Python,
         WorkloadSpec::Wasm { .. } => RuntimeType::Wasm,
         WorkloadSpec::Container { .. } => RuntimeType::Container,
-        WorkloadSpec::Gpu { .. } => RuntimeType::Gpu,
-        WorkloadSpec::AiMl { .. } => RuntimeType::Gpu,
-        WorkloadSpec::Cuda { .. } => RuntimeType::Gpu,
+        WorkloadSpec::Gpu { .. } | WorkloadSpec::AiMl { .. } | WorkloadSpec::Cuda { .. } => {
+            RuntimeType::Gpu
+        }
     };
 
     assert!(matches!(inferred, RuntimeType::Python));

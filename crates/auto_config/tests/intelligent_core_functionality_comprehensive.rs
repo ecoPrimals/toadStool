@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive tests for intelligent.rs core functionality
 //!
 //! Goal: Increase coverage from 10.8% to 70%+

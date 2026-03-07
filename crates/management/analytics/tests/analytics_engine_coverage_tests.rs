@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Analytics Engine Coverage Tests
+
+#![allow(
+    clippy::cast_sign_loss,
+    clippy::float_cmp,
+    clippy::no_effect_underscore_binding
+)]
+
 //!
 //! This test suite provides thorough coverage of the analytics engine's
 //! async methods and critical paths that were previously untested:

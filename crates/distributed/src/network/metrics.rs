@@ -5,7 +5,8 @@ use tokio::sync::RwLock;
 
 /// Network metrics collector for distributed execution
 pub struct NetworkMetricsCollector {
-    _metrics: Arc<RwLock<NetworkMetricsData>>,
+    #[allow(dead_code)] // Used in tests
+    metrics: Arc<RwLock<NetworkMetricsData>>,
 }
 
 /// Network metrics data
@@ -21,7 +22,7 @@ impl NetworkMetricsCollector {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            _metrics: Arc::new(RwLock::new(NetworkMetricsData::default())),
+            metrics: Arc::new(RwLock::new(NetworkMetricsData::default())),
         }
     }
 }
@@ -44,6 +45,7 @@ impl Default for NetworkMetricsData {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -85,13 +87,13 @@ mod tests {
     fn test_metrics_collector_creation() {
         let collector = NetworkMetricsCollector::new();
         // Verify collector was created successfully
-        assert!(collector._metrics.try_read().is_ok());
+        assert!(collector.metrics.try_read().is_ok());
     }
 
     #[test]
     fn test_metrics_collector_default() {
         let collector = NetworkMetricsCollector::default();
-        assert!(collector._metrics.try_read().is_ok());
+        assert!(collector.metrics.try_read().is_ok());
     }
 
     #[test]

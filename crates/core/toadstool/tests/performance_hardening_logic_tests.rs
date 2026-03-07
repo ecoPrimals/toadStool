@@ -9,6 +9,11 @@
 //! - Async optimization
 //! - Connection pooling
 //! - Performance metrics
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -72,6 +77,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(base_interval.as_millis(), 100);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_monitoring_adaptive_sampling() {
         let adaptive = true;
@@ -83,6 +89,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(low_load_mult, 2.0);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_monitoring_interval_adjustment() {
         let base = 100u64; // milliseconds
@@ -122,6 +129,7 @@ mod performance_hardening_logic_tests {
         assert!(max_size > initial_size);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_memory_pool_growth() {
         let current_size = 100usize;
@@ -131,6 +139,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(new_size, 150);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_memory_pool_shrink_threshold() {
         let shrink_threshold = 0.3f64;
@@ -180,12 +189,14 @@ mod performance_hardening_logic_tests {
         assert_eq!(cleanup.as_secs(), 60);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_cache_hit_rate_threshold() {
         let threshold = 0.8f64;
         assert!((0.0..=1.0).contains(&threshold));
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_cache_hit_rate_calculation() {
         let hits = 80u64;
@@ -195,6 +206,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(hit_rate, 0.8);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_cache_hit_rate_below_threshold() {
         let hits = 70u64;
@@ -304,6 +316,7 @@ mod performance_hardening_logic_tests {
         assert!(now > 0);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_metric_aggregation() {
         let samples = vec![10.0, 20.0, 30.0, 40.0, 50.0];
@@ -384,6 +397,7 @@ mod performance_hardening_logic_tests {
     // Optimization Strategy Tests
     // ============================================================================
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_should_enable_optimization() {
         let cpu_usage = 85.0f64;
@@ -393,6 +407,7 @@ mod performance_hardening_logic_tests {
         assert!(should_optimize);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_optimization_disabled() {
         let cpu_usage = 50.0f64;
@@ -402,6 +417,7 @@ mod performance_hardening_logic_tests {
         assert!(!should_optimize);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_adaptive_optimization() {
         let load = 0.9f64; // 90% load
@@ -420,6 +436,7 @@ mod performance_hardening_logic_tests {
     // Resource Management Tests
     // ============================================================================
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_resource_allocation() {
         let allocated = 700usize;
@@ -429,6 +446,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(usage_percent, 70.0);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_resource_reclamation() {
         let allocated = 200usize;
@@ -445,6 +463,7 @@ mod performance_hardening_logic_tests {
     // Performance Tuning Tests
     // ============================================================================
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_batch_size_optimization() {
         let latency_ms = 50u64;
@@ -455,6 +474,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(optimal_batch, 50);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_timeout_configuration() {
         let base_timeout = Duration::from_secs(30);
@@ -513,6 +533,7 @@ mod performance_hardening_logic_tests {
         assert!(is_invalid);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_invalid_growth_factor() {
         let growth_factor = 0.5f64;
@@ -521,6 +542,7 @@ mod performance_hardening_logic_tests {
         assert!(is_invalid);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_invalid_threshold() {
         let threshold = 1.5f64;

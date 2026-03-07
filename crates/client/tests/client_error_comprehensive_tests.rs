@@ -217,14 +217,14 @@ fn test_match_all_error_variants() {
 
     for error in errors {
         match error {
-            ClientError::Authentication(_) => {}
-            ClientError::Configuration(_) => {}
-            ClientError::Server(_) => {}
-            ClientError::Timeout(_) => {}
-            ClientError::Http(_) => {}
-            ClientError::Serialization(_) => {}
-            ClientError::UrlParse(_) => {}
-            ClientError::Io(_) => {}
+            ClientError::Authentication(_)
+            | ClientError::Configuration(_)
+            | ClientError::Server(_)
+            | ClientError::Timeout(_)
+            | ClientError::Http(_)
+            | ClientError::Serialization(_)
+            | ClientError::UrlParse(_)
+            | ClientError::Io(_) => {}
         }
     }
 }

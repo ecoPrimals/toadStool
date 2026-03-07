@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical Path Tests for Distributed Coordinator
 
-#![allow(clippy::all, dead_code)]
+#![allow(
+    clippy::all,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::float_cmp,
+    clippy::similar_names,
+    dead_code
+)]
 //!
 //! Tests for distributed coordinator functionality identified in audit:
 //! - Coordinator initialization and configuration
@@ -201,19 +209,19 @@ mod node_registration_tests {
 
         // Register nodes
         {
-            let mut n = nodes.write().await;
+            let mut nodes_mut = nodes.write().await;
             let node1 = Node {
                 id: Uuid::new_v4(),
                 address: "node1:8080".to_string(),
                 capacity: 10,
             };
-            n.insert(node1.id, node1);
+            nodes_mut.insert(node1.id, node1);
         }
 
         // Verify
         {
-            let n = nodes.read().await;
-            assert_eq!(n.len(), 1);
+            let nodes_ref = nodes.read().await;
+            assert_eq!(nodes_ref.len(), 1);
         }
     }
 

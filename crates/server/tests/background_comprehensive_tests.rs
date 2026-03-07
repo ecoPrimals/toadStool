@@ -1,4 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::unreadable_literal
+)]
 //! Comprehensive background services tests to expand coverage from 0% → 60%+
 //!
 //! Tests cover:

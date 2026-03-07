@@ -4,7 +4,9 @@
 //! Updated November 21, 2025 - Using current `DistributedCoordinator` API
 
 use anyhow::Result;
+use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
+use std::hash::BuildHasher;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -211,10 +213,10 @@ async fn chaos_test_burst_traffic() -> Result<()> {
 /// Now uses proper counter-based termination with `JoinHandle` synchronization
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn chaos_test_event_storm() -> Result<()> {
+    const EVENT_COUNT: usize = 200;
+
     let coordinator = Arc::new(DistributedCoordinator::new(create_chaos_config()).await?);
     let (tx, mut rx) = broadcast::channel(1000);
-
-    const EVENT_COUNT: usize = 200;
 
     // Spawn event generator and await its completion
     let coordinator_clone = Arc::clone(&coordinator);
@@ -490,9 +492,6 @@ async fn chaos_test_maximum_concurrency() -> Result<()> {
 async fn chaos_test_random_operations() -> Result<()> {
     let coordinator = Arc::new(DistributedCoordinator::new(create_chaos_config()).await?);
     let mut handles = vec![];
-
-    use std::collections::hash_map::RandomState;
-    use std::hash::BuildHasher;
 
     for i in 0..50 {
         let coord = Arc::clone(&coordinator);

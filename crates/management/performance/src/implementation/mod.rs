@@ -113,9 +113,9 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         Ok(())
     }
 
-    async fn get_runtime_stats(&self, runtime_type: RuntimeType) -> ToadStoolResult<RuntimeStats> {
+    async fn get_runtime_stats(&self, runtime_type: &RuntimeType) -> ToadStoolResult<RuntimeStats> {
         let stats = self.runtime_stats.read().await;
-        stats.get(&runtime_type).cloned().ok_or_else(|| {
+        stats.get(runtime_type).cloned().ok_or_else(|| {
             ToadStoolError::runtime(format!(
                 "No statistics available for runtime: {runtime_type:?}"
             ))
@@ -195,7 +195,7 @@ mod tests {
 
     fn make_performance_metrics(
         execution_id: &str,
-        runtime_type: RuntimeType,
+        runtime_type: &RuntimeType,
         start_time: std::time::SystemTime,
         execution_duration_secs: f64,
         memory_bytes: u64,
@@ -246,7 +246,7 @@ mod tests {
         let mut history = VecDeque::new();
         history.push_back(make_performance_metrics(
             "old1",
-            RuntimeType::Native,
+            &RuntimeType::Native,
             old_time,
             1.0,
             100 * 1024 * 1024,
@@ -255,7 +255,7 @@ mod tests {
         ));
         history.push_back(make_performance_metrics(
             "old2",
-            RuntimeType::Native,
+            &RuntimeType::Native,
             old_time,
             2.0,
             200 * 1024 * 1024,
@@ -264,7 +264,7 @@ mod tests {
         ));
         history.push_back(make_performance_metrics(
             "recent",
-            RuntimeType::Native,
+            &RuntimeType::Native,
             recent_time,
             0.5,
             50 * 1024 * 1024,
@@ -293,7 +293,7 @@ mod tests {
         let mut history = VecDeque::new();
         history.push_back(make_performance_metrics(
             "r1",
-            RuntimeType::Native,
+            &RuntimeType::Native,
             recent,
             1.0,
             100 * 1024 * 1024,
@@ -309,7 +309,7 @@ mod tests {
         let mut stats = HashMap::new();
         let metrics = make_performance_metrics(
             "exec1",
-            RuntimeType::Wasm,
+            &RuntimeType::Wasm,
             std::time::SystemTime::now(),
             2.5,
             128 * 1024 * 1024,
@@ -337,7 +337,7 @@ mod tests {
 
         let m1 = make_performance_metrics(
             "e1",
-            RuntimeType::Native,
+            &RuntimeType::Native,
             now,
             1.0,
             100 * 1024 * 1024,
@@ -346,7 +346,7 @@ mod tests {
         );
         let m2 = make_performance_metrics(
             "e2",
-            RuntimeType::Native,
+            &RuntimeType::Native,
             now,
             3.0,
             200 * 1024 * 1024,
@@ -373,7 +373,7 @@ mod tests {
         let mut stats = HashMap::new();
         let mut metrics = make_performance_metrics(
             "e1",
-            RuntimeType::Native,
+            &RuntimeType::Native,
             std::time::SystemTime::now(),
             1.0,
             100 * 1024 * 1024,
@@ -407,7 +407,7 @@ mod tests {
             let dur = (f64::from(i) + 1.0) * 0.5; // 0.5, 1.0, 1.5, ..., 6.0
             history.push_back(make_performance_metrics(
                 &format!("e{i}"),
-                RuntimeType::Native,
+                &RuntimeType::Native,
                 now,
                 dur,
                 (100 + i as u64) * 1024 * 1024,
@@ -452,7 +452,7 @@ mod tests {
         for i in 0..10 {
             history.push_back(make_performance_metrics(
                 &format!("native_{i}"),
-                RuntimeType::Native,
+                &RuntimeType::Native,
                 now,
                 1.0 + f64::from(i) * 0.1,
                 100 * 1024 * 1024,
@@ -463,7 +463,7 @@ mod tests {
         for i in 0..10 {
             history.push_back(make_performance_metrics(
                 &format!("wasm_{i}"),
-                RuntimeType::Wasm,
+                &RuntimeType::Wasm,
                 now,
                 0.5 + f64::from(i) * 0.05,
                 64 * 1024 * 1024,
@@ -558,7 +558,7 @@ mod tests {
             },
             args: None,
             working_dir: None,
-            env_vars: Default::default(),
+            env_vars: std::collections::HashMap::default(),
             user: None,
         };
         let pred = opt.predict_resources(&workload).await.unwrap();

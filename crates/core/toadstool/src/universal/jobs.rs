@@ -214,6 +214,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // default ResourceRequirements value
     fn test_universal_job_construction_with_all_fields() {
         let mut env = HashMap::new();
         env.insert("KEY".to_string(), "val".to_string());

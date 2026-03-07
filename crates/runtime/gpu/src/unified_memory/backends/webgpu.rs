@@ -289,7 +289,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires actual GPU hardware
+    #[ignore = "Requires actual GPU hardware"]
     async fn test_webgpu_backend_initialization() {
         // Try to initialize WebGPU backend
         let result = WebGpuBackend::try_init().await;
@@ -316,15 +316,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires actual GPU hardware
+    #[ignore = "Requires actual GPU hardware"]
     async fn test_webgpu_backend_allocation() {
         // Try to allocate via WebGPU
-        let backend = match WebGpuBackend::try_init().await {
-            Ok(b) => b,
-            Err(_) => {
-                println!("⚠️  Skipping test - WebGPU not available");
-                return;
-            }
+        let Ok(backend) = WebGpuBackend::try_init().await else {
+            println!("⚠️  Skipping test - WebGPU not available");
+            return;
         };
 
         // Allocate a buffer

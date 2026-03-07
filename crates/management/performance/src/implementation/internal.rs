@@ -21,7 +21,8 @@ pub(super) struct BaselineMetrics {
 /// Runtime selector state (for future ML-based selection)
 #[derive(Default)]
 pub(super) struct RuntimeSelector {
-    pub(super) _last_selection: Option<RuntimeType>,
+    #[allow(dead_code)] // Reserved for future ML-based selection
+    pub(super) last_selection: Option<RuntimeType>,
 }
 
 /// Exponential moving average prediction model.
@@ -213,7 +214,7 @@ mod tests {
     #[test]
     fn test_runtime_selector_default() {
         let selector = RuntimeSelector::default();
-        assert!(selector._last_selection.is_none());
+        assert!(selector.last_selection.is_none());
     }
 
     #[test]

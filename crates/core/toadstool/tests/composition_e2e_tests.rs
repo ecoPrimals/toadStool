@@ -328,6 +328,7 @@ async fn test_composition_plan_statistics() {
 }
 
 /// Test: Empty composition is valid
+#[allow(clippy::float_cmp)]
 #[tokio::test]
 async fn test_empty_composition_valid() {
     let compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();

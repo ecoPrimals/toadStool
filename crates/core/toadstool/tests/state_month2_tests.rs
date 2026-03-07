@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::unused_async)]
 //! State management tests
 //!
 //! Tier 1 tests: Coverage-measured state management tests
@@ -12,8 +13,8 @@ use tokio::sync::RwLock;
 // State Initialization Tests
 // ============================================================================
 
-#[tokio::test]
-async fn test_state_default_initialization() {
+#[test]
+fn test_state_default_initialization() {
     let state = BiomeState::default();
 
     assert_eq!(state.status(), BiomeStatus::Created);
@@ -21,8 +22,8 @@ async fn test_state_default_initialization() {
     assert!(state.metadata().is_empty());
 }
 
-#[tokio::test]
-async fn test_state_with_initial_config() {
+#[test]
+fn test_state_with_initial_config() {
     let config = StateConfig {
         name: "test-biome".to_string(),
         initial_resources: 5,
@@ -34,8 +35,8 @@ async fn test_state_with_initial_config() {
     assert_eq!(state.resource_count(), 5);
 }
 
-#[tokio::test]
-async fn test_state_initialization_validation() {
+#[test]
+fn test_state_initialization_validation() {
     let invalid_config = StateConfig {
         name: String::new(), // Invalid: empty name
         initial_resources: 0,
@@ -239,8 +240,8 @@ async fn test_state_is_terminal() {
     assert!(state.is_terminal());
 }
 
-#[tokio::test]
-async fn test_state_can_transition() {
+#[test]
+fn test_state_can_transition() {
     let state = BiomeState::default();
 
     assert!(state.can_transition_to(BiomeStatus::Starting));

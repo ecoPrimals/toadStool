@@ -588,37 +588,37 @@ fn test_propagation_result_partial_success() {
 #[test]
 fn test_propagation_result_clone() {
     let now = SystemTime::now();
-    let mut results = HashMap::new();
-    results.insert("songbird".to_string(), TokenPropagationStatus::Success);
+    let mut status_map = HashMap::new();
+    status_map.insert("songbird".to_string(), TokenPropagationStatus::Success);
 
-    let result1 = PropagationResult {
+    let original = PropagationResult {
         total_primals: 1,
         successful_propagations: 1,
-        results,
+        results: status_map,
         token_id: "token-789".to_string(),
         propagation_time: now,
     };
-    let result2 = result1.clone();
+    let cloned = original.clone();
 
-    assert_eq!(result1.token_id, result2.token_id);
-    assert_eq!(result1.total_primals, result2.total_primals);
+    assert_eq!(original.token_id, cloned.token_id);
+    assert_eq!(original.total_primals, cloned.total_primals);
 }
 
 #[test]
 fn test_propagation_result_serialization() {
     let now = SystemTime::now();
-    let mut results = HashMap::new();
-    results.insert("songbird".to_string(), TokenPropagationStatus::Success);
+    let mut status_map = HashMap::new();
+    status_map.insert("songbird".to_string(), TokenPropagationStatus::Success);
 
-    let result = PropagationResult {
+    let propagation_result = PropagationResult {
         total_primals: 1,
         successful_propagations: 1,
-        results,
+        results: status_map,
         token_id: "token-serialize".to_string(),
         propagation_time: now,
     };
 
-    let json = serde_json::to_string(&result);
+    let json = serde_json::to_string(&propagation_result);
     assert!(json.is_ok());
 }
 

@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: March 7, 2026 -- S130
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | 19,140+ tests (0 failures) | 65+ JSON-RPC methods (dynamically built) | coralReef shader proxy | Cross-spring provenance tracking | All files < 1000 lines | 45+ god files refactored
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings | clippy::pedantic clean | 19,536 tests (0 failures) | 65+ JSON-RPC methods (dynamically built) | coralReef shader proxy | Cross-spring provenance tracking | All files < 1000 lines | 45+ god files refactored
 **Latest**: S130 — Cross-spring shader rewiring: `shader.compile.*` stubs evolved to real coralReef proxy with capability-based discovery. `CoralReefClient` with lazy connection. `cross_spring_provenance.rs` (17+ flows, matrix, `toadstool.provenance` method). 31 new tests.
 
 ---
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-~83% line coverage (170K lines). 19,109 tests pass. Focus areas: hardware-dependent code (display/drm, GPU backends, V4L2, Akida VFIO) that requires physical hardware to exercise. Need ~12K more lines covered.
+~83% line coverage (170K lines). 19,536 tests pass. Focus areas: hardware-dependent code (display/drm, GPU backends, V4L2, Akida VFIO) that requires physical hardware to exercise. Need ~12K more lines covered.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -83,6 +83,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **ComputeDispatch migration** -- transferred to barraCuda team (lives in barraCuda crate)
 - [x] **DF64 default path** -- transferred to barraCuda team (S93)
 - [x] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
+- [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [ ] **Test coverage target 90%** -- 19,109 tests; focus on hardware-dependent code (toadStool D-COV)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
@@ -114,6 +115,11 @@ names directly. Deprecated API definitions retained for backward compatibility o
 ---
 
 ## Completed This Session (S90-130)
+
+### Session S130+: Deep Debt — Clippy Pedantic Clean (Mar 7, 2026)
+- **Clippy pedantic clean**: Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with zero errors, zero warnings. 12 iterative passes of auto-fix + manual corrections across 1,868 .rs files (~30 pedantic lint categories resolved).
+- **Test count**: 19,536 tests passing, 0 failures.
+- **Corrupted test attributes**: 3 CLI test files with sed-corrupted `#[tokio::test]` attributes repaired.
 
 ### Session S130: Cross-Spring Shader Rewiring + Provenance (Mar 7, 2026)
 - **coralReef proxy**: `shader.compile.*` stubs evolved to real coralReef proxy handlers with capability-based discovery. `CoralReefClient` discovers via env vars → XDG manifest → socket fallback. Dynamic `coral_reef_available` in capabilities. Graceful naga-only fallback when coralReef unavailable.

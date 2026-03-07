@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! 🔥 Chaos Engineering Tests - Executor Stress & Resilience
 //!
 //! **Philosophy**: Test system behavior under extreme conditions
@@ -72,12 +82,14 @@ async fn chaos_rapid_fire_operations() -> Result<()> {
             let result = match op {
                 0 => exec.list_biomes(false, "text", false, None).await,
                 1 => exec.list_biomes(false, "json", false, None).await,
-                2 => exec
-                    .down_biome(format!("nonexistent-{i}"), false, 5, false)
-                    .await,
-                _ => exec
-                    .show_logs(format!("nonexistent-{i}"), false, 10, false, None, None)
-                    .await,
+                2 => {
+                    exec.down_biome(format!("nonexistent-{i}"), false, 5, false)
+                        .await
+                }
+                _ => {
+                    exec.show_logs(format!("nonexistent-{i}"), false, 10, false, None, None)
+                        .await
+                }
             };
 
             if result.is_ok() {
@@ -376,8 +388,7 @@ async fn chaos_interleaved_operations() -> Result<()> {
                 exec.list_biomes(false, "text", false, None).await
             } else {
                 // Write (will fail, but tests state management)
-                exec.down_biome(format!("test-{i}"), false, 1, false)
-                    .await
+                exec.down_biome(format!("test-{i}"), false, 1, false).await
             }
         }));
     }

@@ -114,7 +114,7 @@ fn test_rate_limiting_config_permissive() {
     let config = RateLimitingConfig {
         max_requests_per_minute: 1000,
         max_requests_per_hour: 60000,
-        max_requests_per_day: 1000000,
+        max_requests_per_day: 1_000_000,
         sliding_window: Duration::from_secs(120),
         burst_allowance: 100,
     };
@@ -245,6 +245,7 @@ fn test_audit_config_clone_debug() {
 // IntrusionDetectionConfig Tests (5 tests)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_intrusion_detection_config_default() {
     let config = IntrusionDetectionConfig::default();
@@ -257,6 +258,7 @@ fn test_intrusion_detection_config_default() {
     assert!(config.allowed_ips.contains(&"127.0.0.1".to_string()));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_intrusion_detection_config_strict() {
     let config = IntrusionDetectionConfig {
@@ -272,6 +274,7 @@ fn test_intrusion_detection_config_strict() {
     assert!(config.allowed_ips.is_empty());
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_intrusion_detection_config_permissive() {
     let config = IntrusionDetectionConfig {
@@ -291,6 +294,7 @@ fn test_intrusion_detection_config_permissive() {
     assert_eq!(config.allowed_ips.len(), 3);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_intrusion_detection_config_different_thresholds() {
     let thresholds = vec![0.5, 0.6, 0.7, 0.8, 0.9, 0.95];
@@ -307,6 +311,7 @@ fn test_intrusion_detection_config_different_thresholds() {
     }
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_intrusion_detection_config_clone_debug() {
     let config1 = IntrusionDetectionConfig::default();
@@ -355,7 +360,7 @@ fn test_validation_rules_strict() {
 
 #[test]
 fn test_validation_rules_different_lengths() {
-    let lengths = vec![100, 1000, 10000, 100000, 1000000];
+    let lengths = vec![100, 1000, 10_000, 100_000, 1_000_000];
 
     for length in lengths {
         let rules = ValidationRules {
@@ -428,14 +433,14 @@ fn test_security_event_type_debug() {
 
 #[test]
 fn test_security_event_type_all_variants() {
-    let _auth_attempt = SecurityEventType::AuthenticationAttempt;
-    let _auth_failure = SecurityEventType::AuthorizationFailure;
-    let _validation_failure = SecurityEventType::InputValidationFailure;
-    let _rate_limit = SecurityEventType::RateLimitExceeded;
-    let _suspicious = SecurityEventType::SuspiciousActivity;
-    let _intrusion = SecurityEventType::IntrusionAttempt;
-    let _policy_violation = SecurityEventType::PolicyViolation;
-    let _capability_abuse = SecurityEventType::CapabilityAbuse;
+    let _ = SecurityEventType::AuthenticationAttempt;
+    let _ = SecurityEventType::AuthorizationFailure;
+    let _ = SecurityEventType::InputValidationFailure;
+    let _ = SecurityEventType::RateLimitExceeded;
+    let _ = SecurityEventType::SuspiciousActivity;
+    let _ = SecurityEventType::IntrusionAttempt;
+    let _ = SecurityEventType::PolicyViolation;
+    let _ = SecurityEventType::CapabilityAbuse;
 
     // All variants compile and are valid
 }

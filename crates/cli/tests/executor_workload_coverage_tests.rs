@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Coverage tests for CLI executor workload module
 //!
 //! These tests target the 0% coverage area in crates/cli/src/executor/workload.rs
@@ -456,7 +466,9 @@ mod path_handling_tests {
     fn test_pathbuf_creation() {
         let path = PathBuf::from("/tmp/workload.toml");
         assert!(path.to_str().is_some());
-        assert!(path.to_str().unwrap().ends_with(".toml"));
+        assert!(path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("toml")));
     }
 
     #[test]

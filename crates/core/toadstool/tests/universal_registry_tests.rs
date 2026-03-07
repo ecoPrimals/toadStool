@@ -254,9 +254,9 @@ async fn test_registry_register_overwrites_same_instance_id() {
     ));
     registry.register_primal(provider2).await.unwrap();
 
-    let providers = registry.get_all_providers().await;
-    assert_eq!(providers.len(), 1);
-    assert_eq!(providers[0].primal_type(), PrimalType::Security);
+    let all_providers = registry.get_all_providers().await;
+    assert_eq!(all_providers.len(), 1);
+    assert_eq!(all_providers[0].primal_type(), PrimalType::Security);
 }
 
 // ============================================================================

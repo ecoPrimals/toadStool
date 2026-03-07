@@ -8,8 +8,7 @@ use tokio::time::Duration;
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_executor_initialization() {
     // Test that we can initialize a policy executor
-    let result = initialize_policy_executor();
-    assert!(result.is_ok(), "Should initialize successfully");
+    initialize_policy_executor();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -210,6 +209,7 @@ struct PolicyAction {
     user: String,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 struct PolicyResult {
     allowed: bool,
     conditions_evaluated: bool,
@@ -253,16 +253,13 @@ struct ResourceLimits {
     max_cpu_percent: u8,
 }
 
-fn initialize_policy_executor() -> Result<(), String> {
-    Ok(())
-}
+fn initialize_policy_executor() {}
 
 fn execute_policy_check(action: &PolicyAction) -> PolicyResult {
     let allowed = match action.operation.as_str() {
         "read" => true,
         "write" => action.user != "guest",
-        "delete" => action.user == "admin",
-        "execute" => action.user == "admin",
+        "delete" | "execute" => action.user == "admin",
         "" => {
             return PolicyResult {
                 allowed: false,
@@ -304,11 +301,13 @@ fn order_policies_by_priority(mut policies: Vec<Policy>) -> Vec<Policy> {
     policies
 }
 
+#[allow(clippy::unused_async)] // Trait impl may require async signature
 async fn execute_policy_async(action: &PolicyAction) -> Result<PolicyResult, String> {
     // ✅ MODERNIZED: No sleep needed - async execution is immediate
     Ok(execute_policy_check(action))
 }
 
+#[allow(clippy::unused_async)] // API requires async for timeout semantics
 async fn execute_policy_with_timeout(action: &PolicyAction, _timeout: Duration) -> PolicyResult {
     // ✅ MODERNIZED: No sleep needed - policy execution is synchronous
     let mut result = execute_policy_check(action);

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discover all compute units example
+
+#![allow(clippy::cast_precision_loss)]
 //!
 //! This demonstrates the core principle: CPU, GPU, neuromorphic - all
 //! are just different orders of the same parallel compute architecture.

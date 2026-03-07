@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::default_trait_access,
+    clippy::float_cmp,
+    clippy::items_after_statements,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::unused_async
+)]
 //! Comprehensive tests for CLI executor implementation
 //! Addresses zero-coverage file: `cli/src/executor/executor_impl.rs` (938 lines)
 

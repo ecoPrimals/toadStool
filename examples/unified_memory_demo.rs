@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Unified Memory Demo
+
+#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 //!
 //! Demonstrates vendor-agnostic zero-copy GPU compute using ToadStool's
 //! unified memory system.
@@ -18,9 +20,7 @@
 //! cargo run --example unified_memory_demo
 //! ```
 
-use toadstool_runtime_gpu::unified_memory::{
-    MemoryFlags, UnifiedMemoryBackend, UniversalUnifiedMemory,
-};
+use toadstool_runtime_gpu::unified_memory::{MemoryFlags, UniversalUnifiedMemory};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

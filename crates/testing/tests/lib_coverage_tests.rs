@@ -2,6 +2,11 @@
 //! Coverage tests for testing/src/lib.rs
 //!
 //! Target: Get lib.rs from 0% → 100% coverage
+#![allow(
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::cast_possible_truncation
+)]
 
 use std::time::Duration;
 use toadstool_testing::*;

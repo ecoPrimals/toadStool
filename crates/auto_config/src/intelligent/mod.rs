@@ -277,7 +277,7 @@ mod tests {
     fn test_usage_learner_creation() {
         let learner = UsageLearner::new();
         assert_eq!(
-            learner._environment_hints.len(),
+            learner.environment_hints.len(),
             0,
             "Should start with no hints"
         );

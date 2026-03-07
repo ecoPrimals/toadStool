@@ -34,14 +34,15 @@ use crate::ToadStoolResult;
 
 /// Hardware detection and capability assessment system
 pub struct HardwareDetector {
-    _system_info: Option<SystemInfo>,
+    #[allow(dead_code)] // Reserved for future platform-specific system info
+    system_info: Option<SystemInfo>,
 }
 
 impl HardwareDetector {
     /// Create a new hardware detector
     #[must_use]
     pub fn new() -> Self {
-        Self { _system_info: None }
+        Self { system_info: None }
     }
 
     /// Comprehensive system scan to detect all hardware capabilities
@@ -202,10 +203,11 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_hardware_detector_creation() {
         let detector = HardwareDetector::new();
-        assert!(detector._system_info.is_none());
+        assert!(detector.system_info.is_none());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_system_scan() {
         let mut detector = HardwareDetector::new();
         let result = detector.scan_system().await;
@@ -217,6 +219,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     fn test_system_capabilities_default() {
         let capabilities = SystemCapabilities::default();
         assert_eq!(capabilities.cpu_cores, 4.0);

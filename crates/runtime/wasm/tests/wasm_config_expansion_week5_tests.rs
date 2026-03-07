@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! WASM Runtime Configuration Tests - Week 5
 //! Comprehensive tests for WebAssembly runtime configuration
 
@@ -236,19 +237,21 @@ async fn test_wasm_engine_get_capabilities() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_supports_wasm_workload() {
+    use toadstool::workload::WorkloadType;
+
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
 
-    use toadstool::workload::WorkloadType;
     assert!(engine.supports_workload(&WorkloadType::Wasm));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_rejects_non_wasm_workload() {
+    use toadstool::workload::WorkloadType;
+
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
 
-    use toadstool::workload::WorkloadType;
     assert!(!engine.supports_workload(&WorkloadType::Container));
     assert!(!engine.supports_workload(&WorkloadType::Native));
 }
@@ -260,7 +263,7 @@ async fn test_wasm_engine_architectures() {
 
     let capabilities = engine.get_capabilities();
     // wasmi is architecture-agnostic (interprets on any host arch)
-    let _arch_count = capabilities.supported_architectures.len();
+    let _ = capabilities.supported_architectures.len();
     // Test passes if get_capabilities() succeeds
 }
 

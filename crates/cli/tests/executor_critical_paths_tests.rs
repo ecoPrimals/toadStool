@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Critical Path Tests for CLI Executor
 //!
 //! Tests for high-priority execution paths identified in coverage audit:
@@ -473,9 +483,15 @@ mod workload_execution_tests {
         ];
 
         for (file, expected_runtime) in workload_types {
-            let runtime = if file.ends_with(".wasm") {
+            let runtime = if std::path::Path::new(file)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("wasm"))
+            {
                 "wasm"
-            } else if file.ends_with(".sh") {
+            } else if std::path::Path::new(file)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("sh"))
+            {
                 "native"
             } else {
                 "container"

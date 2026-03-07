@@ -70,7 +70,8 @@ impl Default for NetworkLoadBalancer {
 /// Fault tolerance manager for network distribution
 pub struct FaultToleranceManager {
     _circuit_breakers: Arc<tokio::sync::RwLock<HashMap<String, CircuitBreaker>>>,
-    _retries: Arc<RetryManager>,
+    #[allow(dead_code)] // Used in tests
+    retries: Arc<RetryManager>,
 }
 
 /// Circuit breaker for fault tolerance
@@ -100,7 +101,7 @@ impl FaultToleranceManager {
     pub fn new() -> Self {
         Self {
             _circuit_breakers: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            _retries: Arc::new(RetryManager {
+            retries: Arc::new(RetryManager {
                 max_retries: 3,
                 backoff_strategy: BackoffStrategy::Exponential {
                     base_ms: 1000,
@@ -118,6 +119,7 @@ impl Default for FaultToleranceManager {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -179,13 +181,13 @@ mod tests {
     #[test]
     fn test_fault_tolerance_manager_creation() {
         let manager = FaultToleranceManager::new();
-        assert_eq!(manager._retries.max_retries, 3);
+        assert_eq!(manager.retries.max_retries, 3);
     }
 
     #[test]
     fn test_fault_tolerance_manager_default() {
         let manager = FaultToleranceManager::default();
-        assert_eq!(manager._retries.max_retries, 3);
+        assert_eq!(manager.retries.max_retries, 3);
     }
 
     #[test]

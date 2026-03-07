@@ -4,6 +4,7 @@
 //! Verify that ToadStool's subsystems recover predictably from faults,
 //! maintain invariants under load, and do not lose state.
 
+use std::collections::HashMap;
 use std::time::Duration;
 use toadstool_testing::chaos::{ChaosScenario, FaultType, ResourceType, SystemState};
 use tokio::time::timeout;
@@ -110,7 +111,7 @@ async fn test_metric_tracking_across_faults() {
         failed_nodes: 0,
         data_loss_count: 0,
         recovery_count: 0,
-        metrics: Default::default(),
+        metrics: HashMap::default(),
     };
 
     // Simulate fault injection sequence

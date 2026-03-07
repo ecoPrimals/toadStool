@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive tests for resource types and requirements
 //!
 //! Tests for resource management types and operations

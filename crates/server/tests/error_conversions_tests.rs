@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding
+)]
 //! Server error conversion tests - calling actual production code
 //!
 //! These tests directly call the From trait implementations in server/src/errors.rs

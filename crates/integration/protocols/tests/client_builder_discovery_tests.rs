@@ -64,11 +64,11 @@ fn test_health_config_endpoint() {
 
 #[test]
 fn test_discovery_type_variants() {
-    let _static_ = DiscoveryType::Static;
-    let _dns = DiscoveryType::Dns;
-    let _consul = DiscoveryType::Consul;
-    let _etcd = DiscoveryType::Etcd;
-    let _k8s = DiscoveryType::Kubernetes;
+    let _ = DiscoveryType::Static;
+    let _ = DiscoveryType::Dns;
+    let _ = DiscoveryType::Consul;
+    let _ = DiscoveryType::Etcd;
+    let _ = DiscoveryType::Kubernetes;
     let custom = DiscoveryType::Custom("custom".to_string());
     assert!(matches!(custom, DiscoveryType::Custom(_)));
 }

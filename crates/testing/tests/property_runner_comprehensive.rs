@@ -3,6 +3,7 @@
 //!
 //! Expanding coverage for properties/runner.rs (current: 7.37%)
 //! Target: 80%+ coverage
+#![allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -390,14 +391,6 @@ fn test_shrinking_with_no_shrink_candidates() {
 
 #[test]
 fn test_size_grows_gradually() {
-    let config = PropertyTestConfig {
-        test_cases: 50,
-        ..Default::default()
-    };
-    let mut runner = PropertyTestRunner::new(config);
-    let generator = TestIntGenerator;
-    let counter = Arc::new(AtomicUsize::new(0));
-
     struct SizeTrackingProperty {
         sizes: Arc<AtomicUsize>,
         last_value: std::sync::Mutex<i32>,
@@ -411,7 +404,8 @@ fn test_size_grows_gradually() {
                 // Allow some variation
             }
             *last = *value;
-            self.sizes.fetch_add(*value as usize, Ordering::SeqCst);
+            self.sizes
+                .fetch_add(usize::try_from(*value).unwrap_or(0), Ordering::SeqCst);
             Ok(())
         }
 
@@ -419,6 +413,14 @@ fn test_size_grows_gradually() {
             "size_tracking"
         }
     }
+
+    let config = PropertyTestConfig {
+        test_cases: 50,
+        ..Default::default()
+    };
+    let mut runner = PropertyTestRunner::new(config);
+    let generator = TestIntGenerator;
+    let counter = Arc::new(AtomicUsize::new(0));
 
     let property = SizeTrackingProperty {
         sizes: Arc::clone(&counter),

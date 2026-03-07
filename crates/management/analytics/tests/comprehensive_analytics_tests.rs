@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::cast_precision_loss, clippy::float_cmp)]
 //! Comprehensive tests for ToadStool Analytics Engine
 //!
 //! This test suite provides thorough coverage of the analytics module including:

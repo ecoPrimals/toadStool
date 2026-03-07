@@ -35,10 +35,10 @@
     clippy::implicit_hasher,
     clippy::fn_params_excessive_bools,
     clippy::default_trait_access,
+    clippy::float_cmp,
     clippy::case_sensitive_file_extension_comparisons,
     clippy::assigning_clones,
-    clippy::needless_raw_string_hashes,
-    clippy::redundant_closure
+    clippy::needless_raw_string_hashes
 )]
 
 //! `ToadStool` CLI - Universal Compute Command Center

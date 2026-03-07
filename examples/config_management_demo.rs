@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(deprecated)] // This example demonstrates legacy configuration APIs
+#![allow(
+    clippy::unused_async,
+    dead_code,
+    deprecated, // This example demonstrates legacy configuration APIs
+    unused_variables,
+)]
 //! Configuration Management Demo
 //!
 //! This demo showcases ToadStool's comprehensive environment variable configuration system

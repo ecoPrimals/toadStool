@@ -20,6 +20,7 @@
     clippy::map_unwrap_or,
     clippy::unreadable_literal,
     clippy::unnecessary_wraps, // discover_cpu needs Option for cfg-gated None
+    clippy::no_effect_underscore_binding,
 )]
 
 //! ToadStool Universal Compute Runtime

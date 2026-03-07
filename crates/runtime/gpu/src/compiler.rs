@@ -288,9 +288,9 @@ mod compiler_tests {
             )
             .await;
         assert!(result.is_ok());
-        let compiled = result.unwrap();
-        assert!(!compiled.binary.is_empty());
-        assert_eq!(compiled.framework, GpuFramework::WebGpu);
+        let compiled_kernel = result.unwrap();
+        assert!(!compiled_kernel.binary.is_empty());
+        assert_eq!(compiled_kernel.framework, GpuFramework::WebGpu);
     }
 
     #[tokio::test]
@@ -300,15 +300,15 @@ mod compiler_tests {
         let compiler = UniversalKernelCompiler::new(config);
         let device = make_test_device();
         let source = "fn test() {}";
-        let r1 = compiler
+        let first_compiled = compiler
             .compile_kernel(source, KernelFormat::Glsl, GpuFramework::WebGpu, &device)
             .await
             .unwrap();
-        let r2 = compiler
+        let second_compiled = compiler
             .compile_kernel(source, KernelFormat::Glsl, GpuFramework::WebGpu, &device)
             .await
             .unwrap();
-        assert!(Arc::ptr_eq(&r1, &r2));
+        assert!(Arc::ptr_eq(&first_compiled, &second_compiled));
     }
 
     #[tokio::test]
@@ -333,12 +333,12 @@ mod compiler_tests {
 
     #[test]
     fn test_basic_kernel_optimizer() {
-        let optimizer = BasicKernelOptimizer;
+        let opt = BasicKernelOptimizer;
         let kernel = "// comment\nfn main() {\n  x();\n}\n  \n";
-        let result = optimizer.optimize(kernel, &make_test_device());
+        let result = opt.optimize(kernel, &make_test_device());
         assert!(result.is_ok());
-        let optimized = result.unwrap();
-        assert!(!optimized.contains("//"));
+        let optimized_source = result.unwrap();
+        assert!(!optimized_source.contains("//"));
     }
 
     #[test]
@@ -366,7 +366,7 @@ mod compiler_tests {
         config.caching.enabled = false;
         let compiler = UniversalKernelCompiler::new(config);
         let device = make_test_device();
-        let r1 = compiler
+        let first_result = compiler
             .compile_kernel(
                 "fn a() {}",
                 KernelFormat::Wasm,
@@ -375,7 +375,7 @@ mod compiler_tests {
             )
             .await
             .unwrap();
-        let r2 = compiler
+        let second_result = compiler
             .compile_kernel(
                 "fn a() {}",
                 KernelFormat::Wasm,
@@ -385,7 +385,7 @@ mod compiler_tests {
             .await
             .unwrap();
         assert!(
-            !Arc::ptr_eq(&r1, &r2),
+            !Arc::ptr_eq(&first_result, &second_result),
             "Caching disabled should produce new instances"
         );
     }
@@ -396,7 +396,7 @@ mod compiler_tests {
         config.caching.enabled = true;
         let compiler = UniversalKernelCompiler::new(config);
         let device = make_test_device();
-        let r1 = compiler
+        let glsl_result = compiler
             .compile_kernel(
                 "fn x() {}",
                 KernelFormat::Glsl,
@@ -405,7 +405,7 @@ mod compiler_tests {
             )
             .await
             .unwrap();
-        let r2 = compiler
+        let wasm_result = compiler
             .compile_kernel(
                 "fn x() {}",
                 KernelFormat::Wasm,
@@ -414,7 +414,7 @@ mod compiler_tests {
             )
             .await
             .unwrap();
-        assert!(!Arc::ptr_eq(&r1, &r2));
+        assert!(!Arc::ptr_eq(&glsl_result, &wasm_result));
     }
 
     #[tokio::test]
@@ -422,7 +422,7 @@ mod compiler_tests {
         let config = CompilationConfig::default();
         let compiler = UniversalKernelCompiler::new(config);
         let device = make_test_device();
-        let r1 = compiler
+        let compiled_a = compiler
             .compile_kernel(
                 "source_a",
                 KernelFormat::OpenClC,
@@ -431,7 +431,7 @@ mod compiler_tests {
             )
             .await
             .unwrap();
-        let r2 = compiler
+        let compiled_b = compiler
             .compile_kernel(
                 "source_b",
                 KernelFormat::OpenClC,
@@ -440,7 +440,7 @@ mod compiler_tests {
             )
             .await
             .unwrap();
-        assert_ne!(r1.binary, r2.binary);
+        assert_ne!(compiled_a.binary, compiled_b.binary);
     }
 
     #[tokio::test]

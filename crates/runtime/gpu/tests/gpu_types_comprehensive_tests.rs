@@ -412,10 +412,10 @@ fn test_device_info_intel_igpu() {
 
 #[test]
 fn test_device_id_hash_equality() {
+    use std::collections::HashMap;
+
     let id1 = DeviceId::new(GpuFramework::Cuda, 0, "id1".to_string());
     let id2 = DeviceId::new(GpuFramework::Cuda, 0, "id1".to_string());
-
-    use std::collections::HashMap;
     let mut map = HashMap::new();
     map.insert(id1.clone(), "device1");
 

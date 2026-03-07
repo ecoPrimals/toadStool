@@ -5,7 +5,7 @@
 //! The deprecated enum hardcodes service names, violating infant discovery principles.
 //! Production code should use the capability-based `ServiceType` instead.
 
-#![allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
+#![allow(deprecated, clippy::cast_precision_loss)] // Testing backward compatibility with deprecated EcosystemService
 
 use base64::Engine;
 use std::collections::HashMap;

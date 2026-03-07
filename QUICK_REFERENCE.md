@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 7, 2026 — S130**
+**March 7, 2026 — S130+**
 
 ---
 
@@ -10,7 +10,7 @@
 # All gates (run these before any commit)
 cargo fmt --all -- --check
 cargo build --workspace
-cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic
 cargo doc --workspace --no-deps
 cargo test --workspace
 cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toadstool-server -p toadstool-distributed --summary-only
@@ -582,4 +582,4 @@ Scientific middleware has moved to barraCuda. See `cargo doc -p barracuda --open
 
 ---
 
-**Last Updated**: March 6, 2026 — S96
+**Last Updated**: March 7, 2026 — S130+

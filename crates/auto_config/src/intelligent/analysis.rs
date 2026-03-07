@@ -11,7 +11,7 @@ use toadstool_config::ToadStoolConfig;
 
 /// Usage pattern learning and prediction
 pub struct UsageLearner {
-    pub _environment_hints: Vec<EnvironmentHint>,
+    pub environment_hints: Vec<EnvironmentHint>,
 }
 
 impl Default for UsageLearner {
@@ -24,7 +24,7 @@ impl UsageLearner {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            _environment_hints: Vec::new(),
+            environment_hints: Vec::new(),
         }
     }
 

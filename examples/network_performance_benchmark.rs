@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ToadStool Network Performance Benchmark
+
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
 //!
 //! This benchmark specifically tests the performance of the Songbird network configuration
 //! and service mesh integration under various load conditions.

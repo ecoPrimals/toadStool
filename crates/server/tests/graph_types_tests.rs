@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding
+)]
 //! Unit tests for execution graph types (`ExecutionGraph`, `GraphNode`, `GraphEdge`, etc.)
 //!
 //! Extracted from `graph_types.rs` to reduce file size and improve maintainability.
@@ -521,7 +527,7 @@ fn test_graph_edge_with_strings() {
 
 #[test]
 fn test_edge_type_default() {
-    let et: EdgeType = Default::default();
+    let et: EdgeType = EdgeType::default();
     assert_eq!(et, EdgeType::Dependency);
 }
 

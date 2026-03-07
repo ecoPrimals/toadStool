@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::cast_possible_wrap, clippy::unreadable_literal)]
 //! Comprehensive tests for ecosystem.rs
 //!
 //! Covers `EcosystemCoordinator` functionality (15-20 tests).
@@ -190,11 +191,11 @@ mod primal_instance_tests {
     fn test_primal_instance_endpoint_formats() {
         // Test various endpoint formats
         let http_endpoint = "http://localhost:8080";
-        let https_endpoint = "https://api.example.com:443";
+        let secure_endpoint = "https://api.example.com:443";
         let ip_endpoint = "http://192.168.1.100:8080";
 
         assert!(http_endpoint.starts_with("http://"));
-        assert!(https_endpoint.starts_with("https://"));
+        assert!(secure_endpoint.starts_with("https://"));
         assert!(ip_endpoint.contains("192.168"));
     }
 
@@ -226,7 +227,7 @@ mod primal_instance_tests {
 
         assert!(timestamp > 0);
         // Verify timestamp is recent (after 2020)
-        assert!(timestamp > 1577836800); // Jan 1, 2020
+        assert!(timestamp > 1_577_836_800); // Jan 1, 2020
     }
 
     #[test]

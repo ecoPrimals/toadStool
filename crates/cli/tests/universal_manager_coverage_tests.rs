@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Comprehensive tests for `UniversalComputeManager` (`manager_impl.rs`) - coverage target 90%
 //!
 //! Tests `detect_platforms`, `run_benchmarks`, `migrate_workload`, `establish_federation`,

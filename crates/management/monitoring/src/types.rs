@@ -201,9 +201,12 @@ mod tests {
 
     #[test]
     fn threshold_action_variants() {
-        let _log = ThresholdAction::Log;
-        let _alert = ThresholdAction::Alert;
-        let _terminate = ThresholdAction::Terminate;
+        let log = ThresholdAction::Log;
+        let alert = ThresholdAction::Alert;
+        let terminate = ThresholdAction::Terminate;
+        assert!(matches!(log, ThresholdAction::Log));
+        assert!(matches!(alert, ThresholdAction::Alert));
+        assert!(matches!(terminate, ThresholdAction::Terminate));
     }
 
     #[test]

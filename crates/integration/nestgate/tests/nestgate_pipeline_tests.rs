@@ -467,6 +467,7 @@ fn test_pipeline_schedule_concurrent_limit() {
 // ============================================================================
 
 #[test]
+#[allow(clippy::float_cmp)] // test values are exact literals
 fn test_pipeline_resources_basic() {
     let resources = PipelineResources {
         cpu_cores: Some(2.0),

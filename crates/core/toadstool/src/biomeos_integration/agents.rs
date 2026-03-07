@@ -413,6 +413,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // literals just assigned in test
     fn test_agent_resource_usage_construction() {
         let usage = AgentResourceUsage {
             cpu_millicores: 1000,
@@ -439,6 +440,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // literals just assigned in test
     fn test_model_info_construction() {
         let now = SystemTime::now();
         let info = ModelInfo {

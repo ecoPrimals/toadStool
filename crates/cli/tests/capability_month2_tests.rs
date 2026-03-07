@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(clippy::expect_used)] // expect() is idiomatic in tests
+#![allow(clippy::expect_used, clippy::unused_async)] // expect() is idiomatic in tests
 //! Capability system tests
 //!
 //! Tier 1 tests: Coverage-measured capability tests
@@ -270,6 +270,7 @@ impl CapabilityDetector {
         matches!(name, "wasm" | "native" | "container")
     }
 
+    #[allow(clippy::unused_self)]
     fn detect_container_runtime(&self) -> bool {
         true
     }
@@ -455,19 +456,20 @@ impl CapabilityResolver {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::unused_async)]
 struct Capability {
     name: String,
     version: String,
     provider: String,
 }
 
-#[allow(dead_code)]
+#[allow(clippy::unused_async)]
 struct CapabilityProvider {
     name: String,
     priority: u8,
 }
 
-#[allow(dead_code)]
+#[allow(clippy::unused_async)]
 struct ProviderInfo {
     name: String,
     priority: u8,

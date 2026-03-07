@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp, clippy::match_same_arms)]
 // Platform-specific implementations
 #[cfg(target_os = "linux")]
 #[cfg(test)]

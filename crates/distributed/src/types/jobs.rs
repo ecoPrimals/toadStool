@@ -374,6 +374,7 @@ impl CompatibilityMode {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
     use std::collections::HashMap;

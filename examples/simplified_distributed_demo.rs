@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::unused_async)]
 //! # Simplified Distributed Computing Demo
 //!
 //! Demonstrates the new Songbird-centric architecture where:

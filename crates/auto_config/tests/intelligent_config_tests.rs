@@ -1,4 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::float_cmp,
+    clippy::match_same_arms
+)]
 //! Comprehensive tests for Intelligent Auto-Configuration
 //!
 //! Tests cover intelligent.rs functionality (10.81% → 30%+ target)
@@ -67,6 +74,11 @@ fn test_security_level_defaults() {
 }
 
 #[test]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
 fn test_resource_allocation_percentage() {
     // Test resource allocation percentage calculation
     let total_resources = 100u64;

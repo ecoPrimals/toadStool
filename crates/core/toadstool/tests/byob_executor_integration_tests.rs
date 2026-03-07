@@ -330,6 +330,7 @@ fn test_deployment_request_services() {
     assert_eq!(api_service.dependencies.len(), 1);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_deployment_request_resource_quotas() {
     let request = create_test_deployment_request();
@@ -495,6 +496,7 @@ fn test_deployment_request_with_no_services() {
     assert_eq!(request.services.len(), 0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_deployment_request_with_max_resources() {
     let request = ByobDeploymentRequest {

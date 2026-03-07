@@ -216,6 +216,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_hit_rate() {
         let pool = MemoryPool::new();
         assert_eq!(pool.hit_rate().await, 0.0);

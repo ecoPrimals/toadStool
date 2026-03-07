@@ -1,10 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Comprehensive tests for `BiomeExecutor` implementation (Phase 1)
 //! Target: `executor_impl.rs` (938 lines, currently 1.81% coverage)
 //! Goal: Add 100-150 tests to increase coverage significantly
 
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use tokio::fs;
 use uuid::Uuid;
@@ -79,7 +89,7 @@ async fn test_biome_executor_concurrent_initialization() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_loads_manifest() {
     // Test: run_biome loads and parses manifest file
-    let _executor = create_mock_executor().await.unwrap();
+    let _ = create_mock_executor().await.unwrap();
     let manifest_path = create_test_manifest("test-biome", "1.0.0").await.unwrap();
 
     // This would test actual manifest loading
@@ -91,7 +101,7 @@ async fn test_run_biome_loads_manifest() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_validates_manifest() {
     // Test: Manifest validation catches errors
-    let _executor = create_mock_executor().await.unwrap();
+    let _ = create_mock_executor().await.unwrap();
     let invalid_manifest = create_invalid_manifest().await.unwrap();
 
     let result = validate_test_manifest(&invalid_manifest).await;
@@ -104,13 +114,13 @@ async fn test_run_biome_validates_manifest() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_checks_duplicate_names() {
     // Test: Cannot run biome with duplicate name
-    let _executor = create_mock_executor().await.unwrap();
+    let executor = create_mock_executor().await.unwrap();
 
     // Start first biome
-    _executor.register_biome("test-biome").await.unwrap();
+    executor.register_biome("test-biome").await.unwrap();
 
     // Try to start duplicate
-    let result = _executor.check_biome_exists("test-biome").await;
+    let result = executor.check_biome_exists("test-biome").await;
     assert!(result, "Should detect duplicate biome name");
 }
 
@@ -157,7 +167,7 @@ async fn test_run_biome_parses_environment_variables() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_handles_missing_manifest() {
     // Test: Error handling for missing manifest file
-    let _executor = create_mock_executor().await.unwrap();
+    let _ = create_mock_executor().await.unwrap();
     let nonexistent_path = PathBuf::from("/nonexistent/manifest.yaml");
 
     let result = load_test_manifest(&nonexistent_path).await;
@@ -211,17 +221,17 @@ async fn test_run_biome_creates_log_directory() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_starts_in_background() {
     // Test: up_biome starts biome detached
-    let _executor = create_mock_executor().await.unwrap();
+    let executor = create_mock_executor().await.unwrap();
     let manifest_path = create_test_manifest("bg-biome", "1.0.0").await.unwrap();
 
-    let result = _executor.mock_up_biome(manifest_path, true).await;
+    let result = executor.mock_up_biome(manifest_path, true).await;
     assert!(result.is_ok(), "Background start should succeed");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_detached_flag() {
     // Test: Detached flag behavior
-    let _executor = create_mock_executor().await.unwrap();
+    let _ = create_mock_executor().await.unwrap();
 
     let detached = true;
     assert!(detached, "Detached flag should be set");
@@ -230,7 +240,7 @@ async fn test_up_biome_detached_flag() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_restart_flag() {
     // Test: Restart flag is respected
-    let _executor = create_mock_executor().await.unwrap();
+    let _ = create_mock_executor().await.unwrap();
 
     let restart = true;
     assert!(restart, "Restart flag should enable auto-restart");
@@ -253,11 +263,11 @@ async fn test_up_biome_health_check_interval() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_duplicate_name_rejection() {
     // Test: Cannot start multiple biomes with same name
-    let _executor = create_mock_executor().await.unwrap();
+    let executor = create_mock_executor().await.unwrap();
 
-    _executor.register_biome("duplicate-test").await.unwrap();
+    executor.register_biome("duplicate-test").await.unwrap();
 
-    let exists = _executor.check_biome_exists("duplicate-test").await;
+    let exists = executor.check_biome_exists("duplicate-test").await;
     assert!(exists, "Should detect duplicate biome");
 }
 
@@ -298,10 +308,10 @@ async fn test_up_biome_logs_start_message() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_stops_running_biome() {
     // Test: down_biome stops a running biome
-    let _executor = create_mock_executor().await.unwrap();
+    let executor = create_mock_executor().await.unwrap();
 
-    _executor.register_biome("test-biome").await.unwrap();
-    let result = _executor.mock_down_biome("test-biome", false, 30).await;
+    executor.register_biome("test-biome").await.unwrap();
+    let result = executor.mock_down_biome("test-biome", false, 30).await;
 
     assert!(result.is_ok(), "Should stop biome successfully");
 }
@@ -319,7 +329,7 @@ async fn test_down_biome_nonexistent_biome_error() {
 async fn test_down_biome_force_flag() {
     // Test: Force flag enables immediate kill
     let force = true;
-    let _timeout = 0u64;
+    let _ = 0u64;
 
     assert!(force, "Force flag should enable immediate stop");
 }
@@ -356,13 +366,13 @@ async fn test_down_biome_stops_all_processes() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_removes_from_registry() {
     // Test: Biome is removed from registry after stop
-    let _executor = create_mock_executor().await.unwrap();
+    let executor = create_mock_executor().await.unwrap();
 
-    _executor.register_biome("test-biome").await.unwrap();
-    assert!(_executor.check_biome_exists("test-biome").await);
+    executor.register_biome("test-biome").await.unwrap();
+    assert!(executor.check_biome_exists("test-biome").await);
 
-    _executor.unregister_biome("test-biome").await.unwrap();
-    assert!(!_executor.check_biome_exists("test-biome").await);
+    executor.unregister_biome("test-biome").await.unwrap();
+    assert!(!executor.check_biome_exists("test-biome").await);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -381,21 +391,21 @@ async fn test_down_biome_cleanup_log_files() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_empty_list() {
     // Test: Empty list when no biomes running
-    let _executor = create_mock_executor().await.unwrap();
+    let executor = create_mock_executor().await.unwrap();
 
-    let count = _executor.biome_count().await;
+    let count = executor.biome_count().await;
     assert_eq!(count, 0, "Should have no biomes initially");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_shows_running() {
     // Test: Running biomes are shown
-    let _executor = create_mock_executor().await.unwrap();
+    let executor = create_mock_executor().await.unwrap();
 
-    _executor.register_biome("biome1").await.unwrap();
-    _executor.register_biome("biome2").await.unwrap();
+    executor.register_biome("biome1").await.unwrap();
+    executor.register_biome("biome2").await.unwrap();
 
-    let count = _executor.biome_count().await;
+    let count = executor.biome_count().await;
     assert_eq!(count, 2, "Should show both biomes");
 }
 
@@ -725,24 +735,27 @@ async fn create_log_directory(biome_name: &str) -> Result<PathBuf> {
 // ============================================================================
 
 struct MockBiomeExecutor {
-    biomes: tokio::sync::RwLock<HashMap<String, ()>>,
+    biomes: tokio::sync::RwLock<HashSet<String>>,
 }
 
 impl MockBiomeExecutor {
     fn new() -> Self {
         Self {
-            biomes: tokio::sync::RwLock::new(HashMap::new()),
+            biomes: tokio::sync::RwLock::new(HashSet::new()),
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn is_ready(&self) -> bool {
         true
     }
 
+    #[allow(clippy::unused_self)]
     fn has_valid_config(&self) -> bool {
         true
     }
 
+    #[allow(clippy::unused_self)]
     fn has_distributed_coordinator(&self) -> bool {
         true
     }
@@ -752,7 +765,7 @@ impl MockBiomeExecutor {
     }
 
     async fn register_biome(&self, name: &str) -> Result<()> {
-        self.biomes.write().await.insert(name.to_string(), ());
+        self.biomes.write().await.insert(name.to_string());
         Ok(())
     }
 
@@ -762,7 +775,7 @@ impl MockBiomeExecutor {
     }
 
     async fn check_biome_exists(&self, name: &str) -> bool {
-        self.biomes.read().await.contains_key(name)
+        self.biomes.read().await.contains(name)
     }
 
     async fn mock_up_biome(&self, _path: PathBuf, _detached: bool) -> Result<()> {

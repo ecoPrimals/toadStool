@@ -531,6 +531,7 @@ fn test_gpu_argument_buffer_large() {
     }
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_gpu_argument_scalar_f64() {
     let arg = GpuArgument::Scalar {
@@ -545,6 +546,7 @@ fn test_gpu_argument_scalar_f64() {
     }
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_gpu_argument_scalar_zero() {
     let arg = GpuArgument::Scalar { value: 0.0 };
@@ -593,6 +595,7 @@ fn test_gpu_argument_integer_large() {
     }
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_gpu_argument_clone() {
     let arg1 = GpuArgument::Scalar {

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive unit tests for client types module
 //! Target: crates/client/src/client/types.rs
 //! Focus: Type conversions, enums, and struct operations
@@ -219,13 +220,13 @@ fn test_resource_requirements_custom() {
     let resources = ResourceRequirements {
         cpu_cores: Some(8),
         memory_mb: Some(16384),
-        disk_mb: Some(102400),
+        disk_mb: Some(102_400),
         gpu_required: Some(true),
     };
 
     assert_eq!(resources.cpu_cores, Some(8));
     assert_eq!(resources.memory_mb, Some(16384));
-    assert_eq!(resources.disk_mb, Some(102400));
+    assert_eq!(resources.disk_mb, Some(102_400));
     assert_eq!(resources.gpu_required, Some(true));
 }
 
@@ -279,7 +280,7 @@ fn test_resource_requirements_debug() {
     let resources = ResourceRequirements {
         cpu_cores: Some(16),
         memory_mb: Some(65536),
-        disk_mb: Some(1048576),
+        disk_mb: Some(1_048_576),
         gpu_required: Some(true),
     };
 
@@ -575,7 +576,7 @@ fn test_execution_metrics_serialization() {
         cpu_usage_percent: 75.0,
         memory_peak_bytes: 1024 * 1024 * 1024,
         network_bytes_sent: 50000,
-        network_bytes_received: 100000,
+        network_bytes_received: 100_000,
     };
 
     let serialized = serde_json::to_string(&metrics);

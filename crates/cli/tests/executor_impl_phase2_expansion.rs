@@ -13,7 +13,7 @@
 //! - Resource monitoring and limits
 //! - Error recovery and cleanup
 
-#![allow(clippy::all, dead_code)]
+#![allow(clippy::all, clippy::unused_async)]
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -356,7 +356,9 @@ fn test_logs_file_path_construction() {
 
     assert!(log_path.contains(biome_name));
     assert!(log_path.contains(service_name));
-    assert!(log_path.ends_with(".log"));
+    assert!(std::path::Path::new(&log_path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("log")));
 }
 
 #[test]
@@ -566,8 +568,7 @@ fn test_resource_storage_monitoring() {
     // Test: Storage usage monitoring
     // Covers: Storage tracking
 
-    let _storage_bytes = 512 * 1024 * 1024; // 512 MB
-                                            // storage_bytes is usize, so it's always >= 0
+    let _ = 512 * 1024 * 1024; // 512 MB - storage_bytes is usize, so it's always >= 0
 }
 
 #[test]
@@ -661,7 +662,9 @@ fn test_wasm_module_validation() {
     // Covers: Module validation
 
     let module_path = "/path/to/module.wasm";
-    assert!(module_path.ends_with(".wasm"));
+    assert!(std::path::Path::new(module_path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("wasm")));
 }
 
 #[test]

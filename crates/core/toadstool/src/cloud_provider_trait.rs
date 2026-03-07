@@ -453,6 +453,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // literals just assigned in test
     fn test_workload_spec_construction() {
         let spec = WorkloadSpec {
             id: "wl-1".to_string(),
@@ -470,6 +471,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // literals just assigned in test
     fn test_cost_estimate_construction() {
         let mut breakdown = HashMap::new();
         breakdown.insert("compute".to_string(), 5.0);
@@ -484,6 +486,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // literal just assigned in test
     fn test_gpu_type_construction() {
         let gpu = GpuType {
             name: "A100".to_string(),

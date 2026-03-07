@@ -62,7 +62,7 @@ async fn main() -> ToadStoolResult<()> {
         security_context,
         timeout: Some(Duration::from_secs(30)),
         environment: HashMap::new(),
-        input_data: Default::default(),
+        input_data: toadstool::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };

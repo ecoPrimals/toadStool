@@ -177,6 +177,7 @@ impl CloudCostOptimizer {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::super::types::BYTES_PER_GB;
     use super::*;

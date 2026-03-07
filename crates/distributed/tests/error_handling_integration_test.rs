@@ -5,6 +5,8 @@
 //!
 //! Integration tests for error handling and fault tolerance
 
+#![allow(clippy::unreadable_literal)]
+
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -362,7 +364,7 @@ async fn test_coordinator_with_varied_concurrency_levels() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_varied_queue_sizes() {
     // Test coordinators with varying queue size configurations
-    let queue_sizes = vec![0, 1, 10, 100, 1000, 10000, 100000];
+    let queue_sizes = vec![0, 1, 10, 100, 1000, 10_000, 100_000];
 
     for queue_size in queue_sizes {
         let mut config = DistributedConfig::default();

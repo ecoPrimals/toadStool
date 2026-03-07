@@ -14,7 +14,18 @@
 //! - `logs()` - retrieve logs
 //! - Internal methods: `start_biome_internal`, `start_primal`, etc.
 
-#![allow(clippy::all)]
+#![allow(
+    clippy::unused_async,
+    clippy::unnecessary_lazy_evaluations,
+    clippy::useless_format,
+    clippy::redundant_clone,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::assertions_on_constants,
+    clippy::unnecessary_literal_unwrap,
+    clippy::const_is_empty,
+    dead_code
+)]
 
 use anyhow::Result;
 use std::collections::HashMap;
@@ -22,12 +33,12 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 // Mock types for testing (reserved for future use)
-#[allow(dead_code)]
+#[allow(clippy::unused_async)]
 struct MockCliContext {
     temp_dir: TempDir,
 }
 
-#[allow(dead_code)]
+#[allow(clippy::unused_async)]
 impl MockCliContext {
     fn new() -> Result<Self> {
         Ok(Self {
@@ -135,12 +146,12 @@ fn test_run_biome_determines_name_from_manifest() {
 
     // Case 1: Name provided explicitly
     let explicit_name = Some("override-name".to_string());
-    let biome_name = explicit_name.unwrap_or_else(|| manifest_name.clone());
+    let biome_name = explicit_name.unwrap();
     assert_eq!(biome_name, "override-name");
 
     // Case 2: Name from manifest
     let no_name: Option<String> = None;
-    let biome_name = no_name.unwrap_or_else(|| manifest_name.clone());
+    let biome_name = no_name.unwrap_or(manifest_name.clone());
     assert_eq!(biome_name, "test-biome");
 }
 
@@ -449,7 +460,7 @@ fn test_start_primal_command_construction() {
     // Covers: Primal process spawning
 
     let primal_name = "songbird";
-    let command = format!("{primal_name}");
+    let command = primal_name.to_string();
 
     assert_eq!(command, "songbird");
 }
@@ -500,7 +511,9 @@ fn test_start_service_validates_source() {
 
     let wasm_source = "/path/to/module.wasm";
     assert!(!wasm_source.is_empty());
-    assert!(wasm_source.ends_with(".wasm"));
+    assert!(std::path::Path::new(wasm_source)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("wasm")));
 }
 
 #[test]
@@ -511,8 +524,7 @@ fn test_start_service_port_configuration() {
     let ports = vec![8080, 8081, 8082];
 
     for port in ports {
-        assert!(port > 1024); // Non-privileged ports
-        assert!(port < 65536); // Valid port range
+        assert!((1024..65536).contains(&port)); // Non-privileged, valid port range
     }
 }
 

@@ -193,7 +193,7 @@ fn test_execution_output_empty_streams() {
 
 #[test]
 fn test_execution_output_large_stdout() {
-    let large_stdout = "line\n".repeat(100000);
+    let large_stdout = "line\n".repeat(100_000);
     let output = ExecutionOutput {
         data: bytes::Bytes::new(),
         stdout: Some(large_stdout.clone()),
@@ -204,7 +204,7 @@ fn test_execution_output_large_stdout() {
         metadata: HashMap::new(),
     };
 
-    assert!(output.stdout.unwrap().len() > 400000);
+    assert!(output.stdout.unwrap().len() > 400_000);
 }
 
 #[test]

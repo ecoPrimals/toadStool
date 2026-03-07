@@ -1,6 +1,6 @@
 // Copyright (C) 2024-2025 ToadStool Project
 // SPDX-License-Identifier: AGPL-3.0-or-later
-
+#![allow(clippy::float_cmp, clippy::items_after_statements)]
 //! Fault Tests for Fractal Composition
 //!
 //! Tests error handling, edge cases, and graceful degradation.
@@ -136,8 +136,8 @@ async fn test_all_hard_constraints_fail() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
 
     let req = CompositionRequest::new("impossible")
-        .with_constraint(Constraint::min_memory_gb(999999.0))
-        .with_constraint(Constraint::min_cpu_cores(999999))
+        .with_constraint(Constraint::min_memory_gb(999_999.0))
+        .with_constraint(Constraint::min_cpu_cores(999_999))
         .with_constraint(Constraint::max_latency_ms(0));
 
     let eval = engine.evaluate(&req).await.unwrap();
@@ -352,9 +352,9 @@ async fn test_migration_stats_tracking() {
 /// Test: Workload location persistence
 #[tokio::test]
 async fn test_workload_location_persistence() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
-
     use toadstool::cloud_provider_trait::WorkloadLocation;
+
+    let coordinator = MigrationCoordinator::new().await.unwrap();
 
     let location = WorkloadLocation::Local {
         hostname: "test-host".to_string(),

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::format_push_string)]
 //! Comprehensive tests for Python workload builder.
 
 use std::collections::HashMap;

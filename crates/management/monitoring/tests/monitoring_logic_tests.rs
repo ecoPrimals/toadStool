@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive logic tests for monitoring/lib.rs
 //!
 //! Test Coverage Areas:
@@ -371,6 +372,7 @@ mod monitoring_logic_tests {
     }
 
     #[test]
+    #[allow(clippy::cast_precision_loss)]
     fn test_process_cpu_calculation() {
         let cpu_time = 1000u64;
         let elapsed_time = 100u64;

@@ -470,8 +470,8 @@ fn test_runtime_config_can_be_cloned() {
     let config2 = config1.clone();
 
     // Should be able to clone
-    let _c1 = config1;
-    let _c2 = config2;
+    let _ = config1;
+    let _ = config2;
 }
 
 // ============================================================================

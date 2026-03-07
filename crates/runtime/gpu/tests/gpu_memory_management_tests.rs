@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! GPU Memory Management Tests
 //!
 //! Testing GPU memory allocation, deallocation, and management
@@ -65,7 +66,7 @@ fn test_device_to_host_transfer() {
 
 #[test]
 fn test_device_to_device_transfer() {
-    let _data_size = 512 * 1024; // 512KB
+    let _ = 512 * 1024; // 512KB
     let peer_access_enabled = true;
     let transfer_successful = peer_access_enabled;
 

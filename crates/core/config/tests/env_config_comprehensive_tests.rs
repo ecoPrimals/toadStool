@@ -235,7 +235,7 @@ fn test_env_config_get_u64_with_env() {
     std::env::set_var("TOADSTOOL_TEST_U64", "9999999999");
     let loader = EnvConfigLoader::new();
     let value = loader.get_u64("TEST_U64", 1024);
-    assert_eq!(value, 9999999999);
+    assert_eq!(value, 9_999_999_999);
     std::env::remove_var("TOADSTOOL_TEST_U64");
 }
 

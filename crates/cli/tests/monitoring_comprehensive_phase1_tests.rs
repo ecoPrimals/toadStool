@@ -1,4 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async,
+    clippy::unnecessary_wraps,
+    clippy::unused_self
+)]
 //! Comprehensive tests for CLI monitoring system (Phase 1)
 //! Target: cli/src/monitoring.rs (522 lines, currently 0% coverage)
 //! Goal: Add 60-80 tests for 50%+ coverage

@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::items_after_statements,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::unreadable_literal
+)]
 //! Final background services tests to push coverage from 83.41% → 90%+
 //!
 //! These tests target specific uncovered lines to maximize coverage

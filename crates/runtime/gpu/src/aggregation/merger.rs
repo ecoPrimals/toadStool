@@ -296,6 +296,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     fn test_scalar_reducer() {
         let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
 

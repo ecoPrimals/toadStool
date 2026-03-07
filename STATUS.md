@@ -6,9 +6,10 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --all-targets -- -D warnings` | PASS | **0 warnings** |
+| `cargo clippy --all-targets -- -D warnings -W clippy::pedantic` | PASS | **0 warnings (pedantic clean)** |
+| `cargo clippy --workspace --all-targets -- -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **19,109 tests, 0 failures** (203 intentional ignores for GPU hardware) |
+| `cargo test --workspace` | PASS | **19,536 tests, 0 failures** (203 intentional ignores for GPU hardware) |
 | `cargo llvm-cov` (excl GPU crates) | **~83% line** | 170K lines. Focus: hardware-dependent code hard to unit-test |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
@@ -31,7 +32,8 @@
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
 | Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
-| File size limit | **All < 1000 lines** (40+ large files smart-refactored to domain modules) |
+| File size limit | **All < 1000 lines** (1,868 .rs files, 576K total lines) |
+| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic` across entire workspace. All `#[allow]` justified. |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
@@ -88,6 +90,13 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S130+: Deep Debt — Clippy Pedantic Clean (Mar 7, 2026)
+- **Clippy pedantic zero**: Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors, 0 warnings. 12 iterative passes of auto-fix + manual corrections across ~1,868 .rs files.
+- **Categories resolved**: `float_cmp` (targeted allows in tests, epsilon comparisons in production), `cast_precision_loss` / `cast_possible_truncation` / `cast_sign_loss` (justified allows or `try_from`), `unused_async`, `items_after_statements`, `unreadable_literal`, `default_trait_access`, `similar_names`, `match_wildcard_for_single_variants`, `match_same_arms`, `used_underscore_binding`, `missing_errors_doc`, plus 20+ other pedantic lint categories.
+- **19,536 tests**, 0 failures, 0 warnings.
+- **Corrupted sed edits fixed**: 3 CLI test files with broken `#[tokio::test]` attributes repaired.
+- All quality gates green: 0 clippy (pedantic), 0 fmt, 0 doc warnings.
 
 ### S97: Spring Absorption — toadStool Evolutions (Mar 6, 2026)
 - **NVK Volta f64 probe**: `f64_compute_unreliable` flag on `GpuAdapterInfo` detects Titan V/V100/GV100 where f64 compute returns zeros. `has_reliable_f64()` API. `HardwareFingerprint` excludes `F64Native` for NVK Volta.

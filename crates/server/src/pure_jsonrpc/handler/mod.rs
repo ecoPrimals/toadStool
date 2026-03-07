@@ -387,7 +387,7 @@ impl JsonRpcHandler {
         let mut supported_archs = Vec::<String>::new();
         if let Some(h) = &health {
             target_formats.push("native");
-            supported_archs = h.supported_archs.clone();
+            supported_archs.clone_from(&h.supported_archs);
         }
 
         Ok(serde_json::json!({

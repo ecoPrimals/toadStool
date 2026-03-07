@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Comprehensive workload execution tests for `BiomeExecutor`
 //!
 //! Tests cover:
@@ -156,6 +166,7 @@ mod workload_execution_tests {
         ];
 
         for (workload_type, expected_runtime) in workload_configs {
+            #[allow(clippy::match_same_arms)]
             let selected_runtime = match workload_type {
                 "binary_executable" => "native",
                 "wasm_module" => "wasm",
@@ -408,6 +419,8 @@ mod workload_execution_tests {
 
     #[test]
     fn test_command_construction_with_environment() {
+        use std::fmt::Write;
+
         let executable = "python";
         let script = "app.py";
         let env_vars = vec![
@@ -418,9 +431,10 @@ mod workload_execution_tests {
 
         let mut env_str = String::new();
         for (key, value) in env_vars {
-            env_str.push_str(&format!("{key}={value} "));
+            write!(env_str, "{key}={value} ").unwrap();
         }
-        let command = format!("{env_str}{executable} {script}");
+        write!(env_str, "{executable} {script}").unwrap();
+        let command = env_str;
 
         assert!(command.contains("FLASK_APP=main"));
         assert!(command.contains("FLASK_ENV=production"));
@@ -537,10 +551,9 @@ mod workload_execution_tests {
 
         for strategy in strategies {
             match strategy {
-                "retry" => { /* Can retry on transient failures */ }
-                "fallback" => { /* Can use fallback runtime */ }
-                "skip" => { /* Can skip failed workload */ }
-                "terminate" => { /* Can terminate entire biome */ }
+                "retry" | "fallback" | "skip" | "terminate" => {
+                    /* Can retry/fallback/skip/terminate as designed */
+                }
                 _ => panic!("Unknown strategy: {strategy}"),
             }
         }

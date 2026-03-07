@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::no_effect_underscore_binding,
+    clippy::unused_async,
+    clippy::unused_self
+)]
 //! Comprehensive tests for `UniversalCloudOrchestrator` (Phase 1)
 //! Target: cloud/orchestrator.rs (423 lines, currently 0% coverage)
 //! Goal: Add 60-80 tests to bring coverage above 50%

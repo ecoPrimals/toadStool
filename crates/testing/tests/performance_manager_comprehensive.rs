@@ -6,6 +6,14 @@
 //!
 //! This test file expands coverage of the performance testing infrastructure,
 //! focusing on previously untested code paths.
+#![allow(
+    clippy::float_cmp,
+    clippy::items_after_statements,
+    clippy::no_effect_underscore_binding,
+    clippy::unused_async,
+    clippy::cast_precision_loss,
+    clippy::writeln_empty_string
+)]
 
 use std::time::Duration;
 use toadstool_testing::performance::*;
@@ -97,6 +105,9 @@ async fn test_benchmark_with_custom_metrics() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_benchmark_error_handling() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
     let config = PerformanceTestConfig {
         test_name: "error_test".to_string(),
         warm_up_iterations: 1,
@@ -108,9 +119,6 @@ async fn test_benchmark_error_handling() {
     };
 
     let manager = PerformanceTestManager::new(config);
-
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
     let iteration = Arc::new(AtomicUsize::new(0));
     let result = manager
         .benchmark(|| {

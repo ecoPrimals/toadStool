@@ -201,7 +201,7 @@ fn test_ecosystem_types_exported() {
 #[test]
 fn test_workload_types_exported() {
     // Verify workload types are available
-    let _wl_type = WorkloadType::Native;
+    let _ = WorkloadType::Native;
 }
 
 // ============================================================================

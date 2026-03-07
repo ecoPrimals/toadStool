@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::manual_let_else,
+    clippy::unused_async
+)]
 //! Cross-Substrate Validation Benchmark
 //!
 //! Compares performance of the same workload across:

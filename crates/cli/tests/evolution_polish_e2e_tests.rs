@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(clippy::expect_used)] // expect() is idiomatic in tests
+#![allow(clippy::expect_used, clippy::unused_async)] // expect() is idiomatic in tests
 //! Evolution Polish E2E Tests
 //!
 //! End-to-end tests verifying the complete removal of hardcoded primal clients
@@ -232,16 +232,16 @@ async fn test_e2e_adapter_factory_capability_based() {
 #[tokio::test]
 async fn test_e2e_full_stack_capability_based() {
     // ✅ E2E: Complete stack works with pure capability-based discovery
+    use toadstool_cli::ecosystem::adapters::AdapterFactory;
+    use toadstool_common::infant_discovery::DiscoveryEngine;
 
     // 1. Create executor (no hardcoded registry)
     let executor = BiomeExecutor::new().await.unwrap();
 
     // 2. Create adapter factory
-    use toadstool_cli::ecosystem::adapters::AdapterFactory;
     let factory = AdapterFactory::new();
 
     // 3. Create discovery engine
-    use toadstool_common::infant_discovery::DiscoveryEngine;
     let discovery = DiscoveryEngine::new();
 
     // 4. Perform operations
@@ -411,21 +411,21 @@ async fn test_e2e_stress_many_operations_standalone() {
 #[tokio::test]
 async fn test_e2e_infant_discovery_philosophy_enforced() {
     // ✅ E2E: Complete system embodies infant discovery philosophy
+    use toadstool_cli::ecosystem::adapters::AdapterFactory;
+    use toadstool_common::infant_discovery::DiscoveryEngine;
+    use toadstool_common::primal_identity::Capability;
 
     // "Each primal knows only itself"
     let executor = BiomeExecutor::new().await.unwrap();
 
     // "Everything else is discovered at runtime by capability"
-    use toadstool_cli::ecosystem::adapters::AdapterFactory;
     let factory = AdapterFactory::new();
     let _ = factory.coordination_adapter(); // Discovers by capability
 
     // "Zero hardcoded primal names"
-    use toadstool_common::primal_identity::Capability;
-    let _capability = Capability::Compute; // Generic, not primal-specific
+    let _ = Capability::Compute; // Generic, not primal-specific
 
     // "Code starts with zero knowledge like an infant"
-    use toadstool_common::infant_discovery::DiscoveryEngine;
     let discovery = DiscoveryEngine::new(); // Starts with no hardcoded knowledge
 
     // All operations work together seamlessly

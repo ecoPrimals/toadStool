@@ -474,8 +474,7 @@ async fn test_e2e_concurrent_error_scenarios() {
     for handle in handles {
         match handle.await {
             Ok(Ok(_)) => success_count += 1,
-            Ok(Err(_)) => error_count += 1,
-            Err(_) => error_count += 1,
+            Ok(Err(_)) | Err(_) => error_count += 1,
         }
     }
 

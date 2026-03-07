@@ -221,6 +221,7 @@ impl MockToadStoolError {
         Self::runtime(format!("Validation error for '{field}': {reason}"))
     }
 
+    #[must_use]
     pub fn context(mut self, ctx: impl Into<String>) -> Self {
         self.context.push(ctx.into());
         self

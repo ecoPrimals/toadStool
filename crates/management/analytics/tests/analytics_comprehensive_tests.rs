@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Analytics Module Comprehensive Tests
+
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::float_cmp
+)]
+
 //!
 //! Expanding test coverage for management/analytics module
 //! Target: Increase coverage from 10-30% to 50%+

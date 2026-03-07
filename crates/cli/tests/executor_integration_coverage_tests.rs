@@ -430,7 +430,7 @@ async fn test_force_stop_flag() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_stop_timeout_handling() {
     // Test stop timeout configuration
-    let _default_timeout = 30u64; // seconds
+    let _ = 30u64; // seconds
     let custom_timeout = 60u64;
 
     let effective_timeout = custom_timeout;

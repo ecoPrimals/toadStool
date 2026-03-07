@@ -136,6 +136,7 @@ pub(super) fn execute_scan(workload: Workload) -> Result<WorkloadData, ComputeEr
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

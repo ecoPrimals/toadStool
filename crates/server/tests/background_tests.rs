@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for background services
+
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::similar_names,
+    clippy::unreadable_literal
+)]
 //!
 //! Comprehensive tests for server background monitoring and maintenance tasks
 

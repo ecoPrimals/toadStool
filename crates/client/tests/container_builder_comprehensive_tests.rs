@@ -414,7 +414,7 @@ fn test_container_builder_ml_training() {
     let resources = ResourceRequirements {
         cpu_cores: Some(16),
         memory_mb: Some(65536),
-        disk_mb: Some(100000),
+        disk_mb: Some(100_000),
         gpu_required: Some(true),
     };
 

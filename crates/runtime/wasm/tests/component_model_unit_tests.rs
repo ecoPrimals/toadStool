@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::unused_async)]
 //! # WASM Runtime - Component Model Tests
 //!
 //! Unit tests for WASM component model with comprehensive coverage.
@@ -111,9 +112,9 @@ async fn test_component_model_memory_access() {
 async fn test_component_model_resource_limits() {
     // Test component resource limits
     let config = WasmConfig {
-        max_memory_bytes: 1024 * 1024, // 1MB
-        max_table_elements: 100,
-        max_instances: 10,
+        memory_bytes: 1024 * 1024, // 1MB
+        table_elements: 100,
+        instances: 10,
     };
 
     let runtime = WasmComponentRuntime::with_config(config).await;
@@ -229,17 +230,17 @@ struct WasmComponentRuntime {
 
 #[allow(dead_code)]
 struct WasmConfig {
-    max_memory_bytes: usize,
-    max_table_elements: usize,
-    max_instances: usize,
+    memory_bytes: usize,
+    table_elements: usize,
+    instances: usize,
 }
 
 impl Default for WasmConfig {
     fn default() -> Self {
         Self {
-            max_memory_bytes: 16 * 1024 * 1024,
-            max_table_elements: 1000,
-            max_instances: 100,
+            memory_bytes: 16 * 1024 * 1024,
+            table_elements: 1000,
+            instances: 100,
         }
     }
 }

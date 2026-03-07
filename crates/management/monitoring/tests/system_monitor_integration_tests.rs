@@ -184,7 +184,11 @@ mod system_resource_monitor_tests {
         for (i, path_str) in paths.iter().enumerate() {
             let workload_id = format!("workload-{i}");
             let result = monitor
-                .register_process(&workload_id, (20000 + i) as u32, Path::new(path_str))
+                .register_process(
+                    &workload_id,
+                    u32::try_from(20000 + i).expect("pid in valid range"),
+                    Path::new(path_str),
+                )
                 .await;
             assert!(result.is_ok());
         }

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp, clippy::items_after_statements)]
 //! Unit tests for `ResourceRequirements` validation and management
 //!
 //! Tests use the real nested API: `ResourceRequirements` wraps `CpuRequirements`,
 //! `MemoryRequirements`, `StorageRequirements`, `GpuRequirements`, and `NetworkRequirements`.
 
 use toadstool::resources::{
-    CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
-    ResourceRequirements, ResourceUsage, StorageRequirements,
+    CpuLimits, CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements,
+    ResourceLimits, ResourceRequirements, ResourceUsage, StorageRequirements,
 };
 
 const MB: u64 = 1024 * 1024;
@@ -223,7 +224,6 @@ fn test_resource_limits_exceed_check() {
         memory_used_mb: 7500,
         ..ResourceUsage::default()
     };
-    use toadstool::resources::CpuLimits;
     let limits = ResourceLimits {
         cpu_limits: CpuLimits {
             max_cores: None,

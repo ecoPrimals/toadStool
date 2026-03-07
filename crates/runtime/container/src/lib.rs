@@ -16,7 +16,9 @@
     clippy::no_effect_underscore_binding,
     clippy::used_underscore_binding,
     clippy::items_after_statements,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    clippy::default_trait_access,
+    clippy::unreadable_literal
 )]
 
 //! # `ToadStool` Container Runtime Engine
@@ -179,11 +181,11 @@ mod tests {
                 registry_auth: None,
             },
             runtime_hint: Some(RuntimeType::Container),
-            resources: Default::default(),
+            resources: toadstool::resources::ResourceRequirements::default(),
             security_context: SecurityContext::for_isolation_level(IsolationLevel::Basic),
             timeout: Some(Duration::from_secs(30)),
             environment: HashMap::new(),
-            input_data: Default::default(),
+            input_data: toadstool::execution::ExecutionInput::default(),
             callback_config: None,
             encryption_config: None,
         }
@@ -230,11 +232,11 @@ mod tests {
                     user: None,
                 },
                 runtime_hint: Some(RuntimeType::Native),
-                resources: Default::default(),
+                resources: toadstool::resources::ResourceRequirements::default(),
                 security_context: SecurityContext::for_isolation_level(IsolationLevel::Basic),
                 timeout: None,
                 environment: HashMap::new(),
-                input_data: Default::default(),
+                input_data: toadstool::execution::ExecutionInput::default(),
                 callback_config: None,
                 encryption_config: None,
             };
@@ -359,6 +361,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_get_metrics() {
         if let Ok(engine) = ContainerRuntimeEngine::new() {
             let metrics = engine.get_metrics().await;
@@ -403,7 +406,7 @@ mod tests {
                         dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_,
                     >,
                 > {
-                    Box::pin(async { Ok(Default::default()) })
+                    Box::pin(async { Ok(toadstool::resources::RuntimeMetrics::default()) })
                 }
                 fn get_system_resources(
                     &self,
@@ -414,7 +417,7 @@ mod tests {
                             + '_,
                     >,
                 > {
-                    Box::pin(async { Ok(Default::default()) })
+                    Box::pin(async { Ok(toadstool::resources::SystemResources::default()) })
                 }
             }
             let _engine = engine.with_resource_monitor(Arc::new(MockMonitor));

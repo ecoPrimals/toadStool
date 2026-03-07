@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::unnecessary_wraps)]
 //! Error handling and recovery tests
 //!
 //! Tests error propagation, error recovery, and graceful degradation.

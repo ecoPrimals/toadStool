@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional coverage tests for server crate edge cases and error paths.
+
+#![allow(clippy::redundant_closure_for_method_calls)]
 //!
 //! Focus: JSON-RPC compute methods, GPU job queue edge cases, resource estimator,
 //! tarpc executor, and graph error display.
@@ -407,6 +409,6 @@ fn test_job_queue_error_no_result_display() {
 
 #[test]
 fn test_edge_type_dependency_is_default() {
-    let default: EdgeType = Default::default();
+    let default: EdgeType = EdgeType::default();
     assert_eq!(default, EdgeType::Dependency);
 }

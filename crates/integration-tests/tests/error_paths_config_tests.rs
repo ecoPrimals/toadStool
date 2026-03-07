@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::no_effect_underscore_binding)]
 //! Error path tests for configuration management
 //!
 //! Tests error handling in configuration loading, validation, and environment parsing.

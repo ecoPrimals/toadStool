@@ -221,6 +221,7 @@ fn test_memory_pressure_level_clone() {
 // MemoryPressureConfig Tests (Correct Fields)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_pressure_config_creation() {
     let config = MemoryPressureConfig {
@@ -235,6 +236,7 @@ fn test_memory_pressure_config_creation() {
     assert_eq!(config.emergency_threshold, 0.95);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_pressure_config_conservative() {
     let config = MemoryPressureConfig {
@@ -248,6 +250,7 @@ fn test_memory_pressure_config_conservative() {
     assert_eq!(config.emergency_threshold, 0.8);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_pressure_config_aggressive() {
     let config = MemoryPressureConfig {
@@ -261,6 +264,7 @@ fn test_memory_pressure_config_aggressive() {
     assert_eq!(config.emergency_threshold, 0.98);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_pressure_config_clone() {
     let config = MemoryPressureConfig {
@@ -279,6 +283,7 @@ fn test_memory_pressure_config_clone() {
 // ProductionHardeningConfig Tests (Correct Fields)
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_production_hardening_config_creation() {
     let config = ProductionHardeningConfig {
@@ -301,6 +306,7 @@ fn test_production_hardening_config_creation() {
     assert!(config.enable_memory_pressure);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_production_hardening_config_minimal() {
     let config = ProductionHardeningConfig {
@@ -453,6 +459,7 @@ fn test_circuit_breaker_config_zero_thresholds() {
     assert_eq!(config.half_open_max_requests, 0);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_pressure_config_boundary_values() {
     let config = MemoryPressureConfig {

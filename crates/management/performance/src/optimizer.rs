@@ -36,7 +36,7 @@ pub trait PerformanceOptimizer: Send + Sync {
     ///
     /// Returns aggregated statistics for a specific runtime type,
     /// including success rates, average execution times, and resource usage.
-    async fn get_runtime_stats(&self, runtime_type: RuntimeType) -> ToadStoolResult<RuntimeStats>;
+    async fn get_runtime_stats(&self, runtime_type: &RuntimeType) -> ToadStoolResult<RuntimeStats>;
 
     /// Predict resource requirements for workload
     ///

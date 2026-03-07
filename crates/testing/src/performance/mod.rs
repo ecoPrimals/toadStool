@@ -137,6 +137,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     fn test_resource_usage_metrics_default() {
         let metrics = ResourceUsageMetrics::default();
         assert_eq!(metrics.peak_memory_mb, 0);
@@ -158,6 +159,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     fn test_resource_monitor_sample() {
         let mut monitor = ResourceMonitor::new();
         monitor.sample_resources();
@@ -201,7 +203,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore] // Hangs with llvm-cov instrumentation due to performance overhead
+    #[ignore = "Hangs with llvm-cov instrumentation due to performance overhead"]
     async fn test_benchmark_simple() {
         let config = PerformanceTestConfig {
             test_name: "simple".to_string(),
@@ -225,7 +227,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore] // Hangs with llvm-cov instrumentation due to performance overhead
+    #[ignore = "Hangs with llvm-cov instrumentation due to performance overhead"]
     async fn test_benchmark_with_resource_monitoring() {
         let config = PerformanceTestConfig {
             test_name: "with_monitoring".to_string(),
@@ -252,7 +254,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore] // Hangs with llvm-cov instrumentation due to performance overhead
+    #[ignore = "Hangs with llvm-cov instrumentation due to performance overhead"]
     async fn test_load_test_simple() {
         let config = PerformanceTestConfig::default();
         let manager = PerformanceTestManager::new(config);

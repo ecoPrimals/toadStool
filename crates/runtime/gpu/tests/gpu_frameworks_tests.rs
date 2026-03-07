@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::no_effect_underscore_binding
+)]
 //! Simplified Tests for GPU Frameworks
 //!
 //! Tests cover basic framework functionality that matches the actual API

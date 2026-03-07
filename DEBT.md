@@ -75,7 +75,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | ~83% line coverage (170K lines). 19,109 tests passing. Need ~12K more lines covered. Focus: hardware-dependent code (display/drm, GPU backends) hard to unit-test. |
+| D-COV | Test coverage → 90% | Medium | ~83% line coverage (170K lines). 19,536 tests passing. Need ~12K more lines covered. Focus: hardware-dependent code (display/drm, GPU backends) hard to unit-test. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items each (justified) |
 
@@ -105,6 +105,14 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
 
 ---
+
+## Recently Resolved (S130+ — Mar 7, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| Clippy pedantic workspace-wide | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors. 12 iterative auto-fix passes + manual corrections. ~30 pedantic lint categories resolved across 1,868 .rs files. All `#[allow]` attributes justified. |
+| Corrupted test attributes | 3 CLI test files (`executor_impl_comprehensive_coverage.rs`, `executor_integration_coverage_tests.rs`, `universal_federation_comprehensive_tests.rs`) had sed-corrupted `#[tokio::test]` attributes — repaired |
+| Test count | 19,536 tests (up from 19,109), 0 failures |
 
 ## Recently Resolved (S130 — Mar 7, 2026)
 
@@ -153,7 +161,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | Root `tests/` debris | Stale test stubs removed; spec docs fossilized to `ecoPrimals/fossil/` |
 | Stale completion checklists | Removed trailing `✅ COMPLETE` blocks from 11 files |
 | `management/resources` re-added | Real `ResourceManager` with sysinfo (was placeholder removed in S94b) |
-| Clippy pedantic | Resolved across workspace; `cargo clippy --lib -- -W clippy::pedantic` clean |
+| Clippy pedantic | **Full workspace pedantic clean**: `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors, 0 warnings (S130+) |
 
 ## Recently Resolved (Deep Debt Execution — Mar 5, 2026)
 

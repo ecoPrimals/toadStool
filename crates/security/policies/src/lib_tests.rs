@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_executor_default() {
-        let _executor = ActionExecutor;
+        let _ = ActionExecutor;
         // Executor created successfully - that's the test
     }
 

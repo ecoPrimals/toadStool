@@ -248,7 +248,7 @@ mod tests {
                 },
                 args: None,
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -273,7 +273,7 @@ mod tests {
                 },
                 args: None,
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -302,7 +302,7 @@ mod tests {
                 },
                 args: Some(vec!["hello".to_string()]),
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -335,7 +335,7 @@ mod tests {
                 },
                 args: None,
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -368,7 +368,7 @@ mod tests {
                 },
                 args: None,
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -401,7 +401,7 @@ mod tests {
                 },
                 args: None,
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -449,7 +449,7 @@ mod tests {
                 },
                 args: None,
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -478,7 +478,7 @@ mod tests {
                 },
                 args: None,
                 working_dir: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
                 user: None,
             },
             ..Default::default()
@@ -511,7 +511,7 @@ mod tests {
                 },
                 args: None,
                 wasi_config: None,
-                env_vars: Default::default(),
+                env_vars: std::collections::HashMap::default(),
             },
             ..Default::default()
         };

@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding
+)]
 //! State types coverage tests - calling actual production code
 //!
 //! These tests directly instantiate and use types from server/src/state.rs

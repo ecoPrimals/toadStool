@@ -25,8 +25,7 @@ pub async fn run_byob_server(
     config: Option<std::path::PathBuf>,
 ) -> Result<()> {
     info!("🍄 Starting Toadstool BYOB Server");
-    let bind =
-        bind.unwrap_or_else(|| toadstool_config::config_utils::ConfigUtils::get_bind_address());
+    let bind = bind.unwrap_or_else(toadstool_config::config_utils::ConfigUtils::get_bind_address);
     let config = toadstool_runtime_container::byob_server::ByobServerConfig {
         bind_address: Some(bind),
         port: Some(port),

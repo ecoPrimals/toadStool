@@ -7,6 +7,7 @@
 //! This test suite targets the most critical, high-value paths through the
 //! intelligent auto-configuration system that are currently untested.
 
+use toadstool_auto_config::ecosystem::DiscoverySummary;
 use toadstool_auto_config::IntelligentAutoConfig;
 
 // ==================== Core Entry Point Tests ====================
@@ -89,7 +90,7 @@ async fn test_generate_intelligent_config_completes() {
 }
 
 #[tokio::test]
-#[ignore] // Slow test - runs full auto-configuration pipeline
+#[ignore = "Slow test - runs full auto-configuration pipeline"]
 async fn test_auto_configure_full_pipeline() {
     // Test the main zero-touch entry point
     let result = IntelligentAutoConfig::auto_configure().await;
@@ -142,7 +143,7 @@ async fn test_generate_optimal_config_low_end_hardware() {
 
     let ecosystem = DiscoveredServices {
         discovered_services: HashMap::new(),
-        discovery_summary: Default::default(),
+        discovery_summary: DiscoverySummary::default(),
         discovery_timestamp: std::time::SystemTime::now(),
     };
 
@@ -205,7 +206,7 @@ async fn test_generate_optimal_config_high_end_hardware() {
 
     let ecosystem = DiscoveredServices {
         discovered_services: HashMap::new(),
-        discovery_summary: Default::default(),
+        discovery_summary: DiscoverySummary::default(),
         discovery_timestamp: std::time::SystemTime::now(),
     };
 
@@ -254,9 +255,9 @@ fn test_performance_class_enum_exists() {
     use toadstool_auto_config::hardware::PerformanceClass;
 
     // Verify performance classes can be created
-    let _low = PerformanceClass::LowEnd;
-    let _mainstream = PerformanceClass::Mainstream;
-    let _high = PerformanceClass::HighEnd;
+    let _ = PerformanceClass::LowEnd;
+    let _ = PerformanceClass::Mainstream;
+    let _ = PerformanceClass::HighEnd;
 
     // If this compiles, the enum is properly defined
 }
@@ -400,7 +401,7 @@ async fn test_auto_config_handles_minimal_system() {
 
     let ecosystem = DiscoveredServices {
         discovered_services: HashMap::new(),
-        discovery_summary: Default::default(),
+        discovery_summary: DiscoverySummary::default(),
         discovery_timestamp: std::time::SystemTime::now(),
     };
 
@@ -498,8 +499,8 @@ fn test_public_methods_are_accessible() {
     let auto_config = IntelligentAutoConfig::new();
 
     // These should compile (methods exist and are public)
-    let _detector = &auto_config.hardware_detector;
-    let _optimizer = &auto_config.platform_optimizer;
-    let _discoverer = &auto_config.ecosystem_discoverer;
-    let _learner = &auto_config.usage_learner;
+    let _ = &auto_config.hardware_detector;
+    let _ = &auto_config.platform_optimizer;
+    let _ = &auto_config.ecosystem_discoverer;
+    let _ = &auto_config.usage_learner;
 }

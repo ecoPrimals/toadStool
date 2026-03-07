@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(dead_code)]
-#![allow(unused_variables)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::struct_excessive_bools,
+    clippy::unused_async,
+    dead_code,
+    unused_variables
+)]
 // Universal Compute Demonstration - ToadStool's Open-First Strategy
 //
 // This demo showcases ToadStool's approach to universal compute:
@@ -540,7 +545,7 @@ fn determine_execution_strategy(
                 ExecutionStrategy::OptimizedCPU
             }
         }
-        _ => ExecutionStrategy::OptimizedCPU,
+        WorkloadType::MediaProcessing { .. } => ExecutionStrategy::OptimizedCPU,
     }
 }
 

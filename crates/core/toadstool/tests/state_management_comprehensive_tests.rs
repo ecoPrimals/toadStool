@@ -161,6 +161,7 @@ fn test_execution_request_with_runtime_hint() {
     assert_eq!(request.runtime_hint, Some(RuntimeType::Wasm));
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_execution_request_with_resources() {
     let resources = ResourceRequirements::default();
@@ -254,6 +255,7 @@ fn test_execution_response_with_runtime_used() {
     assert_eq!(response.runtime_used, RuntimeType::Container);
 }
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_execution_response_with_metrics() {
     let metrics = RuntimeMetrics::default();
@@ -514,8 +516,8 @@ async fn test_concurrent_state_transitions() {
 
     for _ in 0..20 {
         let handle = tokio::spawn(async {
-            let _state = ExecutionStatus::Pending;
-            let _state = ExecutionStatus::Running;
+            let _ = ExecutionStatus::Pending;
+            let _ = ExecutionStatus::Running;
             tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             ExecutionStatus::Success
         });
@@ -533,6 +535,7 @@ async fn test_concurrent_state_transitions() {
 // State Persistence Tests
 // ============================================================================
 
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_execution_state_serialization_roundtrip() {
     let original = ExecutionRequest::default();
@@ -562,12 +565,12 @@ fn test_execution_status_all_variants_serialization() {
 
         // Compare status types (not exact equality due to error messages)
         match (&status, &deserialized) {
-            (ExecutionStatus::Success, ExecutionStatus::Success) => {}
-            (ExecutionStatus::Failed { .. }, ExecutionStatus::Failed { .. }) => {}
-            (ExecutionStatus::Cancelled, ExecutionStatus::Cancelled) => {}
-            (ExecutionStatus::TimedOut, ExecutionStatus::TimedOut) => {}
-            (ExecutionStatus::Running, ExecutionStatus::Running) => {}
-            (ExecutionStatus::Pending, ExecutionStatus::Pending) => {}
+            (ExecutionStatus::Success, ExecutionStatus::Success)
+            | (ExecutionStatus::Failed { .. }, ExecutionStatus::Failed { .. })
+            | (ExecutionStatus::Cancelled, ExecutionStatus::Cancelled)
+            | (ExecutionStatus::TimedOut, ExecutionStatus::TimedOut)
+            | (ExecutionStatus::Running, ExecutionStatus::Running)
+            | (ExecutionStatus::Pending, ExecutionStatus::Pending) => {}
             _ => panic!("Serialization roundtrip failed"),
         }
     }

@@ -20,7 +20,7 @@ fn test_resource_detection() {
     assert!(identity.resources.memory_bytes > 0);
 
     // GPU detection should return a valid boolean (always true or false)
-    let _gpu = identity.resources.gpu_available; // type-checked, always valid
+    let _ = identity.resources.gpu_available; // type-checked, always valid
 }
 
 /// Test instance ID uniqueness

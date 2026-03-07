@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Background service coverage tests
+
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::struct_excessive_bools,
+    clippy::struct_field_names,
+    clippy::unreadable_literal
+)]
 //! Target: background.rs module coverage expansion
 
 use std::time::Duration;

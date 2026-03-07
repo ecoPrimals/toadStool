@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive tests for Squirrel MCP Interface
 //!
 //! Tests cover `squirrel_mcp.rs` functionality (13.18% → 30%+ target)
@@ -94,9 +95,8 @@ fn test_memory_allocation_strategies() {
         assert!(!strategy.is_empty());
         let allocation_percentage = match strategy {
             "conservative" => 0.5,
-            "balanced" => 0.75,
             "aggressive" => 0.9,
-            _ => 0.75,
+            _ => 0.75, // "balanced" and others
         };
         assert!(allocation_percentage > 0.0 && allocation_percentage <= 1.0);
     }
@@ -279,7 +279,7 @@ fn test_resource_hints_validation() {
     assert!(min_cpu_cores >= 1);
     assert!(min_memory_gb > 0.0);
     // requires_gpu is a boolean flag - no assertion needed
-    let _gpu_flag = requires_gpu;
+    let _ = requires_gpu;
 }
 
 #[test]
@@ -348,6 +348,7 @@ fn test_response_suggestions() {
 }
 
 #[test]
+#[allow(clippy::cast_precision_loss)]
 fn test_configuration_diff() {
     // Test configuration diff tracking
     let old_value = 60u64;
@@ -428,6 +429,7 @@ fn test_concurrent_request_handling() {
 }
 
 #[test]
+#[allow(clippy::cast_possible_truncation)]
 fn test_request_priority_calculation() {
     // Test request priority calculation
     let agent_priority = 5u8;

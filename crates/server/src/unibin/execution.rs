@@ -17,6 +17,11 @@ use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 const BIND_ANY: &str = "0.0.0.0:0";
 
 /// Create executor with distributed or standalone mode
+///
+/// # Errors
+///
+/// Returns `ServerError::Initialization` if the distributed coordinator or standalone executor
+/// cannot be created.
 pub async fn create_executor(
     family_id: &str,
 ) -> Result<std::sync::Arc<dyn WorkloadExecutor + Send + Sync>, ServerError> {
@@ -71,6 +76,10 @@ pub async fn create_executor(
 }
 
 /// Start servers with Unix socket or TCP fallback
+///
+/// # Errors
+///
+/// Returns `ServerError` if Unix or TCP server startup fails.
 pub async fn start_servers_with_fallback(
     server: ToadStoolTarpcServer,
     jsonrpc_handler: Arc<JsonRpcHandler>,
@@ -235,6 +244,11 @@ pub async fn wait_for_shutdown_signal() -> super::ShutdownSignal {
     }
 }
 
+/// Write TCP discovery file for service discovery.
+///
+/// # Errors
+///
+/// Returns `ServerError::Internal` if the discovery file cannot be written.
 pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> ServerResult<()> {
     use std::env;
     use std::fs;

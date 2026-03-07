@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::cast_possible_truncation)]
 //! Universal Compute Demo
 //!
 //! Demonstrates the capability-based universal compute system:
@@ -13,8 +14,8 @@ use toadstool_runtime_gpu::{
     cpu_resource::CpuComputeResource,
     scheduler::{SchedulingPolicy, UniversalComputeScheduler},
     universal::{
-        ComputeBuffer, ComputeContext, ComputeRequirements, Operation, OptimizationHints,
-        Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
+        ComputeBuffer, ComputeRequirements, Operation, OptimizationHints, Precision,
+        UniversalComputeResource, UniversalKernel, UniversalWorkload,
     },
 };
 

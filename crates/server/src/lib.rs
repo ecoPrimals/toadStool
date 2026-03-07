@@ -2,6 +2,7 @@
 #![deny(unsafe_code)]
 #![cfg_attr(test, allow(deprecated))]
 #![allow(
+    clippy::cast_precision_loss,
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -28,7 +29,11 @@
     clippy::unreadable_literal,
     clippy::unused_async,
     clippy::unused_self,
-    clippy::used_underscore_binding
+    clippy::used_underscore_binding,
+    clippy::float_cmp,
+    clippy::no_effect_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::default_trait_access
 )]
 
 //! # `ToadStool` Server Library

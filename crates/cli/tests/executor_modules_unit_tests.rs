@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Executor Module Refactoring Unit Tests
 //!
 //! Comprehensive unit tests for refactored executor modules:
@@ -123,11 +133,11 @@ mod display_manager_tests {
         // Test displaying biomes table with data
         // Structure test - actual BiomeInfo requires full integration
 
-        let mut biomes = HashMap::new();
-        biomes.insert("test-biome".to_string(), ());
+        let mut biomes = std::collections::HashSet::new();
+        biomes.insert("test-biome".to_string());
 
         assert_eq!(biomes.len(), 1);
-        assert!(biomes.contains_key("test-biome"));
+        assert!(biomes.contains("test-biome"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -450,7 +460,9 @@ mod property_tests {
                 assert!(path.contains("logs"));
                 assert!(path.contains(*biome));
                 assert!(path.contains(*component));
-                assert!(path.ends_with(".log"));
+                assert!(std::path::Path::new(&path)
+                    .extension()
+                    .is_some_and(|e| e.eq_ignore_ascii_case("log")));
             }
         }
     }

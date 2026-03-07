@@ -6,8 +6,9 @@ mod tests {
     use std::time::Duration;
     use toadstool::workload::PortMapping;
     use toadstool::{
-        ExecutionRequest, IsolationLevel, PortProtocol, RegistryAuth, RuntimeEngine, RuntimeType,
-        SecurityContext, VolumeMount, VolumeMountType, WorkloadSpec, WorkloadType,
+        ExecutionInput, ExecutionRequest, IsolationLevel, PortProtocol, RegistryAuth,
+        RuntimeEngine, RuntimeType, SecurityContext, UniversalResourceRequirements, VolumeMount,
+        VolumeMountType, WorkloadSpec, WorkloadType,
     };
     use toadstool_runtime_container::*;
     use uuid::Uuid;
@@ -26,11 +27,11 @@ mod tests {
                 registry_auth: None,
             },
             runtime_hint: Some(RuntimeType::Container),
-            resources: Default::default(),
+            resources: UniversalResourceRequirements::default(),
             security_context: SecurityContext::for_isolation_level(IsolationLevel::Basic),
             timeout: Some(Duration::from_secs(30)),
             environment: HashMap::new(),
-            input_data: Default::default(),
+            input_data: ExecutionInput::default(),
             callback_config: None,
             encryption_config: None,
         }
@@ -77,11 +78,11 @@ mod tests {
                     user: None,
                 },
                 runtime_hint: Some(RuntimeType::Native),
-                resources: Default::default(),
+                resources: UniversalResourceRequirements::default(),
                 security_context: SecurityContext::for_isolation_level(IsolationLevel::Basic),
                 timeout: None,
                 environment: HashMap::new(),
-                input_data: Default::default(),
+                input_data: ExecutionInput::default(),
                 callback_config: None,
                 encryption_config: None,
             };

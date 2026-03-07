@@ -638,7 +638,7 @@ mod tests {
         };
 
         let ratio = result.verified_count as f64 / result.total_discovered as f64;
-        assert_eq!(ratio, 0.7); // 70% verification rate
+        assert!((ratio - 0.7).abs() < f64::EPSILON); // 70% verification rate
     }
 
     #[test]

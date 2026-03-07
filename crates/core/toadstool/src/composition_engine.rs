@@ -448,7 +448,7 @@ impl CompositionEngine {
         }
 
         // Hard constraints: must all be satisfied (0.0 if any fail)
-        let hard_score = {
+        let hard_score: f64 = {
             let hard_results: Vec<_> = request
                 .hard_constraints()
                 .iter()
@@ -466,7 +466,7 @@ impl CompositionEngine {
 
         // EVOLUTION FIX: If any hard constraint fails, overall score is 0.0
         // regardless of soft constraints. The workload is infeasible.
-        if hard_score == 0.0 {
+        if hard_score.abs() < f64::EPSILON {
             return 0.0;
         }
 
@@ -617,6 +617,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::float_cmp)] // expected literal from empty constraints
     async fn test_empty_constraints_returns_score_one() {
         let engine = CompositionEngine::from_runtime().await.unwrap();
         let request = CompositionRequest::new("empty");
@@ -745,6 +746,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::float_cmp)] // expected literal when hard constraint fails
     async fn test_hard_constraint_failure_zeroes_score() {
         let engine = CompositionEngine::from_runtime().await.unwrap();
         let request = CompositionRequest::new("hard_fail")

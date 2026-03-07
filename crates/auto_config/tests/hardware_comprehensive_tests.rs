@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive tests for hardware detection module
 //!
 //! These tests ensure complete coverage of the hardware detection system,
@@ -492,7 +493,7 @@ async fn test_system_scan_produces_valid_capabilities() {
     );
 
     // Validate performance class
-    let _class = capabilities.performance_class;
+    let _ = capabilities.performance_class;
 }
 
 // ============================================================================

@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::format_in_format_args)]
-#![allow(clippy::redundant_pattern_matching)]
+#![allow(
+    clippy::field_reassign_with_default,
+    clippy::format_in_format_args,
+    clippy::needless_pass_by_value,
+    clippy::redundant_pattern_matching,
+    clippy::unnecessary_wraps,
+    dead_code,
+    unused_variables
+)]
 //! # ToadStool Runtime Engines Integration Demo
 //!
 //! Comprehensive demonstration of all three runtime engines:

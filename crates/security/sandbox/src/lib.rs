@@ -9,6 +9,8 @@
     clippy::struct_excessive_bools,
     clippy::map_unwrap_or,
     clippy::unused_async, // Platform stubs are async for trait/API consistency
+    clippy::no_effect_underscore_binding,
+    clippy::unreadable_literal,
 )]
 
 //! Cross-Platform Security Sandboxing for ToadStool

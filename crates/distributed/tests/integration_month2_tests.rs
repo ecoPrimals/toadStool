@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed coordinator integration tests
+
+#![allow(clippy::unused_async)]
 //!
 //! Tier 1 tests: Coverage-measured integration tests
 //! Focus: Coordinator lifecycle, job scheduling, worker management

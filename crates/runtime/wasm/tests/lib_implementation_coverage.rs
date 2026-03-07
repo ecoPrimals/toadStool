@@ -286,7 +286,7 @@ async fn test_engine_with_very_short_timeout() {
 #[tokio::test]
 async fn test_engine_with_very_long_timeout() {
     let config = WasmRuntimeConfig {
-        execution_timeout_ms: 600000, // 10 minutes
+        execution_timeout_ms: 600_000, // 10 minutes
         ..Default::default()
     };
 

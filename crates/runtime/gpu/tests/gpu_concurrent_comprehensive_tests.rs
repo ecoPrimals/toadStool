@@ -524,7 +524,8 @@ async fn test_concurrent_memory_requirement_validation() {
             bar.wait().await;
 
             // Create various memory requirements
-            let memory_mb = ((i + 1) * 128) as u64; // 128MB to 5GB
+            #[allow(clippy::cast_sign_loss)]
+            let memory_mb = (i + 1) as u64 * 128; // 128MB to 5GB
             let reqs = DeviceRequirements {
                 min_memory_bytes: Some(memory_mb * 1024 * 1024),
                 min_compute_units: None,

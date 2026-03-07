@@ -54,11 +54,20 @@ mod runtime_selection_tests {
         ];
 
         for (file, expected_runtime) in workload_mappings {
-            let runtime = if file.ends_with(".wasm") {
+            let runtime = if std::path::Path::new(file)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("wasm"))
+            {
                 "wasm"
-            } else if file.ends_with(".py") {
+            } else if std::path::Path::new(file)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("py"))
+            {
                 "python"
-            } else if file.ends_with(".cu") {
+            } else if std::path::Path::new(file)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("cu"))
+            {
                 "gpu"
             } else if file.contains("Dockerfile") {
                 "container"
@@ -397,7 +406,7 @@ mod python_runtime_tests {
         let scripts = vec!["script.py", "main.py", "app/__init__.py"];
 
         for script in scripts {
-            assert!(script.ends_with(".py"));
+            assert!(script.to_lowercase().ends_with(".py"));
         }
     }
 
@@ -506,6 +515,7 @@ mod gpu_runtime_tests {
 mod resource_allocation_tests {
     use super::HashMap;
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_cpu_allocation_per_runtime() {
         let allocations = HashMap::from([("native", 2.0f64), ("wasm", 1.0), ("container", 4.0)]);
@@ -521,6 +531,7 @@ mod resource_allocation_tests {
         assert_eq!(memory_mb.get("wasm"), Some(&512));
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_resource_limit_enforcement() {
         let max_cpu = 16.0f64;
@@ -529,6 +540,7 @@ mod resource_allocation_tests {
         assert!(requested_cpu > max_cpu);
     }
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_resource_reservation() {
         #[derive(Debug)]
@@ -743,6 +755,7 @@ mod performance_tests {
 mod configuration_tests {
     use super::HashMap;
 
+    #[allow(clippy::float_cmp)]
     #[test]
     fn test_runtime_config_defaults() {
         #[derive(Debug)]

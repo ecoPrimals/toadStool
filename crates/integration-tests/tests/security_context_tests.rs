@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::unnecessary_wraps)]
 //! Security context validation tests
 //!
 //! Tests use the real `SecurityContext` API: `isolation_level`, capabilities
@@ -130,12 +131,12 @@ fn test_capability_builder_api() {
     assert!(context.has_capability(&Capability::NetworkClient));
 }
 
-fn _returns_security_result() -> ToadStoolResult<SecurityContext> {
+fn returns_security_result() -> ToadStoolResult<SecurityContext> {
     Ok(SecurityContext::default())
 }
 
 #[test]
 fn test_security_result_type() {
-    let result = _returns_security_result();
+    let result = returns_security_result();
     assert!(result.is_ok());
 }

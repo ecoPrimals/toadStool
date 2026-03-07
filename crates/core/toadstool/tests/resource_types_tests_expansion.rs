@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive expansion tests for resource types
+#![allow(
+    clippy::float_cmp,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements
+)]
 
 use toadstool::resources::*;
 
@@ -129,11 +134,11 @@ fn test_memory_requirements_exact_powers_of_two() {
 #[test]
 fn test_memory_requirements_odd_sizes() {
     let memory = MemoryRequirements {
-        min_bytes: 1234567890,
-        max_bytes: Some(9876543210),
+        min_bytes: 1_234_567_890,
+        max_bytes: Some(9_876_543_210),
     };
 
-    assert_eq!(memory.min_bytes, 1234567890);
+    assert_eq!(memory.min_bytes, 1_234_567_890);
 }
 
 #[test]

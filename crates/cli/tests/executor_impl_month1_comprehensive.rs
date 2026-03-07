@@ -1,4 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
+    clippy::default_trait_access,
+    clippy::items_after_statements,
+    clippy::unused_async
+)]
 //! Comprehensive tests for `executor_impl.rs`
 //!
 //! Covers `BiomeExecutor` functionality (20-30 tests).
@@ -66,7 +76,7 @@ mod run_biome_tests {
     fn test_run_biome_signature() {
         // Verify run_biome method signature (manifest_path, name, env, debug, limits, security)
 
-        let _params = vec![
+        let params = vec![
             "ctx: &CliContext",
             "manifest_path: PathBuf",
             "name: Option<String>",
@@ -77,7 +87,7 @@ mod run_biome_tests {
             "security: String",
         ];
 
-        assert_eq!(_params.len(), 8);
+        assert_eq!(params.len(), 8);
     }
 
     #[test]
@@ -165,7 +175,7 @@ mod up_biome_tests {
     #[test]
     fn test_up_biome_signature() {
         // Verify up_biome method signature
-        let _params = vec![
+        let params = vec![
             "ctx: &CliContext",
             "manifest_path: PathBuf",
             "detach: bool",
@@ -175,7 +185,7 @@ mod up_biome_tests {
             "health_interval: u64",
         ];
 
-        assert_eq!(_params.len(), 7);
+        assert_eq!(params.len(), 7);
     }
 
     #[test]
@@ -219,14 +229,14 @@ mod down_biome_tests {
     #[test]
     fn test_down_biome_signature() {
         // Verify down_biome method signature
-        let _params = vec![
+        let params = vec![
             "biome_name: String",
             "force: bool",
             "timeout_secs: u64",
             "purge: bool",
         ];
 
-        assert_eq!(_params.len(), 4);
+        assert_eq!(params.len(), 4);
     }
 
     #[test]
@@ -274,7 +284,7 @@ mod down_biome_tests {
 
         if purge_enabled {
             // Would delete biome data directory
-            let _data_path = "/tmp/toadstool/data/biome";
+            let _ = "/tmp/toadstool/data/biome";
             assert!(purge_enabled);
         }
     }
@@ -286,14 +296,14 @@ mod list_biomes_tests {
     #[test]
     fn test_list_biomes_signature() {
         // Verify list_biomes method signature
-        let _params = vec![
+        let params = vec![
             "all: bool",
             "format: String",
             "resources: bool",
             "status_filter: Option<String>",
         ];
 
-        assert_eq!(_params.len(), 4);
+        assert_eq!(params.len(), 4);
     }
 
     #[test]
@@ -362,7 +372,7 @@ mod list_biomes_tests {
 
         if show_resources {
             // Would include CPU, memory, storage, network stats
-            let _fields = vec!["cpu", "memory", "storage", "network"];
+            let _ = vec!["cpu", "memory", "storage", "network"];
             assert!(show_resources);
         }
     }
@@ -374,7 +384,7 @@ mod show_logs_tests {
     #[test]
     fn test_show_logs_signature() {
         // Verify show_logs method signature
-        let _params = vec![
+        let params = vec![
             "target: String",
             "follow: bool",
             "lines: usize",
@@ -383,7 +393,7 @@ mod show_logs_tests {
             "grep_pattern: Option<String>",
         ];
 
-        assert_eq!(_params.len(), 6);
+        assert_eq!(params.len(), 6);
     }
 
     #[test]
@@ -485,8 +495,8 @@ mod internal_helpers {
     #[test]
     fn test_start_biome_internal_signature() {
         // Verify start_biome_internal accepts &str for security_level
-        let _security_level: &str = "high";
-        assert!(!_security_level.is_empty());
+        let security_level: &str = "high";
+        assert!(!security_level.is_empty());
     }
 
     #[test]
@@ -567,9 +577,9 @@ mod wasm_functionality {
     #[test]
     fn test_wasm_verification_signature() {
         // Verify load_wasm_with_verification signature
-        let _params = vec!["source: &str", "checksum: &Option<String>"];
+        let params = vec!["source: &str", "checksum: &Option<String>"];
 
-        assert_eq!(_params.len(), 2);
+        assert_eq!(params.len(), 2);
     }
 
     #[test]
@@ -585,13 +595,13 @@ mod wasm_functionality {
     #[test]
     fn test_wasm_module_execution() {
         // Test execute_wasm_module signature
-        let _params = vec![
+        let params = vec![
             "biome_name: &str",
             "module_data: Vec<u8>",
             "wasi_config: HashMap<String, String>",
         ];
 
-        assert_eq!(_params.len(), 3);
+        assert_eq!(params.len(), 3);
     }
 }
 

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Filter and Scan Operations Demo
+
+#![allow(clippy::cast_precision_loss)]
 //!
 //! Demonstrates new operations added to the Universal Runtime:
 //! - Filter: Select elements matching a predicate
@@ -10,7 +12,7 @@
 
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
-    ComputeError, ComputeUnit, DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+    ComputeError, DataType, OperationType, Workload, WorkloadData, WorkloadParams,
 };
 
 #[tokio::main]

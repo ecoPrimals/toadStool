@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::missing_errors_doc,
+    clippy::no_effect_underscore_binding
+)]
 //! Chaos Testing - Network Failures
 //!
 //! Tests system behavior under network chaos:

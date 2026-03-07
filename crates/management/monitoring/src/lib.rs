@@ -2,8 +2,9 @@
 #![deny(unsafe_code)]
 #![allow(
     clippy::missing_errors_doc,
-    clippy::cast_precision_loss,
+    clippy::unreadable_literal,
     clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     clippy::unused_async
 )]
@@ -568,7 +569,7 @@ mod tests {
                 storage_type: None,
             },
             gpu: None,
-            network: Default::default(),
+            network: toadstool::resources::NetworkRequirements::default(),
         };
         let result = monitor
             .set_thresholds("workload-threshold", requirements)
@@ -611,7 +612,7 @@ mod tests {
                 storage_type: None,
             },
             gpu: None,
-            network: Default::default(),
+            network: toadstool::resources::NetworkRequirements::default(),
         };
         monitor.set_thresholds("w1", requirements).await.unwrap();
 
@@ -654,9 +655,9 @@ mod tests {
                 min_bytes: 1024,
                 max_bytes: Some(1),
             },
-            storage: StorageRequirements::default(),
+            storage: toadstool::resources::StorageRequirements::default(),
             gpu: None,
-            network: Default::default(),
+            network: toadstool::resources::NetworkRequirements::default(),
         };
         monitor.set_thresholds("w1", requirements).await.unwrap();
 

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Monitoring Module Edge Cases Tests
 //!
 //! Expanding test coverage for management/monitoring module
@@ -248,6 +249,7 @@ fn test_metric_collection_multiple() {
 }
 
 #[test]
+#[allow(clippy::cast_precision_loss)]
 fn test_metric_collection_average() {
     let metrics = vec![10.0, 20.0, 30.0];
     let sum: f64 = metrics.iter().sum();
@@ -312,8 +314,8 @@ fn test_retention_policy_medium() {
 
 #[test]
 fn test_retention_policy_long() {
-    let retention = Duration::from_secs(604800); // 1 week
-    assert_eq!(retention.as_secs(), 604800);
+    let retention = Duration::from_secs(604_800); // 1 week
+    assert_eq!(retention.as_secs(), 604_800);
 }
 
 // ============================================================================

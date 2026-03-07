@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive Error Path and Edge Case Coverage for Intelligent Auto-Configuration
 //!
 //! **Goal**: Increase coverage from 38% → 50%+ with high-value tests
@@ -500,10 +501,10 @@ async fn test_documentation_example_component_access() {
     let config = IntelligentAutoConfig::new();
 
     // Should be able to access components
-    let _hardware = &config.hardware_detector;
-    let _platform = &config.platform_optimizer;
-    let _ecosystem = &config.ecosystem_discoverer;
-    let _learner = &config.usage_learner;
+    let _ = &config.hardware_detector;
+    let _ = &config.platform_optimizer;
+    let _ = &config.ecosystem_discoverer;
+    let _ = &config.usage_learner;
 
     println!("✅ Component access works as documented");
 }
@@ -540,9 +541,8 @@ async fn test_stress_many_concurrent_configs() {
     for handle in handles {
         if let Ok((_id, result)) = handle.await {
             match result {
-                Ok(Ok(_)) => completed += 1,
-                Ok(Err(_)) => completed += 1, // completed but with app error -- still ran
-                Err(_) => timed_out += 1,     // timeout
+                Ok(Ok(_) | Err(_)) => completed += 1,
+                Err(_) => timed_out += 1, // timeout
             }
         }
     }

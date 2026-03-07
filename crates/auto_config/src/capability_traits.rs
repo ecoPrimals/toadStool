@@ -80,16 +80,16 @@ impl MockHardwareDetector {
     pub fn new() -> Self {
         Self {
             capabilities: SystemCapabilities {
-                cpu_info: Default::default(),
+                cpu_info: crate::hardware::CpuInfo::default(),
                 cpu_cores: 8.0,
-                memory_info: Default::default(),
+                memory_info: crate::hardware::MemoryInfo::default(),
                 memory_gb: 16.0,
                 gpu_info: Vec::new(),
                 gpu_count: 0,
                 gpu_memory_gb: None,
-                storage_info: Default::default(),
+                storage_info: crate::hardware::StorageInfo::default(),
                 storage_gb: 512.0,
-                network_info: Default::default(),
+                network_info: crate::hardware::NetworkInfo::default(),
                 performance_class: crate::hardware::PerformanceClass::Mainstream,
             },
         }
@@ -220,6 +220,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_mock_hardware_detector() {
         let mut detector = MockHardwareDetector::new();
         let result = detector.scan_system().await;
@@ -241,6 +242,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_mock_is_fast() {
         use std::time::Instant;
 
@@ -258,6 +260,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_mock_hardware_detector_with_custom_capabilities() {
         use crate::hardware::{PerformanceClass, SystemCapabilities};
 
@@ -306,12 +309,14 @@ mod tests {
             discovery_timestamp: std::time::SystemTime::now(),
         };
 
-        let mut discoverer = MockEcosystemDiscoverer::with_services(discovered);
-        let result = discoverer.discover_services().await;
+        let mut mock_discoverer = MockEcosystemDiscoverer::with_services(discovered);
+        let result = mock_discoverer.discover_services().await;
 
         assert!(result.is_ok());
-        let services = result.unwrap();
-        assert_eq!(services.discovered_services.len(), 1);
-        assert!(services.discovered_services.contains_key("test-svc"));
+        let discovered_result = result.unwrap();
+        assert_eq!(discovered_result.discovered_services.len(), 1);
+        assert!(discovered_result
+            .discovered_services
+            .contains_key("test-svc"));
     }
 }

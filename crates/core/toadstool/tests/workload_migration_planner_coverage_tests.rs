@@ -454,6 +454,7 @@ async fn test_planner_local_both_requires_gpu_and_minimize_cost_cost_wins() {
 
 // ── MigrationTarget and CostImpact structure ───────────────────────────────────
 
+#[allow(clippy::float_cmp)]
 #[tokio::test]
 async fn test_planner_cost_impact_structure_when_cloud_to_local() {
     let coordinator = coordinator_with_provider().await;

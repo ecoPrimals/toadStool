@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Batch Normalization (`BatchNorm`) Operation Demo
+
+#![allow(clippy::cast_precision_loss)]
 //!
 //! Demonstrates:
 //! - `BatchNorm`: Normalize across batch dimension

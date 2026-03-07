@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::cast_precision_loss)]
 //! Fault injection tests
 //!
 //! Verifies that ToadStool components handle injected faults gracefully:

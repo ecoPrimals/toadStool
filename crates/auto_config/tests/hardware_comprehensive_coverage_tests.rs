@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive test coverage for hardware detection module
 //!
 //! This test suite provides property-based tests, table-driven tests, and error path

@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_edge_type_default() {
-        let default: EdgeType = Default::default();
+        let default: EdgeType = EdgeType::default();
         assert_eq!(default, EdgeType::Dependency);
     }
 

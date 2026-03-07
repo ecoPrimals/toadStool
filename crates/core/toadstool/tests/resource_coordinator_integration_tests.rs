@@ -11,6 +11,7 @@ async fn test_resource_coordinator_new() {
     assert!(coordinator.is_ok());
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_get_available_resources() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
@@ -71,6 +72,7 @@ async fn test_resource_coordinator_allocate_and_release_cycle() {
     assert!(result.is_ok());
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_custom_requirements() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
@@ -130,6 +132,7 @@ async fn test_resource_coordinator_release_sets_timestamp() {
     assert!(result.is_ok());
 }
 
+#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_available_resources_immutable() {
     let coordinator = ResourceCoordinator::new().await.unwrap();

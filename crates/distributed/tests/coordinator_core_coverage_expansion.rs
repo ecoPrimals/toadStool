@@ -22,7 +22,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 use uuid::Uuid;
 
-use toadstool::ExecutionRequest;
+use toadstool::{ExecutionRequest, RuntimeType};
 use toadstool_distributed::core::{
     DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
 };
@@ -262,7 +262,6 @@ async fn test_execution_with_different_runtime_hints() {
         .expect("Should create coordinator");
 
     // Test different runtime hints
-    use toadstool::RuntimeType;
     let runtime_hints = vec![
         Some(RuntimeType::Native),
         Some(RuntimeType::Wasm),

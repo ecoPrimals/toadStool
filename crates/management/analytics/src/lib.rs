@@ -9,6 +9,7 @@
     clippy::cast_sign_loss,
     clippy::similar_names,
     clippy::unused_async, // Trait/API consistency
+    clippy::default_trait_access,
 )]
 
 //! `ToadStool` Advanced Analytics Engine

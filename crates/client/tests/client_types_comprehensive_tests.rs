@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::items_after_statements,
+    clippy::unreadable_literal,
+    clippy::wildcard_enum_match_arm,
+    clippy::float_cmp
+)]
 //! Comprehensive tests for client types and workload submission
 //!
 //! Goal: Increase client coverage from 0% to 70%+
@@ -24,13 +30,13 @@ fn test_resource_requirements_full() {
     let resources = ResourceRequirements {
         cpu_cores: Some(4),
         memory_mb: Some(8192),
-        disk_mb: Some(102400),
+        disk_mb: Some(102_400),
         gpu_required: Some(true),
     };
 
     assert_eq!(resources.cpu_cores, Some(4));
     assert_eq!(resources.memory_mb, Some(8192));
-    assert_eq!(resources.disk_mb, Some(102400));
+    assert_eq!(resources.disk_mb, Some(102_400));
     assert_eq!(resources.gpu_required, Some(true));
 }
 
@@ -300,7 +306,7 @@ fn test_execution_metrics() {
     let metrics = ExecutionMetrics {
         duration_ms: 1500,
         cpu_usage_percent: 45.5,
-        memory_peak_bytes: 104857600, // 100MB
+        memory_peak_bytes: 104_857_600, // 100MB
         network_bytes_sent: 1024,
         network_bytes_received: 2048,
     };
@@ -322,7 +328,9 @@ fn test_execution_status_changed_event() {
         ToadStoolEvent::ExecutionStatusChanged { status, .. } => {
             assert_eq!(status, "completed");
         }
-        _ => panic!("Expected ExecutionStatusChanged event"),
+        ToadStoolEvent::ClusterHealthChanged { .. } => {
+            panic!("Expected ExecutionStatusChanged event")
+        }
     }
 }
 
@@ -334,7 +342,9 @@ fn test_cluster_health_changed_event() {
         ToadStoolEvent::ClusterHealthChanged { healthy } => {
             assert!(*healthy);
         }
-        _ => panic!("Expected ClusterHealthChanged event"),
+        ToadStoolEvent::ExecutionStatusChanged { .. } => {
+            panic!("Expected ClusterHealthChanged event")
+        }
     }
 }
 

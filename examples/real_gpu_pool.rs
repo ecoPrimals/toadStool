@@ -22,8 +22,8 @@ use toadstool_runtime_gpu::{
     cpu_resource::CpuComputeResource,
     scheduler::{SchedulingPolicy, UniversalComputeScheduler},
     universal::{
-        ComputeBuffer, ComputeContext, ComputeRequirements, MemoryAccessPattern, Operation,
-        OptimizationHints, Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
+        ComputeBuffer, ComputeRequirements, MemoryAccessPattern, Operation, OptimizationHints,
+        Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
     },
 };
 

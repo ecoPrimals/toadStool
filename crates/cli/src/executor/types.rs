@@ -43,7 +43,8 @@ impl ProcessType {
         }
     }
 
-    pub(super) fn _type_str(&self) -> &str {
+    #[allow(dead_code)] // Used in tests
+    pub(super) fn type_str(&self) -> &str {
         match self {
             ProcessType::Primal(_) => "primal",
             ProcessType::Service(_) => "service",
@@ -62,7 +63,7 @@ impl BiomeProcess {
     }
 
     #[cfg(test)]
-    pub(super) fn _display_name(&self) -> String {
+    pub(super) fn display_name(&self) -> String {
         format!("{}:{}", self.process_type.name(), self.execution_id)
     }
 }
@@ -87,10 +88,10 @@ mod tests {
 
     #[test]
     fn test_process_type_type_str() {
-        assert_eq!(ProcessType::Primal("x".to_string())._type_str(), "primal");
-        assert_eq!(ProcessType::Service("x".to_string())._type_str(), "service");
+        assert_eq!(ProcessType::Primal("x".to_string()).type_str(), "primal");
+        assert_eq!(ProcessType::Service("x".to_string()).type_str(), "service");
         assert_eq!(
-            ProcessType::HealthCheck("x".to_string())._type_str(),
+            ProcessType::HealthCheck("x".to_string()).type_str(),
             "healthcheck"
         );
     }
@@ -117,7 +118,7 @@ mod tests {
             pid: None,
             _started_at: std::time::SystemTime::now(),
         };
-        let display = bp._display_name();
+        let display = bp.display_name();
         assert!(display.contains("toadstool"));
         assert!(display.contains(&id.to_string()));
     }

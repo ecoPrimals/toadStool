@@ -138,11 +138,11 @@ fn test_convert_request_to_workload_opencl() {
             args: vec![],
         },
         runtime_hint: None,
-        resources: Default::default(),
-        security_context: Default::default(),
+        resources: toadstool::resources::ResourceRequirements::default(),
+        security_context: toadstool::SecurityContext::default(),
         timeout: None,
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: std::collections::HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };
@@ -167,11 +167,11 @@ fn test_convert_request_to_workload_cuda() {
             args: vec![],
         },
         runtime_hint: None,
-        resources: Default::default(),
-        security_context: Default::default(),
+        resources: toadstool::resources::ResourceRequirements::default(),
+        security_context: toadstool::SecurityContext::default(),
         timeout: None,
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: std::collections::HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };
@@ -196,11 +196,11 @@ fn test_convert_request_to_workload_vulkan_spirv() {
             args: vec![],
         },
         runtime_hint: None,
-        resources: Default::default(),
-        security_context: Default::default(),
+        resources: toadstool::resources::ResourceRequirements::default(),
+        security_context: toadstool::SecurityContext::default(),
         timeout: None,
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: std::collections::HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };
@@ -222,15 +222,15 @@ fn test_convert_request_to_workload_non_gpu_fails() {
             },
             args: Some(vec!["hello".to_string()]),
             working_dir: None,
-            env_vars: Default::default(),
+            env_vars: std::collections::HashMap::new(),
             user: None,
         },
         runtime_hint: None,
-        resources: Default::default(),
-        security_context: Default::default(),
+        resources: toadstool::resources::ResourceRequirements::default(),
+        security_context: toadstool::SecurityContext::default(),
         timeout: None,
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: std::collections::HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };
@@ -250,15 +250,15 @@ async fn test_engine_execute_non_gpu_workload_fails() {
             },
             args: Some(vec!["test".to_string()]),
             working_dir: None,
-            env_vars: Default::default(),
+            env_vars: std::collections::HashMap::new(),
             user: None,
         },
         runtime_hint: None,
-        resources: Default::default(),
-        security_context: Default::default(),
+        resources: toadstool::resources::ResourceRequirements::default(),
+        security_context: toadstool::SecurityContext::default(),
         timeout: None,
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: std::collections::HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };
@@ -303,13 +303,13 @@ async fn test_engine_with_resource_monitor() {
             _workload_id: &str,
         ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_>>
         {
-            Box::pin(async { Ok(Default::default()) })
+            Box::pin(async { Ok(toadstool::resources::RuntimeMetrics::default()) })
         }
         fn get_system_resources(
             &self,
         ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<SystemResources>> + Send + '_>>
         {
-            Box::pin(async { Ok(Default::default()) })
+            Box::pin(async { Ok(toadstool::resources::SystemResources::default()) })
         }
     }
     let engine = UniversalGpuEngine::default().with_resource_monitor(Arc::new(MockMonitor));
@@ -332,11 +332,11 @@ fn test_convert_request_to_workload_with_errors_in_output() {
             args: vec![],
         },
         runtime_hint: None,
-        resources: Default::default(),
-        security_context: Default::default(),
+        resources: toadstool::resources::ResourceRequirements::default(),
+        security_context: toadstool::SecurityContext::default(),
         timeout: None,
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: std::collections::HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };
@@ -386,11 +386,11 @@ async fn test_engine_execute_gpu_workload_no_devices() {
             args: vec![],
         },
         runtime_hint: None,
-        resources: Default::default(),
-        security_context: Default::default(),
+        resources: toadstool::resources::ResourceRequirements::default(),
+        security_context: toadstool::SecurityContext::default(),
         timeout: None,
-        environment: Default::default(),
-        input_data: Default::default(),
+        environment: std::collections::HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
     };

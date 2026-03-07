@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // ToadStool - Universal Compute Platform
 // Tests for performance testing utilities
+#![allow(
+    clippy::float_cmp,
+    clippy::no_effect_underscore_binding,
+    clippy::cast_precision_loss
+)]
 
 use std::sync::Arc;
 use std::time::Duration;

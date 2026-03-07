@@ -2,6 +2,9 @@
 #![deny(unsafe_code)]
 #![allow(
     clippy::missing_errors_doc,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
     clippy::doc_markdown,
     clippy::unused_async,
     clippy::match_same_arms,

@@ -38,6 +38,8 @@
     clippy::redundant_closure_for_method_calls,
     clippy::needless_pass_by_value,
     clippy::match_same_arms,
+    clippy::no_effect_underscore_binding,
+    clippy::similar_names,
 )]
 
 //! # `ToadStool` Testing Infrastructure

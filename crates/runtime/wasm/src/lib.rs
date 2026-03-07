@@ -3,6 +3,11 @@
 #![allow(
     async_fn_in_trait,
     clippy::missing_errors_doc,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::default_trait_access,
+    clippy::struct_field_names,
     clippy::must_use_candidate,
     clippy::return_self_not_must_use,
     clippy::cast_precision_loss,

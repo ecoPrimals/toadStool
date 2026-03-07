@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::no_effect_underscore_binding
+)]
 //! Distributed System Integration Tests - Phase 3
 
 #![allow(clippy::all)]

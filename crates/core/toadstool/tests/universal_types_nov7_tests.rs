@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
-
+#![allow(clippy::float_cmp)]
 //! Comprehensive tests for universal.rs core types
 //!
 //! Coverage push - Nov 7, 2025
@@ -413,13 +413,13 @@ fn test_primal_types_comprehensive() {
     // Verify each type
     for primal_type in &types {
         match primal_type {
-            PrimalType::Compute => { /* Valid */ }
-            PrimalType::Security => { /* Valid */ }
-            PrimalType::Storage => { /* Valid */ }
-            PrimalType::AI => { /* Valid */ }
-            PrimalType::Network => { /* Valid */ }
-            PrimalType::OS => { /* Valid */ }
-            PrimalType::Custom(_) => { /* Valid */ }
+            PrimalType::Compute
+            | PrimalType::Security
+            | PrimalType::Storage
+            | PrimalType::AI
+            | PrimalType::Network
+            | PrimalType::OS
+            | PrimalType::Custom(_) => { /* Valid */ }
         }
     }
 }

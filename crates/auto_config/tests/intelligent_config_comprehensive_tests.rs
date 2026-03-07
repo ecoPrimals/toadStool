@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(clippy::float_cmp)]
 //! Comprehensive test coverage for intelligent configuration module
 //!
 //! This test suite provides property-based tests, table-driven tests, and error path
@@ -611,7 +612,6 @@ fn test_adaptive_optimization() {
         // Verify mapping is logical
         let optimization = match system_state {
             "idle" => "conservative",
-            "normal" => "balanced",
             "busy" => "aggressive",
             "overloaded" => "efficiency",
             _ => "balanced",

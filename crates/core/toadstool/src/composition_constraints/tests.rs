@@ -1,6 +1,8 @@
 // Copyright (C) 2024-2025 ToadStool Project
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+#![allow(clippy::float_cmp)]
+
 use super::*;
 use std::collections::HashMap;
 

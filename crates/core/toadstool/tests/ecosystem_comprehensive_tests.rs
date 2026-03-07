@@ -2,7 +2,7 @@
 //! Comprehensive tests for ecosystem coordination module
 //! Addresses zero-coverage file: core/toadstool/src/ecosystem.rs (643 lines)
 
-#![allow(dead_code, unused_variables)]
+#![allow(clippy::unused_async, dead_code, unused_variables)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -750,8 +750,8 @@ async fn simulate_discover_via_local_scan(
 
 async fn simulate_discover_at_endpoint(
     _coordinator: &MockEcosystemCoordinator,
-    _name: &str,
+    name: &str,
     _endpoint: &str,
 ) -> toadstool::ToadStoolResult<MockPrimalInstance> {
-    Ok(create_test_primal(_name, MockPrimalType::Songbird))
+    Ok(create_test_primal(name, MockPrimalType::Songbird))
 }

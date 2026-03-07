@@ -243,7 +243,7 @@ fn test_config_overrides() {
 
 #[test]
 fn test_config_override_default_value() {
-    let config = ToadStoolConfig::default().merge(Default::default());
+    let config = ToadStoolConfig::default().merge(std::collections::HashMap::default());
     assert_eq!(config.get_override("nonexistent", 42), 42);
 }
 

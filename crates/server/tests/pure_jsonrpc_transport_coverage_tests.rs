@@ -1,4 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::float_cmp,
+    clippy::no_effect_underscore_binding,
+    clippy::unreadable_literal
+)]
 //! Comprehensive tests for `pure_jsonrpc` handler/transport.rs
 //! Tests transport.discover, transport.list, transport.route via `JsonRpcHandler`.
 //! No real network I/O, no hardware probing.

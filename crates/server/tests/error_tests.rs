@@ -1,4 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::float_cmp,
+    clippy::match_same_arms,
+    clippy::no_effect_underscore_binding,
+    clippy::unreadable_literal
+)]
 //! Comprehensive tests for server error types
 //!
 //! Tests for `ServerError` variants and error handling.

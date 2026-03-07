@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::float_cmp
+)]
 //! Comprehensive tests for `production_hardening.rs`
 //!
 //! Test Coverage Areas:
@@ -559,19 +565,19 @@ mod production_hardening_logic_tests {
     #[test]
     fn test_bulkhead_allocation() {
         let total_threads = 100usize;
-        let service_a_threads = 30usize;
-        let service_b_threads = 40usize;
+        let threads_for_service_a = 30usize;
+        let threads_for_service_b = 40usize;
 
-        let remaining = total_threads - service_a_threads - service_b_threads;
+        let remaining = total_threads - threads_for_service_a - threads_for_service_b;
         assert_eq!(remaining, 30);
     }
 
     #[test]
     fn test_bulkhead_isolation() {
-        let service_a_max = 30usize;
-        let service_a_used = 30usize;
+        let service_a_limit = 30usize;
+        let service_a_current = 30usize;
 
-        let is_at_limit = service_a_used >= service_a_max;
+        let is_at_limit = service_a_current >= service_a_limit;
         assert!(is_at_limit);
     }
 

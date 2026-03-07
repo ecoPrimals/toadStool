@@ -143,9 +143,9 @@ async fn test_policy_manager_creation() {
 
 #[tokio::test]
 async fn test_policy_manager_with_custom_config() {
-    let _tmp = tempfile::tempdir().expect("temp dir");
+    let tmp = tempfile::tempdir().expect("temp dir");
     let config = PolicyManagerConfig {
-        policy_dir: _tmp.path().to_path_buf(),
+        policy_dir: tmp.path().to_path_buf(),
         cache_enabled: false,
         cache_ttl_hours: 24,
         strict_enforcement: false,
@@ -163,10 +163,10 @@ async fn test_policy_manager_with_custom_config() {
 
 #[tokio::test]
 async fn test_policy_manager_default_config() {
-    let _tmp = tempfile::tempdir().expect("temp dir");
+    let tmp = tempfile::tempdir().expect("temp dir");
     // Modern idiomatic pattern: struct initialization with defaults
     let config = PolicyManagerConfig {
-        policy_dir: _tmp.path().to_path_buf(),
+        policy_dir: tmp.path().to_path_buf(),
         ..PolicyManagerConfig::default()
     };
 
