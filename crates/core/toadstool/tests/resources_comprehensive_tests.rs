@@ -33,7 +33,7 @@ fn test_resource_requirements_clone() {
 #[test]
 fn test_resource_requirements_debug() {
     let req = ResourceRequirements::default();
-    let debug = format!("{:?}", req);
+    let debug = format!("{req:?}");
 
     assert!(!debug.is_empty());
     assert!(debug.contains("ResourceRequirements"));
@@ -140,7 +140,7 @@ fn test_cpu_requirements_clone() {
 #[test]
 fn test_cpu_requirements_debug() {
     let cpu = CpuRequirements::default();
-    let debug = format!("{:?}", cpu);
+    let debug = format!("{cpu:?}");
 
     assert!(!debug.is_empty());
 }
@@ -373,7 +373,7 @@ fn test_runtime_metrics_clone() {
 #[test]
 fn test_runtime_metrics_debug() {
     let metrics = RuntimeMetrics::default();
-    let debug = format!("{:?}", metrics);
+    let debug = format!("{metrics:?}");
 
     assert!(!debug.is_empty());
 }

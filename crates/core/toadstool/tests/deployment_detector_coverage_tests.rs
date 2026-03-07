@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Targeted tests for deployment_layer/detector.rs coverage expansion
+//! Targeted tests for `deployment_layer/detector.rs` coverage expansion
 //! Covers: cloud metadata getters, env-based detection branches,
-//! DeploymentLayer helpers (description, host_os, guest_os, is_virtualized, has_direct_hardware_access),
+//! `DeploymentLayer` helpers (description, `host_os`, `guest_os`, `is_virtualized`, `has_direct_hardware_access`),
 //! CloudProvider/ContainerRuntime variants, Display impl
 use toadstool::deployment_layer::{
     CloudProvider, ContainerRuntime, DeploymentLayer, LayerDetector,
@@ -389,7 +389,7 @@ fn test_container_runtime_variants() {
 #[test]
 fn test_deployment_layer_display_bare_metal() {
     let layer = DeploymentLayer::BareMetalOS;
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert_eq!(s, "BareMetalOS");
 }
 
@@ -399,7 +399,7 @@ fn test_deployment_layer_display_middleware() {
         host_os: "Fedora".to_string(),
         host_version: Some("39".to_string()),
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("Fedora"));
     assert!(s.contains("Middleware"));
 }
@@ -409,7 +409,7 @@ fn test_deployment_layer_display_service() {
     let layer = DeploymentLayer::ServiceLayer {
         guest_os: vec!["Docker".to_string()],
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("Docker"));
     assert!(s.contains("ServiceLayer"));
 }
@@ -420,7 +420,7 @@ fn test_deployment_layer_display_container() {
         runtime: ContainerRuntime::Docker,
         container_id: None,
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("Docker"));
 }
 
@@ -430,7 +430,7 @@ fn test_deployment_layer_display_vm() {
         hypervisor: "VMware".to_string(),
         gpu_passthrough: false,
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("VMware"));
 }
 
@@ -441,7 +441,7 @@ fn test_deployment_layer_display_cloud() {
         instance_type: None,
         region: None,
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("AWS"));
 }
 
@@ -625,7 +625,7 @@ async fn test_detector_azure_region_fallback() {
 fn test_detection_error_display() {
     use toadstool::deployment_layer::DetectionError;
     let err = DetectionError::ContainerIdNotFound;
-    let s = format!("{}", err);
+    let s = format!("{err}");
     assert!(s.contains("Container") || s.contains("not found") || !s.is_empty());
 }
 
@@ -635,7 +635,7 @@ fn test_detection_error_io_display() {
     use toadstool::deployment_layer::DetectionError;
     let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
     let err = DetectionError::Io(io_err);
-    let s = format!("{}", err);
+    let s = format!("{err}");
     assert!(!s.is_empty());
 }
 
@@ -643,7 +643,7 @@ fn test_detection_error_io_display() {
 fn test_detection_error_detection_failed_display() {
     use toadstool::deployment_layer::DetectionError;
     let err = DetectionError::DetectionFailed("timeout".to_string());
-    let s = format!("{}", err);
+    let s = format!("{err}");
     assert!(s.contains("timeout") || s.contains("Failed"));
 }
 
@@ -651,7 +651,7 @@ fn test_detection_error_detection_failed_display() {
 fn test_detection_error_external_http_disabled() {
     use toadstool::deployment_layer::DetectionError;
     let err = DetectionError::ExternalHttpDisabled;
-    let s = format!("{}", err);
+    let s = format!("{err}");
     assert!(!s.is_empty());
 }
 
@@ -684,8 +684,7 @@ async fn test_detector_bare_metal_fallback_with_no_cloud_container_vm() {
                                 | DeploymentLayer::MiddlewareLayer { .. }
                                 | DeploymentLayer::ServiceLayer { .. }
                         ),
-                        "layer must be a valid variant: {:?}",
-                        layer
+                        "layer must be a valid variant: {layer:?}"
                     );
                 });
             })
@@ -704,7 +703,7 @@ fn test_cloud_provider_oracle_variant() {
         instance_type: None,
         region: None,
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("Oracle") || s.contains("Cloud"));
 }
 
@@ -715,7 +714,7 @@ fn test_cloud_provider_digital_ocean_variant() {
         instance_type: None,
         region: None,
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("DigitalOcean") || s.contains("Cloud"));
 }
 
@@ -726,6 +725,6 @@ fn test_cloud_provider_custom_variant() {
         instance_type: None,
         region: None,
     };
-    let s = format!("{}", layer);
+    let s = format!("{layer}");
     assert!(s.contains("my-cloud") || s.contains("Cloud"));
 }

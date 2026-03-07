@@ -46,8 +46,7 @@ async fn chaos_extreme_executor_creation() -> Result<()> {
     let final_count = success_count.load(Ordering::Relaxed);
     assert!(
         final_count >= 95,
-        "Should handle extreme concurrent creation: {}/100",
-        final_count
+        "Should handle extreme concurrent creation: {final_count}/100"
     );
 
     for handle in handles {
@@ -74,13 +73,11 @@ async fn chaos_rapid_fire_operations() -> Result<()> {
                 0 => exec.list_biomes(false, "text", false, None).await,
                 1 => exec.list_biomes(false, "json", false, None).await,
                 2 => exec
-                    .down_biome(format!("nonexistent-{}", i), false, 5, false)
-                    .await
-                    .map(|_| ()),
+                    .down_biome(format!("nonexistent-{i}"), false, 5, false)
+                    .await,
                 _ => exec
-                    .show_logs(format!("nonexistent-{}", i), false, 10, false, None, None)
-                    .await
-                    .map(|_| ()),
+                    .show_logs(format!("nonexistent-{i}"), false, 10, false, None, None)
+                    .await,
             };
 
             if result.is_ok() {
@@ -98,8 +95,7 @@ async fn chaos_rapid_fire_operations() -> Result<()> {
     let final_count = success_count.load(Ordering::Relaxed);
     assert!(
         final_count >= 100,
-        "Should handle rapid operations: {}/200",
-        final_count
+        "Should handle rapid operations: {final_count}/200"
     );
 
     Ok(())
@@ -134,8 +130,7 @@ async fn chaos_sustained_high_load() -> Result<()> {
     // System should handle sustained load
     assert!(
         completed >= 450,
-        "Should handle sustained load: {}/500 completed",
-        completed
+        "Should handle sustained load: {completed}/500 completed"
     );
 
     for handle in handles {
@@ -166,8 +161,7 @@ async fn chaos_memory_pressure() -> Result<()> {
     // System should handle memory pressure
     assert!(
         created >= 45,
-        "Should handle memory pressure: created {}/50 executors",
-        created
+        "Should handle memory pressure: created {created}/50 executors"
     );
 
     // Verify all still functional
@@ -184,9 +178,7 @@ async fn chaos_memory_pressure() -> Result<()> {
 
     assert!(
         functional >= 40,
-        "Most executors should remain functional: {}/{} working",
-        functional,
-        created
+        "Most executors should remain functional: {functional}/{created} working"
     );
 
     Ok(())
@@ -206,7 +198,7 @@ async fn chaos_operation_storms() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let _ = exec.list_biomes(false, "text", false, None).await;
-            tx.send(format!("list_{}", i)).ok();
+            tx.send(format!("list_{i}")).ok();
         });
     }
 
@@ -215,10 +207,8 @@ async fn chaos_operation_storms() -> Result<()> {
         let exec = Arc::clone(&executor);
         let tx = tx.clone();
         tokio::spawn(async move {
-            let _ = exec
-                .down_biome(format!("test-{}", i), false, 5, false)
-                .await;
-            tx.send(format!("down_{}", i)).ok();
+            let _ = exec.down_biome(format!("test-{i}"), false, 5, false).await;
+            tx.send(format!("down_{i}")).ok();
         });
     }
 
@@ -228,9 +218,9 @@ async fn chaos_operation_storms() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let _ = exec
-                .show_logs(format!("test-{}", i), false, 10, false, None, None)
+                .show_logs(format!("test-{i}"), false, 10, false, None, None)
                 .await;
-            tx.send(format!("logs_{}", i)).ok();
+            tx.send(format!("logs_{i}")).ok();
         });
     }
 
@@ -245,8 +235,7 @@ async fn chaos_operation_storms() -> Result<()> {
     // Should handle operation storms
     assert!(
         completed >= 135,
-        "Should handle operation storms: {}/150 completed",
-        completed
+        "Should handle operation storms: {completed}/150 completed"
     );
 
     Ok(())
@@ -289,8 +278,7 @@ async fn chaos_timeout_cascade() -> Result<()> {
     let final_count = success_count.load(Ordering::Relaxed);
     assert!(
         final_count >= 80,
-        "Should handle timeout pressure: {}/100 completed",
-        final_count
+        "Should handle timeout pressure: {final_count}/100 completed"
     );
 
     Ok(())
@@ -308,10 +296,10 @@ async fn chaos_error_cascade() -> Result<()> {
         handles.push(tokio::spawn(async move {
             // All these should fail (nonexistent biomes)
             let _ = exec
-                .down_biome(format!("nonexistent-{}", i), false, 1, false)
+                .down_biome(format!("nonexistent-{i}"), false, 1, false)
                 .await;
             let _ = exec
-                .show_logs(format!("nonexistent-{}", i), false, 10, false, None, None)
+                .show_logs(format!("nonexistent-{i}"), false, 10, false, None, None)
                 .await;
         }));
     }
@@ -360,15 +348,14 @@ async fn chaos_concurrent_state_access() -> Result<()> {
 
     let mut success = 0;
     for handle in handles {
-        if let Ok(Ok(_)) = handle.await {
+        if let Ok(Ok(())) = handle.await {
             success += 1;
         }
     }
 
     assert!(
         success >= 190,
-        "Concurrent reads should succeed: {}/200",
-        success
+        "Concurrent reads should succeed: {success}/200"
     );
 
     Ok(())
@@ -389,9 +376,8 @@ async fn chaos_interleaved_operations() -> Result<()> {
                 exec.list_biomes(false, "text", false, None).await
             } else {
                 // Write (will fail, but tests state management)
-                exec.down_biome(format!("test-{}", i), false, 1, false)
+                exec.down_biome(format!("test-{i}"), false, 1, false)
                     .await
-                    .map(|_| ())
             }
         }));
     }
@@ -423,7 +409,7 @@ async fn chaos_recovery_after_stress() -> Result<()> {
         stress_handles.push(tokio::spawn(async move {
             let _ = exec.list_biomes(false, "json", false, None).await;
             let _ = exec
-                .down_biome(format!("stress-{}", i), false, 1, false)
+                .down_biome(format!("stress-{i}"), false, 1, false)
                 .await;
         }));
     }
@@ -446,15 +432,14 @@ async fn chaos_recovery_after_stress() -> Result<()> {
 
     let mut recovered = 0;
     for handle in recovery_handles {
-        if let Ok(Ok(_)) = handle.await {
+        if let Ok(Ok(())) = handle.await {
             recovered += 1;
         }
     }
 
     assert!(
         recovered >= 18,
-        "System should recover after stress: {}/20 operations succeeded",
-        recovered
+        "System should recover after stress: {recovered}/20 operations succeeded"
     );
 
     Ok(())

@@ -373,7 +373,7 @@ mod tests {
 
         let result = parser.handle_key_event(evdev::KeyCode::KEY_A, 1, window);
         assert!(
-            matches!(result, Some(InputEvent::KeyPress { key, .. }) if key.raw() == evdev::KeyCode::KEY_A.code() as u32)
+            matches!(result, Some(InputEvent::KeyPress { key, .. }) if key.raw() == u32::from(evdev::KeyCode::KEY_A.code()))
         );
     }
 
@@ -384,7 +384,7 @@ mod tests {
 
         let result = parser.handle_key_event(evdev::KeyCode::KEY_A, 0, window);
         assert!(
-            matches!(result, Some(InputEvent::KeyRelease { key, .. }) if key.raw() == evdev::KeyCode::KEY_A.code() as u32)
+            matches!(result, Some(InputEvent::KeyRelease { key, .. }) if key.raw() == u32::from(evdev::KeyCode::KEY_A.code()))
         );
     }
 
@@ -408,7 +408,7 @@ mod tests {
                 assert_eq!(*x, 10);
                 assert_eq!(*y, 0);
             }
-            _ => panic!("expected MouseMove, got {:?}", result),
+            _ => panic!("expected MouseMove, got {result:?}"),
         }
         assert_eq!(parser.mouse_x, 10);
     }
@@ -424,7 +424,7 @@ mod tests {
                 assert_eq!(*x, 0);
                 assert_eq!(*y, 20);
             }
-            _ => panic!("expected MouseMove, got {:?}", result),
+            _ => panic!("expected MouseMove, got {result:?}"),
         }
         assert_eq!(parser.mouse_y, 20);
     }

@@ -51,11 +51,9 @@ fn main() -> Result<()> {
         if let Some(power) = caps.power_mw {
             println!("║                                                        ║");
             println!("║  Power & Thermal                                       ║");
-            println!(
-                "║    Power:         {:.1} W {:28} ║",
-                power as f32 / 1000.0,
-                ""
-            );
+            #[allow(clippy::cast_precision_loss)] // mW to W display; precision loss acceptable
+            let power_w = power as f32 / 1000.0;
+            println!("║    Power:         {:.1} W {:28} ║", power_w, "");
         }
 
         if let Some(temp) = caps.temperature_c {

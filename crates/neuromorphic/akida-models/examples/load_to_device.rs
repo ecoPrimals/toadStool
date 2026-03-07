@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     });
 
-    println!("📂 Loading model: {}\n", model_path);
+    println!("📂 Loading model: {model_path}\n");
 
     // Step 1: Parse model
     println!("1️⃣  Parsing model...");
@@ -67,10 +67,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n✅ MODEL LOADED SUCCESSFULLY!\n");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     println!("📊 Load Metrics:");
+    #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+    let bytes_kb = metrics.bytes_transferred as f64 / 1024.0;
     println!(
-        "   Bytes transferred: {} bytes ({:.2} KB)",
-        metrics.bytes_transferred,
-        metrics.bytes_transferred as f64 / 1024.0
+        "   Bytes transferred: {} bytes ({bytes_kb:.2} KB)",
+        metrics.bytes_transferred
     );
     println!("   Chunks:           {}", metrics.chunks_transferred);
     println!("   Duration:         {:?}", metrics.duration);
@@ -78,13 +79,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // Compare with model size
+    #[allow(clippy::cast_precision_loss)] // percentage calc; precision loss acceptable
     let efficiency = (metrics.bytes_transferred as f64 / model.program_size() as f64) * 100.0;
-    println!("📈 Transfer Efficiency: {:.1}%", efficiency);
+    println!("📈 Transfer Efficiency: {efficiency:.1}%");
 
     // Device utilization
+    #[allow(clippy::cast_precision_loss)] // percentage calc; precision loss acceptable
     let memory_used_pct =
-        (metrics.bytes_transferred as f64 / (caps.memory_mb as f64 * 1024.0 * 1024.0)) * 100.0;
-    println!("💾 Device Memory Used: {:.2}%\n", memory_used_pct);
+        (metrics.bytes_transferred as f64 / (f64::from(caps.memory_mb) * 1024.0 * 1024.0)) * 100.0;
+    println!("💾 Device Memory Used: {memory_used_pct:.2}%\n");
 
     println!(
         "🎉 Demo complete! Model is now loaded on device {}",

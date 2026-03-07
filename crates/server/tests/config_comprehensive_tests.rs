@@ -2,7 +2,7 @@
 //! Comprehensive tests for server configuration
 //!
 //! Week 13 Day 1: Configuration and Type Tests
-//! Target: Verify ServerConfig, HealthCheckConfig, and related configuration types
+//! Target: Verify `ServerConfig`, `HealthCheckConfig`, and related configuration types
 
 use std::time::Duration;
 use toadstool_server::config::{

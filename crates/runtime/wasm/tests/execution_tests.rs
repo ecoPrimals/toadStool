@@ -2,7 +2,7 @@
 //! Comprehensive wasmi execution tests
 //!
 //! Deep Debt Principles Applied:
-//! - ✅ Modern async patterns (tokio::test)
+//! - ✅ Modern async patterns (`tokio::test`)
 //! - ✅ No hardcoding (capability-based)
 //! - ✅ No mocks (real WASM execution)
 //! - ✅ Fast AND safe (zero unsafe)

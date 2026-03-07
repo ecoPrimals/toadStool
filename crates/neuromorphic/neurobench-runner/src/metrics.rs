@@ -247,7 +247,12 @@ mod tests {
 
         metrics.finalize();
 
-        assert_eq!(metrics.top1, 4.0 / 5.0);
+        let expected = 4.0 / 5.0;
+        let top1 = metrics.top1;
+        assert!(
+            (top1 - expected).abs() < 1e-10,
+            "top1 {top1} not close to expected {expected}"
+        );
         println!("Top-1 accuracy: {:.2}%", metrics.top1 * 100.0);
     }
 }

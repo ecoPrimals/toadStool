@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for CLI network_config types
+//! Comprehensive tests for CLI `network_config` types
 
 use std::collections::HashMap;
 use std::time::Duration;

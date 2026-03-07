@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Batch Normalization (BatchNorm) Operation Demo
+//! Batch Normalization (`BatchNorm`) Operation Demo
 //!
 //! Demonstrates:
-//! - BatchNorm: Normalize across batch dimension
+//! - `BatchNorm`: Normalize across batch dimension
 //! - 4th R→M→R→M composite pattern validation
-//! - Difference between BatchNorm and LayerNorm
+//! - Difference between `BatchNorm` and `LayerNorm`
 //! - Training-time normalization for CNNs and fully-connected networks
 //!
-//! BatchNorm validates the 4-phase normalization template we discovered!
+//! `BatchNorm` validates the 4-phase normalization template we discovered!
 
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, ParamValue, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -48,7 +50,7 @@ async fn main() -> Result<(), ComputeError> {
     let batch_size = 3;
     let num_features = 2;
 
-    println!("Input batch ({}x{}):", batch_size, num_features);
+    println!("Input batch ({batch_size}x{num_features}):");
     for i in 0..batch_size {
         println!(
             "  Sample {}: [{}, {}]",
@@ -83,7 +85,7 @@ async fn main() -> Result<(), ComputeError> {
     let result = runtime.execute_optimal(batchnorm_workload).await?;
 
     if let WorkloadData::F32Matrix(normalized, rows, cols) = &result.data {
-        println!("Normalized batch ({}x{}):", rows, cols);
+        println!("Normalized batch ({rows}x{cols}):");
         for i in 0..*rows {
             println!(
                 "  Sample {}: [{:>6.3}, {:>6.3}]",
@@ -150,7 +152,7 @@ async fn main() -> Result<(), ComputeError> {
         })
         .collect();
 
-    println!("Input shape: ({} x {})", batch_size, num_channels);
+    println!("Input shape: ({batch_size} x {num_channels})");
     println!(
         "First sample, first 4 channels: [{:.3}, {:.3}, {:.3}, {:.3}]",
         cnn_batch[0], cnn_batch[1], cnn_batch[2], cnn_batch[3]
@@ -173,7 +175,7 @@ async fn main() -> Result<(), ComputeError> {
 
     if let WorkloadData::F32Matrix(normalized, rows, cols) = &cnn_result.data {
         println!("✅ Normalization complete!");
-        println!("  Output shape: ({} x {})", rows, cols);
+        println!("  Output shape: ({rows} x {cols})");
         println!(
             "  First sample, first 4 channels: [{:.3}, {:.3}, {:.3}, {:.3}]",
             normalized[0], normalized[1], normalized[2], normalized[3]
@@ -188,7 +190,7 @@ async fn main() -> Result<(), ComputeError> {
             let variance: f32 =
                 values.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
             let std_dev = variance.sqrt();
-            println!("  Channel {}: mean={:.6}, std={:.6}", ch, mean, std_dev);
+            println!("  Channel {ch}: mean={mean:.6}, std={std_dev:.6}");
         }
         println!();
         println!("All channels should have ~0 mean and ~1 std after normalization! ✅");
@@ -220,7 +222,7 @@ async fn main() -> Result<(), ComputeError> {
     let batch_size = 3;
     let num_features = 3;
 
-    println!("Input ({}x{}):", batch_size, num_features);
+    println!("Input ({batch_size}x{num_features}):");
     for i in 0..batch_size {
         println!(
             "  Sample {}: [{}, {}, {}]",

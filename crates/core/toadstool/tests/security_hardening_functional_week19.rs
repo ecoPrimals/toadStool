@@ -307,7 +307,7 @@ async fn test_audit_logger_retrieves_events() {
             id: uuid::Uuid::new_v4(),
             event_type: SecurityEventType::AuthenticationAttempt,
             timestamp: std::time::SystemTime::now(),
-            client_id: Some(format!("client{}", i)),
+            client_id: Some(format!("client{i}")),
             ip_address: None,
             user_agent: None,
             details: HashMap::new(),

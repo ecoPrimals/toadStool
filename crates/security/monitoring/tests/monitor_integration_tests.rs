@@ -209,5 +209,5 @@ async fn test_sample_resources_does_not_panic() {
 
 #[test]
 fn test_default_is_new() {
-    let _monitor: SecurityMonitor = Default::default();
+    let _monitor = SecurityMonitor::default();
 }

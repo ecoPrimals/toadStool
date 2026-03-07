@@ -105,7 +105,7 @@ async fn test_health_check_exactly_at_max_executions() {
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        user_agent: Some(format!("test-{}", i)),
+                        user_agent: Some(format!("test-{i}")),
                         ip_address: Some("127.0.0.1".to_string()),
                         api_key: None,
                         authenticated_user: None,
@@ -306,7 +306,7 @@ async fn test_cleanup_logs_when_executions_cleaned() {
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        user_agent: Some(format!("test-{}", i)),
+                        user_agent: Some(format!("test-{i}")),
                         ip_address: Some("127.0.0.1".to_string()),
                         api_key: None,
                         authenticated_user: None,
@@ -362,7 +362,7 @@ async fn test_statistics_collection_with_runtime_engines() {
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        user_agent: Some(format!("test-{}", i)),
+                        user_agent: Some(format!("test-{i}")),
                         ip_address: Some("127.0.0.1".to_string()),
                         api_key: None,
                         authenticated_user: None,

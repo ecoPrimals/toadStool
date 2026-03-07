@@ -572,7 +572,7 @@ fn test_authentication_config_single_api_key() {
 
 #[test]
 fn test_authentication_config_many_api_keys() {
-    let api_keys: Vec<String> = (0..100).map(|i| format!("key{}", i)).collect();
+    let api_keys: Vec<String> = (0..100).map(|i| format!("key{i}")).collect();
 
     let config = AuthenticationConfig {
         required: true,

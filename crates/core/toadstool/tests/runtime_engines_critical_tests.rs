@@ -205,7 +205,7 @@ mod wasm_runtime_tests {
     #[test]
     fn test_wasm_memory_limits() {
         let memory_pages = 256u32; // Each page is 64KB
-        let memory_bytes = memory_pages as u64 * 64 * 1024;
+        let memory_bytes = u64::from(memory_pages) * 64 * 1024;
 
         assert_eq!(memory_bytes, 16_777_216); // 16 MB
     }
@@ -609,7 +609,7 @@ mod error_handling_tests {
 
         let invalid_configs = vec![
             RuntimeConfig {
-                runtime_type: "".to_string(),
+                runtime_type: String::new(),
                 timeout_secs: 300,
             },
             RuntimeConfig {

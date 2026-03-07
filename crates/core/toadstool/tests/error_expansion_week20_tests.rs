@@ -13,7 +13,7 @@ use toadstool::*;
 #[test]
 fn test_error_not_found() {
     let error = ToadStoolError::not_found("resource missing");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(
         message.contains("resource missing")
@@ -25,7 +25,7 @@ fn test_error_not_found() {
 #[test]
 fn test_error_validation() {
     let error = ToadStoolError::validation("bad parameter");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(
         message.contains("bad parameter") || message.contains("validation") || !message.is_empty()
@@ -35,7 +35,7 @@ fn test_error_validation() {
 #[test]
 fn test_error_runtime() {
     let error = ToadStoolError::runtime("execution failed");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(
         message.contains("execution failed") || message.contains("runtime") || !message.is_empty()
@@ -45,7 +45,7 @@ fn test_error_runtime() {
 #[test]
 fn test_error_io() {
     let error = ToadStoolError::io("file not found");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(message.contains("file not found") || message.contains("I/O") || !message.is_empty());
 }
@@ -53,7 +53,7 @@ fn test_error_io() {
 #[test]
 fn test_error_network() {
     let error = ToadStoolError::network("connection refused");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(
         message.contains("connection refused")
@@ -65,7 +65,7 @@ fn test_error_network() {
 #[test]
 fn test_error_timeout() {
     let error = ToadStoolError::timeout("operation timed out");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(message.contains("timed out") || message.contains("timeout") || !message.is_empty());
 }
@@ -73,7 +73,7 @@ fn test_error_timeout() {
 #[test]
 fn test_error_not_supported() {
     let error = ToadStoolError::not_supported("feature unavailable");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(
         message.contains("feature unavailable")
@@ -85,7 +85,7 @@ fn test_error_not_supported() {
 #[test]
 fn test_error_configuration() {
     let error = ToadStoolError::configuration("invalid config");
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(
         message.contains("invalid config")
@@ -101,7 +101,7 @@ fn test_error_configuration() {
 #[test]
 fn test_error_debug_format() {
     let error = ToadStoolError::not_found("test");
-    let debug = format!("{:?}", error);
+    let debug = format!("{error:?}");
 
     assert!(!debug.is_empty());
 }
@@ -109,7 +109,7 @@ fn test_error_debug_format() {
 #[test]
 fn test_error_display_format() {
     let error = ToadStoolError::validation("test input");
-    let display = format!("{}", error);
+    let display = format!("{error}");
 
     assert!(!display.is_empty());
 }
@@ -140,7 +140,7 @@ fn test_result_err() {
 #[test]
 fn test_error_from_string() {
     let error = ToadStoolError::validation("test".to_string());
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 
@@ -154,7 +154,7 @@ fn test_error_various_messages() {
     ];
 
     for error in errors {
-        let message = format!("{}", error);
+        let message = format!("{error}");
         assert!(!message.is_empty());
     }
 }
@@ -162,28 +162,28 @@ fn test_error_various_messages() {
 #[test]
 fn test_error_ecosystem() {
     let error = ToadStoolError::ecosystem("primal connection failed");
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 
 #[test]
 fn test_error_biomeos() {
     let error = ToadStoolError::biomeos("BiomeOS operation failed");
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 
 #[test]
 fn test_error_execution() {
     let error = ToadStoolError::execution("workload execution failed");
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 
 #[test]
 fn test_error_deployment() {
     let error = ToadStoolError::deployment("deployment failed");
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 
@@ -222,7 +222,7 @@ fn test_result_chain_or_else() {
 #[test]
 fn test_error_empty_message() {
     let error = ToadStoolError::not_found("");
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty()); // Should still have error type
 }
 
@@ -230,21 +230,21 @@ fn test_error_empty_message() {
 fn test_error_long_message() {
     let long_msg = "x".repeat(1000);
     let error = ToadStoolError::runtime(&long_msg);
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 
 #[test]
 fn test_error_special_characters() {
     let error = ToadStoolError::validation("special: !@#$%^&*()");
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 
 #[test]
 fn test_error_unicode() {
     let error = ToadStoolError::runtime("错误信息 🔥");
-    let message = format!("{}", error);
+    let message = format!("{error}");
     assert!(!message.is_empty());
 }
 

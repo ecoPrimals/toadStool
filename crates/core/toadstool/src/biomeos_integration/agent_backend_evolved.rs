@@ -584,8 +584,7 @@ mod tests {
                     | AgentBackendError::Capability(_)
                     | AgentBackendError::DeploymentFailed(_)
             ),
-            "expected provider or deployment error, got {:?}",
-            err
+            "expected provider or deployment error, got {err:?}"
         );
     }
 
@@ -671,7 +670,7 @@ mod tests {
     #[test]
     fn test_agent_status_serde_all_variants() {
         for s in ["deploying", "running", "scaling", "stopped", "failed"] {
-            let parsed: AgentStatus = serde_json::from_str(&format!("\"{}\"", s)).unwrap();
+            let parsed: AgentStatus = serde_json::from_str(&format!("\"{s}\"")).unwrap();
             let _ = serde_json::to_string(&parsed).unwrap();
         }
     }
@@ -679,7 +678,7 @@ mod tests {
     #[test]
     fn test_model_status_serde_all_variants() {
         for s in ["loading", "ready", "unloading", "error"] {
-            let parsed: ModelStatus = serde_json::from_str(&format!("\"{}\"", s)).unwrap();
+            let parsed: ModelStatus = serde_json::from_str(&format!("\"{s}\"")).unwrap();
             let _ = serde_json::to_string(&parsed).unwrap();
         }
     }
@@ -723,7 +722,7 @@ mod tests {
         let req = LoadModelRequest {
             name: "local".to_string(),
             model_type: "custom".to_string(),
-            source: "".to_string(),
+            source: String::new(),
         };
         let json = serde_json::to_value(&req).unwrap();
         assert_eq!(json["source"], "");

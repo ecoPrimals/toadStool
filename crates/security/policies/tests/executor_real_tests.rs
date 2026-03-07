@@ -160,7 +160,7 @@ async fn test_policy_execution_batch() {
 async fn test_policy_execution_error_handling() {
     // Test error handling in policy execution
     let invalid_action = PolicyAction {
-        operation: "".to_string(), // Invalid empty operation
+        operation: String::new(), // Invalid empty operation
         resource: "resource".to_string(),
         user: "user".to_string(),
     };

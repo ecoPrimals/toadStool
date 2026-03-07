@@ -59,8 +59,7 @@ fn test_cli_lib_public_types() {
     for type_name in public_types {
         assert!(
             !type_name.is_empty(),
-            "Public type should be defined: {}",
-            type_name
+            "Public type should be defined: {type_name}"
         );
     }
 }
@@ -73,8 +72,7 @@ fn test_cli_lib_public_functions() {
     for func_name in public_functions {
         assert!(
             !func_name.is_empty(),
-            "Public function should be defined: {}",
-            func_name
+            "Public function should be defined: {func_name}"
         );
     }
 }
@@ -87,8 +85,7 @@ fn test_cli_lib_re_exports() {
     for item in re_exported {
         assert!(
             !item.is_empty(),
-            "Re-exported item should be defined: {}",
-            item
+            "Re-exported item should be defined: {item}"
         );
     }
 }
@@ -101,8 +98,7 @@ fn test_cli_lib_constants() {
     for constant in constants {
         assert!(
             !constant.is_empty(),
-            "Constant should be defined: {}",
-            constant
+            "Constant should be defined: {constant}"
         );
     }
 }
@@ -159,8 +155,7 @@ fn test_cli_lib_environment_variables() {
     for var in env_vars {
         assert!(
             var.starts_with("TOADSTOOL_"),
-            "Env var should have prefix: {}",
-            var
+            "Env var should have prefix: {var}"
         );
     }
 }
@@ -171,11 +166,7 @@ fn test_cli_lib_feature_flags() {
     let features = vec!["distributed", "auto-config", "gpu-support"];
 
     for feature in features {
-        assert!(
-            !feature.is_empty(),
-            "Feature should be defined: {}",
-            feature
-        );
+        assert!(!feature.is_empty(), "Feature should be defined: {feature}");
     }
 }
 
@@ -191,8 +182,7 @@ fn test_cli_lib_error_types() {
     for error_type in error_types {
         assert!(
             !error_type.is_empty(),
-            "Error type should be defined: {}",
-            error_type
+            "Error type should be defined: {error_type}"
         );
     }
 }

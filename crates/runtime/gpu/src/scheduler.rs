@@ -388,7 +388,7 @@ mod tests {
 
             let requirements = ComputeRequirements::default();
             let result = scheduler.select_resource(&requirements).await;
-            assert!(result.is_ok(), "policy {:?} should select resource", policy);
+            assert!(result.is_ok(), "policy {policy:?} should select resource");
         }
     }
 

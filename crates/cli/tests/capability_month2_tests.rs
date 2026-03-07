@@ -334,7 +334,7 @@ impl CapabilityResolver {
         // Check if capability exists
         if let Some(provider_list) = providers.get(name) {
             if provider_list.is_empty() {
-                return Err(format!("No providers registered for capability: {}", name));
+                return Err(format!("No providers registered for capability: {name}"));
             }
 
             // Get highest priority provider (list verified non-empty above)
@@ -357,7 +357,7 @@ impl CapabilityResolver {
                     provider: "default".to_string(),
                 })
             } else {
-                Err(format!("Capability not found: {}", name))
+                Err(format!("Capability not found: {name}"))
             }
         }
     }
@@ -403,7 +403,7 @@ impl CapabilityResolver {
                 cap,
                 &mut std::collections::HashSet::new(),
             ) {
-                return Err(format!("Circular dependency detected: {} -> {}", cap, dep));
+                return Err(format!("Circular dependency detected: {cap} -> {dep}"));
             }
         }
 
@@ -413,7 +413,7 @@ impl CapabilityResolver {
         // Register the dependencies
         self.dependencies.write().await.insert(
             cap.to_string(),
-            deps.iter().map(|s| s.to_string()).collect(),
+            deps.iter().map(|s| (*s).to_string()).collect(),
         );
         Ok(())
     }

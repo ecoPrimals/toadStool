@@ -35,7 +35,7 @@ fn test_execution_status_clone() {
 #[test]
 fn test_execution_status_debug() {
     let status = DistributedExecutionStatus::Pending;
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
 
     assert!(debug_str.contains("Pending"));
 }
@@ -78,7 +78,7 @@ fn test_allocation_strategy_clone() {
 #[test]
 fn test_allocation_strategy_debug() {
     let strategy = ResourceAllocationStrategy::Proportional;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
 
     assert!(debug_str.contains("Proportional"));
 }

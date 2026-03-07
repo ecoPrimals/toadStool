@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for UniversalSubstrateCapabilities
+//! Comprehensive tests for `UniversalSubstrateCapabilities`
 //!
 //! Test Coverage Phase 2 - Zero Coverage File
-//! Target: substrate.rs UniversalSubstrateCapabilities (currently 0% coverage)
+//! Target: substrate.rs `UniversalSubstrateCapabilities` (currently 0% coverage)
 //!
 //! This test suite covers:
-//! - UniversalSubstrateCapabilities structure
+//! - `UniversalSubstrateCapabilities` structure
 //! - Serialization/deserialization
 //! - Platform collection management
 //! - Integration scenarios
@@ -144,7 +144,7 @@ fn test_universal_substrate_capabilities_debug() {
         experimental_platforms: vec![],
     };
 
-    let debug_str = format!("{:?}", capabilities);
+    let debug_str = format!("{capabilities:?}");
     assert!(debug_str.contains("UniversalSubstrateCapabilities"));
 }
 

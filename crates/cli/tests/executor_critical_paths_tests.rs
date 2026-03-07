@@ -669,7 +669,7 @@ mod performance_tests {
         {
             let mut b = biomes.write().await;
             for i in 0..100 {
-                b.insert(format!("biome{}", i), "running".to_string());
+                b.insert(format!("biome{i}"), "running".to_string());
             }
         }
 
@@ -685,7 +685,7 @@ mod performance_tests {
         let mut env_map = HashMap::new();
 
         for i in 0..1000 {
-            env_map.insert(format!("VAR{}", i), format!("value{}", i));
+            env_map.insert(format!("VAR{i}"), format!("value{i}"));
         }
 
         assert_eq!(env_map.len(), 1000);
@@ -693,7 +693,7 @@ mod performance_tests {
 
     #[test]
     fn test_resource_calculation_performance() {
-        let allocations: Vec<f64> = (0..10000).map(|i| i as f64 * 0.1).collect();
+        let allocations: Vec<f64> = (0..10000).map(|i| f64::from(i) * 0.1).collect();
         let total: f64 = allocations.iter().sum();
 
         assert!(total > 0.0);

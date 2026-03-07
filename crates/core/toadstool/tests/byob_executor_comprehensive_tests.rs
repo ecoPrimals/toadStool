@@ -336,8 +336,7 @@ async fn test_deploy_biome_too_many_services() {
         err_msg.contains("Service count")
             || err_msg.contains("services")
             || err_msg.contains("quota"),
-        "Expected error about service count, got: {}",
-        err_msg
+        "Expected error about service count, got: {err_msg}"
     );
 }
 

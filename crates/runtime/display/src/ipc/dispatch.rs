@@ -147,9 +147,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_parse_error() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let response = handle_request("not valid json {{{", &manager).await;
         assert!(
@@ -163,9 +162,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_empty_string_parse_error() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let response = handle_request("", &manager).await;
         assert!(response.error.is_some());
@@ -174,9 +172,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_unknown_method() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str = r#"{"jsonrpc":"2.0","method":"display.nonexistent","params":{},"id":1}"#;
         let response = handle_request(request_str, &manager).await;
@@ -192,9 +189,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_get_capabilities() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str =
             r#"{"jsonrpc":"2.0","method":"display.get_capabilities","params":{},"id":42}"#;
@@ -216,9 +212,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_destroy_window_missing_params() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str =
             r#"{"jsonrpc":"2.0","method":"display.destroy_window","params":{},"id":1}"#;
@@ -233,9 +228,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_resize_window_missing_params() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str =
             r#"{"jsonrpc":"2.0","method":"display.resize_window","params":{},"id":1}"#;
@@ -245,9 +239,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_null_id_uses_null_in_response() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str = r#"{"jsonrpc":"2.0","method":"display.get_capabilities","id":null}"#;
         let response = handle_request(request_str, &manager).await;
@@ -257,9 +250,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_create_window_default_params() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str =
             r#"{"jsonrpc":"2.0","method":"display.create_window","params":{},"id":1}"#;
@@ -276,9 +268,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_resize_window_missing_width() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let window_id = crate::window::WindowId::new();
         let request_str = format!(
@@ -291,9 +282,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_get_window_info_missing_params() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str =
             r#"{"jsonrpc":"2.0","method":"display.get_window_info","params":{},"id":1}"#;
@@ -308,9 +298,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_resize_window_missing_height() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let window_id = crate::window::WindowId::new();
         let request_str = format!(
@@ -323,9 +312,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_resize_window_invalid_window_id() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str = r#"{"jsonrpc":"2.0","method":"display.resize_window","params":{"window_id":"not-a-uuid","width":800,"height":600},"id":1}"#;
         let response = handle_request(request_str, &manager).await;
@@ -334,9 +322,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_destroy_window_invalid_id() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str = r#"{"jsonrpc":"2.0","method":"display.destroy_window","params":{"window_id":"invalid-uuid"},"id":1}"#;
         let response = handle_request(request_str, &manager).await;
@@ -345,9 +332,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_get_window_info_invalid_id() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str = r#"{"jsonrpc":"2.0","method":"display.get_window_info","params":{"window_id":"bad-id"},"id":1}"#;
         let response = handle_request(request_str, &manager).await;
@@ -356,9 +342,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_resize_window_params_not_object() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str =
             r#"{"jsonrpc":"2.0","method":"display.resize_window","params":"not-an-object","id":1}"#;
@@ -368,9 +353,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_create_window_with_params() {
-        let manager = match test_manager().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager().await else {
+            return;
         };
         let request_str = r#"{"jsonrpc":"2.0","method":"display.create_window","params":{"width":640,"height":480,"title":"Test"},"id":1}"#;
         let response = handle_request(request_str, &manager).await;

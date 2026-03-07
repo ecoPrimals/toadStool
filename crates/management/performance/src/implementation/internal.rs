@@ -236,7 +236,7 @@ mod tests {
         for i in 0..15 {
             history.push_back(make_metrics(
                 RuntimeType::Native,
-                1.0 + i as f64 * 0.1,
+                1.0 + f64::from(i) * 0.1,
                 100 * 1024 * 1024,
                 50.0,
             ));

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Pooling Operations Demo (MaxPool2D, AvgPool2D)
+//! Pooling Operations Demo (`MaxPool2D`, `AvgPool2D`)
 //!
 //! Demonstrates:
-//! - MaxPool2D: Downsampling by taking maximum
-//! - AvgPool2D: Downsampling by averaging
+//! - `MaxPool2D`: Downsampling by taking maximum
+//! - `AvgPool2D`: Downsampling by averaging
 //! - Stride and pool size effects
 //! - Translation invariance properties
 //!
@@ -11,7 +11,9 @@
 
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]

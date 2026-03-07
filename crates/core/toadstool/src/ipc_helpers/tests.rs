@@ -25,7 +25,7 @@ fn test_register_with_songbird_graceful_failure() {
                 let result = register_with_songbird().await;
                 assert!(result.is_err());
                 let err = result.unwrap_err();
-                let err_msg = format!("{}", err);
+                let err_msg = format!("{err}");
                 assert!(err_msg.contains("Songbird") || err_msg.contains("connection"));
             });
         })
@@ -254,7 +254,7 @@ fn test_implementation_names_pass_through() {
 fn test_is_semantic_method_all_known() {
     let methods = list_semantic_methods();
     for method in &methods {
-        assert!(is_semantic_method(method), "{} should be semantic", method);
+        assert!(is_semantic_method(method), "{method} should be semantic");
     }
 }
 
@@ -276,8 +276,7 @@ fn test_get_semantic_name_all_implementations() {
         assert_eq!(
             get_semantic_name(impl_name),
             Some(expected.to_string()),
-            "{}",
-            impl_name
+            "{impl_name}"
         );
     }
 }
@@ -302,7 +301,7 @@ fn test_resolution_consistency_roundtrip() {
     for semantic in &methods {
         let impl_name = resolve_method_name(semantic);
         let back = get_semantic_name(&impl_name);
-        assert_eq!(back, Some(semantic.clone()), "roundtrip: {}", semantic);
+        assert_eq!(back, Some(semantic.clone()), "roundtrip: {semantic}");
     }
 }
 
@@ -323,8 +322,7 @@ fn test_get_default_songbird_socket_contains_songbird_sock() {
     let path = get_default_songbird_socket();
     assert!(
         path.ends_with("songbird.sock"),
-        "socket path should end with songbird.sock, got: {}",
-        path
+        "socket path should end with songbird.sock, got: {path}"
     );
 }
 
@@ -356,7 +354,7 @@ async fn spawn_mock_songbird(
     use tokio::net::UnixListener;
 
     let listener = UnixListener::bind(socket_path).expect("bind mock socket");
-    let reply_line = format!("{}\n", reply);
+    let reply_line = format!("{reply}\n");
 
     tokio::spawn(async move {
         if let Ok((stream, _)) = listener.accept().await {
@@ -390,7 +388,7 @@ fn test_register_with_songbird_success_via_mock() {
                 let handle = spawn_mock_songbird(&p, reply).await;
                 let result = register_with_songbird().await;
                 handle.abort();
-                assert!(result.is_ok(), "registration should succeed: {:?}", result);
+                assert!(result.is_ok(), "registration should succeed: {result:?}");
             });
         })
         .join()

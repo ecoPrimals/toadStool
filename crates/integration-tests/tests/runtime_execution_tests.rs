@@ -18,7 +18,7 @@ fn make_orchestrator() -> RuntimeOrchestrator {
     RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable)
 }
 
-/// A WorkloadSpec that passes validation without requiring any file on disk
+/// A `WorkloadSpec` that passes validation without requiring any file on disk
 /// (uses a URL executable source).
 fn make_url_workload() -> WorkloadSpec {
     WorkloadSpec::Native {

@@ -415,8 +415,7 @@ VERSION="39 (Container Image)""#;
                         ..
                     }
                 ),
-                "expected AWS CloudLayer, got {:?}",
-                layer
+                "expected AWS CloudLayer, got {layer:?}"
             );
         });
     }
@@ -446,8 +445,7 @@ VERSION="39 (Container Image)""#;
                             ..
                         }
                     ),
-                    "expected GCP CloudLayer, got {:?}",
-                    layer
+                    "expected GCP CloudLayer, got {layer:?}"
                 );
             },
         );
@@ -477,8 +475,7 @@ VERSION="39 (Container Image)""#;
                             ..
                         }
                     ),
-                    "expected Azure CloudLayer, got {:?}",
-                    layer
+                    "expected Azure CloudLayer, got {layer:?}"
                 );
             },
         );

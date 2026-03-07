@@ -319,14 +319,14 @@ mod tests {
             hard: true,
             value: "value".to_string(),
         };
-        assert_eq!(format!("{}", hard_custom), "Custom(test=value)[HARD]");
+        assert_eq!(format!("{hard_custom}"), "Custom(test=value)[HARD]");
 
         let soft_custom = Constraint::Custom {
             name: "test".to_string(),
             hard: false,
             value: "value".to_string(),
         };
-        assert_eq!(format!("{}", soft_custom), "Custom(test=value)[SOFT]");
+        assert_eq!(format!("{soft_custom}"), "Custom(test=value)[SOFT]");
     }
 
     #[test]

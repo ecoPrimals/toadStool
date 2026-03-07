@@ -69,7 +69,7 @@ fn test_resource_requirements_clone() {
 fn test_resource_requirements_debug() {
     // Test debug formatting
     let reqs = ResourceRequirements::default();
-    let debug_str = format!("{:?}", reqs);
+    let debug_str = format!("{reqs:?}");
 
     assert!(debug_str.contains("ResourceRequirements"));
 }

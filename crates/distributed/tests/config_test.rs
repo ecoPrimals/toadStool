@@ -47,7 +47,7 @@ fn test_standalone_config_debug() {
         max_queue_size: 100,
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("10"));
     assert!(debug_str.contains("300"));
 }

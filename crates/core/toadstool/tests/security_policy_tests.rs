@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Security Policy and Audit
 //!
-//! Week 17 Sprint: Security Policy, AuditSettings, AuditEvent tests
+//! Week 17 Sprint: Security Policy, `AuditSettings`, `AuditEvent` tests
 
 use std::collections::HashMap;
 use toadstool::security::*;
@@ -94,7 +94,7 @@ fn test_security_policy_debug() {
         filesystem_restrictions: FilesystemSecurity::default(),
     };
 
-    let debug_str = format!("{:?}", policy);
+    let debug_str = format!("{policy:?}");
     assert!(debug_str.contains("SecurityPolicy"));
 }
 
@@ -305,7 +305,7 @@ fn test_audit_settings_clone() {
 #[test]
 fn test_audit_settings_debug() {
     let settings = AuditSettings::default();
-    let debug_str = format!("{:?}", settings);
+    let debug_str = format!("{settings:?}");
     assert!(debug_str.contains("AuditSettings"));
 }
 
@@ -422,7 +422,7 @@ fn test_audit_event_clone() {
 #[test]
 fn test_audit_event_debug() {
     let event = AuditEvent::CapabilityUsed;
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("CapabilityUsed"));
 }
 
@@ -510,7 +510,7 @@ fn test_security_settings_clone() {
 #[test]
 fn test_security_settings_debug() {
     let settings = SecuritySettings::default();
-    let debug_str = format!("{:?}", settings);
+    let debug_str = format!("{settings:?}");
     assert!(debug_str.contains("SecuritySettings"));
 }
 

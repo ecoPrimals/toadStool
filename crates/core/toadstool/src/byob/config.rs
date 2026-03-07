@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn test_config_debug_format() {
         let config = ByobExecutorConfig::default();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("ByobExecutorConfig"));
         assert!(debug_str.contains("max_concurrent_deployments"));
     }

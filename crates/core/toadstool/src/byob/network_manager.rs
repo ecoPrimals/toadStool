@@ -178,7 +178,7 @@ mod tests {
             ServiceSpec {
                 name: name.to_string(),
                 version: "1.0.0".to_string(),
-                image: Some(format!("test-{}", name)),
+                image: Some(format!("test-{name}")),
                 command: None,
                 environment: HashMap::new(),
                 resources: super::super::byob_types::ServiceResourceRequirements {

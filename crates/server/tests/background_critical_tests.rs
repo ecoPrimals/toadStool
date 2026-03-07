@@ -90,7 +90,7 @@ async fn test_background_task_timeout_handling() {
 
     let slow_task = async {
         // Future that never completes - timeout will fire without sleep
-        std::future::pending::<()>().await
+        std::future::pending::<()>().await;
     };
 
     let result = timeout(Duration::from_millis(50), slow_task).await;
@@ -121,7 +121,7 @@ async fn test_multiple_background_tasks() {
     for (i, notifier) in notifiers.iter().enumerate() {
         timeout(Duration::from_secs(1), notifier.notified())
             .await
-            .unwrap_or_else(|_| panic!("Task {} should complete", i));
+            .unwrap_or_else(|_| panic!("Task {i} should complete"));
     }
 
     // Collect results

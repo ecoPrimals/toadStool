@@ -128,6 +128,10 @@ pub trait NpuDispatch: Debug + Send + Sync {
     /// Dispatch a typed inference request.
     ///
     /// Default implementation delegates to `dispatch()`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`NpuDispatchError`] on hardware errors, timeouts, or model mismatch.
     fn dispatch_request(
         &mut self,
         request: NpuInferenceRequest,

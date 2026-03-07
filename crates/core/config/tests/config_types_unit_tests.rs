@@ -158,6 +158,7 @@ fn test_runtime_config_gpu_settings() {
 }
 
 #[test]
+#[allow(clippy::float_cmp)] // comparing against exact literal initialization
 fn test_runtime_config_resource_limits() {
     let mut config = RuntimeConfig::default();
     config.resource_limits.max_memory_usage = 2_147_483_648.0; // 2GB in bytes (f64)

@@ -176,7 +176,7 @@ mod tests {
             allocated_at: Instant::now(),
             requirements: ResourceRequirements::default(),
             owner: "test".to_string(),
-            last_accessed: Instant::now() - Duration::from_secs(1),
+            last_accessed: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
         };
         detector.track_allocation(allocation).await;
 

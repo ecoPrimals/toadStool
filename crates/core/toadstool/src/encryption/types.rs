@@ -316,7 +316,7 @@ mod tests {
             SecurityLevel::Standard,
         );
 
-        let debug_str = format!("{:?}", key);
+        let debug_str = format!("{key:?}");
         assert!(debug_str.contains("[REDACTED]"));
         assert!(!debug_str.contains("1, 2, 3, 4, 5"));
     }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! BiomeOS Storage Module Coverage Tests - November 7, 2025
 //!
-//! Target: Push biomeos_integration/storage.rs coverage toward 60%+
-//! Focus: StorageProvisioningConfig, manager creation, edge cases
+//! Target: Push `biomeos_integration/storage.rs` coverage toward 60%+
+//! Focus: `StorageProvisioningConfig`, manager creation, edge cases
 //!
 //! Strategy: Test configuration variations and manager patterns
 
@@ -381,8 +381,8 @@ fn test_volume_info_different_statuses() {
 
     for status in statuses {
         let info = VolumeInfo {
-            name: format!("volume-{}", status),
-            id: format!("vol-{}", status),
+            name: format!("volume-{status}"),
+            id: format!("vol-{status}"),
             size: "5Gi".to_string(),
             storage_class: "standard".to_string(),
             status: status.to_string(),
@@ -429,7 +429,7 @@ fn test_storage_config_default_uses_runtime_discovery() {
 #[test]
 fn test_volume_config_empty_name() {
     let config = VolumeConfig {
-        name: "".to_string(),
+        name: String::new(),
         size: "1Gi".to_string(),
         storage_class: None,
         access_modes: vec![],

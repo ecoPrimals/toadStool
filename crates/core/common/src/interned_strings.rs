@@ -217,9 +217,9 @@ pub mod content_types {
     pub const BINARY: &str = "application/octet-stream";
 }
 
-/// Runtime type names (for RuntimeType::Custom and display)
+/// Runtime type names (for `RuntimeType::Custom` and display)
 ///
-/// Use these when converting RuntimeType to string for logging, metrics, or IPC.
+/// Use these when converting `RuntimeType` to string for logging, metrics, or IPC.
 pub mod runtime_types {
     /// Native process execution
     pub const NATIVE: &str = "native";

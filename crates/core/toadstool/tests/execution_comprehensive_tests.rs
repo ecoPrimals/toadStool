@@ -55,7 +55,7 @@ fn test_execution_status_clone() {
 #[test]
 fn test_execution_status_debug() {
     let status = ExecutionStatus::Success;
-    let debug = format!("{:?}", status);
+    let debug = format!("{status:?}");
 
     assert!(!debug.is_empty());
 }
@@ -106,7 +106,7 @@ fn test_runtime_type_clone() {
 #[test]
 fn test_runtime_type_debug() {
     let runtime = RuntimeType::Wasm;
-    let debug = format!("{:?}", runtime);
+    let debug = format!("{runtime:?}");
 
     assert!(!debug.is_empty());
 }
@@ -179,7 +179,7 @@ fn test_execution_input_clone() {
 #[test]
 fn test_execution_input_debug() {
     let input = ExecutionInput::default();
-    let debug = format!("{:?}", input);
+    let debug = format!("{input:?}");
 
     assert!(!debug.is_empty());
 }
@@ -268,7 +268,7 @@ fn test_execution_output_clone() {
 #[test]
 fn test_execution_output_debug() {
     let output = ExecutionOutput::default();
-    let debug = format!("{:?}", output);
+    let debug = format!("{output:?}");
 
     assert!(!debug.is_empty());
 }
@@ -309,7 +309,7 @@ fn test_callback_event_clone() {
 #[test]
 fn test_callback_event_debug() {
     let event = CallbackEvent::Completed;
-    let debug = format!("{:?}", event);
+    let debug = format!("{event:?}");
 
     assert!(!debug.is_empty());
 }
@@ -370,7 +370,7 @@ fn test_callback_config_debug() {
         auth_token: None,
         events: vec![],
     };
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
 
     assert!(!debug.is_empty());
 }
@@ -441,7 +441,7 @@ fn test_execution_request_clone() {
 #[test]
 fn test_execution_request_debug() {
     let request = ExecutionRequest::default();
-    let debug = format!("{:?}", request);
+    let debug = format!("{request:?}");
 
     assert!(!debug.is_empty());
 }
@@ -513,7 +513,7 @@ fn test_execution_response_clone() {
 #[test]
 fn test_execution_response_debug() {
     let response = ExecutionResponse::default();
-    let debug = format!("{:?}", response);
+    let debug = format!("{response:?}");
 
     assert!(!debug.is_empty());
 }
@@ -600,7 +600,7 @@ fn test_execution_input_large_data() {
 fn test_execution_output_many_warnings() {
     let mut response = ExecutionResponse::default();
     for i in 0..100 {
-        response.warnings.push(format!("Warning {}", i));
+        response.warnings.push(format!("Warning {i}"));
     }
 
     assert_eq!(response.warnings.len(), 100);

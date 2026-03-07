@@ -331,7 +331,7 @@ async fn test_cluster_status_with_active_executions() {
                     toadstool::ExecutionStatus::Running
                 },
                 client_info: toadstool_server::ClientInfo {
-                    ip_address: Some(format!("192.168.1.{}", i)),
+                    ip_address: Some(format!("192.168.1.{i}")),
                     user_agent: None,
                     api_key: None,
                     authenticated_user: None,
@@ -421,7 +421,7 @@ fn test_statistics_clone() {
 #[test]
 fn test_statistics_debug() {
     let stats = ServerStatistics::default();
-    let debug_str = format!("{:?}", stats);
+    let debug_str = format!("{stats:?}");
 
     assert!(debug_str.contains("ServerStatistics"));
 }

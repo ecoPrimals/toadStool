@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime defaults expansion tests - Week 20
 //!
-//! Target: Increase runtime_defaults.rs coverage from 0% → 50%+
+//! Target: Increase `runtime_defaults.rs` coverage from 0% → 50%+
 //! Focus: Environment presets, validation, error handling
 
 use toadstool_config::*;
@@ -95,7 +95,7 @@ fn test_config_error_invalid() {
     use runtime_defaults::ConfigError;
 
     let error = ConfigError::Invalid("test error".to_string());
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(message.contains("test error") || message.contains("Invalid"));
 }
@@ -105,7 +105,7 @@ fn test_config_error_missing_field() {
     use runtime_defaults::ConfigError;
 
     let error = ConfigError::MissingField("port".to_string());
-    let message = format!("{}", error);
+    let message = format!("{error}");
 
     assert!(message.contains("port") || message.contains("Missing"));
 }
@@ -115,7 +115,7 @@ fn test_config_error_debug() {
     use runtime_defaults::ConfigError;
 
     let error = ConfigError::Invalid("debug test".to_string());
-    let debug = format!("{:?}", error);
+    let debug = format!("{error:?}");
 
     assert!(!debug.is_empty());
 }
@@ -135,7 +135,7 @@ fn test_config_clone() {
 #[test]
 fn test_config_debug() {
     let config = ToadStoolConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
 
     assert!(!debug.is_empty());
 }

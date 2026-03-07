@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Resource type tests — SystemResources, ResourceRequirements, CpuRequirements, MemoryRequirements.
+//! Resource type tests — `SystemResources`, `ResourceRequirements`, `CpuRequirements`, `MemoryRequirements`.
 
 use std::collections::HashMap;
 
@@ -55,7 +55,7 @@ fn test_system_resources_debug() {
         available_gpu_units: 4,
         ..Default::default()
     };
-    let debug_str = format!("{:?}", resources);
+    let debug_str = format!("{resources:?}");
     assert!(debug_str.contains("SystemResources"));
     assert!(debug_str.contains("16"));
 }
@@ -162,7 +162,7 @@ fn test_resource_requirements_debug() {
         },
         ..Default::default()
     };
-    let debug_str = format!("{:?}", requirements);
+    let debug_str = format!("{requirements:?}");
     assert!(debug_str.contains("ResourceRequirements"));
 }
 

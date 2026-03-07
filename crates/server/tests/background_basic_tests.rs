@@ -4,8 +4,8 @@
 //! Target: `crates/server/src/background.rs`
 //! Tests background services and task spawning patterns used by the server.
 //!
-//! Note: background.rs uses tokio::spawn directly - no task manager API.
-//! perform_health_check is tested in background.rs unit tests (pub(crate)).
+//! Note: background.rs uses `tokio::spawn` directly - no task manager API.
+//! `perform_health_check` is tested in background.rs unit tests (pub(crate)).
 //! Tests for task manager features (queue, priority, cancellation) are marked
 //! #[ignore] until that API exists.
 
@@ -35,7 +35,7 @@ fn create_test_state(config: ServerConfig) -> ServerState {
 
 // ── Tests using actual background API ─────────────────────────────────────
 
-/// Test 1: ServerState creation for background services
+/// Test 1: `ServerState` creation for background services
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_background_task_creation() {
     let config = ServerConfig {
@@ -50,7 +50,7 @@ async fn test_background_task_creation() {
     assert!(state.runtime_engines.read().await.is_empty());
 }
 
-/// Test 2: Spawn background task via tokio::spawn (mirrors background.rs pattern)
+/// Test 2: Spawn background task via `tokio::spawn` (mirrors background.rs pattern)
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_spawn_background_task() {
     let counter = Arc::new(RwLock::new(0u32));
@@ -118,7 +118,7 @@ async fn test_background_task_error_result() {
     assert_eq!(result.unwrap_err(), "task error");
 }
 
-/// Test 8: start_background_services does not panic
+/// Test 8: `start_background_services` does not panic
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_background_manager_shutdown() {
     let config = ServerConfig {

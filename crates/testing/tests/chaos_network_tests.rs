@@ -38,6 +38,7 @@ pub struct NetworkChaos {
 }
 
 impl NetworkChaos {
+    #[must_use]
     pub fn new(failure_rate: f32) -> Self {
         Self {
             failure_rate,

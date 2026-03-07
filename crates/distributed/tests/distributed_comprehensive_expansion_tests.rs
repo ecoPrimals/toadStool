@@ -257,7 +257,7 @@ async fn test_songbird_fallback_to_standalone() {
 #[tokio::test]
 async fn test_invalid_instance_id() {
     let config = DistributedConfig {
-        instance_id: "".to_string(), // Invalid empty ID
+        instance_id: String::new(), // Invalid empty ID
         standalone: StandaloneConfig {
             max_concurrent_executions: 10,
             default_timeout_secs: 30,
@@ -380,7 +380,7 @@ async fn test_concurrent_coordinator_creation() {
     for i in 0..5 {
         let handle = tokio::spawn(async move {
             let config = DistributedConfig {
-                instance_id: format!("test-concurrent-{}", i),
+                instance_id: format!("test-concurrent-{i}"),
                 standalone: StandaloneConfig {
                     max_concurrent_executions: 10,
                     default_timeout_secs: 30,

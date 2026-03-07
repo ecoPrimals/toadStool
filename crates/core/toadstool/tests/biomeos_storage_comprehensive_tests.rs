@@ -114,7 +114,7 @@ fn test_storage_config_debug_format() {
         ..StorageProvisioningConfig::default()
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("StorageProvisioningConfig"));
     assert!(debug_str.contains("storage_tier"));
 }
@@ -353,8 +353,8 @@ async fn test_provision_volume_different_sizes() {
 
     for (i, size) in ["1Gi", "10Gi", "100Gi", "1Ti"].iter().enumerate() {
         let volume_config = VolumeConfig {
-            name: format!("volume-{}", i),
-            size: size.to_string(),
+            name: format!("volume-{i}"),
+            size: (*size).to_string(),
             storage_class: Some("standard".to_string()),
             access_modes: vec!["ReadWriteOnce".to_string()],
             mount_path: Some("/mnt/data".to_string()),
@@ -534,7 +534,7 @@ async fn test_list_volumes() {
     // Provision multiple volumes
     for i in 1..=3 {
         let volume_config = VolumeConfig {
-            name: format!("vol-{}", i),
+            name: format!("vol-{i}"),
             size: format!("{}Gi", i * 10),
             storage_class: Some("standard".to_string()),
             access_modes: vec!["ReadWriteOnce".to_string()],

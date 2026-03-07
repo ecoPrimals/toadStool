@@ -204,7 +204,7 @@ fn test_server_event_debug_format() {
         timestamp: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("ExecutionStarted"));
     assert!(debug_str.contains("Python"));
 }
@@ -282,7 +282,7 @@ fn test_active_execution_debug_format() {
         },
     };
 
-    let debug_str = format!("{:?}", execution);
+    let debug_str = format!("{execution:?}");
     assert!(debug_str.contains("ActiveExecution"));
     assert!(debug_str.contains("Wasm"));
 }
@@ -455,7 +455,7 @@ fn test_client_info_debug_format() {
         authenticated_user: Some("user".to_string()),
     };
 
-    let debug_str = format!("{:?}", client_info);
+    let debug_str = format!("{client_info:?}");
     assert!(debug_str.contains("ClientInfo"));
 }
 
@@ -552,7 +552,7 @@ fn test_server_statistics_clone() {
 #[test]
 fn test_server_statistics_debug_format() {
     let stats = ServerStatistics::default();
-    let debug_str = format!("{:?}", stats);
+    let debug_str = format!("{stats:?}");
 
     assert!(debug_str.contains("ServerStatistics"));
 }

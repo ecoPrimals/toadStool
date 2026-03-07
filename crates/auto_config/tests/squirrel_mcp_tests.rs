@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Squirrel MCP Interface
 //!
-//! Tests cover squirrel_mcp.rs functionality (13.18% → 30%+ target)
+//! Tests cover `squirrel_mcp.rs` functionality (13.18% → 30%+ target)
 //! Focus: AI session management, preferences, request handling
 
 use std::time::SystemTime;
@@ -433,7 +433,8 @@ fn test_request_priority_calculation() {
     let agent_priority = 5u8;
     let workload_urgency = 8u8;
 
-    let combined_priority = ((agent_priority as u16 + workload_urgency as u16) / 2) as u8;
+    let combined_priority =
+        u16::midpoint(u16::from(agent_priority), u16::from(workload_urgency)) as u8;
 
     assert!(combined_priority > 0);
     assert!(combined_priority <= 10);

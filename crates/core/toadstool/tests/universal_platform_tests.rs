@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for UniversalComputePlatform
+//! Comprehensive tests for `UniversalComputePlatform`
 //!
 //! This test suite covers the critical async structures that were previously untested:
-//! - UniversalComputePlatform creation and initialization
+//! - `UniversalComputePlatform` creation and initialization
 //! - Runtime engine registration and management
 //! - Job execution and scheduling
 //! - Resource coordination
@@ -81,7 +81,7 @@ fn test_platform_config_default() {
     let config = UniversalPlatformConfig::default();
 
     // Config should have reasonable defaults
-    assert!(format!("{:?}", config).contains("UniversalPlatformConfig"));
+    assert!(format!("{config:?}").contains("UniversalPlatformConfig"));
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn test_platform_config_clone() {
 
     // Should be equal after clone
     assert_eq!(
-        format!("{:?}", config),
+        format!("{config:?}"),
         format!("{:?}", cloned),
         "Cloned config should be equal"
     );
@@ -172,7 +172,7 @@ fn test_universal_job_debug() {
         context: create_test_context(),
     };
 
-    let debug_str = format!("{:?}", job);
+    let debug_str = format!("{job:?}");
     assert!(debug_str.contains("UniversalJob"));
     assert!(debug_str.contains("Low"));
 }
@@ -224,7 +224,7 @@ fn test_job_priority_copy() {
 #[test]
 fn test_job_priority_debug() {
     let priority = JobPriority::High;
-    let debug_str = format!("{:?}", priority);
+    let debug_str = format!("{priority:?}");
 
     assert!(debug_str.contains("High"));
 }
@@ -337,7 +337,7 @@ fn test_job_type_debug() {
         env: HashMap::new(),
     };
 
-    let debug_str = format!("{:?}", job_type);
+    let debug_str = format!("{job_type:?}");
     assert!(debug_str.contains("Native"));
     assert!(debug_str.contains("/bin/test"));
 }
@@ -417,7 +417,7 @@ fn test_primal_type_clone() {
 #[test]
 fn test_primal_type_debug() {
     let pt = PrimalType::Network;
-    let debug_str = format!("{:?}", pt);
+    let debug_str = format!("{pt:?}");
 
     assert!(debug_str.contains("Network"));
 }

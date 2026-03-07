@@ -13,83 +13,83 @@ use toadstool_distributed::types::resources::*;
 #[test]
 fn test_job_type_local() {
     let job_type = UniversalJobType::Local;
-    let debug_str = format!("{:?}", job_type);
+    let debug_str = format!("{job_type:?}");
     assert!(debug_str.contains("Local"));
 }
 
 #[test]
 fn test_job_type_compute_intensive() {
     let job_type = UniversalJobType::ComputeIntensive;
-    let debug_str = format!("{:?}", job_type);
+    let debug_str = format!("{job_type:?}");
     assert!(debug_str.contains("Compute"));
 }
 
 #[test]
 fn test_job_type_memory_intensive() {
     let job_type = UniversalJobType::MemoryIntensive;
-    assert!(format!("{:?}", job_type).contains("Memory"));
+    assert!(format!("{job_type:?}").contains("Memory"));
 }
 
 #[test]
 fn test_job_type_network_intensive() {
     let job_type = UniversalJobType::NetworkIntensive;
-    assert!(format!("{:?}", job_type).contains("Network"));
+    assert!(format!("{job_type:?}").contains("Network"));
 }
 
 #[test]
 fn test_job_type_storage_intensive() {
     let job_type = UniversalJobType::StorageIntensive;
-    assert!(format!("{:?}", job_type).contains("Storage"));
+    assert!(format!("{job_type:?}").contains("Storage"));
 }
 
 #[test]
 fn test_job_type_hybrid() {
     let job_type = UniversalJobType::Hybrid;
-    assert!(format!("{:?}", job_type).contains("Hybrid"));
+    assert!(format!("{job_type:?}").contains("Hybrid"));
 }
 
 #[test]
 fn test_job_type_data_processing() {
     let job_type = UniversalJobType::DataProcessing;
-    assert!(format!("{:?}", job_type).contains("Data"));
+    assert!(format!("{job_type:?}").contains("Data"));
 }
 
 #[test]
 fn test_job_type_machine_learning() {
     let job_type = UniversalJobType::MachineLearning;
-    assert!(format!("{:?}", job_type).contains("Machine"));
+    assert!(format!("{job_type:?}").contains("Machine"));
 }
 
 #[test]
 fn test_job_type_simulation() {
     let job_type = UniversalJobType::Simulation;
-    assert!(format!("{:?}", job_type).contains("Simulation"));
+    assert!(format!("{job_type:?}").contains("Simulation"));
 }
 
 #[test]
 fn test_job_type_native() {
     let job_type = UniversalJobType::Native;
-    assert!(format!("{:?}", job_type).contains("Native"));
+    assert!(format!("{job_type:?}").contains("Native"));
 }
 
 #[test]
 fn test_job_type_container() {
     let job_type = UniversalJobType::Container;
-    assert!(format!("{:?}", job_type).contains("Container"));
+    assert!(format!("{job_type:?}").contains("Container"));
 }
 
 #[test]
 fn test_job_type_wasm() {
     let job_type = UniversalJobType::WASM;
-    assert!(format!("{:?}", job_type).contains("WASM"));
+    assert!(format!("{job_type:?}").contains("WASM"));
 }
 
 #[test]
 fn test_job_type_clone() {
     let job_type1 = UniversalJobType::Local;
     let job_type2 = job_type1.clone();
-    let s1 = format!("{:?}", job_type1);
-    let s2 = format!("{:?}", job_type2);
+    let s1 = format!("{job_type1:?}");
+    let s2 = format!("{job_type2:?}");
     assert_eq!(s1, s2);
 }
 
@@ -129,7 +129,7 @@ fn test_resource_requirements_clone() {
 #[test]
 fn test_resource_requirements_debug() {
     let req = ResourceRequirements::default();
-    let debug_str = format!("{:?}", req);
+    let debug_str = format!("{req:?}");
     assert!(debug_str.contains("ResourceRequirements"));
 }
 
@@ -191,7 +191,7 @@ fn test_cpu_requirements_debug() {
         min_cores: 1.0,
         max_cores: None,
     };
-    assert!(format!("{:?}", cpu).contains("Cpu"));
+    assert!(format!("{cpu:?}").contains("Cpu"));
 }
 
 // ============================================================================
@@ -296,7 +296,7 @@ fn test_retry_config_custom_attempts() {
 #[test]
 fn test_retry_config_debug() {
     let config = DistributedRetryConfig::default();
-    assert!(format!("{:?}", config).contains("Retry"));
+    assert!(format!("{config:?}").contains("Retry"));
 }
 
 // ============================================================================
@@ -306,7 +306,7 @@ fn test_retry_config_debug() {
 #[test]
 fn test_backoff_fixed() {
     let strategy = BackoffStrategy::Fixed { delay_ms: 1000 };
-    assert!(format!("{:?}", strategy).contains("Fixed"));
+    assert!(format!("{strategy:?}").contains("Fixed"));
 }
 
 #[test]
@@ -315,7 +315,7 @@ fn test_backoff_exponential() {
         base_ms: 1000,
         max_ms: 30000,
     };
-    assert!(format!("{:?}", strategy).contains("Exponential"));
+    assert!(format!("{strategy:?}").contains("Exponential"));
 }
 
 #[test]
@@ -324,7 +324,7 @@ fn test_backoff_linear() {
         initial_ms: 500,
         increment_ms: 500,
     };
-    assert!(format!("{:?}", strategy).contains("Linear"));
+    assert!(format!("{strategy:?}").contains("Linear"));
 }
 
 // ============================================================================

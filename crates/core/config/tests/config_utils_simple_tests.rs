@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Simple comprehensive tests for config_utils module
+//! Simple comprehensive tests for `config_utils` module
 //!
 //! Tests that all utility functions return valid values
 
@@ -89,7 +89,7 @@ fn test_get_songbird_endpoint() {
     let endpoint = ConfigUtils::get_songbird_endpoint();
     assert!(endpoint.starts_with("http"));
     assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn test_get_beardog_endpoint() {
     let endpoint = ConfigUtils::get_beardog_endpoint();
     assert!(endpoint.starts_with("http"));
     assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn test_get_nestgate_endpoint() {
     let endpoint = ConfigUtils::get_nestgate_endpoint();
     assert!(endpoint.starts_with("http"));
     assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn test_get_squirrel_endpoint() {
     let endpoint = ConfigUtils::get_squirrel_endpoint();
     assert!(endpoint.starts_with("http"));
     assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn test_get_toadstool_endpoint() {
     let endpoint = ConfigUtils::get_toadstool_endpoint();
     assert!(endpoint.starts_with("http"));
     assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 // ==================== Timeout Tests ====================

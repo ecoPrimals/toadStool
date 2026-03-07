@@ -247,7 +247,7 @@ async fn test_job_distribution_across_workers() {
     // Submit multiple jobs
     for i in 0..9 {
         coord
-            .submit_job(create_test_job(&format!("job-{}", i)))
+            .submit_job(create_test_job(&format!("job-{i}")))
             .await
             .unwrap();
     }

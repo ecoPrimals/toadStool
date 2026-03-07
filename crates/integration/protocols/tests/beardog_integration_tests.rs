@@ -369,7 +369,7 @@ fn test_empty_capabilities_list() {
 
 #[test]
 fn test_large_capabilities_list() {
-    let capabilities: Vec<String> = (0..100).map(|i| format!("capability-{}", i)).collect();
+    let capabilities: Vec<String> = (0..100).map(|i| format!("capability-{i}")).collect();
 
     let auth_request = AuthRequest {
         service_id: "test".to_string(),
@@ -455,8 +455,8 @@ fn test_enforcement_levels() {
 
     for level in levels {
         let policy = SecurityPolicy {
-            id: format!("pol-{}", level),
-            name: format!("{} Policy", level),
+            id: format!("pol-{level}"),
+            name: format!("{level} Policy"),
             description: String::new(),
             rules: vec![],
             enforcement_level: level.to_string(),

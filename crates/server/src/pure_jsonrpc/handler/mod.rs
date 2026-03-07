@@ -331,14 +331,11 @@ impl JsonRpcHandler {
 
         let arch = params.and_then(|p| p.get("arch")).and_then(|v| v.as_str());
 
-        if let Some(words) = spirv_binary
-            .and_then(|b| b.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_u64().map(|n| n as u32))
-                    .collect::<Vec<u32>>()
-            })
-        {
+        if let Some(words) = spirv_binary.and_then(|b| b.as_array()).map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_u64().map(|n| n as u32))
+                .collect::<Vec<u32>>()
+        }) {
             if let Some(result) = self.coral_reef.compile_spirv(&words, arch).await {
                 return Ok(serde_json::json!({
                     "status": "compiled",
@@ -660,8 +657,7 @@ mod tests {
             let response = handler.handle_request(&request).await;
             assert!(
                 response.error.is_none(),
-                "{} should dispatch without error",
-                method
+                "{method} should dispatch without error"
             );
         }
 
@@ -685,8 +681,7 @@ mod tests {
             let response = handler.handle_request(&request).await;
             assert!(
                 response.error.is_none(),
-                "{} should dispatch and return job_id",
-                method
+                "{method} should dispatch and return job_id"
             );
             assert!(
                 response
@@ -694,8 +689,7 @@ mod tests {
                     .as_ref()
                     .and_then(|r| r.get("job_id"))
                     .is_some(),
-                "{} should return job_id",
-                method
+                "{method} should return job_id"
             );
         }
     }

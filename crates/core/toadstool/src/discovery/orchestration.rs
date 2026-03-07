@@ -172,7 +172,7 @@ mod tests {
             Box::pin(async move { Ok(endpoint) })
         }
 
-        fn source_name(&self) -> &str {
+        fn source_name(&self) -> &'static str {
             "test_mock"
         }
     }

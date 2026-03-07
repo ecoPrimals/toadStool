@@ -549,7 +549,7 @@ mod tests {
     #[tokio::test]
     async fn test_engine_debug_format() {
         let engine = ContainerRuntimeEngine::default();
-        let debug_str = format!("{:?}", engine);
+        let debug_str = format!("{engine:?}");
         assert!(debug_str.contains("ContainerRuntimeEngine"));
     }
 

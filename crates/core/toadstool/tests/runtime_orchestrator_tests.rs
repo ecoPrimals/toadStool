@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Runtime Orchestrator and Selection Strategy
 //!
-//! Week 16 Sprint: RuntimeOrchestrator and RuntimeSelectionStrategy tests
+//! Week 16 Sprint: `RuntimeOrchestrator` and `RuntimeSelectionStrategy` tests
 
 use toadstool::runtime::*;
 use toadstool::*;
@@ -45,7 +45,7 @@ fn test_runtime_selection_strategy_clone() {
     let strategy2 = strategy1.clone();
 
     // Both should be equal (via Debug comparison)
-    assert_eq!(format!("{:?}", strategy1), format!("{:?}", strategy2));
+    assert_eq!(format!("{strategy1:?}"), format!("{:?}", strategy2));
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn test_runtime_selection_strategy_debug() {
     ];
 
     for strategy in strategies {
-        let debug_str = format!("{:?}", strategy);
+        let debug_str = format!("{strategy:?}");
         assert!(!debug_str.is_empty());
     }
 }
@@ -76,21 +76,21 @@ fn test_runtime_selection_strategy_all_variants() {
 #[test]
 fn test_runtime_selection_strategy_first_available() {
     let strategy = RuntimeSelectionStrategy::FirstAvailable;
-    let debug = format!("{:?}", strategy);
+    let debug = format!("{strategy:?}");
     assert!(debug.contains("FirstAvailable"));
 }
 
 #[test]
 fn test_runtime_selection_strategy_load_balanced() {
     let strategy = RuntimeSelectionStrategy::LoadBalanced;
-    let debug = format!("{:?}", strategy);
+    let debug = format!("{strategy:?}");
     assert!(debug.contains("LoadBalanced"));
 }
 
 #[test]
 fn test_runtime_selection_strategy_optimal_match() {
     let strategy = RuntimeSelectionStrategy::OptimalMatch;
-    let debug = format!("{:?}", strategy);
+    let debug = format!("{strategy:?}");
     assert!(debug.contains("OptimalMatch"));
 }
 
@@ -134,7 +134,7 @@ fn test_runtime_selection_strategy_clone_all() {
 
     for strategy in strategies {
         let cloned = strategy.clone();
-        assert_eq!(format!("{:?}", strategy), format!("{:?}", cloned));
+        assert_eq!(format!("{strategy:?}"), format!("{:?}", cloned));
     }
 }
 
@@ -192,7 +192,7 @@ fn test_runtime_type_custom_clone() {
 #[test]
 fn test_runtime_type_custom_debug() {
     let rt = RuntimeType::from("legacy");
-    let debug_str = format!("{:?}", rt);
+    let debug_str = format!("{rt:?}");
     assert!(debug_str.contains("Custom"));
 }
 

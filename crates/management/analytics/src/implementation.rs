@@ -574,7 +574,7 @@ mod analytics_tests {
             let point = AnalyticsDataPoint {
                 id: Uuid::new_v4(),
                 metric_name: "cpu_usage".to_string(),
-                value: 50.0 + (i as f64 * 0.5),
+                value: 50.0 + (f64::from(i) * 0.5),
                 timestamp: now,
                 runtime_type: None,
                 execution_id: None,
@@ -598,7 +598,7 @@ mod analytics_tests {
             let point = AnalyticsDataPoint {
                 id: Uuid::new_v4(),
                 metric_name: "memory_usage".to_string(),
-                value: 60.0 + (i as f64 * 0.1),
+                value: 60.0 + (f64::from(i) * 0.1),
                 timestamp: now,
                 runtime_type: None,
                 execution_id: None,
@@ -723,7 +723,7 @@ mod analytics_tests {
             let point = AnalyticsDataPoint {
                 id: Uuid::new_v4(),
                 metric_name: "evict_test".to_string(),
-                value: i as f64,
+                value: f64::from(i),
                 timestamp: now,
                 runtime_type: None,
                 execution_id: None,

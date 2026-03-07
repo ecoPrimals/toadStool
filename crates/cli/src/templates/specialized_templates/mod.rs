@@ -140,7 +140,7 @@ mod tests {
     fn test_create_custom_template_with_services() {
         let spec = CustomTemplateSpec {
             name: "svc-test".to_string(),
-            description: "".to_string(),
+            description: String::new(),
             primals: vec![],
             services: vec![CustomServiceSpec {
                 name: "redis".to_string(),

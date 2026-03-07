@@ -52,7 +52,7 @@ fn test_local_metrics_clone() {
 #[test]
 fn test_local_metrics_debug() {
     let metrics = LocalMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("LocalMetrics"));
 }
 
@@ -107,7 +107,7 @@ fn test_network_metrics_clone() {
 #[test]
 fn test_network_metrics_debug() {
     let metrics = NetworkMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("NetworkMetrics"));
 }
 
@@ -199,7 +199,7 @@ fn test_ecosystem_metrics_clone() {
 #[test]
 fn test_ecosystem_metrics_debug() {
     let metrics = EcosystemMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("EcosystemMetrics"));
 }
 
@@ -264,7 +264,7 @@ fn test_recursive_hosting_metrics_clone() {
 #[test]
 fn test_recursive_hosting_metrics_debug() {
     let metrics = RecursiveHostingMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("RecursiveHostingMetrics"));
 }
 

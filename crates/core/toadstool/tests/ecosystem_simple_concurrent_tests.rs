@@ -20,7 +20,7 @@ use toadstool::universal::{NetworkLocation, PrimalContext, SecurityLevel};
 // Test Group 1: PrimalContext & NetworkLocation
 // =============================================================================
 
-/// ✅ Test 1: Basic PrimalContext creation
+/// ✅ Test 1: Basic `PrimalContext` creation
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_primal_context_creation() -> Result<()> {
     let context = PrimalContext {
@@ -42,7 +42,7 @@ async fn test_primal_context_creation() -> Result<()> {
     Ok(())
 }
 
-/// ✅ Test 2: Concurrent PrimalContext creation
+/// ✅ Test 2: Concurrent `PrimalContext` creation
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_primal_context_creation() -> Result<()> {
     let (tx, mut rx) = broadcast::channel(16);
@@ -53,8 +53,8 @@ async fn test_concurrent_primal_context_creation() -> Result<()> {
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
             let context = PrimalContext {
-                user_id: format!("user-{}", i),
-                device_id: format!("device-{}", i),
+                user_id: format!("user-{i}"),
+                device_id: format!("device-{i}"),
                 session_id: Uuid::new_v4().to_string(),
                 network_location: NetworkLocation {
                     ip_address: format!("192.168.1.{}", 100 + i),
@@ -83,7 +83,7 @@ async fn test_concurrent_primal_context_creation() -> Result<()> {
     Ok(())
 }
 
-/// ✅ Test 3: SecurityLevel variants
+/// ✅ Test 3: `SecurityLevel` variants
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_levels() -> Result<()> {
     let levels = vec![
@@ -151,7 +151,7 @@ async fn test_context_with_metadata() -> Result<()> {
 // Test Group 2: NetworkLocation
 // =============================================================================
 
-/// ✅ Test 5: NetworkLocation creation
+/// ✅ Test 5: `NetworkLocation` creation
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_network_location_creation() -> Result<()> {
     let location = NetworkLocation {
@@ -166,7 +166,7 @@ async fn test_network_location_creation() -> Result<()> {
     Ok(())
 }
 
-/// ✅ Test 6: Concurrent NetworkLocation creation
+/// ✅ Test 6: Concurrent `NetworkLocation` creation
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_network_location_creation() -> Result<()> {
     let mut handles = vec![];
@@ -176,7 +176,7 @@ async fn test_concurrent_network_location_creation() -> Result<()> {
             let location = NetworkLocation {
                 ip_address: format!("10.0.{}.{}", i / 256, i % 256),
                 subnet: Some(format!("10.0.{}.0/24", i / 256)),
-                network_id: Some(format!("network-{}", i)),
+                network_id: Some(format!("network-{i}")),
                 geo_location: if i % 2 == 0 {
                     Some("US-CA".to_string())
                 } else {
@@ -209,8 +209,8 @@ async fn test_stress_context_creation() -> Result<()> {
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
             let context = PrimalContext {
-                user_id: format!("user-{}", i),
-                device_id: format!("device-{}", i),
+                user_id: format!("user-{i}"),
+                device_id: format!("device-{i}"),
                 session_id: Uuid::new_v4().to_string(),
                 network_location: NetworkLocation {
                     ip_address: format!("192.168.{}.{}", i / 256, i % 256),
@@ -252,8 +252,8 @@ async fn test_sustained_concurrent_operations() -> Result<()> {
     for i in 0..200 {
         handles.push(tokio::spawn(async move {
             let context = PrimalContext {
-                user_id: format!("user-{}", i),
-                device_id: format!("device-{}", i),
+                user_id: format!("user-{i}"),
+                device_id: format!("device-{i}"),
                 session_id: Uuid::new_v4().to_string(),
                 network_location: NetworkLocation {
                     ip_address: if i % 2 == 0 {
@@ -288,8 +288,7 @@ async fn test_sustained_concurrent_operations() -> Result<()> {
     // At least 95% should succeed
     assert!(
         success_count >= 190,
-        "At least 190/200 operations should succeed, got {}",
-        success_count
+        "At least 190/200 operations should succeed, got {success_count}"
     );
 
     Ok(())
@@ -308,8 +307,8 @@ async fn test_timeout_protected_operations() -> Result<()> {
         handles.push(tokio::spawn(async move {
             timeout(Duration::from_secs(5), async {
                 let context = PrimalContext {
-                    user_id: format!("user-{}", i),
-                    device_id: format!("device-{}", i),
+                    user_id: format!("user-{i}"),
+                    device_id: format!("device-{i}"),
                     session_id: Uuid::new_v4().to_string(),
                     network_location: NetworkLocation {
                         ip_address: "127.0.0.1".to_string(),

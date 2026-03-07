@@ -605,7 +605,7 @@ mod tests {
             .await
             .unwrap();
         let node = FederationNode {
-            id: "".to_string(),
+            id: String::new(),
             provider: "aws".to_string(),
             region: "us-east-1".to_string(),
             capabilities: vec!["compute".to_string()],

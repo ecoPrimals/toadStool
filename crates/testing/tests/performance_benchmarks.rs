@@ -89,7 +89,7 @@ async fn benchmark_concurrent_execution_creation() {
     }
 
     let duration = start.elapsed();
-    let requests_per_second = concurrent_count as f64 / duration.as_secs_f64();
+    let requests_per_second = f64::from(concurrent_count) / duration.as_secs_f64();
 
     println!("✓ Concurrent execution request creation benchmark:");
     println!("  - {concurrent_count} concurrent requests in {duration:?}");
@@ -122,7 +122,7 @@ async fn benchmark_resource_requirements_creation() {
     }
 
     let duration = start.elapsed();
-    let requests_per_second = iterations as f64 / duration.as_secs_f64();
+    let requests_per_second = f64::from(iterations) / duration.as_secs_f64();
 
     println!("✓ Resource requirements creation benchmark:");
     println!("  - {iterations} requests with resources in {duration:?}");
@@ -219,7 +219,7 @@ async fn benchmark_memory_usage() {
     }
 
     let duration = start.elapsed();
-    let requests_per_second = iterations as f64 / duration.as_secs_f64();
+    let requests_per_second = f64::from(iterations) / duration.as_secs_f64();
 
     println!("✓ Memory usage benchmark:");
     println!("  - {iterations} requests allocated in {duration:?}");
@@ -317,7 +317,7 @@ async fn benchmark_api_performance() {
     }
 
     let duration = start.elapsed();
-    let requests_per_second = iterations as f64 / duration.as_secs_f64();
+    let requests_per_second = f64::from(iterations) / duration.as_secs_f64();
 
     println!("✓ API performance benchmark:");
     println!("  - {iterations} API calls in {duration:?}");
@@ -349,7 +349,7 @@ async fn benchmark_health_check_performance() {
     }
 
     let duration = start.elapsed();
-    let checks_per_second = iterations as f64 / duration.as_secs_f64();
+    let checks_per_second = f64::from(iterations) / duration.as_secs_f64();
 
     println!("✓ Health check performance benchmark:");
     println!("  - {iterations} health checks in {duration:?}");

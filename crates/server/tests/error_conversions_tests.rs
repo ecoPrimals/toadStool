@@ -17,7 +17,7 @@ use toadstool_server::ServerError;
 #[test]
 fn test_server_error_initialization() {
     let error = ServerError::Initialization("Failed to start".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Server initialization failed"));
     assert!(msg.contains("Failed to start"));
 }
@@ -25,7 +25,7 @@ fn test_server_error_initialization() {
 #[test]
 fn test_server_error_runtime_engine() {
     let error = ServerError::RuntimeEngine("Engine crashed".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Runtime engine error"));
     assert!(msg.contains("Engine crashed"));
 }
@@ -33,7 +33,7 @@ fn test_server_error_runtime_engine() {
 #[test]
 fn test_server_error_resource_exhaustion() {
     let error = ServerError::ResourceExhaustion("Out of memory".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Resource exhausted"));
     assert!(msg.contains("Out of memory"));
 }
@@ -41,7 +41,7 @@ fn test_server_error_resource_exhaustion() {
 #[test]
 fn test_server_error_authentication() {
     let error = ServerError::Authentication("Invalid token".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Authentication failed"));
     assert!(msg.contains("Invalid token"));
 }
@@ -49,7 +49,7 @@ fn test_server_error_authentication() {
 #[test]
 fn test_server_error_authorization() {
     let error = ServerError::Authorization("Access denied".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Authorization failed"));
     assert!(msg.contains("Access denied"));
 }
@@ -57,7 +57,7 @@ fn test_server_error_authorization() {
 #[test]
 fn test_server_error_configuration() {
     let error = ServerError::Configuration("Invalid config".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Invalid configuration"));
     assert!(msg.contains("Invalid config"));
 }
@@ -65,7 +65,7 @@ fn test_server_error_configuration() {
 #[test]
 fn test_server_error_network() {
     let error = ServerError::Network("Connection timeout".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Network error"));
     assert!(msg.contains("Connection timeout"));
 }
@@ -73,7 +73,7 @@ fn test_server_error_network() {
 #[test]
 fn test_server_error_execution() {
     let error = ServerError::Execution("Workload failed".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Execution failed"));
     assert!(msg.contains("Workload failed"));
 }
@@ -81,7 +81,7 @@ fn test_server_error_execution() {
 #[test]
 fn test_server_error_internal() {
     let error = ServerError::Internal("Panic occurred".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Internal server error"));
     assert!(msg.contains("Panic occurred"));
 }
@@ -89,7 +89,7 @@ fn test_server_error_internal() {
 #[test]
 fn test_server_error_debug() {
     let error = ServerError::Internal("test".to_string());
-    let debug_str = format!("{:?}", error);
+    let debug_str = format!("{error:?}");
     assert!(debug_str.contains("Internal"));
 }
 
@@ -368,7 +368,7 @@ fn test_error_as_source() {
 #[test]
 fn test_error_display_trait() {
     let error = ServerError::Authentication("invalid credentials".to_string());
-    let display_string = format!("{}", error);
+    let display_string = format!("{error}");
     assert_eq!(display_string, "Authentication failed: invalid credentials");
 }
 

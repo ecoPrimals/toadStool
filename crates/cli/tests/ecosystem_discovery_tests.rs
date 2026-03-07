@@ -280,7 +280,7 @@ fn test_storage_path_unix() {
         access_mode: "ReadWrite".to_string(),
     };
 
-    assert!(storage.mount_point.to_str().unwrap().starts_with("/"));
+    assert!(storage.mount_point.to_str().unwrap().starts_with('/'));
 }
 
 #[test]

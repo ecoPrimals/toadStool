@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     });
 
-    println!("📂 Model: {}\n", model_path);
+    println!("📂 Model: {model_path}\n");
 
     // Step 1: Parse model
     println!("1️⃣  Parsing model...");
@@ -37,7 +37,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut device = manager.open_first()?;
-    println!("   ✅ Opened device {}\n", device.index());
+    let device_idx = device.index();
+    println!("   ✅ Opened device {device_idx}\n");
 
     // Step 3: Load model to device
     println!("3️⃣  Loading model to device...");
@@ -47,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 4: Prepare input
     println!("4️⃣  Preparing input data...");
     let input_size = model.input_size();
-    println!("   Input size: {} bytes", input_size);
+    println!("   Input size: {input_size} bytes");
 
     // Create dummy input (zeros for demo)
     let input = vec![0u8; input_size];
@@ -80,17 +81,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🎯 Output Preview (first 10 bytes):");
     print!("   ");
     for (i, &val) in result.output.iter().take(10).enumerate() {
-        print!("{:3}", val);
+        print!("{val:3}");
         if i < 9 && i < result.output.len() - 1 {
             print!(" ");
         }
     }
     println!("\n");
 
-    println!(
-        "🎉 Demo complete! Model inference on device {} successful.",
-        device.index()
-    );
+    println!("🎉 Demo complete! Model inference on device {device_idx} successful.");
     println!("   Ready for production use!\n");
 
     Ok(())

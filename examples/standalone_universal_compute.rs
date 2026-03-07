@@ -268,7 +268,7 @@ async fn print_ecosystem_overview(ecosystem: &[ComputeNode]) {
         ]
         .into_iter()
         .flatten()
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
         let proprietary: Vec<String> = vec![
@@ -285,7 +285,7 @@ async fn print_ecosystem_overview(ecosystem: &[ComputeNode]) {
         ]
         .into_iter()
         .flatten()
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
         println!(
@@ -307,15 +307,15 @@ async fn print_ecosystem_overview(ecosystem: &[ComputeNode]) {
 
         // Show AI framework support
         let ai_frameworks: Vec<String> = vec![
-            if !node.capabilities.llama_cpp_backends.is_empty() {
+            if node.capabilities.llama_cpp_backends.is_empty() {
+                None
+            } else {
                 Some("llama.cpp")
-            } else {
-                None
             },
-            if !node.capabilities.onnx_providers.is_empty() {
-                Some("ONNX")
-            } else {
+            if node.capabilities.onnx_providers.is_empty() {
                 None
+            } else {
+                Some("ONNX")
             },
             if node.capabilities.candle_support {
                 Some("Candle")
@@ -330,7 +330,7 @@ async fn print_ecosystem_overview(ecosystem: &[ComputeNode]) {
         ]
         .into_iter()
         .flatten()
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
         println!(

@@ -393,8 +393,12 @@ mod tests {
     #[test]
     fn transport_bandwidth_formula_consistency() {
         // width * height * 4 * refresh_hz * 8
-        for (w, h, r) in [(640, 480, 60), (1920, 1080, 60), (2560, 1440, 144)] {
-            let bps = (w as u64) * (h as u64) * 4 * (r as u64) * 8;
+        for (w, h, r) in [
+            (640u64, 480u64, 60u64),
+            (1920u64, 1080u64, 60u64),
+            (2560u64, 1440u64, 144u64),
+        ] {
+            let bps = w * h * 4 * r * 8;
             assert!(bps > 0);
         }
     }
@@ -402,14 +406,14 @@ mod tests {
     #[test]
     fn transport_medium_display_debug() {
         let m = TransportMedium::Display;
-        let s = format!("{:?}", m);
+        let s = format!("{m:?}");
         assert!(s.contains("Display"));
     }
 
     #[test]
     fn transport_direction_tx_debug() {
         let d = TransportDirection::Tx;
-        let s = format!("{:?}", d);
+        let s = format!("{d:?}");
         assert!(s.contains("Tx"));
     }
 

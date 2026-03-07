@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for BiomeExecutor implementation
+//! Comprehensive tests for `BiomeExecutor` implementation
 //!
-//! Tests cover executor_impl.rs functionality (0% → 30%+ target)
+//! Tests cover `executor_impl.rs` functionality (0% → 30%+ target)
 //! Focus: Biome lifecycle, resource management, state tracking
 
 use std::collections::HashMap;
@@ -144,11 +144,11 @@ async fn test_biome_name_validation() {
     for name in invalid_names {
         let is_invalid = name.is_empty()
             || name.contains(' ')
-            || name.chars().any(|c| c.is_uppercase())
+            || name.chars().any(char::is_uppercase)
             || name
                 .chars()
                 .any(|c| !c.is_alphanumeric() && c != '-' && c != '_');
-        assert!(is_invalid, "Name '{}' should be invalid", name);
+        assert!(is_invalid, "Name '{name}' should be invalid");
     }
 }
 
@@ -229,7 +229,7 @@ async fn test_concurrent_biome_access() {
         let biomes_clone = Arc::clone(&biomes);
         let handle = tokio::spawn(async move {
             let mut b = biomes_clone.write().await;
-            b.insert(format!("biome-{}", i), format!("status-{}", i));
+            b.insert(format!("biome-{i}"), format!("status-{i}"));
         });
         handles.push(handle);
     }
@@ -405,7 +405,7 @@ async fn test_log_line_filtering() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_log_line_count_limiting() {
     // Test log line count limiting (--tail option)
-    let log_lines: Vec<String> = (0..100).map(|i| format!("Log line {}", i)).collect();
+    let log_lines: Vec<String> = (0..100).map(|i| format!("Log line {i}")).collect();
 
     let tail_count = 10usize;
     let limited_logs: Vec<String> = log_lines

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Error handling tests for BiomeExecutor
+//! Error handling tests for `BiomeExecutor`
 //!
 //! Tests cover:
 //! - Error detection and reporting
@@ -324,12 +324,10 @@ mod error_handling_tests {
         matches!(
             (from, to),
             ("stopped", "starting")
-                | ("starting", "running")
-                | ("running", "pausing")
+                | ("starting" | "resuming", "running")
+                | ("running", "pausing" | "stopping")
                 | ("pausing", "paused")
                 | ("paused", "resuming")
-                | ("resuming", "running")
-                | ("running", "stopping")
                 | ("stopping", "stopped")
                 | (_, "error") // Any state can go to error
         )

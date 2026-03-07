@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for ToadStoolClient (client/core.rs)
+//! Comprehensive tests for `ToadStoolClient` (client/core.rs)
 //!
 //! Target: crates/client/src/client/core.rs — 90% coverage
-//! Tests client methods, error paths. resolve_socket_path tested via new_for_testing.
-//! No real TCP/HTTP connections — uses new_for_testing and error paths.
+//! Tests client methods, error paths. `resolve_socket_path` tested via `new_for_testing`.
+//! No real TCP/HTTP connections — uses `new_for_testing` and error paths.
 
 use std::collections::HashMap;
 
@@ -80,8 +80,7 @@ async fn submit_workload_returns_error_with_message() {
     let err = result.unwrap_err();
     assert!(
         err.to_string().contains("compute.submit") || err.to_string().contains("JSON-RPC"),
-        "err: {}",
-        err
+        "err: {err}"
     );
 }
 
@@ -123,8 +122,7 @@ async fn wait_for_completion_fails_without_server() {
         err_str.contains("wait_for_completion")
             || err_str.contains("compute.status")
             || err_str.contains("JSON-RPC"),
-        "expected wait_for_completion or compute.status error, got: {}",
-        err_str
+        "expected wait_for_completion or compute.status error, got: {err_str}"
     );
 }
 
@@ -152,8 +150,7 @@ async fn health_check_fails_without_server() {
     let err_str = result.unwrap_err().to_string();
     assert!(
         err_str.contains("Health check") || err_str.contains("toadstool.health"),
-        "expected health check error, got: {}",
-        err_str
+        "expected health check error, got: {err_str}"
     );
 }
 

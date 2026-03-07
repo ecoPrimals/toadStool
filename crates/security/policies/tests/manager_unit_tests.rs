@@ -43,13 +43,13 @@ fn create_test_policy(id: &str, name: &str) -> SecurityPolicy {
 }
 
 fn create_test_policy_with_rules(id: &str, rule_count: usize) -> SecurityPolicy {
-    let mut policy = create_test_policy(id, &format!("Policy {}", id));
+    let mut policy = create_test_policy(id, &format!("Policy {id}"));
 
     for i in 0..rule_count {
         policy.rules.push(PolicyRule {
-            id: format!("rule_{}", i),
-            name: format!("Rule {}", i),
-            description: Some(format!("Test rule {}", i)),
+            id: format!("rule_{i}"),
+            name: format!("Rule {i}"),
+            description: Some(format!("Test rule {i}")),
             enabled: true,
             priority: i as u32,
             condition: PolicyCondition::Always,
@@ -223,7 +223,7 @@ async fn test_save_policy_with_empty_id() {
     let manager = FilePolicyManager::new(config).unwrap();
 
     let mut policy = create_test_policy("", "Invalid Policy");
-    policy.id = "".to_string();
+    policy.id = String::new();
 
     let result = manager.save_policy(&policy).await;
     assert!(result.is_err());
@@ -236,7 +236,7 @@ async fn test_save_policy_with_empty_name() {
     let manager = FilePolicyManager::new(config).unwrap();
 
     let mut policy = create_test_policy("policy_id", "");
-    policy.name = "".to_string();
+    policy.name = String::new();
 
     let result = manager.save_policy(&policy).await;
     assert!(result.is_err());
@@ -249,7 +249,7 @@ async fn test_save_policy_with_empty_version() {
     let manager = FilePolicyManager::new(config).unwrap();
 
     let mut policy = create_test_policy("policy_id", "Policy Name");
-    policy.version = "".to_string();
+    policy.version = String::new();
 
     let result = manager.save_policy(&policy).await;
     assert!(result.is_err());
@@ -377,7 +377,7 @@ async fn test_list_policies_multiple() {
 
     // Save multiple policies
     for i in 0..5 {
-        let policy = create_test_policy(&format!("policy_{}", i), &format!("Policy {}", i));
+        let policy = create_test_policy(&format!("policy_{i}"), &format!("Policy {i}"));
         manager.save_policy(&policy).await.unwrap();
     }
 
@@ -389,7 +389,7 @@ async fn test_list_policies_multiple() {
 
     // Should be sorted
     for (i, policy) in policies.iter().enumerate().take(5) {
-        assert_eq!(policy, &format!("policy_{}", i));
+        assert_eq!(policy, &format!("policy_{i}"));
     }
 }
 
@@ -418,7 +418,7 @@ async fn test_validate_policy_empty_id() {
     let manager = FilePolicyManager::new(config).unwrap();
 
     let mut policy = create_test_policy("test", "Test");
-    policy.id = "".to_string();
+    policy.id = String::new();
 
     let result = manager.validate_policy(&policy).await;
     assert!(result.is_ok());
@@ -435,7 +435,7 @@ async fn test_validate_policy_empty_name() {
     let manager = FilePolicyManager::new(config).unwrap();
 
     let mut policy = create_test_policy("test", "");
-    policy.name = "".to_string();
+    policy.name = String::new();
 
     let result = manager.validate_policy(&policy).await;
     assert!(result.is_ok());
@@ -452,7 +452,7 @@ async fn test_validate_policy_empty_version() {
     let manager = FilePolicyManager::new(config).unwrap();
 
     let mut policy = create_test_policy("test", "Test");
-    policy.version = "".to_string();
+    policy.version = String::new();
 
     let result = manager.validate_policy(&policy).await;
     assert!(result.is_ok());

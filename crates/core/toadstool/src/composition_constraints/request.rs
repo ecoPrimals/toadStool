@@ -202,7 +202,7 @@ mod tests {
             .with_constraint(Constraint::PrefersGPU)
             .with_priority(ConstraintPriority::High);
 
-        let display = format!("{}", request);
+        let display = format!("{request}");
         assert!(display.contains("ml_inference"));
         assert!(display.contains("High"));
         assert!(display.contains("1 hard"));

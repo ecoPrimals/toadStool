@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal routing and BiomeOS job type tests.
 //!
-//! Tests that UniversalScheduler correctly routes Primal and BiomeOS job types
+//! Tests that `UniversalScheduler` correctly routes Primal and BiomeOS job types
 //! to registered providers discovered at runtime.
 
 use std::collections::HashMap;
@@ -268,8 +268,8 @@ async fn test_scheduler_native_nonexistent_executable_returns_error_response() {
     assert!(response.output.exit_code == Some(127));
 }
 
-/// Minimal mock RuntimeEngine for scheduler tests.
-/// Uses toadstool_testing::MockRuntimeEngine::new_successful() would require
+/// Minimal mock `RuntimeEngine` for scheduler tests.
+/// Uses `toadstool_testing::MockRuntimeEngine::new_successful()` would require
 /// mock configuration; this minimal impl avoids that.
 mod simple_mock_engine {
     use std::future::Future;

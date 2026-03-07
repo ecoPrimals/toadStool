@@ -3,7 +3,7 @@
 //!
 //! Sprint 15: runtime.rs coverage 4.42% → 60%+
 //! Target: 113 lines, ~25-30 tests
-//! Focus: RuntimeOrchestrator and RuntimeSelectionStrategy
+//! Focus: `RuntimeOrchestrator` and `RuntimeSelectionStrategy`
 
 use toadstool::*;
 
@@ -74,21 +74,21 @@ fn test_runtime_selection_strategy_all_variants_clone() {
 #[test]
 fn test_runtime_selection_strategy_debug_first_available() {
     let strategy = RuntimeSelectionStrategy::FirstAvailable;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
     assert!(debug_str.contains("FirstAvailable"));
 }
 
 #[test]
 fn test_runtime_selection_strategy_debug_load_balanced() {
     let strategy = RuntimeSelectionStrategy::LoadBalanced;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
     assert!(debug_str.contains("LoadBalanced"));
 }
 
 #[test]
 fn test_runtime_selection_strategy_debug_optimal_match() {
     let strategy = RuntimeSelectionStrategy::OptimalMatch;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
     assert!(debug_str.contains("OptimalMatch"));
 }
 
@@ -101,7 +101,7 @@ fn test_runtime_selection_strategy_all_variants_debug() {
     ];
 
     for strategy in strategies {
-        let debug_str = format!("{:?}", strategy);
+        let debug_str = format!("{strategy:?}");
         assert!(!debug_str.is_empty());
         assert!(debug_str.len() > 5); // Non-trivial debug output
     }
@@ -137,7 +137,7 @@ fn test_strategy_clone_equals_original() {
     for strategy in strategies {
         let cloned = strategy.clone();
         // Both should produce same debug output
-        assert_eq!(format!("{:?}", strategy), format!("{:?}", cloned));
+        assert_eq!(format!("{strategy:?}"), format!("{:?}", cloned));
     }
 }
 

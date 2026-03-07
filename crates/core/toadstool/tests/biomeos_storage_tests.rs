@@ -333,7 +333,7 @@ async fn test_provision_volume_with_different_access_modes() {
             size: "10Gi".to_string(),
             mount_path: Some("/data".to_string()),
             storage_class: Some("standard".to_string()),
-            access_modes: modes.iter().map(|s| s.to_string()).collect(),
+            access_modes: modes.iter().map(|s| (*s).to_string()).collect(),
             backup_policy: None,
         };
 

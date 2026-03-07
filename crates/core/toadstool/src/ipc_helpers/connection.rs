@@ -249,8 +249,7 @@ mod tests {
                 let socket = get_default_songbird_socket();
                 assert!(
                     socket.starts_with("/tmp/xdg-socket-test"),
-                    "expected socket to start with XDG path, got: {}",
-                    socket
+                    "expected socket to start with XDG path, got: {socket}"
                 );
             },
         );

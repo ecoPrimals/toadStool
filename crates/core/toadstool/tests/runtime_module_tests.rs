@@ -56,7 +56,7 @@ fn test_runtime_type_clone() {
 #[test]
 fn test_runtime_type_debug() {
     let rt = RuntimeType::Wasm;
-    let debug_str = format!("{:?}", rt);
+    let debug_str = format!("{rt:?}");
     assert!(debug_str.contains("Wasm"));
 }
 
@@ -150,7 +150,7 @@ fn test_runtime_type_debug_all_variants() {
     ];
 
     for rt in types {
-        let debug_str = format!("{:?}", rt);
+        let debug_str = format!("{rt:?}");
         assert!(!debug_str.is_empty());
     }
 }

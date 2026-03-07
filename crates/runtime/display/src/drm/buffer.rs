@@ -432,10 +432,10 @@ mod tests {
             stride: 16,
             format: PixelFormat::RGBA8888,
         };
-        view.fill(0xFF0000FF);
+        view.fill(0xFF_00_00_FF);
         assert_eq!(view.dimensions(), (4, 4));
         assert_eq!(view.stride(), 16);
-        view.write_pixel(0, 0, 0x00FF00FF);
+        view.write_pixel(0, 0, 0x00_FF_00_FF);
     }
 
     #[test]
@@ -448,8 +448,8 @@ mod tests {
             stride: 16,
             format: PixelFormat::RGBA8888,
         };
-        view.write_pixel(0, 0, 0x11223344);
-        view.write_pixel(3, 1, 0xAABBCCDD);
+        view.write_pixel(0, 0, 0x11_22_33_44);
+        view.write_pixel(3, 1, 0xAA_BB_CC_DD);
         assert_eq!(view.dimensions(), (4, 2));
     }
 

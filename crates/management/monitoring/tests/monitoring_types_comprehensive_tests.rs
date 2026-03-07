@@ -2,9 +2,9 @@
 //! Comprehensive tests for monitoring types
 //!
 //! Tests cover:
-//! - MonitoringGranularity levels
-//! - MonitoringConfig creation
-//! - ThresholdAction variants
+//! - `MonitoringGranularity` levels
+//! - `MonitoringConfig` creation
+//! - `ThresholdAction` variants
 //! - Duration conversions
 
 use std::time::Duration;

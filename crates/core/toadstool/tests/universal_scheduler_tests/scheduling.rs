@@ -109,8 +109,7 @@ async fn test_scheduler_sequential_job_submission() {
         };
         assert!(
             scheduler.schedule_job(job).await.is_ok(),
-            "Job {} should succeed",
-            i
+            "Job {i} should succeed"
         );
     }
     assert_eq!(scheduler.get_active_job_count().await, 0);

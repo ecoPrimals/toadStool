@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Integration tests for IntelligentAutoConfig
+//! Integration tests for `IntelligentAutoConfig`
 //!
 //! These tests exercise the intelligent configuration code paths.
 
@@ -279,7 +279,7 @@ async fn test_string_formatting() -> Result<()> {
     let cpu_cores = 8;
     let memory_gb = 16.0;
 
-    let description = format!("System: {} cores, {:.1}GB RAM", cpu_cores, memory_gb);
+    let description = format!("System: {cpu_cores} cores, {memory_gb:.1}GB RAM");
 
     assert!(description.contains("8 cores"));
     assert!(description.contains("16.0GB"));

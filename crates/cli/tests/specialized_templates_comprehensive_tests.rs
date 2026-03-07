@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for specialized templates
 //!
-//! Goal: Push specialized_templates.rs coverage from 1.18% to 50%+
+//! Goal: Push `specialized_templates.rs` coverage from 1.18% to 50%+
 
 use toadstool_cli::templates::specialized_templates::{
     create_ai_research_template, create_distributed_template, create_genomics_template,

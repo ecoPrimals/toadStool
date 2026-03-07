@@ -40,8 +40,7 @@ async fn test_daemon_server_has_no_biomeos_client_field() {
         let msg = e.to_string();
         assert!(
             !msg.contains("biomeos_client") && !msg.contains("BiomeOSClient"),
-            "Error should not mention hardcoded client: {}",
-            msg
+            "Error should not mention hardcoded client: {msg}"
         );
     }
 }
@@ -260,8 +259,7 @@ async fn test_errors_dont_mention_hardcoded_clients() {
         !err_msg.contains("BiomeOSClient")
             && !err_msg.contains("SongbirdClient")
             && !err_msg.contains("biomeos_client"),
-        "Error message should not reference hardcoded clients: {}",
-        err_msg
+        "Error message should not reference hardcoded clients: {err_msg}"
     );
 }
 

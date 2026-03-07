@@ -36,7 +36,7 @@ async fn test_multiple_node_registration() {
     for i in 0..5 {
         let node_id = Uuid::new_v4();
         let port = 8080 + i;
-        let node_addr: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap();
+        let node_addr: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
         nodes.push((node_id, node_addr));
     }
 

@@ -154,7 +154,7 @@ mod tests {
         let duration = Duration::from_secs(1);
 
         let score = calculate_performance_score(&metrics, duration);
-        assert!(score > 90.0, "Expected high score, got {}", score);
+        assert!(score > 90.0, "Expected high score, got {score}");
     }
 
     #[test]
@@ -164,7 +164,7 @@ mod tests {
         let duration = Duration::from_secs(300);
 
         let score = calculate_performance_score(&metrics, duration);
-        assert!(score < 30.0, "Expected low score, got {}", score);
+        assert!(score < 30.0, "Expected low score, got {score}");
     }
 
     #[test]

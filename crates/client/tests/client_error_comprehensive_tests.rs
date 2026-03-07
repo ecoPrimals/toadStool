@@ -95,7 +95,7 @@ fn test_client_error_from_url_parse() {
 #[test]
 fn test_client_error_debug_format() {
     let error = ClientError::Authentication("test".to_string());
-    let debug_string = format!("{:?}", error);
+    let debug_string = format!("{error:?}");
     assert!(!debug_string.is_empty());
 }
 
@@ -109,7 +109,7 @@ fn test_all_error_variants_debug() {
     ];
 
     for error in errors {
-        let debug_string = format!("{:?}", error);
+        let debug_string = format!("{error:?}");
         assert!(!debug_string.is_empty());
     }
 }
@@ -173,9 +173,7 @@ fn test_error_messages_are_descriptive() {
         let msg = error.to_string();
         assert!(
             msg.contains(expected_prefix),
-            "Error message '{}' should contain '{}'",
-            msg,
-            expected_prefix
+            "Error message '{msg}' should contain '{expected_prefix}'"
         );
     }
 }
@@ -318,7 +316,7 @@ fn test_error_with_very_long_message() {
 fn test_error_display_formatting() {
     let error = ClientError::Timeout("request timeout".to_string());
     let mut buffer = String::new();
-    write!(&mut buffer, "{}", error).unwrap();
+    write!(&mut buffer, "{error}").unwrap();
     assert!(buffer.contains("Timeout"));
     assert!(buffer.contains("request timeout"));
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for monitoring module
 //!
-//! Tests for MonitoringGranularity, MonitoringConfig, ThresholdAction,
-//! and ResourceMonitorError types.
+//! Tests for `MonitoringGranularity`, `MonitoringConfig`, `ThresholdAction`,
+//! and `ResourceMonitorError` types.
 
 use std::time::Duration;
 use toadstool_management_monitoring::*;

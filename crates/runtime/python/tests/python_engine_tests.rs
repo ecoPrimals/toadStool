@@ -158,7 +158,7 @@ fn test_python_engine_capabilities_aarch64_support() {
 #[test]
 fn test_python_engine_debug_format_contains_name() {
     let engine = PythonRuntimeEngine::new().unwrap();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("PythonRuntimeEngine"));
 }
@@ -166,7 +166,7 @@ fn test_python_engine_debug_format_contains_name() {
 #[test]
 fn test_python_engine_debug_format_contains_config() {
     let engine = PythonRuntimeEngine::new().unwrap();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("config"));
 }
@@ -178,7 +178,7 @@ fn test_python_engine_debug_format_contains_config() {
 #[test]
 fn test_python_engine_default_trait() {
     let engine = PythonRuntimeEngine::default();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("PythonRuntimeEngine"));
 }

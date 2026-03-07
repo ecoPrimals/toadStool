@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for production_hardening.rs
+//! Comprehensive tests for `production_hardening.rs`
 //!
 //! Test Coverage Areas:
 //! - Circuit breaker patterns
@@ -119,7 +119,7 @@ mod production_hardening_logic_tests {
     fn test_circuit_timeout_elapsed() {
         use std::time::Instant;
 
-        let last_failure = Instant::now() - Duration::from_secs(70);
+        let last_failure = Instant::now().checked_sub(Duration::from_secs(70)).unwrap();
         let timeout = Duration::from_secs(60);
 
         let should_try_half_open = last_failure.elapsed() > timeout;
@@ -130,7 +130,7 @@ mod production_hardening_logic_tests {
     fn test_circuit_timeout_not_elapsed() {
         use std::time::Instant;
 
-        let last_failure = Instant::now() - Duration::from_secs(30);
+        let last_failure = Instant::now().checked_sub(Duration::from_secs(30)).unwrap();
         let timeout = Duration::from_secs(60);
 
         let should_try_half_open = last_failure.elapsed() > timeout;

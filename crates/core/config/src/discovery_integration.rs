@@ -304,7 +304,7 @@ mod tests {
 
         let result = discover_or_fallback(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             fallback,
         )
         .await
@@ -331,7 +331,7 @@ mod tests {
 
         let result = discover_or_fallback(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             fallback,
         )
         .await
@@ -358,7 +358,7 @@ mod tests {
 
         let result = discover_or_fallback(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             fallback,
         )
         .await
@@ -378,7 +378,7 @@ mod tests {
 
         let result = discover_or_fallback(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             fallback,
         )
         .await
@@ -398,7 +398,7 @@ mod tests {
 
         let result = discover_or_fallback(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             fallback,
         )
         .await
@@ -422,10 +422,12 @@ mod tests {
         });
         let discovery = RuntimeDiscovery::new(client);
 
-        let services =
-            discover_all_by_capability(&discovery, &Capability::Coordination(Default::default()))
-                .await
-                .unwrap();
+        let services = discover_all_by_capability(
+            &discovery,
+            &Capability::Coordination(CoordinationCapability::default()),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(services.len(), 1);
         assert_eq!(services[0].id.as_deref(), Some("coord-1"));
@@ -448,7 +450,7 @@ mod tests {
 
         let result = discover_with_load_balancing(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             "http://fallback:5000",
         )
         .await
@@ -474,7 +476,7 @@ mod tests {
 
         let result = discover_with_load_balancing(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             "http://fallback:6000",
         )
         .await
@@ -493,7 +495,7 @@ mod tests {
 
         let result = discover_with_load_balancing(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             "http://fallback:7000",
         )
         .await
@@ -512,7 +514,7 @@ mod tests {
 
         let result = discover_with_load_balancing(
             &discovery,
-            &Capability::Coordination(Default::default()),
+            &Capability::Coordination(CoordinationCapability::default()),
             "http://fallback:8000",
         )
         .await

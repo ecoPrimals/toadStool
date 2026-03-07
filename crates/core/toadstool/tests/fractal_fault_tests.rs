@@ -19,7 +19,7 @@ fn test_invalid_plugin_manifest_empty_name() {
     let mut manager = PluginManager::new();
 
     let manifest = PluginManifest {
-        name: "".to_string(), // Empty name
+        name: String::new(), // Empty name
         version: "1.0.0".to_string(),
         plugin_type: "test".to_string(),
         entry_point: "lib.so".to_string(),
@@ -37,7 +37,7 @@ fn test_invalid_plugin_manifest_empty_version() {
 
     let manifest = PluginManifest {
         name: "test".to_string(),
-        version: "".to_string(), // Empty version
+        version: String::new(), // Empty version
         plugin_type: "test".to_string(),
         entry_point: "lib.so".to_string(),
         ..Default::default()
@@ -78,10 +78,10 @@ fn test_plugin_limit_reached() {
     // Register 3 plugins (at limit)
     for i in 0..3 {
         let manifest = PluginManifest {
-            name: format!("plugin-{}", i),
+            name: format!("plugin-{i}"),
             version: "1.0.0".to_string(),
             plugin_type: "test".to_string(),
-            entry_point: format!("lib{}.so", i),
+            entry_point: format!("lib{i}.so"),
             ..Default::default()
         };
         assert!(manager.register_plugin(manifest).is_ok());
@@ -229,9 +229,9 @@ async fn test_repeated_layer_detection() {
     let layer3 = detector3.detect().await.unwrap();
 
     // All should detect the same layer
-    let s1 = format!("{}", layer1);
-    let s2 = format!("{}", layer2);
-    let s3 = format!("{}", layer3);
+    let s1 = format!("{layer1}");
+    let s2 = format!("{layer2}");
+    let s3 = format!("{layer3}");
 
     assert_eq!(s1, s2);
     assert_eq!(s2, s3);
@@ -320,7 +320,7 @@ async fn test_engine_stats_accumulation() {
 
     // Perform evaluations
     for i in 0..5 {
-        let req = CompositionRequest::new(format!("test-{}", i))
+        let req = CompositionRequest::new(format!("test-{i}"))
             .with_constraint(Constraint::min_memory_gb(1.0));
         engine.evaluate(&req).await.unwrap();
     }
@@ -382,10 +382,10 @@ async fn test_concurrent_plugin_operations() {
         let manager_clone = manager.clone();
         let handle = tokio::spawn(async move {
             let manifest = PluginManifest {
-                name: format!("concurrent-plugin-{}", i),
+                name: format!("concurrent-plugin-{i}"),
                 version: "1.0.0".to_string(),
                 plugin_type: "test".to_string(),
-                entry_point: format!("lib{}.so", i),
+                entry_point: format!("lib{i}.so"),
                 ..Default::default()
             };
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Configuration System
 //!
-//! Tests for EnvConfigLoader, EnvironmentConfig, network configuration,
+//! Tests for `EnvConfigLoader`, `EnvironmentConfig`, network configuration,
 //! and all configuration utilities.
 //!
 //! ✅ MODERNIZED: Uses scoped Mutex for parallel execution
@@ -34,7 +34,7 @@ fn test_env_config_loader_new() {
     // ✅ MODERNIZED: No #[serial] needed - uses isolated state
     let loader = env_config::EnvConfigLoader::new();
     // Loader should be created successfully
-    assert!(format!("{:?}", loader).contains("EnvConfigLoader"));
+    assert!(format!("{loader:?}").contains("EnvConfigLoader"));
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn test_env_config_loader_with_prefix() {
     // ✅ MODERNIZED: No #[serial] needed
     let loader = env_config::EnvConfigLoader::with_prefix("CUSTOM");
     // Loader should be created with custom prefix
-    assert!(format!("{:?}", loader).contains("EnvConfigLoader"));
+    assert!(format!("{loader:?}").contains("EnvConfigLoader"));
 }
 
 #[test]
@@ -313,7 +313,9 @@ fn test_get_songbird_port_default() {
 #[test]
 fn test_get_songbird_port_from_env() {
     // ✅ DEEP SOLUTION: Handle poisoned lock gracefully
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     env::set_var("SONGBIRD_PORT", "9080");
     let port = network::get_songbird_port();
     assert_eq!(port, 9080);
@@ -323,7 +325,9 @@ fn test_get_songbird_port_from_env() {
 #[test]
 fn test_get_beardog_port_default() {
     // ✅ SELF-KNOWLEDGE: BearDog manages its own env var
-    let _lock = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _lock = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     env::remove_var("BEARDOG_PORT");
     let port = network::get_beardog_port();
     assert_eq!(port, 8081);
@@ -332,7 +336,9 @@ fn test_get_beardog_port_default() {
 #[test]
 fn test_get_beardog_port_from_env() {
     // ✅ SELF-KNOWLEDGE: BearDog manages its own env var (not TOADSTOOL_BEARDOG_PORT)
-    let _lock = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _lock = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     env::set_var("BEARDOG_PORT", "9081");
     let port = network::get_beardog_port();
     assert_eq!(port, 9081);
@@ -346,7 +352,9 @@ fn test_get_beardog_port_from_env() {
 #[test]
 fn test_get_toadstool_port_default() {
     // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     env::remove_var("TOADSTOOL_PORT");
     env::remove_var("TOADSTOOL_API_PORT");
     let port = network::get_toadstool_port();
@@ -356,7 +364,9 @@ fn test_get_toadstool_port_default() {
 #[test]
 fn test_get_toadstool_port_from_env() {
     // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     env::set_var("TOADSTOOL_PORT", "9084");
     let port = network::get_toadstool_port();
     assert_eq!(port, 9084);
@@ -366,7 +376,9 @@ fn test_get_toadstool_port_from_env() {
 #[test]
 fn test_get_bind_host_default() {
     // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     env::remove_var("BIND_ADDRESS");
     let host = network::get_bind_host();
     assert_eq!(host, "127.0.0.1");
@@ -375,7 +387,9 @@ fn test_get_bind_host_default() {
 #[test]
 fn test_get_bind_host_from_env() {
     // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     env::set_var("BIND_ADDRESS", "0.0.0.0");
     let host = network::get_bind_host();
     assert_eq!(host, "0.0.0.0");
@@ -393,7 +407,7 @@ fn test_get_songbird_endpoint_format() {
     env::remove_var("TOADSTOOL_SONGBIRD_PORT");
     let endpoint = network::get_songbird_endpoint();
     assert!(endpoint.starts_with("http://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -403,7 +417,7 @@ fn test_get_beardog_endpoint_format() {
     env::remove_var("TOADSTOOL_BEARDOG_PORT");
     let endpoint = network::get_beardog_endpoint();
     assert!(endpoint.starts_with("http://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -413,7 +427,7 @@ fn test_get_nestgate_endpoint_format() {
     env::remove_var("TOADSTOOL_NESTGATE_PORT");
     let endpoint = network::get_nestgate_endpoint();
     assert!(endpoint.starts_with("http://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -423,7 +437,7 @@ fn test_get_squirrel_endpoint_format() {
     env::remove_var("TOADSTOOL_SQUIRREL_PORT");
     let endpoint = network::get_squirrel_endpoint();
     assert!(endpoint.starts_with("http://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[test]
@@ -433,7 +447,7 @@ fn test_get_toadstool_endpoint_format() {
     env::remove_var("TOADSTOOL_API_PORT");
     let endpoint = network::get_toadstool_endpoint();
     assert!(endpoint.starts_with("http://"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 // ============================================================================
@@ -561,16 +575,19 @@ fn test_app_default_resource_check_interval() {
 }
 
 #[test]
+#[allow(clippy::float_cmp)] // comparing against exact literal initialization
 fn test_app_default_max_cpu_usage() {
     assert_eq!(app::DEFAULT_MAX_CPU_USAGE, 80.0);
 }
 
 #[test]
+#[allow(clippy::float_cmp)] // comparing against exact literal initialization
 fn test_app_default_max_memory_usage() {
     assert_eq!(app::DEFAULT_MAX_MEMORY_USAGE, 85.0);
 }
 
 #[test]
+#[allow(clippy::float_cmp)] // comparing against exact literal initialization
 fn test_app_default_max_disk_usage() {
     assert_eq!(app::DEFAULT_MAX_DISK_USAGE, 90.0);
 }

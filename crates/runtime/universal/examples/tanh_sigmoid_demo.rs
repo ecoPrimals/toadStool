@@ -9,7 +9,9 @@
 
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -38,7 +40,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let input = vec![-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
-    println!("Input: {:?}", input);
+    println!("Input: {input:?}");
     println!();
 
     let tanh_workload = Workload {
@@ -55,7 +57,7 @@ async fn main() -> Result<(), ComputeError> {
     let tanh_result = runtime.execute_optimal(tanh_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &tanh_result.data {
-        println!("Output: {:?}", output);
+        println!("Output: {output:?}");
         println!();
         println!("Observations:");
         println!("  • Symmetric: tanh(-x) = -tanh(x)");
@@ -80,7 +82,7 @@ async fn main() -> Result<(), ComputeError> {
     println!("Properties: S-shaped, used for probabilities");
     println!();
 
-    println!("Input: {:?}", input);
+    println!("Input: {input:?}");
     println!();
 
     let sigmoid_workload = Workload {
@@ -97,7 +99,7 @@ async fn main() -> Result<(), ComputeError> {
     let sigmoid_result = runtime.execute_optimal(sigmoid_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &sigmoid_result.data {
-        println!("Output: {:?}", output);
+        println!("Output: {output:?}");
         println!();
         println!("Observations:");
         println!("  • Range: (0, 1) - perfect for probabilities");
@@ -118,7 +120,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let comparison_input = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
-    println!("Input: {:?}", comparison_input);
+    println!("Input: {comparison_input:?}");
     println!();
 
     // Get all activations
@@ -192,9 +194,9 @@ async fn main() -> Result<(), ComputeError> {
     println!("Activation  | -2.0      | -1.0      | 0.0       | 1.0       | 2.0");
     println!("------------|-----------|-----------|-----------|-----------|----------");
     for (name, values) in &results {
-        print!("{:<11} |", name);
+        print!("{name:<11} |");
         for val in values {
-            print!(" {:>9.5} |", val);
+            print!(" {val:>9.5} |");
         }
         println!();
     }
@@ -248,7 +250,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let gate_input = vec![0.5, 1.0, 1.5, 2.0];
-    println!("Input (pre-gate values): {:?}", gate_input);
+    println!("Input (pre-gate values): {gate_input:?}");
     println!();
 
     // Simulate LSTM gates
@@ -279,8 +281,8 @@ async fn main() -> Result<(), ComputeError> {
     if let (WorkloadData::F32Vec(gate_vals), WorkloadData::F32Vec(state_vals)) =
         (&gate_result.data, &state_result.data)
     {
-        println!("Sigmoid (gate):       {:?}", gate_vals);
-        println!("Tanh (cell state):    {:?}", state_vals);
+        println!("Sigmoid (gate):       {gate_vals:?}");
+        println!("Tanh (cell state):    {state_vals:?}");
         println!();
         println!("Why this combination?");
         println!("  • Sigmoid [0-1]: Controls how much to let through (gate)");

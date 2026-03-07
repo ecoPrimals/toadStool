@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! 🚀 UniversalComputeManager Simple Concurrent Tests
+//! 🚀 `UniversalComputeManager` Simple Concurrent Tests
 //!
 //! **Philosophy**: Modern, concurrent, event-driven, robust
 //! **Pattern**: Simple API tests, no complex fixtures
-//! **Target**: universal/manager_impl.rs 0% → 20% coverage
+//! **Target**: `universal/manager_impl.rs` 0% → 20% coverage
 //!
 //! Test issues ARE production issues - we test concurrently because we run concurrently.
 
@@ -73,8 +73,7 @@ async fn test_stress_manager_creation() -> Result<()> {
     // At least 95% should succeed
     assert!(
         success_count >= 28,
-        "At least 28/30 managers should create successfully, got {}",
-        success_count
+        "At least 28/30 managers should create successfully, got {success_count}"
     );
 
     Ok(())
@@ -313,7 +312,7 @@ async fn test_burst_manager_operations() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let _mgr = UniversalComputeManager::new().await;
-            tx.send(format!("burst1_{}", i)).ok();
+            tx.send(format!("burst1_{i}")).ok();
         });
     }
 
@@ -328,7 +327,7 @@ async fn test_burst_manager_operations() -> Result<()> {
         tokio::spawn(async move {
             let mgr = UniversalComputeManager::new().await.ok()?;
             let _result = mgr.show_capabilities("text", false).await;
-            tx.send(format!("burst2_{}", i)).ok()
+            tx.send(format!("burst2_{i}")).ok()
         });
     }
 
@@ -367,7 +366,7 @@ async fn test_sustained_manager_load() -> Result<()> {
     }
 
     // At least 95% success rate
-    let success_rate = success_count as f64 / 50.0;
+    let success_rate = f64::from(success_count) / 50.0;
     assert!(
         success_rate >= 0.95,
         "Success rate should be >= 95%, got {:.1}%",
@@ -400,7 +399,7 @@ async fn test_timeout_awareness_manager() -> Result<()> {
     // All should complete within timeout
     let mut completed = 0;
     for handle in handles {
-        if let Ok(Ok(_)) = handle.await? {
+        if let Ok(Ok(())) = handle.await? {
             completed += 1;
         }
     }

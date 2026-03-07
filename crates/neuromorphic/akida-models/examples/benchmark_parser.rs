@@ -25,11 +25,11 @@ fn main() -> Result<()> {
     for model_path in &models {
         // Check if file exists
         if !std::path::Path::new(model_path).exists() {
-            println!("⚠️  Skipping {} (not found)\n", model_path);
+            println!("⚠️  Skipping {model_path} (not found)\n");
             continue;
         }
 
-        println!("📂 Parsing: {}", model_path);
+        println!("📂 Parsing: {model_path}");
 
         // Measure parse time
         let start = Instant::now();
@@ -44,10 +44,11 @@ fn main() -> Result<()> {
             "   ⏱️  Parse time:   {:.3}ms",
             elapsed.as_secs_f64() * 1000.0
         );
+        #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+        let program_size_kb = model.program_size() as f64 / 1024.0;
         println!(
-            "   📊 Size:         {} bytes ({:.2} KB)",
-            model.program_size(),
-            model.program_size() as f64 / 1024.0
+            "   📊 Size:         {} bytes ({program_size_kb:.2} KB)",
+            model.program_size()
         );
         println!("   🏗️  Layers:       {}", model.layer_count());
         println!("   ⚖️  Weight blocks: {}", model.weights().len());
@@ -68,15 +69,12 @@ fn main() -> Result<()> {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("📊 Benchmark Summary:");
     println!("   Total time:  {:.3}ms", total_time.as_secs_f64() * 1000.0);
-    println!(
-        "   Total size:  {} bytes ({:.2} KB)",
-        total_size,
-        total_size as f64 / 1024.0
-    );
-    println!(
-        "   Avg speed:   {:.2} MB/s",
-        (total_size as f64 / 1024.0 / 1024.0) / total_time.as_secs_f64()
-    );
+    #[allow(clippy::cast_precision_loss)] // size/speed display; precision loss acceptable
+    let total_size_f64 = total_size as f64;
+    let total_size_kb = total_size_f64 / 1024.0;
+    let avg_speed = (total_size_f64 / 1024.0 / 1024.0) / total_time.as_secs_f64();
+    println!("   Total size:  {total_size} bytes ({total_size_kb:.2} KB)");
+    println!("   Avg speed:   {avg_speed:.2} MB/s");
     println!("\n✨ Benchmark complete!\n");
 
     Ok(())

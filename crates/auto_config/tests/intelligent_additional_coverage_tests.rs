@@ -286,7 +286,7 @@ fn test_usage_hints_very_long_workload_name() {
 #[test]
 fn test_usage_hints_cpu_usage_never_negative() {
     for i in 0..100 {
-        let usage = (i as f64) / 100.0;
+        let usage = f64::from(i) / 100.0;
         let hints = UsageHints {
             predicted_workload_types: vec![],
             expected_cpu_usage: usage,
@@ -303,7 +303,7 @@ fn test_usage_hints_cpu_usage_never_negative() {
 #[test]
 fn test_usage_hints_memory_usage_never_negative() {
     for i in 0..100 {
-        let usage = (i as f64) / 100.0;
+        let usage = f64::from(i) / 100.0;
         let hints = UsageHints {
             predicted_workload_types: vec![],
             expected_cpu_usage: 0.5,

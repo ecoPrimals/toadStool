@@ -158,7 +158,7 @@ mod tests {
             checksum: "def456".to_string(),
             compiled_at: std::time::SystemTime::now(),
         };
-        assert!(local_module.source.starts_with("/"));
+        assert!(local_module.source.starts_with('/'));
         assert!(!local_module.validated);
 
         let url_module = WasmModule {

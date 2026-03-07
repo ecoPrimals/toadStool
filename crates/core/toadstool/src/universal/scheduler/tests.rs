@@ -497,12 +497,12 @@ async fn test_schedule_multiple_concurrent_native_jobs() {
     }
 
     for (i, result) in results.into_iter().enumerate() {
-        assert!(result.is_ok(), "job {} should succeed", i);
+        assert!(result.is_ok(), "job {i} should succeed");
         let response = result.unwrap();
         assert_eq!(response.status, ExecutionStatus::Success);
         assert_eq!(
             response.output.stdout.as_deref(),
-            Some(format!("job_{}\n", i).as_str())
+            Some(format!("job_{i}\n").as_str())
         );
     }
 }

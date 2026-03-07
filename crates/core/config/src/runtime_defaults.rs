@@ -406,7 +406,7 @@ mod tests {
                 config.save_to_file(temp_file.path()).unwrap();
 
                 let result = ToadStoolConfig::load_with_overrides(temp_file.path());
-                assert!(result.is_ok(), "load failed: {:?}", result);
+                assert!(result.is_ok(), "load failed: {result:?}");
                 let loaded = result.unwrap();
                 assert_eq!(loaded.app.environment, config.app.environment);
             },
@@ -420,8 +420,7 @@ mod tests {
         let err = result.unwrap_err();
         assert!(
             matches!(err, ConfigError::Io(_)),
-            "expected Io error, got {:?}",
-            err
+            "expected Io error, got {err:?}"
         );
     }
 
@@ -552,8 +551,7 @@ mod tests {
         let err = result.unwrap_err();
         assert!(
             matches!(err, ConfigError::Toml(_)),
-            "expected Toml error, got {:?}",
-            err
+            "expected Toml error, got {err:?}"
         );
     }
 }

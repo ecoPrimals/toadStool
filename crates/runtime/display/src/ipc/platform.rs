@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Platform detection and discovery for IPC
 //!
-//! Handles platform constraints (SELinux, Unix socket support) and
+//! Handles platform constraints (`SELinux`, Unix socket support) and
 //! capability-based discovery (socket paths, TCP fallback discovery files).
 
 use crate::DisplayError;
@@ -44,7 +44,7 @@ pub fn is_platform_constraint(error: &DisplayError) -> bool {
     false
 }
 
-/// Check if SELinux is enforcing (common on Android)
+/// Check if `SELinux` is enforcing (common on Android)
 #[must_use]
 pub fn is_selinux_enforcing() -> bool {
     std::fs::read_to_string("/sys/fs/selinux/enforce")
@@ -55,7 +55,7 @@ pub fn is_selinux_enforcing() -> bool {
 
 /// Write TCP discovery file for clients
 ///
-/// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, HOME, /tmp
+/// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, `HOME`, `/tmp`
 pub fn write_tcp_discovery_file(addr: &SocketAddr) {
     let discovery_dirs: Vec<Option<String>> = vec![
         std::env::var("XDG_RUNTIME_DIR").ok(),
@@ -96,13 +96,11 @@ mod tests {
         let path_str = path.to_string_lossy();
         assert!(
             path_str.contains("toadstool"),
-            "path should contain toadstool: {}",
-            path_str
+            "path should contain toadstool: {path_str}"
         );
         assert!(
             path_str.ends_with("display.sock"),
-            "path should end with display.sock: {}",
-            path_str
+            "path should end with display.sock: {path_str}"
         );
     }
 

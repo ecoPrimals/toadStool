@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional Universal Platform tests for Week 16 Sprint
 //!
-//! Focus: Expanding coverage on SystemResources, JobMetrics, and integration tests
+//! Focus: Expanding coverage on `SystemResources`, `JobMetrics`, and integration tests
 
 use std::collections::HashMap;
 use toadstool::universal::{JobPriority, UniversalJobType, UniversalSystemResources};
@@ -92,7 +92,7 @@ fn test_system_resources_debug() {
         special_hardware: HashMap::new(),
     };
 
-    let debug_str = format!("{:?}", resources);
+    let debug_str = format!("{resources:?}");
     assert!(debug_str.contains("SystemResources"));
 }
 
@@ -280,7 +280,7 @@ fn test_job_type_debug() {
         payload: serde_json::json!({}),
     };
 
-    let debug_str = format!("{:?}", job_type);
+    let debug_str = format!("{job_type:?}");
     assert!(debug_str.contains("Primal"));
 }
 
@@ -331,7 +331,7 @@ fn test_job_priority_clone() {
 #[test]
 fn test_job_priority_debug() {
     let priority = JobPriority::High;
-    let debug_str = format!("{:?}", priority);
+    let debug_str = format!("{priority:?}");
     assert!(debug_str.contains("High"));
 }
 

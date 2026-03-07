@@ -196,9 +196,11 @@ impl From<ToadStoolError> for ByobApiError {
                 status: StatusCode::BAD_REQUEST,
                 message: err.to_string(),
             },
-            ToadStoolError::Resource(ResourceError::AllocationFailure { .. })
-            | ToadStoolError::Resource(ResourceError::LimitExceeded { .. })
-            | ToadStoolError::Resource(ResourceError::Insufficient { .. }) => Self {
+            ToadStoolError::Resource(
+                ResourceError::AllocationFailure { .. }
+                | ResourceError::LimitExceeded { .. }
+                | ResourceError::Insufficient { .. },
+            ) => Self {
                 status: StatusCode::INSUFFICIENT_STORAGE,
                 message: err.to_string(),
             },

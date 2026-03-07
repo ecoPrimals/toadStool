@@ -109,10 +109,10 @@ async fn chaos_cascading_timeout() {
     // The inner timeout (30ms) should have triggered, propagating error outward
     // The result should be Ok(Err(Err(()))) - the outer timeouts succeeded, inner failed
     match result {
-        Ok(Ok(Err(_))) | Ok(Err(_)) | Err(_) => {
+        Ok(Ok(Err(())) | Err(_)) | Err(_) => {
             // Good - some level timed out
         }
-        Ok(Ok(Ok(_))) => {
+        Ok(Ok(Ok(()))) => {
             panic!("Timeout should have triggered at some level");
         }
     }

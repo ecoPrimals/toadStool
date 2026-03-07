@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for NestGateClient
+//! Comprehensive tests for `NestGateClient`
 //!
 //! Test Coverage Phase 2 - Zero Coverage File
-//! Target: NestGateClient (currently 0% coverage)
+//! Target: `NestGateClient` (currently 0% coverage)
 //!
 //! This test suite covers:
 //! - Client creation and connection
@@ -250,7 +250,7 @@ fn test_storage_status_variants() {
 fn test_nestgate_error_display() {
     // Test error display formatting
     let error = NestGateError::Connection("timeout".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
 
     assert!(error_str.contains("Connection"));
     assert!(error_str.contains("timeout"));
@@ -260,7 +260,7 @@ fn test_nestgate_error_display() {
 fn test_nestgate_error_storage() {
     // Test storage error variant
     let error = NestGateError::Storage("disk full".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
 
     assert!(error_str.contains("Storage"));
     assert!(error_str.contains("disk full"));
@@ -270,7 +270,7 @@ fn test_nestgate_error_storage() {
 fn test_nestgate_error_authentication() {
     // Test authentication error variant
     let error = NestGateError::Authentication("invalid credentials".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
 
     assert!(error_str.contains("Authentication"));
     assert!(error_str.contains("invalid credentials"));

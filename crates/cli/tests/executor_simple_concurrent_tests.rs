@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! 🚀 BiomeExecutor Simple Concurrent Tests
+//! 🚀 `BiomeExecutor` Simple Concurrent Tests
 //!
 //! **Philosophy**: Modern, concurrent, event-driven, robust
 //! **Pattern**: Simple API tests, no complex fixtures, proven from chaos suite
-//! **Target**: executor_impl.rs 0% → 30% coverage
+//! **Target**: `executor_impl.rs` 0% → 30% coverage
 //!
 //! Test issues ARE production issues - we test concurrently because we run concurrently.
 
@@ -73,8 +73,7 @@ async fn test_stress_executor_creation() -> Result<()> {
     // At least 95% should succeed
     assert!(
         success_count >= 47,
-        "At least 47/50 executors should create successfully, got {}",
-        success_count
+        "At least 47/50 executors should create successfully, got {success_count}"
     );
 
     Ok(())
@@ -136,8 +135,7 @@ async fn test_stress_list_operations() -> Result<()> {
 
     assert!(
         completion_count >= 95,
-        "At least 95 operations should complete, got {}",
-        completion_count
+        "At least 95 operations should complete, got {completion_count}"
     );
 
     Ok(())
@@ -217,7 +215,7 @@ async fn test_concurrent_nonexistent_operations() -> Result<()> {
     for i in 0..10 {
         let exec = Arc::clone(&executor);
         handles.push(tokio::spawn(async move {
-            exec.down_biome(format!("nonexistent_{}", i), false, 30, false)
+            exec.down_biome(format!("nonexistent_{i}"), false, 30, false)
                 .await
         }));
     }
@@ -255,7 +253,7 @@ async fn test_burst_traffic_pattern() -> Result<()> {
 
         tokio::spawn(async move {
             let _result = exec.list_biomes(false, "text", false, None).await;
-            tx.send(format!("burst1_{}", i)).ok();
+            tx.send(format!("burst1_{i}")).ok();
         });
     }
 
@@ -274,7 +272,7 @@ async fn test_burst_traffic_pattern() -> Result<()> {
 
         tokio::spawn(async move {
             let _result = exec.list_biomes(true, "json", false, None).await;
-            tx.send(format!("burst2_{}", i)).ok();
+            tx.send(format!("burst2_{i}")).ok();
         });
     }
 
@@ -310,7 +308,7 @@ async fn test_sustained_load() -> Result<()> {
     }
 
     // At least 80% success rate under sustained load
-    let success_rate = success_count as f64 / 200.0;
+    let success_rate = f64::from(success_count) / 200.0;
     assert!(
         success_rate >= 0.80,
         "Success rate should be >= 80%, got {:.1}%",
@@ -480,7 +478,7 @@ async fn test_event_driven_coordination() -> Result<()> {
 // Test Group 7: Additional API Coverage (show_logs)
 // =============================================================================
 
-/// ✅ Test 16: show_logs non-existent biome (error path)
+/// ✅ Test 16: `show_logs` non-existent biome (error path)
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_nonexistent_biome() -> Result<()> {
     let executor = BiomeExecutor::new().await?;
@@ -506,7 +504,7 @@ async fn test_show_logs_nonexistent_biome() -> Result<()> {
     Ok(())
 }
 
-/// ✅ Test 17: Concurrent show_logs operations
+/// ✅ Test 17: Concurrent `show_logs` operations
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_show_logs_operations() -> Result<()> {
     let executor = Arc::new(BiomeExecutor::new().await?);
@@ -519,7 +517,7 @@ async fn test_concurrent_show_logs_operations() -> Result<()> {
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
             let result = exec
-                .show_logs(format!("test_biome_{}", i), false, 100, false, None, None)
+                .show_logs(format!("test_biome_{i}"), false, 100, false, None, None)
                 .await;
             tx.send(i).ok();
             result
@@ -556,7 +554,7 @@ async fn test_mixed_operations_stress() -> Result<()> {
     // Mix of different operations
     for i in 0..30 {
         let exec = Arc::clone(&executor);
-        let biome_name = format!("test_{}", i);
+        let biome_name = format!("test_{i}");
 
         match i % 3 {
             0 => {
@@ -606,7 +604,7 @@ async fn test_down_biome_different_options() -> Result<()> {
 
     for (i, (force, purge)) in configs.iter().enumerate() {
         let exec = Arc::clone(&executor);
-        let biome_name = format!("test_biome_{}", i);
+        let biome_name = format!("test_biome_{i}");
         let force = *force;
         let purge = *purge;
 
@@ -642,7 +640,7 @@ async fn test_down_biome_timeout_variations() -> Result<()> {
 
     for (i, timeout_val) in timeouts.iter().enumerate() {
         let exec = Arc::clone(&executor);
-        let biome_name = format!("test_biome_{}", i);
+        let biome_name = format!("test_biome_{i}");
         let timeout_val = *timeout_val;
 
         handles.push(tokio::spawn(async move {

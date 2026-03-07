@@ -69,8 +69,8 @@ mod tests {
             reason: "invalid".to_string(),
         };
         let s = err.to_string();
-        assert!(s.contains("a"));
-        assert!(s.contains("b"));
+        assert!(s.contains('a'));
+        assert!(s.contains('b'));
         assert!(s.contains("invalid"));
     }
 

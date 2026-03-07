@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for CryptoAdapter (ecosystem/adapters/crypto.rs) - coverage target 90%
+//! Comprehensive tests for `CryptoAdapter` (ecosystem/adapters/crypto.rs) - coverage target 90%
 //!
-//! Tests verify_signature, generate_keypair, encrypt, decrypt, random_bytes,
-//! install_permissions, and KeyPair struct. Uses AdapterFactory - no live services.
+//! Tests `verify_signature`, `generate_keypair`, encrypt, decrypt, `random_bytes`,
+//! `install_permissions`, and `KeyPair` struct. Uses `AdapterFactory` - no live services.
 
 use std::path::Path;
 use toadstool_cli::ecosystem::adapters::AdapterFactory;
@@ -183,8 +183,7 @@ async fn test_install_permissions_file_not_found() {
     let err_str = result.unwrap_err().to_string();
     assert!(
         err_str.contains("read") || err_str.contains("Failed") || err_str.contains("No such"),
-        "Expected file read error: {}",
-        err_str
+        "Expected file read error: {err_str}"
     );
 }
 
@@ -252,8 +251,7 @@ async fn test_install_permissions_invalid_json() {
     let err_str = result.unwrap_err().to_string();
     assert!(
         err_str.contains("parse") || err_str.contains("JSON") || err_str.contains("Failed"),
-        "expected parse/JSON error: {}",
-        err_str
+        "expected parse/JSON error: {err_str}"
     );
 }
 
@@ -342,7 +340,7 @@ fn test_keypair_debug() {
         public_key: vec![1],
         private_key: vec![2],
     };
-    let s = format!("{:?}", kp);
+    let s = format!("{kp:?}");
     assert!(s.contains("KeyPair") || s.contains("public_key"));
 }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Execution backend tests — Native, WASM, Primal, BiomeOS paths via schedule_job.
+//! Execution backend tests — Native, WASM, Primal, BiomeOS paths via `schedule_job`.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use super::helpers::create_test_context;
 
-/// Mock provider that returns ResponseStatus::Error for testing error path
+/// Mock provider that returns `ResponseStatus::Error` for testing error path
 struct ErrorResponseMockProvider {
     instance_id: String,
     context: PrimalContext,
@@ -83,7 +83,7 @@ impl UniversalPrimalProvider for ErrorResponseMockProvider {
     }
 }
 
-/// Mock provider that returns ResponseStatus::Timeout
+/// Mock provider that returns `ResponseStatus::Timeout`
 struct TimeoutResponseMockProvider {
     instance_id: String,
     context: PrimalContext,
@@ -144,7 +144,7 @@ impl UniversalPrimalProvider for TimeoutResponseMockProvider {
     }
 }
 
-/// Mock provider that returns ResponseStatus::ServiceUnavailable
+/// Mock provider that returns `ResponseStatus::ServiceUnavailable`
 struct ServiceUnavailableMockProvider {
     instance_id: String,
     context: PrimalContext,
@@ -205,7 +205,7 @@ impl UniversalPrimalProvider for ServiceUnavailableMockProvider {
     }
 }
 
-/// Mock provider that returns ResponseStatus::Success with stdout/stderr/exit_code
+/// Mock provider that returns `ResponseStatus::Success` with `stdout/stderr/exit_code`
 struct SuccessWithOutputMockProvider {
     instance_id: String,
     context: PrimalContext,

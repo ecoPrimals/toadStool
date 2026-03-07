@@ -2,18 +2,18 @@
 //! Comprehensive tests for crypto lock types
 //!
 //! This test suite covers:
-//! - AccessResult enum
-//! - PermissionValidationResult enum
-//! - PermissionLevel enum
-//! - OrganizationType enum
-//! - VerificationLevel enum
-//! - CryptoAlgorithm enum
-//! - DelegationStatus enum
-//! - CloudProvider enum
-//! - ContainerPlatform enum
-//! - QuantumProvider enum
-//! - HPCScheduler enum
-//! - ServiceTier enum
+//! - `AccessResult` enum
+//! - `PermissionValidationResult` enum
+//! - `PermissionLevel` enum
+//! - `OrganizationType` enum
+//! - `VerificationLevel` enum
+//! - `CryptoAlgorithm` enum
+//! - `DelegationStatus` enum
+//! - `CloudProvider` enum
+//! - `ContainerPlatform` enum
+//! - `QuantumProvider` enum
+//! - `HPCScheduler` enum
+//! - `ServiceTier` enum
 
 use toadstool_distributed::crypto_lock::*;
 

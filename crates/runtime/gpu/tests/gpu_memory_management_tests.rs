@@ -115,7 +115,7 @@ fn test_memory_pressure_detection() {
     let total_memory = 1024; // MB
     let used_memory = 900; // MB
 
-    let usage_percent = (used_memory as f64 / total_memory as f64) * 100.0;
+    let usage_percent = (f64::from(used_memory) / f64::from(total_memory)) * 100.0;
     let high_pressure_threshold = 85.0;
 
     let under_pressure = usage_percent > high_pressure_threshold;
@@ -127,7 +127,7 @@ fn test_memory_pressure_low() {
     let total_memory = 1024; // MB
     let used_memory = 256; // MB
 
-    let usage_percent = (used_memory as f64 / total_memory as f64) * 100.0;
+    let usage_percent = (f64::from(used_memory) / f64::from(total_memory)) * 100.0;
     let high_pressure_threshold = 85.0;
 
     let under_pressure = usage_percent > high_pressure_threshold;
@@ -165,7 +165,7 @@ fn test_memory_bandwidth_calculation() {
     let bytes_transferred = 1024 * 1024 * 1024; // 1GB
     let time_seconds = 1.0;
 
-    let bandwidth_gbps = (bytes_transferred as f64 / time_seconds) / (1024.0 * 1024.0 * 1024.0);
+    let bandwidth_gbps = (f64::from(bytes_transferred) / time_seconds) / (1024.0 * 1024.0 * 1024.0);
 
     assert_eq!(bandwidth_gbps, 1.0);
 }

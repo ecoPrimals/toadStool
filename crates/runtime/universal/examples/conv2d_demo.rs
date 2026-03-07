@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! 2D Convolution (Conv2D) Operation Demo
+//! 2D Convolution (`Conv2D`) Operation Demo
 //!
 //! Demonstrates:
-//! - Conv2D: The backbone of Convolutional Neural Networks (CNNs)
+//! - `Conv2D`: The backbone of Convolutional Neural Networks (CNNs)
 //! - Stride and padding effects
 //! - Multi-channel convolutions
 //! - Edge detection filters (practical example)
 //!
-//! Conv2D is THE operation for computer vision and image processing!
+//! `Conv2D` is THE operation for computer vision and image processing!
 
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -161,7 +163,7 @@ async fn main() -> Result<(), ComputeError> {
         print!("  [");
         for col in 0..5 {
             let val = edge_input[row * 5 + col];
-            print!("{:>5.0}", val);
+            print!("{val:>5.0}");
             if col < 4 {
                 print!(", ");
             }

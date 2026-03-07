@@ -260,7 +260,7 @@ fn test_platform_optimization_types() {
     for opt_type in types {
         let opt = PlatformOptimization {
             optimization_type: opt_type.to_string(),
-            description: format!("Test {}", opt_type),
+            description: format!("Test {opt_type}"),
             performance_gain: 0.1,
         };
 
@@ -339,12 +339,7 @@ fn test_usage_hints_cpu_intensive_threshold() {
             expected_cpu_usage: cpu_usage,
             ..Default::default()
         };
-        assert_eq!(
-            hints.is_cpu_intensive(),
-            expected,
-            "CPU usage: {}",
-            cpu_usage
-        );
+        assert_eq!(hints.is_cpu_intensive(), expected, "CPU usage: {cpu_usage}");
     }
 }
 
@@ -366,8 +361,7 @@ fn test_usage_hints_memory_intensive_threshold() {
         assert_eq!(
             hints.is_memory_intensive(),
             expected,
-            "Memory usage: {}",
-            memory_usage
+            "Memory usage: {memory_usage}"
         );
     }
 }

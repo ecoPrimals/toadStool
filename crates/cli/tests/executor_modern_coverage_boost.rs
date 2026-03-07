@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Modern concurrent tests for BiomeExecutor - Coverage boost
+//! Modern concurrent tests for `BiomeExecutor` - Coverage boost
 //! Focus: Real API calls, zero sleeps, event-based, fully concurrent
-//! Target: Increase executor_impl.rs coverage from 1.81% to 40%
+//! Target: Increase `executor_impl.rs` coverage from 1.81% to 40%
 
 use anyhow::Result;
 use std::sync::Arc;
 use toadstool_cli::executor::BiomeExecutor;
 use tokio::sync::broadcast;
 
-/// ✅ Test 1: Executor creation (covers BiomeExecutor::new)
+/// ✅ Test 1: Executor creation (covers `BiomeExecutor::new`)
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_executor_creation() -> Result<()> {
     let _executor = BiomeExecutor::new().await?;
@@ -150,7 +150,7 @@ async fn test_down_biome_various_timeouts() -> Result<()> {
 
     for timeout in [0, 10, 60, 300] {
         let result = executor
-            .down_biome(format!("test-{}", timeout), false, timeout, false)
+            .down_biome(format!("test-{timeout}"), false, timeout, false)
             .await;
 
         // All will error but exercise timeout param
@@ -201,7 +201,7 @@ async fn test_concurrent_down_operations() -> Result<()> {
 
         handles.push(tokio::spawn(async move {
             executor
-                .down_biome(format!("concurrent-test-{}", i), false, 30, false)
+                .down_biome(format!("concurrent-test-{i}"), false, 30, false)
                 .await
         }));
     }
@@ -264,7 +264,7 @@ async fn test_mixed_concurrent_ops() -> Result<()> {
         } else {
             handles.push(tokio::spawn(async move {
                 executor
-                    .down_biome(format!("mixed-{}", i), false, 30, false)
+                    .down_biome(format!("mixed-{i}"), false, 30, false)
                     .await
             }));
         }
@@ -310,7 +310,7 @@ async fn test_all_output_formats() -> Result<()> {
     for format in formats {
         let result = executor.list_biomes(true, format, false, None).await;
 
-        assert!(result.is_ok(), "Format {} should work", format);
+        assert!(result.is_ok(), "Format {format} should work");
     }
 
     Ok(())
@@ -336,7 +336,7 @@ async fn test_all_status_filters() -> Result<()> {
             .list_biomes(true, "table", false, filter.as_deref())
             .await;
 
-        assert!(result.is_ok(), "Filter {:?} should work", filter);
+        assert!(result.is_ok(), "Filter {filter:?} should work");
     }
 
     Ok(())

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for executor_impl.rs
+//! Comprehensive tests for `executor_impl.rs`
 //!
-//! This test file covers the BiomeExecutor functionality including:
+//! This test file covers the `BiomeExecutor` functionality including:
 //! - Biome lifecycle management (run, up, down)
 //! - Process management and monitoring
 //! - Resource allocation and limits
@@ -199,7 +199,7 @@ mod executor_impl_basic_tests {
         let env_vars = vec![
             "VALID_KEY=value".to_string(),
             "INVALID_NO_EQUALS".to_string(),
-            "".to_string(),
+            String::new(),
         ];
 
         let mut environment = HashMap::new();
@@ -229,7 +229,7 @@ mod executor_impl_basic_tests {
         }
 
         assert_eq!(environment.len(), 2);
-        assert_eq!(environment.get("EMPTY_VALUE"), Some(&"".to_string()));
+        assert_eq!(environment.get("EMPTY_VALUE"), Some(&String::new()));
         assert_eq!(
             environment.get("NORMAL_VALUE"),
             Some(&"something".to_string())

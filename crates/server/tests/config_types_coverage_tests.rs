@@ -105,7 +105,7 @@ fn test_server_config_clone() {
 #[test]
 fn test_server_config_debug() {
     let config = ServerConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("ServerConfig"));
     assert!(debug_str.contains("bind_address"));
@@ -188,7 +188,7 @@ fn test_authentication_config_clone() {
 #[test]
 fn test_authentication_config_debug() {
     let auth = AuthenticationConfig::default();
-    let debug_str = format!("{:?}", auth);
+    let debug_str = format!("{auth:?}");
 
     assert!(debug_str.contains("AuthenticationConfig"));
 }
@@ -261,7 +261,7 @@ fn test_rate_limiting_config_clone() {
 #[test]
 fn test_rate_limiting_config_debug() {
     let rate_limit = RateLimitingConfig::default();
-    let debug_str = format!("{:?}", rate_limit);
+    let debug_str = format!("{rate_limit:?}");
 
     assert!(debug_str.contains("RateLimitingConfig"));
     assert!(debug_str.contains("requests_per_minute"));
@@ -335,7 +335,7 @@ fn test_logging_config_clone() {
 #[test]
 fn test_logging_config_debug() {
     let logging = LoggingConfig::default();
-    let debug_str = format!("{:?}", logging);
+    let debug_str = format!("{logging:?}");
 
     assert!(debug_str.contains("LoggingConfig"));
     assert!(debug_str.contains("level"));
@@ -414,7 +414,7 @@ fn test_health_check_config_clone() {
 #[test]
 fn test_health_check_config_debug() {
     let health = HealthCheckConfig::default();
-    let debug_str = format!("{:?}", health);
+    let debug_str = format!("{health:?}");
 
     assert!(debug_str.contains("HealthCheckConfig"));
     assert!(debug_str.contains("interval"));

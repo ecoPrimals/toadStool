@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for BiomeExecutor - Critical 0% Coverage File
+//! Comprehensive tests for `BiomeExecutor` - Critical 0% Coverage File
 //!
-//! This test suite covers the executor_impl.rs file which has 938 lines with 0% coverage.
+//! This test suite covers the `executor_impl.rs` file which has 938 lines with 0% coverage.
 //! Tests cover all public methods and critical internal logic.
 
 use std::collections::HashMap;
@@ -76,7 +76,7 @@ async fn test_environment_variable_parsing_edge_cases() {
     }
 
     // Should parse the valid ones
-    assert_eq!(environment.get("EMPTY"), Some(&"".to_string()));
+    assert_eq!(environment.get("EMPTY"), Some(&String::new()));
     assert_eq!(environment.get("EQUALS"), Some(&"a=b=c".to_string()));
     // Invalid one should not be in map
     assert!(!environment.contains_key("NOEQUALS"));
@@ -161,7 +161,7 @@ async fn test_biome_status_transitions() {
 
     impl fmt::Display for TestBiomeStatus {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{:?}", self)
+            write!(f, "{self:?}")
         }
     }
 
@@ -589,12 +589,12 @@ async fn test_container_name_generation() {
     let biome_name = "my-biome";
     let service_name = "web";
 
-    let container_name = format!("{}-{}", biome_name, service_name);
+    let container_name = format!("{biome_name}-{service_name}");
     assert_eq!(container_name, "my-biome-web");
 
     // Test with index for scaling
     let replica_index = 2;
-    let scaled_name = format!("{}-{}-{}", biome_name, service_name, replica_index);
+    let scaled_name = format!("{biome_name}-{service_name}-{replica_index}");
     assert_eq!(scaled_name, "my-biome-web-2");
 }
 
@@ -605,8 +605,8 @@ async fn test_resource_limit_parsing() {
 
     for limit in memory_limits {
         assert!(!limit.is_empty());
-        assert!(limit.chars().any(|c| c.is_numeric()));
-        assert!(limit.chars().any(|c| c.is_alphabetic()));
+        assert!(limit.chars().any(char::is_numeric));
+        assert!(limit.chars().any(char::is_alphabetic));
     }
 }
 

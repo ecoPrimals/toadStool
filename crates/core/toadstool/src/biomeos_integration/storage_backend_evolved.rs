@@ -427,8 +427,7 @@ mod tests {
                     | StorageBackendError::Capability(_)
                     | StorageBackendError::ProvisioningFailed(_)
             ),
-            "expected provider/provisioning error, got {:?}",
-            err
+            "expected provider/provisioning error, got {err:?}"
         );
     }
 
@@ -499,7 +498,7 @@ mod tests {
             "deleting",
             "error",
         ] {
-            let parsed: VolumeStatus = serde_json::from_str(&format!("\"{}\"", s)).unwrap();
+            let parsed: VolumeStatus = serde_json::from_str(&format!("\"{s}\"")).unwrap();
             let _ = serde_json::to_string(&parsed).unwrap();
         }
     }

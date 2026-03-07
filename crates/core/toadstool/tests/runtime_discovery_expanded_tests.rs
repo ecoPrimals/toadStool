@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Expanded tests for runtime_discovery module
+//! Expanded tests for `runtime_discovery` module
 //!
-//! Coverage expansion: runtime_discovery.rs had minimal test coverage
+//! Coverage expansion: `runtime_discovery.rs` had minimal test coverage
 //! Adding comprehensive async tests for all discovery paths
 
 use std::collections::HashMap;
@@ -55,10 +55,10 @@ async fn test_max_services_limit() {
     for i in 0..2 {
         let service = DiscoveredService {
             instance_id: Uuid::new_v4(),
-            primal_type: format!("test{}", i),
+            primal_type: format!("test{i}"),
             version: "1.0".to_string(),
             capabilities: vec![],
-            endpoint: format!("localhost:808{}", i),
+            endpoint: format!("localhost:808{i}"),
             protocols: vec![],
             discovered_at: std::time::SystemTime::now(),
             last_seen: std::time::SystemTime::now(),
@@ -110,7 +110,7 @@ async fn test_find_by_capability_multiple() {
     for i in 0..3 {
         let service = DiscoveredService {
             instance_id: Uuid::new_v4(),
-            primal_type: format!("compute{}", i),
+            primal_type: format!("compute{i}"),
             version: "1.0".to_string(),
             capabilities: vec![Capability {
                 name: "compute".to_string(),
@@ -118,7 +118,7 @@ async fn test_find_by_capability_multiple() {
                 features: vec![],
                 characteristics: HashMap::new(),
             }],
-            endpoint: format!("localhost:900{}", i),
+            endpoint: format!("localhost:900{i}"),
             protocols: vec![],
             discovered_at: std::time::SystemTime::now(),
             last_seen: std::time::SystemTime::now(),
@@ -246,7 +246,7 @@ async fn test_get_all_services_multiple() {
     for i in 0..5 {
         let service = DiscoveredService {
             instance_id: Uuid::new_v4(),
-            primal_type: format!("primal{}", i),
+            primal_type: format!("primal{i}"),
             version: "1.0".to_string(),
             capabilities: vec![],
             endpoint: format!("localhost:{}", 8000 + i),
@@ -273,7 +273,7 @@ async fn test_concurrent_discovery_operations() {
     for i in 0..10 {
         let service = DiscoveredService {
             instance_id: Uuid::new_v4(),
-            primal_type: format!("test{}", i),
+            primal_type: format!("test{i}"),
             version: "1.0".to_string(),
             capabilities: vec![],
             endpoint: format!("localhost:{}", 8000 + i),
@@ -466,7 +466,7 @@ async fn test_stats_after_operations() {
 
         let service = DiscoveredService {
             instance_id: id,
-            primal_type: format!("test{}", i),
+            primal_type: format!("test{i}"),
             version: "1.0".to_string(),
             capabilities: vec![],
             endpoint: format!("localhost:{}", 8000 + i),
@@ -544,7 +544,7 @@ fn test_discovery_config_clone() {
 #[test]
 fn test_discovery_config_debug() {
     let config = DiscoveryConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("DiscoveryConfig"));
     assert!(debug_str.contains("enable_mdns"));

@@ -237,7 +237,7 @@ fn test_capacity_alert_low_capacity() {
         utilization_percent: 85.0,
     };
 
-    let debug_str = format!("{:?}", alert);
+    let debug_str = format!("{alert:?}");
     assert!(debug_str.contains("LowCapacity"));
 }
 
@@ -247,7 +247,7 @@ fn test_capacity_alert_exhausted() {
         resource_type: "Memory".to_string(),
     };
 
-    let debug_str = format!("{:?}", alert);
+    let debug_str = format!("{alert:?}");
     assert!(debug_str.contains("Exhausted"));
 }
 
@@ -257,7 +257,7 @@ fn test_capacity_alert_restored() {
         resource_type: "Storage".to_string(),
     };
 
-    let debug_str = format!("{:?}", alert);
+    let debug_str = format!("{alert:?}");
     assert!(debug_str.contains("Restored"));
 }
 
@@ -301,7 +301,7 @@ fn test_distribution_strategy_default() {
 #[test]
 fn test_distribution_strategy_equal() {
     let strategy = DistributionStrategy::Equal;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
     assert!(debug_str.contains("Equal"));
 }
 

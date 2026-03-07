@@ -113,7 +113,7 @@ fn test_other_error() {
 #[test]
 fn test_error_debug_trait() {
     let error = ResourceMonitorError::ProcessNotFound("test".to_string());
-    let debug_str = format!("{:?}", error);
+    let debug_str = format!("{error:?}");
 
     assert!(debug_str.contains("ProcessNotFound"));
 }
@@ -192,7 +192,7 @@ fn test_granularity_clone() {
 #[test]
 fn test_granularity_debug() {
     let granularity = MonitoringGranularity::Standard;
-    let debug_str = format!("{:?}", granularity);
+    let debug_str = format!("{granularity:?}");
 
     assert!(debug_str.contains("Standard"));
 }
@@ -209,7 +209,7 @@ fn test_threshold_action_log() {
     assert!(!json.is_empty());
 
     let deserialized: ThresholdAction = serde_json::from_str(&json).expect("Should deserialize");
-    let debug_str = format!("{:?}", deserialized);
+    let debug_str = format!("{deserialized:?}");
     assert!(debug_str.contains("Log"));
 }
 
@@ -219,7 +219,7 @@ fn test_threshold_action_alert() {
     let json = serde_json::to_string(&action).expect("Should serialize");
 
     let deserialized: ThresholdAction = serde_json::from_str(&json).expect("Should deserialize");
-    let debug_str = format!("{:?}", deserialized);
+    let debug_str = format!("{deserialized:?}");
     assert!(debug_str.contains("Alert"));
 }
 
@@ -229,7 +229,7 @@ fn test_threshold_action_terminate() {
     let json = serde_json::to_string(&action).expect("Should serialize");
 
     let deserialized: ThresholdAction = serde_json::from_str(&json).expect("Should deserialize");
-    let debug_str = format!("{:?}", deserialized);
+    let debug_str = format!("{deserialized:?}");
     assert!(debug_str.contains("Terminate"));
 }
 
@@ -238,7 +238,7 @@ fn test_threshold_action_clone() {
     let original = ThresholdAction::Alert;
     let cloned = original.clone();
 
-    assert_eq!(format!("{:?}", original), format!("{:?}", cloned));
+    assert_eq!(format!("{original:?}"), format!("{:?}", cloned));
 }
 
 // ============================================================================
@@ -307,7 +307,7 @@ fn test_monitoring_config_clone() {
 #[test]
 fn test_monitoring_config_debug() {
     let config = MonitoringConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("MonitoringConfig"));
     assert!(debug_str.contains("granularity"));
@@ -415,7 +415,7 @@ async fn test_system_resource_monitor_creation() {
     let monitor = SystemResourceMonitor::new();
 
     // Monitor should be created successfully
-    let debug_str = format!("{:?}", monitor);
+    let debug_str = format!("{monitor:?}");
     assert!(debug_str.contains("SystemResourceMonitor"));
 }
 
@@ -452,7 +452,7 @@ async fn test_system_resource_monitor_default() {
     let monitor = SystemResourceMonitor::default();
 
     // Should create monitor with default config
-    let _debug_str = format!("{:?}", monitor);
+    let _debug_str = format!("{monitor:?}");
 }
 
 // ============================================================================
@@ -489,7 +489,7 @@ fn test_error_type_completeness() {
         let _error_str = error.to_string();
 
         // All errors should support Debug
-        let _debug_str = format!("{:?}", error);
+        let _debug_str = format!("{error:?}");
 
         // All errors should clone
         let _cloned = error.clone();

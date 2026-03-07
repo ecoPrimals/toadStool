@@ -65,8 +65,8 @@ async fn test_create_multiple_migration_plans() -> Result<()> {
     let manager = create_manager().await?;
 
     for i in 0..5 {
-        let source = format!("source-{}", i);
-        let target = format!("target-{}", i);
+        let source = format!("source-{i}");
+        let target = format!("target-{i}");
         let result = manager.create_migration_plan(&source, &target).await;
         assert!(result.is_ok());
     }
@@ -166,7 +166,7 @@ async fn test_pause_workload_multiple_platforms() -> Result<()> {
     let manager = create_manager().await?;
 
     for i in 0..5 {
-        let platform = format!("platform-{}", i);
+        let platform = format!("platform-{i}");
         let _ = manager.pause_workload(&platform).await;
     }
 
@@ -487,8 +487,8 @@ async fn test_many_migration_plans() -> Result<()> {
     let manager = create_manager().await?;
 
     for i in 0..20 {
-        let source = format!("source-{}", i);
-        let target = format!("target-{}", i);
+        let source = format!("source-{i}");
+        let target = format!("target-{i}");
         let _ = manager.create_migration_plan(&source, &target).await;
     }
 
@@ -500,7 +500,7 @@ async fn test_rapid_pause_operations() -> Result<()> {
     let manager = create_manager().await?;
 
     for i in 0..20 {
-        let platform = format!("platform-{}", i);
+        let platform = format!("platform-{i}");
         let _ = manager.pause_workload(&platform).await;
     }
 

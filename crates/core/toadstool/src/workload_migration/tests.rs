@@ -43,7 +43,7 @@ impl CloudProvider for MockCloudProvider {
         workload_id: &str,
         _region: &str,
     ) -> Result<String, CloudError> {
-        Ok(format!("instance-{}", workload_id))
+        Ok(format!("instance-{workload_id}"))
     }
 
     async fn migrate_workload(
@@ -52,7 +52,7 @@ impl CloudProvider for MockCloudProvider {
         _source: WorkloadLocation,
         _target_region: &str,
     ) -> Result<String, CloudError> {
-        Ok(format!("migrated-{}", workload_id))
+        Ok(format!("migrated-{workload_id}"))
     }
 
     async fn check_health(&self, _instance_id: &str) -> Result<WorkloadHealth, CloudError> {

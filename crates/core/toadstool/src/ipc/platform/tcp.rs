@@ -171,14 +171,11 @@ mod tests {
         // Try to bind specific port (might fail if in use)
         let port = 18_370; // Use high port to avoid conflicts
 
-        match bind("127.0.0.1", port).await {
-            Ok(listener) => {
-                assert_eq!(listener.local_addr().unwrap().port(), port);
-                drop(listener);
-            }
-            Err(_) => {
-                // Port might be in use, that's OK for test
-            }
+        if let Ok(listener) = bind("127.0.0.1", port).await {
+            assert_eq!(listener.local_addr().unwrap().port(), port);
+            drop(listener);
+        } else {
+            // Port might be in use, that's OK for test
         }
     }
 

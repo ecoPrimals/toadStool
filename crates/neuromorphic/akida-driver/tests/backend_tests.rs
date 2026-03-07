@@ -6,7 +6,7 @@
 use akida_driver::{select_backend, BackendSelection};
 
 #[test]
-#[ignore] // Requires hardware
+#[ignore = "requires Akida hardware"]
 fn test_kernel_backend() {
     let backend = select_backend(BackendSelection::Kernel, "0").expect("Kernel backend init");
     assert!(backend.is_ready());
@@ -16,7 +16,7 @@ fn test_kernel_backend() {
 }
 
 #[test]
-#[ignore] // Requires hardware
+#[ignore = "requires Akida hardware"]
 fn test_userspace_backend() {
     let backend = select_backend(BackendSelection::Userspace, "0000:a1:00.0")
         .expect("Userspace backend init");
@@ -27,7 +27,7 @@ fn test_userspace_backend() {
 }
 
 #[test]
-#[ignore] // Requires hardware
+#[ignore = "requires Akida hardware"]
 fn test_both_backends_identical_capabilities() {
     // Initialize both backends
     let kernel = select_backend(BackendSelection::Kernel, "0").expect("Kernel backend");
@@ -57,7 +57,7 @@ fn test_both_backends_identical_capabilities() {
 }
 
 #[test]
-#[ignore] // Requires hardware
+#[ignore = "requires Akida hardware"]
 fn test_power_measurement() {
     // Test kernel backend power query
     if let Ok(backend) = select_backend(BackendSelection::Auto, "0") {

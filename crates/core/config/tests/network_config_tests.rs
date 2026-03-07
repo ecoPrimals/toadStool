@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for network_config module
+//! Comprehensive tests for `network_config` module
 //!
 //! Goal: Push coverage from 0% → 80%+
 
@@ -140,7 +140,7 @@ fn test_bind_mode_clone() {
 #[test]
 fn test_bind_mode_debug() {
     let mode = BindMode::Localhost;
-    let debug_str = format!("{:?}", mode);
+    let debug_str = format!("{mode:?}");
 
     assert!(debug_str.contains("Localhost"));
 }
@@ -242,7 +242,7 @@ fn test_network_config_clone() {
 #[test]
 fn test_network_config_debug_output() {
     let config = NetworkConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("NetworkConfig"));
     assert!(debug_str.contains("service_port"));

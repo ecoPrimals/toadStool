@@ -145,7 +145,7 @@ async fn test_detected_layer_has_capabilities() {
         }
         Err(e) => {
             // Detection can fail in CI environments, that's okay
-            eprintln!("Layer detection failed (expected in CI): {}", e);
+            eprintln!("Layer detection failed (expected in CI): {e}");
         }
     }
 }
@@ -252,18 +252,15 @@ fn test_all_deployment_layers_provide_bandwidth() {
 
         assert!(
             caps.storage.read_bandwidth.is_some(),
-            "Layer {:?} should provide read bandwidth",
-            layer
+            "Layer {layer:?} should provide read bandwidth"
         );
         assert!(
             caps.storage.write_bandwidth.is_some(),
-            "Layer {:?} should provide write bandwidth",
-            layer
+            "Layer {layer:?} should provide write bandwidth"
         );
         assert!(
             caps.network.bandwidth.is_some(),
-            "Layer {:?} should provide network bandwidth",
-            layer
+            "Layer {layer:?} should provide network bandwidth"
         );
     }
 }
@@ -278,18 +275,14 @@ fn test_write_bandwidth_is_less_than_read() {
     if let (Some(read), Some(write)) = (caps.storage.read_bandwidth, caps.storage.write_bandwidth) {
         assert!(
             write <= read,
-            "Write bandwidth ({}) should not exceed read bandwidth ({})",
-            write,
-            read
+            "Write bandwidth ({write}) should not exceed read bandwidth ({read})"
         );
 
         // Write should be at least 70% of read (reasonable ratio)
         let min_write = (read as f64 * 0.7) as u64;
         assert!(
             write >= min_write,
-            "Write bandwidth ({}) should be at least 70% of read ({})",
-            write,
-            read
+            "Write bandwidth ({write}) should be at least 70% of read ({read})"
         );
     }
 }

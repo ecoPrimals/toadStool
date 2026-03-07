@@ -367,7 +367,7 @@ fn test_workload_file_debug() {
         security: None,
     };
 
-    let debug_str = format!("{:?}", workload);
+    let debug_str = format!("{workload:?}");
     assert!(debug_str.contains("WorkloadFile"));
     assert!(debug_str.contains("debug-test"));
 }

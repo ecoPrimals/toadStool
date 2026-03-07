@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Unit tests for execution graph types (ExecutionGraph, GraphNode, GraphEdge, etc.)
+//! Unit tests for execution graph types (`ExecutionGraph`, `GraphNode`, `GraphEdge`, etc.)
 //!
-//! Extracted from graph_types.rs to reduce file size and improve maintainability.
+//! Extracted from `graph_types.rs` to reduce file size and improve maintainability.
 //! Tests validation, builders, serialization, and edge cases.
 
 use std::collections::HashMap;
@@ -288,7 +288,7 @@ fn test_invalid_edge_source_not_found() {
             assert_eq!(to, "b");
             assert!(reason.contains("Source node"));
         }
-        _ => panic!("expected InvalidEdge, got {:?}", err),
+        _ => panic!("expected InvalidEdge, got {err:?}"),
     }
 }
 
@@ -306,7 +306,7 @@ fn test_invalid_edge_target_not_found() {
             assert_eq!(to, "nonexistent");
             assert!(reason.contains("Target node"));
         }
-        _ => panic!("expected InvalidEdge, got {:?}", err),
+        _ => panic!("expected InvalidEdge, got {err:?}"),
     }
 }
 
@@ -331,11 +331,10 @@ fn test_cycle_three_nodes() {
             let has_c = path.iter().any(|s| s == "c");
             assert!(
                 has_a && has_c,
-                "path {:?} should involve cycle nodes a,c",
-                path
+                "path {path:?} should involve cycle nodes a,c"
             );
         }
-        _ => panic!("expected CycleDetected, got {:?}", err),
+        _ => panic!("expected CycleDetected, got {err:?}"),
     }
 }
 
@@ -636,16 +635,16 @@ fn test_edge_type_serialization_snake_case() {
 #[test]
 fn test_debug_implementations() {
     let graph = ExecutionGraph::simple("g");
-    let _ = format!("{:?}", graph);
+    let _ = format!("{graph:?}");
 
     let node = GraphNode::simple("n", "op");
-    let _ = format!("{:?}", node);
+    let _ = format!("{node:?}");
 
     let edge = GraphEdge::new("a", "b");
-    let _ = format!("{:?}", edge);
+    let _ = format!("{edge:?}");
 
     let req = NodeResourceRequirements::default();
-    let _ = format!("{:?}", req);
+    let _ = format!("{req:?}");
 }
 
 // ───── Clone ──────────────────────────────────────────────────────────────
@@ -862,7 +861,7 @@ fn test_execution_graph_deserialize_missing_metadata() {
 #[test]
 fn test_graph_validation_error_debug() {
     let err = GraphValidationError::EmptyGraph;
-    let _ = format!("{:?}", err);
+    let _ = format!("{err:?}");
 }
 
 // ───── Cycle path content ─────────────────────────────────────────────────
@@ -881,7 +880,7 @@ fn test_cycle_detected_path_content() {
         assert!(path.contains(&"x".to_string()));
         assert!(path.contains(&"y".to_string()));
     } else {
-        panic!("expected CycleDetected, got {:?}", err);
+        panic!("expected CycleDetected, got {err:?}");
     }
 }
 
@@ -905,8 +904,8 @@ fn test_graph_validation_error_display_cycle_detected() {
     let err = GraphValidationError::CycleDetected(vec!["a".into(), "b".into()]);
     let s = err.to_string();
     assert!(s.contains("Cycle detected"));
-    assert!(s.contains("a"));
-    assert!(s.contains("b"));
+    assert!(s.contains('a'));
+    assert!(s.contains('b'));
 }
 
 #[test]

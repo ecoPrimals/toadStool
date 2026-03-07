@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Integration tests for ResourceCoordinator
+//! Integration tests for `ResourceCoordinator`
 //! These tests verify resource allocation and coordination logic
 
 use toadstool::resources::ResourceRequirements;

@@ -4,7 +4,7 @@
 //! Coverage target: 2% → 30% (20 tests)
 //!
 //! Testing strategy:
-//! - BiomeExecutor initialization
+//! - `BiomeExecutor` initialization
 //! - Process type handling
 //! - Biome state management
 //! - Resource validation

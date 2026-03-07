@@ -284,7 +284,6 @@ async fn test_discovery_dns_resolution_failure() {
             || err_str.contains("resolve")
             || err_str.contains("not found")
             || err_str.contains("connection"),
-        "Error should indicate DNS/connection failure: {}",
-        err
+        "Error should indicate DNS/connection failure: {err}"
     );
 }

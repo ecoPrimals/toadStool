@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Coverage Tests for CLI Executor Implementation
 //!
-//! Target: crates/cli/src/executor/executor_impl.rs (976 lines)
+//! Target: `crates/cli/src/executor/executor_impl.rs` (976 lines)
 //! Current Coverage: 1.81% ❌
 //! Target Coverage: 70%+
 //!
 //! Critical Paths to Cover:
-//! - BiomeExecutor::new() - initialization
-//! - run_biome() - foreground execution
-//! - up_biome() - background execution  
-//! - down_biome() - shutdown
-//! - ps_biomes() - list running biomes
-//! - logs() - retrieve logs
-//! - Internal methods: start_biome_internal, start_primal, etc.
+//! - `BiomeExecutor::new()` - initialization
+//! - `run_biome()` - foreground execution
+//! - `up_biome()` - background execution  
+//! - `down_biome()` - shutdown
+//! - `ps_biomes()` - list running biomes
+//! - `logs()` - retrieve logs
+//! - Internal methods: `start_biome_internal`, `start_primal`, etc.
 
 #![allow(clippy::all)]
 

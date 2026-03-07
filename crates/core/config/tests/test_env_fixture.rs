@@ -5,7 +5,7 @@
 //! eliminating the need for #[serial] annotations.
 //!
 //! Instead of mutating the actual environment (which requires serial execution),
-//! tests use an isolated HashMap that simulates environment variables.
+//! tests use an isolated `HashMap` that simulates environment variables.
 
 use std::collections::HashMap;
 
@@ -20,6 +20,7 @@ pub struct TestEnv {
 
 impl TestEnv {
     /// Create a new isolated test environment
+    #[must_use]
     pub fn new() -> Self {
         Self {
             vars: HashMap::new(),
@@ -32,6 +33,7 @@ impl TestEnv {
     }
 
     /// Get a variable from the isolated environment
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&String> {
         self.vars.get(key)
     }
@@ -43,17 +45,20 @@ impl TestEnv {
 
     /// Check if a variable exists in the isolated environment
     #[allow(dead_code)]
+    #[must_use]
     pub fn contains(&self, key: &str) -> bool {
         self.vars.contains_key(key)
     }
 
-    /// Get all variables as a HashMap
+    /// Get all variables as a `HashMap`
     #[allow(dead_code)]
+    #[must_use]
     pub fn as_map(&self) -> &HashMap<String, String> {
         &self.vars
     }
 
-    /// Create a TestEnv with common TOADSTOOL variables
+    /// Create a `TestEnv` with common TOADSTOOL variables
+    #[must_use]
     pub fn with_toadstool_defaults() -> Self {
         let mut env = Self::new();
         env.set("TOADSTOOL_ENVIRONMENT", "test");
@@ -61,7 +66,7 @@ impl TestEnv {
         env
     }
 
-    /// Merge with another TestEnv, taking values from other
+    /// Merge with another `TestEnv`, taking values from other
     pub fn merge(&mut self, other: &TestEnv) {
         for (k, v) in &other.vars {
             self.vars.insert(k.clone(), v.clone());
@@ -71,8 +76,9 @@ impl TestEnv {
 
 /// Helper to get value with fallback to actual environment
 ///
-/// This allows tests to gradually migrate from std::env to TestEnv
+/// This allows tests to gradually migrate from `std::env` to `TestEnv`
 #[allow(dead_code)]
+#[must_use]
 pub fn get_or_env(test_env: &TestEnv, key: &str) -> Option<String> {
     test_env
         .get(key)

@@ -43,7 +43,7 @@ fn test_cross_compile_arm64_linux() {
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        eprintln!("Cross-compilation failed:\n{}", stderr);
+        eprintln!("Cross-compilation failed:\n{stderr}");
         panic!("ARM64 cross-compilation failed - C dependencies detected!");
     }
 
@@ -79,12 +79,12 @@ fn test_cross_compile_riscv64() {
         .output()
         .expect("Failed to run cargo build");
 
-    if !result.status.success() {
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        eprintln!("RISC-V cross-compilation failed:\n{}", stderr);
-        eprintln!("Note: May require additional system packages");
-    } else {
+    if result.status.success() {
         println!("✅ RISC-V cross-compilation successful!");
+    } else {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        eprintln!("RISC-V cross-compilation failed:\n{stderr}");
+        eprintln!("Note: May require additional system packages");
     }
 }
 
@@ -118,16 +118,16 @@ fn test_cross_compile_wasm32() {
         .output()
         .expect("Failed to run cargo check");
 
-    if !result.status.success() {
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        eprintln!("WASM32 compilation check:\n{}", stderr);
-        // This is informational - not all crates should build for wasm32
-    } else {
+    if result.status.success() {
         println!("✅ WASM32 common crate compiles!");
+    } else {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        eprintln!("WASM32 compilation check:\n{stderr}");
+        // This is informational - not all crates should build for wasm32
     }
 }
 
-/// Test cross-compilation to Windows (x86_64)
+/// Test cross-compilation to Windows (`x86_64`)
 #[test]
 fn test_cross_compile_windows() {
     let check = Command::new("rustup")
@@ -156,11 +156,11 @@ fn test_cross_compile_windows() {
         .output()
         .expect("Failed to run cargo check");
 
-    if !result.status.success() {
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        eprintln!("Windows cross-compilation check:\n{}", stderr);
-    } else {
+    if result.status.success() {
         println!("✅ Windows cross-compilation check successful!");
+    } else {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        eprintln!("Windows cross-compilation check:\n{stderr}");
     }
 }
 
@@ -193,11 +193,11 @@ fn test_cross_compile_macos_arm() {
         .output()
         .expect("Failed to run cargo check");
 
-    if !result.status.success() {
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        eprintln!("macOS ARM cross-compilation check:\n{}", stderr);
-    } else {
+    if result.status.success() {
         println!("✅ macOS ARM cross-compilation check successful!");
+    } else {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        eprintln!("macOS ARM cross-compilation check:\n{stderr}");
     }
 }
 
@@ -231,7 +231,7 @@ fn test_audit_wasm_runtime_dependencies() {
     );
 
     println!("✅ WASM runtime dependencies are Pure Rust!");
-    println!("Dependencies:\n{}", tree);
+    println!("Dependencies:\n{tree}");
 }
 
 /// Audit compression dependencies for Pure Rust compliance
@@ -265,7 +265,7 @@ fn test_audit_compression_dependencies() {
     );
 
     println!("✅ Compression dependencies are Pure Rust!");
-    println!("Dependencies:\n{}", tree);
+    println!("Dependencies:\n{tree}");
 }
 
 /// Audit cryptography for Pure Rust compliance
@@ -327,7 +327,7 @@ fn test_no_c_compiler_invocations() {
 
     if has_cc_compile {
         eprintln!("Warning: Detected C compiler invocation!");
-        eprintln!("Build output:\n{}", stderr);
+        eprintln!("Build output:\n{stderr}");
         panic!("C compiler was invoked - Pure Rust violation!");
     }
 
@@ -358,7 +358,7 @@ fn test_cargo_metadata_pure_rust() {
 
 /// Verify dirs-sys has been eliminated
 /// Ignored: cubecl v0.4.0 (NPU backend) transitively pulls in dirs → dirs-sys.
-/// Track as workspace debt: replace cubecl::dirs with etcetera when cubecl exposes that option.
+/// Track as workspace debt: replace `cubecl::dirs` with etcetera when cubecl exposes that option.
 #[test]
 #[ignore = "D-S18-002: cubecl transitive dirs-sys; see docs/debt/D-S18-002-cubecl-dirs-sys.md"]
 fn test_dirs_sys_eliminated() {
@@ -410,8 +410,7 @@ fn test_only_acceptable_sys_crates() {
 
         assert!(
             is_acceptable,
-            "Found unacceptable -sys crate: {}. Only kernel interfaces allowed!",
-            crate_line
+            "Found unacceptable -sys crate: {crate_line}. Only kernel interfaces allowed!"
         );
     }
 

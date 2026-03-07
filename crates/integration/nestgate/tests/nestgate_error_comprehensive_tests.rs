@@ -13,7 +13,7 @@ use toadstool_integration_nestgate::*;
 #[test]
 fn test_nestgate_error_connection() {
     let error = NestGateError::Connection("timeout".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Connection failed"));
     assert!(error_str.contains("timeout"));
 }
@@ -21,7 +21,7 @@ fn test_nestgate_error_connection() {
 #[test]
 fn test_nestgate_error_authentication() {
     let error = NestGateError::Authentication("invalid token".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Authentication failed"));
     assert!(error_str.contains("invalid token"));
 }
@@ -29,7 +29,7 @@ fn test_nestgate_error_authentication() {
 #[test]
 fn test_nestgate_error_storage() {
     let error = NestGateError::Storage("disk full".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Storage operation failed"));
     assert!(error_str.contains("disk full"));
 }
@@ -37,7 +37,7 @@ fn test_nestgate_error_storage() {
 #[test]
 fn test_nestgate_error_pipeline() {
     let error = NestGateError::Pipeline("invalid stage".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Data pipeline error"));
     assert!(error_str.contains("invalid stage"));
 }
@@ -45,7 +45,7 @@ fn test_nestgate_error_pipeline() {
 #[test]
 fn test_nestgate_error_versioning() {
     let error = NestGateError::Versioning("conflict detected".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Versioning error"));
     assert!(error_str.contains("conflict detected"));
 }
@@ -53,7 +53,7 @@ fn test_nestgate_error_versioning() {
 #[test]
 fn test_nestgate_error_network() {
     let error = NestGateError::Network("connection refused".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Network error"));
     assert!(error_str.contains("connection refused"));
 }
@@ -65,7 +65,7 @@ fn test_nestgate_error_serialization() {
 
     if let Err(e) = json_error {
         let error: NestGateError = e.into();
-        let error_str = format!("{}", error);
+        let error_str = format!("{error}");
         assert!(error_str.contains("Serialization error"));
     }
 }
@@ -74,7 +74,7 @@ fn test_nestgate_error_serialization() {
 fn test_nestgate_error_io() {
     let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
     let error: NestGateError = io_error.into();
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("IO error"));
     assert!(error_str.contains("file not found"));
 }
@@ -82,7 +82,7 @@ fn test_nestgate_error_io() {
 #[test]
 fn test_nestgate_error_internal() {
     let error = NestGateError::Internal("unexpected state".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Internal error"));
     assert!(error_str.contains("unexpected state"));
 }
@@ -94,7 +94,7 @@ fn test_nestgate_error_internal() {
 #[test]
 fn test_nestgate_error_debug_format() {
     let error = NestGateError::Connection("test".to_string());
-    let debug_str = format!("{:?}", error);
+    let debug_str = format!("{error:?}");
     assert!(debug_str.contains("Connection"));
     assert!(debug_str.contains("test"));
 }
@@ -102,8 +102,8 @@ fn test_nestgate_error_debug_format() {
 #[test]
 fn test_nestgate_error_display_vs_debug() {
     let error = NestGateError::Storage("test error".to_string());
-    let display = format!("{}", error);
-    let debug = format!("{:?}", error);
+    let display = format!("{error}");
+    let debug = format!("{error:?}");
 
     // Display is user-friendly
     assert!(display.contains("Storage operation failed"));
@@ -206,7 +206,7 @@ fn test_error_propagation_failure() {
     assert!(result.is_err());
 
     if let Err(e) = result {
-        assert!(format!("{}", e).contains("Connection failed"));
+        assert!(format!("{e}").contains("Connection failed"));
     }
 }
 
@@ -239,9 +239,9 @@ fn test_error_messages_are_descriptive() {
     ];
 
     for error in errors {
-        let message = format!("{}", error);
+        let message = format!("{error}");
         // All error messages should be at least 10 characters
-        assert!(message.len() >= 10, "Error message too short: {}", message);
+        assert!(message.len() >= 10, "Error message too short: {message}");
         // All error messages should contain context
         assert!(!message.is_empty());
     }
@@ -251,7 +251,7 @@ fn test_error_messages_are_descriptive() {
 fn test_error_context_preservation() {
     let original_message = "very specific error context that should be preserved";
     let error = NestGateError::Pipeline(original_message.to_string());
-    let formatted = format!("{}", error);
+    let formatted = format!("{error}");
 
     assert!(formatted.contains(original_message));
 }

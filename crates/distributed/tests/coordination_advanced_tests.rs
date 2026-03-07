@@ -118,7 +118,7 @@ fn test_all_job_types_are_debuggable() {
     ];
 
     for job_type in job_types {
-        let debug_str = format!("{:?}", job_type);
+        let debug_str = format!("{job_type:?}");
         assert!(!debug_str.is_empty(), "Job type should have debug output");
     }
 }
@@ -127,7 +127,7 @@ fn test_all_job_types_are_debuggable() {
 fn test_job_type_clone() {
     let job_type = UniversalJobType::MachineLearning;
     let cloned = job_type.clone();
-    assert_eq!(format!("{:?}", job_type), format!("{:?}", cloned));
+    assert_eq!(format!("{job_type:?}"), format!("{:?}", cloned));
 }
 
 // ============================================================================
@@ -237,7 +237,7 @@ async fn test_long_timeout_config() {
 async fn test_multiple_coordinators_different_ids() {
     let futures = (0..4).map(|i| async move {
         let config = DistributedConfig {
-            instance_id: format!("concurrent-coordinator-{}", i),
+            instance_id: format!("concurrent-coordinator-{i}"),
             standalone: StandaloneConfig {
                 max_concurrent_executions: 2,
                 default_timeout_secs: 30,

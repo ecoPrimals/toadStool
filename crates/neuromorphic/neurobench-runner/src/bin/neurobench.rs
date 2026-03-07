@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! NeuroBench CLI Runner
+//! `NeuroBench` CLI Runner
 //!
-//! Run NeuroBench benchmarks on Akida NPU hardware.
+//! Run `NeuroBench` benchmarks on Akida `NPU` hardware.
 //!
 //! ## Usage
 //!
@@ -59,7 +59,7 @@ fn run() -> Result<()> {
             "--device" | "-d" => {
                 i += 1;
                 if i < args.len() {
-                    device_id = args[i].clone();
+                    device_id.clone_from(&args[i]);
                 }
             }
             "--benchmark" | "-b" => {
@@ -83,13 +83,13 @@ fn run() -> Result<()> {
             "--data-dir" => {
                 i += 1;
                 if i < args.len() {
-                    data_dir = args[i].clone();
+                    data_dir.clone_from(&args[i]);
                 }
             }
             "--models-dir" => {
                 i += 1;
                 if i < args.len() {
-                    models_dir = args[i].clone();
+                    models_dir.clone_from(&args[i]);
                 }
             }
             "--list" | "-l" => {
@@ -240,7 +240,7 @@ fn print_summary_table(results: &[BenchmarkResult]) {
 
 fn print_help() {
     println!(
-        r#"
+        r"
 NeuroBench CLI Runner
 
 USAGE:
@@ -273,6 +273,6 @@ EXAMPLES:
 
     # Run keyword spotting with custom data directory
     neurobench -b keyword-fscil --data-dir /data/speech_commands
-"#
+"
     );
 }

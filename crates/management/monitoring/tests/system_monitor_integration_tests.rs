@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Integration tests for SystemResourceMonitor
+//! Integration tests for `SystemResourceMonitor`
 //!
 //! Tests actual function execution to increase coverage
 
@@ -14,14 +14,14 @@ mod system_resource_monitor_tests {
     fn test_system_resource_monitor_new() {
         let monitor = SystemResourceMonitor::new();
         // Verify it creates successfully
-        assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
+        assert!(format!("{monitor:?}").contains("SystemResourceMonitor"));
     }
 
     #[test]
     fn test_system_resource_monitor_with_default_config() {
         let config = MonitoringConfig::default();
         let monitor = SystemResourceMonitor::with_config(config);
-        assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
+        assert!(format!("{monitor:?}").contains("SystemResourceMonitor"));
     }
 
     #[test]
@@ -35,7 +35,7 @@ mod system_resource_monitor_tests {
         };
 
         let monitor = SystemResourceMonitor::with_config(config);
-        assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
+        assert!(format!("{monitor:?}").contains("SystemResourceMonitor"));
     }
 
     #[test]
@@ -54,7 +54,7 @@ mod system_resource_monitor_tests {
                 ..Default::default()
             };
             let monitor = SystemResourceMonitor::with_config(config);
-            assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
+            assert!(format!("{monitor:?}").contains("SystemResourceMonitor"));
         }
     }
 

@@ -39,10 +39,7 @@ async fn test_scan_system_returns_capabilities() {
         }
         Err(e) => {
             // It's acceptable to fail gracefully on systems without procfs, etc.
-            eprintln!(
-                "Hardware detection failed (expected on some platforms): {:?}",
-                e
-            );
+            eprintln!("Hardware detection failed (expected on some platforms): {e:?}");
         }
     }
 }
@@ -63,10 +60,7 @@ async fn test_discover_services_completes() {
         }
         Err(e) => {
             // It's acceptable to find no services in test environment
-            eprintln!(
-                "Service discovery failed (expected in isolated environment): {:?}",
-                e
-            );
+            eprintln!("Service discovery failed (expected in isolated environment): {e:?}");
         }
     }
 }
@@ -89,10 +83,7 @@ async fn test_generate_intelligent_config_completes() {
         }
         Err(e) => {
             // Some platforms may not support full auto-detection
-            eprintln!(
-                "Config generation failed (may be platform-specific): {:?}",
-                e
-            );
+            eprintln!("Config generation failed (may be platform-specific): {e:?}");
         }
     }
 }
@@ -116,10 +107,7 @@ async fn test_auto_configure_full_pipeline() {
             assert!(config.runtime.resource_limits.max_memory_usage > 0.0);
         }
         Err(e) => {
-            panic!(
-                "Auto-configure should not fail in test environment: {:?}",
-                e
-            );
+            panic!("Auto-configure should not fail in test environment: {e:?}");
         }
     }
 }
@@ -184,7 +172,7 @@ async fn test_generate_optimal_config_low_end_hardware() {
             );
         }
         Err(e) => {
-            eprintln!("Config generation failed: {:?}", e);
+            eprintln!("Config generation failed: {e:?}");
         }
     }
 }
@@ -247,7 +235,7 @@ async fn test_generate_optimal_config_high_end_hardware() {
             );
         }
         Err(e) => {
-            eprintln!("Config generation failed: {:?}", e);
+            eprintln!("Config generation failed: {e:?}");
         }
     }
 }
@@ -347,7 +335,7 @@ async fn test_optimize_for_platform_completes() {
             let _ = platform_config.optimizations.len();
         }
         Err(e) => {
-            eprintln!("Platform optimization failed: {:?}", e);
+            eprintln!("Platform optimization failed: {e:?}");
         }
     }
 }
@@ -378,7 +366,7 @@ async fn test_analyze_environment_completes() {
             let _ = usage_hints.predicted_workload_types.len();
         }
         Err(e) => {
-            eprintln!("Usage analysis failed: {:?}", e);
+            eprintln!("Usage analysis failed: {e:?}");
         }
     }
 }
@@ -438,7 +426,7 @@ async fn test_auto_config_handles_minimal_system() {
             );
         }
         Err(e) => {
-            eprintln!("Minimal system rejected (expected): {:?}", e);
+            eprintln!("Minimal system rejected (expected): {e:?}");
         }
     }
 }

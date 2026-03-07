@@ -138,7 +138,7 @@ fn bench_audit_logging(c: &mut Criterion) {
         let mut logger = AuditLogger::new();
         for i in 0..10 {
             logger
-                .log(AuditEventType::MemoryAllocated, format!("event {}", i))
+                .log(AuditEventType::MemoryAllocated, format!("event {i}"))
                 .unwrap();
         }
         b.iter(|| {
@@ -150,7 +150,7 @@ fn bench_audit_logging(c: &mut Criterion) {
         let mut logger = AuditLogger::new();
         for i in 0..100 {
             logger
-                .log(AuditEventType::MemoryAllocated, format!("event {}", i))
+                .log(AuditEventType::MemoryAllocated, format!("event {i}"))
                 .unwrap();
         }
         b.iter(|| {

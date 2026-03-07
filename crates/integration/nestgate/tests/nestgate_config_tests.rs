@@ -79,7 +79,7 @@ fn test_nestgate_config_clone() {
 #[test]
 fn test_nestgate_config_debug() {
     let config = NestGateConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("NestGateConfig"));
     assert!(debug_str.contains("endpoint"));
@@ -179,7 +179,7 @@ fn test_cache_config_clone() {
 #[test]
 fn test_cache_config_debug() {
     let cache = CacheConfig::default();
-    let debug_str = format!("{:?}", cache);
+    let debug_str = format!("{cache:?}");
 
     assert!(debug_str.contains("CacheConfig"));
     assert!(debug_str.contains("enabled"));
@@ -365,7 +365,7 @@ fn test_storage_preferences_clone() {
 #[test]
 fn test_storage_preferences_debug() {
     let prefs = StoragePreferences::default();
-    let debug_str = format!("{:?}", prefs);
+    let debug_str = format!("{prefs:?}");
 
     assert!(debug_str.contains("StoragePreferences"));
     assert!(debug_str.contains("replication_factor"));
@@ -470,7 +470,7 @@ fn test_cache_config_very_long_ttl() {
 #[test]
 fn test_storage_preferences_many_regions() {
     let prefs = StoragePreferences {
-        regions: (0..20).map(|i| format!("region-{}", i)).collect(),
+        regions: (0..20).map(|i| format!("region-{i}")).collect(),
         ..Default::default()
     };
 

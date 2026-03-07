@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Additional comprehensive tests for config_utils
+//! Additional comprehensive tests for `config_utils`
 //!
 //! Expanding test coverage for configuration utility functions
 //!
-//! ✅ MODERNIZED: Uses temp_env for thread-safe env var scoping (Rust 2024)
+//! ✅ MODERNIZED: Uses `temp_env` for thread-safe env var scoping (Rust 2024)
 
 #[allow(deprecated)] // Testing legacy config functions during migration
 mod tests {
@@ -148,15 +148,12 @@ mod tests {
         for (name, endpoint) in &endpoints {
             assert!(
                 endpoint.starts_with("http://") || endpoint.starts_with("https://"),
-                "Endpoint for {} should be HTTP/HTTPS: {}",
-                name,
-                endpoint
+                "Endpoint for {name} should be HTTP/HTTPS: {endpoint}"
             );
 
             assert!(
                 endpoint.contains(':'),
-                "Endpoint for {} should have port",
-                name
+                "Endpoint for {name} should have port"
             );
         }
     }

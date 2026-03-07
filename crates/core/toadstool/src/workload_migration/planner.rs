@@ -162,7 +162,7 @@ mod tests {
     // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
     #[async_trait]
     impl CloudProvider for MockProvider {
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "MockProvider"
         }
         async fn capabilities(&self) -> Result<CloudCapabilities, CloudError> {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive coverage tests for PolicyManager
+//! Comprehensive coverage tests for `PolicyManager`
 //!
-//! This module provides extensive test coverage for the PolicyManager,
+//! This module provides extensive test coverage for the `PolicyManager`,
 //! focusing on lifecycle management, policy loading, caching, and enforcement.
 //!
 //! **Refactored Dec 18, 2025**: Complete rewrite to match current API patterns
@@ -50,7 +50,7 @@ fn create_test_config() -> (TempDir, PolicyManagerConfig) {
 fn create_test_policy(id: &str) -> SecurityPolicy {
     SecurityPolicy {
         id: id.to_string(),
-        name: format!("Test Policy {}", id),
+        name: format!("Test Policy {id}"),
         version: "1.0.0".to_string(),
         description: Some("Test policy for coverage".to_string()),
         author: Some("Test Suite".to_string()),
@@ -67,7 +67,7 @@ fn create_test_policy(id: &str) -> SecurityPolicy {
 fn create_test_rule(id: &str) -> PolicyRule {
     PolicyRule {
         id: id.to_string(),
-        name: format!("Test Rule {}", id),
+        name: format!("Test Rule {id}"),
         condition: PolicyCondition::Always,
         action: PolicyAction::Allow,
         priority: 100,
@@ -212,7 +212,7 @@ async fn test_load_multiple_policies() {
 
     // Save multiple policies
     for i in 1..=5 {
-        let policy = create_test_policy(&format!("multi-policy-{}", i));
+        let policy = create_test_policy(&format!("multi-policy-{i}"));
         manager
             .save_policy(&policy)
             .await
@@ -221,7 +221,7 @@ async fn test_load_multiple_policies() {
 
     // Load them back
     for i in 1..=5 {
-        let id = format!("multi-policy-{}", i);
+        let id = format!("multi-policy-{i}");
         let loaded = manager
             .load_policy(&id)
             .await
@@ -302,7 +302,7 @@ async fn test_policy_composition() {
 
     // Create multiple policies
     for i in 1..=3 {
-        let policy = create_test_policy(&format!("compose-{}", i));
+        let policy = create_test_policy(&format!("compose-{i}"));
         manager
             .save_policy(&policy)
             .await
@@ -470,7 +470,7 @@ async fn test_list_policies() {
 
     // Save several policies
     for i in 1..=3 {
-        let policy = create_test_policy(&format!("list-test-{}", i));
+        let policy = create_test_policy(&format!("list-test-{i}"));
         manager
             .save_policy(&policy)
             .await

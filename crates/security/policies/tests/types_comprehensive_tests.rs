@@ -2,12 +2,12 @@
 //! Comprehensive tests for Security Policy types
 //!
 //! Coverage targets:
-//! - PolicyManagerConfig
-//! - SecurityPolicy
-//! - PolicyRule
-//! - PolicyCondition variants
-//! - PolicyAction variants
-//! - ViolationAction
+//! - `PolicyManagerConfig`
+//! - `SecurityPolicy`
+//! - `PolicyRule`
+//! - `PolicyCondition` variants
+//! - `PolicyAction` variants
+//! - `ViolationAction`
 //! - Evaluation results
 
 use serde_json::json;
@@ -67,7 +67,7 @@ fn test_policy_manager_config_clone() {
 #[test]
 fn test_policy_manager_config_debug() {
     let config = PolicyManagerConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("PolicyManagerConfig"));
     assert!(debug_str.contains("cache_enabled"));
@@ -597,14 +597,14 @@ fn test_policy_rule_priority_ordering() {
 #[test]
 fn test_policy_condition_always() {
     let condition = PolicyCondition::Always;
-    let debug_str = format!("{:?}", condition);
+    let debug_str = format!("{condition:?}");
     assert!(debug_str.contains("Always"));
 }
 
 #[test]
 fn test_policy_condition_never() {
     let condition = PolicyCondition::Never;
-    let debug_str = format!("{:?}", condition);
+    let debug_str = format!("{condition:?}");
     assert!(debug_str.contains("Never"));
 }
 
@@ -613,7 +613,7 @@ fn test_policy_condition_clone() {
     let condition = PolicyCondition::Always;
     let cloned = condition.clone();
 
-    assert!(format!("{:?}", condition) == format!("{:?}", cloned));
+    assert!(format!("{condition:?}") == format!("{cloned:?}"));
 }
 
 #[test]
@@ -627,7 +627,7 @@ fn test_policy_condition_serialization() {
 #[test]
 fn test_policy_condition_debug() {
     let condition = PolicyCondition::Always;
-    let debug_str = format!("{:?}", condition);
+    let debug_str = format!("{condition:?}");
 
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("Always"));
@@ -640,14 +640,14 @@ fn test_policy_condition_debug() {
 #[test]
 fn test_policy_action_allow() {
     let action = PolicyAction::Allow;
-    let debug_str = format!("{:?}", action);
+    let debug_str = format!("{action:?}");
     assert!(debug_str.contains("Allow"));
 }
 
 #[test]
 fn test_policy_action_deny() {
     let action = PolicyAction::Deny;
-    let debug_str = format!("{:?}", action);
+    let debug_str = format!("{action:?}");
     assert!(debug_str.contains("Deny"));
 }
 
@@ -656,7 +656,7 @@ fn test_policy_action_clone() {
     let action = PolicyAction::Allow;
     let cloned = action.clone();
 
-    assert!(format!("{:?}", action) == format!("{:?}", cloned));
+    assert!(format!("{action:?}") == format!("{cloned:?}"));
 }
 
 #[test]
@@ -670,7 +670,7 @@ fn test_policy_action_serialization() {
 #[test]
 fn test_policy_action_debug() {
     let action = PolicyAction::Deny;
-    let debug_str = format!("{:?}", action);
+    let debug_str = format!("{action:?}");
 
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("Deny"));
@@ -683,14 +683,14 @@ fn test_policy_action_debug() {
 #[test]
 fn test_violation_action_log_and_continue() {
     let action = ViolationAction::LogAndContinue;
-    let debug_str = format!("{:?}", action);
+    let debug_str = format!("{action:?}");
     assert!(debug_str.contains("LogAndContinue"));
 }
 
 #[test]
 fn test_violation_action_terminate() {
     let action = ViolationAction::Terminate;
-    let debug_str = format!("{:?}", action);
+    let debug_str = format!("{action:?}");
     assert!(debug_str.contains("Terminate"));
 }
 

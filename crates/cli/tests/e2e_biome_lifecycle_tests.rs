@@ -178,19 +178,16 @@ async fn e2e_mixed_concurrent_operations() -> Result<()> {
                     // List biomes
                     exec.list_biomes(false, "text", false, None)
                         .await
-                        .map(|_| ())
                 }
                 1 => {
                     // Try to stop nonexistent biome (expected to fail)
-                    exec.down_biome(format!("test-{}", i), false, 30, false)
+                    exec.down_biome(format!("test-{i}"), false, 30, false)
                         .await
-                        .map(|_| ())
                 }
                 _ => {
                     // Try to show logs (expected to fail)
-                    exec.show_logs(format!("test-{}", i), false, 10, false, None, None)
+                    exec.show_logs(format!("test-{i}"), false, 10, false, None, None)
                         .await
-                        .map(|_| ())
                 }
             };
             tx.send(i).ok();
@@ -240,8 +237,7 @@ async fn e2e_rapid_list_operations() -> Result<()> {
     // At least 95% success rate
     assert!(
         success_count >= 47,
-        "Should handle rapid operations: {}/50",
-        success_count
+        "Should handle rapid operations: {success_count}/50"
     );
 
     Ok(())
@@ -259,7 +255,7 @@ async fn e2e_timeout_protected_operations() -> Result<()> {
             timeout(Duration::from_secs(10), async {
                 let exec = BiomeExecutor::new().await?;
                 exec.list_biomes(false, "text", false, None).await?;
-                exec.down_biome(format!("test-{}", i), false, 5, false)
+                exec.down_biome(format!("test-{i}"), false, 5, false)
                     .await
                     .ok();
                 Ok::<_, anyhow::Error>(())
@@ -271,7 +267,7 @@ async fn e2e_timeout_protected_operations() -> Result<()> {
     // All should complete within timeout
     let mut completed = 0;
     for handle in handles {
-        if let Ok(Ok(Ok(_))) = handle.await {
+        if let Ok(Ok(Ok(()))) = handle.await {
             completed += 1;
         }
     }
@@ -294,7 +290,7 @@ async fn e2e_burst_traffic() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let _executor = BiomeExecutor::new().await.ok();
-            tx.send(format!("burst1_{}", i)).ok();
+            tx.send(format!("burst1_{i}")).ok();
         });
     }
 
@@ -309,7 +305,7 @@ async fn e2e_burst_traffic() -> Result<()> {
         tokio::spawn(async move {
             let executor = BiomeExecutor::new().await.ok()?;
             let _ = executor.list_biomes(false, "text", false, None).await;
-            tx.send(format!("burst2_{}", i)).ok()
+            tx.send(format!("burst2_{i}")).ok()
         });
     }
 

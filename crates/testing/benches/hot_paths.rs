@@ -39,14 +39,14 @@ fn bench_string_allocations(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark HashMap operations (common in BYOB deployment)
+/// Benchmark `HashMap` operations (common in BYOB deployment)
 fn bench_hashmap_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("hashmap_operations");
 
     // Setup: Create a HashMap with test data
     let mut map = HashMap::new();
     for i in 0..100 {
-        map.insert(format!("key_{}", i), format!("value_{}", i));
+        map.insert(format!("key_{i}"), format!("value_{i}"));
     }
 
     // Pattern 1: Clone entire HashMap
@@ -69,7 +69,7 @@ fn bench_hashmap_operations(c: &mut Criterion) {
     group.bench_function("iterate_reference", |b| {
         b.iter(|| {
             let mut count = 0;
-            for (k, v) in black_box(&map).iter() {
+            for (k, v) in black_box(&map) {
                 count += k.len() + v.len();
             }
             black_box(count);
@@ -84,7 +84,7 @@ fn bench_vec_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("vec_operations");
 
     // Setup: Create test data
-    let data: Vec<String> = (0..1000).map(|i| format!("item_{}", i)).collect();
+    let data: Vec<String> = (0..1000).map(|i| format!("item_{i}")).collect();
 
     // Pattern 1: Clone entire Vec
     group.bench_function("clone_vec", |b| {
@@ -97,7 +97,7 @@ fn bench_vec_operations(c: &mut Criterion) {
     // Pattern 2: Clone via iter().cloned()
     group.bench_function("iter_cloned", |b| {
         b.iter(|| {
-            let collected = black_box(&data).to_vec();
+            let collected = black_box(&data).clone();
             black_box(collected);
         });
     });
@@ -105,7 +105,10 @@ fn bench_vec_operations(c: &mut Criterion) {
     // Pattern 3: Map to references
     group.bench_function("map_references", |b| {
         b.iter(|| {
-            let refs: Vec<_> = black_box(&data).iter().map(|s| s.as_str()).collect();
+            let refs: Vec<_> = black_box(&data)
+                .iter()
+                .map(std::string::String::as_str)
+                .collect();
             black_box(refs);
         });
     });

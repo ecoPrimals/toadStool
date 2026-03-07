@@ -2,7 +2,7 @@
 //! Analytics Module Test Expansion - October 31, 2025
 //!
 //! This expansion adds comprehensive coverage for:
-//! - TrendDirection enum variants and methods
+//! - `TrendDirection` enum variants and methods
 //! - Statistical analysis edge cases
 //! - Alert condition evaluations
 //! - Dashboard permission scenarios
@@ -670,7 +670,7 @@ fn test_data_point_no_runtime() {
 fn test_data_point_many_tags() {
     let mut tags = HashMap::new();
     for i in 0..50 {
-        tags.insert(format!("tag_{}", i), format!("value_{}", i));
+        tags.insert(format!("tag_{i}"), format!("value_{i}"));
     }
 
     let data_point = AnalyticsDataPoint {
@@ -751,7 +751,7 @@ fn test_webhook_config_no_headers() {
 fn test_webhook_config_many_headers() {
     let mut headers = HashMap::new();
     for i in 0..10 {
-        headers.insert(format!("Header-{}", i), format!("Value-{}", i));
+        headers.insert(format!("Header-{i}"), format!("Value-{i}"));
     }
 
     let webhook = WebhookConfig {

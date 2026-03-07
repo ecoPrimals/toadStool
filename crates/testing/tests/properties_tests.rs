@@ -534,8 +534,8 @@ fn test_statistics_clone() {
 #[test]
 fn test_property_failure_with_empty_strings() {
     let failure = PropertyFailure {
-        original_input: "".to_string(),
-        shrunk_input: "".to_string(),
+        original_input: String::new(),
+        shrunk_input: String::new(),
         error_message: "empty input error".to_string(),
         shrink_steps: 0,
     };

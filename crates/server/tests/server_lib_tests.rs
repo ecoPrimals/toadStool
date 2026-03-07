@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Tests for ToadStoolServer core functionality (lib.rs)
+//! Tests for `ToadStoolServer` core functionality (lib.rs)
 
 use toadstool_server::*;
 
@@ -59,7 +59,7 @@ fn test_server_config_clone() {
 #[test]
 fn test_server_config_debug() {
     let config = ServerConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("ServerConfig"));
     assert!(debug_str.contains("bind_address"));

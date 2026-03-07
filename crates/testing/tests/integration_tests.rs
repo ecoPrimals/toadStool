@@ -2,7 +2,7 @@
 //! Integration tests for ToadStool Universal Compute Platform
 //!
 //! These tests verify end-to-end functionality across the entire system,
-//! including runtime engines, federation, WebSocket connections, and ecosystem integration.
+//! including runtime engines, federation, `WebSocket` connections, and ecosystem integration.
 
 use std::time::Duration;
 
@@ -46,7 +46,7 @@ async fn test_end_to_end_execution_workflow() {
     }
 }
 
-/// Test WebSocket connection lifecycle
+/// Test `WebSocket` connection lifecycle
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_lifecycle() {
     let config = IntegrationTestConfig::default();

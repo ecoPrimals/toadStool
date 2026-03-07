@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for runtime_defaults module
+//! Comprehensive tests for `runtime_defaults` module
 //!
 //! Goal: Push coverage from 0% → 80%+
 
@@ -192,7 +192,7 @@ fn test_config_clone() {
 #[test]
 fn test_config_debug_format() {
     let config = ToadStoolConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     // Debug output should contain key information
     assert!(!debug_str.is_empty());

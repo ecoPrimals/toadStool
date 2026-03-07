@@ -9,7 +9,9 @@
 //! different parallelism patterns.
 
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    ComputeError, ComputeUnit, DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), ComputeError> {
@@ -41,7 +43,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let filter_input = vec![-5.0, 3.0, -2.0, 8.0, -1.0, 0.0, 4.0, -7.0, 6.0, 2.0];
-    println!("Input:  {:?}", filter_input);
+    println!("Input:  {filter_input:?}");
 
     let filter_workload = Workload {
         operation: OperationType::Filter,
@@ -55,7 +57,7 @@ async fn main() -> Result<(), ComputeError> {
     let filter_result = runtime.execute_optimal(filter_workload).await?;
 
     if let WorkloadData::F32Vec(output) = filter_result.data {
-        println!("Output: {:?}", output);
+        println!("Output: {output:?}");
         println!(
             "Filtered {} elements → {} elements (predicate: x > 0)",
             filter_input.len(),
@@ -75,7 +77,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let scan_input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-    println!("Input:  {:?}", scan_input);
+    println!("Input:  {scan_input:?}");
 
     let scan_workload = Workload {
         operation: OperationType::Scan,
@@ -89,16 +91,13 @@ async fn main() -> Result<(), ComputeError> {
     let scan_result = runtime.execute_optimal(scan_workload).await?;
 
     if let WorkloadData::F32Vec(output) = scan_result.data {
-        println!("Output: {:?}", output);
+        println!("Output: {output:?}");
         println!("Cumulative sum computed: {} values", output.len());
 
         // Verify correctness
         let expected_last = scan_input.iter().sum::<f32>();
         let actual_last = *output.last().expect("output is non-empty");
-        println!(
-            "Expected final sum: {:.1}, Actual: {:.1} ✅",
-            expected_last, actual_last
-        );
+        println!("Expected final sum: {expected_last:.1}, Actual: {actual_last:.1} ✅");
     }
 
     println!();
@@ -113,7 +112,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let combined_input = vec![-10.0, 5.0, -3.0, 8.0, -1.0, 12.0, -4.0, 7.0, 2.0, -6.0];
-    println!("Input: {:?}", combined_input);
+    println!("Input: {combined_input:?}");
     println!();
 
     // Step 1: Filter positive numbers
@@ -131,8 +130,7 @@ async fn main() -> Result<(), ComputeError> {
         WorkloadData::F32Vec(data) => data,
         other => {
             return Err(ComputeError::ExecutionFailed(format!(
-                "Filter operation returned unexpected result type: {:?}",
-                other
+                "Filter operation returned unexpected result type: {other:?}"
             )))
         }
     };
@@ -156,7 +154,7 @@ async fn main() -> Result<(), ComputeError> {
     let scan_result = runtime.execute_optimal(scan_workload).await?;
 
     if let WorkloadData::F32Vec(output) = scan_result.data {
-        println!("After Scan:   {:?}", output);
+        println!("After Scan:   {output:?}");
         println!();
         println!("✅ Pipeline complete: Filter → Scan");
     }

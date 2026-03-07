@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Real tests for BiomeExecutor - actually testing the implementation
+//! Real tests for `BiomeExecutor` - actually testing the implementation
 //!
-//! This file tests the REAL BiomeExecutor, not mocks.
-//! Target: Increase executor_impl.rs coverage from 1.81% to 60%+
+//! This file tests the REAL `BiomeExecutor`, not mocks.
+//! Target: Increase `executor_impl.rs` coverage from 1.81% to 60%+
 
 use toadstool_cli::executor::BiomeExecutor;
 
@@ -24,7 +24,7 @@ async fn test_biome_executor_can_be_imported() {
         Err(e) => {
             // Expected: might fail due to distributed coordinator init
             // But we still proved we can IMPORT and CALL the real type
-            eprintln!("Executor creation failed (expected): {}", e);
+            eprintln!("Executor creation failed (expected): {e}");
         }
     }
 }

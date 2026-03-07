@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive test coverage for runtime.rs RuntimeSelectionStrategy
+//! Comprehensive test coverage for runtime.rs `RuntimeSelectionStrategy`
 //!
-//! This test suite targets RuntimeSelectionStrategy defined in
+//! This test suite targets `RuntimeSelectionStrategy` defined in
 //! crates/core/toadstool/src/runtime.rs to expand test coverage.
 //!
 //! Coverage Target: Add tests for runtime selection strategy
@@ -45,7 +45,7 @@ fn test_runtime_selection_strategy_clone() {
 #[test]
 fn test_runtime_selection_strategy_debug() {
     let strategy = RuntimeSelectionStrategy::OptimalMatch;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
     assert!(debug_str.contains("OptimalMatch"));
 }
 

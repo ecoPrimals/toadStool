@@ -6,15 +6,15 @@
 //! Target Coverage: 70%+
 //!
 //! Critical Paths to Cover:
-//! - EcosystemCoordinator::new() - initialization
-//! - discover_primals() - discovery orchestration
-//! - discover_via_multicast() - multicast discovery
-//! - discover_via_dns() - DNS discovery
-//! - discover_via_local_scan() - local discovery
-//! - register_primal() - manual registration
-//! - connect_to_primal() - establish connections
-//! - send_message() - communication
-//! - PrimalStatus transitions
+//! - `EcosystemCoordinator::new()` - initialization
+//! - `discover_primals()` - discovery orchestration
+//! - `discover_via_multicast()` - multicast discovery
+//! - `discover_via_dns()` - DNS discovery
+//! - `discover_via_local_scan()` - local discovery
+//! - `register_primal()` - manual registration
+//! - `connect_to_primal()` - establish connections
+//! - `send_message()` - communication
+//! - `PrimalStatus` transitions
 //! - Configuration management
 
 #![allow(clippy::all, dead_code)]
@@ -261,7 +261,7 @@ fn test_primal_instance_endpoint_validation() {
 
     for endpoint in valid_endpoints {
         assert!(endpoint.starts_with("http"));
-        assert!(endpoint.contains(":") || endpoint.contains("."));
+        assert!(endpoint.contains(':') || endpoint.contains('.'));
     }
 }
 
@@ -429,7 +429,7 @@ async fn test_discover_at_endpoint_url_parsing() {
 
     let endpoint = "http://localhost:8080";
     assert!(endpoint.starts_with("http"));
-    assert!(endpoint.contains(":"));
+    assert!(endpoint.contains(':'));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

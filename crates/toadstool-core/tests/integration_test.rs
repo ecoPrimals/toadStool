@@ -15,11 +15,11 @@ fn test_complete_stack_integration() {
     assert!(!hw.devices().is_empty(), "Should discover at least CPU");
 
     // Step 2: Check device types
-    let has_gpu = hw.has_gpu();
-    let has_npu = hw.has_npu();
+    let gpu_available = hw.has_gpu();
+    let npu_available = hw.has_npu();
 
-    println!("  GPU available: {}", has_gpu);
-    println!("  NPU available: {}", has_npu);
+    println!("  GPU available: {gpu_available}");
+    println!("  NPU available: {npu_available}");
 
     // Step 3: Verify devices have correct properties
     for device in hw.devices() {

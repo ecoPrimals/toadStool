@@ -136,7 +136,7 @@ mod display_manager_tests {
         let handles: Vec<_> = (0..100)
             .map(|i| {
                 tokio::spawn(async move {
-                    let biome_name = format!("biome-{}", i);
+                    let biome_name = format!("biome-{i}");
                     let component = "stdout";
 
                     // Verify path components are valid
@@ -198,7 +198,7 @@ mod resource_manager_tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_biome_existence_checks() {
         // Test concurrent biome existence checks
-        let biome_names: Vec<_> = (0..50).map(|i| format!("biome-{}", i)).collect();
+        let biome_names: Vec<_> = (0..50).map(|i| format!("biome-{i}")).collect();
 
         let handles: Vec<_> = biome_names
             .into_iter()
@@ -304,7 +304,7 @@ mod lifecycle_manager_tests {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         let biome_name = "test-biome";
 
-        let log_dir = format!("{}/.toadstool/logs/{}", home, biome_name);
+        let log_dir = format!("{home}/.toadstool/logs/{biome_name}");
 
         // Verify path structure
         assert!(log_dir.contains(".toadstool"));
@@ -444,7 +444,7 @@ mod property_tests {
                 // - Contains component
                 // - Ends with .log
 
-                let path = format!(".toadstool/logs/{}/{}.log", biome, component);
+                let path = format!(".toadstool/logs/{biome}/{component}.log");
 
                 assert!(path.contains(".toadstool"));
                 assert!(path.contains("logs"));

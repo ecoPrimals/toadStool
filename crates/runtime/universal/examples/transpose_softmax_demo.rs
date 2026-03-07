@@ -8,7 +8,9 @@
 //! These operations are essential for neural networks and scientific computing.
 
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -44,7 +46,7 @@ async fn main() -> Result<(), ComputeError> {
     let rows = 3;
     let cols = 4;
 
-    println!("Input Matrix ({}x{}):", rows, cols);
+    println!("Input Matrix ({rows}x{cols}):");
     for r in 0..rows {
         print!("  [");
         for c in 0..cols {
@@ -69,7 +71,7 @@ async fn main() -> Result<(), ComputeError> {
     let transpose_result = runtime.execute_optimal(transpose_workload).await?;
 
     if let WorkloadData::F32Matrix(output, out_rows, out_cols) = &transpose_result.data {
-        println!("Output Matrix ({}x{}):", out_rows, out_cols);
+        println!("Output Matrix ({out_rows}x{out_cols}):");
         for r in 0..*out_rows {
             print!("  [");
             for c in 0..*out_cols {
@@ -113,7 +115,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let logits = vec![2.0, 1.0, 0.1];
-    println!("Input (logits): {:?}", logits);
+    println!("Input (logits): {logits:?}");
     println!();
 
     let softmax_workload = Workload {
@@ -128,7 +130,7 @@ async fn main() -> Result<(), ComputeError> {
     let softmax_result = runtime.execute_optimal(softmax_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &softmax_result.data {
-        println!("Output (probabilities): {:?}", output);
+        println!("Output (probabilities): {output:?}");
 
         // Verify properties of softmax
         let sum: f32 = output.iter().sum();
@@ -137,9 +139,9 @@ async fn main() -> Result<(), ComputeError> {
 
         println!();
         println!("Properties:");
-        println!("  Sum of probabilities: {:.6} (should be 1.0)", sum);
-        println!("  All values in (0, 1): {}", all_positive);
-        println!("  Sum equals 1.0: {}", sum_is_one);
+        println!("  Sum of probabilities: {sum:.6} (should be 1.0)");
+        println!("  All values in (0, 1): {all_positive}");
+        println!("  Sum equals 1.0: {sum_is_one}");
         println!();
         println!(
             "Verification: {} ✅",
@@ -166,7 +168,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let class_logits = vec![0.1, 0.2, 5.0, 0.3, 0.1, 0.2, 0.1, 0.3, 0.2, 0.1]; // Class 2 has highest score
-    println!("Class logits: {:?}", class_logits);
+    println!("Class logits: {class_logits:?}");
     println!("(Class 2 has highest score: 5.0)");
     println!();
 
@@ -216,7 +218,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let large_logits = vec![1000.0, 1001.0, 1002.0]; // Would overflow naive softmax
-    println!("Large logits: {:?}", large_logits);
+    println!("Large logits: {large_logits:?}");
     println!("(These would overflow naive exp() implementation)");
     println!();
 
@@ -232,16 +234,16 @@ async fn main() -> Result<(), ComputeError> {
     let stable_result = runtime.execute_optimal(stable_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &stable_result.data {
-        println!("Output (numerically stable): {:?}", output);
+        println!("Output (numerically stable): {output:?}");
         println!();
 
         let sum: f32 = output.iter().sum();
         let is_valid = output.iter().all(|&x| x.is_finite());
 
         println!("Results:");
-        println!("  All values finite: {}", is_valid);
-        println!("  Sum: {:.6}", sum);
-        println!("  No overflow: {} ✅", is_valid);
+        println!("  All values finite: {is_valid}");
+        println!("  Sum: {sum:.6}");
+        println!("  No overflow: {is_valid} ✅");
     }
 
     println!();

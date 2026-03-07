@@ -19,7 +19,7 @@ fn test_traditional_platform_x86_64() {
     };
 
     // Test Debug trait
-    let debug_str = format!("{:?}", platform);
+    let debug_str = format!("{platform:?}");
     assert!(debug_str.contains("X86_64"));
     assert!(debug_str.contains("Intel Core i9-13900K"));
 }
@@ -36,7 +36,7 @@ fn test_traditional_platform_arm64() {
 
     // Test Clone trait
     let cloned = platform.clone();
-    assert!(format!("{:?}", cloned).contains("Apple M3 Max"));
+    assert!(format!("{cloned:?}").contains("Apple M3 Max"));
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn test_traditional_platform_riscv() {
         memory_gb: 8,
     };
 
-    let debug_str = format!("{:?}", platform);
+    let debug_str = format!("{platform:?}");
     assert!(debug_str.contains("RISCV"));
     assert!(debug_str.contains("SiFive U74"));
 }
@@ -62,7 +62,7 @@ fn test_traditional_platform_powerpc() {
         features: vec!["AltiVec".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("PowerPC"));
+    assert!(format!("{platform:?}").contains("PowerPC"));
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn test_traditional_platform_sparc() {
         features: vec!["VIS4".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("SPARC"));
+    assert!(format!("{platform:?}").contains("SPARC"));
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn test_traditional_platform_mips() {
         features: vec!["MIPS-3D".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("MIPS"));
+    assert!(format!("{platform:?}").contains("MIPS"));
 }
 
 // ============================================================================
@@ -102,7 +102,7 @@ fn test_biological_dna_computing() {
         read_write_cycles: 1000,
     };
 
-    let debug_str = format!("{:?}", platform);
+    let debug_str = format!("{platform:?}");
     assert!(debug_str.contains("DNAComputing"));
     assert!(debug_str.contains("DNA Storage"));
 }
@@ -115,7 +115,7 @@ fn test_biological_protein_folding() {
         molecular_dynamics: true,
     };
 
-    assert!(format!("{:?}", platform).contains("ProteinFolding"));
+    assert!(format!("{platform:?}").contains("ProteinFolding"));
 }
 
 #[test]
@@ -126,8 +126,8 @@ fn test_biological_cellular_computing() {
         biosafety_level: 1,
     };
 
-    assert!(format!("{:?}", platform).contains("CellularComputing"));
-    assert!(format!("{:?}", platform).contains("E. coli"));
+    assert!(format!("{platform:?}").contains("CellularComputing"));
+    assert!(format!("{platform:?}").contains("E. coli"));
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn test_biological_enzymatic_computing() {
         temperature_range: (20.0, 37.0),
     };
 
-    assert!(format!("{:?}", platform).contains("EnzymaticComputing"));
+    assert!(format!("{platform:?}").contains("EnzymaticComputing"));
 }
 
 #[test]
@@ -149,7 +149,7 @@ fn test_biological_bacterial_computing() {
         growth_medium: "LB broth".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("BacterialComputing"));
+    assert!(format!("{platform:?}").contains("BacterialComputing"));
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn test_biological_neural_organoids() {
         plasticity_features: vec!["LTP".to_string(), "LTD".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("NeuralOrganoids"));
+    assert!(format!("{platform:?}").contains("NeuralOrganoids"));
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn test_biological_bioelectronic_interface() {
         electronic_component: "CMOS array".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("BioelectronicInterface"));
+    assert!(format!("{platform:?}").contains("BioelectronicInterface"));
 }
 
 // ============================================================================
@@ -185,7 +185,7 @@ fn test_container_platform_docker() {
         features: vec!["buildkit".to_string(), "compose".to_string()],
     };
 
-    let debug_str = format!("{:?}", platform);
+    let debug_str = format!("{platform:?}");
     assert!(debug_str.contains("Docker"));
     assert!(debug_str.contains("24.0.7"));
 }
@@ -197,7 +197,7 @@ fn test_container_platform_podman() {
         rootless: true,
     };
 
-    assert!(format!("{:?}", platform).contains("Podman"));
+    assert!(format!("{platform:?}").contains("Podman"));
 }
 
 #[test]
@@ -207,7 +207,7 @@ fn test_container_platform_containerd() {
         snapshotter: "overlayfs".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("Containerd"));
+    assert!(format!("{platform:?}").contains("Containerd"));
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn test_container_platform_crio() {
         runtime: "runc".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("CriO"));
+    assert!(format!("{platform:?}").contains("CriO"));
 }
 
 #[test]
@@ -227,7 +227,7 @@ fn test_container_platform_firecracker() {
         jailer: true,
     };
 
-    assert!(format!("{:?}", platform).contains("Firecracker"));
+    assert!(format!("{platform:?}").contains("Firecracker"));
 }
 
 #[test]
@@ -237,7 +237,7 @@ fn test_container_platform_kata() {
         hypervisor: "qemu".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("Kata"));
+    assert!(format!("{platform:?}").contains("Kata"));
 }
 
 #[test]
@@ -247,7 +247,7 @@ fn test_container_platform_gvisor() {
         platform: "ptrace".to_string(),
     };
 
-    let debug_str = format!("{:?}", platform);
+    let debug_str = format!("{platform:?}");
     assert!(debug_str.contains("GVisor"));
 }
 
@@ -258,7 +258,7 @@ fn test_container_platform_wasmtime() {
         features: vec!["wasi".to_string(), "component-model".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("Wasmtime"));
+    assert!(format!("{platform:?}").contains("Wasmtime"));
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn test_container_platform_wasmer() {
         backends: vec!["cranelift".to_string(), "llvm".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("Wasmer"));
+    assert!(format!("{platform:?}").contains("Wasmer"));
 }
 
 #[test]
@@ -278,7 +278,7 @@ fn test_container_platform_wasmedge() {
         extensions: vec!["tensorflow".to_string(), "socket".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("WasmEdge"));
+    assert!(format!("{platform:?}").contains("WasmEdge"));
 }
 
 #[test]
@@ -288,7 +288,7 @@ fn test_container_platform_unikernel() {
         language: "OCaml".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("Unikernel"));
+    assert!(format!("{platform:?}").contains("Unikernel"));
 }
 
 #[test]
@@ -298,7 +298,7 @@ fn test_container_platform_lambda() {
         memory_mb: 512,
     };
 
-    assert!(format!("{:?}", platform).contains("Lambda"));
+    assert!(format!("{platform:?}").contains("Lambda"));
 }
 
 #[test]
@@ -308,7 +308,7 @@ fn test_container_platform_cloud_run() {
         cpu_allocation: "1000m".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("CloudRun"));
+    assert!(format!("{platform:?}").contains("CloudRun"));
 }
 
 #[test]
@@ -318,7 +318,7 @@ fn test_container_platform_azure_functions() {
         trigger_type: "http".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("AzureFunctions"));
+    assert!(format!("{platform:?}").contains("AzureFunctions"));
 }
 
 #[test]
@@ -328,7 +328,7 @@ fn test_container_platform_kubernetes() {
         distribution: "k3s".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("Kubernetes"));
+    assert!(format!("{platform:?}").contains("Kubernetes"));
 }
 
 #[test]
@@ -338,7 +338,7 @@ fn test_container_platform_docker_swarm() {
         features: vec!["secrets".to_string(), "configs".to_string()],
     };
 
-    assert!(format!("{:?}", platform).contains("DockerSwarm"));
+    assert!(format!("{platform:?}").contains("DockerSwarm"));
 }
 
 #[test]
@@ -348,7 +348,7 @@ fn test_container_platform_nomad() {
         driver: "docker".to_string(),
     };
 
-    assert!(format!("{:?}", platform).contains("Nomad"));
+    assert!(format!("{platform:?}").contains("Nomad"));
 }
 
 // ============================================================================
@@ -381,7 +381,7 @@ fn test_universal_substrate_capabilities_creation() {
     };
 
     // Test Debug trait
-    let debug_str = format!("{:?}", caps);
+    let debug_str = format!("{caps:?}");
     assert!(debug_str.contains("UniversalSubstrateCapabilities"));
     assert!(debug_str.contains("Test CPU"));
 
@@ -477,7 +477,7 @@ fn test_traditional_platform_serialization() {
     // Test deserialization
     let deserialized: TraditionalPlatform =
         serde_json::from_str(&json).expect("Failed to deserialize");
-    assert!(format!("{:?}", deserialized).contains("Intel Core i9"));
+    assert!(format!("{deserialized:?}").contains("Intel Core i9"));
 }
 
 #[test]
@@ -493,7 +493,7 @@ fn test_container_platform_serialization() {
 
     let deserialized: ContainerPlatform =
         serde_json::from_str(&json).expect("Failed to deserialize");
-    assert!(format!("{:?}", deserialized).contains("Docker"));
+    assert!(format!("{deserialized:?}").contains("Docker"));
 }
 
 #[test]
@@ -543,7 +543,7 @@ fn test_traditional_platform_zero_cores() {
         features: vec![],
     };
 
-    assert!(format!("{:?}", platform).contains("Minimal CPU"));
+    assert!(format!("{platform:?}").contains("Minimal CPU"));
 }
 
 #[test]
@@ -558,7 +558,7 @@ fn test_traditional_platform_high_core_count() {
         features: vec!["AVX512".to_string(), "SHA".to_string(), "SEV".to_string()],
     };
 
-    let debug_str = format!("{:?}", platform);
+    let debug_str = format!("{platform:?}");
     assert!(debug_str.contains("AMD EPYC"));
     assert!(debug_str.contains("96"));
 }
@@ -587,7 +587,7 @@ fn test_container_platform_many_features() {
         ],
     };
 
-    let debug_str = format!("{:?}", platform);
+    let debug_str = format!("{platform:?}");
     assert!(debug_str.contains("buildkit"));
     assert!(debug_str.contains("swarm"));
 }
@@ -597,12 +597,12 @@ fn test_biological_computing_biosafety_levels() {
     // Test different biosafety levels
     for level in 1..=4 {
         let platform = BiologicalComputingPlatform::CellularComputing {
-            cell_type: format!("Cell type BSL-{}", level),
+            cell_type: format!("Cell type BSL-{level}"),
             genetic_circuits: vec![],
             biosafety_level: level,
         };
 
-        assert!(format!("{:?}", platform).contains(&format!("BSL-{}", level)));
+        assert!(format!("{platform:?}").contains(&format!("BSL-{level}")));
     }
 }
 
@@ -621,6 +621,6 @@ fn test_enzyme_temperature_ranges() {
         temperature_range: (60.0, 95.0),
     };
 
-    assert!(format!("{:?}", cold).contains("4.0"));
-    assert!(format!("{:?}", hot).contains("95.0"));
+    assert!(format!("{cold:?}").contains("4.0"));
+    assert!(format!("{hot:?}").contains("95.0"));
 }

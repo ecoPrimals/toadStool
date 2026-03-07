@@ -197,7 +197,7 @@ fn test_capability_requirement_with_features() {
 #[test]
 fn test_self_identity_debug_format() {
     let identity = SelfIdentity::default();
-    let debug_str = format!("{:?}", identity);
+    let debug_str = format!("{identity:?}");
 
     assert!(!debug_str.is_empty(), "Debug format should produce output");
     assert!(
@@ -215,7 +215,7 @@ fn test_capability_debug_format() {
         characteristics: std::collections::HashMap::new(),
     };
 
-    let debug_str = format!("{:?}", cap);
+    let debug_str = format!("{cap:?}");
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("Capability"));
 }

@@ -38,7 +38,7 @@ fn test_beardog_config_clone() {
 #[test]
 fn test_beardog_config_debug() {
     let config = BearDogConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("BearDogConfig"));
     assert!(debug_str.contains("socket_path"));
@@ -99,7 +99,7 @@ fn test_auth_request_debug() {
         timestamp: std::time::SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", auth_request);
+    let debug_str = format!("{auth_request:?}");
     assert!(debug_str.contains("AuthRequest"));
 }
 
@@ -184,7 +184,7 @@ fn test_auth_response_clone_debug() {
     let auth_response2 = auth_response1.clone();
     assert_eq!(auth_response1.access_token, auth_response2.access_token);
 
-    let debug_str = format!("{:?}", auth_response1);
+    let debug_str = format!("{auth_response1:?}");
     assert!(debug_str.contains("AuthResponse"));
 }
 
@@ -241,7 +241,7 @@ fn test_authz_request_clone_debug() {
     let authz_request2 = authz_request1.clone();
     assert_eq!(authz_request1.resource, authz_request2.resource);
 
-    let debug_str = format!("{:?}", authz_request1);
+    let debug_str = format!("{authz_request1:?}");
     assert!(debug_str.contains("AuthzRequest"));
 }
 
@@ -295,7 +295,7 @@ fn test_authz_response_clone_debug() {
     let authz_response2 = authz_response1.clone();
     assert_eq!(authz_response1.allowed, authz_response2.allowed);
 
-    let debug_str = format!("{:?}", authz_response1);
+    let debug_str = format!("{authz_response1:?}");
     assert!(debug_str.contains("AuthzResponse"));
 }
 
@@ -376,7 +376,7 @@ fn test_security_policy_clone_debug() {
     let policy2 = policy1.clone();
     assert_eq!(policy1.id, policy2.id);
 
-    let debug_str = format!("{:?}", policy1);
+    let debug_str = format!("{policy1:?}");
     assert!(debug_str.contains("SecurityPolicy"));
 }
 
@@ -446,7 +446,7 @@ fn test_security_audit_event_clone_debug() {
     let audit_event2 = audit_event1.clone();
     assert_eq!(audit_event1.event_id, audit_event2.event_id);
 
-    let debug_str = format!("{:?}", audit_event1);
+    let debug_str = format!("{audit_event1:?}");
     assert!(debug_str.contains("SecurityAuditEvent"));
 }
 

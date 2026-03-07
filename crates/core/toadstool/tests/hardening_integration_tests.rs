@@ -119,7 +119,7 @@ async fn test_cache_with_memory_pressure() {
     // Populate cache
     for i in 0..100 {
         cache
-            .put(format!("key-{}", i), i)
+            .put(format!("key-{i}"), i)
             .await
             .expect("Should insert");
     }
@@ -340,7 +340,7 @@ async fn test_memory_pool_allocation_tracking() {
         let id = Uuid::new_v4();
         let allocation = ResourceAllocation {
             id,
-            resource_type: format!("PooledBuffer-{}", i),
+            resource_type: format!("PooledBuffer-{i}"),
             allocated_at: Instant::now(),
             requirements: ResourceRequirements::default(),
             owner: "tracking-test".to_string(),
@@ -386,8 +386,8 @@ async fn test_cache_operations_with_circuit_breaker() {
 
     // Populate cache through circuit breaker
     for i in 0..10 {
-        let key = format!("key-{}", i);
-        let value = format!("value-{}", i);
+        let key = format!("key-{i}");
+        let value = format!("value-{i}");
         let cache_clone = cache.clone();
         let k = key.clone();
         let v = value.clone();
@@ -457,7 +457,7 @@ async fn test_full_hardening_integration_scenario() {
     // Scenario: Process multiple requests with monitoring, caching, and circuit protection
     for i in 0..20 {
         // Check cache first
-        let cache_key = format!("request-{}", i);
+        let cache_key = format!("request-{i}");
         let cached = cache.get(&cache_key).await;
 
         if cached.is_none() {
@@ -512,9 +512,7 @@ async fn test_full_hardening_integration_scenario() {
                 gpu: None,
                 timing: TimingMetrics::default(),
             };
-            monitor
-                .add_sample(&format!("workload-{}", i), metrics)
-                .await;
+            monitor.add_sample(&format!("workload-{i}"), metrics).await;
         }
 
         // Use pool for buffer allocation

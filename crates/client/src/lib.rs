@@ -514,7 +514,7 @@ mod tests {
         };
 
         let api_url = config.api_url("test");
-        assert_eq!(api_url, format!("{}/api/v1/test", test_endpoint));
+        assert_eq!(api_url, format!("{test_endpoint}/api/v1/test"));
     }
 
     #[test]

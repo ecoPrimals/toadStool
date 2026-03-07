@@ -155,9 +155,7 @@ async fn test_resource_monitoring_updates_statistics() {
     // Verify uptime was updated (should be > initial since we received a resource update event)
     assert!(
         updated_uptime >= initial_uptime,
-        "Uptime should have stayed same or increased from {} to {}",
-        initial_uptime,
-        updated_uptime
+        "Uptime should have stayed same or increased from {initial_uptime} to {updated_uptime}"
     );
 
     handle.abort();
@@ -234,11 +232,7 @@ async fn test_resource_monitoring_tracks_peak_executions() {
         "Peak concurrent executions should be detected"
     );
     let peak = state.stats.read().await.peak_concurrent_executions;
-    assert!(
-        peak >= 1,
-        "Peak executions should be tracked, got: {}",
-        peak
-    );
+    assert!(peak >= 1, "Peak executions should be tracked, got: {peak}");
 
     handle.abort();
 }
@@ -394,7 +388,7 @@ async fn test_background_services_with_active_executions() {
                 timeout: Duration::from_secs(300),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: toadstool_server::ClientInfo {
-                    ip_address: Some(format!("192.168.1.{}", i)),
+                    ip_address: Some(format!("192.168.1.{i}")),
                     user_agent: None,
                     api_key: None,
                     authenticated_user: None,
@@ -471,7 +465,7 @@ async fn test_background_services_rapid_state_changes() {
                 timeout: Duration::from_secs(300),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: toadstool_server::ClientInfo {
-                    ip_address: Some(format!("192.168.1.{}", i)),
+                    ip_address: Some(format!("192.168.1.{i}")),
                     user_agent: None,
                     api_key: None,
                     authenticated_user: None,

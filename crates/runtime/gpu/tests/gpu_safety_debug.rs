@@ -70,7 +70,7 @@ async fn test_read_simple() {
     eprintln!("Reading data...");
     let result = buffer.read_async(0, 1).await.expect("Read failed");
 
-    eprintln!("Read result: {:?}", result);
+    eprintln!("Read result: {result:?}");
     assert_eq!(result, vec![42u8]);
 
     eprintln!("=== Read successful ===");

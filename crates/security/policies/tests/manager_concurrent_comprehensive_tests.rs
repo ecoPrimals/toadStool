@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive concurrent tests for PolicyManager
+//! Comprehensive concurrent tests for `PolicyManager`
 //!
 //! ✅ MODERN CONCURRENT TESTING - No sleeps, no serial, fully event-driven
 //! Tests run in parallel, proving production-grade concurrent safety
 //!
-//! Test infrastructure may use expect() for setup - test failure is appropriate
+//! Test infrastructure may use `expect()` for setup - test failure is appropriate
 
 #![allow(clippy::expect_used)] // Test infrastructure - expect is appropriate for setup
 
@@ -50,7 +50,7 @@ fn create_test_policy(id: &str, name: &str) -> SecurityPolicy {
         created_at: SystemTime::now(),
         modified_at: SystemTime::now(),
         rules: vec![PolicyRule {
-            id: format!("{}_rule_1", id),
+            id: format!("{id}_rule_1"),
             name: "Allow all".to_string(),
             condition: PolicyCondition::Always,
             action: PolicyAction::Allow,
@@ -100,8 +100,7 @@ async fn test_concurrent_policy_creation() {
     for i in 0..50 {
         let mgr = Arc::clone(&manager);
         tasks.push(tokio::spawn(async move {
-            let policy =
-                create_test_policy(&format!("policy_{}", i), &format!("Test Policy {}", i));
+            let policy = create_test_policy(&format!("policy_{i}"), &format!("Test Policy {i}"));
             mgr.save_policy(&policy).await
         }));
     }
@@ -156,7 +155,7 @@ async fn test_concurrent_mixed_operations() {
 
     // Pre-create some policies
     for i in 0..10 {
-        let policy = create_test_policy(&format!("base_{}", i), &format!("Base {}", i));
+        let policy = create_test_policy(&format!("base_{i}"), &format!("Base {i}"));
         manager.save_policy(&policy).await.expect("Save failed");
     }
 
@@ -169,7 +168,7 @@ async fn test_concurrent_mixed_operations() {
         let bar = Arc::clone(&barrier);
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            let policy = create_test_policy(&format!("new_{}", i), &format!("New {}", i));
+            let policy = create_test_policy(&format!("new_{i}"), &format!("New {i}"));
             mgr.save_policy(&policy).await
         }));
     }
@@ -181,7 +180,7 @@ async fn test_concurrent_mixed_operations() {
         let id = i % 10; // Read from base policies
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            mgr.load_policy(&format!("base_{}", id)).await.map(|_| ())
+            mgr.load_policy(&format!("base_{id}")).await.map(|_| ())
         }));
     }
 
@@ -219,7 +218,7 @@ async fn test_concurrent_policy_validation() {
         let bar = Arc::clone(&barrier);
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            let policy = create_test_policy(&format!("policy_{}", i), &format!("Policy {}", i));
+            let policy = create_test_policy(&format!("policy_{i}"), &format!("Policy {i}"));
             mgr.validate_policy(&policy).await
         }));
     }
@@ -245,8 +244,8 @@ async fn test_concurrent_invalid_policy_validation() {
         let bar = Arc::clone(&barrier);
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            let mut policy = create_test_policy(&format!("invalid_{}", i), ""); // Empty name!
-            policy.version = "".to_string(); // Empty version!
+            let mut policy = create_test_policy(&format!("invalid_{i}"), ""); // Empty name!
+            policy.version = String::new(); // Empty version!
             mgr.validate_policy(&policy).await
         }));
     }
@@ -307,7 +306,7 @@ async fn test_concurrent_different_policy_evaluations() {
 
     // Create multiple policies
     for i in 0..20 {
-        let policy = create_test_policy(&format!("policy_{}", i), &format!("Policy {}", i));
+        let policy = create_test_policy(&format!("policy_{i}"), &format!("Policy {i}"));
         manager.save_policy(&policy).await.expect("Save failed");
     }
 
@@ -385,7 +384,7 @@ async fn test_concurrent_policy_composition() {
 
     // Create base policies
     for i in 0..5 {
-        let policy = create_test_policy(&format!("base_{}", i), &format!("Base {}", i));
+        let policy = create_test_policy(&format!("base_{i}"), &format!("Base {i}"));
         manager.save_policy(&policy).await.expect("Save failed");
     }
 
@@ -424,7 +423,7 @@ async fn test_concurrent_policy_deletion() {
 
     // Create policies
     for i in 0..50 {
-        let policy = create_test_policy(&format!("delete_{}", i), &format!("Delete {}", i));
+        let policy = create_test_policy(&format!("delete_{i}"), &format!("Delete {i}"));
         manager.save_policy(&policy).await.expect("Save failed");
     }
 
@@ -436,7 +435,7 @@ async fn test_concurrent_policy_deletion() {
         let bar = Arc::clone(&barrier);
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            mgr.delete_policy(&format!("delete_{}", i)).await
+            mgr.delete_policy(&format!("delete_{i}")).await
         }));
     }
 
@@ -462,7 +461,7 @@ async fn test_stress_1000_concurrent_operations() {
 
     // Pre-create some base policies
     for i in 0..50 {
-        let policy = create_test_policy(&format!("stress_{}", i), &format!("Stress {}", i));
+        let policy = create_test_policy(&format!("stress_{i}"), &format!("Stress {i}"));
         manager.save_policy(&policy).await.expect("Save failed");
     }
 
@@ -486,10 +485,8 @@ async fn test_stress_1000_concurrent_operations() {
                 }
                 1 => {
                     // Write
-                    let policy = create_test_policy(
-                        &format!("new_stress_{}", i),
-                        &format!("New Stress {}", i),
-                    );
+                    let policy =
+                        create_test_policy(&format!("new_stress_{i}"), &format!("New Stress {i}"));
                     mgr.save_policy(&policy).await
                 }
                 2 => {
@@ -516,7 +513,7 @@ async fn test_stress_1000_concurrent_operations() {
     }
 
     // Should have high success rate (>95%)
-    assert!(successes > 950, "Success rate too low: {}/1000", successes);
+    assert!(successes > 950, "Success rate too low: {successes}/1000");
 }
 
 #[tokio::test]
@@ -575,7 +572,7 @@ async fn test_concurrent_nonexistent_policy_loads() {
         let bar = Arc::clone(&barrier);
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            mgr.load_policy(&format!("nonexistent_{}", i)).await
+            mgr.load_policy(&format!("nonexistent_{i}")).await
         }));
     }
 

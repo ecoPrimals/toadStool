@@ -2,7 +2,7 @@
 //! Tests for WASM Runtime Implementation in lib.rs
 //!
 //! Target: Cover the actual implementation in lib.rs (currently 0/289 lines)
-//! Focus: WasmRuntimeEngine implementation, not just type creation
+//! Focus: `WasmRuntimeEngine` implementation, not just type creation
 
 use toadstool::execution::RuntimeEngine;
 use toadstool::workload::WorkloadType;
@@ -317,7 +317,7 @@ async fn test_engine_debug_format() {
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).expect("Engine creation should succeed");
 
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
     assert!(
         debug_str.contains("WasmRuntimeEngine"),
         "Debug format should contain type name"

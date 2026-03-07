@@ -2,8 +2,8 @@
 //! Comprehensive tests for Native and WASM workload builders
 //!
 //! This test suite provides extensive coverage for:
-//! - NativeWorkloadBuilder (all methods and patterns)
-//! - WasmWorkloadBuilder (all methods and patterns)
+//! - `NativeWorkloadBuilder` (all methods and patterns)
+//! - `WasmWorkloadBuilder` (all methods and patterns)
 //! - Builder pattern validation
 //! - Error handling
 //! - Edge cases

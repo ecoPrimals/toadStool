@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for hardware transport layer.
 //!
-//! Tests TransportRouter, TransportFilter, and framed loopback transport
-//! with encode_frame/decode_frame.
+//! Tests `TransportRouter`, `TransportFilter`, and framed loopback transport
+//! with `encode_frame/decode_frame`.
 
 use toadstool_core::{
     decode_frame, encode_frame, HardwareTransport, TransportDirection, TransportError,
@@ -10,7 +10,7 @@ use toadstool_core::{
 };
 
 /// Loopback transport with proper framing support for testing.
-/// Stores raw bytes; caller uses encode_frame/decode_frame for protocol.
+/// Stores raw bytes; caller uses `encode_frame/decode_frame` for protocol.
 struct LoopbackTransport {
     info: TransportInfo,
     buf: Vec<u8>,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional background services tests to expand coverage from 78.60% → 90%+
 //!
-//! These tests complement background_comprehensive_tests.rs by covering:
+//! These tests complement `background_comprehensive_tests.rs` by covering:
 //! - Health check logic and edge cases
 //! - Resource threshold checking
 //! - Runtime engine health verification
@@ -142,7 +142,7 @@ async fn test_health_check_with_too_many_executions() {
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        user_agent: Some(format!("test-{}", i)),
+                        user_agent: Some(format!("test-{i}")),
                         ip_address: Some("127.0.0.1".to_string()),
                         api_key: None,
                         authenticated_user: None,
@@ -232,7 +232,7 @@ async fn test_resource_monitoring_with_many_active_executions() {
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        user_agent: Some(format!("test-{}", i)),
+                        user_agent: Some(format!("test-{i}")),
                         ip_address: Some("127.0.0.1".to_string()),
                         api_key: None,
                         authenticated_user: None,
@@ -287,7 +287,7 @@ async fn test_resource_monitoring_updates_peak_concurrent() {
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        user_agent: Some(format!("test-{}", i)),
+                        user_agent: Some(format!("test-{i}")),
                         ip_address: Some("127.0.0.1".to_string()),
                         api_key: None,
                         authenticated_user: None,
@@ -316,19 +316,16 @@ async fn test_resource_monitoring_updates_peak_concurrent() {
     .await;
 
     // Check peak was updated - handle timeout properly
-    match timeout_result {
-        Ok(peak) => {
-            assert!(peak >= 5, "Peak should be at least 5, got {}", peak);
-        }
-        Err(_) => {
-            let stats = state.stats.read().await;
-            panic!(
-                "Timeout waiting for peak concurrent to update. Peak is {}, expected >= 5. \
-                Active executions: {}",
-                stats.peak_concurrent_executions,
-                state.active_executions.read().await.len()
-            );
-        }
+    if let Ok(peak) = timeout_result {
+        assert!(peak >= 5, "Peak should be at least 5, got {peak}");
+    } else {
+        let stats = state.stats.read().await;
+        panic!(
+            "Timeout waiting for peak concurrent to update. Peak is {}, expected >= 5. \
+            Active executions: {}",
+            stats.peak_concurrent_executions,
+            state.active_executions.read().await.len()
+        );
     }
 }
 
@@ -370,7 +367,7 @@ async fn test_statistics_with_varying_execution_counts() {
                     timeout: Duration::from_secs(300),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        user_agent: Some(format!("test-{}", i)),
+                        user_agent: Some(format!("test-{i}")),
                         ip_address: Some("127.0.0.1".to_string()),
                         api_key: None,
                         authenticated_user: None,
@@ -541,9 +538,7 @@ async fn test_all_tasks_run_concurrently() {
     // Should receive at least some events (or health_events is tracked)
     assert!(
         resource_events > 0 || health_events >= 0,
-        "Background tasks run concurrently (resource: {}, health: {})",
-        resource_events,
-        health_events
+        "Background tasks run concurrently (resource: {resource_events}, health: {health_events})"
     );
 }
 

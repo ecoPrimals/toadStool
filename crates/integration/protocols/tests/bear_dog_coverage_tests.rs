@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for BearDog protocol (bear_dog.rs)
-//! Target: crates/integration/protocols/src/bear_dog.rs
-//! No real Unix socket - tests structs, AuthResponse::standalone, authenticate/authorize fallbacks.
+//! Comprehensive tests for BearDog protocol (`bear_dog.rs`)
+//! Target: `crates/integration/protocols/src/bear_dog.rs`
+//! No real Unix socket - tests structs, `AuthResponse::standalone`, authenticate/authorize fallbacks.
 
 use std::collections::HashMap;
 

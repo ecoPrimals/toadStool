@@ -389,8 +389,7 @@ async fn test_multiple_background_tasks_run_concurrently() {
     // Verify we received multiple different event types (background tasks are running)
     assert!(
         !event_types.is_empty(),
-        "Background tasks are running and sending events (received: {:?})",
-        event_types
+        "Background tasks are running and sending events (received: {event_types:?})"
     );
 }
 

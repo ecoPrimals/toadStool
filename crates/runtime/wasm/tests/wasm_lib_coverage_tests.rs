@@ -60,7 +60,7 @@ fn test_cache_metrics_display() {
         memory_usage_bytes: 8192,
     };
 
-    let display_str = format!("{}", metrics);
+    let display_str = format!("{metrics}");
     assert!(display_str.contains("modules: 5"));
     assert!(display_str.contains("size: 4096 bytes"));
     assert!(display_str.contains("75.00%"));
@@ -69,7 +69,7 @@ fn test_cache_metrics_display() {
 #[test]
 fn test_cache_metrics_display_zero() {
     let metrics = CacheMetrics::default();
-    let display_str = format!("{}", metrics);
+    let display_str = format!("{metrics}");
     assert!(display_str.contains("modules: 0"));
     assert!(display_str.contains("0.00%"));
 }
@@ -77,7 +77,7 @@ fn test_cache_metrics_display_zero() {
 #[test]
 fn test_cache_metrics_debug() {
     let metrics = CacheMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("CacheMetrics"));
 }
 
@@ -103,32 +103,32 @@ fn test_cache_metrics_clone() {
 #[test]
 fn test_security_level_none() {
     let level = SecurityLevel::None;
-    assert!(format!("{:?}", level).contains("None"));
+    assert!(format!("{level:?}").contains("None"));
 }
 
 #[test]
 fn test_security_level_basic() {
     let level = SecurityLevel::Basic;
-    assert!(format!("{:?}", level).contains("Basic"));
+    assert!(format!("{level:?}").contains("Basic"));
 }
 
 #[test]
 fn test_security_level_strict() {
     let level = SecurityLevel::Strict;
-    assert!(format!("{:?}", level).contains("Strict"));
+    assert!(format!("{level:?}").contains("Strict"));
 }
 
 #[test]
 fn test_security_level_maximum() {
     let level = SecurityLevel::Maximum;
-    assert!(format!("{:?}", level).contains("Maximum"));
+    assert!(format!("{level:?}").contains("Maximum"));
 }
 
 #[test]
 fn test_security_level_clone() {
     let level1 = SecurityLevel::Strict;
     let level2 = level1;
-    assert!(format!("{:?}", level1) == format!("{:?}", level2));
+    assert!(format!("{level1:?}") == format!("{level2:?}"));
 }
 
 // ============================================================================
@@ -184,7 +184,7 @@ fn test_wasm_config_clone() {
 #[test]
 fn test_wasm_config_debug() {
     let config = WasmRuntimeConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("WasmRuntimeConfig"));
 }
 

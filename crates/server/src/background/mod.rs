@@ -231,7 +231,7 @@ mod tests {
                     timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        ip_address: Some(format!("127.0.0.{}", i)),
+                        ip_address: Some(format!("127.0.0.{i}")),
                         user_agent: None,
                         api_key: None,
                         authenticated_user: None,
@@ -400,7 +400,7 @@ mod tests {
                     timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: ExecutionStatus::Running,
                     client_info: ClientInfo {
-                        ip_address: Some(format!("127.0.0.{}", i)),
+                        ip_address: Some(format!("127.0.0.{i}")),
                         user_agent: None,
                         api_key: None,
                         authenticated_user: None,

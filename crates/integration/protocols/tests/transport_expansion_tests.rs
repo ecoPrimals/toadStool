@@ -251,7 +251,7 @@ fn test_connection_service_id_formatting() {
         let conn = Connection {
             service_id: id.to_string(),
             endpoint: create_test_endpoint(
-                &format!("{}-endpoint", id),
+                &format!("{id}-endpoint"),
                 TransportType::Http,
                 "localhost",
                 8080,
@@ -273,9 +273,9 @@ fn test_connection_with_standard_ports() {
 
     for port in ports {
         let conn = Connection {
-            service_id: format!("service-{}", port),
+            service_id: format!("service-{port}"),
             endpoint: create_test_endpoint(
-                &format!("endpoint-{}", port),
+                &format!("endpoint-{port}"),
                 TransportType::Http,
                 "localhost",
                 port,
@@ -415,7 +415,7 @@ fn test_connection_debug_format() {
         active_requests: 0,
     };
 
-    let debug_str = format!("{:?}", conn);
+    let debug_str = format!("{conn:?}");
     assert!(debug_str.contains("debug-test"));
 }
 
@@ -509,21 +509,21 @@ fn test_transport_clone_trpc() {
 #[test]
 fn test_transport_debug_http() {
     let transport = Transport::Http(HttpTransport::new());
-    let debug_str = format!("{:?}", transport);
+    let debug_str = format!("{transport:?}");
     assert!(debug_str.contains("Http"));
 }
 
 #[test]
 fn test_transport_debug_websocket() {
     let transport = Transport::TRpc(TRpcTransport::new());
-    let debug_str = format!("{:?}", transport);
+    let debug_str = format!("{transport:?}");
     assert!(debug_str.contains("TRpc"));
 }
 
 #[test]
 fn test_transport_debug_trpc() {
     let transport = Transport::TRpc(TRpcTransport::new());
-    let debug_str = format!("{:?}", transport);
+    let debug_str = format!("{transport:?}");
     assert!(debug_str.contains("TRpc"));
 }
 
@@ -624,7 +624,7 @@ fn test_transport_type_consistency() {
 fn test_transport_manager_creation() {
     let manager = TransportManager::new();
     // TransportManager should be created successfully
-    let _ = format!("{:?}", manager); // Test debug formatting
+    let _ = format!("{manager:?}"); // Test debug formatting
 }
 
 // Total tests in this file: 20 + 15 = 35 tests

@@ -58,7 +58,7 @@ fn test_workload_metadata_debug() {
         version: Some("1.0".to_string()),
     };
 
-    let debug_str = format!("{:?}", metadata);
+    let debug_str = format!("{metadata:?}");
     assert!(debug_str.contains("WorkloadMetadata"));
     assert!(debug_str.contains("test"));
 }
@@ -113,13 +113,13 @@ fn test_workload_metadata_long_description() {
 #[test]
 fn test_workload_metadata_empty_strings() {
     let metadata = WorkloadMetadata {
-        name: "".to_string(),
-        description: Some("".to_string()),
-        version: Some("".to_string()),
+        name: String::new(),
+        description: Some(String::new()),
+        version: Some(String::new()),
     };
 
     assert_eq!(metadata.name, "");
-    assert_eq!(metadata.description, Some("".to_string()));
+    assert_eq!(metadata.description, Some(String::new()));
 }
 
 // ============================================================================
@@ -282,7 +282,7 @@ fn test_execution_spec_debug() {
     ];
 
     for spec in specs {
-        let debug_str = format!("{:?}", spec);
+        let debug_str = format!("{spec:?}");
         assert!(!debug_str.is_empty());
     }
 }
@@ -322,7 +322,7 @@ fn test_execution_spec_all_variants() {
 fn test_execution_spec_with_complex_env() {
     let mut env = HashMap::new();
     for i in 0..10 {
-        env.insert(format!("KEY{}", i), format!("value{}", i));
+        env.insert(format!("KEY{i}"), format!("value{i}"));
     }
 
     let spec = ExecutionSpec::Native {
@@ -429,7 +429,7 @@ fn test_resource_spec_clone_debug() {
     assert_eq!(spec1.cpu_cores, spec2.cpu_cores);
     assert_eq!(spec1.memory_mb, spec2.memory_mb);
 
-    let debug_str = format!("{:?}", spec1);
+    let debug_str = format!("{spec1:?}");
     assert!(debug_str.contains("ResourceSpec"));
 }
 
@@ -481,7 +481,7 @@ fn test_security_spec_debug() {
         isolation: Some("strict".to_string()),
     };
 
-    let debug_str = format!("{:?}", spec);
+    let debug_str = format!("{spec:?}");
     assert!(debug_str.contains("SecuritySpec"));
     assert!(debug_str.contains("isolation"));
 }
@@ -489,10 +489,10 @@ fn test_security_spec_debug() {
 #[test]
 fn test_security_spec_empty_string() {
     let spec = SecuritySpec {
-        isolation: Some("".to_string()),
+        isolation: Some(String::new()),
     };
 
-    assert_eq!(spec.isolation, Some("".to_string()));
+    assert_eq!(spec.isolation, Some(String::new()));
 }
 
 // ============================================================================

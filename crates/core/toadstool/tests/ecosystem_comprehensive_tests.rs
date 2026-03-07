@@ -547,11 +547,11 @@ async fn test_concurrent_primal_access() {
             let coord = Arc::clone(&coordinator);
             tokio::spawn(async move {
                 let primal = create_test_primal(
-                    &format!("primal-{}", i),
-                    MockPrimalType::Custom(format!("type-{}", i)),
+                    &format!("primal-{i}"),
+                    MockPrimalType::Custom(format!("type-{i}")),
                 );
                 let mut primals = coord.primals.write().await;
-                primals.insert(format!("primal-{}", i), primal);
+                primals.insert(format!("primal-{i}"), primal);
             })
         })
         .collect();
@@ -573,11 +573,11 @@ async fn test_concurrent_channel_access() {
             let coord = Arc::clone(&coordinator);
             tokio::spawn(async move {
                 let channel = MockPrimalChannel {
-                    primal_name: format!("primal-{}", i),
+                    primal_name: format!("primal-{i}"),
                     endpoint: format!("http://localhost:{}", 8000 + i),
                 };
                 let mut channels = coord.channels.write().await;
-                channels.insert(format!("primal-{}", i), channel);
+                channels.insert(format!("primal-{i}"), channel);
             })
         })
         .collect();

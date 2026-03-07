@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for AI/MCP Interface
 //!
-//! Tests all major functions and paths in ai_mcp_interface.rs to achieve 70%+ coverage
+//! Tests all major functions and paths in `ai_mcp_interface.rs` to achieve 70%+ coverage
 //!
 //! ## Sovereignty
-//! Evolved from squirrel_mcp (primal-specific) to ai_mcp_interface (agnostic).
+//! Evolved from `squirrel_mcp` (primal-specific) to `ai_mcp_interface` (agnostic).
 
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -304,9 +304,9 @@ async fn test_concurrent_session_creation() -> ToadStoolResult<()> {
             let mut interface = AiMcpInterface::new()?;
 
             let request = McpRequest {
-                request_id: format!("req-concurrent-{}", i),
+                request_id: format!("req-concurrent-{i}"),
                 session_id: None,
-                agent_id: format!("agent-{}", i),
+                agent_id: format!("agent-{i}"),
                 request_type: McpRequestType::CreateSession { preferences: None },
                 metadata: HashMap::new(),
                 timestamp: SystemTime::now(),
@@ -332,7 +332,7 @@ async fn test_concurrent_session_creation() -> ToadStoolResult<()> {
         "All concurrent session creations should succeed"
     );
 
-    println!("✅ Created {} sessions concurrently", NUM_SESSIONS);
+    println!("✅ Created {NUM_SESSIONS} sessions concurrently");
 
     Ok(())
 }
@@ -347,7 +347,7 @@ async fn test_concurrent_status_requests() -> ToadStoolResult<()> {
             let mut interface = AiMcpInterface::new()?;
 
             let request = McpRequest {
-                request_id: format!("req-status-{}", i),
+                request_id: format!("req-status-{i}"),
                 session_id: None,
                 agent_id: "test-agent".to_string(),
                 request_type: McpRequestType::GetSystemStatus,
@@ -375,10 +375,7 @@ async fn test_concurrent_status_requests() -> ToadStoolResult<()> {
         "Most concurrent status requests should succeed"
     );
 
-    println!(
-        "✅ Completed {} status requests concurrently",
-        success_count
-    );
+    println!("✅ Completed {success_count} status requests concurrently");
 
     Ok(())
 }
@@ -394,7 +391,7 @@ async fn test_request_with_empty_agent_id() -> ToadStoolResult<()> {
     let request = McpRequest {
         request_id: "req-empty-agent".to_string(),
         session_id: None,
-        agent_id: "".to_string(), // Empty agent ID
+        agent_id: String::new(), // Empty agent ID
         request_type: McpRequestType::GetSystemStatus,
         metadata: HashMap::new(),
         timestamp: SystemTime::now(),
@@ -417,7 +414,7 @@ async fn test_request_with_large_metadata() -> ToadStoolResult<()> {
 
     let mut metadata = HashMap::new();
     for i in 0..100 {
-        metadata.insert(format!("key-{}", i), format!("value-{}", i));
+        metadata.insert(format!("key-{i}"), format!("value-{i}"));
     }
 
     let request = McpRequest {
@@ -454,11 +451,10 @@ async fn test_interface_creation_performance() {
 
     assert!(
         duration < std::time::Duration::from_millis(500),
-        "Creating 100 interfaces should be <500ms, took {:?}",
-        duration
+        "Creating 100 interfaces should be <500ms, took {duration:?}"
     );
 
-    println!("✅ Created 100 interfaces in {:?}", duration);
+    println!("✅ Created 100 interfaces in {duration:?}");
 }
 
 // ============================================================================
@@ -480,7 +476,7 @@ async fn test_multiple_sequential_requests() -> ToadStoolResult<()> {
     // Sequential requests should all work
     for i in 0..5 {
         let request = McpRequest {
-            request_id: format!("req-seq-{}", i),
+            request_id: format!("req-seq-{i}"),
             session_id: None,
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::GetSystemStatus,
@@ -489,7 +485,7 @@ async fn test_multiple_sequential_requests() -> ToadStoolResult<()> {
         };
 
         let response = interface.process_ai_request(request).await?;
-        assert!(response.success, "Sequential request {} should succeed", i);
+        assert!(response.success, "Sequential request {i} should succeed");
     }
 
     Ok(())

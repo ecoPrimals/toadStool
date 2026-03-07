@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for PlatformOptimizer and optimization logic
+//! Comprehensive tests for `PlatformOptimizer` and optimization logic
 //!
 //! Tests platform-specific optimizations and configuration generation
 
@@ -54,7 +54,7 @@ async fn test_optimize_for_platform_minimal_hardware() {
                 );
             }
             Err(e) => {
-                eprintln!("⚠️  Platform optimization failed: {:?}", e);
+                eprintln!("⚠️  Platform optimization failed: {e:?}");
             }
         }
     }
@@ -90,10 +90,7 @@ async fn test_concurrent_platform_optimizer_creation() {
         "All concurrent creations should succeed"
     );
 
-    println!(
-        "✅ Created {} platform optimizers concurrently",
-        NUM_OPTIMIZERS
-    );
+    println!("✅ Created {NUM_OPTIMIZERS} platform optimizers concurrently");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -115,10 +112,7 @@ async fn test_concurrent_hardware_detection() {
         assert!(result.is_ok(), "Task should not panic");
     }
 
-    println!(
-        "✅ Completed {} concurrent hardware detections",
-        NUM_DETECTIONS
-    );
+    println!("✅ Completed {NUM_DETECTIONS} concurrent hardware detections");
 }
 
 // ============================================================================
@@ -141,11 +135,10 @@ fn test_platform_optimizer_creation_performance() {
     // Should be extremely fast - just OS detection
     assert!(
         duration < Duration::from_millis(500),
-        "Creating 1000 platform optimizers should be <500ms, took {:?}",
-        duration
+        "Creating 1000 platform optimizers should be <500ms, took {duration:?}"
     );
 
-    println!("✅ Created 1000 platform optimizers in {:?}", duration);
+    println!("✅ Created 1000 platform optimizers in {duration:?}");
 }
 
 #[tokio::test]
@@ -162,11 +155,10 @@ async fn test_hardware_scan_performance() {
     // Hardware scan should be reasonably fast
     assert!(
         duration < Duration::from_secs(5),
-        "Hardware scan should complete <5s, took {:?}",
-        duration
+        "Hardware scan should complete <5s, took {duration:?}"
     );
 
-    println!("✅ Hardware scan completed in {:?}", duration);
+    println!("✅ Hardware scan completed in {duration:?}");
 }
 
 // ============================================================================

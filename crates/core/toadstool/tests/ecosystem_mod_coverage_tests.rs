@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Targeted tests for ecosystem/mod.rs coverage expansion
-//! Covers: DiscoveryMethodConfig variants, integrate_services, error paths, deprecated APIs
+//! Covers: `DiscoveryMethodConfig` variants, `integrate_services`, error paths, deprecated APIs
 
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -98,8 +98,7 @@ async fn test_ecosystem_integrate_services_no_endpoint_marks_failed() {
             reason.contains("endpoint")
                 || reason.contains("Channel")
                 || reason.contains("No endpoint"),
-            "reason: {}",
-            reason
+            "reason: {reason}"
         );
     }
 }
@@ -225,8 +224,7 @@ async fn test_ecosystem_get_service_status_connected_after_integration() {
     let s = status.unwrap();
     assert!(
         s.is_usable() || s.is_error() || matches!(s, ServiceStatus::Discovered),
-        "status: {:?}",
-        s
+        "status: {s:?}"
     );
 }
 

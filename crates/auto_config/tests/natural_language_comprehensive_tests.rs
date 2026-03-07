@@ -71,8 +71,7 @@ async fn test_machine_learning_intent() {
         let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "machine_learning",
-            "Failed for: {}",
-            text
+            "Failed for: {text}"
         );
         assert!(analysis.confidence > 0.0);
     }
@@ -100,8 +99,7 @@ async fn test_web_development_intent() {
         let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "web_development",
-            "Failed for: {}",
-            text
+            "Failed for: {text}"
         );
         assert!(analysis.confidence > 0.0);
     }
@@ -123,8 +121,7 @@ async fn test_data_processing_intent() {
         let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "data_processing",
-            "Failed for: {}",
-            text
+            "Failed for: {text}"
         );
         assert!(analysis.confidence > 0.0);
     }
@@ -276,7 +273,7 @@ async fn test_invalid_template_name() {
 // TYPE STRUCTURE TESTS
 // ============================================================================
 
-/// Test ConfigurationIntent structure
+/// Test `ConfigurationIntent` structure
 #[test]
 fn test_configuration_intent_structure() {
     let intent = ConfigurationIntent {
@@ -290,7 +287,7 @@ fn test_configuration_intent_structure() {
     assert_eq!(intent.priority_features.len(), 1);
 }
 
-/// Test IntentAnalysis structure
+/// Test `IntentAnalysis` structure
 #[test]
 fn test_intent_analysis_structure() {
     let analysis = IntentAnalysis {
@@ -307,7 +304,7 @@ fn test_intent_analysis_structure() {
     assert_eq!(analysis.secondary_intents.len(), 1);
 }
 
-/// Test ExplicitPreferences structure
+/// Test `ExplicitPreferences` structure
 #[test]
 fn test_explicit_preferences_structure() {
     let prefs = ExplicitPreferences {
@@ -324,7 +321,7 @@ fn test_explicit_preferences_structure() {
     assert_eq!(prefs.use_containers, Some(false));
 }
 
-/// Test RuntimePreferences structure
+/// Test `RuntimePreferences` structure
 #[test]
 fn test_runtime_preferences_structure() {
     let mut enabled_runtimes = HashSet::new();
@@ -344,7 +341,7 @@ fn test_runtime_preferences_structure() {
     assert!(prefs.gpu_memory_fraction > 0.0);
 }
 
-/// Test ResourcePreferences structure
+/// Test `ResourcePreferences` structure
 #[test]
 fn test_resource_preferences_structure() {
     let prefs = ResourcePreferences {
@@ -362,7 +359,7 @@ fn test_resource_preferences_structure() {
     assert!(!prefs.memory_allocation_strategy.is_empty());
 }
 
-/// Test ConfigurationTemplate structure
+/// Test `ConfigurationTemplate` structure
 #[test]
 fn test_configuration_template_structure() {
     let mut enabled_runtimes = HashSet::new();
@@ -411,7 +408,7 @@ fn test_performance_preference_variants() {
 
     // All should support Debug
     for variant in &variants {
-        let _debug = format!("{:?}", variant);
+        let _debug = format!("{variant:?}");
     }
 }
 
@@ -429,7 +426,7 @@ fn test_security_preference_variants() {
 
     // All should support Debug
     for variant in &variants {
-        let _debug = format!("{:?}", variant);
+        let _debug = format!("{variant:?}");
     }
 }
 
@@ -564,8 +561,7 @@ async fn test_case_insensitivity() {
         let analysis = config.analyze_intent(text).unwrap();
         assert_eq!(
             analysis.primary_intent, "machine_learning",
-            "Failed for: {}",
-            text
+            "Failed for: {text}"
         );
     }
 }

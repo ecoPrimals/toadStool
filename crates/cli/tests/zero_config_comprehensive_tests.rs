@@ -49,17 +49,14 @@ async fn test_rapid_bootstrap_basic() -> Result<()> {
     let result = deployment.rapid_bootstrap().await;
 
     // May succeed or fail depending on environment
-    match result {
-        Ok(duration) => {
-            // Should complete within reasonable time
-            assert!(
-                duration.as_secs() < 120,
-                "Bootstrap should complete within 120 seconds"
-            );
-        }
-        Err(_) => {
-            // Failure is acceptable in test environment
-        }
+    if let Ok(duration) = result {
+        // Should complete within reasonable time
+        assert!(
+            duration.as_secs() < 120,
+            "Bootstrap should complete within 120 seconds"
+        );
+    } else {
+        // Failure is acceptable in test environment
     }
 
     Ok(())
@@ -70,7 +67,7 @@ async fn test_rapid_bootstrap_completion_time() -> Result<()> {
     let mut deployment = ZeroConfigDeployment::new();
 
     if let Ok(duration) = deployment.rapid_bootstrap().await {
-        println!("Bootstrap completed in {:?}", duration);
+        println!("Bootstrap completed in {duration:?}");
         assert!(duration.as_millis() > 0);
     }
 
@@ -411,7 +408,7 @@ async fn test_bootstrap_timing() -> Result<()> {
     let _ = deployment.rapid_bootstrap().await;
     let elapsed = start.elapsed();
 
-    println!("Bootstrap elapsed: {:?}", elapsed);
+    println!("Bootstrap elapsed: {elapsed:?}");
     assert!(
         elapsed.as_secs() < 300,
         "Bootstrap should complete within 5 minutes"

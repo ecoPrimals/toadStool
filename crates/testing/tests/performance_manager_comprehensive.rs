@@ -2,7 +2,7 @@
 // Copyright (C) 2025 ToadStool Development Team
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Comprehensive tests for PerformanceTestManager
+//! Comprehensive tests for `PerformanceTestManager`
 //!
 //! This test file expands coverage of the performance testing infrastructure,
 //! focusing on previously untested code paths.
@@ -86,7 +86,7 @@ async fn test_benchmark_with_custom_metrics() {
 
     let result = manager
         .benchmark(|| async {
-            let _ = (0..1000u64).fold(0u64, |a, b| a.wrapping_add(b));
+            let _ = (0..1000u64).fold(0u64, u64::wrapping_add);
             tokio::task::yield_now().await;
             Ok(())
         })

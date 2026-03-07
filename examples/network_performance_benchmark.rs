@@ -178,15 +178,15 @@ async fn benchmark_dns_service_discovery(
     // Calculate latency percentiles
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let avg_latency_ms = latencies.iter().sum::<f64>() / latencies.len() as f64;
-    let p95_latency_ms = if !latencies.is_empty() {
+    let p95_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies[(latencies.len() as f64 * 0.95) as usize]
-    } else {
-        0.0
     };
-    let p99_latency_ms = if !latencies.is_empty() {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    } else {
+    let p99_latency_ms = if latencies.is_empty() {
         0.0
+    } else {
+        latencies[(latencies.len() as f64 * 0.99) as usize]
     };
 
     let mut metrics = HashMap::new();
@@ -260,25 +260,25 @@ async fn benchmark_service_mesh_communication(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
     let throughput_mbs = (total_bytes as f64 / 1024.0 / 1024.0) / total_duration.as_secs_f64();
 
     // Calculate latency percentiles
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if !latencies.is_empty() {
+    let avg_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies.iter().sum::<f64>() / latencies.len() as f64
-    } else {
-        0.0
     };
-    let p95_latency_ms = if !latencies.is_empty() {
+    let p95_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies[(latencies.len() as f64 * 0.95) as usize]
-    } else {
-        0.0
     };
-    let p99_latency_ms = if !latencies.is_empty() {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    } else {
+    let p99_latency_ms = if latencies.is_empty() {
         0.0
+    } else {
+        latencies[(latencies.len() as f64 * 0.99) as usize]
     };
 
     let mut metrics = HashMap::new();
@@ -337,31 +337,31 @@ async fn benchmark_load_balancing(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     // Calculate latency percentiles
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if !latencies.is_empty() {
+    let avg_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies.iter().sum::<f64>() / latencies.len() as f64
-    } else {
-        0.0
     };
-    let p95_latency_ms = if !latencies.is_empty() {
+    let p95_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies[(latencies.len() as f64 * 0.95) as usize]
-    } else {
-        0.0
     };
-    let p99_latency_ms = if !latencies.is_empty() {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    } else {
+    let p99_latency_ms = if latencies.is_empty() {
         0.0
+    } else {
+        latencies[(latencies.len() as f64 * 0.99) as usize]
     };
 
     // Calculate load balancing fairness
     let expected_per_backend = config.iterations as f64 / backends.len() as f64;
     let mut fairness_score = 0.0;
     for count in backend_distribution.values() {
-        let deviation = (*count as f64 - expected_per_backend).abs();
+        let deviation = (f64::from(*count) - expected_per_backend).abs();
         fairness_score += deviation / expected_per_backend;
     }
     fairness_score = 100.0 - (fairness_score / backends.len() as f64 * 100.0);
@@ -429,24 +429,24 @@ async fn benchmark_circuit_breaker(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     // Calculate latency percentiles
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if !latencies.is_empty() {
+    let avg_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies.iter().sum::<f64>() / latencies.len() as f64
-    } else {
-        0.0
     };
-    let p95_latency_ms = if !latencies.is_empty() {
+    let p95_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies[(latencies.len() as f64 * 0.95) as usize]
-    } else {
-        0.0
     };
-    let p99_latency_ms = if !latencies.is_empty() {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    } else {
+    let p99_latency_ms = if latencies.is_empty() {
         0.0
+    } else {
+        latencies[(latencies.len() as f64 * 0.99) as usize]
     };
 
     let mut metrics = HashMap::new();
@@ -503,28 +503,28 @@ async fn benchmark_network_policies(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     // Calculate latency percentiles
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if !latencies.is_empty() {
+    let avg_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies.iter().sum::<f64>() / latencies.len() as f64
-    } else {
-        0.0
     };
-    let p95_latency_ms = if !latencies.is_empty() {
+    let p95_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies[(latencies.len() as f64 * 0.95) as usize]
-    } else {
-        0.0
     };
-    let p99_latency_ms = if !latencies.is_empty() {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    } else {
+    let p99_latency_ms = if latencies.is_empty() {
         0.0
+    } else {
+        latencies[(latencies.len() as f64 * 0.99) as usize]
     };
 
     let mut metrics = HashMap::new();
-    metrics.insert("policy_evaluations".to_string(), policy_checks as f64);
+    metrics.insert("policy_evaluations".to_string(), f64::from(policy_checks));
     metrics.insert("allow_rate".to_string(), success_rate * 100.0);
     metrics.insert("policy_cache_hit_rate".to_string(), 95.0);
 
@@ -577,28 +577,28 @@ async fn benchmark_cross_primal_security(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     // Calculate latency percentiles
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if !latencies.is_empty() {
+    let avg_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies.iter().sum::<f64>() / latencies.len() as f64
-    } else {
-        0.0
     };
-    let p95_latency_ms = if !latencies.is_empty() {
+    let p95_latency_ms = if latencies.is_empty() {
+        0.0
+    } else {
         latencies[(latencies.len() as f64 * 0.95) as usize]
-    } else {
-        0.0
     };
-    let p99_latency_ms = if !latencies.is_empty() {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    } else {
+    let p99_latency_ms = if latencies.is_empty() {
         0.0
+    } else {
+        latencies[(latencies.len() as f64 * 0.99) as usize]
     };
 
     let mut metrics = HashMap::new();
-    metrics.insert("beardog_auth_calls".to_string(), auth_checks as f64);
+    metrics.insert("beardog_auth_calls".to_string(), f64::from(auth_checks));
     metrics.insert("crypto_verification_ms".to_string(), 1.5);
     metrics.insert("token_validation_ms".to_string(), 0.8);
 

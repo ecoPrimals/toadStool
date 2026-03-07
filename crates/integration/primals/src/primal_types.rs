@@ -268,7 +268,7 @@ mod tests {
             memory_gb: Some(24.0),
             cuda_capability: Some("8.0".to_string()),
         };
-        let _ = format!("{:?}", gpu);
+        let _ = format!("{gpu:?}");
         let cloned = gpu.clone();
         assert_eq!(cloned.count, gpu.count);
     }

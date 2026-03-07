@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Tests for execution types and RuntimeEngine trait.
+//! Tests for execution types and `RuntimeEngine` trait.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -167,7 +167,7 @@ fn execution_status_comparisons() {
 #[test]
 fn execution_status_debug() {
     let status = ExecutionStatus::Success;
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
     assert!(debug_str.contains("Success"));
 }
 
@@ -210,7 +210,7 @@ fn runtime_type_hash() {
 #[test]
 fn runtime_type_debug() {
     let rt = RuntimeType::Gpu;
-    let debug_str = format!("{:?}", rt);
+    let debug_str = format!("{rt:?}");
     assert!(debug_str.contains("Gpu"));
 }
 

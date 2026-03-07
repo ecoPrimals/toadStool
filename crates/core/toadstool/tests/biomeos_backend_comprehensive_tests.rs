@@ -503,7 +503,7 @@ async fn test_inmemory_storage_backend_provision_multiple() {
 
     for i in 0..5 {
         let config = VolumeConfig {
-            name: format!("volume-{}", i),
+            name: format!("volume-{i}"),
             size: "1Gi".to_string(),
             storage_class: None,
             access_modes: vec!["ReadWriteOnce".to_string()],
@@ -719,7 +719,7 @@ async fn test_inmemory_agent_backend_list_multiple() {
 
     for i in 0..3 {
         let config = AgentConfig {
-            name: format!("agent-{}", i),
+            name: format!("agent-{i}"),
             model: "test-model".to_string(),
             capabilities: vec!["chat".to_string()],
             resources: None,

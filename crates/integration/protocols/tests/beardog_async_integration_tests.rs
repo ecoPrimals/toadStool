@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async BearDog Integration Tests
 //!
-//! Tests the async methods of BearDogIntegration including authentication,
+//! Tests the async methods of `BearDogIntegration` including authentication,
 //! authorization, and zero-trust validation. These tests focus on initialization,
 //! error paths, and internal logic without requiring a live BearDog server.
 
@@ -261,7 +261,7 @@ async fn test_security_audit_event_serialization() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_request_with_many_capabilities() {
-    let capabilities: Vec<String> = (0..100).map(|i| format!("capability_{}", i)).collect();
+    let capabilities: Vec<String> = (0..100).map(|i| format!("capability_{i}")).collect();
 
     let request = AuthRequest {
         service_id: "test".to_string(),
@@ -304,7 +304,7 @@ async fn test_authz_request_with_complex_context() {
 async fn test_security_policy_with_many_rules() {
     let rules: Vec<PolicyRule> = (0..50)
         .map(|i| PolicyRule {
-            condition: format!("condition_{}", i),
+            condition: format!("condition_{i}"),
             action: "allow".to_string(),
             parameters: HashMap::new(),
         })
@@ -326,8 +326,8 @@ async fn test_security_policy_with_many_rules() {
 async fn test_auth_response_with_many_policies() {
     let policies: Vec<SecurityPolicy> = (0..20)
         .map(|i| SecurityPolicy {
-            id: format!("policy-{}", i),
-            name: format!("Policy {}", i),
+            id: format!("policy-{i}"),
+            name: format!("Policy {i}"),
             description: "Auto-generated policy".to_string(),
             rules: vec![],
             enforcement_level: "medium".to_string(),

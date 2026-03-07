@@ -69,7 +69,7 @@ async fn test_missing_service_handling() {
         }
         Err(e) => {
             // Expected - no service configured
-            println!("✅ Handled missing service gracefully: {}", e);
+            println!("✅ Handled missing service gracefully: {e}");
         }
     }
 }
@@ -161,10 +161,10 @@ async fn test_error_messages() {
         .await;
 
     if let Err(e) = result {
-        let error_msg = format!("{}", e);
+        let error_msg = format!("{e}");
         // Error message should be descriptive
         assert!(error_msg.len() > 10, "Error message should be descriptive");
-        println!("✅ Error message: {}", error_msg);
+        println!("✅ Error message: {error_msg}");
     }
 }
 

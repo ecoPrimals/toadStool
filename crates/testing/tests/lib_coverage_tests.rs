@@ -124,7 +124,7 @@ fn test_all_modules_accessible() {
 #[test]
 fn test_test_result_conversion() {
     let std_result: Result<(), &str> = Ok(());
-    let test_result: TestResult = std_result.map_err(|e| e.into());
+    let test_result: TestResult = std_result.map_err(std::convert::Into::into);
     assert!(test_result.is_ok());
 }
 

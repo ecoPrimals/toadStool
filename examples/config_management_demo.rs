@@ -355,13 +355,13 @@ fn demonstrate_configuration_inspection() {
 
     // Show all TOADSTOOL environment variables
     let env_vars = ConfigUtils::get_all_toadstool_env_vars();
-    if !env_vars.is_empty() {
+    if env_vars.is_empty() {
+        info!("ℹ️  No TOADSTOOL environment variables set (using defaults)");
+    } else {
         info!("🌍 Current TOADSTOOL environment variables:");
         for (key, value) in env_vars {
             info!("   {}: {}", key, value);
         }
-    } else {
-        info!("ℹ️  No TOADSTOOL environment variables set (using defaults)");
     }
 
     println!();

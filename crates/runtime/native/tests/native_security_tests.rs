@@ -287,7 +287,7 @@ fn test_security_context_high_security() {
 #[test]
 fn test_native_engine_debug_contains_type() {
     let engine = NativeRuntimeEngine::new();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("NativeRuntimeEngine"));
 }
@@ -295,7 +295,7 @@ fn test_native_engine_debug_contains_type() {
 #[test]
 fn test_native_engine_debug_contains_config() {
     let engine = NativeRuntimeEngine::new();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("config"));
 }
@@ -303,7 +303,7 @@ fn test_native_engine_debug_contains_config() {
 #[test]
 fn test_native_engine_debug_contains_capabilities() {
     let engine = NativeRuntimeEngine::new();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("capabilities"));
 }

@@ -18,12 +18,11 @@ use toadstool::self_identity::{Capability, SelfIdentity};
 #[tokio::test]
 async fn test_mdns_service_lifecycle() {
     // Test creation
-    let mdns = match MdnsDiscoveryService::new() {
-        Ok(m) => m,
-        Err(_) => {
-            eprintln!("⚠️  Skipping: mDNS not available in test environment");
-            return;
-        }
+    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
+        m
+    } else {
+        eprintln!("⚠️  Skipping: mDNS not available in test environment");
+        return;
     };
 
     // Test with identity that has network
@@ -47,12 +46,11 @@ async fn test_mdns_service_lifecycle() {
 
 #[tokio::test]
 async fn test_capability_based_discovery() {
-    let mdns = match MdnsDiscoveryService::new() {
-        Ok(m) => m,
-        Err(_) => {
-            eprintln!("⚠️  Skipping: mDNS not available");
-            return;
-        }
+    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
+        m
+    } else {
+        eprintln!("⚠️  Skipping: mDNS not available");
+        return;
     };
 
     // Create identity with network (capabilities are auto-detected)
@@ -135,12 +133,11 @@ async fn test_discovered_service_has_capability() {
 
 #[tokio::test]
 async fn test_mdns_without_network_identity() {
-    let mdns = match MdnsDiscoveryService::new() {
-        Ok(m) => m,
-        Err(_) => {
-            eprintln!("⚠️  Skipping: mDNS not available");
-            return;
-        }
+    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
+        m
+    } else {
+        eprintln!("⚠️  Skipping: mDNS not available");
+        return;
     };
 
     // Create identity without network (just default capabilities)
@@ -159,12 +156,11 @@ async fn test_mdns_without_network_identity() {
 
 #[tokio::test]
 async fn test_discover_all_services() {
-    let mdns = match MdnsDiscoveryService::new() {
-        Ok(m) => m,
-        Err(_) => {
-            eprintln!("⚠️  Skipping: mDNS not available");
-            return;
-        }
+    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
+        m
+    } else {
+        eprintln!("⚠️  Skipping: mDNS not available");
+        return;
     };
 
     // Discover all services (may find none in test environment)
@@ -180,12 +176,11 @@ async fn test_discover_all_services() {
 
 #[tokio::test]
 async fn test_cached_services() {
-    let mdns = match MdnsDiscoveryService::new() {
-        Ok(m) => m,
-        Err(_) => {
-            eprintln!("⚠️  Skipping: mDNS not available");
-            return;
-        }
+    let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
+        m
+    } else {
+        eprintln!("⚠️  Skipping: mDNS not available");
+        return;
     };
 
     // Get cached services (should be empty initially)

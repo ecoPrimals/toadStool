@@ -92,8 +92,7 @@ async fn test_signal_manager_handles_invalid_signal() {
         // Each entry must NOT appear in the known-valid set
         assert!(
             !valid_unix_signals.contains(&signal),
-            "Signal '{}' should be invalid but was found in the valid set",
-            signal
+            "Signal '{signal}' should be invalid but was found in the valid set"
         );
     }
 }
@@ -260,7 +259,7 @@ async fn test_concurrent_failures_isolation() {
 
                 // Every 10th operation fails
                 if i % 10 == 0 {
-                    Err(format!("Operation {} failed", i))
+                    Err(format!("Operation {i} failed"))
                 } else {
                     Ok(i)
                 }
@@ -298,7 +297,7 @@ async fn test_partial_system_failure() {
                 sleep(Duration::from_millis(10)).await;
 
                 if should_fail {
-                    Err(format!("{} failed", module))
+                    Err(format!("{module} failed"))
                 } else {
                     Ok(module)
                 }
@@ -430,8 +429,8 @@ async fn test_error_context_preserved() {
     // Test that error context is preserved through layers
 
     let inner_error = "database_connection_failed";
-    let middle_layer = format!("resource_manager: {}", inner_error);
-    let outer_layer = format!("lifecycle: {}", middle_layer);
+    let middle_layer = format!("resource_manager: {inner_error}");
+    let outer_layer = format!("lifecycle: {middle_layer}");
 
     // Full error chain should be preserved
     assert!(outer_layer.contains(inner_error));
@@ -476,7 +475,7 @@ async fn test_high_load_plus_random_failures() {
                 sleep(Duration::from_micros(500)).await;
 
                 if fail_randomly {
-                    Err(format!("Random failure at {}", i))
+                    Err(format!("Random failure at {i}"))
                 } else {
                     Ok(i)
                 }

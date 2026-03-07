@@ -765,7 +765,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_debug_trait() {
         let engine = NativeRuntimeEngine::new();
-        let debug_str = format!("{:?}", engine);
+        let debug_str = format!("{engine:?}");
 
         assert!(debug_str.contains("NativeRuntimeEngine"));
         assert!(debug_str.contains("config"));

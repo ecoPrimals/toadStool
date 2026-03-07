@@ -92,7 +92,7 @@ fn test_storage_type_classification() {
 
     // Should be able to debug print
     for storage_type in &storage_types {
-        let _debug_str = format!("{:?}", storage_type);
+        let _debug_str = format!("{storage_type:?}");
     }
 }
 
@@ -125,7 +125,7 @@ fn test_performance_class_ordering() {
 
     // Should support Debug
     for class in &classes {
-        let _debug = format!("{:?}", class);
+        let _debug = format!("{class:?}");
     }
 }
 
@@ -170,8 +170,7 @@ fn test_cpu_core_count_validation() {
         let is_valid = cpu.logical_cores >= cpu.physical_cores && cpu.physical_cores > 0;
         assert_eq!(
             is_valid, should_be_valid,
-            "CPU validation failed for physical={}, logical={}",
-            physical, logical
+            "CPU validation failed for physical={physical}, logical={logical}"
         );
     }
 }
@@ -202,8 +201,7 @@ fn test_memory_validation_scenarios() {
 
         assert_eq!(
             is_valid, should_be_valid,
-            "Memory validation failed for total={}, available={}",
-            total, available
+            "Memory validation failed for total={total}, available={available}"
         );
     }
 }
@@ -341,7 +339,7 @@ fn test_storage_type_patterns() {
         };
 
         assert_eq!(
-            format!("{:?}", storage_type),
+            format!("{storage_type:?}"),
             format!("{:?}", expected_type),
             "Storage type mismatch for: {}",
             description
@@ -414,8 +412,7 @@ fn test_gpu_memory_validation() {
 
         assert_eq!(
             is_valid, should_be_valid,
-            "GPU validation failed for count={}, memory={:?}",
-            gpu_count, gpu_memory
+            "GPU validation failed for count={gpu_count}, memory={gpu_memory:?}"
         );
     }
 }
@@ -428,10 +425,10 @@ fn test_trait_implementations() {
     assert_eq!(cpu.physical_cores, cloned_cpu.physical_cores);
 
     let mem = MemoryInfo::default();
-    let _debug = format!("{:?}", mem);
+    let _debug = format!("{mem:?}");
 
     let storage = StorageInfo::default();
-    let _debug = format!("{:?}", storage);
+    let _debug = format!("{storage:?}");
 }
 
 /// Test performance class progression
@@ -449,7 +446,7 @@ fn test_performance_class_progression() {
 
     // Each should be distinct
     let class_set: std::collections::HashSet<_> =
-        classes.iter().map(|c| format!("{:?}", c)).collect();
+        classes.iter().map(|c| format!("{c:?}")).collect();
     assert_eq!(class_set.len(), 4);
 }
 

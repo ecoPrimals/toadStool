@@ -112,7 +112,7 @@ fn test_metric_name_uppercase() {
 fn test_metric_name_mixed_case() {
     let name = "cpuUsage";
     // Verify name is valid mixed case identifier
-    assert!(name.chars().any(|c| c.is_uppercase()));
+    assert!(name.chars().any(char::is_uppercase));
 }
 
 // ============================================================================

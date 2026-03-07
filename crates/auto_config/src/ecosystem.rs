@@ -38,7 +38,7 @@ fn get_capability_endpoint(capability_key: &str, legacy_keys: &[&str]) -> Option
         return Some(endpoint);
     }
     for legacy in legacy_keys {
-        if let Ok(endpoint) = std::env::var(format!("{}_ENDPOINT", legacy)) {
+        if let Ok(endpoint) = std::env::var(format!("{legacy}_ENDPOINT")) {
             return Some(endpoint);
         }
     }

@@ -9,11 +9,7 @@ use std::sync::Arc;
 
 fn test_handler() -> toadstool_server::pure_jsonrpc::JsonRpcHandler {
     let executor = Arc::new(toadstool_server::tarpc_server::StandaloneExecutor::new());
-    toadstool_server::pure_jsonrpc::JsonRpcHandler::new(
-        executor,
-        "test-1.0.0".to_string(),
-        None,
-    )
+    toadstool_server::pure_jsonrpc::JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
 }
 
 fn mk_request(
@@ -155,10 +151,7 @@ async fn test_shader_compile_capabilities_supported_archs_empty_without_coralree
     let response = handler.handle_request(&request).await;
     let result = response.result.expect("result present");
     let archs = result["supported_archs"].as_array().expect("array");
-    assert!(
-        archs.is_empty(),
-        "No supported archs without coralReef"
-    );
+    assert!(archs.is_empty(), "No supported archs without coralReef");
 }
 
 #[tokio::test]

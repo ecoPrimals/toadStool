@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for pure_jsonrpc handler/transport.rs
-//! Tests transport.discover, transport.list, transport.route via JsonRpcHandler.
+//! Comprehensive tests for `pure_jsonrpc` handler/transport.rs
+//! Tests transport.discover, transport.list, transport.route via `JsonRpcHandler`.
 //! No real network I/O, no hardware probing.
 
 use std::borrow::Cow;

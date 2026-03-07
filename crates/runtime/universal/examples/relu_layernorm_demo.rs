@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! ReLU and LayerNorm Operations Demo
+//! `ReLU` and `LayerNorm` Operations Demo
 //!
 //! Demonstrates:
-//! - ReLU: Rectified Linear Unit activation (max(0, x))
-//! - LeakyReLU: Variant with small negative slope
-//! - LayerNorm: Layer normalization (composite pattern)
+//! - `ReLU`: Rectified Linear Unit activation (max(0, x))
+//! - `LeakyReLU`: Variant with small negative slope
+//! - `LayerNorm`: Layer normalization (composite pattern)
 //!
 //! These operations are fundamental building blocks for neural networks.
 
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, ParamValue, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -38,7 +40,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let input = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
-    println!("Input:  {:?}", input);
+    println!("Input:  {input:?}");
     println!();
 
     let relu_workload = Workload {
@@ -55,9 +57,9 @@ async fn main() -> Result<(), ComputeError> {
     let relu_result = runtime.execute_optimal(relu_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &relu_result.data {
-        println!("Output: {:?}", output);
+        println!("Output: {output:?}");
         let expected = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0];
-        println!("Expected: {:?}", expected);
+        println!("Expected: {expected:?}");
         let all_match = output
             .iter()
             .zip(&expected)
@@ -101,8 +103,8 @@ async fn main() -> Result<(), ComputeError> {
     let leaky_result = runtime.execute_optimal(leaky_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &leaky_result.data {
-        println!("Input:  {:?}", input);
-        println!("Output: {:?}", output);
+        println!("Input:  {input:?}");
+        println!("Output: {output:?}");
         println!();
         println!("Observations:");
         println!("  • Negative values: Not zero, but small (1% of input)");
@@ -126,7 +128,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let layer_input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    println!("Input:  {:?}", layer_input);
+    println!("Input:  {layer_input:?}");
     println!();
 
     let layernorm_workload = Workload {
@@ -143,7 +145,7 @@ async fn main() -> Result<(), ComputeError> {
     let layernorm_result = runtime.execute_optimal(layernorm_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &layernorm_result.data {
-        println!("Output: {:?}", output);
+        println!("Output: {output:?}");
         println!();
 
         // Verify properties of LayerNorm
@@ -152,8 +154,8 @@ async fn main() -> Result<(), ComputeError> {
             output.iter().map(|&x| (x - mean) * (x - mean)).sum::<f32>() / output.len() as f32;
 
         println!("Properties:");
-        println!("  Mean: {:.6} (should be ~0.0)", mean);
-        println!("  Variance: {:.6} (should be ~1.0)", variance);
+        println!("  Mean: {mean:.6} (should be ~0.0)");
+        println!("  Variance: {variance:.6} (should be ~1.0)");
         println!();
 
         let mean_close_to_zero = mean.abs() < 1e-5;
@@ -206,7 +208,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let pipeline_input = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
-    println!("Step 1: Input: {:?}", pipeline_input);
+    println!("Step 1: Input: {pipeline_input:?}");
     println!();
 
     // Apply ReLU
@@ -224,7 +226,7 @@ async fn main() -> Result<(), ComputeError> {
     let relu_pipeline_result = runtime.execute_optimal(relu_pipeline).await?;
 
     if let WorkloadData::F32Vec(relu_output) = relu_pipeline_result.data {
-        println!("Step 2: After ReLU: {:?}", relu_output);
+        println!("Step 2: After ReLU: {relu_output:?}");
         println!();
 
         // Apply LayerNorm
@@ -242,7 +244,7 @@ async fn main() -> Result<(), ComputeError> {
         let layernorm_pipeline_result = runtime.execute_optimal(layernorm_pipeline).await?;
 
         if let WorkloadData::F32Vec(final_output) = &layernorm_pipeline_result.data {
-            println!("Step 3: After LayerNorm: {:?}", final_output);
+            println!("Step 3: After LayerNorm: {final_output:?}");
             println!();
             println!("Pipeline complete! ✅");
         }

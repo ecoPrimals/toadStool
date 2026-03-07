@@ -224,7 +224,7 @@ fn test_validate_custom_valid() {
 fn test_validate_custom_empty() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Custom {
-        expression: "".to_string(),
+        expression: String::new(),
         variables: HashMap::new(),
     };
     let result = evaluator.validate_condition(&condition);

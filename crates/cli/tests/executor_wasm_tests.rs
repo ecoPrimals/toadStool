@@ -187,7 +187,7 @@ fn test_wasi_config_minimal() {
 
 #[test]
 fn test_wasi_config_with_many_args() {
-    let args: Vec<String> = (0..10).map(|i| format!("arg{}", i)).collect();
+    let args: Vec<String> = (0..10).map(|i| format!("arg{i}")).collect();
 
     let config = WasiExecutionConfig {
         stdin: None,
@@ -207,7 +207,7 @@ fn test_wasi_config_with_many_args() {
 fn test_wasi_config_with_many_env_vars() {
     let mut env = HashMap::new();
     for i in 0..20 {
-        env.insert(format!("VAR{}", i), format!("value{}", i));
+        env.insert(format!("VAR{i}"), format!("value{i}"));
     }
 
     let config = WasiExecutionConfig {

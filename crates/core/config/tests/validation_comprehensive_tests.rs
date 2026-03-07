@@ -50,11 +50,11 @@ fn test_validation_accepts_different_bind_addresses() {
     let mut config = ToadStoolConfig::default();
 
     // Test localhost
-    config.network.bind_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    config.network.bind_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
     assert!(config.validate().is_ok());
 
     // Test 0.0.0.0
-    config.network.bind_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8080);
+    config.network.bind_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080);
     assert!(config.validate().is_ok());
 }
 
@@ -87,9 +87,9 @@ fn test_validation_accepts_all_log_levels() {
     let mut config = ToadStoolConfig::default();
 
     for level in &["trace", "debug", "info", "warn", "error"] {
-        config.logging.level = level.to_string();
+        config.logging.level = (*level).to_string();
         let result = config.validate();
-        assert!(result.is_ok(), "Log level '{}' should be valid", level);
+        assert!(result.is_ok(), "Log level '{level}' should be valid");
     }
 }
 
@@ -97,7 +97,7 @@ fn test_validation_accepts_all_log_levels() {
 fn test_validation_accepts_empty_log_level() {
     // Empty log level might default to something reasonable
     let mut config = ToadStoolConfig::default();
-    config.logging.level = "".to_string();
+    config.logging.level = String::new();
 
     // This might be valid or invalid depending on implementation
     // Just ensure it doesn't panic
@@ -235,9 +235,8 @@ fn test_validation_different_network_ports() {
 
     // Test various port numbers
     for port in &[80, 443, 8080, 8443, 3000, 5000, 9000] {
-        config.network.bind_address =
-            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), *port);
-        assert!(config.validate().is_ok(), "Port {} should be valid", port);
+        config.network.bind_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), *port);
+        assert!(config.validate().is_ok(), "Port {port} should be valid");
     }
 }
 

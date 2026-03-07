@@ -16,28 +16,28 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 fn test_error_runtime_creation() {
     let err = ToadStoolError::runtime("test error");
 
-    assert!(format!("{}", err).contains("test error"));
+    assert!(format!("{err}").contains("test error"));
 }
 
 #[test]
 fn test_error_config_creation() {
     let err = ToadStoolError::configuration("invalid configuration");
 
-    assert!(format!("{}", err).contains("invalid configuration"));
+    assert!(format!("{err}").contains("invalid configuration"));
 }
 
 #[test]
 fn test_error_network_creation() {
     let err = ToadStoolError::network("connection failed");
 
-    assert!(format!("{}", err).contains("connection failed"));
+    assert!(format!("{err}").contains("connection failed"));
 }
 
 #[test]
 fn test_error_validation_creation() {
     let err = ToadStoolError::runtime("field must be positive");
 
-    let message = format!("{}", err);
+    let message = format!("{err}");
     assert!(message.contains("field"));
     assert!(message.contains("must be positive"));
 }
@@ -51,24 +51,24 @@ fn test_error_from_io_error() {
     let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
     let err: ToadStoolError = io_err.into();
 
-    assert!(format!("{}", err).contains("file not found"));
+    assert!(format!("{err}").contains("file not found"));
 }
 
 #[test]
 fn test_error_from_parse_error() {
     let parse_result: Result<i32, _> = "not a number".parse();
     let parse_err = parse_result.unwrap_err();
-    let err: ToadStoolError = ToadStoolError::runtime(format!("Parse error: {}", parse_err));
+    let err: ToadStoolError = ToadStoolError::runtime(format!("Parse error: {parse_err}"));
 
-    assert!(format!("{}", err).contains("Parse error"));
+    assert!(format!("{err}").contains("Parse error"));
 }
 
 #[test]
 fn test_error_chain_preservation() {
     let cause = io::Error::new(io::ErrorKind::PermissionDenied, "access denied");
-    let err = ToadStoolError::runtime(format!("Failed to read file: {}", cause));
+    let err = ToadStoolError::runtime(format!("Failed to read file: {cause}"));
 
-    let message = format!("{}", err);
+    let message = format!("{err}");
     assert!(message.contains("access denied"));
 }
 
@@ -80,7 +80,7 @@ fn test_error_chain_preservation() {
 fn test_error_with_context() {
     let err = ToadStoolError::runtime("database query failed while loading user profile");
 
-    let message = format!("{}", err);
+    let message = format!("{err}");
     assert!(message.contains("database query failed"));
     assert!(message.contains("while loading user profile"));
 }
@@ -91,7 +91,7 @@ fn test_error_multiple_contexts() {
         "network timeout connecting to service while initializing application",
     );
 
-    let message = format!("{}", err);
+    let message = format!("{err}");
     assert!(message.contains("network timeout"));
     assert!(message.contains("connecting to service"));
 }
@@ -100,8 +100,8 @@ fn test_error_multiple_contexts() {
 fn test_error_context_chain() {
     let base_err = ToadStoolError::configuration("missing field while parsing config file");
 
-    assert!(format!("{}", base_err).contains("missing field"));
-    assert!(format!("{}", base_err).contains("parsing config file"));
+    assert!(format!("{base_err}").contains("missing field"));
+    assert!(format!("{base_err}").contains("parsing config file"));
 }
 
 // ============================================================================
@@ -111,7 +111,7 @@ fn test_error_context_chain() {
 #[test]
 fn test_error_display_format() {
     let err = ToadStoolError::runtime("test message");
-    let display = format!("{}", err);
+    let display = format!("{err}");
 
     // Should be human-readable
     assert!(!display.is_empty());
@@ -121,7 +121,7 @@ fn test_error_display_format() {
 #[test]
 fn test_error_debug_format() {
     let err = ToadStoolError::runtime("port must be between 1024 and 65535");
-    let debug = format!("{:?}", err);
+    let debug = format!("{err:?}");
 
     // Debug format should include more detail
     assert!(!debug.is_empty());
@@ -130,7 +130,7 @@ fn test_error_debug_format() {
 #[test]
 fn test_error_empty_message_handling() {
     let err = ToadStoolError::runtime("");
-    let display = format!("{}", err);
+    let display = format!("{err}");
 
     // Should handle empty message gracefully
     assert!(!display.is_empty());
@@ -216,8 +216,9 @@ impl MockToadStoolError {
         Self::runtime(msg)
     }
 
+    #[must_use]
     pub fn validation(field: &str, reason: &str) -> Self {
-        Self::runtime(format!("Validation error for '{}': {}", field, reason))
+        Self::runtime(format!("Validation error for '{field}': {reason}"))
     }
 
     pub fn context(mut self, ctx: impl Into<String>) -> Self {
@@ -230,7 +231,7 @@ impl fmt::Display for MockToadStoolError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.message)?;
         for ctx in &self.context {
-            write!(f, "\n  Context: {}", ctx)?;
+            write!(f, "\n  Context: {ctx}")?;
         }
         Ok(())
     }
@@ -238,6 +239,6 @@ impl fmt::Display for MockToadStoolError {
 
 impl From<io::Error> for MockToadStoolError {
     fn from(err: io::Error) -> Self {
-        Self::runtime(format!("IO error: {}", err))
+        Self::runtime(format!("IO error: {err}"))
     }
 }

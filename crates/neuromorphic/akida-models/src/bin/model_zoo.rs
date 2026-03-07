@@ -53,7 +53,7 @@ fn run() -> akida_models::Result<()> {
             "--cache-dir" | "-c" => {
                 i += 1;
                 if i < args.len() {
-                    cache_dir = args[i].clone();
+                    cache_dir.clone_from(&args[i]);
                 }
             }
             "--list" | "-l" => {
@@ -175,6 +175,7 @@ fn list_models() {
 }
 
 fn format_size(bytes: usize) -> String {
+    #[allow(clippy::cast_precision_loss)] // size display; precision loss acceptable
     if bytes >= 1_000_000 {
         format!("{:.1} MB", bytes as f64 / 1_000_000.0)
     } else if bytes >= 1_000 {
@@ -186,7 +187,7 @@ fn format_size(bytes: usize) -> String {
 
 fn print_help() {
     println!(
-        r#"
+        r"
 Akida Model Zoo CLI
 
 USAGE:
@@ -221,6 +222,6 @@ EXAMPLES:
 
     # Create specific stub
     model_zoo --create-stub ds_cnn_kws
-"#
+"
     );
 }

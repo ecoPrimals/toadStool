@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration Tests for AI/MCP Interface - Business Logic
 //!
-//! Target: ai_mcp_interface.rs async handlers (16% → 70%+ coverage)
+//! Target: `ai_mcp_interface.rs` async handlers (16% → 70%+ coverage)
 //! Focus: Request processing, session management, integration flows
 //!
-//! NOTE: These tests use MockHardwareDetector and MockEcosystemDiscoverer
+//! NOTE: These tests use `MockHardwareDetector` and `MockEcosystemDiscoverer`
 //! to avoid blocking I/O operations. Tests complete in < 10ms.
 //!
 //! ## Sovereignty
-//! Evolved from squirrel_mcp (primal-specific) to ai_mcp_interface (agnostic).
+//! Evolved from `squirrel_mcp` (primal-specific) to `ai_mcp_interface` (agnostic).
 //! Works with ANY AI provider via runtime capability discovery.
 
 use std::collections::HashMap;
@@ -378,7 +378,7 @@ async fn test_request_counter_multiple_requests() {
     // Make multiple requests
     for i in 0..5 {
         let request = McpRequest {
-            request_id: format!("req-{}", i),
+            request_id: format!("req-{i}"),
             session_id: None,
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::GetSystemStatus,

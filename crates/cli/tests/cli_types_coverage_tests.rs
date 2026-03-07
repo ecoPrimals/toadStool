@@ -76,7 +76,7 @@ fn test_wasm_module_debug() {
         compiled_at: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", module);
+    let debug_str = format!("{module:?}");
     assert!(debug_str.contains("WasmModule"));
     assert!(debug_str.contains("debug.wasm"));
 }
@@ -170,7 +170,7 @@ fn test_wasm_execution_info_debug() {
         started_at: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", info);
+    let debug_str = format!("{info:?}");
     assert!(debug_str.contains("WasmExecutionInfo"));
 }
 
@@ -251,7 +251,7 @@ fn test_wasi_config_debug() {
         network_access: false,
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("WasiExecutionConfig"));
 }
 
@@ -302,7 +302,7 @@ fn test_wasi_config_with_working_directory() {
 #[test]
 fn test_cli_error_biome_not_found() {
     let error = CliError::BiomeNotFound("test-biome".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Biome not found"));
     assert!(msg.contains("test-biome"));
 }
@@ -310,7 +310,7 @@ fn test_cli_error_biome_not_found() {
 #[test]
 fn test_cli_error_biome_already_exists() {
     let error = CliError::BiomeAlreadyExists("existing-biome".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Biome already exists"));
     assert!(msg.contains("existing-biome"));
 }
@@ -318,7 +318,7 @@ fn test_cli_error_biome_already_exists() {
 #[test]
 fn test_cli_error_invalid_config() {
     let error = CliError::InvalidConfig("missing field".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Invalid configuration"));
     assert!(msg.contains("missing field"));
 }
@@ -326,7 +326,7 @@ fn test_cli_error_invalid_config() {
 #[test]
 fn test_cli_error_system() {
     let error = CliError::System("system failure".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("System error"));
     assert!(msg.contains("system failure"));
 }
@@ -334,7 +334,7 @@ fn test_cli_error_system() {
 #[test]
 fn test_cli_error_other() {
     let error = CliError::Other("unknown error".to_string());
-    let msg = format!("{}", error);
+    let msg = format!("{error}");
     assert!(msg.contains("Other error"));
     assert!(msg.contains("unknown error"));
 }
@@ -346,7 +346,7 @@ fn test_cli_error_from_io() {
     let io_error = Error::new(ErrorKind::NotFound, "file not found");
     let cli_error: CliError = io_error.into();
 
-    let msg = format!("{}", cli_error);
+    let msg = format!("{cli_error}");
     assert!(msg.contains("IO error"));
 }
 
@@ -358,14 +358,14 @@ fn test_cli_error_from_serialization() {
     let json_error = parse_result.unwrap_err();
     let cli_error: CliError = json_error.into();
 
-    let msg = format!("{}", cli_error);
+    let msg = format!("{cli_error}");
     assert!(msg.contains("Serialization error"));
 }
 
 #[test]
 fn test_cli_error_debug() {
     let error = CliError::BiomeNotFound("test".to_string());
-    let debug_str = format!("{:?}", error);
+    let debug_str = format!("{error:?}");
     assert!(debug_str.contains("BiomeNotFound"));
 }
 

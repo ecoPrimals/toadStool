@@ -237,8 +237,7 @@ fn test_framework_priority_ordering() {
     for (idx, framework) in frameworks.iter().enumerate() {
         assert!(
             !framework.name().is_empty(),
-            "Framework {} should have a name",
-            idx
+            "Framework {idx} should have a name"
         );
     }
 }

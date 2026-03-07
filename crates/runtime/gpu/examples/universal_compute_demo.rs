@@ -6,13 +6,16 @@
 //! - Intelligent scheduling
 //! - Hardware-agnostic workloads
 //!
-//! Run with: cargo run --example universal_compute_demo --features full
+//! Run with: cargo run --example `universal_compute_demo` --features full
 
 use std::sync::Arc;
 use toadstool_runtime_gpu::{
     cpu_resource::CpuComputeResource,
     scheduler::{SchedulingPolicy, UniversalComputeScheduler},
-    universal::*,
+    universal::{
+        ComputeBuffer, ComputeContext, ComputeRequirements, Operation, OptimizationHints,
+        Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
+    },
 };
 
 #[tokio::main]
@@ -36,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n✅ Registered compute resources:");
     for resource in scheduler.list_resources().await {
-        println!("   - {}", resource);
+        println!("   - {resource}");
     }
 
     println!("\n{}", "=".repeat(60));
@@ -162,7 +165,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cpu_score = cpu_resource.score_workload(&test_requirements);
     let cpu_can = cpu_resource.can_execute(&test_requirements);
 
-    println!("   - CPU: {:.2} (can execute: {})", cpu_score, cpu_can);
+    println!("   - CPU: {cpu_score:.2} (can execute: {cpu_can})");
 
     if !cpu_can {
         println!(

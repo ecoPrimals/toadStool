@@ -18,7 +18,9 @@
 //! cargo run --example unified_memory_demo
 //! ```
 
-use toadstool_runtime_gpu::unified_memory::*;
+use toadstool_runtime_gpu::unified_memory::{
+    MemoryFlags, UnifiedMemoryBackend, UniversalUnifiedMemory,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

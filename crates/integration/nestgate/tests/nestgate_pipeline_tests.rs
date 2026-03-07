@@ -151,7 +151,7 @@ fn test_output_type_artifact() {
 
     match output {
         OutputType::Artifact { artifact_type } => {
-            assert!(matches!(artifact_type, ArtifactType::ExecutionOutput))
+            assert!(matches!(artifact_type, ArtifactType::ExecutionOutput));
         }
         _ => panic!("Expected Artifact variant"),
     }
@@ -267,7 +267,7 @@ fn test_step_type_filter() {
     };
 
     match step {
-        StepType::Filter { condition } => assert!(condition.contains(">")),
+        StepType::Filter { condition } => assert!(condition.contains('>')),
         _ => panic!("Expected Filter variant"),
     }
 }

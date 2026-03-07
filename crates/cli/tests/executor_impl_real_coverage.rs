@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Real Coverage Tests for BiomeExecutor (executor_impl.rs)
+//! Real Coverage Tests for `BiomeExecutor` (`executor_impl.rs`)
 //!
-//! This test file targets actual BiomeExecutor methods to improve coverage
+//! This test file targets actual `BiomeExecutor` methods to improve coverage
 //! from 1.81% to a meaningful level. Focus on testable units and integration points.
 
 use std::collections::HashMap;
@@ -73,7 +73,7 @@ async fn test_environment_variable_parsing_empty_value() {
     }
 
     assert_eq!(environment.len(), 2);
-    assert_eq!(environment.get("EMPTY_VAR"), Some(&"".to_string()));
+    assert_eq!(environment.get("EMPTY_VAR"), Some(&String::new()));
     assert_eq!(environment.get("NORMAL_VAR"), Some(&"value".to_string()));
 }
 
@@ -401,8 +401,8 @@ fn test_log_message_formatting() {
     let biome_name = "my-biome";
     let biome_id = "123e4567-e89b-12d3-a456-426614174000";
 
-    let start_msg = format!("✅ Biome '{}' started successfully", biome_name);
-    let id_msg = format!("🆔 Biome ID: {}", biome_id);
+    let start_msg = format!("✅ Biome '{biome_name}' started successfully");
+    let id_msg = format!("🆔 Biome ID: {biome_id}");
 
     assert!(start_msg.contains("my-biome"));
     assert!(id_msg.contains("123e4567"));

@@ -37,7 +37,7 @@ async fn test_get_local_capabilities_contains_expected() -> Result<()> {
     let manager = create_manager().await?;
 
     let caps = manager.get_local_capabilities();
-    let cap_strs: Vec<String> = caps.iter().map(|c| c.to_string()).collect();
+    let cap_strs: Vec<String> = caps.iter().map(std::string::ToString::to_string).collect();
 
     // Should contain key capabilities
     assert!(cap_strs
@@ -202,7 +202,7 @@ async fn test_setup_websocket_federation_various_endpoints() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_send_heartbeat_ping_localhost() -> Result<()> {
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
 
     let result = UniversalComputeManager::send_heartbeat_ping(&addr).await;
     // Network call may fail, just verify no panic
@@ -214,8 +214,8 @@ async fn test_send_heartbeat_ping_localhost() -> Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_send_heartbeat_ping_various_addrs() -> Result<()> {
     let addrs = vec![
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9000),
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)), 8443),
     ];
 
@@ -234,7 +234,7 @@ async fn test_send_heartbeat_ping_various_addrs() -> Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_start_peer_monitoring_basic() -> Result<()> {
     let manager = create_manager().await?;
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
 
     let result = manager.start_peer_monitoring(&addr).await;
     // May fail if peer is not available - that's okay
@@ -248,9 +248,9 @@ async fn test_start_peer_monitoring_multiple_peers() -> Result<()> {
     let manager = create_manager().await?;
 
     let addrs = vec![
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8081),
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8082),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8081),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8082),
     ];
 
     for addr in addrs {
@@ -289,9 +289,9 @@ async fn test_concurrent_capabilities_access() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_heartbeat_pings() -> Result<()> {
-    let addr1 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-    let addr2 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8081);
-    let addr3 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8082);
+    let addr1 = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
+    let addr2 = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8081);
+    let addr3 = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8082);
 
     let (_, _, _) = tokio::join!(
         UniversalComputeManager::send_heartbeat_ping(&addr1),
@@ -334,7 +334,7 @@ async fn test_https_federation_with_port_variations() -> Result<()> {
     let ports = vec![80, 443, 8080, 8443, 9000];
 
     for port in ports {
-        let endpoint = Url::parse(&format!("https://localhost:{}", port))?;
+        let endpoint = Url::parse(&format!("https://localhost:{port}"))?;
         let result = manager.setup_https_federation(&endpoint, "client").await;
         let _ = result;
     }
@@ -349,7 +349,7 @@ async fn test_websocket_federation_with_port_variations() -> Result<()> {
     let ports = vec![80, 443, 8080, 8443, 9000];
 
     for port in ports {
-        let endpoint = Url::parse(&format!("wss://localhost:{}", port))?;
+        let endpoint = Url::parse(&format!("wss://localhost:{port}"))?;
         let result = manager
             .setup_websocket_federation(&endpoint, "client")
             .await;
@@ -416,7 +416,7 @@ async fn test_federation_full_lifecycle() -> Result<()> {
         .await;
 
     // Start peer monitoring
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
     let _ = manager.start_peer_monitoring(&addr).await;
 
     // Send heartbeat
@@ -443,7 +443,7 @@ async fn test_many_capability_queries() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_many_heartbeat_attempts() -> Result<()> {
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
 
     for _ in 0..20 {
         let _ = UniversalComputeManager::send_heartbeat_ping(&addr).await;

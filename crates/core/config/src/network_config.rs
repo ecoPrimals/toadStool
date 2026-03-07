@@ -386,10 +386,7 @@ mod tests {
     fn test_service_addr() {
         let config = NetworkConfig::default();
         let addr = config.service_addr();
-        assert_eq!(
-            addr.ip(),
-            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
-        );
+        assert_eq!(addr.ip(), std::net::IpAddr::V4(Ipv4Addr::LOCALHOST));
         assert_eq!(addr.port(), 0); // OS-assigned
     }
 

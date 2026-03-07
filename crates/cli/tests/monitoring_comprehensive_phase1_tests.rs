@@ -105,8 +105,7 @@ async fn test_monitor_interval_range() {
     for interval in valid_intervals {
         assert!(
             (5..=300).contains(&interval),
-            "Interval should be in valid range: {}",
-            interval
+            "Interval should be in valid range: {interval}"
         );
     }
 }
@@ -229,8 +228,8 @@ async fn test_metric_aggregation() {
 
     let sum: f64 = metrics.iter().sum();
     let avg = sum / metrics.len() as f64;
-    let max = metrics.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    let min = metrics.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max = metrics.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let min = metrics.iter().copied().fold(f64::INFINITY, f64::min);
 
     assert_eq!(sum, 150.0);
     assert_eq!(avg, 30.0);
@@ -382,8 +381,8 @@ async fn test_monitor_state_transitions() {
         let from = states[i];
         let to = states[i + 1];
 
-        assert!(!from.is_empty(), "State should be defined: {}", from);
-        assert!(!to.is_empty(), "State should be defined: {}", to);
+        assert!(!from.is_empty(), "State should be defined: {from}");
+        assert!(!to.is_empty(), "State should be defined: {to}");
     }
 }
 
@@ -505,11 +504,7 @@ async fn test_alert_notification_channels() {
     let channels = vec!["log", "email", "webhook", "stdout"];
 
     for channel in channels {
-        assert!(
-            !channel.is_empty(),
-            "Channel should be defined: {}",
-            channel
-        );
+        assert!(!channel.is_empty(), "Channel should be defined: {channel}");
     }
 }
 
@@ -730,8 +725,7 @@ async fn test_monitor_platform_compatibility() {
     for platform in platforms {
         assert!(
             !platform.is_empty(),
-            "Platform should be supported: {}",
-            platform
+            "Platform should be supported: {platform}"
         );
     }
 }
@@ -809,7 +803,7 @@ fn create_test_metric() -> Metric {
 fn create_test_alert(metric: &str, value: f64) -> Alert {
     Alert {
         severity: "warning".to_string(),
-        message: format!("{} above threshold", metric),
+        message: format!("{metric} above threshold"),
         metric_name: metric.to_string(),
         value,
         threshold: 80.0,

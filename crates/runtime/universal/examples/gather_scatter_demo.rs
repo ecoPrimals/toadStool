@@ -8,7 +8,9 @@
 //! - Graph algorithms (neighbor access)
 
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -37,8 +39,8 @@ async fn main() -> Result<(), ComputeError> {
     let data = vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0];
     let indices = vec![0, 2, 4, 6, 8]; // Select even indices
 
-    println!("Data:    {:?}", data);
-    println!("Indices: {:?}", indices);
+    println!("Data:    {data:?}");
+    println!("Indices: {indices:?}");
     println!();
 
     let gather_workload = Workload {
@@ -53,9 +55,9 @@ async fn main() -> Result<(), ComputeError> {
     let gather_result = runtime.execute_optimal(gather_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &gather_result.data {
-        println!("Result: {:?}", output);
+        println!("Result: {output:?}");
         let expected = vec![10.0, 30.0, 50.0, 70.0, 90.0];
-        println!("Expected: {:?}", expected);
+        println!("Expected: {expected:?}");
         let all_match = output
             .iter()
             .zip(&expected)
@@ -84,8 +86,8 @@ async fn main() -> Result<(), ComputeError> {
     let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     let scatter_indices = vec![1, 3, 5, 7, 9];
 
-    println!("Values:  {:?}", values);
-    println!("Indices: {:?}", scatter_indices);
+    println!("Values:  {values:?}");
+    println!("Indices: {scatter_indices:?}");
     println!();
 
     let scatter_workload = Workload {
@@ -100,7 +102,7 @@ async fn main() -> Result<(), ComputeError> {
     let scatter_result = runtime.execute_optimal(scatter_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &scatter_result.data {
-        println!("Result: {:?}", output);
+        println!("Result: {output:?}");
         println!("Expected: [0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 0.0, 4.0, 0.0, 5.0]");
         let expected = vec![0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 0.0, 4.0, 0.0, 5.0];
         let all_match = output
@@ -130,8 +132,8 @@ async fn main() -> Result<(), ComputeError> {
     let overlap_values = vec![10.0, 20.0, 30.0, 40.0];
     let overlap_indices = vec![1, 1, 2, 2]; // Two pairs to same indices
 
-    println!("Values:  {:?}", overlap_values);
-    println!("Indices: {:?}", overlap_indices);
+    println!("Values:  {overlap_values:?}");
+    println!("Indices: {overlap_indices:?}");
     println!();
 
     let overlap_workload = Workload {
@@ -147,7 +149,7 @@ async fn main() -> Result<(), ComputeError> {
     let overlap_result = runtime.execute_optimal(overlap_workload).await?;
 
     if let WorkloadData::F32Vec(output) = &overlap_result.data {
-        println!("Result: {:?}", output);
+        println!("Result: {output:?}");
         println!("Expected: [0.0, 30.0, 70.0] (10+20=30 at [1], 30+40=70 at [2])");
         let expected = vec![0.0, 30.0, 70.0];
         let all_match = output.len() == expected.len()
@@ -179,8 +181,8 @@ async fn main() -> Result<(), ComputeError> {
     let select_indices = vec![1, 3]; // Select indices 1 and 3
 
     println!("Step 1: Gather from original data");
-    println!("Original: {:?}", original);
-    println!("Select:   {:?}", select_indices);
+    println!("Original: {original:?}");
+    println!("Select:   {select_indices:?}");
 
     let gather_step = Workload {
         operation: OperationType::Gather,
@@ -194,12 +196,12 @@ async fn main() -> Result<(), ComputeError> {
     let gathered = runtime.execute_optimal(gather_step).await?;
 
     if let WorkloadData::F32Vec(gathered_values) = gathered.data {
-        println!("Gathered: {:?}", gathered_values);
+        println!("Gathered: {gathered_values:?}");
         println!();
 
         println!("Step 2: Process (multiply by 2)");
         let processed: Vec<f32> = gathered_values.iter().map(|x| x * 2.0).collect();
-        println!("Processed: {:?}", processed);
+        println!("Processed: {processed:?}");
         println!();
 
         println!("Step 3: Scatter back to original positions");
@@ -216,7 +218,7 @@ async fn main() -> Result<(), ComputeError> {
         let scattered = runtime.execute_optimal(scatter_step).await?;
 
         if let WorkloadData::F32Vec(final_result) = scattered.data {
-            println!("Result: {:?}", final_result);
+            println!("Result: {final_result:?}");
             println!("Expected: [0.0, 400.0, 0.0, 800.0] (200*2=400, 400*2=800)");
         }
     }

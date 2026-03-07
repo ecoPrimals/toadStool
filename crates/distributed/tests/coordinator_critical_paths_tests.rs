@@ -822,7 +822,7 @@ mod performance_tests {
         let mut nodes = HashMap::new();
 
         for i in 0..10000 {
-            nodes.insert(format!("node-{}", i), i);
+            nodes.insert(format!("node-{i}"), i);
         }
 
         assert_eq!(nodes.len(), 10000);

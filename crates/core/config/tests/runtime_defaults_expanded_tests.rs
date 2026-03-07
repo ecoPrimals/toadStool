@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Expanded tests for runtime_defaults module
+//! Expanded tests for `runtime_defaults` module
 //!
-//! Coverage expansion: runtime_defaults.rs needs expanded coverage
+//! Coverage expansion: `runtime_defaults.rs` needs expanded coverage
 //! Testing environment detection, file loading, JSON export, etc.
 //!
 //! ✅ MODERNIZED: Uses scoped Mutex instead of #[serial] for concurrent execution
@@ -40,7 +40,7 @@ fn test_testing_preset() {
     assert_eq!(config.app.environment, "test");
 }
 
-/// Test for_current_environment with TOADSTOOL_ENVIRONMENT
+/// Test `for_current_environment` with `TOADSTOOL_ENVIRONMENT`
 #[test]
 fn test_for_current_environment_toadstool_environment() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -57,7 +57,7 @@ fn test_for_current_environment_toadstool_environment() {
     std::env::remove_var("TOADSTOOL_ENVIRONMENT");
 }
 
-/// Test for_current_environment with TOADSTOOL_ENV fallback
+/// Test `for_current_environment` with `TOADSTOOL_ENV` fallback
 #[test]
 fn test_for_current_environment_toadstool_env() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -74,7 +74,7 @@ fn test_for_current_environment_toadstool_env() {
     std::env::remove_var("TOADSTOOL_ENV");
 }
 
-/// Test for_current_environment with ENVIRONMENT fallback
+/// Test `for_current_environment` with ENVIRONMENT fallback
 #[test]
 fn test_for_current_environment_environment() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -91,7 +91,7 @@ fn test_for_current_environment_environment() {
     std::env::remove_var("ENVIRONMENT");
 }
 
-/// Test for_current_environment with ENV fallback
+/// Test `for_current_environment` with ENV fallback
 #[test]
 fn test_for_current_environment_env() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -108,7 +108,7 @@ fn test_for_current_environment_env() {
     std::env::remove_var("ENV");
 }
 
-/// Test for_current_environment defaults to development
+/// Test `for_current_environment` defaults to development
 #[test]
 fn test_for_current_environment_default() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -122,9 +122,9 @@ fn test_for_current_environment_default() {
 }
 
 /// Test environment variable priority (tested implicitly by individual tests)
-/// Note: Priority is TOADSTOOL_ENVIRONMENT > TOADSTOOL_ENV > ENVIRONMENT > ENV > default
+/// Note: Priority is `TOADSTOOL_ENVIRONMENT` > `TOADSTOOL_ENV` > ENVIRONMENT > ENV > default
 /// This is verified by the individual environment variable tests above
-/// Test load_from_env_only
+/// Test `load_from_env_only`
 #[test]
 fn test_load_from_env_only() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -141,7 +141,7 @@ fn test_load_from_env_only() {
     std::env::remove_var("TOADSTOOL_WORKER_THREADS");
 }
 
-/// Test to_json serialization
+/// Test `to_json` serialization
 #[test]
 fn test_to_json() {
     let config = ToadStoolConfig::development();
@@ -225,7 +225,7 @@ fn test_load_with_overrides_validates() {
     std::env::remove_var("TOADSTOOL_PORT");
 }
 
-/// Test print_summary doesn't panic
+/// Test `print_summary` doesn't panic
 #[test]
 fn test_print_summary() {
     let config = ToadStoolConfig::development();
@@ -308,7 +308,7 @@ fn test_load_invalid_toml() {
     assert!(result.is_err());
 }
 
-/// Test for_environment with custom environment string
+/// Test `for_environment` with custom environment string
 #[test]
 fn test_for_environment_custom() {
     let config = ToadStoolConfig::default().for_environment("custom");

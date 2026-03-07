@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_gpu_framework_debug() {
         let cuda = GpuFramework::Cuda;
-        let debug_str = format!("{:?}", cuda);
+        let debug_str = format!("{cuda:?}");
         assert!(debug_str.contains("Cuda"));
     }
 
@@ -257,7 +257,7 @@ mod tests {
         let cuda1 = GpuFramework::Cuda;
         let cuda2 = cuda1.clone();
 
-        assert_eq!(format!("{:?}", cuda1), format!("{:?}", cuda2));
+        assert_eq!(format!("{cuda1:?}"), format!("{:?}", cuda2));
     }
 
     #[test]

@@ -59,7 +59,7 @@ fn test_native_runtime_default_config_reasonable() {
 #[test]
 fn test_native_runtime_debug_format_contains_fields() {
     let engine = NativeRuntimeEngine::new();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("NativeRuntimeEngine"));
     assert!(debug_str.contains("config"));
@@ -424,7 +424,7 @@ fn test_runtime_type_native_not_container() {
 #[test]
 fn test_runtime_type_native_debug() {
     let rt = RuntimeType::Native;
-    let debug_str = format!("{:?}", rt);
+    let debug_str = format!("{rt:?}");
 
     assert!(debug_str.contains("Native"));
 }
@@ -447,7 +447,7 @@ fn test_runtime_capabilities_can_be_cloned() {
 fn test_runtime_capabilities_debug_format() {
     let engine = NativeRuntimeEngine::new();
     let caps = engine.get_capabilities();
-    let debug_str = format!("{:?}", caps);
+    let debug_str = format!("{caps:?}");
 
     assert!(debug_str.contains("RuntimeCapabilities"));
 }
@@ -459,7 +459,7 @@ fn test_runtime_capabilities_debug_format() {
 #[test]
 fn test_runtime_config_default_works() {
     let config = RuntimeConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("RuntimeConfig"));
 }

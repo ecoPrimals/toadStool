@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive BearDog Integration Coverage Tests
 //!
-//! This test suite provides thorough coverage of the BearDogIntegration implementation
+//! This test suite provides thorough coverage of the `BearDogIntegration` implementation
 //! to address the critical gap in lib.rs coverage (currently 10.83%).
 //!
 //! Coverage targets:
-//! - BearDogIntegration::new()
-//! - BearDogIntegration::authenticate()
-//! - BearDogIntegration::authorize()
-//! - BearDogIntegration::zero_trust_validation()
-//! - BearDogIntegration::start_background_tasks()
+//! - `BearDogIntegration::new()`
+//! - `BearDogIntegration::authenticate()`
+//! - `BearDogIntegration::authorize()`
+//! - `BearDogIntegration::zero_trust_validation()`
+//! - `BearDogIntegration::start_background_tasks()`
 //! - Request helpers and error handling
 //! - Token management
 //! - Policy management
@@ -114,7 +114,7 @@ fn test_beardog_config_clone() {
 #[test]
 fn test_beardog_config_debug() {
     let config = BearDogConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("BearDogConfig"));
 }
 
@@ -173,7 +173,7 @@ fn test_auth_request_debug() {
         timestamp: std::time::SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", request);
+    let debug_str = format!("{request:?}");
     assert!(debug_str.contains("AuthRequest"));
 }
 
@@ -412,7 +412,7 @@ fn test_security_policy_debug() {
         created_at: std::time::SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", policy);
+    let debug_str = format!("{policy:?}");
     assert!(debug_str.contains("SecurityPolicy"));
 }
 
@@ -467,7 +467,7 @@ fn test_policy_rule_debug() {
         parameters: HashMap::new(),
     };
 
-    let debug_str = format!("{:?}", rule);
+    let debug_str = format!("{rule:?}");
     assert!(debug_str.contains("PolicyRule"));
 }
 
@@ -568,7 +568,7 @@ fn test_security_audit_event_debug() {
         timestamp: std::time::SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("SecurityAuditEvent"));
 }
 

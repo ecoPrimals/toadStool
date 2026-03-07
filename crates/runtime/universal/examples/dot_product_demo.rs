@@ -8,7 +8,9 @@
 //! These operations are building blocks for linear algebra and ML.
 
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    ComputeUnit, DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -43,8 +45,8 @@ async fn main() -> Result<(), ComputeError> {
     let vec_a = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     let vec_b = vec![2.0, 3.0, 4.0, 5.0, 6.0];
 
-    println!("Vector A: {:?}", vec_a);
-    println!("Vector B: {:?}", vec_b);
+    println!("Vector A: {vec_a:?}");
+    println!("Vector B: {vec_b:?}");
     println!();
 
     let dot_workload = Workload {
@@ -62,8 +64,8 @@ async fn main() -> Result<(), ComputeError> {
         let result = output[0];
         // Manual verification: 1*2 + 2*3 + 3*4 + 4*5 + 5*6 = 2 + 6 + 12 + 20 + 30 = 70
         let expected = 70.0;
-        println!("Result: {:.1}", result);
-        println!("Expected: {:.1}", expected);
+        println!("Result: {result:.1}");
+        println!("Expected: {expected:.1}");
         println!(
             "Verification: {} ✅",
             if (result - expected).abs() < 0.001 {
@@ -88,8 +90,8 @@ async fn main() -> Result<(), ComputeError> {
     let vec_c = vec![10.0, 20.0, 30.0, 40.0, 50.0];
     let vec_d = vec![1.0, 2.0, 3.0, 4.0, 5.0];
 
-    println!("Vector C: {:?}", vec_c);
-    println!("Vector D: {:?}", vec_d);
+    println!("Vector C: {vec_c:?}");
+    println!("Vector D: {vec_d:?}");
     println!();
 
     let elementwise_workload = Workload {
@@ -104,9 +106,9 @@ async fn main() -> Result<(), ComputeError> {
     let elementwise_result = runtime.execute_optimal(elementwise_workload).await?;
 
     if let WorkloadData::F32Vec(output) = elementwise_result.data {
-        println!("Result: {:?}", output);
+        println!("Result: {output:?}");
         let expected: Vec<f32> = vec_c.iter().zip(&vec_d).map(|(a, b)| a + b).collect();
-        println!("Expected: {:?}", expected);
+        println!("Expected: {expected:?}");
         let all_match = output
             .iter()
             .zip(&expected)

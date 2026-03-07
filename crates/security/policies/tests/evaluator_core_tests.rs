@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core evaluator tests for security policy condition evaluation
 //!
-//! This test module provides comprehensive coverage of the ConditionEvaluator,
+//! This test module provides comprehensive coverage of the `ConditionEvaluator`,
 //! testing all condition types, validation logic, and edge cases.
 
 use std::collections::HashMap;
@@ -165,7 +165,7 @@ fn test_validate_custom_condition_valid() {
 fn test_validate_custom_condition_empty_expression() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Custom {
-        expression: "".to_string(),
+        expression: String::new(),
         variables: HashMap::new(),
     };
 
@@ -445,8 +445,7 @@ fn test_evaluator_handles_all_condition_types() {
         let result = evaluator.validate_condition(&condition);
         assert!(
             result.is_ok(),
-            "Failed to validate condition: {:?}",
-            condition
+            "Failed to validate condition: {condition:?}"
         );
     }
 }

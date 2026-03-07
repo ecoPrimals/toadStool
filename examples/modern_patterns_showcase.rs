@@ -49,6 +49,7 @@ pub fn modern_error_handling_example() -> Result<String, Box<dyn std::error::Err
 ///
 /// ✅ NEW WAY: Use Cow for flexible borrowing
 #[allow(dead_code)]
+#[must_use]
 pub fn zero_copy_string_example(input: &str) -> Cow<'_, str> {
     // Return borrowed if no modification needed
     if input.len() < 10 {
@@ -83,6 +84,7 @@ pub struct ServiceConfigBuilder {
 }
 
 impl ServiceConfigBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -97,11 +99,13 @@ impl ServiceConfigBuilder {
         self
     }
 
+    #[must_use]
     pub fn timeout_secs(mut self, timeout: u64) -> Self {
         self.timeout_secs = Some(timeout);
         self
     }
 
+    #[must_use]
     pub fn retry_attempts(mut self, retries: u32) -> Self {
         self.retry_attempts = Some(retries);
         self
@@ -139,10 +143,10 @@ pub async fn discover_service(capability: &str) -> Result<Vec<String>, Box<dyn s
 
 /// Efficient data structure pattern
 ///
-/// ❌ OLD: Arc<RwLock<HashMap<K, V>>> (complex, lock contention)
+/// ❌ OLD: Arc<`RwLock`<`HashMap`<K, V>>> (complex, lock contention)
 ///
 /// ✅ NEW: Consider alternatives:
-/// - DashMap for concurrent access
+/// - `DashMap` for concurrent access
 /// - mpsc channels with actor pattern
 /// - `Arc<T>` for immutable shared data
 #[allow(dead_code)]
@@ -156,6 +160,7 @@ pub struct ModernDataStore {
 }
 
 impl ModernDataStore {
+    #[must_use]
     pub fn new(config: ServiceConfig) -> Self {
         Self {
             config: Arc::new(config),
@@ -164,6 +169,7 @@ impl ModernDataStore {
     }
 
     /// ✅ Borrow when possible
+    #[must_use]
     pub fn get_config(&self) -> &Arc<ServiceConfig> {
         &self.config
     }
@@ -176,7 +182,7 @@ impl ModernDataStore {
     }
 }
 
-/// Entry API pattern for efficient HashMap operations
+/// Entry API pattern for efficient `HashMap` operations
 ///
 /// ❌ OLD: Multiple lookups
 /// ```ignore
@@ -188,6 +194,7 @@ impl ModernDataStore {
 ///
 /// ✅ NEW: Single lookup with entry API
 #[allow(dead_code)]
+#[must_use]
 pub fn entry_api_example(key: String) -> String {
     let mut cache: HashMap<String, String> = HashMap::new();
 
@@ -238,6 +245,7 @@ pub struct SelfAwareService {
 
 impl SelfAwareService {
     /// ✅ Constructor with only self-knowledge
+    #[must_use]
     pub fn new(name: &'static str, port: u16, capabilities: Vec<&'static str>) -> Self {
         Self {
             name,
@@ -256,6 +264,7 @@ impl SelfAwareService {
     }
 
     /// ✅ Self-description for discovery by others
+    #[must_use]
     pub fn advertise(&self) -> ServiceAdvertisement {
         ServiceAdvertisement {
             name: self.name.to_string(),

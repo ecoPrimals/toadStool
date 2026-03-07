@@ -456,7 +456,7 @@ fn test_python_builder_with_chained_methods() {
 fn test_python_builder_with_very_long_script() {
     let mut script = String::new();
     for i in 0..1000 {
-        script.push_str(&format!("print('Line {}')\n", i));
+        script.push_str(&format!("print('Line {i}')\n"));
     }
 
     let _submission = WorkloadSubmission::python().script(script).build();

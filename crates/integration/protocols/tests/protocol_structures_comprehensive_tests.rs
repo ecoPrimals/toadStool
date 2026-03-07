@@ -2,7 +2,7 @@
 //! Comprehensive tests for Protocol Structures
 //!
 //! This test suite provides extensive coverage of structure types used in protocol integration,
-//! including ProtocolMessage, ServiceInfo, ServiceEndpoint, and their operations.
+//! including `ProtocolMessage`, `ServiceInfo`, `ServiceEndpoint`, and their operations.
 
 use std::collections::HashMap;
 use std::time::Duration;

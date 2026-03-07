@@ -13,11 +13,7 @@ use std::time::Instant;
 
 fn test_handler() -> toadstool_server::pure_jsonrpc::JsonRpcHandler {
     let executor = Arc::new(toadstool_server::tarpc_server::StandaloneExecutor::new());
-    toadstool_server::pure_jsonrpc::JsonRpcHandler::new(
-        executor,
-        "bench-1.0.0".to_string(),
-        None,
-    )
+    toadstool_server::pure_jsonrpc::JsonRpcHandler::new(executor, "bench-1.0.0".to_string(), None)
 }
 
 fn mk_request(
@@ -109,10 +105,7 @@ async fn test_shader_compile_handler_response_time() {
         let response = handler.handle_request(&request).await;
         let elapsed = start.elapsed();
 
-        assert!(
-            response.error.is_none(),
-            "{domain} should succeed"
-        );
+        assert!(response.error.is_none(), "{domain} should succeed");
         assert!(
             elapsed.as_millis() < 500,
             "{domain} handler took {}ms (should be <500ms for naga fallback)",

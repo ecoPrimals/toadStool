@@ -34,10 +34,7 @@ fn test_every_spring_consumes() {
 #[test]
 fn test_hotspring_has_most_contributions() {
     let flows = cross_spring_flows();
-    let hot_count = flows
-        .iter()
-        .filter(|f| f.from == Spring::HotSpring)
-        .count();
+    let hot_count = flows.iter().filter(|f| f.from == Spring::HotSpring).count();
     for spring in Spring::ALL {
         if *spring == Spring::HotSpring {
             continue;
@@ -55,9 +52,7 @@ fn test_hotspring_has_most_contributions() {
 fn test_precision_domain_present() {
     let flows = cross_spring_flows();
     assert!(
-        flows
-            .iter()
-            .any(|f| f.domain == SpringDomain::Precision),
+        flows.iter().any(|f| f.domain == SpringDomain::Precision),
         "Precision domain should have at least one flow"
     );
 }
@@ -155,10 +150,7 @@ fn test_groundspring_chi_squared_reaches_all() {
     let flows = cross_spring_flows();
     let chi = flows
         .iter()
-        .find(|f| {
-            f.from == Spring::GroundSpring
-                && f.pattern == "chi_squared_f64.wgsl"
-        })
+        .find(|f| f.from == Spring::GroundSpring && f.pattern == "chi_squared_f64.wgsl")
         .expect("groundSpring chi-squared should exist");
     assert_eq!(chi.to.len(), 5, "chi-squared should reach all 5 springs");
 }

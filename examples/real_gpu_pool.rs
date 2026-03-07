@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Real GPU + CPU Pool with Universal Abstraction
 //!
-//! Uses ToadStool's universal compute interface - works with CUDA, OpenCL, Vulkan, or CPU
+//! Uses ToadStool's universal compute interface - works with CUDA, `OpenCL`, Vulkan, or CPU
 //! No backend-specific code needed!
 //!
 //! ```cargo
@@ -21,7 +21,10 @@ use std::time::Instant;
 use toadstool_runtime_gpu::{
     cpu_resource::CpuComputeResource,
     scheduler::{SchedulingPolicy, UniversalComputeScheduler},
-    universal::*,
+    universal::{
+        ComputeBuffer, ComputeContext, ComputeRequirements, MemoryAccessPattern, Operation,
+        OptimizationHints, Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
+    },
 };
 
 #[tokio::main]

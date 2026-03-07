@@ -75,13 +75,19 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
         // hotSpring precision -> ALL springs
         CrossSpringFlow {
             from: Spring::HotSpring,
-            to: &[Spring::WetSpring, Spring::NeuralSpring, Spring::AirSpring, Spring::GroundSpring],
+            to: &[
+                Spring::WetSpring,
+                Spring::NeuralSpring,
+                Spring::AirSpring,
+                Spring::GroundSpring,
+            ],
             domain: SpringDomain::Precision,
             pattern: "df64_core.wgsl + df64_transcendentals.wgsl".into(),
             description: "DF64 double-float f32-pair arithmetic (~48-bit mantissa). \
                 Originated in hotSpring's lattice QCD precision requirements. \
                 Kahan summation and FMA control patterns enable f64-quality \
-                results on GPUs lacking native f64 support.".into(),
+                results on GPUs lacking native f64 support."
+                .into(),
             session: "S49 (f32→f64 evolution), S71 (15 DF64 transcendentals)".into(),
         },
         CrossSpringFlow {
@@ -92,7 +98,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             description: "hotSpring's lattice QCD precision patterns (FMA control, \
                 Kahan summation for catastrophic cancellation) were adopted by \
                 neuralSpring's coralForge streaming attention primitives \
-                (gelu_f64, layer_norm_f64, softmax_f64, sdpa_scores_f64).".into(),
+                (gelu_f64, layer_norm_f64, softmax_f64, sdpa_scores_f64)."
+                .into(),
             session: "coralReef Phase 10 cross-spring rewire".into(),
         },
         // hotSpring MD -> wetSpring
@@ -103,7 +110,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "stress_virial_f64.wgsl".into(),
             description: "Off-diagonal stress tensor from hotSpring MD simulations \
                 is used by wetSpring for mechanical property validation in \
-                bio-material pipelines.".into(),
+                bio-material pipelines."
+                .into(),
             session: "S83 (cross-spring absorption)".into(),
         },
         CrossSpringFlow {
@@ -112,7 +120,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             domain: SpringDomain::MachineLearning,
             pattern: "esn_readout_f64.wgsl".into(),
             description: "Echo State Network readout layer from hotSpring's reservoir \
-                computing, reused by wetSpring for temporal bio-signal modeling.".into(),
+                computing, reused by wetSpring for temporal bio-signal modeling."
+                .into(),
             session: "S83".into(),
         },
         CrossSpringFlow {
@@ -122,7 +131,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "cg_kernels_f64.wgsl".into(),
             description: "Conjugate gradient solver from hotSpring's lattice QCD \
                 is referenced by neuralSpring for large-scale linear system \
-                solving in metalForge experiments.".into(),
+                solving in metalForge experiments."
+                .into(),
             session: "S83".into(),
         },
         // neuralSpring statistics -> wetSpring + groundSpring
@@ -133,7 +143,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "fused_kl_divergence_f64.wgsl".into(),
             description: "KL divergence from neuralSpring's information-theoretic \
                 validation, absorbed by wetSpring for cross-entropy metrics \
-                and referenced by groundSpring for Anderson model fitness scoring.".into(),
+                and referenced by groundSpring for Anderson model fitness scoring."
+                .into(),
             session: "barraCuda provenance registry".into(),
         },
         CrossSpringFlow {
@@ -143,7 +154,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "fused_chi_squared_f64.wgsl".into(),
             description: "Chi-squared batch test from neuralSpring, consumed by \
                 hotSpring for lattice QCD observable validation and wetSpring \
-                for goodness-of-fit in metagenomic analysis.".into(),
+                for goodness-of-fit in metagenomic analysis."
+                .into(),
             session: "barraCuda provenance registry".into(),
         },
         CrossSpringFlow {
@@ -153,7 +165,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "matrix_correlation_f64.wgsl".into(),
             description: "Matrix correlation from neuralSpring, used by groundSpring \
                 for Anderson model parameter correlation and hotSpring for \
-                observable cross-correlation analysis.".into(),
+                observable cross-correlation analysis."
+                .into(),
             session: "barraCuda provenance registry".into(),
         },
         CrossSpringFlow {
@@ -162,7 +175,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             domain: SpringDomain::Statistics,
             pattern: "linear_regression_f64.wgsl".into(),
             description: "GPU linear regression from neuralSpring, adopted by airSpring \
-                for trend analysis in ET₀ and crop coefficient calibration.".into(),
+                for trend analysis in ET₀ and crop coefficient calibration."
+                .into(),
             session: "barraCuda provenance registry".into(),
         },
         // wetSpring bio -> neuralSpring
@@ -173,7 +187,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "smith_waterman_banded_f64.wgsl + gillespie_ssa_f64.wgsl".into(),
             description: "Smith-Waterman sequence alignment and Gillespie SSA stochastic \
                 simulation from wetSpring bioinformatics, consumed by neuralSpring \
-                for neuroevolution fitness evaluation and stochastic search.".into(),
+                for neuroevolution fitness evaluation and stochastic search."
+                .into(),
             session: "barraCuda provenance registry".into(),
         },
         CrossSpringFlow {
@@ -183,7 +198,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "fused_map_reduce_f64.wgsl".into(),
             description: "Fused map-reduce primitive from wetSpring, adopted by \
                 airSpring for gridded hydrology reductions and hotSpring \
-                for MD observable aggregation.".into(),
+                for MD observable aggregation."
+                .into(),
             session: "S83".into(),
         },
         // airSpring hydrology -> wetSpring
@@ -194,7 +210,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "hargreaves_et0_f64.wgsl + seasonal_pipeline.wgsl".into(),
             description: "FAO56 Hargreaves ET₀ and seasonal crop pipeline from \
                 airSpring hydrology, consumed by wetSpring for environmental \
-                parameter estimation in bio-ecosystem models.".into(),
+                parameter estimation in bio-ecosystem models."
+                .into(),
             session: "S83 (airSpring batch ops absorption)".into(),
         },
         CrossSpringFlow {
@@ -204,7 +221,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "moving_window_f64.wgsl".into(),
             description: "Moving window statistics (mean/var/min/max) from airSpring \
                 IoT/streaming, consumed by wetSpring for temporal bio-signal \
-                smoothing and trend detection.".into(),
+                smoothing and trend detection."
+                .into(),
             session: "barraCuda provenance registry".into(),
         },
         // groundSpring condensed matter -> neuralSpring + hotSpring
@@ -216,7 +234,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             description: "Anderson localization Lyapunov exponent from groundSpring \
                 condensed matter physics, referenced by neuralSpring for disorder \
                 sweep validation in metalForge experiments and hotSpring for \
-                transport property verification.".into(),
+                transport property verification."
+                .into(),
             session: "S83, barraCuda provenance registry".into(),
         },
         CrossSpringFlow {
@@ -226,7 +245,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             pattern: "chi_squared_f64.wgsl".into(),
             description: "Universal chi-squared test from groundSpring, consumed by \
                 ALL springs for goodness-of-fit validation in their respective \
-                scientific domains.".into(),
+                scientific domains."
+                .into(),
             session: "barraCuda provenance registry".into(),
         },
         // groundSpring precision discovery -> ALL springs via toadStool
@@ -239,7 +259,8 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 reductions return zeros on ALL tested GPUs. This led to toadStool's \
                 PrecisionRoutingAdvice enum (F64Native, F64NativeNoSharedMem, Df64Only, \
                 F32Only) and f64_shared_memory_reliable flag on GpuAdapterInfo, \
-                benefiting all springs' GPU dispatch decisions.".into(),
+                benefiting all springs' GPU dispatch decisions."
+                .into(),
             session: "S128 (groundSpring V84-V85 absorption)".into(),
         },
     ]
@@ -330,7 +351,10 @@ mod tests {
             .find(|f| f.pattern.contains("df64_core"))
             .expect("df64_core flow should exist");
         assert_eq!(df64_flow.from, Spring::HotSpring);
-        assert!(df64_flow.to.len() >= 4, "df64 should reach at least 4 springs");
+        assert!(
+            df64_flow.to.len() >= 4,
+            "df64 should reach at least 4 springs"
+        );
     }
 
     #[test]
@@ -341,7 +365,11 @@ mod tests {
             .find(|f| f.pattern.contains("PrecisionRoutingAdvice"))
             .expect("PrecisionRoutingAdvice flow should exist");
         assert_eq!(bug_flow.from, Spring::GroundSpring);
-        assert_eq!(bug_flow.to.len(), 5, "bug discovery should reach all springs");
+        assert_eq!(
+            bug_flow.to.len(),
+            5,
+            "bug discovery should reach all springs"
+        );
     }
 
     #[test]
@@ -410,6 +438,9 @@ mod tests {
     #[test]
     fn test_flow_count_minimum() {
         let flows = cross_spring_flows();
-        assert!(flows.len() >= 15, "Should have at least 15 documented flows");
+        assert!(
+            flows.len() >= 15,
+            "Should have at least 15 documented flows"
+        );
     }
 }

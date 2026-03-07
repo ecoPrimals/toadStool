@@ -160,7 +160,7 @@ fn test_jsonrpc_response_roundtrip() {
 #[test]
 fn test_ipc_endpoint_debug_unix() {
     let ep = IpcEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock"));
-    let s = format!("{:?}", ep);
+    let s = format!("{ep:?}");
     assert!(s.contains("UnixSocket") || s.contains("test"));
 }
 
@@ -169,7 +169,7 @@ fn test_ipc_endpoint_debug_tcp() {
     use std::net::SocketAddr;
     let addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
     let ep = IpcEndpoint::TcpLocal(addr);
-    let s = format!("{:?}", ep);
+    let s = format!("{ep:?}");
     assert!(s.contains("TcpLocal") || s.contains("127"));
 }
 
@@ -274,7 +274,7 @@ fn test_ipc_endpoint_tcp_socket_addr() {
     use std::net::SocketAddr;
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
     let ep = IpcEndpoint::TcpLocal(addr);
-    let s = format!("{:?}", ep);
+    let s = format!("{ep:?}");
     assert!(s.contains("127") || s.contains("TcpLocal"));
 }
 

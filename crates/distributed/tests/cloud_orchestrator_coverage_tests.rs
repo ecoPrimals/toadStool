@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for cloud orchestrator (cloud/orchestrator/mod.rs) - coverage target 90%
 //!
-//! Tests deploy_universal_job, register_provider, deployment strategies,
+//! Tests `deploy_universal_job`, `register_provider`, deployment strategies,
 //! burst distribution, and multi-cloud paths.
 
 use async_trait::async_trait;

@@ -573,7 +573,7 @@ mod tests {
     // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
     #[async_trait]
     impl ComputeSubstrate for MockSubstrate {
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "Mock Substrate"
         }
 

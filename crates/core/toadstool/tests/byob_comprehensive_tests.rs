@@ -67,7 +67,7 @@ fn test_service_resource_requirements_debug() {
         gpu_count: None,
     };
 
-    let debug_str = format!("{:?}", reqs);
+    let debug_str = format!("{reqs:?}");
     assert!(debug_str.contains("ServiceResourceRequirements"));
 }
 
@@ -151,7 +151,7 @@ fn test_team_resource_quotas_debug() {
         max_concurrent_services: 10,
     };
 
-    let debug_str = format!("{:?}", quotas);
+    let debug_str = format!("{quotas:?}");
     assert!(debug_str.contains("TeamResourceQuotas"));
     assert!(debug_str.contains("max_cpu_cores"));
 }

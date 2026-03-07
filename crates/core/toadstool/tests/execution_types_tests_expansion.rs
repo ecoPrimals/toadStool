@@ -62,7 +62,7 @@ fn test_execution_status_serialization_roundtrip() {
 #[test]
 fn test_execution_status_debug_format() {
     let status = ExecutionStatus::Success;
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
     assert!(debug_str.contains("Success"));
 }
 
@@ -111,7 +111,7 @@ fn test_execution_input_various_formats() {
 fn test_execution_input_many_metadata_entries() {
     let mut metadata = HashMap::new();
     for i in 0..1000 {
-        metadata.insert(format!("key{}", i), format!("value{}", i));
+        metadata.insert(format!("key{i}"), format!("value{i}"));
     }
 
     let input = ExecutionInput {
@@ -144,7 +144,7 @@ fn test_execution_input_serialization_roundtrip() {
 #[test]
 fn test_execution_input_debug_format() {
     let input = ExecutionInput::default();
-    let debug_str = format!("{:?}", input);
+    let debug_str = format!("{input:?}");
     assert!(debug_str.contains("ExecutionInput"));
 }
 
@@ -250,7 +250,7 @@ fn test_execution_output_serialization_roundtrip() {
 #[test]
 fn test_execution_output_debug_format() {
     let output = ExecutionOutput::default();
-    let debug_str = format!("{:?}", output);
+    let debug_str = format!("{output:?}");
     assert!(debug_str.contains("ExecutionOutput"));
 }
 
@@ -352,7 +352,7 @@ fn test_callback_config_debug_format() {
         events: vec![],
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("CallbackConfig"));
 }
 
@@ -392,7 +392,7 @@ fn test_callback_event_serialization_roundtrip() {
 #[test]
 fn test_callback_event_debug_format() {
     let event = CallbackEvent::Progress;
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("Progress"));
 }
 
@@ -434,7 +434,7 @@ fn test_execution_request_very_long_timeout() {
 fn test_execution_request_many_environment_variables() {
     let mut env = HashMap::new();
     for i in 0..1000 {
-        env.insert(format!("VAR{}", i), format!("value{}", i));
+        env.insert(format!("VAR{i}"), format!("value{i}"));
     }
 
     let request = ExecutionRequest {
@@ -479,7 +479,7 @@ fn test_execution_request_serialization_roundtrip() {
 #[test]
 fn test_execution_request_debug_format() {
     let request = ExecutionRequest::default();
-    let debug_str = format!("{:?}", request);
+    let debug_str = format!("{request:?}");
     assert!(debug_str.contains("ExecutionRequest"));
 }
 
@@ -524,7 +524,7 @@ fn test_execution_response_microsecond_duration() {
 
 #[test]
 fn test_execution_response_many_warnings() {
-    let warnings: Vec<String> = (0..1000).map(|i| format!("Warning {}", i)).collect();
+    let warnings: Vec<String> = (0..1000).map(|i| format!("Warning {i}")).collect();
 
     let response = ExecutionResponse {
         warnings: warnings.clone(),
@@ -565,7 +565,7 @@ fn test_execution_response_serialization_roundtrip() {
 #[test]
 fn test_execution_response_debug_format() {
     let response = ExecutionResponse::default();
-    let debug_str = format!("{:?}", response);
+    let debug_str = format!("{response:?}");
     assert!(debug_str.contains("ExecutionResponse"));
 }
 
@@ -646,7 +646,7 @@ fn test_runtime_type_serialization() {
 #[test]
 fn test_runtime_type_debug_format() {
     let runtime = RuntimeType::Gpu;
-    let debug_str = format!("{:?}", runtime);
+    let debug_str = format!("{runtime:?}");
     assert!(debug_str.contains("Gpu"));
 }
 

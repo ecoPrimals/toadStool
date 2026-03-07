@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for UniversalPrimalRegistry
+//! Comprehensive tests for `UniversalPrimalRegistry`
 //!
 //! Focus: Pure logic testable without external I/O.
 //! Covers creation, registration, capability/context lookup, routing, and error paths.

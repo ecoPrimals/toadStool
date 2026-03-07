@@ -243,7 +243,7 @@ async fn print_ecosystem_overview(ecosystem: &[ComputeNode]) {
         ]
         .into_iter()
         .flatten()
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
         let proprietary: Vec<String> = vec![
@@ -260,7 +260,7 @@ async fn print_ecosystem_overview(ecosystem: &[ComputeNode]) {
         ]
         .into_iter()
         .flatten()
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
         println!(

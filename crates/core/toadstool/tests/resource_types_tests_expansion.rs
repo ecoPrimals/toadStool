@@ -85,7 +85,7 @@ fn test_cpu_requirements_serialization_roundtrip() {
 #[test]
 fn test_cpu_requirements_debug_format() {
     let cpu = CpuRequirements::default();
-    let debug_str = format!("{:?}", cpu);
+    let debug_str = format!("{cpu:?}");
     assert!(debug_str.contains("CpuRequirements"));
 }
 
@@ -162,7 +162,7 @@ fn test_memory_requirements_serialization_roundtrip() {
 #[test]
 fn test_memory_requirements_debug_format() {
     let memory = MemoryRequirements::default();
-    let debug_str = format!("{:?}", memory);
+    let debug_str = format!("{memory:?}");
     assert!(debug_str.contains("MemoryRequirements"));
 }
 
@@ -246,7 +246,7 @@ fn test_storage_requirements_serialization_roundtrip() {
 #[test]
 fn test_storage_requirements_debug_format() {
     let storage = StorageRequirements::default();
-    let debug_str = format!("{:?}", storage);
+    let debug_str = format!("{storage:?}");
     assert!(debug_str.contains("StorageRequirements"));
 }
 
@@ -320,7 +320,7 @@ fn test_network_requirements_serialization_roundtrip() {
 #[test]
 fn test_network_requirements_debug_format() {
     let network = NetworkRequirements::default();
-    let debug_str = format!("{:?}", network);
+    let debug_str = format!("{network:?}");
     assert!(debug_str.contains("NetworkRequirements"));
 }
 
@@ -431,7 +431,7 @@ fn test_gpu_requirements_debug_format() {
         min_memory_bytes: None,
     };
 
-    let debug_str = format!("{:?}", gpu);
+    let debug_str = format!("{gpu:?}");
     assert!(debug_str.contains("GpuRequirements"));
 }
 
@@ -550,7 +550,7 @@ fn test_resource_requirements_serialization_roundtrip() {
 #[test]
 fn test_resource_requirements_debug_format() {
     let resources = ResourceRequirements::default();
-    let debug_str = format!("{:?}", resources);
+    let debug_str = format!("{resources:?}");
     assert!(debug_str.contains("ResourceRequirements"));
 }
 
@@ -637,7 +637,7 @@ fn test_cpu_metrics_serialization_roundtrip() {
 #[test]
 fn test_cpu_metrics_debug_format() {
     let metrics = CpuMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("CpuMetrics"));
 }
 
@@ -697,7 +697,7 @@ fn test_runtime_metrics_serialization_roundtrip() {
 #[test]
 fn test_runtime_metrics_debug_format() {
     let metrics = RuntimeMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("RuntimeMetrics"));
 }
 

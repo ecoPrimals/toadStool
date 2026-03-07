@@ -137,7 +137,7 @@ fn test_python_runtime_config_clone() {
 #[test]
 fn test_python_runtime_config_debug() {
     let config = PythonRuntimeConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("PythonRuntimeConfig"));
     assert!(debug_str.contains("interpreter_path"));
@@ -318,7 +318,7 @@ fn test_python_runtime_config_multiple_requirements() {
 #[test]
 fn test_python_runtime_config_empty_interpreter_path() {
     let config = PythonRuntimeConfig {
-        interpreter_path: "".to_string(),
+        interpreter_path: String::new(),
         virtual_env: None,
         max_memory_mb: 1024,
         timeouts: TimeoutConfig::default(),

@@ -222,7 +222,7 @@ fn test_network_info_serialization() {
 #[test]
 fn test_system_capabilities_debug() {
     let capabilities = SystemCapabilities::default();
-    let debug_str = format!("{:?}", capabilities);
+    let debug_str = format!("{capabilities:?}");
 
     assert!(debug_str.contains("SystemCapabilities"));
     assert!(debug_str.contains("cpu_cores"));
@@ -232,7 +232,7 @@ fn test_system_capabilities_debug() {
 #[test]
 fn test_cpu_info_debug() {
     let cpu_info = CpuInfo::default();
-    let debug_str = format!("{:?}", cpu_info);
+    let debug_str = format!("{cpu_info:?}");
 
     assert!(debug_str.contains("CpuInfo"));
     assert!(debug_str.contains("model_name"));
@@ -241,7 +241,7 @@ fn test_cpu_info_debug() {
 #[test]
 fn test_cpu_features_debug() {
     let features = CpuFeatures::default();
-    let debug_str = format!("{:?}", features);
+    let debug_str = format!("{features:?}");
 
     assert!(debug_str.contains("CpuFeatures"));
     assert!(debug_str.contains("supports_avx"));
@@ -250,7 +250,7 @@ fn test_cpu_features_debug() {
 #[test]
 fn test_memory_info_debug() {
     let memory_info = MemoryInfo::default();
-    let debug_str = format!("{:?}", memory_info);
+    let debug_str = format!("{memory_info:?}");
 
     assert!(debug_str.contains("MemoryInfo"));
     assert!(debug_str.contains("total_gb"));
@@ -259,7 +259,7 @@ fn test_memory_info_debug() {
 #[test]
 fn test_storage_info_debug() {
     let storage_info = StorageInfo::default();
-    let debug_str = format!("{:?}", storage_info);
+    let debug_str = format!("{storage_info:?}");
 
     assert!(debug_str.contains("StorageInfo"));
 }
@@ -267,7 +267,7 @@ fn test_storage_info_debug() {
 #[test]
 fn test_network_info_debug() {
     let network_info = NetworkInfo::default();
-    let debug_str = format!("{:?}", network_info);
+    let debug_str = format!("{network_info:?}");
 
     assert!(debug_str.contains("NetworkInfo"));
 }
@@ -291,7 +291,7 @@ fn test_storage_type_serialization() {
     assert!(!json.is_empty());
 
     let deserialized: StorageType = serde_json::from_str(&json).expect("Should deserialize");
-    let deserialized_str = format!("{:?}", deserialized);
+    let deserialized_str = format!("{deserialized:?}");
     assert!(deserialized_str.contains("SSD"));
 }
 
@@ -325,7 +325,7 @@ fn test_performance_class_serialization() {
     assert!(!json.is_empty());
 
     let deserialized: PerformanceClass = serde_json::from_str(&json).expect("Should deserialize");
-    let deserialized_str = format!("{:?}", deserialized);
+    let deserialized_str = format!("{deserialized:?}");
     assert!(deserialized_str.contains("HighEnd"));
 }
 

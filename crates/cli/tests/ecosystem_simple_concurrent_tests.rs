@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! 🚀 EcosystemIntegrator Simple Concurrent Tests
+//! 🚀 `EcosystemIntegrator` Simple Concurrent Tests
 //!
 //! **Philosophy**: Modern, concurrent, event-driven, robust
 //! **Pattern**: Simple API tests, no complex fixtures
-//! **Target**: ecosystem/integrator_impl.rs 0% → 15% coverage
+//! **Target**: `ecosystem/integrator_impl.rs` 0% → 15% coverage
 //!
 //! Test issues ARE production issues - we test concurrently because we run concurrently.
 
@@ -287,7 +287,7 @@ async fn test_burst_integrator_operations() -> Result<()> {
         let tx = tx.clone();
         tokio::spawn(async move {
             let _integrator = EcosystemIntegrator::new();
-            tx.send(format!("burst1_{}", i)).ok();
+            tx.send(format!("burst1_{i}")).ok();
         });
     }
 
@@ -302,7 +302,7 @@ async fn test_burst_integrator_operations() -> Result<()> {
         tokio::spawn(async move {
             let integrator = EcosystemIntegrator::new();
             let _result = integrator.show_ecosystem_status("text").await;
-            tx.send(format!("burst2_{}", i)).ok()
+            tx.send(format!("burst2_{i}")).ok()
         });
     }
 
@@ -341,7 +341,7 @@ async fn test_sustained_integrator_load() -> Result<()> {
     }
 
     // At least 95% success rate
-    let success_rate = success_count as f64 / 40.0;
+    let success_rate = f64::from(success_count) / 40.0;
     assert!(
         success_rate >= 0.95,
         "Success rate should be >= 95%, got {:.1}%",
@@ -374,7 +374,7 @@ async fn test_timeout_awareness_integrator() -> Result<()> {
     // All should complete within timeout
     let mut completed = 0;
     for handle in handles {
-        if let Ok(Ok(_)) = handle.await? {
+        if let Ok(Ok(())) = handle.await? {
             completed += 1;
         }
     }

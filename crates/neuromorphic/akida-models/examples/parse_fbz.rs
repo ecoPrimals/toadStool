@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         std::process::exit(1);
     });
 
-    println!("📂 Loading model: {}\n", model_path);
+    println!("📂 Loading model: {model_path}\n");
 
     let model = Model::from_file(&model_path)?;
 
@@ -31,10 +31,11 @@ fn main() -> Result<()> {
     println!("📊 Model Information:");
     println!("   Version:      {}", model.version());
     println!("   Layers:       {}", model.layer_count());
+    #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+    let program_size_kb = model.program_size() as f32 / 1024.0;
     println!(
-        "   Program size: {} bytes ({:.2} KB)\n",
-        model.program_size(),
-        model.program_size() as f32 / 1024.0
+        "   Program size: {} bytes ({program_size_kb:.2} KB)\n",
+        model.program_size()
     );
 
     // Display layers
@@ -43,8 +44,7 @@ fn main() -> Result<()> {
 
     for (i, layer) in model.layers().iter().enumerate() {
         println!(
-            "│  Layer {}: {:20} {:15} │",
-            i,
+            "│  Layer {i}: {:20} {:15} │",
             layer.name,
             format!("({})", layer.layer_type)
         );
@@ -60,8 +60,7 @@ fn main() -> Result<()> {
     if !model.weights().is_empty() {
         for (i, weight) in model.weights().iter().enumerate() {
             println!(
-                "   Block {}: {} bytes ({}-bit quantization)",
-                i,
+                "   Block {i}: {} bytes ({}-bit quantization)",
                 weight.data.len(),
                 weight.quantization.bits
             );

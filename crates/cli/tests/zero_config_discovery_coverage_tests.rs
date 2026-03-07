@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for ZeroConfig discovery - coverage target 90%
+//! Comprehensive tests for `ZeroConfig` discovery - coverage target 90%
 //!
-//! Tests discover_system, discover_ecosystem, and discovery helper methods.
+//! Tests `discover_system`, `discover_ecosystem`, and discovery helper methods.
 //! Uses actual system commands on Linux - tests may behave differently on other OS.
 
 use toadstool_cli::zero_config::{DiscoveryExt, ZeroConfigCore, ZeroConfigDeployment};
@@ -18,8 +18,7 @@ async fn test_discover_system_succeeds_on_linux() {
     #[cfg(target_os = "linux")]
     assert!(
         result.is_ok(),
-        "discover_system should succeed on Linux: {:?}",
-        result
+        "discover_system should succeed on Linux: {result:?}"
     );
     #[cfg(not(target_os = "linux"))]
     let _ = result;

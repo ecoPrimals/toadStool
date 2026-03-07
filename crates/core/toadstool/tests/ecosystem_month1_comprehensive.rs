@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for ecosystem.rs
 //!
-//! Covers EcosystemCoordinator functionality (15-20 tests).
+//! Covers `EcosystemCoordinator` functionality (15-20 tests).
 
 use std::collections::HashMap;
 use std::time::Duration;

@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn test_debug_format() {
         let engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
-        let debug_str = format!("{:?}", engine);
+        let debug_str = format!("{engine:?}");
         assert!(debug_str.contains("PythonRuntimeEngine"));
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for OS Layer Manager
 //!
-//! Tests for OSLayerManager, OSLayerConfig, PlatformInfo.
+//! Tests for `OSLayerManager`, `OSLayerConfig`, `PlatformInfo`.
 //! Week 16 Sprint: 0% → 40% coverage target
 
 use toadstool::os_layer::manager::*;
@@ -57,7 +57,7 @@ fn test_os_layer_config_clone() {
 #[test]
 fn test_os_layer_config_debug() {
     let config = OSLayerConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("OSLayerConfig"));
 }
 
@@ -162,7 +162,7 @@ fn test_platform_info_clone() {
 #[test]
 fn test_platform_info_debug() {
     let info = PlatformInfo::detect();
-    let debug_str = format!("{:?}", info);
+    let debug_str = format!("{info:?}");
     assert!(debug_str.contains("PlatformInfo"));
 }
 

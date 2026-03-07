@@ -54,7 +54,7 @@ async fn test_tower_manager_multiple_towers() {
     // Register multiple remote towers
     for i in 1..=3 {
         let endpoint = RemoteTowerEndpoint {
-            tower_id: format!("tower-{}", i),
+            tower_id: format!("tower-{i}"),
             address: format!("http://192.168.1.{}:8084", 10 + i),
             gpu_capabilities: None,
             last_seen: Instant::now(),
@@ -304,7 +304,7 @@ async fn test_tower_manager_sequential_registrations() {
     // Register towers sequentially
     for i in 1..=5 {
         let endpoint = RemoteTowerEndpoint {
-            tower_id: format!("tower-{}", i),
+            tower_id: format!("tower-{i}"),
             address: format!("http://192.168.1.{}:8084", 10 + i),
             gpu_capabilities: None,
             last_seen: Instant::now(),
@@ -326,7 +326,7 @@ async fn test_tower_manager_sequential_registrations() {
 
 #[tokio::test]
 async fn test_tower_manager_empty_tower_id() {
-    let manager = TowerManager::new("".to_string());
+    let manager = TowerManager::new(String::new());
     assert_eq!(manager.local_tower_id(), "");
 }
 

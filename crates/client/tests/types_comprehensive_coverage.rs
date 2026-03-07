@@ -72,7 +72,7 @@ fn test_workload_submission_debug() {
         metadata: HashMap::new(),
     };
 
-    let debug_str = format!("{:?}", submission);
+    let debug_str = format!("{submission:?}");
     assert!(debug_str.contains("WorkloadSubmission"));
 }
 
@@ -283,7 +283,7 @@ fn test_resource_requirements_debug() {
         gpu_required: Some(true),
     };
 
-    let debug_str = format!("{:?}", resources);
+    let debug_str = format!("{resources:?}");
     assert!(debug_str.contains("ResourceRequirements"));
 }
 
@@ -364,7 +364,7 @@ fn test_execution_info_debug() {
         metrics: None,
     };
 
-    let debug_str = format!("{:?}", info);
+    let debug_str = format!("{info:?}");
     assert!(debug_str.contains("ExecutionInfo"));
 }
 
@@ -445,7 +445,7 @@ fn test_execution_status_clone() {
 #[test]
 fn test_execution_status_debug() {
     let status = ExecutionStatus::Completed;
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
     assert!(debug_str.contains("Completed"));
 }
 
@@ -530,7 +530,7 @@ fn test_execution_output_debug() {
         artifacts: vec![],
     };
 
-    let debug_str = format!("{:?}", output);
+    let debug_str = format!("{output:?}");
     assert!(debug_str.contains("ExecutionOutput"));
 }
 
@@ -595,7 +595,7 @@ fn test_execution_metrics_debug() {
         network_bytes_received: 2000,
     };
 
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("ExecutionMetrics"));
 }
 
@@ -650,7 +650,7 @@ fn test_event_debug() {
         execution_id: "id".to_string(),
         status: "running".to_string(),
     };
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("ExecutionStatusChanged"));
 }
 
@@ -714,7 +714,7 @@ fn test_cluster_status_debug() {
         available_runtimes: vec!["native".to_string()],
     };
 
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
     assert!(debug_str.contains("ClusterStatus"));
 }
 

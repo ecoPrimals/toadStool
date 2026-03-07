@@ -36,7 +36,7 @@ memory_mb = 512
 
     // Create temp file
     let mut temp_file = NamedTempFile::with_suffix(".toml").unwrap();
-    write!(temp_file, "{}", content).unwrap();
+    write!(temp_file, "{content}").unwrap();
 
     // Read and parse
     let file_content = tokio::fs::read_to_string(temp_file.path()).await.unwrap();
@@ -87,7 +87,7 @@ async fn test_load_workload_file_json_basic() {
 "#;
 
     let mut temp_file = NamedTempFile::with_suffix(".json").unwrap();
-    write!(temp_file, "{}", content).unwrap();
+    write!(temp_file, "{content}").unwrap();
 
     let file_content = tokio::fs::read_to_string(temp_file.path()).await.unwrap();
     let value: serde_json::Value = serde_json::from_str(&file_content).unwrap();
@@ -274,7 +274,7 @@ fn test_parse_runtime_hint_wasm() {
             "wasm" | "webassembly" => Ok(RuntimeType::Wasm),
             _ => Err("unknown"),
         };
-        assert!(result.is_ok(), "Failed for hint: {}", hint);
+        assert!(result.is_ok(), "Failed for hint: {hint}");
     }
 }
 
@@ -288,7 +288,7 @@ fn test_parse_runtime_hint_container() {
             "container" | "docker" => Ok(RuntimeType::Container),
             _ => Err("unknown"),
         };
-        assert!(result.is_ok(), "Failed for hint: {}", hint);
+        assert!(result.is_ok(), "Failed for hint: {hint}");
     }
 }
 
@@ -386,7 +386,7 @@ fn test_convert_resource_requirements_default() {
     let resources = ResourceRequirements::default();
 
     // Should create without error
-    assert!(!format!("{:?}", resources).is_empty());
+    assert!(!format!("{resources:?}").is_empty());
 }
 
 // ============================================================================
@@ -400,7 +400,7 @@ fn test_convert_security_context_standard() {
     let context = SecurityContext::for_isolation_level(IsolationLevel::Standard);
 
     // Should create without error
-    assert!(!format!("{:?}", context).is_empty());
+    assert!(!format!("{context:?}").is_empty());
 }
 
 #[test]
@@ -408,7 +408,7 @@ fn test_convert_security_context_enhanced() {
     use toadstool::security::{IsolationLevel, SecurityContext};
 
     let context = SecurityContext::for_isolation_level(IsolationLevel::Enhanced);
-    assert!(!format!("{:?}", context).is_empty());
+    assert!(!format!("{context:?}").is_empty());
 }
 
 #[test]
@@ -416,7 +416,7 @@ fn test_convert_security_context_maximum() {
     use toadstool::security::{IsolationLevel, SecurityContext};
 
     let context = SecurityContext::for_isolation_level(IsolationLevel::Maximum);
-    assert!(!format!("{:?}", context).is_empty());
+    assert!(!format!("{context:?}").is_empty());
 }
 
 // ============================================================================

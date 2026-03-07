@@ -511,8 +511,8 @@ fn test_specialized_platforms_collection() {
 #[test]
 fn test_empty_platform_strings() {
     let platform = PlatformType::Linux {
-        distribution: "".to_string(),
-        architecture: "".to_string(),
+        distribution: String::new(),
+        architecture: String::new(),
     };
 
     match platform {

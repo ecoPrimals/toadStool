@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for biomeos_integration/auth module
+//! Comprehensive tests for `biomeos_integration/auth` module
 //!
 //! This test suite covers:
-//! - TokenVerificationStatus enum and variants
-//! - TokenPropagationStatus enum and variants
-//! - AuthManagerConfig struct
-//! - AuthenticationToken struct
-//! - TokenPropagationRequest struct
-//! - TokenVerificationRequest struct
-//! - TokenVerificationResponse struct
-//! - PropagationResult struct
+//! - `TokenVerificationStatus` enum and variants
+//! - `TokenPropagationStatus` enum and variants
+//! - `AuthManagerConfig` struct
+//! - `AuthenticationToken` struct
+//! - `TokenPropagationRequest` struct
+//! - `TokenVerificationRequest` struct
+//! - `TokenVerificationResponse` struct
+//! - `PropagationResult` struct
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -24,7 +24,7 @@ fn test_token_verification_status_valid() {
     let status = TokenVerificationStatus::Valid;
 
     assert!(matches!(status, TokenVerificationStatus::Valid));
-    assert!(format!("{:?}", status).contains("Valid"));
+    assert!(format!("{status:?}").contains("Valid"));
 }
 
 #[test]

@@ -18,7 +18,7 @@ async fn test_random_constraint_combinations() {
 
     // Random mix of constraints
     for iteration in 0..20 {
-        let mut request = CompositionRequest::new(format!("chaos-{}", iteration));
+        let mut request = CompositionRequest::new(format!("chaos-{iteration}"));
 
         // Add random number of constraints (0-10)
         let num_constraints = iteration % 11;
@@ -115,7 +115,7 @@ async fn test_many_simultaneous_workloads() {
 
     // Add 50 workloads
     for i in 0..50 {
-        let request = CompositionRequest::new(format!("workload-{}", i))
+        let request = CompositionRequest::new(format!("workload-{i}"))
             .with_constraint(Constraint::min_memory_gb(0.1))
             .with_priority(match i % 4 {
                 0 => ConstraintPriority::Critical,
@@ -217,15 +217,15 @@ fn test_random_plugin_registrations() {
     // Register 20 random plugins
     for i in 0..20 {
         let manifest = PluginManifest {
-            name: format!("plugin-{}", i),
-            version: format!("{}.0.0", i),
+            name: format!("plugin-{i}"),
+            version: format!("{i}.0.0"),
             plugin_type: match i % 3 {
                 0 => "cloud_provider",
                 1 => "storage",
                 _ => "compute",
             }
             .to_string(),
-            entry_point: format!("libplugin{}.so", i),
+            entry_point: format!("libplugin{i}.so"),
             ..Default::default()
         };
 
@@ -285,7 +285,7 @@ async fn test_concurrent_compositions() {
     for i in 0..10 {
         let engine_clone = engine.clone();
         let handle = tokio::spawn(async move {
-            let req = CompositionRequest::new(format!("concurrent-{}", i))
+            let req = CompositionRequest::new(format!("concurrent-{i}"))
                 .with_constraint(Constraint::min_memory_gb(0.5));
 
             engine_clone.evaluate(&req).await
@@ -337,8 +337,8 @@ async fn test_priority_chaos() {
             _ => ConstraintPriority::Background,
         };
 
-        let req = CompositionRequest::new(format!("chaos-priority-{}", i))
-            .with_constraint(Constraint::min_memory_gb((i as f64) * 0.1))
+        let req = CompositionRequest::new(format!("chaos-priority-{i}"))
+            .with_constraint(Constraint::min_memory_gb(f64::from(i) * 0.1))
             .with_priority(priority);
 
         compositor.add_request(req);
@@ -362,12 +362,12 @@ async fn test_custom_constraints_chaos() {
 
     for i in 0..20 {
         let custom = Constraint::Custom {
-            name: format!("custom-{}", i),
+            name: format!("custom-{i}"),
             hard: i % 2 == 0,
-            value: format!("value-{}", i),
+            value: format!("value-{i}"),
         };
 
-        let req = CompositionRequest::new(format!("custom-chaos-{}", i)).with_constraint(custom);
+        let req = CompositionRequest::new(format!("custom-chaos-{i}")).with_constraint(custom);
 
         let result = engine.evaluate(&req).await;
         assert!(result.is_ok());

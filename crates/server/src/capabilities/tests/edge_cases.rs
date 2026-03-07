@@ -176,7 +176,7 @@ fn test_primal_capabilities_debug_format() {
         socket_path: PathBuf::from("/tmp/test.sock"),
         metadata: HashMap::new(),
     };
-    let formatted = format!("{:?}", caps);
+    let formatted = format!("{caps:?}");
     assert!(formatted.contains("debug-test"));
     assert!(formatted.contains(primals::TOADSTOOL));
     assert!(formatted.contains("PrimalCapabilities"));
@@ -192,9 +192,9 @@ fn test_system_resources_debug_format() {
         architecture: "x86_64".to_string(),
         os: "linux".to_string(),
     };
-    let formatted = format!("{:?}", res);
+    let formatted = format!("{res:?}");
     assert!(formatted.contains("SystemResources"));
-    assert!(formatted.contains("4"));
+    assert!(formatted.contains('4'));
 }
 
 #[test]
@@ -206,7 +206,7 @@ fn test_gpu_device_debug_format() {
         memory_bytes: 1024,
         compute_capability: None,
     };
-    let formatted = format!("{:?}", gpu);
+    let formatted = format!("{gpu:?}");
     assert!(formatted.contains("GpuDevice"));
     assert!(formatted.contains("Test GPU"));
 }

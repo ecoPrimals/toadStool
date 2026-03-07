@@ -3,14 +3,14 @@
 //!
 //! This test suite provides thorough coverage of the analytics engine's
 //! async methods and critical paths that were previously untested:
-//! - analyze_trends() with various data scenarios
-//! - predict_values() with edge cases
-//! - evaluate_alerts() with threshold detection
-//! - get_dashboard_data() with panels and metrics
-//! - export_metrics() and webhook integration
-//! - process_buffered_data() and background processing
+//! - `analyze_trends()` with various data scenarios
+//! - `predict_values()` with edge cases
+//! - `evaluate_alerts()` with threshold detection
+//! - `get_dashboard_data()` with panels and metrics
+//! - `export_metrics()` and webhook integration
+//! - `process_buffered_data()` and background processing
 //! - statistical analysis functions
-//! - helper functions (calculate_median, calculate_percentile)
+//! - helper functions (`calculate_median`, `calculate_percentile`)
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -66,7 +66,7 @@ async fn test_analyze_trends_with_increasing_trend() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i as u64) * 3600),
             metric_name: "increasing_metric".to_string(),
-            value: 10.0 + (i as f64 * 5.0), // 10, 15, 20, 25, ...
+            value: 10.0 + (f64::from(i) * 5.0), // 10, 15, 20, 25, ...
             runtime_type: Some(RuntimeType::Native),
             execution_id: None,
             tags: HashMap::new(),
@@ -90,7 +90,7 @@ async fn test_analyze_trends_with_stable_data() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i as u64) * 3600),
             metric_name: "stable_metric".to_string(),
-            value: 50.0 + (i as f64 * 0.1), // Very small variation
+            value: 50.0 + (f64::from(i) * 0.1), // Very small variation
             runtime_type: Some(RuntimeType::Wasm),
             execution_id: None,
             tags: HashMap::new(),
@@ -126,7 +126,7 @@ async fn test_predict_values_with_historical_data() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i * 3) as u64 * 3600),
             metric_name: "predict_metric".to_string(),
-            value: 100.0 + (i as f64 * 2.0),
+            value: 100.0 + (f64::from(i) * 2.0),
             runtime_type: Some(RuntimeType::Native),
             execution_id: None,
             tags: HashMap::new(),
@@ -149,7 +149,7 @@ async fn test_predict_values_short_horizon() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i * 2) as u64 * 3600),
             metric_name: "short_predict".to_string(),
-            value: 50.0 + (i as f64),
+            value: 50.0 + f64::from(i),
             runtime_type: Some(RuntimeType::Wasm),
             execution_id: None,
             tags: HashMap::new(),
@@ -318,7 +318,7 @@ async fn test_dashboard_with_panels() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i * 15) as u64 * 60),
             metric_name: "dashboard_metric".to_string(),
-            value: 50.0 + (i as f64 * 10.0),
+            value: 50.0 + (f64::from(i) * 10.0),
             runtime_type: Some(RuntimeType::Native),
             execution_id: None,
             tags: HashMap::new(),
@@ -539,8 +539,8 @@ async fn test_collect_many_data_points() {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
             timestamp: SystemTime::now(),
-            metric_name: format!("metric_{}", i),
-            value: i as f64,
+            metric_name: format!("metric_{i}"),
+            value: f64::from(i),
             runtime_type: Some(RuntimeType::Native),
             execution_id: None,
             tags: HashMap::new(),
@@ -563,7 +563,7 @@ async fn test_collect_data_point_buffer_limit() {
             id: Uuid::new_v4(),
             timestamp: SystemTime::now(),
             metric_name: "overflow_test".to_string(),
-            value: i as f64,
+            value: f64::from(i),
             runtime_type: None,
             execution_id: None,
             tags: HashMap::new(),

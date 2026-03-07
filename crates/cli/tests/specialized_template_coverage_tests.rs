@@ -163,11 +163,10 @@ fn test_vision_template_resources() {
     );
 
     // Services should have reasonable resources
-    for (name, service) in services.iter() {
+    for (name, service) in &services {
         assert!(
             service.resources.cpu_limit.is_some() || service.resources.memory_limit.is_some(),
-            "Service '{}' should have resource limits",
-            name
+            "Service '{name}' should have resource limits"
         );
     }
 }

@@ -9,7 +9,9 @@
 
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, ParamValue, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -37,7 +39,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let input = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
-    println!("Input: {:?}", input);
+    println!("Input: {input:?}");
     println!();
 
     let gelu_workload = Workload {
@@ -54,7 +56,7 @@ async fn main() -> Result<(), ComputeError> {
     let gelu_result = runtime.execute_optimal(gelu_workload).await?;
 
     if let WorkloadData::F32Vec(gelu_output) = &gelu_result.data {
-        println!("GELU Output: {:?}", gelu_output);
+        println!("GELU Output: {gelu_output:?}");
 
         // Compare with ReLU
         let relu_workload = Workload {
@@ -71,7 +73,7 @@ async fn main() -> Result<(), ComputeError> {
         let relu_result = runtime.execute_optimal(relu_workload).await?;
 
         if let WorkloadData::F32Vec(relu_output) = &relu_result.data {
-            println!("ReLU Output: {:?}", relu_output);
+            println!("ReLU Output: {relu_output:?}");
             println!();
             println!("Differences:");
             println!("  • GELU: Smooth, non-zero for negative values");
@@ -96,7 +98,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let dropout_input: Vec<f32> = (1..=10).map(|i| i as f32).collect();
-    println!("Input: {:?}", dropout_input);
+    println!("Input: {dropout_input:?}");
     println!();
 
     // Test different dropout rates
@@ -120,7 +122,7 @@ async fn main() -> Result<(), ComputeError> {
         if let WorkloadData::F32Vec(output) = &dropout_result.data {
             let zeros = output.iter().filter(|&&x| x == 0.0).count();
             let non_zeros = output.len() - zeros;
-            println!("Dropout rate {:.1}: {:?}", dropout_rate, output);
+            println!("Dropout rate {dropout_rate:.1}: {output:?}");
             println!(
                 "  → {} zeros, {} non-zeros (scaled by {:.2})",
                 zeros,
@@ -150,7 +152,7 @@ async fn main() -> Result<(), ComputeError> {
     println!();
 
     let pipeline_input = vec![0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0];
-    println!("Step 1: Input: {:?}", pipeline_input);
+    println!("Step 1: Input: {pipeline_input:?}");
     println!();
 
     // Apply GELU
@@ -168,7 +170,7 @@ async fn main() -> Result<(), ComputeError> {
     let gelu_pipeline_result = runtime.execute_optimal(gelu_pipeline).await?;
 
     if let WorkloadData::F32Vec(gelu_out) = gelu_pipeline_result.data {
-        println!("Step 2: After GELU: {:?}", gelu_out);
+        println!("Step 2: After GELU: {gelu_out:?}");
         println!();
 
         // Apply Dropout
@@ -189,7 +191,7 @@ async fn main() -> Result<(), ComputeError> {
         let dropout_pipeline_result = runtime.execute_optimal(dropout_pipeline).await?;
 
         if let WorkloadData::F32Vec(final_output) = &dropout_pipeline_result.data {
-            println!("Step 3: After Dropout (30%): {:?}", final_output);
+            println!("Step 3: After Dropout (30%): {final_output:?}");
             println!();
             println!("Pipeline complete! ✅");
         }
@@ -205,7 +207,7 @@ async fn main() -> Result<(), ComputeError> {
 
     let comparison_input = vec![-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
 
-    println!("Input: {:?}", comparison_input);
+    println!("Input: {comparison_input:?}");
     println!();
 
     // Get ReLU output
@@ -237,8 +239,8 @@ async fn main() -> Result<(), ComputeError> {
     if let (WorkloadData::F32Vec(relu_out), WorkloadData::F32Vec(gelu_out)) =
         (&relu_comp_result.data, &gelu_comp_result.data)
     {
-        println!("ReLU:  {:?}", relu_out);
-        println!("GELU:  {:?}", gelu_out);
+        println!("ReLU:  {relu_out:?}");
+        println!("GELU:  {gelu_out:?}");
         println!();
         println!("Key Observations:");
         println!("  • ReLU: Hard zero for negatives → can cause 'dying ReLU'");

@@ -519,7 +519,7 @@ fn test_port_range_debug() {
         end: 3999,
     };
 
-    let debug_str = format!("{:?}", range);
+    let debug_str = format!("{range:?}");
     assert!(debug_str.contains("3000"));
     assert!(debug_str.contains("3999"));
 }

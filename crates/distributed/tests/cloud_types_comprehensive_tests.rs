@@ -2,12 +2,12 @@
 //! Comprehensive tests for Cloud module types
 //!
 //! Coverage targets:
-//! - MultiCloudConfig
-//! - DisasterRecoveryConfig
-//! - CrossCloudNetworking
-//! - VpnConfig, DnsConfig
-//! - CloudOrchestratorConfig
-//! - CostConfig, ComplianceConfig
+//! - `MultiCloudConfig`
+//! - `DisasterRecoveryConfig`
+//! - `CrossCloudNetworking`
+//! - `VpnConfig`, `DnsConfig`
+//! - `CloudOrchestratorConfig`
+//! - `CostConfig`, `ComplianceConfig`
 //! - Various cloud enums and types
 
 use toadstool_distributed::cloud::types::*;
@@ -69,7 +69,7 @@ fn test_disaster_recovery_config_clone() {
 #[test]
 fn test_disaster_recovery_config_debug() {
     let config = DisasterRecoveryConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("DisasterRecoveryConfig"));
     assert!(debug_str.contains("auto_failover"));
@@ -152,7 +152,7 @@ fn test_vpn_config_debug() {
         shared_key: "psk".to_string(),
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("VpnConfig"));
     assert!(debug_str.contains("IPSec"));
 }
@@ -225,7 +225,7 @@ fn test_dns_config_debug() {
         ttl_seconds: 120,
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("DnsConfig"));
     assert!(debug_str.contains("Azure DNS"));
 }
@@ -335,7 +335,7 @@ fn test_cross_cloud_networking_debug() {
         encryption_required: true,
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("CrossCloudNetworking"));
     assert!(debug_str.contains("encryption_required"));
 }
@@ -461,7 +461,7 @@ fn test_cost_config_debug() {
         spot_instance_preference: 0.25,
     };
 
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("CostConfig"));
     assert!(debug_str.contains("budget_limit"));
 }
@@ -691,7 +691,7 @@ fn test_dns_provider_diversity() {
     for provider in providers {
         let config = DnsConfig {
             dns_provider: provider.to_string(),
-            zone_id: format!("{}-zone", provider),
+            zone_id: format!("{provider}-zone"),
             ttl_seconds: 300,
         };
 
@@ -708,7 +708,7 @@ fn test_vpn_types_diversity() {
         let config = VpnConfig {
             vpn_type: vpn_type.to_string(),
             endpoint: format!("{}.vpn.cloud", vpn_type.to_lowercase()),
-            shared_key: format!("{}-key", vpn_type),
+            shared_key: format!("{vpn_type}-key"),
         };
 
         assert_eq!(config.vpn_type, vpn_type);

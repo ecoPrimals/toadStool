@@ -17,7 +17,7 @@ use toadstool_server::state::{
 };
 use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
 
-/// Helper to create a test ServerState
+/// Helper to create a test `ServerState`
 fn create_test_state() -> ServerState {
     let config = ServerConfig::default();
     let (event_broadcaster, _) = broadcast::channel(100);
@@ -33,7 +33,7 @@ fn create_test_state() -> ServerState {
     }
 }
 
-/// Helper to create a test ServerState with custom config
+/// Helper to create a test `ServerState` with custom config
 fn create_test_state_with_config(config: ServerConfig) -> ServerState {
     let (event_broadcaster, _) = broadcast::channel(100);
 
@@ -206,7 +206,7 @@ mod background_services_tests {
                 timeout: Duration::from_secs(300),
                 status: ExecutionStatus::Running,
                 client_info: ClientInfo {
-                    ip_address: Some(format!("127.0.0.{}", i)),
+                    ip_address: Some(format!("127.0.0.{i}")),
                     user_agent: None,
                     api_key: None,
                     authenticated_user: None,

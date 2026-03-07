@@ -232,7 +232,7 @@ mod tests {
         let result = mdns.advertise(&identity);
         assert!(result.is_err());
         if let Err(e) = result {
-            let msg = format!("{}", e);
+            let msg = format!("{e}");
             assert!(msg.contains("Network identity") || msg.contains("mDNS"));
         }
     }
@@ -305,12 +305,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_mdns_advertise() {
-        let mdns = match MdnsDiscoveryService::new() {
-            Ok(m) => m,
-            Err(_) => {
-                eprintln!("Skipping test - mDNS not available");
-                return;
-            }
+        let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
+            m
+        } else {
+            eprintln!("Skipping test - mDNS not available");
+            return;
         };
 
         let identity = SelfIdentity::new().with_network(

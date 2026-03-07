@@ -36,7 +36,7 @@ fn test_service_type_variants() {
 
     // All should support Debug
     for service_type in &service_types {
-        let _debug = format!("{:?}", service_type);
+        let _debug = format!("{service_type:?}");
     }
 }
 
@@ -114,8 +114,7 @@ fn test_service_endpoint_validation() {
 
         assert_eq!(
             is_valid, should_be_valid,
-            "Endpoint validation failed for: {}",
-            endpoint
+            "Endpoint validation failed for: {endpoint}"
         );
     }
 }
@@ -164,7 +163,7 @@ fn test_service_capabilities() {
         }
 
         // Service type should be valid
-        let _debug = format!("{:?}", service_type);
+        let _debug = format!("{service_type:?}");
     }
 }
 
@@ -183,7 +182,7 @@ fn test_service_status_validation() {
 
     // All should support Debug
     for status in &valid_statuses {
-        let _debug = format!("{:?}", status);
+        let _debug = format!("{status:?}");
     }
 }
 
@@ -299,8 +298,7 @@ fn test_discovery_duration() {
         if should_be_valid {
             assert!(
                 is_valid || duration_ms == 0,
-                "Duration {} should be valid",
-                duration_ms
+                "Duration {duration_ms} should be valid"
             );
         }
     }
@@ -323,8 +321,7 @@ fn test_service_version_formats() {
 
         assert_eq!(
             is_valid, should_be_valid,
-            "Version validation failed for: {}",
-            version
+            "Version validation failed for: {version}"
         );
     }
 }
@@ -523,13 +520,13 @@ fn test_clone_implementations() {
 #[test]
 fn test_debug_implementations() {
     let service_type = ServiceType::NetworkCoordination;
-    let _debug = format!("{:?}", service_type);
+    let _debug = format!("{service_type:?}");
 
     let summary = DiscoverySummary::default();
-    let _debug = format!("{:?}", summary);
+    let _debug = format!("{summary:?}");
 
     let status = ServiceStatus::Healthy;
-    let _debug = format!("{:?}", status);
+    let _debug = format!("{status:?}");
 }
 
 /// Test empty service list handling
@@ -607,16 +604,12 @@ fn test_response_time_validation() {
         let is_valid = response_time_ms > 0;
 
         if should_be_valid {
-            assert!(
-                is_valid,
-                "Response time {} should be valid",
-                response_time_ms
-            );
+            assert!(is_valid, "Response time {response_time_ms} should be valid");
         }
     }
 }
 
-/// Test discovered_via field validation
+/// Test `discovered_via` field validation
 #[test]
 fn test_discovered_via_validation() {
     let discovery_methods = vec![
@@ -636,7 +629,7 @@ fn test_discovered_via_validation() {
     }
 }
 
-/// Test ServicePattern creation and serialization
+/// Test `ServicePattern` creation and serialization
 #[test]
 fn test_service_pattern_creation() {
     let pattern = ServicePattern {
@@ -654,7 +647,7 @@ fn test_service_pattern_creation() {
         .contains(&"security".to_string()));
 }
 
-/// Test ServicePattern clone
+/// Test `ServicePattern` clone
 #[test]
 fn test_service_pattern_clone() {
     let pattern = ServicePattern {
@@ -674,7 +667,7 @@ fn test_service_pattern_clone() {
     );
 }
 
-/// Test discover_services with TOADSTOOL_SKIP_DISCOVERY env (fast mode)
+/// Test `discover_services` with `TOADSTOOL_SKIP_DISCOVERY` env (fast mode)
 #[tokio::test]
 async fn test_discover_services_skip_discovery_env() {
     let old = std::env::var("TOADSTOOL_SKIP_DISCOVERY").ok();
@@ -697,7 +690,7 @@ async fn test_discover_services_skip_discovery_env() {
         .contains(&"fast_mode".to_string()));
 }
 
-/// Test find_pattern_by_capability returns correct pattern
+/// Test `find_pattern_by_capability` returns correct pattern
 #[test]
 fn test_find_pattern_by_capability_security() {
     let discoverer = EcosystemDiscoverer::new();
@@ -706,7 +699,7 @@ fn test_find_pattern_by_capability_security() {
     assert_eq!(pattern.unwrap().name, "crypto");
 }
 
-/// Test get_last_discovery returns cached result
+/// Test `get_last_discovery` returns cached result
 #[tokio::test]
 async fn test_get_last_discovery_after_discover() {
     let mut discoverer = EcosystemDiscoverer::new();
@@ -716,7 +709,7 @@ async fn test_get_last_discovery_after_discover() {
     assert!(cached.is_some());
 }
 
-/// Test clear_cache clears last discovery
+/// Test `clear_cache` clears last discovery
 #[tokio::test]
 async fn test_clear_cache() {
     let mut discoverer = EcosystemDiscoverer::new();
@@ -725,7 +718,7 @@ async fn test_clear_cache() {
     assert!(discoverer.get_last_discovery().is_none());
 }
 
-/// Test DiscoverySummary with discovery_errors
+/// Test `DiscoverySummary` with `discovery_errors`
 #[test]
 fn test_discovery_summary_with_errors() {
     let summary = DiscoverySummary {
@@ -738,13 +731,13 @@ fn test_discovery_summary_with_errors() {
     assert!(summary.discovery_errors[0].contains("Connection"));
 }
 
-/// Test ServiceType Unknown display
+/// Test `ServiceType` Unknown display
 #[test]
 fn test_service_type_unknown_display() {
     assert_eq!(ServiceType::Unknown.to_string(), "Unknown");
 }
 
-/// Test DiscoveredServices full serialization
+/// Test `DiscoveredServices` full serialization
 #[test]
 fn test_discovered_services_full_serialization() {
     let mut services = HashMap::new();
@@ -775,7 +768,7 @@ fn test_discovered_services_full_serialization() {
     assert_eq!(json["discovery_summary"]["total_services_found"], 1);
 }
 
-/// Test EcosystemDiscoverer default
+/// Test `EcosystemDiscoverer` default
 #[test]
 fn test_ecosystem_discoverer_default() {
     let discoverer = EcosystemDiscoverer::default();

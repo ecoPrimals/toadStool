@@ -668,7 +668,7 @@ mod tests {
         // Deploy agents
         for i in 1..=3 {
             let config = AgentConfig {
-                name: format!("agent-{}", i),
+                name: format!("agent-{i}"),
                 model: "test-model".to_string(),
                 capabilities: vec!["chat".to_string()],
                 resources: None,

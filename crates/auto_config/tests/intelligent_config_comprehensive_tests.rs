@@ -116,8 +116,7 @@ fn test_platform_detection() {
         let is_valid = !platform.is_empty();
         assert_eq!(
             is_valid, should_be_valid,
-            "Platform {} validation failed",
-            platform
+            "Platform {platform} validation failed"
         );
     }
 }
@@ -222,7 +221,7 @@ fn test_performance_class_optimization_mapping() {
 
     for (perf_class, expected_optimizations) in test_cases {
         // Verify performance class is valid
-        let _debug = format!("{:?}", perf_class);
+        let _debug = format!("{perf_class:?}");
 
         // Verify optimizations are reasonable
         assert!(!expected_optimizations.is_empty());
@@ -387,7 +386,7 @@ fn test_platform_support_variants() {
 
     // All should support Debug
     for support in &supports {
-        let _debug = format!("{:?}", support);
+        let _debug = format!("{support:?}");
     }
 }
 
@@ -414,9 +413,7 @@ fn test_cpu_usage_classification() {
         assert_eq!(
             hints.is_cpu_intensive(),
             is_intensive,
-            "CPU usage {} should be intensive={}",
-            cpu_usage,
-            is_intensive
+            "CPU usage {cpu_usage} should be intensive={is_intensive}"
         );
     }
 }
@@ -444,9 +441,7 @@ fn test_memory_usage_classification() {
         assert_eq!(
             hints.is_memory_intensive(),
             is_intensive,
-            "Memory usage {} should be intensive={}",
-            memory_usage,
-            is_intensive
+            "Memory usage {memory_usage} should be intensive={is_intensive}"
         );
     }
 }
@@ -483,10 +478,10 @@ fn test_debug_implementations() {
         supported_features: std::collections::HashSet::new(),
         optimizations: vec![],
     };
-    let _debug = format!("{:?}", config);
+    let _debug = format!("{config:?}");
 
     let hints = UsageHints::default();
-    let _debug = format!("{:?}", hints);
+    let _debug = format!("{hints:?}");
 }
 
 /// Test optimization priority levels

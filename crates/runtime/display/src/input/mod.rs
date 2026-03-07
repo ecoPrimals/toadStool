@@ -279,6 +279,10 @@ impl InputManager {
     }
 
     /// Simulate input event (for testing)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the event channel is closed.
     #[cfg(test)]
     pub async fn inject_event(&self, event: InputEvent) -> Result<()> {
         self.event_tx

@@ -64,7 +64,7 @@ fn test_capability_id_wildcard_match() {
 #[test]
 fn test_capability_id_display() {
     let cap = CapabilityId::new("networking.http");
-    assert_eq!(format!("{}", cap), "networking.http");
+    assert_eq!(format!("{cap}"), "networking.http");
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn test_standard_capability_id_method() {
 #[test]
 fn test_standard_capability_display() {
     let cap = StandardCapability::ComputeGpu;
-    assert_eq!(format!("{}", cap), "compute.gpu");
+    assert_eq!(format!("{cap}"), "compute.gpu");
 }
 
 #[test]
@@ -344,12 +344,7 @@ fn test_capability_strings_are_lowercase() {
 
     for cap in caps {
         let s = cap.as_str();
-        assert_eq!(
-            s,
-            s.to_lowercase(),
-            "Capability '{}' should be lowercase",
-            s
-        );
+        assert_eq!(s, s.to_lowercase(), "Capability '{s}' should be lowercase");
     }
 }
 
@@ -366,18 +361,15 @@ fn test_capability_strings_use_kebab_case() {
         let s = cap.as_str();
         assert!(
             !s.contains('_'),
-            "Capability '{}' should not contain underscores",
-            s
+            "Capability '{s}' should not contain underscores"
         );
         assert!(
             !s.contains(' '),
-            "Capability '{}' should not contain spaces",
-            s
+            "Capability '{s}' should not contain spaces"
         );
         assert!(
             s.chars().all(|c| c.is_lowercase() || c == '.' || c == '-'),
-            "Capability '{}' should use kebab-case",
-            s
+            "Capability '{s}' should use kebab-case"
         );
     }
 }

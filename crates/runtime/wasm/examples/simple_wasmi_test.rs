@@ -33,7 +33,7 @@ async fn main() -> ToadStoolResult<()> {
         )
     "#,
     )
-    .map_err(|e| toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e)))?;
+    .map_err(|e| toadstool::error::ToadStoolError::validation(format!("WAT parse error: {e}")))?;
 
     println!("✅ Compiled WAT to WASM ({} bytes)", wasm_bytes.len());
 
@@ -105,7 +105,7 @@ async fn main() -> ToadStoolResult<()> {
     println!("  • Runtime Used: {:?}", response.runtime_used);
 
     if let Some(output) = response.output.stdout {
-        println!("  • Stdout: {}", output);
+        println!("  • Stdout: {output}");
     }
 
     // Get runtime metrics

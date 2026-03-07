@@ -314,12 +314,12 @@ mod tests {
         let custom_discovery = DiscoveryType::Custom("my-discovery".to_string());
 
         // All variants should be Debug
-        assert!(format!("{:?}", static_discovery).contains("Static"));
-        assert!(format!("{:?}", dns_discovery).contains("Dns"));
-        assert!(format!("{:?}", consul_discovery).contains("Consul"));
-        assert!(format!("{:?}", etcd_discovery).contains("Etcd"));
-        assert!(format!("{:?}", k8s_discovery).contains("Kubernetes"));
-        assert!(format!("{:?}", custom_discovery).contains("Custom"));
+        assert!(format!("{static_discovery:?}").contains("Static"));
+        assert!(format!("{dns_discovery:?}").contains("Dns"));
+        assert!(format!("{consul_discovery:?}").contains("Consul"));
+        assert!(format!("{etcd_discovery:?}").contains("Etcd"));
+        assert!(format!("{k8s_discovery:?}").contains("Kubernetes"));
+        assert!(format!("{custom_discovery:?}").contains("Custom"));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for BiomeExecutor implementation (Phase 1)
-//! Target: executor_impl.rs (938 lines, currently 1.81% coverage)
+//! Comprehensive tests for `BiomeExecutor` implementation (Phase 1)
+//! Target: `executor_impl.rs` (938 lines, currently 1.81% coverage)
 //! Goal: Add 100-150 tests to increase coverage significantly
 
 use anyhow::Result;
@@ -181,8 +181,7 @@ async fn test_run_biome_security_level_validation() {
     for level in valid_levels {
         assert!(
             is_valid_security_level(level),
-            "Should accept valid level: {}",
-            level
+            "Should accept valid level: {level}"
         );
     }
 
@@ -285,10 +284,10 @@ async fn test_up_biome_logs_start_message() {
     let biome_name = "test-biome";
     let biome_id = Uuid::new_v4();
 
-    let log_message = format!("✅ Biome '{}' started in background", biome_name);
+    let log_message = format!("✅ Biome '{biome_name}' started in background");
     assert!(log_message.contains("started"), "Should log start message");
 
-    let id_message = format!("🆔 Biome ID: {}", biome_id);
+    let id_message = format!("🆔 Biome ID: {biome_id}");
     assert!(id_message.contains(&biome_id.to_string()), "Should log ID");
 }
 
@@ -331,7 +330,7 @@ async fn test_down_biome_graceful_timeout() {
     let timeout_secs = vec![10u64, 30, 60, 120];
 
     for timeout in timeout_secs {
-        assert!(timeout >= 10, "Timeout should be reasonable: {}", timeout);
+        assert!(timeout >= 10, "Timeout should be reasonable: {timeout}");
     }
 }
 
@@ -349,7 +348,7 @@ async fn test_down_biome_stops_all_processes() {
     let process_count = 5;
 
     for i in 0..process_count {
-        let process_id = format!("process-{}", i);
+        let process_id = format!("process-{i}");
         assert!(!process_id.is_empty(), "Each process should have ID");
     }
 }
@@ -477,11 +476,7 @@ async fn test_list_biomes_multiple_statuses() {
     ];
 
     for status in statuses {
-        assert!(
-            !status.is_empty(),
-            "Each status should be valid: {}",
-            status
-        );
+        assert!(!status.is_empty(), "Each status should be valid: {status}");
     }
 }
 
@@ -524,7 +519,7 @@ async fn test_show_logs_lines_limit() {
     let limits = vec![10usize, 50, 100, 500, 1000];
 
     for limit in limits {
-        assert!(limit > 0, "Line limit should be positive: {}", limit);
+        assert!(limit > 0, "Line limit should be positive: {limit}");
     }
 }
 
@@ -542,7 +537,7 @@ async fn test_show_logs_level_filter() {
     let levels = vec!["ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
 
     for level in levels {
-        assert!(!level.is_empty(), "Log level should be valid: {}", level);
+        assert!(!level.is_empty(), "Log level should be valid: {level}");
     }
 }
 
@@ -582,8 +577,7 @@ async fn test_show_logs_service_name_validation() {
     for service in valid_services {
         assert!(
             !service.is_empty(),
-            "Service name should be valid: {}",
-            service
+            "Service name should be valid: {service}"
         );
     }
 }
@@ -602,17 +596,16 @@ async fn create_test_manifest(name: &str, version: &str) -> Result<PathBuf> {
 apiVersion: v1
 kind: Biome
 metadata:
-  name: {}
-  version: {}
+  name: {name}
+  version: {version}
 spec:
   services:
     web:
       image: "nginx:latest"
-"#,
-        name, version
+"#
     );
 
-    let path = PathBuf::from(format!("/tmp/{}-manifest.yaml", name));
+    let path = PathBuf::from(format!("/tmp/{name}-manifest.yaml"));
     fs::write(&path, content).await?;
     Ok(path)
 }
@@ -626,7 +619,7 @@ async fn create_invalid_manifest() -> Result<PathBuf> {
 
 async fn create_invalid_yaml_file() -> Result<PathBuf> {
     // Truly invalid YAML - tabs mixed with spaces in lists, invalid syntax
-    let content = r#"
+    let content = r"
 apiVersion: v1
 \tkind: Biome  # Invalid: tab character
 metadata:
@@ -634,7 +627,7 @@ metadata:
   - invalid: list item in mapping
 spec:
   [unclosed bracket
-"#;
+";
     let path = PathBuf::from("/tmp/invalid-yaml.yaml");
     fs::write(&path, content).await?;
     Ok(path)
@@ -685,7 +678,7 @@ async fn validate_test_manifest(path: &PathBuf) -> Result<Vec<String>> {
 
             Ok(warnings)
         }
-        Err(e) => anyhow::bail!("Invalid YAML: {}", e),
+        Err(e) => anyhow::bail!("Invalid YAML: {e}"),
     }
 }
 
@@ -722,7 +715,7 @@ fn is_valid_security_level(level: &str) -> bool {
 }
 
 async fn create_log_directory(biome_name: &str) -> Result<PathBuf> {
-    let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{}", biome_name));
+    let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}"));
     fs::create_dir_all(&log_dir).await?;
     Ok(log_dir)
 }

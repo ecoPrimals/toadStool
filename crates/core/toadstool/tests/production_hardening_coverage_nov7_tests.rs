@@ -2,7 +2,7 @@
 //! Production Hardening Module Coverage Tests - November 7, 2025
 //!
 //! Target: Final push to cross 58% overall coverage threshold
-//! Focus: CircuitBreakerConfig, CircuitState, MemoryPressure configs (simplified correct version)
+//! Focus: `CircuitBreakerConfig`, `CircuitState`, `MemoryPressure` configs (simplified correct version)
 //!
 //! Strategy: Test data structures, configurations, and edge cases with correct field names
 

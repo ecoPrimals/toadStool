@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used)] // expect() is idiomatic in tests
-//! Integration tests for BiomeExecutor - Coverage Expansion
+//! Integration tests for `BiomeExecutor` - Coverage Expansion
 //!
 //! Goal: Increase CLI executor coverage from 1.81% to 30%+
 //! Focus: Core biome lifecycle operations with realistic scenarios
@@ -15,7 +15,7 @@ async fn create_test_manifest(dir: &std::path::Path, name: &str) -> PathBuf {
     let content = format!(
         r#"
 [metadata]
-name = "{}"
+name = "{name}"
 version = "0.1.0"
 description = "Test biome for integration testing"
 
@@ -33,8 +33,7 @@ isolation_level = "standard"
 name = "test-service"
 image = "alpine:latest"
 command = ["sleep", "infinity"]
-"#,
-        name
+"#
     );
 
     fs::write(&manifest_path, content)
@@ -158,7 +157,7 @@ async fn test_environment_variable_parsing_edge_cases() {
                 assert_eq!(v, ev);
             }
             (None, None) => {}
-            _ => panic!("Unexpected parse result for: {}", input),
+            _ => panic!("Unexpected parse result for: {input}"),
         }
     }
 }

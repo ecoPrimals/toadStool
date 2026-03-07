@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Integration tests for BiomeExecutor
+//! Integration tests for `BiomeExecutor`
 //!
 //! These tests actually call executor methods to execute code paths
 //! and increase line coverage. They build on the unit tests.
@@ -10,7 +10,7 @@ use tempfile::TempDir;
 
 // Helper to create a test manifest file
 async fn create_test_manifest(dir: &TempDir, name: &str, content: &str) -> Result<PathBuf> {
-    let manifest_path = dir.path().join(format!("{}.yaml", name));
+    let manifest_path = dir.path().join(format!("{name}.yaml"));
     tokio::fs::write(&manifest_path, content).await?;
     Ok(manifest_path)
 }
@@ -20,7 +20,7 @@ fn minimal_manifest(name: &str) -> String {
     format!(
         r#"
 metadata:
-  name: {}
+  name: {name}
   version: "0.1.0"
   description: "Test biome"
   created: "2024-11-13T00:00:00Z"
@@ -29,8 +29,7 @@ services:
   - name: test-service
     image: "alpine:latest"
     command: ["echo", "test"]
-"#,
-        name
+"#
     )
 }
 
@@ -325,13 +324,13 @@ async fn test_format_string_patterns() -> Result<()> {
     let biome_name = "test-biome";
     let version = "1.0.0";
 
-    let formatted = format!("Biome: {} v{}", biome_name, version);
+    let formatted = format!("Biome: {biome_name} v{version}");
     assert!(formatted.contains("test-biome"));
     assert!(formatted.contains("1.0.0"));
 
     // Test with multiple values
     let id = uuid::Uuid::new_v4();
-    let formatted2 = format!("Biome ID: {}", id);
+    let formatted2 = format!("Biome ID: {id}");
     assert!(!formatted2.is_empty());
 
     Ok(())
@@ -409,7 +408,7 @@ async fn test_concurrent_access_patterns() -> Result<()> {
 
     for handle in handles {
         let (i, len) = handle.await?;
-        assert_eq!(len, 3, "Iteration {} should see len 3", i);
+        assert_eq!(len, 3, "Iteration {i} should see len 3");
     }
 
     Ok(())

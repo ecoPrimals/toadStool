@@ -566,8 +566,7 @@ port = 7777
         let err = result.unwrap_err();
         assert!(
             matches!(err, ServiceError::Parse(_)),
-            "Expected Parse error, got {:?}",
-            err
+            "Expected Parse error, got {err:?}"
         );
     }
 
@@ -582,7 +581,7 @@ port = 7777
     fn test_service_registry_toml_deserialize_empty_services() {
         use std::io::Write;
         let temp = std::env::temp_dir().join("toadstool_services_empty_test.toml");
-        let content = r#"services = {}"#;
+        let content = r"services = {}";
         let mut f = std::fs::File::create(&temp).unwrap();
         f.write_all(content.as_bytes()).unwrap();
         drop(f);
@@ -605,7 +604,7 @@ port = 7777
 
         std::env::remove_var(coord_key);
         std::env::remove_var(storage_key);
-        std::env::set_var(svc_key, r#"{ invalid json }"#);
+        std::env::set_var(svc_key, r"{ invalid json }");
 
         let registry = ServiceRegistry::from_env();
         assert!(registry.is_empty());

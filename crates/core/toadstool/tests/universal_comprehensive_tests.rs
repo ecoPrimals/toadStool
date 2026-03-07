@@ -56,7 +56,7 @@ fn test_security_level_debug() {
     ];
 
     for level in levels {
-        let debug_str = format!("{:?}", level);
+        let debug_str = format!("{level:?}");
         assert!(!debug_str.is_empty());
     }
 }
@@ -113,7 +113,7 @@ fn test_network_location_debug() {
         geo_location: None,
     };
 
-    let debug_str = format!("{:?}", location);
+    let debug_str = format!("{location:?}");
     assert!(debug_str.contains("NetworkLocation"));
     assert!(debug_str.contains("192.168.1.1"));
 }
@@ -242,7 +242,7 @@ fn test_primal_context_debug() {
         metadata: HashMap::new(),
     };
 
-    let debug_str = format!("{:?}", context);
+    let debug_str = format!("{context:?}");
     assert!(debug_str.contains("PrimalContext"));
 }
 
@@ -296,7 +296,7 @@ fn test_primal_type_clone_debug() {
         let cloned = ptype.clone();
         assert_eq!(ptype, cloned);
 
-        let debug_str = format!("{:?}", ptype);
+        let debug_str = format!("{ptype:?}");
         assert!(!debug_str.is_empty());
     }
 }

@@ -64,7 +64,7 @@ fn test_distributed_config_clone() {
 #[test]
 fn test_distributed_config_debug() {
     let config = DistributedConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("DistributedConfig"));
     assert!(debug_str.contains("instance_id"));
@@ -148,7 +148,7 @@ fn test_standalone_config_clone_debug() {
         config2.max_concurrent_executions
     );
 
-    let debug_str = format!("{:?}", config1);
+    let debug_str = format!("{config1:?}");
     assert!(debug_str.contains("StandaloneConfig"));
 }
 
@@ -218,7 +218,7 @@ fn test_songbird_config_clone_debug() {
     let config2 = config1.clone();
     assert_eq!(config1.endpoint, config2.endpoint);
 
-    let debug_str = format!("{:?}", config1);
+    let debug_str = format!("{config1:?}");
     assert!(debug_str.contains("SongbirdConfig"));
 }
 
@@ -285,7 +285,7 @@ fn test_execution_environment_clone_debug() {
         _ => panic!("Both should be Container"),
     }
 
-    let debug_str = format!("{:?}", env1);
+    let debug_str = format!("{env1:?}");
     assert!(debug_str.contains("Container"));
 }
 
@@ -356,7 +356,7 @@ fn test_toadstool_capabilities_clone_debug() {
         caps2.supported_runtimes.len()
     );
 
-    let debug_str = format!("{:?}", caps1);
+    let debug_str = format!("{caps1:?}");
     assert!(debug_str.contains("ToadStoolCapabilities"));
 }
 
@@ -417,7 +417,7 @@ fn test_platform_capabilities_clone_debug() {
     assert_eq!(caps1.os, caps2.os);
     assert_eq!(caps1.architecture, caps2.architecture);
 
-    let debug_str = format!("{:?}", caps1);
+    let debug_str = format!("{caps1:?}");
     assert!(debug_str.contains("PlatformCapabilities"));
 }
 

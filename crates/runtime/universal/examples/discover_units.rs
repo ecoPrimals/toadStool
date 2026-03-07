@@ -29,7 +29,7 @@ async fn main() -> Result<(), ComputeError> {
 
     for (idx, unit) in runtime.units().iter().enumerate() {
         let caps = unit.capabilities();
-        println!("Unit {}:", idx);
+        println!("Unit {idx}:");
         println!("  Name: {}", unit.name());
         println!("  Type: {}", caps.unit_type);
         println!(
@@ -61,7 +61,7 @@ async fn main() -> Result<(), ComputeError> {
 
     // Create a simple workload
     let input_data = vec![1.0f32, 2.0, 3.0, 4.0, 5.0];
-    println!("Input: {:?}", input_data);
+    println!("Input: {input_data:?}");
     println!();
 
     let workload = WorkloadBuilder::new()
@@ -87,21 +87,21 @@ async fn main() -> Result<(), ComputeError> {
             println!("  Type: {}", output.metadata.unit_type);
             println!("  Duration: {:?}", output.metadata.duration);
             if let Some(power) = output.metadata.power_consumed_mw {
-                println!("  Power: {:.2} mW", power);
+                println!("  Power: {power:.2} mW");
             }
             println!();
 
             // Display result
             match output.data {
                 toadstool_runtime_universal::WorkloadData::F32Vec(v) => {
-                    println!("Output: {:?}", v);
+                    println!("Output: {v:?}");
                 }
                 _ => println!("Output: (non-f32 data)"),
             }
         }
         Err(e) => {
             println!();
-            println!("❌ Execution failed: {}", e);
+            println!("❌ Execution failed: {e}");
             println!("  (Note: Full GPU execution not yet implemented in universal runtime)");
             println!("  (CPU execution should work!)");
         }

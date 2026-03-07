@@ -2,7 +2,7 @@
 //! Comprehensive tests for Protocol Enums
 //!
 //! This test suite provides extensive coverage of enum types used in protocol integration,
-//! including MessageFormat, TransportType, AuthType, and their serialization/deserialization.
+//! including `MessageFormat`, `TransportType`, `AuthType`, and their serialization/deserialization.
 
 use std::collections::HashSet;
 use toadstool_integration_protocols::types::*;
@@ -87,7 +87,7 @@ fn test_message_format_clone() {
 #[test]
 fn test_message_format_debug() {
     let format = MessageFormat::Json;
-    let debug_string = format!("{:?}", format);
+    let debug_string = format!("{format:?}");
     assert!(debug_string.contains("Json"));
 }
 
@@ -198,7 +198,7 @@ fn test_transport_type_clone() {
 #[test]
 fn test_transport_type_debug() {
     let transport = TransportType::Http;
-    let debug_string = format!("{:?}", transport);
+    let debug_string = format!("{transport:?}");
     assert!(debug_string.contains("Http"));
 }
 
@@ -278,7 +278,7 @@ fn test_auth_type_clone() {
 #[test]
 fn test_auth_type_debug() {
     let auth = AuthType::Bearer;
-    let debug_string = format!("{:?}", auth);
+    let debug_string = format!("{auth:?}");
     assert!(debug_string.contains("Bearer"));
 }
 
@@ -306,7 +306,7 @@ fn test_message_format_custom_various_names() {
 
 #[test]
 fn test_message_format_custom_empty_name() {
-    let format = MessageFormat::Custom("".to_string());
+    let format = MessageFormat::Custom(String::new());
     if let MessageFormat::Custom(name) = format {
         assert!(name.is_empty());
     }

@@ -2,7 +2,7 @@
 //! Tests for server state and event types
 //!
 //! Week 13 Day 1: State Management and Event Handling Tests
-//! Target: Verify ServerState, ServerEvent, and related types
+//! Target: Verify `ServerState`, `ServerEvent`, and related types
 
 use std::sync::Arc;
 use std::time::Duration;

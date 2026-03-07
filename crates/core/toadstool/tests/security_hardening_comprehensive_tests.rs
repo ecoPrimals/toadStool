@@ -74,7 +74,7 @@ fn test_security_hardening_config_clone() {
 #[test]
 fn test_security_hardening_config_debug() {
     let config = SecurityHardeningConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("SecurityHardeningConfig"));
     assert!(debug_str.contains("enable_input_validation"));
@@ -159,7 +159,7 @@ fn test_rate_limiting_config_clone() {
 #[test]
 fn test_rate_limiting_config_debug() {
     let config = RateLimitingConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("RateLimitingConfig"));
     assert!(debug_str.contains("max_requests_per_minute"));
@@ -237,7 +237,7 @@ fn test_audit_config_clone_debug() {
     assert_eq!(config1.log_level, config2.log_level);
     assert_eq!(config1.retention_days, config2.retention_days);
 
-    let debug_str = format!("{:?}", config1);
+    let debug_str = format!("{config1:?}");
     assert!(debug_str.contains("AuditConfig"));
 }
 
@@ -315,7 +315,7 @@ fn test_intrusion_detection_config_clone_debug() {
     assert_eq!(config1.anomaly_threshold, config2.anomaly_threshold);
     assert_eq!(config1.auto_ban_threshold, config2.auto_ban_threshold);
 
-    let debug_str = format!("{:?}", config1);
+    let debug_str = format!("{config1:?}");
     assert!(debug_str.contains("IntrusionDetectionConfig"));
 }
 
@@ -377,7 +377,7 @@ fn test_validation_rules_clone_debug() {
 
     assert_eq!(rules1.max_input_length, rules2.max_input_length);
 
-    let debug_str = format!("{:?}", rules1);
+    let debug_str = format!("{rules1:?}");
     assert!(debug_str.contains("ValidationRules"));
 }
 
@@ -421,7 +421,7 @@ fn test_security_event_type_debug() {
     ];
 
     for event in events {
-        let debug_str = format!("{:?}", event);
+        let debug_str = format!("{event:?}");
         assert!(!debug_str.is_empty());
     }
 }
@@ -488,7 +488,7 @@ fn test_security_severity_debug() {
     ];
 
     for severity in severities {
-        let debug_str = format!("{:?}", severity);
+        let debug_str = format!("{severity:?}");
         assert!(!debug_str.is_empty());
     }
 }
@@ -528,7 +528,7 @@ fn test_activity_type_debug() {
     ];
 
     for activity in activities {
-        let debug_str = format!("{:?}", activity);
+        let debug_str = format!("{activity:?}");
         assert!(!debug_str.is_empty());
     }
 }
@@ -578,8 +578,8 @@ async fn test_security_audit_logger_multiple_events() {
             id: uuid::Uuid::new_v4(),
             event_type: SecurityEventType::RateLimitExceeded,
             timestamp: std::time::SystemTime::now(),
-            client_id: Some(format!("client-{}", i)),
-            ip_address: Some(format!("192.168.1.{}", i)),
+            client_id: Some(format!("client-{i}")),
+            ip_address: Some(format!("192.168.1.{i}")),
             user_agent: Some("test-agent".to_string()),
             details: HashMap::new(),
             severity: SecuritySeverity::Medium,

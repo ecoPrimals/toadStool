@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Resource management tests for BiomeExecutor
+//! Resource management tests for `BiomeExecutor`
 //!
 //! Tests cover:
 //! - CPU allocation and limits
@@ -435,7 +435,7 @@ mod resource_management_tests {
         let total_memory = 64 * 1024 * 1024 * 1024u64;
         let num_workloads = 4;
 
-        let cpu_per_workload = total_cpu / num_workloads as f64;
+        let cpu_per_workload = total_cpu / f64::from(num_workloads);
         let memory_per_workload = total_memory / num_workloads as u64;
 
         assert_eq!(cpu_per_workload, 4.0);

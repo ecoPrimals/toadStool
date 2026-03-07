@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used)] // expect() is idiomatic in tests
-//! Comprehensive concurrent tests for SandboxManager
+//! Comprehensive concurrent tests for `SandboxManager`
 //!
 //! ✅ MODERN CONCURRENT TESTING - Production-grade concurrent safety
 //! All tests run in parallel, proving the code is truly robust
@@ -113,7 +113,7 @@ async fn test_concurrent_sandbox_creation() {
         let bar = Arc::clone(&barrier);
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            let spec = create_test_sandbox_spec(&format!("concurrent_sandbox_{}", i));
+            let spec = create_test_sandbox_spec(&format!("concurrent_sandbox_{i}"));
             mgr.create_sandbox(spec).await
         }));
     }
@@ -175,7 +175,7 @@ async fn test_concurrent_mixed_sandbox_operations() {
     // Pre-create some sandboxes
     let mut existing_ids = vec![];
     for i in 0..10 {
-        let spec = create_test_sandbox_spec(&format!("existing_{}", i));
+        let spec = create_test_sandbox_spec(&format!("existing_{i}"));
         let id = manager.create_sandbox(spec).await.expect("Create failed");
         existing_ids.push(id);
     }
@@ -189,7 +189,7 @@ async fn test_concurrent_mixed_sandbox_operations() {
         let bar = Arc::clone(&barrier);
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
-            let spec = create_test_sandbox_spec(&format!("new_{}", i));
+            let spec = create_test_sandbox_spec(&format!("new_{i}"));
             mgr.create_sandbox(spec).await.map(|_| ())
         }));
     }
@@ -234,7 +234,7 @@ async fn test_concurrent_start_stop_execution() {
     // Create sandboxes first
     let mut sandbox_ids = vec![];
     for i in 0..30 {
-        let spec = create_test_sandbox_spec(&format!("exec_sandbox_{}", i));
+        let spec = create_test_sandbox_spec(&format!("exec_sandbox_{i}"));
         let id = manager.create_sandbox(spec).await.expect("Create failed");
         sandbox_ids.push(id);
     }
@@ -243,7 +243,7 @@ async fn test_concurrent_start_stop_execution() {
     let mut tasks = vec![];
 
     // Start all concurrently
-    for id in sandbox_ids.iter() {
+    for id in &sandbox_ids {
         let mgr = Arc::clone(&manager);
         let bar = Arc::clone(&barrier);
         let sandbox_id = id.clone();
@@ -259,7 +259,7 @@ async fn test_concurrent_start_stop_execution() {
     }
 
     // Verify all running
-    for id in sandbox_ids.iter() {
+    for id in &sandbox_ids {
         let info = manager.get_sandbox_info(id).await.expect("Get info failed");
         assert_eq!(info.status, SandboxStatus::Running);
     }
@@ -296,7 +296,7 @@ async fn test_concurrent_sandbox_destruction() {
     // Create sandboxes
     let mut sandbox_ids = vec![];
     for i in 0..50 {
-        let spec = create_test_sandbox_spec(&format!("destroy_{}", i));
+        let spec = create_test_sandbox_spec(&format!("destroy_{i}"));
         let id = manager.create_sandbox(spec).await.expect("Create failed");
         sandbox_ids.push(id);
     }
@@ -336,7 +336,7 @@ async fn test_concurrent_sandbox_monitoring() {
     // Create and start sandboxes
     let mut sandbox_ids = vec![];
     for i in 0..20 {
-        let spec = create_test_sandbox_spec(&format!("monitor_{}", i));
+        let spec = create_test_sandbox_spec(&format!("monitor_{i}"));
         let id = manager.create_sandbox(spec).await.expect("Create failed");
         manager.start_execution(&id).await.expect("Start failed");
         sandbox_ids.push(id);
@@ -347,7 +347,7 @@ async fn test_concurrent_sandbox_monitoring() {
 
     // 100 concurrent monitoring calls (each sandbox monitored 5 times)
     for _ in 0..5 {
-        for id in sandbox_ids.iter() {
+        for id in &sandbox_ids {
             let mgr = Arc::clone(&manager);
             let bar = Arc::clone(&barrier);
             let sandbox_id = id.clone();
@@ -377,7 +377,7 @@ async fn test_concurrent_security_policy_application() {
     // Create sandboxes
     let mut sandbox_ids = vec![];
     for i in 0..30 {
-        let spec = create_test_sandbox_spec(&format!("policy_{}", i));
+        let spec = create_test_sandbox_spec(&format!("policy_{i}"));
         let id = manager.create_sandbox(spec).await.expect("Create failed");
         sandbox_ids.push(id);
     }
@@ -439,7 +439,7 @@ async fn test_stress_500_concurrent_sandbox_operations() {
     // Pre-create some sandboxes
     let mut existing_ids = vec![];
     for i in 0..50 {
-        let spec = create_test_sandbox_spec(&format!("stress_{}", i));
+        let spec = create_test_sandbox_spec(&format!("stress_{i}"));
         let id = manager.create_sandbox(spec).await.expect("Create failed");
         existing_ids.push(id);
     }
@@ -460,7 +460,7 @@ async fn test_stress_500_concurrent_sandbox_operations() {
             match i % 3 {
                 0 => {
                     // Create
-                    let spec = create_test_sandbox_spec(&format!("new_stress_{}", i));
+                    let spec = create_test_sandbox_spec(&format!("new_stress_{i}"));
                     mgr.create_sandbox(spec).await.map(|_| ())
                 }
                 1 => {
@@ -485,7 +485,7 @@ async fn test_stress_500_concurrent_sandbox_operations() {
     }
 
     // Should have high success rate (>95%)
-    assert!(successes > 475, "Success rate too low: {}/500", successes);
+    assert!(successes > 475, "Success rate too low: {successes}/500");
 }
 
 // ============================================================================
@@ -507,7 +507,7 @@ async fn test_concurrent_invalid_sandbox_operations() {
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
             // Try to get info for nonexistent sandbox
-            mgr.get_sandbox_info(&format!("nonexistent_{}", i)).await
+            mgr.get_sandbox_info(&format!("nonexistent_{i}")).await
         }));
     }
 

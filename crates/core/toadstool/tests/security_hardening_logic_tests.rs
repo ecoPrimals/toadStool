@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for security_hardening.rs
+//! Comprehensive tests for `security_hardening.rs`
 //!
 //! Test Coverage Areas:
 //! - Security hardening configuration

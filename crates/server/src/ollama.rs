@@ -434,7 +434,7 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result,
-            Err(OllamaError::Connection(_)) | Err(OllamaError::Timeout)
+            Err(OllamaError::Connection(_) | OllamaError::Timeout)
         ));
     }
 

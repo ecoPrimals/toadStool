@@ -2,7 +2,7 @@
 //! Business Logic Tests for Squirrel MCP Interface
 //!
 //! Target: Test business logic, helper methods, and edge cases WITHOUT I/O
-//! Goal: Increase squirrel_mcp.rs coverage from 45% → 70%
+//! Goal: Increase `squirrel_mcp.rs` coverage from 45% → 70%
 //!
 //! Focus:
 //! - Intent optimization logic
@@ -41,7 +41,7 @@ async fn test_create_session_generates_unique_ids() {
     let mut session_ids = Vec::new();
     for i in 0..5 {
         let request = McpRequest {
-            request_id: format!("req-{}", i),
+            request_id: format!("req-{i}"),
             session_id: None,
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::CreateSession {
@@ -219,7 +219,7 @@ async fn test_request_counter_increments_per_request() {
     // Make 3 requests
     for i in 0..3 {
         let request = McpRequest {
-            request_id: format!("req-{}", i),
+            request_id: format!("req-{i}"),
             session_id: None,
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::CreateSession { preferences: None },
@@ -586,9 +586,9 @@ async fn test_get_session_stats_tracks_sessions() {
     // Create 3 sessions
     for i in 0..3 {
         let request = McpRequest {
-            request_id: format!("req-{}", i),
+            request_id: format!("req-{i}"),
             session_id: None,
-            agent_id: format!("agent-{}", i),
+            agent_id: format!("agent-{i}"),
             request_type: McpRequestType::CreateSession { preferences: None },
             metadata: HashMap::new(),
             timestamp: SystemTime::now(),
@@ -609,7 +609,7 @@ async fn test_get_session_stats_tracks_requests() {
     // Make 5 requests
     for i in 0..5 {
         let request = McpRequest {
-            request_id: format!("req-{}", i),
+            request_id: format!("req-{i}"),
             session_id: None,
             agent_id: "test-agent".to_string(),
             request_type: McpRequestType::CreateSession { preferences: None },

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Async integration tests for ByobExecutor trait methods
+//! Async integration tests for `ByobExecutor` trait methods
 //!
 //! Coverage Target: Further increase byob.rs from 36% → 55%+
 //! Focus: Async trait methods, deployment lifecycle, error handling
@@ -363,10 +363,10 @@ fn test_deployment_request_resource_validation() {
 
     for service in request.services.values() {
         if let Some(cpu) = service.resources.cpu_cores {
-            total_cpu += cpu * service.replicas as f64;
+            total_cpu += cpu * f64::from(service.replicas);
         }
         if let Some(memory) = service.resources.memory_bytes {
-            total_memory += memory * service.replicas as u64;
+            total_memory += memory * u64::from(service.replicas);
         }
     }
 

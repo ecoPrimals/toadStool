@@ -76,7 +76,7 @@ fn test_workload_spec_validate_python_code_success() {
 fn test_workload_spec_validate_python_empty_code_error() {
     let workload = WorkloadSpec::Python {
         source: PythonSource::Code {
-            code: "".to_string(),
+            code: String::new(),
         },
         python_version: None,
         requirements: vec![],
@@ -90,7 +90,7 @@ fn test_workload_spec_validate_python_empty_code_error() {
 fn test_workload_spec_validate_python_empty_module_error() {
     let workload = WorkloadSpec::Python {
         source: PythonSource::Module {
-            name: "".to_string(),
+            name: String::new(),
         },
         python_version: None,
         requirements: vec![],
@@ -121,7 +121,7 @@ fn test_workload_spec_validate_gpu_success() {
 
 #[test]
 fn test_workload_spec_native_with_many_args() {
-    let many_args: Vec<String> = (0..100).map(|i| format!("arg{}", i)).collect();
+    let many_args: Vec<String> = (0..100).map(|i| format!("arg{i}")).collect();
 
     let workload = WorkloadSpec::Native {
         executable: ExecutableSource::File {
@@ -145,7 +145,7 @@ fn test_workload_spec_native_with_many_args() {
 fn test_workload_spec_native_with_many_env_vars() {
     let mut env_vars = HashMap::new();
     for i in 0..50 {
-        env_vars.insert(format!("VAR{}", i), format!("value{}", i));
+        env_vars.insert(format!("VAR{i}"), format!("value{i}"));
     }
 
     let workload = WorkloadSpec::Native {
@@ -477,7 +477,7 @@ fn test_registry_auth_github_packages() {
 fn test_registry_auth_empty_password() {
     let auth = RegistryAuth {
         username: "user".to_string(),
-        password: "".to_string(),
+        password: String::new(),
         server_url: "https://registry.local".to_string(),
     };
 
@@ -788,9 +788,7 @@ fn test_multiple_workload_specs_collection() {
 
 #[test]
 fn test_executable_source_empty_url() {
-    let source = ExecutableSource::Url {
-        url: "".to_string(),
-    };
+    let source = ExecutableSource::Url { url: String::new() };
 
     match source {
         ExecutableSource::Url { url } => {

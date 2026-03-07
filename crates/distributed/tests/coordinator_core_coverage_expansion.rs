@@ -136,7 +136,7 @@ async fn test_concurrent_coordinator_creation() {
 
     for handle in handles {
         let (i, success) = handle.await.unwrap();
-        assert!(success, "Coordinator {} should create successfully", i);
+        assert!(success, "Coordinator {i} should create successfully");
     }
 }
 
@@ -210,7 +210,7 @@ async fn test_concurrent_execution_submissions() {
 
     for handle in handles {
         let (i, success) = handle.await.unwrap();
-        assert!(success, "Concurrent submission {} should succeed", i);
+        assert!(success, "Concurrent submission {i} should succeed");
     }
 }
 
@@ -277,8 +277,7 @@ async fn test_execution_with_different_runtime_hints() {
         let result = coordinator.submit_execution(request).await;
         assert!(
             result.is_ok(),
-            "Should handle {:?} runtime hint",
-            runtime_hint
+            "Should handle {runtime_hint:?} runtime hint"
         );
     }
 }
@@ -418,7 +417,6 @@ async fn test_coordinator_under_load() {
     // This tests that the system handles load gracefully, not that it's perfect
     assert!(
         successes >= 10,
-        "At least 20% of executions should succeed under load (got {}), system should handle concurrent requests gracefully",
-        successes
+        "At least 20% of executions should succeed under load (got {successes}), system should handle concurrent requests gracefully"
     );
 }

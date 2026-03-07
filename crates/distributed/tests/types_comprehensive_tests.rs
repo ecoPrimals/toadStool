@@ -2,14 +2,14 @@
 //! Comprehensive tests for distributed types module
 //!
 //! This test suite covers:
-//! - JobPriority enum and ordering
-//! - UniversalJobType enum variants
-//! - ExecutionTarget enum variants
-//! - LoadBalancingStrategy enum
-//! - CompatibilityMode enum
-//! - DistributedExecutionStatus enum
-//! - BackoffStrategy enum
-//! - RetryCondition enum
+//! - `JobPriority` enum and ordering
+//! - `UniversalJobType` enum variants
+//! - `ExecutionTarget` enum variants
+//! - `LoadBalancingStrategy` enum
+//! - `CompatibilityMode` enum
+//! - `DistributedExecutionStatus` enum
+//! - `BackoffStrategy` enum
+//! - `RetryCondition` enum
 //! - Resource requirement structs
 
 use std::collections::HashMap;

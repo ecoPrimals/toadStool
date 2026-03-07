@@ -196,7 +196,7 @@ fn test_execution_status_variants() {
 
     for status in statuses {
         // Verify all variants are constructible
-        let _ = format!("{:?}", status);
+        let _ = format!("{status:?}");
     }
 }
 
@@ -367,7 +367,7 @@ fn test_job_priority_variants() {
     ];
 
     for priority in priorities {
-        let _ = format!("{:?}", priority);
+        let _ = format!("{priority:?}");
     }
 }
 
@@ -485,7 +485,7 @@ fn test_empty_args() {
 
 #[test]
 fn test_many_args() {
-    let args: Vec<String> = (0..1000).map(|i| format!("arg{}", i)).collect();
+    let args: Vec<String> = (0..1000).map(|i| format!("arg{i}")).collect();
 
     let workload = WorkloadType::Native {
         executable: "/bin/echo".to_string(),
@@ -539,21 +539,21 @@ fn test_workload_type_clone() {
     };
 
     let cloned = workload.clone();
-    let _ = format!("{:?}", cloned);
+    let _ = format!("{cloned:?}");
 }
 
 #[test]
 fn test_execution_status_clone() {
     let status = ExecutionStatus::Running;
     let cloned = status.clone();
-    let _ = format!("{:?}", cloned);
+    let _ = format!("{cloned:?}");
 }
 
 #[test]
 fn test_resource_requirements_clone() {
     let resources = ResourceRequirements::default();
     let cloned = resources.clone();
-    let _ = format!("{:?}", cloned);
+    let _ = format!("{cloned:?}");
 }
 
 // ==================== Equality Tests ====================

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Integration tests for ExecutionEngine
+//! Integration tests for `ExecutionEngine`
 //!
 //! These tests exercise actual execution engine logic with real implementations.
 

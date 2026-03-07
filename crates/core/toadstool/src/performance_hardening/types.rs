@@ -400,7 +400,7 @@ mod tests {
     #[test]
     fn test_types_debug_impl() {
         let config = PerformanceHardeningConfig::default();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("PerformanceHardeningConfig"));
 
         let stats = CacheStats {
@@ -410,7 +410,7 @@ mod tests {
             hit_rate: 0.0,
             evictions: 0,
         };
-        let debug_str = format!("{:?}", stats);
+        let debug_str = format!("{stats:?}");
         assert!(debug_str.contains("CacheStats"));
     }
 }

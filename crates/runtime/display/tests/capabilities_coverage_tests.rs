@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for display capabilities module
 //! Target: crates/runtime/display/src/capabilities.rs
-//! No real DRM/input device probing - tests structs, serialization, find_all.
+//! No real DRM/input device probing - tests structs, serialization, `find_all`.
 
 use std::path::PathBuf;
 
@@ -123,7 +123,7 @@ fn test_display_capabilities_clone() {
 #[test]
 fn test_display_capabilities_debug() {
     let caps = make_caps();
-    let s = format!("{:?}", caps);
+    let s = format!("{caps:?}");
     assert!(s.contains("toadstool"));
 }
 

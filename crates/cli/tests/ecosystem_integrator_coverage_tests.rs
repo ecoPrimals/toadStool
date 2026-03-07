@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for ecosystem integrator_impl.rs
-//! Target: 85%+ coverage. No real network I/O, no multi_thread runtime.
+//! Comprehensive tests for ecosystem `integrator_impl.rs`
+//! Target: 85%+ coverage. No real network I/O, no `multi_thread` runtime.
 
 use std::path::PathBuf;
 

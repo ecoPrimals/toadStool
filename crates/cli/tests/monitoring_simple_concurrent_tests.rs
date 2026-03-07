@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! 🚀 MonitoringSystem Simple Concurrent Tests
+//! 🚀 `MonitoringSystem` Simple Concurrent Tests
 //!
 //! **Philosophy**: Modern, concurrent, event-driven, robust
 //! **Pattern**: Simple API tests, no complex fixtures
@@ -81,8 +81,7 @@ async fn test_stress_monitoring_system_creation() -> Result<()> {
     // At least 95% should succeed
     assert!(
         success_count >= 28,
-        "At least 28/30 monitoring systems should create successfully, got {}",
-        success_count
+        "At least 28/30 monitoring systems should create successfully, got {success_count}"
     );
 
     Ok(())
@@ -103,7 +102,7 @@ async fn test_concurrent_start_monitoring_biome() -> Result<()> {
     for i in 0..10 {
         let sys = Arc::clone(&system);
         handles.push(tokio::spawn(async move {
-            let target = MonitoringTarget::Biome(format!("test_biome_{}", i));
+            let target = MonitoringTarget::Biome(format!("test_biome_{i}"));
             let metrics = vec!["cpu".to_string(), "memory".to_string()];
             sys.start_monitoring(target, metrics, None).await
         }));
@@ -176,9 +175,9 @@ async fn test_concurrent_mixed_monitoring_targets() -> Result<()> {
         let sys = Arc::clone(&system);
 
         let target = match i % 4 {
-            0 => MonitoringTarget::Biome(format!("biome_{}", i)),
+            0 => MonitoringTarget::Biome(format!("biome_{i}")),
             1 => MonitoringTarget::System,
-            2 => MonitoringTarget::Platform(format!("platform_{}", i)),
+            2 => MonitoringTarget::Platform(format!("platform_{i}")),
             // i % 4 can only be 0..=3, so this arm covers 3
             _ => MonitoringTarget::Federation,
         };
@@ -222,7 +221,7 @@ async fn test_burst_monitoring_sessions() -> Result<()> {
     for i in 0..30 {
         let sys = Arc::clone(&system);
         burst1_handles.push(tokio::spawn(async move {
-            let target = MonitoringTarget::Biome(format!("burst1_{}", i));
+            let target = MonitoringTarget::Biome(format!("burst1_{i}"));
             let metrics = vec!["cpu".to_string()];
             sys.start_monitoring(target, metrics, None).await
         }));
@@ -273,7 +272,7 @@ async fn test_sustained_monitoring_load() -> Result<()> {
     for i in 0..100 {
         let sys = Arc::clone(&system);
         handles.push(tokio::spawn(async move {
-            let target = MonitoringTarget::Biome(format!("sustained_{}", i));
+            let target = MonitoringTarget::Biome(format!("sustained_{i}"));
             let metrics = vec!["cpu".to_string(), "memory".to_string()];
             sys.start_monitoring(target, metrics, None).await
         }));
@@ -288,7 +287,7 @@ async fn test_sustained_monitoring_load() -> Result<()> {
     }
 
     // At least 95% success rate under sustained load
-    let success_rate = success_count as f64 / 100.0;
+    let success_rate = f64::from(success_count) / 100.0;
     assert!(
         success_rate >= 0.95,
         "Success rate should be >= 95%, got {:.1}%",
@@ -314,7 +313,7 @@ async fn test_timeout_awareness_monitoring() -> Result<()> {
         let sys = Arc::clone(&system);
         handles.push(tokio::spawn(async move {
             timeout(Duration::from_secs(5), async {
-                let target = MonitoringTarget::Biome(format!("timeout_test_{}", i));
+                let target = MonitoringTarget::Biome(format!("timeout_test_{i}"));
                 let metrics = vec!["cpu".to_string()];
                 sys.start_monitoring(target, metrics, None).await
             })
@@ -332,8 +331,7 @@ async fn test_timeout_awareness_monitoring() -> Result<()> {
 
     assert!(
         completed >= 19,
-        "At least 19/20 operations should complete within timeout (got {})",
-        completed
+        "At least 19/20 operations should complete within timeout (got {completed})"
     );
 
     Ok(())
@@ -349,7 +347,7 @@ async fn test_concurrent_monitoring_lifecycle() -> Result<()> {
         handles.push(tokio::spawn(async move {
             let config = MonitoringConfig::default();
             let system = MonitoringSystem::new(config).await?;
-            let target = MonitoringTarget::Biome(format!("lifecycle_{}", i));
+            let target = MonitoringTarget::Biome(format!("lifecycle_{i}"));
             let metrics = vec!["cpu".to_string()];
             let _session_id = system.start_monitoring(target, metrics, None).await?;
             drop(system);

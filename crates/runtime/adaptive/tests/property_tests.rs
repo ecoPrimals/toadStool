@@ -37,17 +37,17 @@ proptest! {
     }
 }
 
-/// Test that OpType can be round-trip serialized
+/// Test that `OpType` can be round-trip serialized
 #[test]
 fn test_op_type_serialization_round_trip() {
     for op_type in OpType::all() {
         let json = serde_json::to_string(&op_type).unwrap();
         let deserialized: OpType = serde_json::from_str(&json).unwrap();
-        assert_eq!(op_type, deserialized, "Round-trip failed for {:?}", op_type);
+        assert_eq!(op_type, deserialized, "Round-trip failed for {op_type:?}");
     }
 }
 
-/// Test that SizeClass can be round-trip serialized
+/// Test that `SizeClass` can be round-trip serialized
 #[test]
 fn test_size_class_serialization_round_trip() {
     let classes = [
@@ -62,8 +62,7 @@ fn test_size_class_serialization_round_trip() {
         let deserialized: SizeClass = serde_json::from_str(&json).unwrap();
         assert_eq!(
             *size_class, deserialized,
-            "Round-trip failed for {:?}",
-            size_class
+            "Round-trip failed for {size_class:?}"
         );
     }
 }

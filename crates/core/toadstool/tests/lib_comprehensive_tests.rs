@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for toadstool::lib root module
+//! Comprehensive tests for `toadstool::lib` root module
 //!
 //! Sprint 14: lib.rs coverage 0% → 80%
 //! Target: 45 testable lines, ~15-20 comprehensive tests
@@ -22,16 +22,14 @@ fn test_version_format_valid() {
     let parts: Vec<&str> = VERSION.split('.').collect();
     assert!(
         parts.len() >= 2,
-        "Version should have at least major.minor: {}",
-        VERSION
+        "Version should have at least major.minor: {VERSION}"
     );
 
     // Each part should be parseable as a number
     for part in parts.iter().take(3) {
         assert!(
             part.parse::<u32>().is_ok(),
-            "Version part '{}' should be a number",
-            part
+            "Version part '{part}' should be a number"
         );
     }
 }
@@ -83,7 +81,7 @@ fn test_universal_capabilities_no_duplicates() {
     // No duplicate capabilities
     let mut unique = std::collections::HashSet::new();
     for cap in UNIVERSAL_CAPABILITIES {
-        assert!(unique.insert(cap), "Duplicate capability found: {}", cap);
+        assert!(unique.insert(cap), "Duplicate capability found: {cap}");
     }
 }
 
@@ -102,8 +100,7 @@ fn test_init_succeeds() {
         let error_msg = e.to_string().to_lowercase();
         assert!(
             error_msg.contains("tracing") || error_msg.contains("subscriber"),
-            "Unexpected initialization error: {}",
-            e
+            "Unexpected initialization error: {e}"
         );
     }
 }
@@ -120,8 +117,7 @@ fn test_init_is_idempotent() {
         let error_msg = e.to_string().to_lowercase();
         assert!(
             error_msg.contains("tracing") || error_msg.contains("subscriber"),
-            "Should only fail if already initialized: {}",
-            e
+            "Should only fail if already initialized: {e}"
         );
     }
 }

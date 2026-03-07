@@ -10,7 +10,7 @@ mod plugin_system_tests {
             name: name.to_string(),
             version: "1.0.0".to_string(),
             plugin_type: "test".to_string(),
-            entry_point: format!("lib{}.so", name),
+            entry_point: format!("lib{name}.so"),
             ..Default::default()
         }
     }
@@ -97,7 +97,7 @@ mod plugin_system_tests {
         let mut manager = PluginManager::new();
 
         let manifest = PluginManifest {
-            name: "".to_string(), // Invalid: empty name
+            name: String::new(), // Invalid: empty name
             version: "1.0.0".to_string(),
             plugin_type: "test".to_string(),
             entry_point: "lib.so".to_string(),
@@ -297,8 +297,7 @@ mod plugin_system_tests {
         let found = discovered.iter().find(|m| m.name == "discovered-plugin");
         assert!(
             found.is_some(),
-            "Should discover plugin in subdir, got {:?}",
-            discovered
+            "Should discover plugin in subdir, got {discovered:?}"
         );
         assert_eq!(
             found.expect("discovered-plugin should be found").version,
@@ -335,7 +334,7 @@ mod plugin_system_tests {
     #[test]
     fn test_plugin_error_display() {
         let err = PluginError::NotFound("x".to_string());
-        assert!(format!("{err}").contains("x"));
+        assert!(format!("{err}").contains('x'));
 
         let err = PluginError::DependencyNotMet("a requires b".to_string());
         assert!(format!("{err}").contains("a requires b"));
@@ -721,10 +720,10 @@ mod plugin_system_tests {
     fn test_plugin_capability_trait_initialize_failure() {
         struct FailingCapability;
         impl PluginCapability for FailingCapability {
-            fn capability_name(&self) -> &str {
+            fn capability_name(&self) -> &'static str {
                 "failing"
             }
-            fn capability_version(&self) -> &str {
+            fn capability_version(&self) -> &'static str {
                 "0.0"
             }
             fn initialize(&mut self) -> Result<(), String> {

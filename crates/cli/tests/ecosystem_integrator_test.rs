@@ -4,7 +4,7 @@
 //! Coverage target: 0% → 25% (15 tests)
 //!
 //! Testing strategy:
-//! - EcosystemIntegrator initialization
+//! - `EcosystemIntegrator` initialization
 //! - Service discovery
 //! - Service verification
 //! - Endpoint management

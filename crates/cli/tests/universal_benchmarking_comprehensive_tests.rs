@@ -51,15 +51,12 @@ async fn test_run_storage_benchmark() -> Result<()> {
     let result = manager.run_storage_benchmark().await;
 
     // Storage benchmark may fail if /tmp is not writable - acceptable for testing
-    match result {
-        Ok(bench) => {
-            assert_eq!(bench.name, "Storage I/O");
-            assert!(bench.score > 0.0, "Score should be positive");
-            assert_eq!(bench.unit, "MB/s");
-        }
-        Err(_) => {
-            // File system error is acceptable in restricted environments
-        }
+    if let Ok(bench) = result {
+        assert_eq!(bench.name, "Storage I/O");
+        assert!(bench.score > 0.0, "Score should be positive");
+        assert_eq!(bench.unit, "MB/s");
+    } else {
+        // File system error is acceptable in restricted environments
     }
 
     Ok(())
@@ -158,8 +155,7 @@ async fn test_platform_benchmark_standard_suite() -> Result<()> {
             assert!(
                 e.to_string().contains("No such file")
                     || e.to_string().contains("Permission denied"),
-                "Expected file system error, got: {}",
-                e
+                "Expected file system error, got: {e}"
             );
         }
     }
@@ -195,19 +191,16 @@ async fn test_platform_benchmark_full_suite() -> Result<()> {
         .await;
 
     // Full suite includes storage which may fail - acceptable
-    match result {
-        Ok(bench_result) => {
-            assert_eq!(bench_result.platform, "test-platform");
-            assert_eq!(bench_result.suite, "full");
-            assert_eq!(
-                bench_result.tests.len(),
-                6,
-                "Full suite should have 6 tests"
-            );
-        }
-        Err(_) => {
-            // File system error from storage benchmark is acceptable
-        }
+    if let Ok(bench_result) = result {
+        assert_eq!(bench_result.platform, "test-platform");
+        assert_eq!(bench_result.suite, "full");
+        assert_eq!(
+            bench_result.tests.len(),
+            6,
+            "Full suite should have 6 tests"
+        );
+    } else {
+        // File system error from storage benchmark is acceptable
     }
 
     Ok(())
@@ -370,7 +363,7 @@ async fn test_repeated_platform_benchmarks() -> Result<()> {
     // Use compute suite to avoid storage benchmark failures
     for i in 0..5 {
         let result = manager
-            .run_platform_benchmark(&format!("platform-{}", i), "compute")
+            .run_platform_benchmark(&format!("platform-{i}"), "compute")
             .await;
         assert!(result.is_ok());
     }

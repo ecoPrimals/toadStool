@@ -538,7 +538,7 @@ fn test_circular_buffer_for_metrics() {
         if metrics_history.len() >= max_size {
             metrics_history.pop_front();
         }
-        metrics_history.push_back(i as f64);
+        metrics_history.push_back(f64::from(i));
     }
 
     assert_eq!(metrics_history.len(), max_size);

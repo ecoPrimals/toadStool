@@ -2,7 +2,7 @@
 //! Type serialization tests
 //!
 //! Tier 1 tests: Coverage-measured type and serialization tests
-//! Focus: DistributedConfig, Job types, serialization roundtrips
+//! Focus: `DistributedConfig`, Job types, serialization roundtrips
 
 use serde::{Deserialize, Serialize};
 

@@ -2,10 +2,10 @@
 //! Comprehensive tests for cloud deployment and provider types
 //!
 //! This test suite covers:
-//! - DeploymentStrategy enum
-//! - CloudDeploymentResult enum
-//! - AuthMethod enum
-//! - CloudProvider enum basics
+//! - `DeploymentStrategy` enum
+//! - `CloudDeploymentResult` enum
+//! - `AuthMethod` enum
+//! - `CloudProvider` enum basics
 //! - Deployment configuration structs
 
 use std::collections::HashMap;

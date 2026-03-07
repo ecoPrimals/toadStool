@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! ResourceCoordinator tests — allocation, release, and multi-allocation.
+//! `ResourceCoordinator` tests — allocation, release, and multi-allocation.
 
 use toadstool::resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for primal_integration/discovery.rs
+//! Comprehensive tests for `primal_integration::discovery`
 //! Target: 85%+ coverage of discovery module
 
 use temp_env::with_vars;
@@ -20,7 +20,7 @@ fn test_discover_service_by_capability_via_endpoint_env() {
         )],
         || {
             let result = discover_service_by_capability("encryption");
-            assert!(result.is_ok(), "expected ok, got {:?}", result);
+            assert!(result.is_ok(), "expected ok, got {result:?}");
             let endpoints = result.unwrap();
             assert_eq!(endpoints.len(), 1);
             assert_eq!(endpoints[0].service_id, "encryption-env");
@@ -123,7 +123,7 @@ fn test_discover_service_by_capability_no_service_found() {
                 DiscoveryError::NoServiceFound { capability } => {
                     assert_eq!(capability, "nonexistent-capability-xyz");
                 }
-                _ => panic!("expected NoServiceFound, got {:?}", err),
+                _ => panic!("expected NoServiceFound, got {err:?}"),
             }
         },
     );
@@ -358,7 +358,7 @@ fn test_discover_service_via_filesystem() {
         ],
         || {
             let result = discover_service_by_capability("storage");
-            assert!(result.is_ok(), "expected ok, got {:?}", result);
+            assert!(result.is_ok(), "expected ok, got {result:?}");
             let endpoints = result.unwrap();
             assert_eq!(endpoints.len(), 1);
             assert_eq!(endpoints[0].service_id, "storage-fs");
@@ -560,7 +560,7 @@ fn test_primal_endpoint_debug_format() {
         healthy: true,
         last_check: SystemTime::now(),
     };
-    let debug_str = format!("{:?}", ep);
+    let debug_str = format!("{ep:?}");
     assert!(debug_str.contains("debug-test"));
     assert!(debug_str.contains("http://x:1"));
 }
@@ -572,7 +572,7 @@ fn test_discovery_error_debug() {
     let err = DiscoveryError::NoServiceFound {
         capability: "debug-cap".to_string(),
     };
-    let s = format!("{:?}", err);
+    let s = format!("{err:?}");
     assert!(s.contains("NoServiceFound") || s.contains("debug-cap"));
 }
 

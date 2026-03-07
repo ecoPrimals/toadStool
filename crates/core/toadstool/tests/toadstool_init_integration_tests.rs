@@ -110,7 +110,7 @@ fn test_capabilities_no_duplicates() {
     let caps = toadstool::UNIVERSAL_CAPABILITIES;
     let mut seen = std::collections::HashSet::new();
     for cap in caps {
-        assert!(seen.insert(cap), "Duplicate capability: {}", cap);
+        assert!(seen.insert(cap), "Duplicate capability: {cap}");
     }
 }
 

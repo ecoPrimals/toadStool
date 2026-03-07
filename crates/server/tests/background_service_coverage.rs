@@ -31,7 +31,7 @@ fn test_resource_usage_calculations() {
     ];
 
     for (used, total, expected_percent) in test_cases {
-        let percent = (used as f64 / total as f64) * 100.0;
+        let percent = (f64::from(used) / f64::from(total)) * 100.0;
         assert!((percent - expected_percent).abs() < 0.01);
     }
 }

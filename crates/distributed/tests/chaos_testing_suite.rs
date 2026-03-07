@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Chaos Engineering Tests for Distributed Systems
 //! Modern concurrent chaos testing - no sleeps, event-based, fault injection
-//! Updated November 21, 2025 - Using current DistributedCoordinator API
+//! Updated November 21, 2025 - Using current `DistributedCoordinator` API
 
 use anyhow::Result;
 use std::collections::HashMap;
@@ -208,7 +208,7 @@ async fn chaos_test_burst_traffic() -> Result<()> {
 
 /// ✅ Chaos Test 6: Event storm handling (Modernized Nov 25, 2025)
 /// Fixed: Previous version hung because it relied on timeout to exit loop
-/// Now uses proper counter-based termination with JoinHandle synchronization
+/// Now uses proper counter-based termination with `JoinHandle` synchronization
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn chaos_test_event_storm() -> Result<()> {
     let coordinator = Arc::new(DistributedCoordinator::new(create_chaos_config()).await?);
@@ -259,9 +259,7 @@ async fn chaos_test_event_storm() -> Result<()> {
     // Should have received most events (allowing for some broadcast channel lag/drops)
     assert!(
         received > EVENT_COUNT / 2,
-        "Should receive majority of events (got {}/{})",
-        received,
-        EVENT_COUNT
+        "Should receive majority of events (got {received}/{EVENT_COUNT})"
     );
 
     Ok(())

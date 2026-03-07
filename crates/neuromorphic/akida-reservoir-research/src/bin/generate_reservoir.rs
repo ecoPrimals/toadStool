@@ -60,11 +60,11 @@ fn main() -> Result<()> {
     println!("      Std:  {w_in_std:.6}");
     println!(
         "      Min:  {:.6}",
-        w_in.iter().cloned().fold(f32::INFINITY, f32::min)
+        w_in.iter().copied().fold(f32::INFINITY, f32::min)
     );
     println!(
         "      Max:  {:.6}",
-        w_in.iter().cloned().fold(f32::NEG_INFINITY, f32::max)
+        w_in.iter().copied().fold(f32::NEG_INFINITY, f32::max)
     );
 
     let w_res_mean = w_res.mean().unwrap_or(0.0);
@@ -74,11 +74,11 @@ fn main() -> Result<()> {
     println!("      Std:  {w_res_std:.6}");
     println!(
         "      Min:  {:.6}",
-        w_res.iter().cloned().fold(f32::INFINITY, f32::min)
+        w_res.iter().copied().fold(f32::INFINITY, f32::min)
     );
     println!(
         "      Max:  {:.6}",
-        w_res.iter().cloned().fold(f32::NEG_INFINITY, f32::max)
+        w_res.iter().copied().fold(f32::NEG_INFINITY, f32::max)
     );
 
     // Check echo state property (approximate)

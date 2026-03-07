@@ -298,6 +298,7 @@ impl DisplayClient {
 
     /// Create client with mock stream for testing (no real connection)
     #[cfg(test)]
+    #[must_use]
     pub fn new_for_test(stream: tokio::io::DuplexStream, endpoint: IpcEndpoint) -> Self {
         Self {
             stream: Box::new(stream),
@@ -506,7 +507,7 @@ mod tests {
     fn test_ipc_endpoint_unix_variant() {
         use std::path::PathBuf;
         let ep = IpcEndpoint::UnixSocket(PathBuf::from("/tmp/display.sock"));
-        let s = format!("{:?}", ep);
+        let s = format!("{ep:?}");
         assert!(s.contains("UnixSocket") || s.contains("display"));
     }
 
@@ -515,7 +516,7 @@ mod tests {
         use std::net::SocketAddr;
         let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
         let ep = IpcEndpoint::TcpLocal(addr);
-        let s = format!("{:?}", ep);
+        let s = format!("{ep:?}");
         assert!(s.contains("TcpLocal") || s.contains("127"));
     }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Integration tests for SecurityPolicy system
+//! Integration tests for `SecurityPolicy` system
 //!
 //! Tests the complete policy evaluation workflow
 

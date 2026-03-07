@@ -276,8 +276,7 @@ async fn start_servers_with_fallback_fails_on_non_platform_error() {
             || err_str.contains("directory")
             || err_str.contains("File exists")
             || err_str.contains("dev"),
-        "expected initialization/directory error, got: {}",
-        err_str
+        "expected initialization/directory error, got: {err_str}"
     );
 }
 
@@ -434,7 +433,7 @@ fn shutdown_signal_error_display() {
     use std::fmt::Write;
     let err = toadstool_server::unibin::ShutdownSignal::Error("listen failed");
     let mut s = String::new();
-    write!(&mut s, "{:?}", err).unwrap();
+    write!(&mut s, "{err:?}").unwrap();
     assert!(s.contains("Error") || s.contains("listen"));
 }
 

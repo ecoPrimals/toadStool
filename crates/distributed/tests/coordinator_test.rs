@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for DistributedCoordinator
+//! Comprehensive tests for `DistributedCoordinator`
 //!
 //! Tests for core coordinator functionality
 
@@ -58,7 +58,7 @@ async fn test_coordinator_with_songbird_config() {
     // The important part is that the configuration is accepted
     match coordinator {
         Ok(_) => println!("Coordinator created with Songbird integration"),
-        Err(e) => println!("Songbird not available (expected in tests): {}", e),
+        Err(e) => println!("Songbird not available (expected in tests): {e}"),
     }
 }
 
@@ -377,8 +377,7 @@ async fn test_coordinator_with_various_configs() {
         let coordinator = DistributedCoordinator::new(config).await;
         assert!(
             coordinator.is_ok(),
-            "Configuration variant {} should be accepted",
-            idx
+            "Configuration variant {idx} should be accepted"
         );
     }
 }
@@ -427,7 +426,6 @@ async fn test_coordinator_creation_performance() {
     assert!(coordinator.is_ok(), "Coordinator should be created");
     assert!(
         elapsed.as_secs() < 5,
-        "Coordinator creation should be fast (took {:?})",
-        elapsed
+        "Coordinator creation should be fast (took {elapsed:?})"
     );
 }

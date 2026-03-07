@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for basic template coverage
 //!
-//! Goal: Push basic_templates.rs coverage from 0.57% to 60%+
+//! Goal: Push `basic_templates.rs` coverage from 0.57% to 60%+
 
 use toadstool_cli::templates::basic_templates::{
     create_basic_template, create_development_template,

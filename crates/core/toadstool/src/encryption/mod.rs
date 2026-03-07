@@ -465,7 +465,7 @@ mod tests {
     #[test]
     fn test_encryption_context_debug() {
         let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
-        let _ = format!("{:?}", ctx);
+        let _ = format!("{ctx:?}");
     }
 
     #[test]
@@ -562,7 +562,7 @@ mod tests {
         struct TestProvider;
         #[async_trait]
         impl CryptoProvider for TestProvider {
-            fn provider_id(&self) -> &str {
+            fn provider_id(&self) -> &'static str {
                 "test-crypto"
             }
             fn capabilities(&self) -> &CryptoCapability {

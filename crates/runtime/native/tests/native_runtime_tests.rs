@@ -11,7 +11,7 @@ use toadstool_runtime_native::NativeRuntimeEngine;
 #[test]
 fn test_native_runtime_engine_creation() {
     let engine = NativeRuntimeEngine::new();
-    assert!(format!("{:?}", engine).contains("NativeRuntimeEngine"));
+    assert!(format!("{engine:?}").contains("NativeRuntimeEngine"));
 }
 
 #[test]
@@ -27,7 +27,7 @@ fn test_native_runtime_engine_default() {
 #[test]
 fn test_native_runtime_engine_debug_format() {
     let engine = NativeRuntimeEngine::new();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("NativeRuntimeEngine"));
     assert!(debug_str.contains("capabilities"));
@@ -236,8 +236,7 @@ fn test_native_architecture_x86_64_or_aarch64() {
     // Common architectures
     assert!(
         arch == "x86_64" || arch == "aarch64" || arch == "x86" || arch == "arm",
-        "Unexpected architecture: {}",
-        arch
+        "Unexpected architecture: {arch}"
     );
 }
 
@@ -263,7 +262,7 @@ fn test_native_version_format() {
     assert!(!capabilities.version.is_empty());
     // Should be a valid version string (contains dots or numbers)
     assert!(
-        capabilities.version.contains('.') || capabilities.version.chars().any(|c| c.is_numeric())
+        capabilities.version.contains('.') || capabilities.version.chars().any(char::is_numeric)
     );
 }
 

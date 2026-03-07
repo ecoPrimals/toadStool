@@ -349,7 +349,7 @@ async fn test_e2e_image_processing_workflow() {
     // Bytes is immutable; use .to_vec() when we need to mutate
     let processed_data = input_buffer.read_async(0, image_size).await.unwrap();
     let mut processed: Vec<u8> = processed_data.to_vec();
-    for pixel in processed.iter_mut() {
+    for pixel in &mut processed {
         *pixel = 255 - *pixel;
     }
 

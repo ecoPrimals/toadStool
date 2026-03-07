@@ -120,7 +120,7 @@ async fn test_parallel_workflow() {
 
     for i in 0..10 {
         nodes.push(create_node(
-            &format!("worker_{}", i),
+            &format!("worker_{i}"),
             "parallel_process",
             4.0,
             2,
@@ -132,8 +132,8 @@ async fn test_parallel_workflow() {
 
     let mut edges = vec![];
     for i in 0..10 {
-        edges.push(create_edge("root", &format!("worker_{}", i)));
-        edges.push(create_edge(&format!("worker_{}", i), "sink"));
+        edges.push(create_edge("root", &format!("worker_{i}")));
+        edges.push(create_edge(&format!("worker_{i}"), "sink"));
     }
 
     let graph = ExecutionGraph {
@@ -226,16 +226,16 @@ async fn test_large_graph_performance() {
 
     // Level 1: 10 nodes
     for i in 0..10 {
-        let node_id = format!("level1_{}", i);
+        let node_id = format!("level1_{i}");
         nodes.push(create_node(&node_id, "process", 2.0, 1, 2));
         edges.push(create_edge("root", &node_id));
     }
 
     // Level 2: 90 nodes (9 per level1 node)
     for i in 0..10 {
-        let parent_id = format!("level1_{}", i);
+        let parent_id = format!("level1_{i}");
         for j in 0..9 {
-            let node_id = format!("level2_{}_{}", i, j);
+            let node_id = format!("level2_{i}_{j}");
             nodes.push(create_node(&node_id, "compute", 1.0, 1, 5));
             edges.push(create_edge(&parent_id, &node_id));
         }
@@ -261,13 +261,12 @@ async fn test_large_graph_performance() {
         .expect("Estimation should succeed");
 
     let duration = start.elapsed();
-    println!("Large graph estimation took: {:?}", duration);
+    println!("Large graph estimation took: {duration:?}");
 
     // Performance target: < 100ms for 100+ node graph
     assert!(
         duration.as_millis() < 100,
-        "Estimation should complete in <100ms, took {:?}",
-        duration
+        "Estimation should complete in <100ms, took {duration:?}"
     );
 
     assert_eq!(

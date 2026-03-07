@@ -290,7 +290,7 @@ mod tests {
             source: "__global__ void add(...)".to_string(),
             entry_point: "add".to_string(),
         };
-        let disp = format!("{}", source);
+        let disp = format!("{source}");
         assert!(disp.contains("CUDA C++"));
         assert!(disp.contains("add"));
     }
@@ -301,7 +301,7 @@ mod tests {
             source: ".version 7.5".to_string(),
             entry_point: "entry".to_string(),
         };
-        let disp = format!("{}", source);
+        let disp = format!("{source}");
         assert!(disp.contains("PTX"));
         assert!(disp.contains("entry"));
     }
@@ -312,7 +312,7 @@ mod tests {
             binary: vec![0x7f, 0x45, 0x4c],
             entry_point: "kernel_main".to_string(),
         };
-        let disp = format!("{}", source);
+        let disp = format!("{source}");
         assert!(disp.contains("CuBin"));
         assert!(disp.contains("kernel_main"));
     }
@@ -323,7 +323,7 @@ mod tests {
             path: std::path::PathBuf::from("/path/to/kernel.cu"),
             entry_point: "main".to_string(),
         };
-        let disp = format!("{}", source);
+        let disp = format!("{source}");
         assert!(disp.contains("File"));
         assert!(disp.contains("main"));
         assert!(disp.contains("kernel.cu"));

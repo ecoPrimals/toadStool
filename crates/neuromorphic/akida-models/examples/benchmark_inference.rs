@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     });
 
-    println!("📂 Model: {}\n", model_path);
+    println!("📂 Model: {model_path}\n");
 
     // Parse model
     println!("1️⃣  Parsing model...");
@@ -77,7 +77,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Calculate statistics
     let min_latency = latencies.iter().min().unwrap();
     let max_latency = latencies.iter().max().unwrap();
-    let avg_latency = latencies.iter().sum::<std::time::Duration>() / latencies.len() as u32;
+    let avg_latency = latencies.iter().sum::<std::time::Duration>()
+        / u32::try_from(latencies.len()).expect("latencies non-empty");
     let std_dev = calculate_std_dev(&latencies, avg_latency);
 
     println!(
@@ -108,21 +109,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let burst_duration = burst_start.elapsed();
-    let throughput = burst_count as f64 / burst_duration.as_secs_f64();
+    let throughput = f64::from(burst_count) / burst_duration.as_secs_f64();
 
-    println!("   Inferences: {}", burst_count);
-    println!("   Duration:   {:?}", burst_duration);
-    println!("   Throughput: {:.1} inferences/sec\n", throughput);
+    println!("   Inferences: {burst_count}");
+    println!("   Duration:   {burst_duration:?}");
+    println!("   Throughput: {throughput:.1} inferences/sec\n");
 
     // Results summary
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     println!("📊 BENCHMARK RESULTS\n");
 
     println!("Model:");
+    #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+    let program_size_kb = model.program_size() as f64 / 1024.0;
     println!(
-        "   Size:    {} bytes ({:.2} KB)",
-        model.program_size(),
-        model.program_size() as f64 / 1024.0
+        "   Size:    {} bytes ({program_size_kb:.2} KB)",
+        model.program_size()
     );
     println!("   Layers:  {}", model.layer_count());
     println!("   Weights: {} blocks\n", model.weights().len());
@@ -151,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     println!("Inference Throughput:");
-    println!("   Rate:    {:.1} inferences/sec", throughput);
+    println!("   Rate:    {throughput:.1} inferences/sec");
     println!(
         "   Period:  {:.1}µs per inference\n",
         1_000_000.0 / throughput
@@ -168,7 +170,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "C (Acceptable)"
     };
 
-    println!("Performance Grade: {}\n", grade);
+    println!("Performance Grade: {grade}\n");
 
     println!("🎉 Benchmark complete!\n");
 
@@ -182,6 +184,7 @@ fn calculate_std_dev(values: &[std::time::Duration], mean: std::time::Duration) 
     }
 
     let mean_secs = mean.as_secs_f64();
+    #[allow(clippy::cast_precision_loss)] // variance calc; usize to f64 for division
     let variance: f64 = values
         .iter()
         .map(|v| {

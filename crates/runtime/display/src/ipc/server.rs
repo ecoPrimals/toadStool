@@ -330,7 +330,7 @@ mod tests {
         assert_eq!(request.method, "display.get_capabilities");
     }
 
-    /// Create an owned manager for DisplayServer::new tests.
+    /// Create an owned manager for `DisplayServer::new` tests.
     async fn test_manager_owned() -> Option<WindowManager> {
         WindowManager::new().await.ok()
     }
@@ -338,7 +338,7 @@ mod tests {
     #[test]
     fn test_ipc_transport_debug() {
         let t = IpcTransport::UnixSocket;
-        let s = format!("{:?}", t);
+        let s = format!("{t:?}");
         assert!(s.contains("Unix"));
     }
 
@@ -347,15 +347,14 @@ mod tests {
         use std::net::SocketAddr;
         let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
         let t = IpcTransport::TcpFallback(addr);
-        let s = format!("{:?}", t);
+        let s = format!("{t:?}");
         assert!(s.contains("TcpFallback") || s.contains("127"));
     }
 
     #[tokio::test]
     async fn test_display_server_new_socket_path() {
-        let manager = match test_manager_owned().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager_owned().await else {
+            return;
         };
         let server = DisplayServer::new(manager);
         let path = server.socket_path();
@@ -399,9 +398,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_transport_initially_none() {
-        let manager = match test_manager_owned().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager_owned().await else {
+            return;
         };
         let server = DisplayServer::new(manager);
         let transport = server.transport().await;
@@ -430,7 +428,7 @@ mod tests {
     fn test_ipc_transport_tcp_fallback_addr() {
         let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
         let t = IpcTransport::TcpFallback(addr);
-        let s = format!("{:?}", t);
+        let s = format!("{t:?}");
         assert!(s.contains("12345") || s.contains("127"));
     }
 
@@ -468,9 +466,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_display_server_socket_path_contains_toadstool() {
-        let manager = match test_manager_owned().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager_owned().await else {
+            return;
         };
         let server = DisplayServer::new(manager);
         let path_str = server.socket_path().to_string_lossy();
@@ -482,9 +479,8 @@ mod tests {
         use crate::ipc::dispatch;
         use tokio::sync::RwLock;
 
-        let manager = match test_manager_owned().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager_owned().await else {
+            return;
         };
         let manager = Arc::new(RwLock::new(manager));
         let response = dispatch::handle_request("", &manager).await;
@@ -496,9 +492,8 @@ mod tests {
         use crate::ipc::dispatch;
         use tokio::sync::RwLock;
 
-        let manager = match test_manager_owned().await {
-            Some(m) => m,
-            None => return,
+        let Some(manager) = test_manager_owned().await else {
+            return;
         };
         let manager = Arc::new(RwLock::new(manager));
         let response = dispatch::handle_request("not valid json", &manager).await;

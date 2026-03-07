@@ -182,7 +182,7 @@ mod tests {
         let level = IsolationLevel::Enhanced;
         let cloned = level.clone();
         assert_eq!(level, cloned);
-        assert!(!format!("{:?}", level).is_empty());
+        assert!(!format!("{level:?}").is_empty());
     }
 
     // ─── Capability ───────────────────────────────────────────────────────

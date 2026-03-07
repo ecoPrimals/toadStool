@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Additional tests for SystemResourceMonitor
+//! Additional tests for `SystemResourceMonitor`
 //!
-//! These tests expand coverage for ResourceMonitor trait implementation
+//! These tests expand coverage for `ResourceMonitor` trait implementation
 //! and additional monitoring functionality.
 
 use std::path::Path;
@@ -129,7 +129,7 @@ async fn test_register_process_with_various_pids() {
 
     let pids = [1, 100, 1000, 10000, 65535];
     for (i, pid) in pids.iter().enumerate() {
-        let workload_id = format!("pid-test-{}", i);
+        let workload_id = format!("pid-test-{i}");
         let result = monitor
             .register_process(&workload_id, *pid, Path::new("/bin/test"))
             .await;
@@ -513,7 +513,7 @@ fn test_error_clone() {
 #[test]
 fn test_error_debug_format() {
     let err = ResourceMonitorError::ParseError("test".to_string());
-    let debug_str = format!("{:?}", err);
+    let debug_str = format!("{err:?}");
     assert!(debug_str.contains("ParseError"));
     assert!(debug_str.contains("test"));
 }

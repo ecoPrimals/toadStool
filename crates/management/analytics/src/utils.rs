@@ -58,7 +58,7 @@ mod tests {
     fn test_calculate_median_even() {
         let data = vec![1.0, 3.0, 5.0, 7.0];
         let m = calculate_median(&data);
-        assert!((m - 4.0).abs() < 1e-10, "expected 4.0, got {}", m);
+        assert!((m - 4.0).abs() < 1e-10, "expected 4.0, got {m}");
     }
 
     #[test]

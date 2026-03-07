@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for biomeos_integration/agents module
+//! Comprehensive tests for `biomeos_integration/agents` module
 //!
 //! This test suite covers:
-//! - AgentStatus enum and variants
-//! - ModelStatus enum and variants
-//! - AgentResourceUsage struct
-//! - ModelResourceRequirements struct
-//! - ModelPerformanceMetrics struct
-//! - AgentDeploymentConfig struct
+//! - `AgentStatus` enum and variants
+//! - `ModelStatus` enum and variants
+//! - `AgentResourceUsage` struct
+//! - `ModelResourceRequirements` struct
+//! - `ModelPerformanceMetrics` struct
+//! - `AgentDeploymentConfig` struct
 
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -23,7 +23,7 @@ fn test_agent_status_deploying() {
     let status = AgentStatus::Deploying;
 
     assert!(matches!(status, AgentStatus::Deploying));
-    assert!(format!("{:?}", status).contains("Deploying"));
+    assert!(format!("{status:?}").contains("Deploying"));
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn test_agent_status_running() {
     let status = AgentStatus::Running;
 
     assert!(matches!(status, AgentStatus::Running));
-    assert!(format!("{:?}", status).contains("Running"));
+    assert!(format!("{status:?}").contains("Running"));
 }
 
 #[test]

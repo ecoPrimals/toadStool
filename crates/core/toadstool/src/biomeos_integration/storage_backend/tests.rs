@@ -188,7 +188,7 @@ async fn test_inmemory_backend_list() {
 
     for i in 1..=3 {
         let config = VolumeConfig {
-            name: format!("vol-{}", i),
+            name: format!("vol-{i}"),
             size: "10Gi".to_string(),
             storage_class: None,
             access_modes: vec!["ReadWriteOnce".to_string()],

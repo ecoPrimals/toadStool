@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for BiomeExecutor implementation
+//! Comprehensive tests for `BiomeExecutor` implementation
 //!
-//! **Target**: executor_impl.rs (938 lines, 0% → 70%+ coverage)
+//! **Target**: `executor_impl.rs` (938 lines, 0% → 70%+ coverage)
 //! **Tests**: 50+ comprehensive tests
 //! **Focus**: Critical paths, error handling, lifecycle management
 //!
@@ -51,15 +51,14 @@ async fn create_minimal_manifest(temp_dir: &TempDir, name: &str) -> Result<PathB
     let manifest_content = format!(
         r#"
 [metadata]
-name = "{}"
+name = "{name}"
 version = "0.1.0"
 description = "Minimal test biome"
 
 [resources]
 cpu_limit = 1.0
 memory_limit = "512MB"
-"#,
-        name
+"#
     );
 
     fs::write(&manifest_path, manifest_content).await?;
@@ -90,14 +89,13 @@ async fn test_biome_name_validation() {
     for name in valid_names {
         assert!(
             !name.is_empty() && !name.contains(' '),
-            "Valid name should pass: {}",
-            name
+            "Valid name should pass: {name}"
         );
     }
 
     for name in invalid_names {
         let is_invalid = name.is_empty() || name.contains(' ') || name.contains('/');
-        assert!(is_invalid, "Invalid name should fail: {}", name);
+        assert!(is_invalid, "Invalid name should fail: {name}");
     }
 }
 
@@ -119,13 +117,11 @@ async fn test_security_level_parsing() {
     for level in security_levels {
         assert!(
             !level.is_empty(),
-            "Security level should be non-empty: {}",
-            level
+            "Security level should be non-empty: {level}"
         );
         assert!(
             level.len() < 20,
-            "Security level should be reasonable length: {}",
-            level
+            "Security level should be reasonable length: {level}"
         );
     }
 }

@@ -28,7 +28,7 @@ async fn create_test_manifest(name: &str) -> anyhow::Result<PathBuf> {
     let content = format!(
         r#"
 [metadata]
-name = "{}"
+name = "{name}"
 version = "1.0.0"
 description = "Test biome for evolution polish E2E"
 
@@ -45,12 +45,11 @@ beardog_required = false
 mode = "bridge"
 
 [storage]
-"#,
-        name
+"#
     );
 
     let temp_dir = std::env::temp_dir();
-    let path = temp_dir.join(format!("evolution-{}.toml", name));
+    let path = temp_dir.join(format!("evolution-{name}.toml"));
     tokio::fs::write(&path, content).await?;
     Ok(path)
 }
@@ -95,8 +94,7 @@ async fn test_e2e_executor_full_lifecycle_standalone() {
             !msg.contains("BiomeOSClient")
                 && !msg.contains("biomeos_client")
                 && !msg.contains("SongbirdClient"),
-            "Error should not reference hardcoded clients: {}",
-            msg
+            "Error should not reference hardcoded clients: {msg}"
         );
     }
 
@@ -140,14 +138,14 @@ async fn test_e2e_concurrent_biome_operations_standalone() {
         handles.push(tokio::spawn(async move {
             b.wait().await;
 
-            let manifest_path = create_test_manifest(&format!("concurrent-{}", i))
+            let manifest_path = create_test_manifest(&format!("concurrent-{i}"))
                 .await
                 .unwrap();
 
             // Try to run biome
             let opts = RunBiomeOptions {
                 manifest_path: manifest_path.clone(),
-                name: Some(format!("concurrent-biome-{}", i)),
+                name: Some(format!("concurrent-biome-{i}")),
                 env: vec![],
                 debug: false,
                 cpu_limit: Some(0.5),
@@ -199,8 +197,7 @@ async fn test_e2e_discovery_system_works_without_hardcoded_names() {
                 && !msg.contains("songbird")
                 && !msg.contains("BearDog")
                 && !msg.contains("Songbird"),
-            "Discovery error should not reference primal names: {}",
-            msg
+            "Discovery error should not reference primal names: {msg}"
         );
     }
 }
@@ -287,8 +284,7 @@ async fn test_e2e_error_propagation_clean() {
                 && !msg.contains("SongbirdClient")
                 && !msg.contains("biomeos_client")
                 && !msg.contains("songbird_client"),
-            "Error message should not reference hardcoded clients: {}",
-            msg
+            "Error message should not reference hardcoded clients: {msg}"
         );
     }
 }
@@ -360,8 +356,7 @@ async fn test_e2e_resource_limits_without_registry() {
             let msg = e.to_string();
             assert!(
                 !msg.contains("biomeos") && !msg.contains("songbird"),
-                "Resource limit error should not mention hardcoded services: {}",
-                msg
+                "Resource limit error should not mention hardcoded services: {msg}"
             );
         }
     }
@@ -392,17 +387,10 @@ async fn test_e2e_stress_many_operations_standalone() {
             // Mix of operations
             let _ = exec.list_biomes(i % 2 == 0, "json", false, None).await;
             let _ = exec
-                .down_biome(format!("stress-{}", i).as_str(), false, 30, false)
+                .down_biome(format!("stress-{i}").as_str(), false, 30, false)
                 .await;
             let _ = exec
-                .show_logs(
-                    format!("stress-{}", i).as_str(),
-                    false,
-                    50,
-                    false,
-                    None,
-                    None,
-                )
+                .show_logs(format!("stress-{i}").as_str(), false, 50, false, None, None)
                 .await;
 
             Ok::<(), anyhow::Error>(())

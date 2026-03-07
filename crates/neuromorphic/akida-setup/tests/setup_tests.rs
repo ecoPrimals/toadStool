@@ -17,7 +17,9 @@ fn test_setup_config_default() {
     assert!(!home.is_empty(), "HOME should be set");
     // Verify path format is correct (even if file doesn't exist)
     assert!(
-        expected_module_path.ends_with(".ko"),
+        std::path::Path::new(&expected_module_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("ko")),
         "Module path should end with .ko"
     );
 }
@@ -114,7 +116,9 @@ fn test_module_name() {
     let file_name = path.file_name().unwrap().to_str().unwrap();
 
     assert_eq!(file_name, "akida-pcie.ko");
-    assert!(file_name.ends_with(".ko"));
+    assert!(Path::new(file_name)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("ko")));
 
     // Module name for lsmod check
     let module_name = "akida_pcie"; // Note: dash becomes underscore in kernel

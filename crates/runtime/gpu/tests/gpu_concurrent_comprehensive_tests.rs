@@ -305,13 +305,12 @@ async fn test_concurrent_kernel_compilation() {
 
             // Simple kernel source (platform-agnostic)
             let kernel_source = format!(
-                r#"
-                kernel void vector_add_{}(global float* a, global float* b, global float* c) {{
+                r"
+                kernel void vector_add_{i}(global float* a, global float* b, global float* c) {{
                     int gid = get_global_id(0);
                     c[gid] = a[gid] + b[gid];
                 }}
-            "#,
-                i
+            "
             );
 
             // Note: compile_kernel requires device and KernelFormat
@@ -342,7 +341,7 @@ async fn test_concurrent_workload_creation() {
             bar.wait().await;
 
             // Create workload specification (using simplified test structure)
-            let workload_name = format!("workload_{}", i);
+            let workload_name = format!("workload_{i}");
 
             // Just verify we can create workload names concurrently
             workload_name.starts_with("workload_")
@@ -386,7 +385,7 @@ async fn test_stress_200_concurrent_engine_operations() {
                 }
                 _ => {
                     // Create workload name (simplified for stress test)
-                    let _workload_name = format!("stress_{}", i);
+                    let _workload_name = format!("stress_{i}");
                 }
             }
             true

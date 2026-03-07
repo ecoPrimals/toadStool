@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Critical coverage expansion for executor_impl.rs
+//! Critical coverage expansion for `executor_impl.rs`
 //!
-//! This test file provides comprehensive coverage for BiomeExecutor,
-//! targeting core execution paths in executor_impl.rs.
+//! This test file provides comprehensive coverage for `BiomeExecutor`,
+//! targeting core execution paths in `executor_impl.rs`.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -368,7 +368,7 @@ mod executor_impl_coverage_tests {
         let biome_name = "test-biome";
         let version = "1.0.0";
 
-        let message = format!("📋 Biome: {} v{}", biome_name, version);
+        let message = format!("📋 Biome: {biome_name} v{version}");
         assert!(message.contains("test-biome"));
         assert!(message.contains("1.0.0"));
     }
@@ -377,7 +377,7 @@ mod executor_impl_coverage_tests {
     fn test_security_level_logging() {
         // Test security level logging
         let security = "sandbox";
-        let message = format!("🔐 Security Level: {}", security);
+        let message = format!("🔐 Security Level: {security}");
 
         assert!(message.contains("sandbox"));
     }
@@ -386,7 +386,7 @@ mod executor_impl_coverage_tests {
     fn test_biome_id_logging() {
         // Test biome ID logging
         let biome_id = "biome-abc-123";
-        let message = format!("🆔 Biome ID: {}", biome_id);
+        let message = format!("🆔 Biome ID: {biome_id}");
 
         assert!(message.contains("biome-abc-123"));
     }
@@ -395,7 +395,7 @@ mod executor_impl_coverage_tests {
     fn test_success_message_formatting() {
         // Test success message formatting
         let biome_name = "my-biome";
-        let message = format!("✅ Biome '{}' started successfully", biome_name);
+        let message = format!("✅ Biome '{biome_name}' started successfully");
 
         assert!(message.contains("my-biome"));
         assert!(message.contains("started successfully"));
@@ -409,7 +409,7 @@ mod executor_impl_coverage_tests {
     fn test_duplicate_biome_error_message() {
         // Test duplicate biome error message
         let biome_name = "existing-biome";
-        let error_msg = format!("Biome '{}' is already running", biome_name);
+        let error_msg = format!("Biome '{biome_name}' is already running");
 
         assert!(error_msg.contains("existing-biome"));
         assert!(error_msg.contains("already running"));

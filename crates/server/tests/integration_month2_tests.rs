@@ -2,7 +2,7 @@
 //! Server integration tests
 //!
 //! Tier 1 tests: Coverage-measured integration tests
-//! Focus: WebSocket integration, background tasks, state synchronization
+//! Focus: `WebSocket` integration, background tasks, state synchronization
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -142,7 +142,7 @@ async fn test_server_state_consistency() {
     let mut handles = vec![];
     for i in 0..10 {
         let srv = Arc::clone(&server);
-        let handle = tokio::spawn(async move { srv.update_state(&format!("key-{}", i), i).await });
+        let handle = tokio::spawn(async move { srv.update_state(&format!("key-{i}"), i).await });
         handles.push(handle);
     }
 
@@ -152,7 +152,7 @@ async fn test_server_state_consistency() {
 
     // All updates should be present
     for i in 0..10 {
-        let value = server.get_state(&format!("key-{}", i)).await.unwrap();
+        let value = server.get_state(&format!("key-{i}")).await.unwrap();
         assert_eq!(value, i);
     }
 }

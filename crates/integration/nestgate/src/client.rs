@@ -214,6 +214,7 @@ impl StorageClient {
     /// Use for unit tests that exercise local logic (store_artifact, retrieve_artifact,
     /// checksum, content-type detection) without requiring a running NestGate server.
     #[doc(hidden)]
+    #[must_use]
     pub fn new_for_testing(config: NestGateConfig, service_name: String) -> Self {
         let socket_path =
             toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);

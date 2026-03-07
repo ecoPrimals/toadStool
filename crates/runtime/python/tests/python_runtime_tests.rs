@@ -212,7 +212,7 @@ fn test_python_runtime_engine_capabilities_version() {
 #[test]
 fn test_python_runtime_engine_debug_format() {
     let engine = PythonRuntimeEngine::new().unwrap();
-    let debug_str = format!("{:?}", engine);
+    let debug_str = format!("{engine:?}");
 
     assert!(debug_str.contains("PythonRuntimeEngine"));
 }
@@ -239,7 +239,7 @@ fn test_python_runtime_config_empty_interpreter() {
 
 #[test]
 fn test_python_runtime_config_many_requirements() {
-    let requirements: Vec<String> = (0..100).map(|i| format!("package{}", i)).collect();
+    let requirements: Vec<String> = (0..100).map(|i| format!("package{i}")).collect();
 
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),

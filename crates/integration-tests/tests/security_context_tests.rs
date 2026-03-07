@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security context validation tests
 //!
-//! Tests use the real SecurityContext API: isolation_level, capabilities
-//! (Capability enum), user_context, network_security, filesystem_security.
+//! Tests use the real `SecurityContext` API: `isolation_level`, capabilities
+//! (Capability enum), `user_context`, `network_security`, `filesystem_security`.
 
 use toadstool::{Capability, IsolationLevel, SecurityContext, SecuritySettings, ToadStoolResult};
 

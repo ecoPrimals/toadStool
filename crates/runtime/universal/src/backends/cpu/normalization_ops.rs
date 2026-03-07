@@ -161,7 +161,7 @@ mod tests {
         match execute_layernorm(w).unwrap() {
             WorkloadData::F32Vec(v) => {
                 let mean: f32 = v.iter().sum::<f32>() / v.len() as f32;
-                assert!(mean.abs() < 1e-5, "mean should be ~0, got {}", mean);
+                assert!(mean.abs() < 1e-5, "mean should be ~0, got {mean}");
                 // all equal spacing means first and last are negatives of each other
                 assert!(v[0] < 0.0);
                 assert!(v[2] > 0.0);
@@ -178,7 +178,7 @@ mod tests {
             WorkloadData::F32Vec(v) => {
                 assert_eq!(v.len(), 4);
                 // Row 0: [1,3] -> mean=2, each row normalized to ~[-1, 1]
-                let row0_mean = (v[0] + v[1]) / 2.0;
+                let row0_mean = f32::midpoint(v[0], v[1]);
                 assert!(row0_mean.abs() < 1e-5);
             }
             other => panic!("expected F32Vec, got {other:?}"),

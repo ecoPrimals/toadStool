@@ -174,8 +174,7 @@ async fn test_execution_timeouts() {
         let result = coordinator.submit_execution(request).await;
         assert!(
             result.is_ok(),
-            "Execution with timeout {} should succeed",
-            timeout_secs
+            "Execution with timeout {timeout_secs} should succeed"
         );
     }
 }

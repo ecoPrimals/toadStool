@@ -245,7 +245,7 @@ fn test_perform_health_check_http_commands() {
             start_period: 10,
         };
         let result = executor.perform_health_check("svc", &health);
-        assert!(result.unwrap(), "health check for {} should pass", cmd);
+        assert!(result.unwrap(), "health check for {cmd} should pass");
     }
 }
 

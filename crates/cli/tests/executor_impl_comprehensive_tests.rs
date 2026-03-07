@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI executor implementation
-//! Addresses zero-coverage file: cli/src/executor/executor_impl.rs (938 lines)
+//! Addresses zero-coverage file: `cli/src/executor/executor_impl.rs` (938 lines)
 
 use anyhow::Result;
 use std::collections::HashMap;
@@ -533,12 +533,12 @@ async fn test_concurrent_biome_operations() {
         .map(|i| {
             let exec = Arc::clone(&executor);
             tokio::spawn(async move {
-                let biome_name = format!("biome-{}", i);
+                let biome_name = format!("biome-{i}");
                 let mut biomes = exec.biomes.write().await;
                 biomes.insert(
                     biome_name.clone(),
                     MockBiomeInfo {
-                        id: format!("id-{}", i),
+                        id: format!("id-{i}"),
                         name: biome_name,
                         status: "running".to_string(),
                     },

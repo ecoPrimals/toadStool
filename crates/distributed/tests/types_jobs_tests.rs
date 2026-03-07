@@ -494,7 +494,7 @@ fn test_compatibility_mode_legacy() {
 
     match mode {
         CompatibilityMode::LegacyCompat { system_type } => {
-            assert_eq!(system_type, "custom-system")
+            assert_eq!(system_type, "custom-system");
         }
         _ => panic!("Expected LegacyCompat variant"),
     }

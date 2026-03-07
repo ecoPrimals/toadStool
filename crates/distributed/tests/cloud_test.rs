@@ -415,7 +415,7 @@ fn test_cloud_provider_debug_representation() {
     ];
 
     for provider in providers {
-        let debug_str = format!("{:?}", provider);
+        let debug_str = format!("{provider:?}");
         assert!(!debug_str.is_empty());
     }
 }
@@ -467,7 +467,7 @@ fn test_cloud_provider_debug_format() {
         region: "nyc1".to_string(),
     };
 
-    let debug_str = format!("{:?}", provider);
+    let debug_str = format!("{provider:?}");
     assert!(debug_str.contains("DigitalOcean"));
     // Note: Debug output may redact sensitive information
 }

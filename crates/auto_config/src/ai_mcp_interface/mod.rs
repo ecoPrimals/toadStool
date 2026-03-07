@@ -829,7 +829,7 @@ mod tests {
         let stats = interface.get_session_stats().await;
         let total = stats
             .get("total_requests")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
         assert!(total >= 1);
     }
@@ -868,7 +868,7 @@ mod tests {
         assert!(
             stats
                 .get("active_sessions")
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0)
                 >= 1
         );

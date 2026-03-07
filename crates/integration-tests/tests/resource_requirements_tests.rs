@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Unit tests for ResourceRequirements validation and management
+//! Unit tests for `ResourceRequirements` validation and management
 //!
-//! Tests use the real nested API: ResourceRequirements wraps CpuRequirements,
-//! MemoryRequirements, StorageRequirements, GpuRequirements, and NetworkRequirements.
+//! Tests use the real nested API: `ResourceRequirements` wraps `CpuRequirements`,
+//! `MemoryRequirements`, `StorageRequirements`, `GpuRequirements`, and `NetworkRequirements`.
 
 use toadstool::resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,

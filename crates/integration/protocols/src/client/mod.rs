@@ -325,7 +325,7 @@ mod tests {
             name: name.to_string(),
             version: "1.0.0".to_string(),
             endpoints: vec![ServiceEndpoint {
-                id: format!("{}-endpoint", id),
+                id: format!("{id}-endpoint"),
                 transport: TransportType::Http,
                 address: defaults::network::LOCALHOST.to_string(),
                 port: 9000,

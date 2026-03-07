@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! CLI Executor Implementation - Phase 2 Coverage Expansion
 //!
-//! Target: crates/cli/src/executor/executor_impl.rs (976 lines)
+//! Target: `crates/cli/src/executor/executor_impl.rs` (976 lines)
 //! Current Coverage: ~15-20% (38 tests)
 //! Phase 2 Target: 40-50%
 //!
@@ -210,7 +210,7 @@ fn test_service_start_multiple_instances() {
 
     let mut instances = Vec::new();
     for i in 0..instance_count {
-        instances.push(format!("{}-{}", service_name, i));
+        instances.push(format!("{service_name}-{i}"));
     }
 
     assert_eq!(instances.len(), 3);
@@ -352,7 +352,7 @@ fn test_logs_file_path_construction() {
 
     let biome_name = "my-biome";
     let service_name = "web-service";
-    let log_path = format!("/tmp/toadstool/logs/{}/{}.log", biome_name, service_name);
+    let log_path = format!("/tmp/toadstool/logs/{biome_name}/{service_name}.log");
 
     assert!(log_path.contains(biome_name));
     assert!(log_path.contains(service_name));
@@ -391,7 +391,7 @@ fn test_logs_multiple_services() {
     // Covers: Multi-service logs
 
     let services = vec!["web", "database", "cache"];
-    let log_files: Vec<_> = services.iter().map(|s| format!("{}.log", s)).collect();
+    let log_files: Vec<_> = services.iter().map(|s| format!("{s}.log")).collect();
 
     assert_eq!(log_files.len(), 3);
 }
@@ -487,7 +487,7 @@ fn test_primal_start_command_construction() {
 
     let primal_name = "songbird";
     let primal_port = 8080;
-    let command = format!("{} --port {}", primal_name, primal_port);
+    let command = format!("{primal_name} --port {primal_port}");
 
     assert!(command.contains(primal_name));
     assert!(command.contains("8080"));
@@ -499,7 +499,7 @@ fn test_primal_start_with_config() {
     // Covers: Config injection
 
     let config_file = "songbird.toml";
-    let command = format!("songbird --config {}", config_file);
+    let command = format!("songbird --config {config_file}");
 
     assert!(command.contains("--config"));
     assert!(command.contains(config_file));

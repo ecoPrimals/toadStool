@@ -393,7 +393,7 @@ mod monitoring_logic_tests {
             let m = Arc::clone(&metrics);
             let handle = tokio::spawn(async move {
                 let mut metrics_map = m.write().await;
-                metrics_map.insert(format!("metric-{i}"), i as f64);
+                metrics_map.insert(format!("metric-{i}"), f64::from(i));
             });
             handles.push(handle);
         }

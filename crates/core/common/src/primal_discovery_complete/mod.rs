@@ -121,6 +121,10 @@ impl DiscoveryConfig {
     /// Each capability URL is resolved from env vars, falling back to
     /// `{bind_host}:{port}` using `toadstool_config::ports::capability_fallback`.
     fn default_fallbacks() -> HashMap<String, String> {
+        const COORDINATION_PORT: u16 = 8080;
+        const SECURITY_PORT: u16 = 8081;
+        const STORAGE_PORT: u16 = 8082;
+
         let dev_mode = std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
             || std::env::var("TOADSTOOL_ENV").is_ok_and(|e| e == "development");
 
@@ -131,12 +135,6 @@ impl DiscoveryConfig {
         let bind_host = std::env::var("TOADSTOOL_BIND_HOST")
             .or_else(|_| std::env::var("BIND_HOST"))
             .unwrap_or_else(|_| crate::constants::network::DEFAULT_HOSTNAME.to_string());
-
-        // (capability_env, legacy_env, fallback_port, capability_keys)
-        // Ports mirror toadstool_config::ports::capability_fallback — keep in sync.
-        const COORDINATION_PORT: u16 = 8080;
-        const SECURITY_PORT: u16 = 8081;
-        const STORAGE_PORT: u16 = 8082;
 
         let specs: &[(&str, &str, u16, &[&str])] = &[
             (

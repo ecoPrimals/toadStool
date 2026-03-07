@@ -404,14 +404,14 @@ mod tests {
         let now = std::time::SystemTime::now();
         let mut history = VecDeque::new();
         for i in 0..12 {
-            let dur = (i as f64 + 1.0) * 0.5; // 0.5, 1.0, 1.5, ..., 6.0
+            let dur = (f64::from(i) + 1.0) * 0.5; // 0.5, 1.0, 1.5, ..., 6.0
             history.push_back(make_performance_metrics(
                 &format!("e{i}"),
                 RuntimeType::Native,
                 now,
                 dur,
                 (100 + i as u64) * 1024 * 1024,
-                30.0 + i as f64,
+                30.0 + f64::from(i),
                 true,
             ));
         }
@@ -454,7 +454,7 @@ mod tests {
                 &format!("native_{i}"),
                 RuntimeType::Native,
                 now,
-                1.0 + i as f64 * 0.1,
+                1.0 + f64::from(i) * 0.1,
                 100 * 1024 * 1024,
                 40.0,
                 true,
@@ -465,7 +465,7 @@ mod tests {
                 &format!("wasm_{i}"),
                 RuntimeType::Wasm,
                 now,
-                0.5 + i as f64 * 0.05,
+                0.5 + f64::from(i) * 0.05,
                 64 * 1024 * 1024,
                 25.0,
                 true,

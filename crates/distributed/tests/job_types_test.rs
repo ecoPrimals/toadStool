@@ -268,7 +268,7 @@ fn test_job_queue_multiple_instances() {
 fn test_job_queue_debug_format() {
     // Test debug formatting
     let queue = UniversalJobQueue::new();
-    let debug_str = format!("{:?}", queue);
+    let debug_str = format!("{queue:?}");
 
     assert!(
         debug_str.contains("UniversalJobQueue"),

@@ -2,17 +2,17 @@
 //! Comprehensive tests for cloud scheduling and deployment strategies
 //!
 //! This test suite covers:
-//! - HybridSchedulingStrategy enum
-//! - CloudLoadBalancingStrategy enum  
-//! - DeploymentStrategy enum
-//! - DistributionStrategy enum
-//! - NetworkingFeature enum
-//! - SecurityFeature enum
-//! - TopologyType enum
-//! - ConnectionStatus enum
-//! - ReplicaStatus enum
-//! - TrustLevel enum
-//! - ConsistencyLevel enum
+//! - `HybridSchedulingStrategy` enum
+//! - `CloudLoadBalancingStrategy` enum  
+//! - `DeploymentStrategy` enum
+//! - `DistributionStrategy` enum
+//! - `NetworkingFeature` enum
+//! - `SecurityFeature` enum
+//! - `TopologyType` enum
+//! - `ConnectionStatus` enum
+//! - `ReplicaStatus` enum
+//! - `TrustLevel` enum
+//! - `ConsistencyLevel` enum
 
 use std::collections::HashMap;
 use toadstool_distributed::cloud::*;

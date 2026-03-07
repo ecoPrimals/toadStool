@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Background task health check logic tests.
 //!
-//! Tests perform_health_check() logic with various conditions.
+//! Tests `perform_health_check()` logic with various conditions.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -342,7 +342,7 @@ async fn test_active_executions_tracking() {
                     timeout: Duration::from_secs(300),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
-                        ip_address: Some(format!("192.168.1.{}", i)),
+                        ip_address: Some(format!("192.168.1.{i}")),
                         user_agent: None,
                         api_key: None,
                         authenticated_user: None,

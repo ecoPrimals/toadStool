@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for template generator
 //!
-//! Goal: Push generator_impl.rs coverage from 1.43% to 50%+
+//! Goal: Push `generator_impl.rs` coverage from 1.43% to 50%+
 
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -73,8 +73,7 @@ fn test_list_templates_all_have_descriptions() {
         assert!(!description.is_empty(), "Description should not be empty");
         assert!(
             description.len() > 10,
-            "Description should be meaningful for {}",
-            name
+            "Description should be meaningful for {name}"
         );
     }
 }
@@ -380,8 +379,7 @@ fn test_all_listed_templates_are_parseable() {
         let result = TemplateGenerator::parse_template(&name);
         assert!(
             result.is_ok(),
-            "Listed template '{}' should be parseable",
-            name
+            "Listed template '{name}' should be parseable"
         );
     }
 }

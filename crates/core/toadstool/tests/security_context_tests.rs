@@ -2,7 +2,7 @@
 //! Comprehensive tests for Security Context and Policies
 //!
 //! Week 17 Sprint: Security module expansion (12% → 30%)
-//! Focus: SecurityContext, Capability, IsolationLevel, NetworkSecurity, FilesystemSecurity
+//! Focus: `SecurityContext`, Capability, `IsolationLevel`, `NetworkSecurity`, `FilesystemSecurity`
 
 use toadstool::security::*;
 
@@ -94,7 +94,7 @@ fn test_security_context_clone() {
 #[test]
 fn test_security_context_debug() {
     let context = SecurityContext::default();
-    let debug_str = format!("{:?}", context);
+    let debug_str = format!("{context:?}");
     assert!(debug_str.contains("SecurityContext"));
 }
 
@@ -225,7 +225,7 @@ fn test_isolation_level_clone() {
 #[test]
 fn test_isolation_level_debug() {
     let level = IsolationLevel::Enhanced;
-    let debug_str = format!("{:?}", level);
+    let debug_str = format!("{level:?}");
     assert!(debug_str.contains("Enhanced"));
 }
 
@@ -319,7 +319,7 @@ fn test_capability_clone() {
 #[test]
 fn test_capability_debug() {
     let cap = Capability::ProcessManagement;
-    let debug_str = format!("{:?}", cap);
+    let debug_str = format!("{cap:?}");
     assert!(debug_str.contains("ProcessManagement"));
 }
 
@@ -400,7 +400,7 @@ fn test_user_context_debug() {
         groups: vec![],
     };
 
-    let debug_str = format!("{:?}", user);
+    let debug_str = format!("{user:?}");
     assert!(debug_str.contains("UserContext"));
 }
 
@@ -479,7 +479,7 @@ fn test_network_security_clone() {
 #[test]
 fn test_network_security_debug() {
     let net = NetworkSecurity::default();
-    let debug_str = format!("{:?}", net);
+    let debug_str = format!("{net:?}");
     assert!(debug_str.contains("NetworkSecurity"));
 }
 
@@ -539,7 +539,7 @@ fn test_filesystem_security_clone() {
 #[test]
 fn test_filesystem_security_debug() {
     let fs = FilesystemSecurity::default();
-    let debug_str = format!("{:?}", fs);
+    let debug_str = format!("{fs:?}");
     assert!(debug_str.contains("FilesystemSecurity"));
 }
 

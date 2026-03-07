@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! State management tests for BiomeExecutor
+//! State management tests for `BiomeExecutor`
 //!
 //! Tests cover:
 //! - State transitions and validation
@@ -78,8 +78,7 @@ mod state_management_tests {
                 (from_state, to_state),
                 ("stopped", "starting")
                     | ("starting", "running")
-                    | ("running", "pausing")
-                    | ("running", "stopping")
+                    | ("running", "pausing" | "stopping")
             );
 
             // The invalid ones should not match valid patterns
@@ -203,16 +202,12 @@ mod state_management_tests {
     fn is_valid_transition(from: &str, to: &str) -> bool {
         matches!(
             (from, to),
-            ("stopped", "starting")
-                | ("starting", "running")
-                | ("running", "pausing")
+            ("stopped" | "restarting", "starting")
+                | ("starting" | "resuming", "running")
+                | ("running", "pausing" | "stopping" | "restarting")
                 | ("pausing", "paused")
                 | ("paused", "resuming")
-                | ("resuming", "running")
-                | ("running", "stopping")
                 | ("stopping", "stopped")
-                | ("running", "restarting")
-                | ("restarting", "starting")
                 | (_, "error") // Any state can transition to error
         )
     }

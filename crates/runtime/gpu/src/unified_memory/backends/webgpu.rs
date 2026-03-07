@@ -282,7 +282,7 @@ mod tests {
     async fn test_webgpu_availability() {
         // Just check if we can detect WebGPU
         let available = WebGpuBackend::is_available();
-        println!("WebGPU available: {}", available);
+        println!("WebGPU available: {available}");
 
         // This test passes regardless of availability
         // (system may not have WebGPU support)
@@ -309,7 +309,7 @@ mod tests {
                 );
             }
             Err(e) => {
-                println!("⚠️  WebGPU not available: {}", e);
+                println!("⚠️  WebGPU not available: {e}");
                 // Not a failure - system may not support WebGPU
             }
         }

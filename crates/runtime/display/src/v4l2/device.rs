@@ -542,7 +542,7 @@ mod tests {
             driver: "uvcvideo".to_string(),
             card: "Integrated Camera".to_string(),
             bus_info: "usb-0000:00:14.0-1".to_string(),
-            capabilities: 0x85200001,
+            capabilities: 0x85_20_00_01,
         };
         assert_eq!(cap.driver, "uvcvideo");
         assert_eq!(cap.card, "Integrated Camera");
@@ -554,9 +554,9 @@ mod tests {
         let fmt = CaptureFormat {
             width: 1920,
             height: 1080,
-            fourcc: 0x56595559, // VYUY
-            bytes_per_line: 3840,
-            image_size: 4147200,
+            fourcc: 0x56_59_55_59, // VYUY
+            bytes_per_line: 3_840,
+            image_size: 4_147_200,
         };
         assert_eq!(fmt.width, 1920);
         assert_eq!(fmt.height, 1080);
@@ -569,9 +569,9 @@ mod tests {
         let fmt1 = CaptureFormat {
             width: 640,
             height: 480,
-            fourcc: 0x32315659,
-            bytes_per_line: 1280,
-            image_size: 614400,
+            fourcc: 0x32_31_56_59,
+            bytes_per_line: 1_280,
+            image_size: 614_400,
         };
         let fmt2 = fmt1;
         assert_eq!(fmt1, fmt2);
@@ -582,7 +582,7 @@ mod tests {
         let result = CaptureDevice::open("/dev/nonexistent-video-99999");
         assert!(result.is_err());
         if let Err(e) = result {
-            let s = format!("{:?}", e);
+            let s = format!("{e:?}");
             assert!(s.contains("NotFound") || s.contains("Device") || s.contains("path"));
         }
     }

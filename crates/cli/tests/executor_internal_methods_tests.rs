@@ -6,7 +6,7 @@
 //!
 //! ## Focus
 //! - Internal helper methods
-//! - State management (biomes HashMap)
+//! - State management (biomes `HashMap`)
 //! - Service lifecycle
 //! - Error recovery
 //!
@@ -93,7 +93,7 @@ async fn create_manifest_file(name: &str, content: &str) -> Result<PathBuf> {
 
     let temp_dir = std::env::temp_dir();
     let unique_id = Uuid::new_v4();
-    let path = temp_dir.join(format!("manifest-{}-{}.toml", name, unique_id));
+    let path = temp_dir.join(format!("manifest-{name}-{unique_id}.toml"));
 
     tokio::fs::write(&path, content).await?;
     Ok(path)
@@ -153,8 +153,7 @@ async fn test_manifest_with_all_fields() {
         let msg = e.to_string();
         assert!(
             !msg.contains("invalid") || !msg.contains("validation"),
-            "Should not fail validation: {}",
-            msg
+            "Should not fail validation: {msg}"
         );
     }
 }
@@ -194,8 +193,7 @@ async fn test_manifest_with_minimal_fields() {
         let msg = e.to_string();
         assert!(
             !msg.contains("missing") || !msg.contains("required"),
-            "Minimal manifest should be valid: {}",
-            msg
+            "Minimal manifest should be valid: {msg}"
         );
     }
 }
@@ -302,7 +300,7 @@ async fn test_concurrent_different_biome_operations() {
         let b = Arc::clone(&barrier);
         handles.push(tokio::spawn(async move {
             b.wait().await;
-            exec.down_biome(format!("biome-{}", i), false, 30, false)
+            exec.down_biome(format!("biome-{i}"), false, 30, false)
                 .await
         }));
     }
@@ -383,14 +381,14 @@ async fn test_resource_limit_combinations() {
             let exec = Arc::clone(&executor);
 
             tokio::spawn(async move {
-                let manifest_path = create_manifest_file(&format!("res-{}", i), manifest_content)
+                let manifest_path = create_manifest_file(&format!("res-{i}"), manifest_content)
                     .await
                     .map_err(|e| CliError::Other(e.to_string()))?;
 
                 let ctx = create_test_context();
                 let opts = RunBiomeOptions {
                     manifest_path: manifest_path.clone(),
-                    name: Some(format!("biome-res-{}", i)),
+                    name: Some(format!("biome-res-{i}")),
                     env: vec![],
                     debug: false,
                     cpu_limit: cpu,
@@ -443,7 +441,7 @@ async fn test_show_logs_all_parameter_combinations() {
 
             tokio::spawn(async move {
                 exec.show_logs(
-                    format!("biome-{}", i).as_str(),
+                    format!("biome-{i}").as_str(),
                     follow,
                     lines,
                     timestamps,
@@ -481,10 +479,10 @@ async fn test_property_executor_methods_never_panic() {
                 // Mix of all operations with random parameters
                 let _ = exec.list_biomes(i % 2 == 0, "table", false, None).await;
                 let _ = exec
-                    .down_biome(format!("biome-{}", i).as_str(), i % 2 == 0, 30, false)
+                    .down_biome(format!("biome-{i}").as_str(), i % 2 == 0, 30, false)
                     .await;
                 let _ = exec
-                    .show_logs(format!("log-{}", i).as_str(), false, 50, false, None, None)
+                    .show_logs(format!("log-{i}").as_str(), false, 50, false, None, None)
                     .await;
 
                 Ok::<(), anyhow::Error>(())
@@ -564,7 +562,7 @@ async fn test_up_biome_detach_mode_variations() {
 
             tokio::spawn(async move {
                 let manifest_path =
-                    create_manifest_file(&format!("detach-{}", detach), manifest_content)
+                    create_manifest_file(&format!("detach-{detach}"), manifest_content)
                         .await
                         .map_err(|e| CliError::Other(e.to_string()))?;
 
@@ -572,7 +570,7 @@ async fn test_up_biome_detach_mode_variations() {
                 let opts = UpBiomeOptions {
                     manifest_path: manifest_path.clone(),
                     detach,
-                    name: Some(format!("biome-detach-{}", detach)),
+                    name: Some(format!("biome-detach-{detach}")),
                     env: vec![],
                     restart: false,
                     health_interval: 30,
@@ -614,7 +612,7 @@ async fn test_up_biome_different_health_intervals() {
 
             tokio::spawn(async move {
                 let manifest_path =
-                    create_manifest_file(&format!("health-{}", interval), manifest_content)
+                    create_manifest_file(&format!("health-{interval}"), manifest_content)
                         .await
                         .map_err(|e| CliError::Other(e.to_string()))?;
 
@@ -622,7 +620,7 @@ async fn test_up_biome_different_health_intervals() {
                 let opts = UpBiomeOptions {
                     manifest_path: manifest_path.clone(),
                     detach: false,
-                    name: Some(format!("health-{}", interval)),
+                    name: Some(format!("health-{interval}")),
                     env: vec![],
                     restart: false,
                     health_interval: interval,
@@ -687,8 +685,7 @@ async fn test_error_messages_are_descriptive() {
         err_msg.contains("nonexistent")
             || err_msg.contains("not running")
             || err_msg.contains("not found"),
-        "Error message should be descriptive: {}",
-        err_msg
+        "Error message should be descriptive: {err_msg}"
     );
 }
 
@@ -704,8 +701,7 @@ async fn test_down_biome_error_includes_biome_name() {
     let err_msg = result.unwrap_err().to_string();
     assert!(
         err_msg.contains(biome_name),
-        "Error should include biome name: {}",
-        err_msg
+        "Error should include biome name: {err_msg}"
     );
 }
 
@@ -825,10 +821,10 @@ async fn test_stress_executor_creation_and_operations() {
 
                 // Perform operations
                 exec.list_biomes(false, "table", false, None).await?;
-                exec.down_biome(format!("test-{}", i), false, 30, false)
+                exec.down_biome(format!("test-{i}"), false, 30, false)
                     .await
                     .ok();
-                exec.show_logs(format!("log-{}", i).as_str(), false, 50, false, None, None)
+                exec.show_logs(format!("log-{i}").as_str(), false, 50, false, None, None)
                     .await
                     .ok();
 

@@ -85,7 +85,7 @@ async fn test_optimization_error_estimation_failed_empty_graph() {
         OptimizationError::EstimationFailed(e) => {
             assert!(e.to_string().contains("empty") || e.to_string().contains("Invalid"));
         }
-        _ => panic!("expected EstimationFailed, got {:?}", err),
+        _ => panic!("expected EstimationFailed, got {err:?}"),
     }
 }
 
@@ -455,8 +455,8 @@ fn test_rank_by_priority() {
             opportunity_type: OpportunityType::Caching,
             affected_nodes: vec!["a".into()],
             benefit: 0.4,
-            description: "".into(),
-            recommendation: "".into(),
+            description: String::new(),
+            recommendation: String::new(),
             time_savings_secs: 20,
             resource_savings: HashMap::new(),
         },
@@ -464,8 +464,8 @@ fn test_rank_by_priority() {
             opportunity_type: OpportunityType::GpuAcceleration,
             affected_nodes: vec!["b".into()],
             benefit: 0.8,
-            description: "".into(),
-            recommendation: "".into(),
+            description: String::new(),
+            recommendation: String::new(),
             time_savings_secs: 60,
             resource_savings: HashMap::new(),
         },
@@ -474,5 +474,5 @@ fn test_rank_by_priority() {
     let ranked = rank_by_priority(&opportunities);
     assert_eq!(ranked.len(), 2);
     // Higher benefit * time_savings should rank first
-    assert!(ranked[0].contains("GpuAcceleration") || ranked[0].contains("b"));
+    assert!(ranked[0].contains("GpuAcceleration") || ranked[0].contains('b'));
 }

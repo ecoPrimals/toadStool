@@ -95,11 +95,9 @@ async fn main() -> Result<()> {
             println!("   ✅ Ensemble inference complete!");
             println!("\n   Results:");
             println!("      State size: {} dimensions", ensemble_state.len());
-            println!(
-                "      Latency: {:?} ({:.2} µs)",
-                elapsed,
-                elapsed.as_micros() as f64
-            );
+            #[allow(clippy::cast_precision_loss)] // u128 µs fits comfortably in f64
+            let micros = elapsed.as_micros() as f64;
+            println!("      Latency: {elapsed:?} ({micros:.2} µs)");
 
             // Expected: ~100-150µs for dual-chip parallel inference
             if elapsed.as_micros() < 500 {
@@ -118,10 +116,9 @@ async fn main() -> Result<()> {
             println!("      Concatenation:     ~1-10µs");
             println!("      ────────────────────────────");
             println!("      Total expected:    ~100-150µs");
-            println!(
-                "      Actual measured:   {:.2}µs",
-                elapsed.as_micros() as f64
-            );
+            #[allow(clippy::cast_precision_loss)] // u128 µs fits comfortably in f64
+            let micros = elapsed.as_micros() as f64;
+            println!("      Actual measured:   {micros:.2}µs");
 
             println!("\n✅ EXPERIMENT SUCCESS!");
             println!("   - Dual-chip ensemble is working");

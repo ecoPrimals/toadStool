@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Tests for zero_config module
+//! Tests for `zero_config` module
 //!
-//! This module provides comprehensive test coverage for the zero_config module's
+//! This module provides comprehensive test coverage for the `zero_config` module's
 //! core data structures. These tests verify basic functionality including
 //! struct creation, serialization, and deserialization.
 
@@ -87,9 +87,9 @@ mod cpu_info_tests {
             vendor: "TestVendor".to_string(),
         };
 
-        let debug_str = format!("{:?}", cpu);
+        let debug_str = format!("{cpu:?}");
         assert!(debug_str.contains("CpuInfo"));
-        assert!(debug_str.contains("8"));
+        assert!(debug_str.contains('8'));
         assert!(debug_str.contains("x86_64"));
     }
 }

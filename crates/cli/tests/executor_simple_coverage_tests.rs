@@ -296,7 +296,7 @@ fn test_tracing_spans() {
 fn test_string_formatting() {
     let biome_name = "test-biome";
     let version = "1.0.0";
-    let formatted = format!("Biome: {} v{}", biome_name, version);
+    let formatted = format!("Biome: {biome_name} v{version}");
 
     assert!(formatted.contains("test-biome"));
     assert!(formatted.contains("1.0.0"));

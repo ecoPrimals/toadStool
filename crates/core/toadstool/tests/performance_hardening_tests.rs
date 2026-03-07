@@ -470,7 +470,7 @@ async fn test_intelligent_cache_put_multiple() {
     let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
 
     for i in 0..10 {
-        let key = format!("key-{}", i);
+        let key = format!("key-{i}");
         cache.put(key, i).await.expect("Should insert");
     }
 

@@ -122,7 +122,7 @@ mod tests {
     fn make_peer(status: FederationStatus, trust: TrustLevel) -> FederationPeer {
         FederationPeer {
             peer_id: Uuid::new_v4(),
-            endpoint: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9001),
+            endpoint: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9001),
             capabilities: vec![Arc::from("compute"), Arc::from("storage")],
             shared_resources: vec![Arc::from("cpu")],
             status,

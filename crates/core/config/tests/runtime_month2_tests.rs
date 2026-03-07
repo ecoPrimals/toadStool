@@ -25,7 +25,7 @@ fn test_runtime_defaults_worker_threads() {
     assert!(
         config.worker_threads
             <= std::thread::available_parallelism()
-                .map(|p| p.get())
+                .map(std::num::NonZero::get)
                 .unwrap_or(1)
                 * 2
     );
@@ -270,7 +270,7 @@ impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
             worker_threads: std::thread::available_parallelism()
-                .map(|p| p.get())
+                .map(std::num::NonZero::get)
                 .unwrap_or(1),
             max_memory_mb: 4096,
             default_timeout_secs: 60,

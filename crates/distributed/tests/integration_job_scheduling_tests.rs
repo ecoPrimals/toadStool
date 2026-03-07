@@ -39,7 +39,7 @@ async fn test_multiple_workloads_can_be_queued() {
     // Save all workloads to queue directory
     for (i, workload) in workloads.iter().enumerate() {
         std::fs::write(
-            env.data_dir.join(format!("job_{}.json", i)),
+            env.data_dir.join(format!("job_{i}.json")),
             serde_json::to_string_pretty(&workload).unwrap(),
         )
         .unwrap();
@@ -120,7 +120,7 @@ async fn test_concurrent_job_scheduling() {
 
     for (name, workload) in jobs {
         std::fs::write(
-            env.data_dir.join(format!("{}.json", name)),
+            env.data_dir.join(format!("{name}.json")),
             serde_json::to_string_pretty(&workload).unwrap(),
         )
         .unwrap();
@@ -169,12 +169,12 @@ async fn test_batch_job_scheduling() {
     // Create a batch of similar jobs
     for i in 0..10 {
         let workload = TestWorkloadBuilder::wasm()
-            .with_entry_point(format!("batch_job_{}", i))
+            .with_entry_point(format!("batch_job_{i}"))
             .with_resources(1.0, 512)
             .build();
 
         std::fs::write(
-            env.data_dir.join(format!("batch_{}.json", i)),
+            env.data_dir.join(format!("batch_{i}.json")),
             serde_json::to_string_pretty(&workload).unwrap(),
         )
         .unwrap();
@@ -182,6 +182,6 @@ async fn test_batch_job_scheduling() {
 
     // Verify all batch jobs are created
     for i in 0..10 {
-        assert!(env.data_dir.join(format!("batch_{}.json", i)).exists());
+        assert!(env.data_dir.join(format!("batch_{i}.json")).exists());
     }
 }

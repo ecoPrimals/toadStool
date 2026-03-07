@@ -10,7 +10,7 @@ use akida_driver::{
 
 /// Test that both backends discover the same capabilities
 #[test]
-#[ignore] // Requires actual Akida hardware
+#[ignore = "requires Akida hardware"]
 fn test_backend_capability_parity() {
     // Initialize both backends
     let kernel = KernelBackend::init("/dev/akida0").expect("Failed to init kernel backend");
@@ -37,7 +37,7 @@ fn test_backend_capability_parity() {
 
 /// Test that both backends produce identical inference results
 #[test]
-#[ignore] // Requires actual Akida hardware and model
+#[ignore = "requires Akida hardware"]
 fn test_backend_inference_parity() {
     // Create a simple test pattern (not a real model)
     let model_data = vec![0u8; 1024]; // Placeholder for model data
@@ -134,7 +134,7 @@ fn test_kernel_missing_device() {
 
 /// Test reservoir computing with both backends
 #[test]
-#[ignore] // Requires actual Akida hardware
+#[ignore = "requires Akida hardware"]
 fn test_reservoir_parity() {
     // Create small test reservoir (flattened arrays)
     let w_in = vec![1.0f32; 100 * 784];

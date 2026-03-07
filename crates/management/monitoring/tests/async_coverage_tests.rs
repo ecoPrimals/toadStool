@@ -237,7 +237,7 @@ async fn test_with_config_submillisecond() {
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
-    let _ = format!("{:?}", monitor);
+    let _ = format!("{monitor:?}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -251,7 +251,7 @@ async fn test_with_config_millisecond() {
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
-    let _ = format!("{:?}", monitor);
+    let _ = format!("{monitor:?}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -265,7 +265,7 @@ async fn test_with_config_high_frequency() {
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
-    let _ = format!("{:?}", monitor);
+    let _ = format!("{monitor:?}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -279,7 +279,7 @@ async fn test_with_config_custom_granularity() {
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
-    let _ = format!("{:?}", monitor);
+    let _ = format!("{monitor:?}");
 }
 
 #[test]
@@ -300,9 +300,9 @@ fn test_threshold_action_variants() {
     let alert = ThresholdAction::Alert;
     let terminate = ThresholdAction::Terminate;
 
-    assert!(format!("{:?}", log).contains("Log"));
-    assert!(format!("{:?}", alert).contains("Alert"));
-    assert!(format!("{:?}", terminate).contains("Terminate"));
+    assert!(format!("{log:?}").contains("Log"));
+    assert!(format!("{alert:?}").contains("Alert"));
+    assert!(format!("{terminate:?}").contains("Terminate"));
 }
 
 // ============================================================================

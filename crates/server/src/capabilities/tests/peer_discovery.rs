@@ -158,8 +158,7 @@ async fn test_find_peer_with_nonexistent_discovery_dir() {
         err.contains("Failed to read discovery directory")
             || err.contains("No such file")
             || err.contains("not found"),
-        "Expected dir-read error, got: {}",
-        err
+        "Expected dir-read error, got: {err}"
     );
 }
 
@@ -185,8 +184,7 @@ async fn test_find_all_peers_nonexistent_discovery_dir() {
         err.contains("Failed to read discovery directory")
             || err.contains("No such file")
             || err.contains("not found"),
-        "Expected dir-read error, got: {}",
-        err
+        "Expected dir-read error, got: {err}"
     );
 }
 

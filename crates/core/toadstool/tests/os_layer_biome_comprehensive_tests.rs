@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for os_layer/biome.rs module
+//! Comprehensive tests for `os_layer/biome.rs` module
 //!
 //! Sprint 21: BiomeOS Integration Tests
 //! Target: 0% → 70% coverage (~50 tests)
@@ -89,7 +89,7 @@ fn test_biome_os_config_clone() {
 #[test]
 fn test_biome_os_config_debug() {
     let config = BiomeOSConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("BiomeOSConfig"));
     assert!(debug_str.contains("enabled"));
@@ -220,11 +220,11 @@ fn test_deployment_status_clone() {
 #[test]
 fn test_deployment_status_debug() {
     let status = BiomeDeploymentStatus::Pending;
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
     assert!(debug_str.contains("Pending"));
 
     let failed_status = BiomeDeploymentStatus::Failed("Error".to_string());
-    let failed_debug = format!("{:?}", failed_status);
+    let failed_debug = format!("{failed_status:?}");
     assert!(failed_debug.contains("Failed"));
     assert!(failed_debug.contains("Error"));
 }
@@ -356,7 +356,7 @@ fn test_biome_deployment_debug() {
         updated_at: now,
     };
 
-    let debug_str = format!("{:?}", deployment);
+    let debug_str = format!("{deployment:?}");
     assert!(debug_str.contains("BiomeDeployment"));
     assert!(debug_str.contains("deploy-123"));
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for CLI library functions
 //! Target: crates/cli/src/lib.rs (0% coverage → 100%)
-//! Focus: load_biome_manifest(), validate_manifest(), CliContext
+//! Focus: `load_biome_manifest()`, `validate_manifest()`, `CliContext`
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -257,10 +257,10 @@ async fn test_load_biome_manifest_missing_required_fields() {
     let manifest_path = temp_dir.path().join("incomplete.yaml");
 
     // Missing required fields
-    let yaml_content = r#"
+    let yaml_content = r"
 metadata:
   name: incomplete
-"#;
+";
 
     fs::write(&manifest_path, yaml_content).await.unwrap();
 

@@ -62,13 +62,10 @@ async fn test_orchestration_client_service_discovery() {
 
     let result = client.discover_service_discovery().await;
 
-    match result {
-        Ok(endpoint) => {
-            assert!(endpoint.contains("http"));
-        }
-        Err(_) => {
-            // Expected when service not running
-        }
+    if let Ok(endpoint) = result {
+        assert!(endpoint.contains("http"));
+    } else {
+        // Expected when service not running
     }
 
     std::env::remove_var("SONGBIRD_ENDPOINT");
@@ -82,13 +79,10 @@ async fn test_orchestration_client_load_balancing() {
 
     let result = client.discover_load_balancing().await;
 
-    match result {
-        Ok(endpoint) => {
-            assert!(endpoint.contains("http"));
-        }
-        Err(_) => {
-            // Expected when service not running
-        }
+    if let Ok(endpoint) = result {
+        assert!(endpoint.contains("http"));
+    } else {
+        // Expected when service not running
     }
 
     std::env::remove_var("SONGBIRD_ENDPOINT");
@@ -121,7 +115,7 @@ async fn test_concurrent_discovery_calls() {
         let handle = tokio::spawn(async move {
             let _permit = permit;
 
-            std::env::set_var("SONGBIRD_ENDPOINT", format!("http://service-{}:8082", i));
+            std::env::set_var("SONGBIRD_ENDPOINT", format!("http://service-{i}:8082"));
             let _ = discover_orchestration().await;
             std::env::remove_var("SONGBIRD_ENDPOINT");
         });
@@ -161,7 +155,7 @@ fn test_orchestration_client_size() {
     let size = mem::size_of::<OrchestrationClient>();
 
     // Should be reasonably sized (not storing large data)
-    assert!(size < 1024, "Client size too large: {} bytes", size);
+    assert!(size < 1024, "Client size too large: {size} bytes");
 }
 
 #[tokio::test]

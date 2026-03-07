@@ -270,8 +270,7 @@ fn test_estimator_cyclic_graph_error() {
     assert!(
         matches!(err, EstimationError::CyclicGraph)
             || matches!(err, EstimationError::InvalidGraph(_)),
-        "expected cycle-related error, got: {}",
-        err
+        "expected cycle-related error, got: {err}"
     );
 }
 
@@ -285,8 +284,8 @@ fn test_graph_validation_error_invalid_edge_display() {
         reason: "invalid connection".to_string(),
     };
     let msg = err.to_string();
-    assert!(msg.contains("a"));
-    assert!(msg.contains("b"));
+    assert!(msg.contains('a'));
+    assert!(msg.contains('b'));
     assert!(msg.contains("invalid"));
 }
 

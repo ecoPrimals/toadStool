@@ -251,6 +251,7 @@ fn test_env_config_get_f64_default() {
 }
 
 #[test]
+#[allow(clippy::float_cmp)] // comparing against exact literal initialization
 fn test_env_config_get_f64_zero() {
     let loader = EnvConfigLoader::new();
     let value = loader.get_f64("NONEXISTENT_F64", 0.0);
@@ -320,7 +321,7 @@ fn test_env_config_get_duration_invalid_returns_default() {
 #[test]
 fn test_env_config_get_socket_addr_default() {
     let loader = EnvConfigLoader::new();
-    let default = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    let default = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
     let value = loader.get_socket_addr("NONEXISTENT_ADDR", default);
     assert_eq!(value, default);
 }
@@ -340,7 +341,7 @@ fn test_env_config_get_socket_addr_with_env() {
     let loader = EnvConfigLoader::new();
     let default = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
     let value = loader.get_socket_addr("TEST_ADDR", default);
-    assert_eq!(value.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+    assert_eq!(value.ip(), IpAddr::V4(Ipv4Addr::UNSPECIFIED));
     assert_eq!(value.port(), 9000);
     std::env::remove_var("TOADSTOOL_TEST_ADDR");
 }

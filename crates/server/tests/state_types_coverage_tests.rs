@@ -62,7 +62,7 @@ fn test_server_statistics_clone() {
 fn test_server_statistics_debug() {
     // Test Debug implementation
     let stats = ServerStatistics::default();
-    let debug_str = format!("{:?}", stats);
+    let debug_str = format!("{stats:?}");
 
     assert!(debug_str.contains("ServerStatistics"));
     assert!(debug_str.contains("total_executions"));
@@ -124,7 +124,7 @@ fn test_client_info_debug() {
         authenticated_user: None,
     };
 
-    let debug_str = format!("{:?}", client);
+    let debug_str = format!("{client:?}");
     assert!(debug_str.contains("ClientInfo"));
 }
 
@@ -212,7 +212,7 @@ fn test_server_event_execution_started() {
     };
 
     // Test Debug implementation
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("ExecutionStarted"));
     assert!(debug_str.contains("execution_id"));
 }
@@ -226,7 +226,7 @@ fn test_server_event_execution_completed() {
         timestamp: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("ExecutionCompleted"));
     assert!(debug_str.contains("duration_ms"));
 }
@@ -238,7 +238,7 @@ fn test_server_event_runtime_engine_registered() {
         timestamp: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("RuntimeEngineRegistered"));
 }
 
@@ -251,7 +251,7 @@ fn test_server_event_resource_usage_update() {
         timestamp: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("ResourceUsageUpdate"));
     assert!(debug_str.contains("cpu_usage_percent"));
 }
@@ -264,7 +264,7 @@ fn test_server_event_health_status_changed() {
         timestamp: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("HealthStatusChanged"));
 }
 
@@ -277,7 +277,7 @@ fn test_server_event_error_occurred() {
         timestamp: SystemTime::now(),
     };
 
-    let debug_str = format!("{:?}", event);
+    let debug_str = format!("{event:?}");
     assert!(debug_str.contains("ErrorOccurred"));
     assert!(debug_str.contains("error_type"));
 }
@@ -291,8 +291,8 @@ fn test_server_event_clone() {
     };
 
     let event2 = event1.clone();
-    let debug1 = format!("{:?}", event1);
-    let debug2 = format!("{:?}", event2);
+    let debug1 = format!("{event1:?}");
+    let debug2 = format!("{event2:?}");
     assert_eq!(debug1, debug2);
 }
 
@@ -372,7 +372,7 @@ fn test_runtime_type_variants_in_events() {
             timestamp: SystemTime::now(),
         };
 
-        let debug_str = format!("{:?}", event);
+        let debug_str = format!("{event:?}");
         assert!(debug_str.contains("RuntimeEngineRegistered"));
     }
 }
@@ -396,8 +396,8 @@ fn test_execution_status_transitions() {
         timestamp: SystemTime::now(),
     };
 
-    let start_debug = format!("{:?}", start_event);
-    let complete_debug = format!("{:?}", complete_event);
+    let start_debug = format!("{start_event:?}");
+    let complete_debug = format!("{complete_event:?}");
 
     assert!(start_debug.contains("ExecutionStarted"));
     assert!(complete_debug.contains("ExecutionCompleted"));

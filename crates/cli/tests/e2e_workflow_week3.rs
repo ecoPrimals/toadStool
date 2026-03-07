@@ -229,7 +229,7 @@ async fn test_e2e_long_running_coordinator_session() {
 
         timeout(Duration::from_millis(100), op_notify.notified())
             .await
-            .unwrap_or_else(|_| panic!("Operation {} should complete", i));
+            .unwrap_or_else(|_| panic!("Operation {i} should complete"));
     }
 
     // Coordinator remains healthy

@@ -28,7 +28,7 @@ async fn test_fractal_runtime_full_initialization() {
 
     // Should have detected a valid layer
     let layer = runtime.deployment_layer();
-    let layer_name = format!("{}", layer);
+    let layer_name = format!("{layer}");
     assert!(!layer_name.is_empty(), "Layer should have a name");
 
     // Should have capabilities
@@ -58,8 +58,8 @@ async fn test_layer_detection_consistency() {
     let layer2 = detector2.detect().await.unwrap();
 
     // Both detectors should find the same layer
-    let layer1_str = format!("{}", layer1);
-    let layer2_str = format!("{}", layer2);
+    let layer1_str = format!("{layer1}");
+    let layer2_str = format!("{layer2}");
     assert_eq!(layer1_str, layer2_str, "Detection should be consistent");
 }
 
@@ -239,8 +239,7 @@ async fn test_runtime_identity_capability_sync() {
 
         assert!(
             found,
-            "Identity should have runtime capability: {}",
-            runtime_cap
+            "Identity should have runtime capability: {runtime_cap}"
         );
     }
 }
@@ -293,8 +292,7 @@ async fn test_runtime_init_performance() {
     // Allow 10 seconds - detection includes cloud metadata checks with timeouts
     assert!(
         duration.as_secs() < 10,
-        "Init should complete within 10 seconds, took {:?}",
-        duration
+        "Init should complete within 10 seconds, took {duration:?}"
     );
 }
 
@@ -330,14 +328,11 @@ async fn test_layer_detection_caching() {
     let duration2 = start2.elapsed();
 
     // Results should match
-    assert_eq!(format!("{}", layer1), format!("{}", layer2));
+    assert_eq!(format!("{layer1}"), format!("{}", layer2));
 
     // Second should be faster (cached)
     // Note: This might not always be true in all environments, so we just log it
-    println!(
-        "First detection: {:?}, Second detection: {:?}",
-        duration1, duration2
-    );
+    println!("First detection: {duration1:?}, Second detection: {duration2:?}");
 }
 
 /// Test: Error handling - detector handles failures gracefully
@@ -350,10 +345,10 @@ async fn test_detector_error_handling() {
     // Should either succeed or return a proper error (not panic)
     match result {
         Ok(layer) => {
-            println!("Detected layer: {}", layer);
+            println!("Detected layer: {layer}");
         }
         Err(e) => {
-            println!("Detection error (graceful): {:?}", e);
+            println!("Detection error (graceful): {e:?}");
         }
     }
 }

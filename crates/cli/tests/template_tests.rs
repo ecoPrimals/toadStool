@@ -55,7 +55,7 @@ fn test_basic_template_has_health_checks() {
 
     // ✅ MODERNIZED: Check that capability providers have health checks
     // All primals/capability providers should have health checks
-    for (name, primal) in primals.iter() {
+    for (name, primal) in &primals {
         assert!(
             primal.health_check.is_some(),
             "Capability provider '{name}' should have health check"
@@ -63,7 +63,7 @@ fn test_basic_template_has_health_checks() {
     }
 
     // All services should have health checks
-    for (name, service) in services.iter() {
+    for (name, service) in &services {
         assert!(
             service.health_check.is_some(),
             "Service '{name}' missing health check"
@@ -77,7 +77,7 @@ fn test_basic_template_dependencies() {
 
     // ✅ MODERNIZED: Services use capability-based dependencies, not hardcoded primal names
     // Services should depend on capabilities (e.g., capability:pki) not specific primals
-    for (name, service) in services.iter() {
+    for (name, service) in &services {
         // Check for capability-based dependencies OR no dependencies
         let has_capability_dep = service
             .dependencies
@@ -91,7 +91,7 @@ fn test_basic_template_dependencies() {
     }
 
     // Primals should have no dependencies (for basic template)
-    for (name, primal) in primals.iter() {
+    for (name, primal) in &primals {
         assert!(
             primal.dependencies.is_empty(),
             "Primal '{name}' should have no dependencies in basic template"
@@ -287,7 +287,7 @@ fn test_all_templates_have_unique_names() {
 fn test_template_service_sources_are_valid() {
     let (_, _, _, services, _, _, _, _) = create_basic_template();
 
-    for (name, service) in services.iter() {
+    for (name, service) in &services {
         match &service.source {
             toadstool_cli::WorkloadSource::Container {
                 registry,
@@ -320,7 +320,7 @@ fn test_template_health_check_intervals_are_reasonable() {
     let (_, _, primals, services, _, _, _, _) = create_basic_template();
 
     // Check primals
-    for (name, primal) in primals.iter() {
+    for (name, primal) in &primals {
         if let Some(health) = &primal.health_check {
             assert!(
                 health.interval > 0,
@@ -339,7 +339,7 @@ fn test_template_health_check_intervals_are_reasonable() {
     }
 
     // Check services
-    for (name, service) in services.iter() {
+    for (name, service) in &services {
         if let Some(health) = &service.health_check {
             assert!(
                 health.interval > 0,
@@ -464,21 +464,21 @@ fn test_template_dependencies_form_valid_dag() {
     // Build dependency graph
     let mut all_deps = HashMap::new();
 
-    for (name, primal) in primals.iter() {
+    for (name, primal) in &primals {
         all_deps.insert(name.clone(), primal.dependencies.clone());
     }
 
-    for (name, service) in services.iter() {
+    for (name, service) in &services {
         all_deps.insert(name.clone(), service.dependencies.clone());
     }
 
     // Check no cycles (simple check: no self-dependencies)
-    for (name, deps) in all_deps.iter() {
+    for (name, deps) in &all_deps {
         assert!(!deps.contains(name), "Component '{name}' depends on itself");
     }
 
     // Check all dependencies exist (or are capability-based)
-    for (name, deps) in all_deps.iter() {
+    for (name, deps) in &all_deps {
         for dep in deps {
             // ✅ MODERNIZED: Allow capability-based dependencies (capability:*)
             // These are resolved at runtime by the orchestrator

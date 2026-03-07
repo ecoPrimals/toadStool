@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Coverage tests for byob_routes.rs — route handlers with a mock executor.
+//! Coverage tests for `byob_routes.rs` — route handlers with a mock executor.
 
 use std::collections::HashMap;
 use std::sync::Arc;

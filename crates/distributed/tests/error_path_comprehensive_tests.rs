@@ -279,7 +279,7 @@ async fn test_double_start() {
 
     // Should either succeed (idempotent) or fail clearly
     match result2 {
-        Ok(_) => {
+        Ok(()) => {
             // Idempotent start
         }
         Err(e) => {

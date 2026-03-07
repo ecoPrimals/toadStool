@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Integration tests for ByobExecutor trait implementation
+//! Integration tests for `ByobExecutor` trait implementation
 
 #![allow(clippy::all)]
 //!
 //! Coverage Target: Increase byob.rs from 36% → 70%
-//! Focus: ByobExecutor trait methods and deployment lifecycle
+//! Focus: `ByobExecutor` trait methods and deployment lifecycle
 
 use std::collections::HashMap;
 use std::future::Future;

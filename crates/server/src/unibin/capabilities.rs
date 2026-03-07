@@ -98,18 +98,15 @@ mod tests {
         let caps = query_local_capabilities().await;
         assert!(
             caps.contains(&"compute".to_string()),
-            "should include 'compute': {:?}",
-            caps
+            "should include 'compute': {caps:?}"
         );
         assert!(
             caps.contains(&"cpu".to_string()),
-            "should include 'cpu': {:?}",
-            caps
+            "should include 'cpu': {caps:?}"
         );
         assert!(
             caps.contains(&"orchestration".to_string()),
-            "should include 'orchestration': {:?}",
-            caps
+            "should include 'orchestration': {caps:?}"
         );
     }
 
@@ -118,7 +115,7 @@ mod tests {
         let caps = query_local_capabilities().await;
         let mut seen = std::collections::HashSet::new();
         for c in &caps {
-            assert!(seen.insert(c), "duplicate capability '{}' in {:?}", c, caps);
+            assert!(seen.insert(c), "duplicate capability '{c}' in {caps:?}");
         }
     }
 

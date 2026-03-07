@@ -55,7 +55,7 @@ async fn test_executor_concurrent_tasks() {
     let mut handles = vec![];
     for i in 0..10 {
         let exec = Arc::clone(&executor);
-        let handle = tokio::spawn(async move { exec.start_task(&format!("task-{}", i)).await });
+        let handle = tokio::spawn(async move { exec.start_task(&format!("task-{i}")).await });
         handles.push(handle);
     }
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for server configuration
 //!
-//! Tests for ServerConfig, AuthenticationConfig, RateLimitingConfig,
-//! LoggingConfig, and HealthCheckConfig.
+//! Tests for `ServerConfig`, `AuthenticationConfig`, `RateLimitingConfig`,
+//! `LoggingConfig`, and `HealthCheckConfig`.
 
 use std::collections::HashMap;
 use std::time::Duration;

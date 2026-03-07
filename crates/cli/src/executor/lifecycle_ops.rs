@@ -572,7 +572,7 @@ mod tests {
         let env = parse_env_vars(&env_vars);
         assert_eq!(env.get("KEY1"), Some(&"value1".to_string()));
         assert_eq!(env.get("KEY2"), Some(&"value2".to_string()));
-        assert_eq!(env.get("EMPTY"), Some(&"".to_string()));
+        assert_eq!(env.get("EMPTY"), Some(&String::new()));
         assert!(!env.contains_key("NO_EQUALS"));
     }
 
@@ -620,7 +620,7 @@ mod tests {
     fn test_parse_env_vars_only_key_no_value() {
         let env_vars = vec!["SINGLE=".to_string()];
         let env = parse_env_vars(&env_vars);
-        assert_eq!(env.get("SINGLE"), Some(&"".to_string()));
+        assert_eq!(env.get("SINGLE"), Some(&String::new()));
     }
 
     #[test]

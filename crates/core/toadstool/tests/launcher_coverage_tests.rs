@@ -21,8 +21,7 @@ async fn test_discover_toadstool_endpoint_no_endpoint_returns_err() {
         Err(e) => {
             assert!(
                 e.to_string().contains("toadstool") || e.to_string().contains("endpoint"),
-                "Error should mention endpoint: {}",
-                e
+                "Error should mention endpoint: {e}"
             );
         }
     }

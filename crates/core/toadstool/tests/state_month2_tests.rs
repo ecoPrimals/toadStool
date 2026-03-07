@@ -37,7 +37,7 @@ async fn test_state_with_initial_config() {
 #[tokio::test]
 async fn test_state_initialization_validation() {
     let invalid_config = StateConfig {
-        name: "".to_string(), // Invalid: empty name
+        name: String::new(), // Invalid: empty name
         initial_resources: 0,
     };
 
@@ -139,7 +139,7 @@ async fn test_state_concurrent_writes() {
         let s = state.clone();
         let handle = tokio::spawn(async move {
             let mut state = s.write().await;
-            state.set_metadata(&format!("key-{}", i), i).await
+            state.set_metadata(&format!("key-{i}"), i).await
         });
         handles.push(handle);
     }
@@ -152,7 +152,7 @@ async fn test_state_concurrent_writes() {
     // Verify all metadata present
     let state = state.read().await;
     for i in 0..10 {
-        assert!(state.get_metadata(&format!("key-{}", i)).is_some());
+        assert!(state.get_metadata(&format!("key-{i}")).is_some());
     }
 }
 

@@ -33,7 +33,7 @@ async fn test_scan_system_handles_partial_failure_gracefully() {
         }
         Err(e) => {
             // Graceful failure is acceptable
-            println!("Hardware scan failed gracefully: {:?}", e);
+            println!("Hardware scan failed gracefully: {e:?}");
         }
     }
 }
@@ -60,7 +60,7 @@ async fn test_discover_services_timeout_handling() {
             println!("Found {} services", services.discovered_services.len());
         }
         Err(e) => {
-            println!("Service discovery failed gracefully: {:?}", e);
+            println!("Service discovery failed gracefully: {e:?}");
         }
     }
 }
@@ -79,7 +79,7 @@ async fn test_generate_config_with_minimal_system() {
             println!("✅ Config generated successfully");
         }
         Err(e) => {
-            println!("Config generation failed on minimal system: {:?}", e);
+            println!("Config generation failed on minimal system: {e:?}");
             // Graceful failure is acceptable on severely limited systems
         }
     }
@@ -110,7 +110,7 @@ fn test_usage_hints_extreme_values() {
 #[test]
 fn test_usage_hints_with_very_long_workload_list() {
     // Test with pathologically large workload list
-    let workload_types: Vec<String> = (0..1000).map(|i| format!("workload_type_{}", i)).collect();
+    let workload_types: Vec<String> = (0..1000).map(|i| format!("workload_type_{i}")).collect();
 
     let hints = UsageHints {
         predicted_workload_types: workload_types.clone(),
@@ -203,8 +203,8 @@ async fn test_concurrent_config_generation() {
     for handle in handles {
         let (id, result) = handle.await.expect("Task should complete");
         match result {
-            Ok(_) => println!("Config {} generated successfully", id),
-            Err(e) => println!("Config {} failed gracefully: {:?}", id, e),
+            Ok(_) => println!("Config {id} generated successfully"),
+            Err(e) => println!("Config {id} failed gracefully: {e:?}"),
         }
     }
 }
@@ -230,7 +230,7 @@ async fn test_concurrent_system_scans() {
     }
 
     // At least some scans should succeed
-    println!("Successful concurrent scans: {}/5", success_count);
+    println!("Successful concurrent scans: {success_count}/5");
 }
 
 // ============================================================================
@@ -259,7 +259,7 @@ async fn test_full_configuration_workflow() {
             println!("✅ Full workflow completed successfully");
         }
         Err(e) => {
-            println!("⚠️ Config generation failed (acceptable): {:?}", e);
+            println!("⚠️ Config generation failed (acceptable): {e:?}");
         }
     }
 }
@@ -302,7 +302,7 @@ async fn test_config_generation_completes_in_reasonable_time() {
         result.is_ok(),
         "Config generation should complete within 30 seconds"
     );
-    println!("Config generation took: {:?}", elapsed);
+    println!("Config generation took: {elapsed:?}");
 }
 
 #[tokio::test]
@@ -318,7 +318,7 @@ async fn test_system_scan_is_reasonably_fast() {
         result.is_ok(),
         "System scan should complete within 10 seconds"
     );
-    println!("System scan took: {:?}", elapsed);
+    println!("System scan took: {elapsed:?}");
 }
 
 // ============================================================================
@@ -428,9 +428,7 @@ fn test_usage_hints_intensive_classification_consistency() {
         assert_eq!(
             hints.is_cpu_intensive(),
             expected_intensive,
-            "CPU usage {} should be intensive: {}",
-            cpu_usage,
-            expected_intensive
+            "CPU usage {cpu_usage} should be intensive: {expected_intensive}"
         );
     }
 }
@@ -470,10 +468,7 @@ async fn test_scan_system_handles_permission_errors() {
     // Should either succeed or fail gracefully (not panic)
     match result {
         Ok(caps) => println!("Scan succeeded: {} cores detected", caps.cpu_cores),
-        Err(e) => println!(
-            "Scan failed gracefully (expected on restricted systems): {:?}",
-            e
-        ),
+        Err(e) => println!("Scan failed gracefully (expected on restricted systems): {e:?}"),
     }
 }
 
@@ -494,10 +489,7 @@ async fn test_documentation_example_basic_usage() {
             println!("✅ Documentation example works!");
         }
         Err(e) => {
-            println!(
-                "⚠️ Documentation example failed (acceptable on limited systems): {:?}",
-                e
-            );
+            println!("⚠️ Documentation example failed (acceptable on limited systems): {e:?}");
         }
     }
 }
@@ -555,10 +547,7 @@ async fn test_stress_many_concurrent_configs() {
         }
     }
 
-    println!(
-        "Stress test: {}/20 configs completed, {} timed out",
-        completed, timed_out
-    );
+    println!("Stress test: {completed}/20 configs completed, {timed_out} timed out");
     // Under heavy CI load all configs may time out -- that is acceptable
     // for a stress test. The point is that no panics or deadlocks occurred.
 }

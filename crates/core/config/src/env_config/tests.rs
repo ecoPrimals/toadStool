@@ -163,7 +163,7 @@ fn test_resource_env_config_serialization_roundtrip() {
     let config = ResourceEnvConfig::from_env();
     let json = serde_json::to_string(&config).unwrap();
     let parsed: ResourceEnvConfig = serde_json::from_str(&json).unwrap();
-    assert_eq!(config.max_cpu_percent, parsed.max_cpu_percent);
+    approx::assert_relative_eq!(config.max_cpu_percent, parsed.max_cpu_percent);
     assert_eq!(config.max_memory_bytes, parsed.max_memory_bytes);
 }
 

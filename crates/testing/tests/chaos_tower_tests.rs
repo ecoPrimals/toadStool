@@ -56,6 +56,7 @@ pub struct SimulatedTower {
 }
 
 impl SimulatedTower {
+    #[must_use]
     pub fn new(id: String) -> Self {
         Self {
             id,
@@ -78,6 +79,7 @@ impl SimulatedTower {
         self.state = TowerState::Healthy;
     }
 
+    #[must_use]
     pub fn state(&self) -> &TowerState {
         &self.state
     }
@@ -294,7 +296,7 @@ async fn test_variable_tower_speed() {
 
     // Create towers with different speeds
     for (i, delay) in [0, 100, 500, 1000].iter().enumerate() {
-        let mut tower = SimulatedTower::new(format!("tower{}", i));
+        let mut tower = SimulatedTower::new(format!("tower{i}"));
         if *delay > 0 {
             tower.inject_failure(TowerFailure::Slow { delay_ms: *delay });
         }
@@ -346,7 +348,7 @@ async fn test_byzantine_detection() {
     // Create 3 towers: 2 honest, 1 byzantine
     let mut towers = vec![];
     for i in 0..3 {
-        let mut tower = SimulatedTower::new(format!("tower{}", i));
+        let mut tower = SimulatedTower::new(format!("tower{i}"));
         if i == 1 {
             tower.inject_failure(TowerFailure::Byzantine);
         }
@@ -453,7 +455,7 @@ async fn test_cascading_tower_failures() {
     // Simulate 5 towers where failures cascade
     let mut towers = vec![];
     for i in 0..5 {
-        towers.push(SimulatedTower::new(format!("tower{}", i)));
+        towers.push(SimulatedTower::new(format!("tower{i}")));
     }
 
     // First tower crashes
@@ -482,8 +484,7 @@ async fn test_cascading_tower_failures() {
     // In lucky runs, all non-crashed towers may succeed (4 max)
     assert!(
         successful <= 4,
-        "Expected at most 4 successful (tower 0 crashes), got {}",
-        successful
+        "Expected at most 4 successful (tower 0 crashes), got {successful}"
     );
 }
 

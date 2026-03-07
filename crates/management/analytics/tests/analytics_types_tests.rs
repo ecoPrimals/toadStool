@@ -158,7 +158,7 @@ fn test_analytics_data_point_serialization() {
 fn test_trend_direction_increasing() {
     let trend = TrendDirection::Increasing { slope: 0.8 };
 
-    let debug_str = format!("{:?}", trend);
+    let debug_str = format!("{trend:?}");
     assert!(debug_str.contains("Increasing"));
 }
 
@@ -166,7 +166,7 @@ fn test_trend_direction_increasing() {
 fn test_trend_direction_decreasing() {
     let trend = TrendDirection::Decreasing { slope: 0.5 };
 
-    let debug_str = format!("{:?}", trend);
+    let debug_str = format!("{trend:?}");
     assert!(debug_str.contains("Decreasing"));
 }
 
@@ -174,7 +174,7 @@ fn test_trend_direction_decreasing() {
 fn test_trend_direction_stable() {
     let trend = TrendDirection::Stable { variation: 0.05 };
 
-    let debug_str = format!("{:?}", trend);
+    let debug_str = format!("{trend:?}");
     assert!(debug_str.contains("Stable"));
 }
 
@@ -182,7 +182,7 @@ fn test_trend_direction_stable() {
 fn test_trend_direction_cyclical() {
     let trend = TrendDirection::Cyclical { period_hours: 24.0 };
 
-    let debug_str = format!("{:?}", trend);
+    let debug_str = format!("{trend:?}");
     assert!(debug_str.contains("Cyclical"));
 }
 
@@ -190,7 +190,7 @@ fn test_trend_direction_cyclical() {
 fn test_trend_direction_irregular() {
     let trend = TrendDirection::Irregular;
 
-    let debug_str = format!("{:?}", trend);
+    let debug_str = format!("{trend:?}");
     assert!(debug_str.contains("Irregular"));
 }
 
@@ -258,10 +258,10 @@ fn test_alert_severity_levels() {
     let critical = AlertSeverity::Critical;
     let emergency = AlertSeverity::Emergency;
 
-    let debug_info = format!("{:?}", info);
-    let debug_warning = format!("{:?}", warning);
-    let debug_critical = format!("{:?}", critical);
-    let debug_emergency = format!("{:?}", emergency);
+    let debug_info = format!("{info:?}");
+    let debug_warning = format!("{warning:?}");
+    let debug_critical = format!("{critical:?}");
+    let debug_emergency = format!("{emergency:?}");
 
     assert!(debug_info.contains("Info"));
     assert!(debug_warning.contains("Warning"));
@@ -275,9 +275,9 @@ fn test_alert_status_variants() {
     let suppressed = AlertStatus::Suppressed;
     let resolved = AlertStatus::Resolved;
 
-    let debug_active = format!("{:?}", active);
-    let debug_suppressed = format!("{:?}", suppressed);
-    let debug_resolved = format!("{:?}", resolved);
+    let debug_active = format!("{active:?}");
+    let debug_suppressed = format!("{suppressed:?}");
+    let debug_resolved = format!("{resolved:?}");
 
     assert!(debug_active.contains("Active"));
     assert!(debug_suppressed.contains("Suppressed"));
@@ -291,7 +291,7 @@ fn test_alert_condition_threshold() {
         value: 80.0,
     };
 
-    let debug_str = format!("{:?}", condition);
+    let debug_str = format!("{condition:?}");
     assert!(debug_str.contains("Threshold"));
 }
 
@@ -302,7 +302,7 @@ fn test_alert_condition_rate_of_change() {
         threshold: 20.0,
     };
 
-    let debug_str = format!("{:?}", condition);
+    let debug_str = format!("{condition:?}");
     assert!(debug_str.contains("RateOfChange"));
 }
 
@@ -310,7 +310,7 @@ fn test_alert_condition_rate_of_change() {
 fn test_alert_condition_anomaly() {
     let condition = AlertCondition::Anomaly { sensitivity: 0.95 };
 
-    let debug_str = format!("{:?}", condition);
+    let debug_str = format!("{condition:?}");
     assert!(debug_str.contains("Anomaly"));
 }
 
@@ -320,7 +320,7 @@ fn test_alert_condition_complex() {
         expression: "cpu > 80 AND memory > 90".to_string(),
     };
 
-    let debug_str = format!("{:?}", condition);
+    let debug_str = format!("{condition:?}");
     assert!(debug_str.contains("Complex"));
 }
 
@@ -384,12 +384,12 @@ fn test_panel_type_variants() {
         component: "CustomViz".to_string(),
     };
 
-    let debug_line = format!("{:?}", line);
-    let debug_bar = format!("{:?}", bar);
-    let debug_gauge = format!("{:?}", gauge);
-    let debug_table = format!("{:?}", table);
-    let debug_heatmap = format!("{:?}", heatmap);
-    let debug_custom = format!("{:?}", custom);
+    let debug_line = format!("{line:?}");
+    let debug_bar = format!("{bar:?}");
+    let debug_gauge = format!("{gauge:?}");
+    let debug_table = format!("{table:?}");
+    let debug_heatmap = format!("{heatmap:?}");
+    let debug_custom = format!("{custom:?}");
 
     assert!(debug_line.contains("LineChart"));
     assert!(debug_bar.contains("BarChart"));
@@ -580,8 +580,8 @@ fn test_alert_severity_serialization() {
     let deserialized: AlertSeverity =
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-    let debug1 = format!("{:?}", severity);
-    let debug2 = format!("{:?}", deserialized);
+    let debug1 = format!("{severity:?}");
+    let debug2 = format!("{deserialized:?}");
     assert_eq!(debug1, debug2);
 }
 
@@ -592,8 +592,8 @@ fn test_alert_status_serialization() {
     let deserialized: AlertStatus =
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-    let debug1 = format!("{:?}", status);
-    let debug2 = format!("{:?}", deserialized);
+    let debug1 = format!("{status:?}");
+    let debug2 = format!("{deserialized:?}");
     assert_eq!(debug1, debug2);
 }
 
@@ -603,8 +603,8 @@ fn test_panel_type_serialization() {
     let serialized = serde_json::to_string(&panel_type).expect("Failed to serialize");
     let deserialized: PanelType = serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-    let debug1 = format!("{:?}", panel_type);
-    let debug2 = format!("{:?}", deserialized);
+    let debug1 = format!("{panel_type:?}");
+    let debug2 = format!("{deserialized:?}");
     assert_eq!(debug1, debug2);
 }
 

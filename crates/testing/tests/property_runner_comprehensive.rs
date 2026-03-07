@@ -85,8 +85,7 @@ impl Property<i32> for FailOnValueProperty {
     fn test(&self, value: &i32) -> toadstool::ToadStoolResult<()> {
         if *value == self.fail_value {
             return Err(toadstool::ToadStoolError::runtime(format!(
-                "Value {} failed",
-                value
+                "Value {value} failed"
             )));
         }
         Ok(())
@@ -362,7 +361,7 @@ fn test_shrinking_finds_minimal_failure() {
 
     // Shrunk input should be closer to minimal failing case
     assert!(
-        failure.shrunk_input.contains("0")
+        failure.shrunk_input.contains('0')
             || failure.shrunk_input.len() < failure.original_input.len()
     );
 }

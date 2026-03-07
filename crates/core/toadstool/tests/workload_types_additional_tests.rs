@@ -4,8 +4,8 @@
 //! This test suite targets workload types defined in crates/core/toadstool/src/workload.rs
 //! providing comprehensive coverage for helper types, sources, and configurations.
 //!
-//! Covers: WorkloadType, ExecutableSource, WasmModuleSource, PythonSource,
-//! GpuProgramSource, VolumeMount, PortMapping, and related types.
+//! Covers: `WorkloadType`, `ExecutableSource`, `WasmModuleSource`, `PythonSource`,
+//! `GpuProgramSource`, `VolumeMount`, `PortMapping`, and related types.
 
 use std::path::PathBuf;
 use toadstool::workload::{

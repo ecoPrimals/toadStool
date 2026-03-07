@@ -86,7 +86,7 @@ mod tests {
         // Uses environment-aware configuration (TOADSTOOL_NESTGATE_PORT defaults to 8082)
         assert!(config.endpoint.starts_with("http://"));
         assert!(config.endpoint.contains(":808")); // Port in 8080-8089 range
-        assert!(config.cache.as_ref().map(|c| c.enabled).unwrap_or(false));
+        assert!(config.cache.as_ref().is_some_and(|c| c.enabled));
         // Future enhancement: Add storage preferences configuration
     }
 

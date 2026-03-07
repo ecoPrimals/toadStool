@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Week 2 Network Configurator Expansion Tests
 //!
-//! Comprehensive tests for SongbirdNetworkConfigurator covering:
+//! Comprehensive tests for `SongbirdNetworkConfigurator` covering:
 //! - Core configurator functionality
 //! - Service mesh operations
 //! - Discovery mechanisms

@@ -295,35 +295,41 @@ mod tests {
     // These are example test structures
 
     #[tokio::test]
-    #[ignore] // Requires server
-    async fn test_client_unix_connection() {
+    async fn test_client_unix_connection_no_server() {
         use std::path::PathBuf;
 
-        let socket_path = PathBuf::from("/tmp/toadstool-test.sock");
+        let socket_path = PathBuf::from("/tmp/toadstool-nonexistent-test.sock");
         let result = ToadStoolTarpcClient::connect_unix(&socket_path).await;
 
-        // Would succeed if server is running
-        assert!(result.is_ok() || result.is_err()); // Placeholder assertion
+        let err = result.expect_err("should fail when no server is listening");
+        assert!(
+            matches!(err, TarpcClientError::Connection(_)),
+            "expected Connection error, got: {err}"
+        );
     }
 
     #[tokio::test]
-    #[ignore] // Requires server
     #[allow(deprecated)]
-    async fn test_client_tcp_connection_deprecated() {
-        let addr: SocketAddr = "127.0.0.1:50051".parse().unwrap();
+    async fn test_client_tcp_connection_no_server() {
+        let addr: SocketAddr = "127.0.0.1:1".parse().expect("valid addr");
         let result = ToadStoolTarpcClient::connect(addr).await;
 
-        // Would succeed if server is running
-        assert!(result.is_ok() || result.is_err()); // Placeholder assertion
+        let err = result.expect_err("should fail when no server is listening");
+        assert!(
+            matches!(err, TarpcClientError::Connection(_)),
+            "expected Connection error, got: {err}"
+        );
     }
 
     #[tokio::test]
-    #[ignore] // Requires server
-    async fn test_client_discovery() {
+    async fn test_client_discovery_no_server() {
         let result = ToadStoolTarpcClient::discover().await;
 
-        // Would succeed if server is running
-        assert!(result.is_ok() || result.is_err());
+        let err = result.expect_err("should fail when no server is listening");
+        assert!(
+            matches!(err, TarpcClientError::Discovery(_)),
+            "expected Discovery error, got: {err}"
+        );
     }
 
     #[test]

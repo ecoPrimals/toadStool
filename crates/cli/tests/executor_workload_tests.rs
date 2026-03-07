@@ -590,7 +590,7 @@ fn test_execution_spec_all_variants_serializable() {
     for json in variants {
         let spec: ExecutionSpec = serde_json::from_value(json).unwrap();
         // Should deserialize without error
-        let _ = format!("{:?}", spec);
+        let _ = format!("{spec:?}");
     }
 }
 

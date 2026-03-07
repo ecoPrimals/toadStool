@@ -128,7 +128,7 @@ fn test_environment_variable_parsing() {
     assert_eq!(env_map.get("VAR1"), Some(&"value1".to_string()));
     assert_eq!(env_map.get("VAR2"), Some(&"value2".to_string()));
     assert_eq!(env_map.get("PATH"), Some(&"/usr/bin:/bin".to_string()));
-    assert_eq!(env_map.get("EMPTY"), Some(&"".to_string()));
+    assert_eq!(env_map.get("EMPTY"), Some(&String::new()));
 }
 
 // ============================================================================

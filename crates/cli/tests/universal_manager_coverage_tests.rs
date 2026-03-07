@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for UniversalComputeManager (manager_impl.rs) - coverage target 90%
+//! Comprehensive tests for `UniversalComputeManager` (`manager_impl.rs`) - coverage target 90%
 //!
-//! Tests detect_platforms, run_benchmarks, migrate_workload, establish_federation,
-//! show_capabilities, and all platform categories.
+//! Tests `detect_platforms`, `run_benchmarks`, `migrate_workload`, `establish_federation`,
+//! `show_capabilities`, and all platform categories.
 
 use tempfile::TempDir;
 use toadstool_cli::universal::UniversalComputeManager;
@@ -241,8 +241,7 @@ async fn test_migrate_workload_target_not_found() {
     let err_msg = result.unwrap_err().to_string();
     assert!(
         err_msg.contains("Target platform") || err_msg.contains("Source platform"),
-        "expected platform error, got: {}",
-        err_msg
+        "expected platform error, got: {err_msg}"
     );
 }
 

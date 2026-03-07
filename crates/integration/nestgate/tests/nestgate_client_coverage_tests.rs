@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for NestGate StorageClient (client.rs)
+//! Comprehensive tests for NestGate `StorageClient` (client.rs)
 //!
 //! Target: crates/integration/nestgate/src/client.rs — 90% coverage
-//! Tests store/retrieve, pipeline ops, cleanup_cache, content-type detection.
-//! Uses new_for_testing — no real TCP/HTTP.
+//! Tests store/retrieve, pipeline ops, `cleanup_cache`, content-type detection.
+//! Uses `new_for_testing` — no real TCP/HTTP.
 
 use std::path::PathBuf;
 use std::time::Duration;

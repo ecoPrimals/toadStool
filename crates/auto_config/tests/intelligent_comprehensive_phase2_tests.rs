@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Intelligent Auto-Configuration (Phase 2)
-//! Target: auto_config/src/intelligent.rs (586 lines, 8.70% → 50%+)
+//! Target: `auto_config/src/intelligent.rs` (586 lines, 8.70% → 50%+)
 //! Goal: Add 50-60 tests focusing on core auto-config logic
 
 use toadstool_auto_config::IntelligentAutoConfig;
@@ -292,7 +292,7 @@ fn test_concurrent_execution_calculation() {
             "Should have at least one concurrent execution"
         );
         assert!(
-            concurrent as f64 <= cores * 2.0,
+            f64::from(concurrent) <= cores * 2.0,
             "Should not exceed 2x cores"
         );
     }
@@ -490,8 +490,7 @@ fn test_platform_os_detection() {
     assert!(!current_os.is_empty(), "Should detect current OS");
     assert!(
         ["linux", "macos", "windows"].contains(&current_os),
-        "Should be a supported OS: {}",
-        current_os
+        "Should be a supported OS: {current_os}"
     );
 }
 
@@ -508,8 +507,7 @@ fn test_platform_architecture_detection() {
         ["x86_64", "aarch64", "arm"]
             .iter()
             .any(|&a| current_arch.contains(a)),
-        "Should be a supported architecture: {}",
-        current_arch
+        "Should be a supported architecture: {current_arch}"
     );
 }
 
@@ -530,7 +528,7 @@ fn test_optimization_application_order() {
     let optimizations = vec!["containers", "gpu", "wasm", "native"];
 
     for (i, opt) in optimizations.iter().enumerate() {
-        assert!(!opt.is_empty(), "Optimization {} should be defined", i);
+        assert!(!opt.is_empty(), "Optimization {i} should be defined");
     }
 }
 
@@ -647,7 +645,7 @@ fn test_configuration_validation_checks() {
     ];
 
     for (check, should_pass) in validations {
-        assert!(should_pass, "Validation {} should pass", check);
+        assert!(should_pass, "Validation {check} should pass");
     }
 }
 

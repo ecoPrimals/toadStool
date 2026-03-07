@@ -49,7 +49,7 @@ async fn test_concurrent_resource_queries() {
             bar.wait().await;
 
             // Test various monitor operations
-            let workload_id = format!("workload_{}", i);
+            let workload_id = format!("workload_{i}");
             let _ = mon.get_process_info(&workload_id).await;
             let _ = mon.get_network_stats().await;
             let _ = mon.get_load_averages().await;
@@ -67,8 +67,7 @@ async fn test_concurrent_resource_queries() {
 
     assert!(
         successes >= 45,
-        "Most resource queries should succeed: {}/50",
-        successes
+        "Most resource queries should succeed: {successes}/50"
     );
 }
 
@@ -89,7 +88,7 @@ async fn test_resource_monitor_metrics_collection() {
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
 
-            let workload_id = format!("workload_{}", i);
+            let workload_id = format!("workload_{i}");
             let _ = mon.start_real_time_monitoring(&workload_id).await;
             let _ = mon.update_workload_metrics(&workload_id).await;
 
@@ -128,12 +127,12 @@ async fn test_monitoring_state_updates() {
 
             {
                 let mut state_lock = st.write().await;
-                state_lock.insert(format!("metric_{}", i), i as f64);
+                state_lock.insert(format!("metric_{i}"), f64::from(i));
             }
 
             // Verify insert
             let state_lock = st.read().await;
-            state_lock.contains_key(&format!("metric_{}", i))
+            state_lock.contains_key(&format!("metric_{i}"))
         }));
     }
 
@@ -154,7 +153,7 @@ async fn test_monitoring_state_concurrent_reads_writes() {
     {
         let mut state_lock = state.write().await;
         for i in 0..10 {
-            state_lock.insert(format!("key_{}", i), i);
+            state_lock.insert(format!("key_{i}"), i);
         }
     }
 
@@ -176,7 +175,7 @@ async fn test_monitoring_state_concurrent_reads_writes() {
             } else {
                 // Writer
                 let mut state_lock = st.write().await;
-                state_lock.insert(format!("new_key_{}", i), i);
+                state_lock.insert(format!("new_key_{i}"), i);
                 true
             }
         }));
@@ -206,7 +205,7 @@ async fn test_metric_aggregation() {
             bar.wait().await;
 
             let mut metrics_lock = met.write().await;
-            metrics_lock.push(i as f64);
+            metrics_lock.push(f64::from(i));
             true
         }));
     }
@@ -224,8 +223,7 @@ async fn test_metric_aggregation() {
     // Average of 0..99 should be approximately 49.5
     assert!(
         (avg - 49.5).abs() < 1.0,
-        "Average should be ~49.5, got {}",
-        avg
+        "Average should be ~49.5, got {avg}"
     );
 }
 
@@ -251,7 +249,7 @@ async fn test_stress_500_concurrent_monitor_operations() {
         tasks.push(tokio::spawn(async move {
             bar.wait().await;
 
-            let workload_id = format!("stress_workload_{}", i);
+            let workload_id = format!("stress_workload_{i}");
 
             // Mix different operations
             match i % 3 {
@@ -279,7 +277,6 @@ async fn test_stress_500_concurrent_monitor_operations() {
 
     assert!(
         successes >= 475,
-        "At least 95% should succeed: {}/500",
-        successes
+        "At least 95% should succeed: {successes}/500"
     );
 }

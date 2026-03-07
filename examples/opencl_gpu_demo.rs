@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Real OpenCL GPU execution demo
+//! Real `OpenCL` GPU execution demo
 //!
 //! Runs actual compute workloads on GPU (NVIDIA RTX 2070 SUPER)
 //! No mocks, no hardcoding - pure capability-based execution

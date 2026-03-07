@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Pure Rust compression tests
 //!
-//! Tests for lz4_flex and ruzstd - 100% Pure Rust implementations!
+//! Tests for `lz4_flex` and `ruzstd` - 100% Pure Rust implementations!
 //!
 //! Deep Debt Principles Applied:
 //! - ✅ No mocks (real compression/decompression!)
@@ -77,8 +77,10 @@ fn test_lz4_highly_compressible() {
 
 #[test]
 fn test_lz4_random_data() {
-    // Random data - low compressibility
-    let original: Vec<u8> = (0..1000).map(|i| (i * 7 + 13) as u8).collect();
+    // Random data - low compressibility (wrap to u8 range)
+    let original: Vec<u8> = (0..1000)
+        .map(|i| u8::try_from((i * 7 + 13) % 256).unwrap())
+        .collect();
     let compressed = compress_lz4(&original);
 
     // May not compress well, but should still decompress correctly
@@ -185,7 +187,10 @@ fn test_zstd_highly_compressible() {
 
 #[test]
 fn test_zstd_random_data() {
-    let original: Vec<u8> = (0..1000).map(|i| ((i * 13 + 7) % 256) as u8).collect();
+    // Wrap to u8 range for low compressibility
+    let original: Vec<u8> = (0..1000)
+        .map(|i| u8::try_from((i * 13 + 7) % 256).unwrap())
+        .collect();
     let compressed = compress_zstd(&original);
 
     let (region, _) = decompress_isolated(&compressed, CompressionAlgorithm::Zstd, None).unwrap();
@@ -259,7 +264,7 @@ fn test_compression_stats_lz4() {
     assert!(stats.compression_ratio > 0.0 && stats.compression_ratio < 1.0);
     assert!(stats.duration_micros > 0);
 
-    println!("LZ4 stats: {:?}", stats);
+    println!("LZ4 stats: {stats:?}");
 }
 
 #[test]
@@ -276,7 +281,7 @@ fn test_compression_stats_zstd() {
     assert!(stats.compression_ratio > 0.0 && stats.compression_ratio < 1.0);
     assert!(stats.duration_micros > 0);
 
-    println!("Zstd stats: {:?}", stats);
+    println!("Zstd stats: {stats:?}");
 }
 
 // =============================================================================
@@ -379,8 +384,5 @@ fn test_log_data() {
     assert!(lz4_ratio > 3.0);
     assert!(zstd_ratio > 5.0);
 
-    println!(
-        "Log compression - LZ4: {:.2}x, Zstd: {:.2}x",
-        lz4_ratio, zstd_ratio
-    );
+    println!("Log compression - LZ4: {lz4_ratio:.2}x, Zstd: {zstd_ratio:.2}x");
 }

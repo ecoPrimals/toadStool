@@ -123,7 +123,7 @@ fn test_workload_category_equality() {
 #[test]
 fn test_workload_category_debug() {
     let category = WorkloadCategory::ElementWise;
-    let debug_str = format!("{:?}", category);
+    let debug_str = format!("{category:?}");
     assert!(debug_str.contains("ElementWise"));
 }
 
@@ -135,7 +135,7 @@ fn test_suite_has_varied_sizes() {
 
     // Should have at least 3 different sizes
     let mut unique_sizes = sizes.clone();
-    unique_sizes.sort();
+    unique_sizes.sort_unstable();
     unique_sizes.dedup();
 
     assert!(
@@ -144,7 +144,7 @@ fn test_suite_has_varied_sizes() {
     );
 }
 
-/// Test ReLU workloads span multiple sizes
+/// Test `ReLU` workloads span multiple sizes
 #[test]
 fn test_relu_workloads_span_sizes() {
     let suite = get_benchmark_suite();
@@ -192,7 +192,7 @@ fn test_normalization_workloads() {
     );
 }
 
-/// Test compute-bound workloads include MatMul
+/// Test compute-bound workloads include `MatMul`
 #[test]
 fn test_compute_bound_includes_matmul() {
     let suite = get_benchmark_suite();

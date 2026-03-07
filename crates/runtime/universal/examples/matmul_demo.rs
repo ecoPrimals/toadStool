@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Matrix Multiplication (MatMul) Operation Demo
+//! Matrix Multiplication (`MatMul`) Operation Demo
 //!
 //! Demonstrates:
-//! - MatMul: C = A * B (fundamental deep learning operation)
+//! - `MatMul`: C = A * B (fundamental deep learning operation)
 //! - Tiled/blocked approach for cache efficiency
 //! - Parallel execution with Rayon
 //! - Various matrix sizes
 //!
-//! MatMul is THE most important operation in deep learning - used everywhere!
+//! `MatMul` is THE most important operation in deep learning - used everywhere!
 
 use std::collections::HashMap;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
-use toadstool_runtime_universal::types::*;
+use toadstool_runtime_universal::types::{
+    DataType, OperationType, Workload, WorkloadData, WorkloadParams,
+};
 use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
@@ -57,12 +59,12 @@ async fn main() -> Result<(), ComputeError> {
     let b_rows = 3;
     let b_cols = 2;
 
-    println!("Matrix A ({}x{}):", a_rows, a_cols);
+    println!("Matrix A ({a_rows}x{a_cols}):");
     println!("  [{}, {}, {}]", a[0], a[1], a[2]);
     println!("  [{}, {}, {}]", a[3], a[4], a[5]);
     println!();
 
-    println!("Matrix B ({}x{}):", b_rows, b_cols);
+    println!("Matrix B ({b_rows}x{b_cols}):");
     println!("  [{}, {}]", b[0], b[1]);
     println!("  [{}, {}]", b[2], b[3]);
     println!("  [{}, {}]", b[4], b[5]);
@@ -82,7 +84,7 @@ async fn main() -> Result<(), ComputeError> {
     let result = runtime.execute_optimal(matmul_workload).await?;
 
     if let WorkloadData::F32Matrix(c, c_rows, c_cols) = &result.data {
-        println!("Result C ({}x{}):", c_rows, c_cols);
+        println!("Result C ({c_rows}x{c_cols}):");
         for i in 0..*c_rows {
             print!("  [");
             for j in 0..*c_cols {
@@ -98,10 +100,7 @@ async fn main() -> Result<(), ComputeError> {
         // Manual verification for first element: C[0,0] = 1*7 + 2*9 + 3*11 = 7 + 18 + 33 = 58
         let expected_00 = 1.0 * 7.0 + 2.0 * 9.0 + 3.0 * 11.0;
         println!("Verification:");
-        println!(
-            "  C[0,0] = A[0,:]·B[:,0] = 1*7 + 2*9 + 3*11 = {:.1}",
-            expected_00
-        );
+        println!("  C[0,0] = A[0,:]·B[:,0] = 1*7 + 2*9 + 3*11 = {expected_00:.1}");
         println!("  Actual: {:.1}", c[0]);
         println!(
             "  Match: {} ✅",
@@ -239,7 +238,7 @@ async fn main() -> Result<(), ComputeError> {
 
     if let WorkloadData::F32Matrix(c, c_rows, c_cols) = &large_result.data {
         println!("✅ Computation complete!");
-        println!("  Output shape: ({} x {})", c_rows, c_cols);
+        println!("  Output shape: ({c_rows} x {c_cols})");
         println!(
             "  First 4 values: [{:.4}, {:.4}, {:.4}, {:.4}]",
             c[0], c[1], c[2], c[3]
@@ -297,11 +296,11 @@ async fn main() -> Result<(), ComputeError> {
 
     if let WorkloadData::F32Matrix(scores, rows, cols) = &attention_result.data {
         println!("✅ Attention scores computed!");
-        println!("  Shape: ({} x {}) - attention matrix", rows, cols);
+        println!("  Shape: ({rows} x {cols}) - attention matrix");
         println!("  First row (attention from token 0):");
         print!("    [");
         for (i, &score) in scores.iter().enumerate().take(8.min(*cols)) {
-            print!("{:.3}", score);
+            print!("{score:.3}");
             if i < 7.min(*cols - 1) {
                 print!(", ");
             }

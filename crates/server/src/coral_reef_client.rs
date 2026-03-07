@@ -2,17 +2,17 @@
 //! coralReef shader compiler client for capability-based discovery and IPC.
 //!
 //! Discovers coralReef at runtime via capability-based discovery, then proxies
-//! `shader.compile.*` requests through JSON-RPC to `compiler.*` methods.
+//! `shader.compile.*` requests through JSON-RPC to coralReef's `shader.compile.*` methods.
 //! Gracefully degrades when coralReef is not available.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::OnceCell;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+use tokio::sync::OnceCell;
 use tracing::{debug, warn};
 
-/// coralReef health response from `compiler.health`.
+/// coralReef health response from `shader.compile.status`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoralReefHealth {
     pub name: String,
@@ -22,7 +22,7 @@ pub struct CoralReefHealth {
     pub supported_archs: Vec<String>,
 }
 
-/// Compile response from `compiler.compile` / `compiler.compile_wgsl`.
+/// Compile response from `shader.compile.spirv` / `shader.compile.wgsl`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompileResponse {
     #[serde(default)]
@@ -120,11 +120,11 @@ impl CoralReefClient {
         self.client().await.is_some()
     }
 
-    /// Call `compiler.health` to check coralReef status and supported architectures.
+    /// Call `shader.compile.status` to check coralReef status and supported architectures.
     pub async fn health(&self) -> Option<CoralReefHealth> {
         let client = self.client().await?;
         match client
-            .call_typed::<CoralReefHealth>("compiler.health", serde_json::json!({}))
+            .call_typed::<CoralReefHealth>("shader.compile.status", serde_json::json!({}))
             .await
         {
             Ok(health) => Some(health),
@@ -135,7 +135,7 @@ impl CoralReefClient {
         }
     }
 
-    /// Compile WGSL source to native binary via `compiler.compile_wgsl`.
+    /// Compile WGSL source to native binary via `shader.compile.wgsl`.
     pub async fn compile_wgsl(
         &self,
         source: &str,
@@ -152,7 +152,7 @@ impl CoralReefClient {
         if let Some(o) = opt_level {
             params["opt_level"] = serde_json::json!(o);
         }
-        match client.call("compiler.compile_wgsl", params).await {
+        match client.call("shader.compile.wgsl", params).await {
             Ok(result) => Some(result),
             Err(e) => {
                 warn!(error = %e, "coralReef WGSL compilation failed");
@@ -161,7 +161,7 @@ impl CoralReefClient {
         }
     }
 
-    /// Compile SPIR-V binary to native binary via `compiler.compile`.
+    /// Compile SPIR-V binary to native binary via `shader.compile.spirv`.
     pub async fn compile_spirv(
         &self,
         spirv_words: &[u32],
@@ -174,7 +174,7 @@ impl CoralReefClient {
         if let Some(a) = arch {
             params["arch"] = serde_json::json!(a);
         }
-        match client.call("compiler.compile", params).await {
+        match client.call("shader.compile.spirv", params).await {
             Ok(result) => Some(result),
             Err(e) => {
                 warn!(error = %e, "coralReef SPIR-V compilation failed");

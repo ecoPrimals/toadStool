@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Resources Metrics and Monitoring
 //!
-//! Week 16 Sprint: Targeting RuntimeMetrics, ResourceLimits, and monitoring
+//! Week 16 Sprint: Targeting `RuntimeMetrics`, `ResourceLimits`, and monitoring
 //! Current coverage: 35% → Target: 50%
 
 use toadstool::resources::*;
@@ -87,7 +87,7 @@ fn test_runtime_metrics_with_gpu() {
 #[test]
 fn test_runtime_metrics_debug() {
     let metrics = RuntimeMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("RuntimeMetrics"));
 }
 
@@ -220,7 +220,7 @@ fn test_cpu_metrics_fractional_cores() {
 #[test]
 fn test_cpu_metrics_debug() {
     let metrics = CpuMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("CpuMetrics"));
 }
 
@@ -294,7 +294,7 @@ fn test_memory_metrics_gigabyte_scale() {
 #[test]
 fn test_memory_metrics_debug() {
     let metrics = MemoryMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("MemoryMetrics"));
 }
 
@@ -372,7 +372,7 @@ fn test_storage_metrics_large_values() {
 #[test]
 fn test_storage_metrics_debug() {
     let metrics = StorageMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("StorageMetrics"));
 }
 
@@ -437,7 +437,7 @@ fn test_network_metrics_packet_tracking() {
 #[test]
 fn test_network_metrics_debug() {
     let metrics = NetworkMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("NetworkMetrics"));
 }
 
@@ -510,7 +510,7 @@ fn test_gpu_metrics_debug() {
         memory_used_bytes: 2 * 1024 * 1024 * 1024,
         temperature_celsius: None,
     };
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("GpuMetrics"));
 }
 
@@ -541,7 +541,7 @@ fn test_gpu_metrics_memory_tracking() {
 fn test_timing_metrics_default() {
     let metrics = TimingMetrics::default();
     // Just verify it creates without panicking
-    let _ = format!("{:?}", metrics);
+    let _ = format!("{metrics:?}");
 }
 
 #[test]
@@ -561,7 +561,7 @@ fn test_timing_metrics_serialization() {
 #[test]
 fn test_timing_metrics_debug() {
     let metrics = TimingMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("TimingMetrics"));
 }
 

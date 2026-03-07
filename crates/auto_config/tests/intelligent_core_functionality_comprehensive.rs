@@ -2,7 +2,7 @@
 //! Comprehensive tests for intelligent.rs core functionality
 //!
 //! Goal: Increase coverage from 10.8% to 70%+
-//! Target: Test all critical paths in IntelligentAutoConfig
+//! Target: Test all critical paths in `IntelligentAutoConfig`
 
 use std::time::Duration;
 use toadstool_auto_config::intelligent::{IntelligentAutoConfig, PlatformOptimizer, UsageLearner};
@@ -147,8 +147,7 @@ async fn test_generate_intelligent_config_basic() {
         }
         Err(e) => {
             eprintln!(
-                "⚠️  Config generation failed (acceptable in minimal test environment): {:?}",
-                e
+                "⚠️  Config generation failed (acceptable in minimal test environment): {e:?}"
             );
         }
     }
@@ -241,10 +240,7 @@ async fn test_auto_configure_full_workflow() {
             );
         }
         Err(e) => {
-            eprintln!(
-                "⚠️  Auto-configuration failed (may be expected in test environment): {:?}",
-                e
-            );
+            eprintln!("⚠️  Auto-configuration failed (may be expected in test environment): {e:?}");
         }
     }
 }
@@ -265,7 +261,7 @@ async fn test_auto_configure_with_timeout() {
             // Either succeeds or fails gracefully
             match config_result {
                 Ok(_config) => println!("✅ Auto-configuration completed"),
-                Err(e) => eprintln!("⚠️  Configuration error: {:?}", e),
+                Err(e) => eprintln!("⚠️  Configuration error: {e:?}"),
             }
         }
         Err(_) => {
@@ -321,11 +317,10 @@ async fn test_scan_system_performance() {
         // System scan should be reasonably fast
         assert!(
             duration < Duration::from_secs(5),
-            "System scan should complete within 5 seconds, took {:?}",
-            duration
+            "System scan should complete within 5 seconds, took {duration:?}"
         );
 
-        println!("✅ System scan completed in {:?}", duration);
+        println!("✅ System scan completed in {duration:?}");
     }
 }
 
@@ -345,11 +340,10 @@ async fn test_platform_optimizer_performance() {
     // Should be very fast (no I/O, just OS detection)
     assert!(
         duration < Duration::from_millis(100),
-        "Creating 100 platform optimizers should be <100ms, took {:?}",
-        duration
+        "Creating 100 platform optimizers should be <100ms, took {duration:?}"
     );
 
-    println!("✅ Created 100 platform optimizers in {:?}", duration);
+    println!("✅ Created 100 platform optimizers in {duration:?}");
 }
 
 // ============================================================================
@@ -419,7 +413,7 @@ async fn test_documentation_example_works() {
     // Example should either work or fail gracefully
     match result {
         Ok(_config) => println!("🎉 ToadStool auto-configured successfully!"),
-        Err(e) => eprintln!("Configuration failed: {:?}", e),
+        Err(e) => eprintln!("Configuration failed: {e:?}"),
     }
 }
 

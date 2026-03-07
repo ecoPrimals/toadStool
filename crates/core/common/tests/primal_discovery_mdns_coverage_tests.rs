@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for primal_discovery_mdns.rs
+//! Comprehensive tests for `primal_discovery_mdns`
 //! Target: 85%+ coverage of mDNS discovery adapter
 
 use std::time::Duration;
@@ -199,6 +199,6 @@ fn test_trust_level_unverified() {
 #[test]
 fn test_discovery_method_mdns_display() {
     let m = DiscoveryMethod::MDns;
-    let s = format!("{:?}", m);
+    let s = format!("{m:?}");
     assert!(s.contains("MDns") || s.contains("Mdns"));
 }

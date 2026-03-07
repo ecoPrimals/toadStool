@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for performance_hardening.rs
+//! Comprehensive tests for `performance_hardening.rs`
 //!
 //! Test Coverage Areas:
 //! - Performance hardening configuration
@@ -367,7 +367,7 @@ mod performance_hardening_logic_tests {
             let m = Arc::clone(&metrics);
             let handle = tokio::spawn(async move {
                 let mut metrics_map = m.write().await;
-                metrics_map.insert(format!("metric-{i}"), i as f64);
+                metrics_map.insert(format!("metric-{i}"), f64::from(i));
             });
             handles.push(handle);
         }

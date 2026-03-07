@@ -164,7 +164,7 @@ fn test_device_id_with_different_indices() {
     let indices = vec![0, 1, 5, 10, 100];
 
     for index in indices {
-        let device_id = DeviceId::new(GpuFramework::Cuda, index, format!("device-{}", index));
+        let device_id = DeviceId::new(GpuFramework::Cuda, index, format!("device-{index}"));
 
         assert_eq!(device_id.device_index, index);
     }

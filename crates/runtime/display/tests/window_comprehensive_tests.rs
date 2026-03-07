@@ -19,6 +19,7 @@ async fn test_window_manager_new() {
 }
 
 #[tokio::test]
+#[allow(clippy::float_cmp)] // comparing against exact literal initialization
 async fn test_window_info_after_creation() {
     let manager_result = WindowManager::new().await;
     if manager_result.is_err() {

@@ -35,7 +35,7 @@ fn test_transport_type_clone() {
 #[test]
 fn test_transport_type_debug() {
     let transport = TransportType::TRpc;
-    let debug_str = format!("{:?}", transport);
+    let debug_str = format!("{transport:?}");
 
     assert!(debug_str.contains("TRpc"));
 }
@@ -78,7 +78,7 @@ fn test_message_format_clone() {
 #[test]
 fn test_message_format_debug() {
     let format = MessageFormat::MessagePack;
-    let debug_str = format!("{:?}", format);
+    let debug_str = format!("{format:?}");
 
     assert!(debug_str.contains("MessagePack"));
 }
@@ -160,7 +160,7 @@ fn test_auth_type_clone() {
 #[test]
 fn test_auth_type_debug() {
     let auth = AuthType::MutualTls;
-    let debug_str = format!("{:?}", auth);
+    let debug_str = format!("{auth:?}");
 
     assert!(debug_str.contains("MutualTls"));
 }

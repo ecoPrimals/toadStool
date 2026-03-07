@@ -268,7 +268,7 @@ async fn test_manager_simple_async_benchmark() {
         .benchmark(|| async {
             // Minimal CPU work ensures non-zero wall-clock measurement
             // without blocking the async executor.
-            let _ = (0..100u64).fold(0u64, |a, b| a.wrapping_add(b));
+            let _ = (0..100u64).fold(0u64, u64::wrapping_add);
             tokio::task::yield_now().await;
             Ok(())
         })

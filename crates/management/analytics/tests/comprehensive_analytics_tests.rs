@@ -534,8 +534,8 @@ async fn test_collect_multiple_data_points() {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
             timestamp: SystemTime::now(),
-            metric_name: format!("metric_{}", i),
-            value: i as f64,
+            metric_name: format!("metric_{i}"),
+            value: f64::from(i),
             runtime_type: None,
             execution_id: None,
             tags: HashMap::new(),
@@ -625,8 +625,8 @@ async fn test_create_multiple_dashboards() {
     for i in 0..5 {
         let dashboard = Dashboard {
             id: Uuid::new_v4(),
-            name: format!("Dashboard {}", i),
-            description: format!("Test dashboard number {}", i),
+            name: format!("Dashboard {i}"),
+            description: format!("Test dashboard number {i}"),
             panels: vec![],
             layout: DashboardLayout {
                 grid_size: 12,

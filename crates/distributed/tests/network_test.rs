@@ -93,7 +93,7 @@ fn test_node_health_debug() {
         response_time_ms: 500,
     };
 
-    let debug_str = format!("{:?}", health);
+    let debug_str = format!("{health:?}");
     assert!(
         debug_str.contains("NodeHealth"),
         "Debug output should contain type name"
@@ -211,7 +211,7 @@ fn test_circuit_breaker_debug() {
         last_failure_time: None,
     };
 
-    let debug_str = format!("{:?}", breaker);
+    let debug_str = format!("{breaker:?}");
     assert!(debug_str.contains("CircuitBreaker"));
 }
 

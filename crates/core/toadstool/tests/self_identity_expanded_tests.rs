@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Expanded tests for self_identity module
+//! Expanded tests for `self_identity` module
 //!
-//! Coverage expansion: self_identity.rs had minimal test coverage
+//! Coverage expansion: `self_identity.rs` had minimal test coverage
 //! Adding comprehensive tests for all paths and edge cases
 
 use std::collections::HashMap;
@@ -273,7 +273,7 @@ fn test_advertisement_capabilities() {
     }
 }
 
-/// Test matches_requirement with exact match
+/// Test `matches_requirement` with exact match
 #[test]
 fn test_matches_requirement_exact() {
     let identity = SelfIdentity::new();
@@ -305,7 +305,7 @@ fn test_matches_requirement_exact() {
     assert!(identity.matches_requirement(&requirement, &service));
 }
 
-/// Test matches_requirement with missing feature
+/// Test `matches_requirement` with missing feature
 #[test]
 fn test_matches_requirement_missing_feature() {
     let identity = SelfIdentity::new();
@@ -337,7 +337,7 @@ fn test_matches_requirement_missing_feature() {
     assert!(!identity.matches_requirement(&requirement, &service));
 }
 
-/// Test matches_requirement with wrong capability
+/// Test `matches_requirement` with wrong capability
 #[test]
 fn test_matches_requirement_wrong_capability() {
     let identity = SelfIdentity::new();
@@ -369,7 +369,7 @@ fn test_matches_requirement_wrong_capability() {
     assert!(!identity.matches_requirement(&requirement, &service));
 }
 
-/// Test matches_requirement with empty features
+/// Test `matches_requirement` with empty features
 #[test]
 fn test_matches_requirement_empty_features() {
     let identity = SelfIdentity::new();
@@ -493,7 +493,7 @@ fn test_default_implementation() {
     assert_eq!(identity1.capabilities.len(), identity2.capabilities.len());
 }
 
-/// Test serialization of SelfIdentity
+/// Test serialization of `SelfIdentity`
 #[test]
 fn test_self_identity_serialization() {
     let identity = SelfIdentity::new().with_network(
@@ -508,7 +508,7 @@ fn test_self_identity_serialization() {
     assert!(json.contains("test.local"));
 }
 
-/// Test serialization of ServiceAdvertisement
+/// Test serialization of `ServiceAdvertisement`
 #[test]
 fn test_advertisement_serialization() {
     let identity = SelfIdentity::new();
@@ -519,7 +519,7 @@ fn test_advertisement_serialization() {
     assert!(!json.is_empty());
 }
 
-/// Test serialization of DiscoveredService
+/// Test serialization of `DiscoveredService`
 #[test]
 fn test_discovered_service_serialization() {
     let service = DiscoveredService {
@@ -556,7 +556,7 @@ fn test_resource_profile_reasonable() {
     assert!(resources.storage_bytes.is_none() || resources.storage_bytes.unwrap() > 0);
 }
 
-/// Test cloning SelfIdentity
+/// Test cloning `SelfIdentity`
 #[test]
 fn test_self_identity_clone() {
     let identity1 = SelfIdentity::new();
@@ -571,7 +571,7 @@ fn test_self_identity_clone() {
 #[test]
 fn test_debug_format() {
     let identity = SelfIdentity::new();
-    let debug_str = format!("{:?}", identity);
+    let debug_str = format!("{identity:?}");
 
     assert!(debug_str.contains("SelfIdentity"));
     assert!(debug_str.contains("toadstool"));

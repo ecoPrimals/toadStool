@@ -2,11 +2,11 @@
 //! Comprehensive tests for management monitoring module
 //!
 //! This test suite provides extensive coverage for:
-//! - MonitoringGranularity and duration conversions
-//! - MonitoringConfig and defaults
-//! - ThresholdAction types
-//! - ResourceMonitorError types and display
-//! - SystemResourceMonitor functionality
+//! - `MonitoringGranularity` and duration conversions
+//! - `MonitoringConfig` and defaults
+//! - `ThresholdAction` types
+//! - `ResourceMonitorError` types and display
+//! - `SystemResourceMonitor` functionality
 
 use std::path::Path;
 use std::time::Duration;
@@ -373,7 +373,7 @@ async fn test_system_resource_monitor_creation() {
     let monitor = SystemResourceMonitor::new();
 
     // Monitor should be created successfully
-    assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
+    assert!(format!("{monitor:?}").contains("SystemResourceMonitor"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -386,7 +386,7 @@ async fn test_system_resource_monitor_with_custom_config() {
 
     let monitor = SystemResourceMonitor::with_config(config);
 
-    assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
+    assert!(format!("{monitor:?}").contains("SystemResourceMonitor"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

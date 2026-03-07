@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! UniBin Architecture E2E Tests
+//! `UniBin` Architecture E2E Tests
 //!
-//! End-to-end tests for ToadStool's UniBin implementation.
+//! End-to-end tests for ToadStool's `UniBin` implementation.
 //! Tests cover server mode lifecycle, command execution, and real-world scenarios.
 //!
-//! ToadStool is the FIRST primal to achieve 100% UniBin compliance!
+//! ToadStool is the FIRST primal to achieve 100% `UniBin` compliance!
 
 use std::net::SocketAddr;
 use std::path::Path;
@@ -388,7 +388,7 @@ async fn test_multiple_servers_different_ports() {
     }
 
     // All should be running
-    for server in servers.iter_mut() {
+    for server in &mut servers {
         server.kill().await.ok();
     }
 

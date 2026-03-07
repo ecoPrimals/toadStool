@@ -98,7 +98,7 @@ fn test_median_calculation() {
 
 #[test]
 fn test_percentile_p95() {
-    let mut values: Vec<f64> = (1..=100).map(|x| x as f64).collect();
+    let mut values: Vec<f64> = (1..=100).map(f64::from).collect();
     values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let p95_idx = (values.len() as f64 * 0.95) as usize;
@@ -149,7 +149,7 @@ fn test_rolling_window_concept() {
 fn test_rate_per_second() {
     let count = 100;
     let duration_secs = 10;
-    let rate = count as f64 / duration_secs as f64;
+    let rate = f64::from(count) / f64::from(duration_secs);
 
     assert_eq!(rate, 10.0);
 }
@@ -158,7 +158,7 @@ fn test_rate_per_second() {
 fn test_rate_per_minute() {
     let count = 300;
     let duration_secs = 60;
-    let rate = count as f64 / duration_secs as f64;
+    let rate = f64::from(count) / f64::from(duration_secs);
 
     assert_eq!(rate, 5.0);
 }
@@ -167,7 +167,7 @@ fn test_rate_per_minute() {
 fn test_throughput_calculation() {
     let bytes_transferred = 1_000_000; // 1MB
     let duration_secs = 10;
-    let throughput_bps = bytes_transferred as f64 / duration_secs as f64;
+    let throughput_bps = f64::from(bytes_transferred) / f64::from(duration_secs);
 
     assert_eq!(throughput_bps, 100_000.0); // 100KB/s
 }
@@ -274,7 +274,7 @@ fn test_missing_data_handling() {
 #[test]
 fn test_data_completeness() {
     let data: Vec<Option<f64>> = vec![Some(1.0), Some(2.0), Some(3.0)];
-    let is_complete = data.iter().all(|x| x.is_some());
+    let is_complete = data.iter().all(std::option::Option::is_some);
 
     assert!(is_complete);
 }
@@ -363,7 +363,7 @@ fn test_data_expiration() {
 fn test_sampling_rate() {
     let total_events = 1000;
     let sample_rate = 0.1; // 10%
-    let expected_samples = (total_events as f64 * sample_rate) as usize;
+    let expected_samples = (f64::from(total_events) * sample_rate) as usize;
 
     assert_eq!(expected_samples, 100);
 }

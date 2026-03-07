@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for production_hardening module
+//! Comprehensive tests for `production_hardening` module
 //!
-//! Sprint 18: production_hardening.rs coverage → 60%+
+//! Sprint 18: `production_hardening.rs` coverage → 60%+
 //! Target: Critical production hardening features
 //! Estimated: ~40-50 tests
 
@@ -41,7 +41,7 @@ fn test_circuit_state_clone() {
 #[test]
 fn test_circuit_state_debug() {
     let state = CircuitState::Open;
-    let debug = format!("{:?}", state);
+    let debug = format!("{state:?}");
 
     assert!(!debug.is_empty());
     assert!(debug.contains("Open"));
@@ -106,7 +106,7 @@ fn test_circuit_breaker_config_clone() {
 #[test]
 fn test_circuit_breaker_config_debug() {
     let config = CircuitBreakerConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
 
     assert!(!debug.is_empty());
     assert!(debug.contains("CircuitBreakerConfig"));
@@ -176,7 +176,7 @@ fn test_circuit_breaker_new_with_custom_config() {
 #[test]
 fn test_circuit_breaker_new_with_empty_service_name() {
     let config = CircuitBreakerConfig::default();
-    let _cb = CircuitBreaker::new("".to_string(), config);
+    let _cb = CircuitBreaker::new(String::new(), config);
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn test_memory_pressure_level_clone() {
 #[test]
 fn test_memory_pressure_level_debug() {
     let level = MemoryPressureLevel::Emergency;
-    let debug = format!("{:?}", level);
+    let debug = format!("{level:?}");
 
     assert!(!debug.is_empty());
 }
@@ -265,7 +265,7 @@ fn test_memory_pressure_config_clone() {
 #[test]
 fn test_memory_pressure_config_debug() {
     let config = MemoryPressureConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
 
     assert!(!debug.is_empty());
 }
@@ -318,7 +318,7 @@ fn test_production_hardening_config_clone() {
 #[test]
 fn test_production_hardening_config_debug() {
     let config = ProductionHardeningConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
 
     assert!(!debug.is_empty());
 }

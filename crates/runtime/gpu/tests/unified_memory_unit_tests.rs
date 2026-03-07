@@ -87,7 +87,7 @@ async fn test_buffer_write_patterns() {
             .read_async(offset, pattern.len())
             .await
             .expect("Read pattern");
-        assert_eq!(&result, pattern, "Pattern {} mismatch", i);
+        assert_eq!(&result, pattern, "Pattern {i} mismatch");
     }
 }
 
@@ -193,8 +193,7 @@ async fn test_buffer_fill_patterns() {
         let data = buffer.read_async(0, 1024).await.expect("Read failed");
         assert!(
             data.iter().all(|&b| b == pattern),
-            "Fill pattern 0x{:02X} failed",
-            pattern
+            "Fill pattern 0x{pattern:02X} failed"
         );
     }
 }
@@ -387,8 +386,7 @@ async fn test_automatic_backend_selection() {
     // Should be one of the supported backends
     assert!(
         name == "CPU" || name == "WebGPU" || name == "Vulkan" || name == "OpenCL",
-        "Unknown backend: {}",
-        name
+        "Unknown backend: {name}"
     );
 }
 
@@ -434,7 +432,7 @@ async fn test_large_data_transfer() {
             .read_async(i * chunk_size, chunk_size)
             .await
             .expect("Read failed");
-        assert!(data.iter().all(|&b| b == i as u8), "Chunk {} mismatch", i);
+        assert!(data.iter().all(|&b| b == i as u8), "Chunk {i} mismatch");
     }
 }
 

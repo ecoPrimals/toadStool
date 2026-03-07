@@ -32,7 +32,7 @@ fn test_wasm_config_clone() {
 #[test]
 fn test_wasm_config_debug() {
     let config = WasmRuntimeConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("WasmRuntimeConfig"));
     assert!(debug_str.contains("max_memory_mb"));
@@ -135,7 +135,7 @@ fn test_cache_metrics_clone() {
 #[test]
 fn test_cache_metrics_debug() {
     let metrics = CacheMetrics::default();
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
 
     assert!(debug_str.contains("CacheMetrics"));
 }
@@ -150,7 +150,7 @@ fn test_cache_metrics_display() {
         memory_usage_bytes: 2048,
     };
 
-    let display_str = format!("{}", metrics);
+    let display_str = format!("{metrics}");
     assert!(display_str.contains("10"));
     assert!(display_str.contains("1024"));
     assert!(display_str.contains("85"));

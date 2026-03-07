@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for executor_impl.rs
+//! Comprehensive tests for `executor_impl.rs`
 //!
-//! Covers BiomeExecutor functionality (20-30 tests).
+//! Covers `BiomeExecutor` functionality (20-30 tests).
 
 // Mock types to test compilation and structure
 #[allow(dead_code)]

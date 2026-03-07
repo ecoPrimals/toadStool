@@ -2,19 +2,19 @@
 //! Comprehensive tests for Songbird integration types
 //!
 //! This test suite covers:
-//! - JobComplexity enum
-//! - ComplexityLevel enum
-//! - IntensityLevel enum
-//! - JobDistributionStrategy enum
-//! - SubTaskStatus enum
-//! - CompletionStrategy enum
-//! - CoordinationStrategy enum
-//! - ConnectionHealth enum
-//! - NodeType enum
-//! - SongbirdProtocol enum
-//! - AuthType enum
-//! - SplittingStrategyType enum
-//! - DistributionAlgorithm enum
+//! - `JobComplexity` enum
+//! - `ComplexityLevel` enum
+//! - `IntensityLevel` enum
+//! - `JobDistributionStrategy` enum
+//! - `SubTaskStatus` enum
+//! - `CompletionStrategy` enum
+//! - `CoordinationStrategy` enum
+//! - `ConnectionHealth` enum
+//! - `NodeType` enum
+//! - `SongbirdProtocol` enum
+//! - `AuthType` enum
+//! - `SplittingStrategyType` enum
+//! - `DistributionAlgorithm` enum
 
 #![allow(deprecated)]
 

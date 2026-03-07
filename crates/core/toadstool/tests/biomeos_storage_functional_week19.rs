@@ -160,11 +160,11 @@ async fn test_provision_multiple_volumes() {
 
     for i in 1..=3 {
         let volume_config = VolumeConfig {
-            name: format!("volume-{}", i),
+            name: format!("volume-{i}"),
             size: "50Gi".to_string(),
             storage_class: Some("standard".to_string()),
             access_modes: vec!["ReadWriteOnce".to_string()],
-            mount_path: Some(format!("/mnt/vol{}", i)),
+            mount_path: Some(format!("/mnt/vol{i}")),
             backup_policy: Some("hourly".to_string()),
         };
 
@@ -485,11 +485,11 @@ async fn test_list_volumes_after_provisioning() {
     // Provision multiple volumes
     for i in 1..=3 {
         let volume_config = VolumeConfig {
-            name: format!("list-vol-{}", i),
+            name: format!("list-vol-{i}"),
             size: "50Gi".to_string(),
             storage_class: Some("standard".to_string()),
             access_modes: vec!["ReadWriteOnce".to_string()],
-            mount_path: Some(format!("/mnt/vol{}", i)),
+            mount_path: Some(format!("/mnt/vol{i}")),
             backup_policy: None,
         };
         manager.provision_volume(&volume_config).await.unwrap();
@@ -607,11 +607,11 @@ async fn test_delete_multiple_volumes() {
     // Provision multiple volumes
     for i in 1..=3 {
         let volume_config = VolumeConfig {
-            name: format!("delete-multi-{}", i),
+            name: format!("delete-multi-{i}"),
             size: "50Gi".to_string(),
             storage_class: Some("standard".to_string()),
             access_modes: vec!["ReadWriteOnce".to_string()],
-            mount_path: Some(format!("/mnt/vol{}", i)),
+            mount_path: Some(format!("/mnt/vol{i}")),
             backup_policy: None,
         };
         manager.provision_volume(&volume_config).await.unwrap();
@@ -619,7 +619,7 @@ async fn test_delete_multiple_volumes() {
 
     // Delete them all
     for i in 1..=3 {
-        let result = manager.delete_volume(&format!("delete-multi-{}", i)).await;
+        let result = manager.delete_volume(&format!("delete-multi-{i}")).await;
         assert!(result.is_ok());
     }
 }

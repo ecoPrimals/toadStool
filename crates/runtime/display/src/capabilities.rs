@@ -673,7 +673,7 @@ mod tests {
             refresh_rate: 60.0,
             connected: true,
         };
-        let s = format!("{:?}", info);
+        let s = format!("{info:?}");
         assert!(s.contains("Test"));
     }
 
@@ -683,7 +683,7 @@ mod tests {
             name: "keyboard0".to_string(),
             device_type: "Keyboard".to_string(),
         };
-        let s = format!("{:?}", dev);
+        let s = format!("{dev:?}");
         assert!(s.contains("keyboard"));
     }
 
@@ -694,14 +694,14 @@ mod tests {
             pure_rust: true,
             timestamp: "2026-01-01T00:00:00Z".to_string(),
         };
-        let s = format!("{:?}", meta);
+        let s = format!("{meta:?}");
         assert!(s.contains("1.0"));
     }
 
     #[test]
     fn test_display_capabilities_debug() {
         let caps = make_caps();
-        let s = format!("{:?}", caps);
+        let s = format!("{caps:?}");
         assert!(s.contains("toadstool"));
     }
 

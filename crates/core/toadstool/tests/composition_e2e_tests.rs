@@ -28,7 +28,7 @@ async fn test_gaming_workload() {
     assert!(eval.results.contains_key("max_latency_ms"));
 }
 
-/// Test: OpenFold workload with GPU preference
+/// Test: `OpenFold` workload with GPU preference
 #[tokio::test]
 async fn test_openfold_workload() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
@@ -80,7 +80,7 @@ async fn test_ai_training_workload() {
     assert!(eval.results.len() >= 3);
 }
 
-/// Test: Gaming + OpenFold composition
+/// Test: Gaming + `OpenFold` composition
 #[tokio::test]
 async fn test_gaming_plus_openfold() {
     let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();
@@ -108,7 +108,7 @@ async fn test_gaming_plus_openfold() {
     assert_eq!(plan.placements[1].request.name, "openfold");
 }
 
-/// Test: Full "impossible stack" (Gaming + OpenFold + Streaming + AI)
+/// Test: Full "impossible stack" (Gaming + `OpenFold` + Streaming + AI)
 #[tokio::test]
 async fn test_impossible_stack() {
     let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();

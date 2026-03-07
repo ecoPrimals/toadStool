@@ -2,16 +2,16 @@
 //! Comprehensive tests for universal substrate platform types
 //!
 //! This test suite covers:
-//! - TraditionalPlatform enum (X86_64, ARM64, RISCV, PowerPC, SPARC, MIPS)
-//! - BiologicalComputingPlatform enum (DNA, Protein, Cellular, etc.)
-//! - NeuromorphicPlatform enum (Spiking, Memristive, Echo State, etc.)
-//! - QuantumPlatform enum (Gate-based, Annealing, Topological, etc.)
-//! - EdgeIoTPlatform enum (Microcontroller, FPGA, ASIC, etc.)
-//! - ContainerPlatform enum (Docker, Kubernetes, etc.)
-//! - LanguageRuntime enum (Rust, Python, etc.)
-//! - OperatingSystemSupport enum (Linux, Windows, macOS, etc.)
-//! - SpecializedArchitecture enum (TPU, GPU, etc.)
-//! - ExperimentalPlatform enum (Molecular, Optical, etc.)
+//! - `TraditionalPlatform` enum (`X86_64`, ARM64, RISCV, `PowerPC`, SPARC, MIPS)
+//! - `BiologicalComputingPlatform` enum (DNA, Protein, Cellular, etc.)
+//! - `NeuromorphicPlatform` enum (Spiking, Memristive, Echo State, etc.)
+//! - `QuantumPlatform` enum (Gate-based, Annealing, Topological, etc.)
+//! - `EdgeIoTPlatform` enum (Microcontroller, FPGA, ASIC, etc.)
+//! - `ContainerPlatform` enum (Docker, Kubernetes, etc.)
+//! - `LanguageRuntime` enum (Rust, Python, etc.)
+//! - `OperatingSystemSupport` enum (Linux, Windows, macOS, etc.)
+//! - `SpecializedArchitecture` enum (TPU, GPU, etc.)
+//! - `ExperimentalPlatform` enum (Molecular, Optical, etc.)
 
 use toadstool_distributed::substrate::*;
 

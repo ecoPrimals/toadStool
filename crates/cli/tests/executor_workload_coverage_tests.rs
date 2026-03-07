@@ -244,7 +244,7 @@ mod security_spec_tests {
         let levels = vec!["none", "minimal", "standard", "strict", "paranoid"];
 
         for level in levels {
-            let json = format!(r#"{{"isolation": "{}"}}"#, level);
+            let json = format!(r#"{{"isolation": "{level}"}}"#);
             let spec: serde_json::Value = serde_json::from_str(&json).unwrap();
             assert_eq!(spec["isolation"], level);
         }

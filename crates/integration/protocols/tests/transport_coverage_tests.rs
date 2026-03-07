@@ -103,7 +103,7 @@ fn test_connection_debug() {
         active_requests: 0,
     };
 
-    let debug_str = format!("{:?}", connection);
+    let debug_str = format!("{connection:?}");
     assert!(debug_str.contains("Connection"));
 }
 
@@ -114,13 +114,13 @@ fn test_connection_debug() {
 #[test]
 fn test_http_transport_new() {
     let transport = HttpTransport::new();
-    let _ = format!("{:?}", transport);
+    let _ = format!("{transport:?}");
 }
 
 #[test]
 fn test_http_transport_default() {
     let transport = HttpTransport::default();
-    let _ = format!("{:?}", transport);
+    let _ = format!("{transport:?}");
 }
 
 #[test]
@@ -171,13 +171,13 @@ async fn test_http_transport_with_tls() {
 #[test]
 fn test_trpc_transport_new() {
     let transport = TRpcTransport::new();
-    let _ = format!("{:?}", transport);
+    let _ = format!("{transport:?}");
 }
 
 #[test]
 fn test_trpc_transport_default() {
     let transport = TRpcTransport::default();
-    let _ = format!("{:?}", transport);
+    let _ = format!("{transport:?}");
 }
 
 #[test]
@@ -264,7 +264,7 @@ fn test_transport_enum_clone() {
 #[test]
 fn test_transport_enum_debug() {
     let transport = Transport::Http(HttpTransport::new());
-    let debug_str = format!("{:?}", transport);
+    let debug_str = format!("{transport:?}");
     assert!(debug_str.contains("Http"));
 }
 
@@ -356,7 +356,7 @@ fn test_transport_manager_get_supported_transports() {
 #[test]
 fn test_transport_manager_debug() {
     let manager = TransportManager::new();
-    let debug_str = format!("{:?}", manager);
+    let debug_str = format!("{manager:?}");
     assert!(debug_str.contains("TransportManager"));
 }
 

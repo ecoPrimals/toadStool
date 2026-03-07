@@ -117,8 +117,7 @@ async fn test_concurrent_resource_monitoring_events() {
 
     assert!(
         received >= 15,
-        "Most listeners should receive events: {}/20",
-        received
+        "Most listeners should receive events: {received}/20"
     );
 }
 
@@ -156,8 +155,7 @@ async fn test_concurrent_health_check_events() {
 
     assert!(
         received >= 10,
-        "Should receive background service events: {}/15",
-        received
+        "Should receive background service events: {received}/15"
     );
 }
 
@@ -280,8 +278,7 @@ async fn test_concurrent_event_broadcasting_to_many_subscribers() {
 
     assert!(
         received >= 95,
-        "Most subscribers should receive: {}/100",
-        received
+        "Most subscribers should receive: {received}/100"
     );
 }
 
@@ -407,7 +404,7 @@ async fn test_stress_500_concurrent_event_listeners() {
     }
 
     // Should handle 95%+ under stress
-    assert!(received >= 475, "Stress test success: {}/500", received);
+    assert!(received >= 475, "Stress test success: {received}/500");
 }
 
 // ============================================================================

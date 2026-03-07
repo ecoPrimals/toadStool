@@ -733,9 +733,9 @@ fn test_large_service_count() {
     let mut services = HashMap::new();
     for i in 0..100 {
         services.insert(
-            format!("service-{}", i),
+            format!("service-{i}"),
             ServiceSpec {
-                name: format!("service-{}", i),
+                name: format!("service-{i}"),
                 version: "1.0.0".to_string(),
                 image: None,
                 command: None,

@@ -91,7 +91,7 @@ async fn test_rapid_coordinator_creation_stress() {
     // All should complete successfully
     for (idx, handle) in handles.into_iter().enumerate() {
         let result = handle.await.unwrap();
-        assert!(result.is_ok(), "Concurrent creation {} should succeed", idx);
+        assert!(result.is_ok(), "Concurrent creation {idx} should succeed");
     }
 }
 
@@ -106,8 +106,7 @@ async fn test_coordinator_creation_under_memory_pressure() {
 
         assert!(
             coordinator.is_ok(),
-            "Creation {} under pressure should succeed",
-            i
+            "Creation {i} under pressure should succeed"
         );
 
         coordinators.push(coordinator);
@@ -256,7 +255,7 @@ async fn test_coordinator_with_alternating_configs() {
         }
 
         let coordinator = DistributedCoordinator::new(config).await;
-        assert!(coordinator.is_ok(), "Alternating config {} should work", i);
+        assert!(coordinator.is_ok(), "Alternating config {i} should work");
     }
 }
 
@@ -327,8 +326,7 @@ async fn test_coordinator_sequential_creation_stress() {
 
         assert!(
             coordinator.is_ok(),
-            "Sequential creation {} should succeed",
-            i
+            "Sequential creation {i} should succeed"
         );
     }
 }
@@ -343,7 +341,7 @@ async fn test_coordinator_with_varied_timeouts() {
         config.standalone.default_timeout_secs = timeout_secs;
 
         let coordinator = DistributedCoordinator::new(config).await;
-        assert!(coordinator.is_ok(), "Timeout {} should work", timeout_secs);
+        assert!(coordinator.is_ok(), "Timeout {timeout_secs} should work");
     }
 }
 
@@ -357,11 +355,7 @@ async fn test_coordinator_with_varied_concurrency_levels() {
         config.standalone.max_concurrent_executions = concurrency;
 
         let coordinator = DistributedCoordinator::new(config).await;
-        assert!(
-            coordinator.is_ok(),
-            "Concurrency {} should work",
-            concurrency
-        );
+        assert!(coordinator.is_ok(), "Concurrency {concurrency} should work");
     }
 }
 
@@ -376,7 +370,7 @@ async fn test_coordinator_with_varied_queue_sizes() {
         config.standalone.enable_job_queue = queue_size > 0;
 
         let coordinator = DistributedCoordinator::new(config).await;
-        assert!(coordinator.is_ok(), "Queue size {} should work", queue_size);
+        assert!(coordinator.is_ok(), "Queue size {queue_size} should work");
     }
 }
 
@@ -491,8 +485,7 @@ async fn test_coordinator_concurrent_with_different_configs() {
         let result = handle.await.unwrap();
         assert!(
             result.is_ok(),
-            "Concurrent different config {} should succeed",
-            idx
+            "Concurrent different config {idx} should succeed"
         );
     }
 }
@@ -526,7 +519,7 @@ async fn test_coordinator_rapid_sequential_creation_no_gap() {
         let config = DistributedConfig::default();
         let coordinator = DistributedCoordinator::new(config).await;
 
-        assert!(coordinator.is_ok(), "Rapid sequential {} should succeed", i);
+        assert!(coordinator.is_ok(), "Rapid sequential {i} should succeed");
 
         // Immediately proceed to next - no delay
     }
@@ -541,11 +534,7 @@ async fn test_coordinator_interleaved_creation_and_drop() {
         let config = DistributedConfig::default();
         let coordinator = DistributedCoordinator::new(config).await;
 
-        assert!(
-            coordinator.is_ok(),
-            "Interleaved creation {} should work",
-            i
-        );
+        assert!(coordinator.is_ok(), "Interleaved creation {i} should work");
         coordinators.push(coordinator);
 
         // Drop every other coordinator
@@ -578,8 +567,7 @@ async fn test_coordinator_with_high_parallelism() {
     // Most should succeed (allow some failures under extreme load)
     assert!(
         success_count >= 90,
-        "At least 90% should succeed under high parallelism (got {})",
-        success_count
+        "At least 90% should succeed under high parallelism (got {success_count})"
     );
 }
 
@@ -601,8 +589,7 @@ async fn test_coordinator_alternating_parallel_sequential() {
             let result = handle.await.unwrap();
             assert!(
                 result.is_ok(),
-                "Parallel creation in round {} should succeed",
-                round
+                "Parallel creation in round {round} should succeed"
             );
         }
 
@@ -612,8 +599,7 @@ async fn test_coordinator_alternating_parallel_sequential() {
             let coordinator = DistributedCoordinator::new(config).await;
             assert!(
                 coordinator.is_ok(),
-                "Sequential creation in round {} should succeed",
-                round
+                "Sequential creation in round {round} should succeed"
             );
         }
     }
@@ -636,8 +622,7 @@ async fn test_coordinator_with_memory_intensive_configs() {
         let coordinator = DistributedCoordinator::new(config).await;
         assert!(
             coordinator.is_ok(),
-            "Memory-intensive config {} should work",
-            i
+            "Memory-intensive config {i} should work"
         );
 
         coordinators.push(coordinator);
@@ -664,9 +649,7 @@ async fn test_coordinator_creation_timing_consistency() {
     for (idx, time) in times.iter().enumerate() {
         assert!(
             time < &Duration::from_secs(3),
-            "Creation {} took too long: {:?}",
-            idx,
-            time
+            "Creation {idx} took too long: {time:?}"
         );
     }
 }
@@ -692,8 +675,7 @@ async fn test_coordinator_with_extreme_config_combinations() {
         let coordinator = DistributedCoordinator::new(config).await;
         assert!(
             coordinator.is_ok(),
-            "Extreme config combination {} should work",
-            idx
+            "Extreme config combination {idx} should work"
         );
     }
 }
@@ -728,15 +710,14 @@ async fn test_coordinator_state_independence() {
 
     for i in 0..10 {
         let config = DistributedConfig {
-            instance_id: format!("independent-{}", i),
+            instance_id: format!("independent-{i}"),
             ..Default::default()
         };
 
         let coordinator = DistributedCoordinator::new(config).await;
         assert!(
             coordinator.is_ok(),
-            "Independent coordinator {} should succeed",
-            i
+            "Independent coordinator {i} should succeed"
         );
 
         coordinators.push(coordinator);
@@ -765,7 +746,7 @@ async fn test_coordinator_with_unicode_instance_ids() {
         };
 
         let coordinator = DistributedCoordinator::new(config).await;
-        assert!(coordinator.is_ok(), "Unicode ID '{}' should be handled", id);
+        assert!(coordinator.is_ok(), "Unicode ID '{id}' should be handled");
     }
 }
 
@@ -789,8 +770,7 @@ async fn test_coordinator_creation_under_task_spawn_pressure() {
 
         assert!(
             coordinator.is_ok(),
-            "Creation under task pressure {} should succeed",
-            i
+            "Creation under task pressure {i} should succeed"
         );
     }
 
@@ -816,8 +796,7 @@ async fn test_coordinator_with_boundary_concurrency_values() {
         let coordinator = DistributedCoordinator::new(config).await;
         assert!(
             coordinator.is_ok(),
-            "Boundary concurrency {} should work",
-            value
+            "Boundary concurrency {value} should work"
         );
     }
 }
@@ -832,11 +811,7 @@ async fn test_coordinator_with_boundary_timeout_values() {
         config.standalone.default_timeout_secs = value;
 
         let coordinator = DistributedCoordinator::new(config).await;
-        assert!(
-            coordinator.is_ok(),
-            "Boundary timeout {} should work",
-            value
-        );
+        assert!(coordinator.is_ok(), "Boundary timeout {value} should work");
     }
 }
 
@@ -853,8 +828,7 @@ async fn test_coordinator_with_boundary_queue_sizes() {
         let coordinator = DistributedCoordinator::new(config).await;
         assert!(
             coordinator.is_ok(),
-            "Boundary queue size {} should work",
-            value
+            "Boundary queue size {value} should work"
         );
     }
 }

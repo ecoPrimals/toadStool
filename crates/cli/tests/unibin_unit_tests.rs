@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! UniBin Architecture Unit Tests
+//! `UniBin` Architecture Unit Tests
 //!
-//! Comprehensive unit tests for ToadStool's UniBin implementation.
+//! Comprehensive unit tests for ToadStool's `UniBin` implementation.
 //! Tests cover server/daemon command handling, argument parsing, and mode detection.
 //!
-//! ToadStool is the FIRST primal to achieve 100% UniBin compliance!
+//! ToadStool is the FIRST primal to achieve 100% `UniBin` compliance!
 
 use clap::Parser;
 use std::path::PathBuf;

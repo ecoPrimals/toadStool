@@ -158,12 +158,12 @@ async fn benchmark_native_execution(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     let mut metrics = HashMap::new();
     metrics.insert(
         "avg_exec_time_ms".to_string(),
-        total_exec_time.as_millis() as f64 / successful as f64,
+        total_exec_time.as_millis() as f64 / f64::from(successful),
     );
 
     Ok(BenchmarkResults {
@@ -223,14 +223,14 @@ async fn benchmark_concurrent_jobs(
     let mut successful = 0;
     for handle in handles {
         if let Ok(Ok(_)) = handle.await {
-            successful += 1
+            successful += 1;
         }
     }
 
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     let mut metrics = HashMap::new();
     metrics.insert(
@@ -300,12 +300,12 @@ async fn benchmark_primal_discovery(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     let mut metrics = HashMap::new();
     metrics.insert(
         "avg_providers_found".to_string(),
-        total_providers as f64 / successful as f64,
+        total_providers as f64 / f64::from(successful),
     );
     metrics.insert(
         "discovery_latency_ms".to_string(),
@@ -376,12 +376,12 @@ async fn benchmark_resource_allocation(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     let mut metrics = HashMap::new();
     metrics.insert(
         "avg_allocation_time_ms".to_string(),
-        total_allocation_time.as_millis() as f64 / successful as f64,
+        total_allocation_time.as_millis() as f64 / f64::from(successful),
     );
     metrics.insert("allocation_efficiency".to_string(), success_rate * 100.0);
 
@@ -450,7 +450,7 @@ async fn benchmark_security_overhead(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     let mut metrics = HashMap::new();
     for (level, duration) in level_times {
@@ -561,13 +561,13 @@ async fn benchmark_job_types(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     let mut metrics = HashMap::new();
     for (job_type, count) in type_counts {
         metrics.insert(
             format!("{job_type}_success_rate"),
-            count as f64 / (config.iterations / 4) as f64,
+            f64::from(count) / (config.iterations / 4) as f64,
         );
     }
 
@@ -612,7 +612,7 @@ async fn benchmark_memory_usage(
         };
 
         if let Ok(_) = platform.execute_universal_job(job).await {
-            successful += 1
+            successful += 1;
         }
 
         if i % 100 == 0 {
@@ -623,7 +623,7 @@ async fn benchmark_memory_usage(
     let total_duration = start.elapsed();
     let avg_duration = total_duration / config.iterations as u32;
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
-    let success_rate = successful as f64 / config.iterations as f64;
+    let success_rate = f64::from(successful) / config.iterations as f64;
 
     let mut metrics = HashMap::new();
     metrics.insert("memory_efficiency".to_string(), success_rate * 100.0);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Evolution Chaos Tests
 //!
-//! Chaos engineering tests for ToadStool's UniBin and refactored executor modules.
+//! Chaos engineering tests for ToadStool's `UniBin` and refactored executor modules.
 //! Tests verify resilience under failure conditions and fault tolerance.
 
 use std::sync::Arc;
@@ -54,8 +54,7 @@ async fn test_server_under_load_spike() {
     // Should handle at least 80% of spike
     assert!(
         success_count >= 80,
-        "Only {} of 100 requests succeeded",
-        success_count
+        "Only {success_count} of 100 requests succeeded"
     );
 }
 
@@ -166,7 +165,7 @@ async fn test_cascading_failure_isolation() {
 
                 if i == failure_index {
                     // This module fails
-                    Err(format!("{} failed", module))
+                    Err(format!("{module} failed"))
                 } else {
                     // Other modules continue working
                     Ok(module)
@@ -337,11 +336,11 @@ async fn test_display_under_log_flood() {
                     let mut buf = buffer.lock().await;
 
                     if buf.len() < max_buffer_size {
-                        buf.push(format!("Log {}", i));
+                        buf.push(format!("Log {i}"));
                     } else {
                         // Buffer full, drop oldest
                         buf.remove(0);
-                        buf.push(format!("Log {}", i));
+                        buf.push(format!("Log {i}"));
                     }
 
                     sleep(Duration::from_micros(50)).await;
@@ -468,7 +467,7 @@ async fn test_concurrent_resource_allocation_deallocation() {
                 {
                     let mut r = res.lock().await;
                     if r.len() < max_resources {
-                        r.push(format!("resource-{}", i));
+                        r.push(format!("resource-{i}"));
                     }
                 }
 
@@ -477,7 +476,7 @@ async fn test_concurrent_resource_allocation_deallocation() {
                 // Deallocate
                 {
                     let mut r = res.lock().await;
-                    if let Some(pos) = r.iter().position(|x| x == &format!("resource-{}", i)) {
+                    if let Some(pos) = r.iter().position(|x| x == &format!("resource-{i}")) {
                         r.remove(pos);
                     }
                 }
@@ -588,11 +587,7 @@ async fn test_combined_chaos_scenario() {
 
     // System should survive (health > 0)
     let final_health = *system_health.lock().await;
-    assert!(
-        final_health > 0,
-        "System health dropped to {}",
-        final_health
-    );
+    assert!(final_health > 0, "System health dropped to {final_health}");
 
     // Most lifecycle checks should see healthy system
     let healthy_checks = lifecycle_results.iter().filter(|&&x| x).count();

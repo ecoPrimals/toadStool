@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! ToadStool - Universal Compute Platform (UniBin Architecture)
+//! ToadStool - Universal Compute Platform (`UniBin` Architecture)
 //!
 //! 🍄 **WELCOME TO THE FUTURE OF SOVEREIGN SCIENCE** 🍄
 //!
@@ -11,9 +11,9 @@
 //! 🚀 **UNIVERSAL COMPUTE**: If it has a chip and memory, ToadStool runs on it
 //! 🔒 **ZERO TRUST**: BearDog cryptographic security by default
 //!
-//! ## UniBin Architecture
+//! ## `UniBin` Architecture
 //!
-//! This is the FIRST UniBin primal in the ecoPrimals ecosystem!
+//! This is the FIRST `UniBin` primal in the ecoPrimals ecosystem!
 //! One binary, multiple modes:
 //! - `toadstool <command>` - CLI commands (run, up, down, etc.)
 //! - `toadstool daemon` - Server/daemon mode

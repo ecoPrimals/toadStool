@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Expanded tests for discovery_defaults module
+//! Expanded tests for `discovery_defaults` module
 //!
-//! Coverage expansion: discovery_defaults.rs needs expanded coverage
+//! Coverage expansion: `discovery_defaults.rs` needs expanded coverage
 //! Testing capability-based discovery patterns and defaults
 
 use std::time::Duration;
 use toadstool_config::discovery_defaults::*;
 
-/// Test DiscoveryDefaults default values
+/// Test `DiscoveryDefaults` default values
 #[test]
 fn test_discovery_defaults_values() {
     let defaults = DiscoveryDefaults::default();
@@ -19,7 +19,7 @@ fn test_discovery_defaults_values() {
     assert_eq!(defaults.retry_delay, Duration::from_secs(1));
 }
 
-/// Test DiscoveryDefaults clone
+/// Test `DiscoveryDefaults` clone
 #[test]
 fn test_discovery_defaults_clone() {
     let defaults1 = DiscoveryDefaults::default();
@@ -29,11 +29,11 @@ fn test_discovery_defaults_clone() {
     assert_eq!(defaults1.max_retries, defaults2.max_retries);
 }
 
-/// Test DiscoveryDefaults debug format
+/// Test `DiscoveryDefaults` debug format
 #[test]
 fn test_discovery_defaults_debug() {
     let defaults = DiscoveryDefaults::default();
-    let debug_str = format!("{:?}", defaults);
+    let debug_str = format!("{defaults:?}");
 
     assert!(debug_str.contains("DiscoveryDefaults"));
     assert!(debug_str.contains("discovery_timeout"));
@@ -150,14 +150,14 @@ fn test_retry_delay_reasonable() {
     assert!(defaults.retry_delay <= Duration::from_secs(10));
 }
 
-/// Test ServiceDiscoveryHelper default creation
+/// Test `ServiceDiscoveryHelper` default creation
 #[test]
 fn test_service_discovery_helper_default() {
     let helper = ServiceDiscoveryHelper::default();
     assert_eq!(helper.discovery_timeout(), Duration::from_secs(5));
 }
 
-/// Test ServiceDiscoveryHelper with custom defaults
+/// Test `ServiceDiscoveryHelper` with custom defaults
 #[test]
 fn test_service_discovery_helper_custom() {
     let custom = DiscoveryDefaults {
@@ -174,7 +174,7 @@ fn test_service_discovery_helper_custom() {
     assert_eq!(helper.cache_ttl(), Duration::from_secs(400));
 }
 
-/// Test FallbackEndpoints default values
+/// Test `FallbackEndpoints` default values
 #[test]
 fn test_fallback_endpoints_defaults() {
     let fallback = FallbackEndpoints::default();
@@ -182,7 +182,7 @@ fn test_fallback_endpoints_defaults() {
     assert_eq!(fallback.localhost_base_port, 9080);
 }
 
-/// Test FallbackEndpoints fallback_endpoint (single-node dev only)
+/// Test `FallbackEndpoints` `fallback_endpoint` (single-node dev only)
 #[test]
 fn test_fallback_endpoint() {
     let fallback = FallbackEndpoints::default();
@@ -201,7 +201,7 @@ fn test_fallback_endpoint() {
     );
 }
 
-/// Test FallbackEndpoints with disabled fallback
+/// Test `FallbackEndpoints` with disabled fallback
 #[test]
 fn test_fallback_disabled() {
     let fallback = FallbackEndpoints {
@@ -217,7 +217,7 @@ fn test_fallback_disabled() {
         .contains("fallback disabled"));
 }
 
-/// Test FallbackEndpoints clone
+/// Test `FallbackEndpoints` clone
 #[test]
 fn test_fallback_endpoints_clone() {
     let fallback1 = FallbackEndpoints::default();
@@ -230,7 +230,7 @@ fn test_fallback_endpoints_clone() {
     assert_eq!(fallback1.localhost_base_port, fallback2.localhost_base_port);
 }
 
-/// Test custom DiscoveryDefaults creation
+/// Test custom `DiscoveryDefaults` creation
 #[test]
 fn test_custom_discovery_defaults() {
     let custom = DiscoveryDefaults {

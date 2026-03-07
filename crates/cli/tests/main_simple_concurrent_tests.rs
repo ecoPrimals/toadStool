@@ -267,7 +267,7 @@ async fn test_concurrent_invalid_commands() -> Result<()> {
     for i in 0..10 {
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
-            let cmd = format!("invalid{}", i);
+            let cmd = format!("invalid{i}");
             let args = vec!["toadstool", cmd.as_str()];
             let result = Cli::try_parse_from(args);
             tx.send(i).ok();
@@ -335,7 +335,7 @@ async fn test_burst_parsing() -> Result<()> {
         tokio::spawn(async move {
             let args = vec!["toadstool", "ps"];
             let _result = Cli::try_parse_from(args);
-            tx.send(format!("burst1_{}", i)).ok();
+            tx.send(format!("burst1_{i}")).ok();
         });
     }
 
@@ -350,7 +350,7 @@ async fn test_burst_parsing() -> Result<()> {
         tokio::spawn(async move {
             let args = vec!["toadstool", "capabilities"];
             let _result = Cli::try_parse_from(args);
-            tx.send(format!("burst2_{}", i)).ok();
+            tx.send(format!("burst2_{i}")).ok();
         });
     }
 

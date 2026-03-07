@@ -58,8 +58,7 @@ fn test_ports_container_range_valid() {
     let range_size = ports::CONTAINER_END - ports::CONTAINER_START;
     assert!(
         range_size >= 100,
-        "Container range should be at least 100 ports, got {}",
-        range_size
+        "Container range should be at least 100 ports, got {range_size}"
     );
 }
 
@@ -112,6 +111,7 @@ fn test_retries_max_attempts() {
 }
 
 #[test]
+#[allow(clippy::float_cmp)] // comparing against exact literal initialization
 fn test_retries_backoff_settings() {
     assert_eq!(retries::BACKOFF_MS, 1_000);
     assert_eq!(retries::BACKOFF_MULTIPLIER, 2.0);
@@ -171,8 +171,7 @@ fn test_no_port_conflicts() {
     for &port in &service_ports {
         assert!(
             !(ports::CONTAINER_START..=ports::CONTAINER_END).contains(&port),
-            "Port {} conflicts with container range",
-            port
+            "Port {port} conflicts with container range"
         );
     }
 }

@@ -17,10 +17,10 @@ use std::fmt::Debug;
 /// A single proxy measurement from the simulation state.
 ///
 /// NPU controllers observe these to make parameter suggestions.
-/// Generalizes hotSpring's `ProxyFeatures` pattern for adaptive simulation steering.
+/// Generalizes hotSpring's [`ProxyFeatures`] pattern for adaptive simulation steering.
 #[derive(Debug, Clone)]
 pub struct ProxyFeature {
-    /// Feature name (e.g. "acceptance_rate", "residual_norm", "energy_drift").
+    /// Feature name (e.g. `acceptance_rate`, `residual_norm`, `energy_drift`).
     pub name: &'static str,
     /// Current value.
     pub value: f64,
@@ -163,17 +163,25 @@ pub trait NpuParameterController: Debug + Send {
 
 /// Controller for adaptive simulation parameter tuning.
 ///
-/// Absorbs the hotSpring npu_worker pattern as a generic primitive.
-/// Combines `NpuParameterController` with simulation-specific lifecycle
+/// Absorbs the hotSpring `npu_worker` pattern as a generic primitive.
+/// Combines [`NpuParameterController`] with simulation-specific lifecycle
 /// and proxy-feature observation.
 pub trait AdaptiveSimulationController: Debug + Send {
-    /// The parameter set being tuned (e.g. timestep, n_md, temperature).
+    /// The parameter set being tuned (e.g. timestep, `n_md`, temperature).
     type Params: Debug + Clone + Send;
 
     /// Feed proxy features from the current simulation state.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ControllerError`] if the controller cannot process the features.
     fn observe_features(&mut self, features: &[ProxyFeature]) -> Result<(), ControllerError>;
 
     /// Get parameter suggestion based on accumulated observations.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ControllerError`] if the controller state is invalid.
     fn suggest_params(&self) -> Result<Option<ParameterSuggestion<Self::Params>>, ControllerError>;
 
     /// Whether the controller has enough data to make suggestions.

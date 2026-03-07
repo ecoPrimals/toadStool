@@ -114,8 +114,7 @@ async fn test_circuit_breaker_half_open_to_closed_transition() {
     let final_state = breaker.get_state().await;
     assert!(
         final_state == CircuitState::Closed || final_state == CircuitState::HalfOpen,
-        "Circuit should recover after successes, got {:?}",
-        final_state
+        "Circuit should recover after successes, got {final_state:?}"
     );
 }
 
@@ -180,8 +179,7 @@ async fn test_circuit_breaker_rapid_state_changes() {
     let final_state = breaker.get_state().await;
     assert!(
         final_state == CircuitState::Closed || final_state == CircuitState::HalfOpen,
-        "Circuit should recover after rapid changes, got {:?}",
-        final_state
+        "Circuit should recover after rapid changes, got {final_state:?}"
     );
 }
 
@@ -199,10 +197,10 @@ async fn test_resource_leak_detector_multiple_allocations() {
         let id = Uuid::new_v4();
         let allocation = ResourceAllocation {
             id,
-            resource_type: format!("type-{}", i),
+            resource_type: format!("type-{i}"),
             allocated_at: Instant::now(),
             requirements: ResourceRequirements::default(),
-            owner: format!("owner-{}", i),
+            owner: format!("owner-{i}"),
             last_accessed: Instant::now(),
         };
         detector.track_allocation(allocation).await;
@@ -230,10 +228,14 @@ async fn test_resource_leak_detector_cleanup_old_resources() {
     let old_allocation = ResourceAllocation {
         id: Uuid::new_v4(),
         resource_type: "old-resource".to_string(),
-        allocated_at: Instant::now() - Duration::from_millis(200),
+        allocated_at: Instant::now()
+            .checked_sub(Duration::from_millis(200))
+            .unwrap(),
         requirements: ResourceRequirements::default(),
         owner: "test-owner".to_string(),
-        last_accessed: Instant::now() - Duration::from_millis(150),
+        last_accessed: Instant::now()
+            .checked_sub(Duration::from_millis(150))
+            .unwrap(),
     };
 
     detector.track_allocation(old_allocation.clone()).await;
@@ -331,10 +333,14 @@ async fn test_resource_leak_detector_mixed_ages() {
         .track_allocation(ResourceAllocation {
             id: old_id,
             resource_type: "old".to_string(),
-            allocated_at: Instant::now() - Duration::from_millis(200),
+            allocated_at: Instant::now()
+                .checked_sub(Duration::from_millis(200))
+                .unwrap(),
             requirements: ResourceRequirements::default(),
             owner: "test".to_string(),
-            last_accessed: Instant::now() - Duration::from_millis(150),
+            last_accessed: Instant::now()
+                .checked_sub(Duration::from_millis(150))
+                .unwrap(),
         })
         .await;
 
@@ -571,10 +577,10 @@ async fn test_full_production_hardening_workflow() {
             manager
                 .track_resource(ResourceAllocation {
                     id: resource_id,
-                    resource_type: format!("workflow-{}", i),
+                    resource_type: format!("workflow-{i}"),
                     allocated_at: Instant::now(),
                     requirements: ResourceRequirements::default(),
-                    owner: format!("workflow-{}", i),
+                    owner: format!("workflow-{i}"),
                     last_accessed: Instant::now(),
                 })
                 .await;
@@ -657,10 +663,10 @@ async fn test_resource_leak_detector_stress() {
             detector_clone
                 .track_allocation(ResourceAllocation {
                     id,
-                    resource_type: format!("stress-{}", i),
+                    resource_type: format!("stress-{i}"),
                     allocated_at: Instant::now(),
                     requirements: ResourceRequirements::default(),
-                    owner: format!("owner-{}", i),
+                    owner: format!("owner-{i}"),
                     last_accessed: Instant::now(),
                 })
                 .await;

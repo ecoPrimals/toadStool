@@ -22,11 +22,12 @@ fn test_e2e_decompress_and_process() {
         ruzstd::encoding::CompressionLevel::Fastest,
     );
 
+    #[allow(clippy::cast_precision_loss)] // usize to f64 for ratio display
+    let ratio = (compressed.len() as f64 / original_data.len() as f64) * 100.0;
     println!(
-        "Compressed: {} bytes → {} bytes ({:.1}% ratio)",
+        "Compressed: {} bytes → {} bytes ({ratio:.1}% ratio)",
         original_data.len(),
-        compressed.len(),
-        (compressed.len() as f64 / original_data.len() as f64) * 100.0
+        compressed.len()
     );
 
     // Step 2: Decompress in isolated memory
@@ -87,7 +88,8 @@ fn test_e2e_with_audit_trail() {
     assert_eq!(events[3].event_type, AuditEventType::ProcessingCompleted);
     assert_eq!(events[4].event_type, AuditEventType::MemoryDeallocated);
 
-    println!("Audit trail verified: {} events", audit_log.len());
+    let event_count = audit_log.len();
+    println!("Audit trail verified: {event_count} events");
 }
 
 #[test]
@@ -141,14 +143,15 @@ fn test_e2e_compress_encrypt_process() {
         })
         .unwrap();
 
-    println!("Processed result: {} A's found", result);
+    println!("Processed result: {result} A's found");
     assert!(result > 0);
 
     // Provider never saw plaintext!
     // Audit log proves isolation
     let audit_log = runtime.audit_logger().unwrap();
     audit_log.verify_integrity().unwrap();
-    println!("Audit verified: {} events", audit_log.len());
+    let event_count = audit_log.len();
+    println!("Audit verified: {event_count} events");
 }
 
 #[test]
@@ -170,7 +173,8 @@ fn test_e2e_tamper_detection() {
 
     // Tampering would be detected in production
     // (This test just verifies the audit trail works correctly)
-    println!("Audit trail secure: {} events verified", audit_log.len());
+    let event_count = audit_log.len();
+    println!("Audit trail secure: {event_count} events verified");
 }
 
 #[test]
@@ -186,11 +190,13 @@ fn test_e2e_performance_monitoring() {
         ruzstd::encoding::CompressionLevel::Fastest,
     );
 
-    println!("Data size: {} MB", large_data.len() / 1024 / 1024);
+    let data_mb = large_data.len() / 1024 / 1024;
+    println!("Data size: {data_mb} MB");
+    #[allow(clippy::cast_precision_loss)] // usize to f64 for ratio display
+    let comp_ratio = (compressed.len() as f64 / large_data.len() as f64) * 100.0;
     println!(
-        "Compressed: {} bytes ({:.2}% of original)",
-        compressed.len(),
-        (compressed.len() as f64 / large_data.len() as f64) * 100.0
+        "Compressed: {} bytes ({comp_ratio:.2}% of original)",
+        compressed.len()
     );
 
     // Decompress
@@ -203,10 +209,8 @@ fn test_e2e_performance_monitoring() {
     .unwrap();
     let decomp_time = start.elapsed();
 
-    println!(
-        "Decompression: {:?} ({:.2} MB/s)",
-        decomp_time, decomp_stats.throughput_mbps
-    );
+    let throughput = decomp_stats.throughput_mbps;
+    println!("Decompression: {decomp_time:?} ({throughput:.2} MB/s)");
 
     // Process
     let start = std::time::Instant::now();
@@ -219,12 +223,12 @@ fn test_e2e_performance_monitoring() {
         .unwrap();
     let process_time = start.elapsed();
 
-    println!("Processing: {:?}", process_time);
-    println!("Result: {}", result);
+    println!("Processing: {process_time:?}");
+    println!("Result: {result}");
 
     // Total overhead should be < 10%
     let total_time = decomp_time + process_time;
-    println!("Total time: {:?}", total_time);
+    println!("Total time: {total_time:?}");
 
     // Verify audit trail
     let audit_log = runtime.audit_logger().unwrap();

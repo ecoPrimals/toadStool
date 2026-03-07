@@ -133,7 +133,7 @@ async fn test_request_type_classification() -> Result<()> {
 async fn test_response_message_formatting() -> Result<()> {
     // Test response message formatting
     let status = "completed";
-    let message = format!("Request {} successfully", status);
+    let message = format!("Request {status} successfully");
 
     assert!(message.contains("completed"));
     assert!(message.contains("successfully"));
@@ -192,7 +192,7 @@ async fn test_concurrent_session_access() -> Result<()> {
         let sessions_clone = Arc::clone(&sessions);
         let handle = tokio::spawn(async move {
             let mut guard = sessions_clone.write().await;
-            guard.insert(format!("session-{}", i), "active".to_string());
+            guard.insert(format!("session-{i}"), "active".to_string());
         });
         handles.push(handle);
     }
@@ -362,7 +362,7 @@ async fn test_string_concatenation() -> Result<()> {
     // Test string concatenation for messages
     let prefix = "AI Response:";
     let content = "Configuration updated";
-    let message = format!("{} {}", prefix, content);
+    let message = format!("{prefix} {content}");
 
     assert!(message.starts_with("AI Response:"));
     assert!(message.contains("Configuration updated"));

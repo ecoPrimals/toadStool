@@ -2,8 +2,8 @@
 //! Cross-Substrate Validation Benchmark
 //!
 //! Compares performance of the same workload across:
-//! - CPU (BarraCuda CPU backend)
-//! - GPU(s) (BarraCuda wgpu backend)  
+//! - CPU (`BarraCuda` CPU backend)
+//! - GPU(s) (`BarraCuda` wgpu backend)  
 //! - Neuromorphic (Akida NPUs)
 //!
 //! **Deep Debt**: Complete implementation, no mocks!
@@ -240,7 +240,7 @@ async fn benchmark_neuromorphic(
     let throughput = input.len() as f64 / elapsed.as_secs_f64();
 
     // Convert u8 output to f32 for comparison
-    let output: Vec<f32> = result.output.iter().map(|&x| x as f32).collect();
+    let output: Vec<f32> = result.output.iter().map(|&x| f32::from(x)).collect();
 
     Ok(BenchmarkResult {
         time_us,

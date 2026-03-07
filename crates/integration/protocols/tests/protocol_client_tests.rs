@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive tests for ProtocolClient
+//! Comprehensive tests for `ProtocolClient`
 
 use serde_json::json;
 use std::collections::HashMap;
