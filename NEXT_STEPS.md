@@ -84,7 +84,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **DF64 default path** -- transferred to barraCuda team (S93)
 - [x] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
-- [ ] **Test coverage target 90%** -- 19,109 tests; focus on hardware-dependent code (toadStool D-COV)
+- [ ] **Test coverage target 90%** -- 19,777 tests; focus on hardware-dependent code (toadStool D-COV)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)

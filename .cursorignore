@@ -3,11 +3,11 @@
 # This ignore file reduces the indexed set to ~2,500 (source code only).
 # =============================================================
 
-# --- Archives (4,000+ files, 2+ GB) ---
+# --- Archives (removed from tree; entries kept for safety) ---
 docs/archive/
 showcase/archive/
 
-# --- Session docs (140+ files, historical) ---
+
 docs/sessions/
 
 # --- All showcase subdirectories (7,000+ files, 3.9 GB) ---
@@ -55,7 +55,7 @@ actual_gpu_validation.*
 benchmark_output.txt
 test_results.txt
 
-# --- Large non-source doc directories ---
+# --- Large non-source doc directories (removed; kept for safety) ---
 docs/biomeos/
 docs/unified-memory/
 docs/team/

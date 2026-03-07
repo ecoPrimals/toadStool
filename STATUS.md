@@ -6,8 +6,7 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --all-targets -- -D warnings -W clippy::pedantic` | PASS | **0 warnings (pedantic clean)** |
-| `cargo clippy --workspace --all-targets -- -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** |
+| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (in CI) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
 | `cargo test --workspace` | PASS | **19,777 tests, 0 failures** (216 intentional ignores for GPU hardware) |
 | `cargo llvm-cov` (excl GPU crates) | **~84% line** | 121K production lines. Remaining gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
