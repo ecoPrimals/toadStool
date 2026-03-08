@@ -41,12 +41,12 @@ pub(super) async fn health(
 #[allow(clippy::unused_async)]
 pub(super) async fn version_info(version: &str) -> JsonRpcResult {
     let mut info = HashMap::new();
-    info.insert("version".to_string(), version.to_string());
-    info.insert("protocol".to_string(), "JSON-RPC 2.0".to_string());
-    info.insert("service".to_string(), "ToadStool Compute".to_string());
+    info.insert(String::from("version"), version.to_string());
+    info.insert(String::from("protocol"), String::from("JSON-RPC 2.0"));
+    info.insert(String::from("service"), String::from("ToadStool Compute"));
     info.insert(
-        "implementation".to_string(),
-        "Pure Rust (ecoPrimals sovereign pattern)".to_string(),
+        String::from("implementation"),
+        String::from("Pure Rust (ecoPrimals sovereign pattern)"),
     );
     Ok(serde_json::json!(info))
 }

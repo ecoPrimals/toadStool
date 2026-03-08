@@ -5,11 +5,14 @@
 //! enabling privacy-preserving computation where the compute provider cannot
 //! access plaintext data.
 //!
-//! ## Architecture
+//! ## Architecture (Node Atomic)
 //!
-//! The secure enclave runtime implements the pattern:
+//! Follows the Node Atomic pattern: BearDog (crypto) + Songbird (discovery) + ToadStool (compute).
+//! All encryption/decryption is delegated to BearDog via JSON-RPC (`crypto.encrypt` / `crypto.decrypt`).
+//! This crate owns **memory isolation only** — never bundles its own crypto primitives.
+//!
 //! ```text
-//! Compressed Data (NestGate) → Encrypted (BearDog) → Isolated Compute → Re-encrypted Result
+//! Compressed Data (NestGate) → Encrypted (BearDog) → Isolated Compute → Re-encrypted Result (BearDog)
 //! ```
 //!
 //! ## Core Guarantees

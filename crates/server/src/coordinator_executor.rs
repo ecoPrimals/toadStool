@@ -39,7 +39,7 @@ use crate::tarpc_server::WorkloadExecutor;
 /// with the server's RPC interface.
 pub struct CoordinatorExecutor {
     coordinator: Arc<DistributedCoordinator>,
-    /// Arc<str> avoids allocation on hot-path query_capabilities clone
+    /// `Arc<str>` avoids allocation on hot-path `query_capabilities` clone
     service_id: Arc<str>,
 }
 

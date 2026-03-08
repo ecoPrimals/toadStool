@@ -1,4 +1,4 @@
-# Status -- March 8, 2026 (S133 Cross-Spring Absorption)
+# Status -- March 8, 2026 (S134 Node Atomic / BearDog Crypto Delegation)
 
 ## Quality Gates
 
@@ -26,10 +26,10 @@
 | Rust version | **1.82+** (is_some_and, div_ceil) |
 | `unsafe` blocks | **~70+** (all `// SAFETY:` documented; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
-| External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml** |
+| External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify**. `aes-gcm` optional (dev-crypto only). |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
-| Production mocks/stubs | **0** — all evolved to real implementations or proper errors. Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
+| Production mocks/stubs | **0** — all evolved to real implementations or proper errors. `SoftwareHsmProvider`/`LocalKeyringProvider` gated behind `dev-crypto` feature (S134). Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
 | Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (1,868 .rs files, 517K total lines) |
 | Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic` across entire workspace. Production `#[allow]` evolved to `#[expect]` (S131+, S132). 50 stale suppressions discovered and removed total. |
@@ -90,6 +90,15 @@
 
 ## Session History (Recent)
 
+### S134: Node Atomic / BearDog Crypto Delegation (Mar 8, 2026)
+- **BearDog crypto delegation enforced**: `secure_enclave` crate: removed unused `aes-gcm` and `getrandom` dependencies. Docs updated to reflect Node Atomic pattern (BearDog owns encrypt/decrypt). `blake3` retained for local tamper-evident audit chain hashing (latency-critical, no network round-trip).
+- **`dev-crypto` feature gate**: `SoftwareHsmProvider` and `LocalKeyringProvider` gated behind `dev-crypto` feature in distributed crate. Production builds enforce BearDog delegation; dev/CI get in-process fallback. `testing` feature auto-enables `dev-crypto`.
+- **`aes-gcm` optional**: In distributed crate, `aes-gcm` is now an optional dependency (`dep:aes-gcm`), only linked when `dev-crypto` is enabled.
+- **Duplicate module conflicts resolved**: Removed stale `ecosystem/management.rs` and `executor/lifecycle_ops.rs` that conflicted with their directory module counterparts.
+- **lifecycle_ops refactored**: Monolithic 853L `lifecycle_ops.rs` split into `start.rs` (288L), `stop.rs` (111L), `tests.rs` (445L), with clean `mod.rs` (13L). Stale imports in `executor/mod.rs` cleaned.
+- **Ecosystem management resolved**: Stale `management.rs` (832L) deleted; directory module (`management/mod.rs` + 4 submodules) already in place from prior session.
+- All quality gates green: 0 clippy, 0 fmt, workspace build clean, 0 warnings.
+
 ### S132: Deep Debt Execution (Mar 8, 2026)
 - **`#[allow]` → `#[expect]` completion**: 60+ production attributes migrated. 47 stale/unfulfilled expectations discovered and removed. 12 redundant `#[allow(deprecated)]` removed.
 - **Wildcard re-exports (D-WC) RESOLVED**: 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). All remaining wildcards justified.
@@ -104,7 +113,7 @@
 ### S130+: Deep Debt Execution (Mar 7, 2026)
 - **Clippy pedantic zero**: Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors, 0 warnings. Added pedantic run to CI (`ci.yml`).
 - **Unsafe audit**: All ~70+ blocks verified justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives exist.
-- **Dependency audit**: Only 2 always-on C/FFI deps (sysinfo, notify). All others optional/feature-gated. Already heavily evolved to pure Rust (rustix, etcetera, procfs, evdev, wasmi, seccompiler, RustCrypto).
+- **Dependency audit**: Only 1 always-on C/FFI dep (sysinfo). `notify` removed S134 (was unused). `aes-gcm` optional behind `dev-crypto` feature. All others optional/feature-gated. Already heavily evolved to pure Rust (rustix, etcetera, procfs, evdev, wasmi, seccompiler, RustCrypto).
 - **Hardcoding evolution**: Production primal names in `integrator_impl.rs` evolved from string literals to `well_known::*` constants.
 - **#[allow] audit**: All 9 production `#[allow]` attributes justified; 6 missing comments added; 2 `unused_self` documented.
 - **Clone audit**: 14 hot-path `.clone()` patterns identified and documented. High priority: tarpc_server (Arc for WorkloadResult, capabilities), unibin/capabilities (Arc<str> for static strings), cross_gate (Arc<str> for gate IDs).

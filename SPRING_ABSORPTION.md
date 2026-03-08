@@ -165,7 +165,7 @@ toadStool is current. All absorption through S130 is confirmed. Remaining work i
 - **36 legacy dispatch files remaining** (15 simple, 10 medium, 6 complex — complex ones need ComputeDispatch multi-stage API)
 - **Unsafe code**: 45 blocks total, all necessary (wgpu FFI, aligned alloc, CUDA), none reducible
 - **God files**: 28 files >600 lines identified (barracuda: 7, cli: 3, core: 10, runtime: 8)
-- **External deps**: Nearly all pure Rust; `notify` (inotify C FFI) and `pyo3` (Python) are only C deps
+- **External deps**: Nearly all pure Rust; `sysinfo` is the only always-on C/FFI dep. `notify` removed S134 (was unused). `pyo3` (Python) is feature-gated
 
 ---
 

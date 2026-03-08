@@ -112,10 +112,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         let start = Instant::now();
 
         // Simulate CPU-intensive work
-        let mut result = 0u64;
-        for i in 0..1_000_000 {
-            result = result.wrapping_add(i);
-        }
+        let result = (0..1_000_000u64).sum::<u64>();
 
         let duration = start.elapsed();
         let score = 1_000_000.0 / duration.as_secs_f64(); // Operations per second
@@ -203,10 +200,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         let start = Instant::now();
 
         // Real micro-benchmark: simulate network-like work (prevents optimization)
-        let mut result = 0u64;
-        for i in 0..10_000 {
-            result = std::hint::black_box(result.wrapping_add(i));
-        }
+        let result = (0..10_000u64).fold(0u64, |acc, i| std::hint::black_box(acc.wrapping_add(i)));
         let _ = std::hint::black_box(result);
 
         let duration = start.elapsed();
@@ -226,10 +220,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         // CPU micro-operation benchmark (approximates WASM overhead via native baseline)
         let start = Instant::now();
 
-        let mut result = 0u64;
-        for i in 0..5_000 {
-            result = std::hint::black_box(result.wrapping_add(i));
-        }
+        let result = (0..5_000u64).fold(0u64, |acc, i| std::hint::black_box(acc.wrapping_add(i)));
         let _ = std::hint::black_box(result);
 
         let duration = start.elapsed();

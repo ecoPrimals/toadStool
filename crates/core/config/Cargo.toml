@@ -37,11 +37,8 @@ thiserror = { workspace = true }
 # once_cell removed: evolved to std::sync::LazyLock (Rust 1.80+)
 tracing = { workspace = true }
 validator = { version = "0.18", features = ["derive"] }
-# File watching (Pure Rust Evolution - Jan 17, 2026)
-# notify 6.x uses inotify-sys on Linux (C FFI to kernel inotify).
-# Acceptable: inotify is a thin kernel syscall wrapper, not a heavy C library.
-# Future: consider rustix-backed watcher or polling fallback for pure Rust.
-notify = "6.1"
+# notify removed: was unused (no Watcher implementation). When file watching is
+# needed, use rustix::fs::inotify directly (pure Rust, zero C FFI).
 # ring = "0.17"  # REMOVED: Unused, violates pure Rust principle (C dependency)
 base64 = "0.22"
 async-trait = "0.1"

@@ -160,20 +160,30 @@ impl SecurityProviderFactory {
             }
         }
 
-        // Try LocalKeyringProvider — uses OS keyring when D-Bus is available,
-        // falls back to in-memory gracefully.
-        use crate::security_provider::local_keyring::LocalKeyringProvider;
-        let keyring = LocalKeyringProvider::new();
-        if keyring.backend() != &crate::security_provider::local_keyring::KeyringBackend::InMemory {
-            tracing::info!("LocalKeyringProvider available (OS keyring)");
-            return Ok(Arc::new(keyring) as Arc<dyn SecurityProvider>);
+        // LocalKeyringProvider and SoftwareHsmProvider are dev/CI-only fallbacks.
+        // Production deployments MUST use BearDog (Node Atomic pattern).
+        #[cfg(feature = "dev-crypto")]
+        {
+            use crate::security_provider::local_keyring::{KeyringBackend, LocalKeyringProvider};
+
+            let keyring = LocalKeyringProvider::new();
+            if keyring.backend() != &KeyringBackend::InMemory {
+                tracing::info!("LocalKeyringProvider available (OS keyring — dev/CI only)");
+                return Ok(Arc::new(keyring) as Arc<dyn SecurityProvider>);
+            }
+
+            use crate::security_provider::software_hsm::SoftwareHsmProvider;
+            tracing::info!("Using SoftwareHsmProvider (in-memory, ephemeral keys — dev/CI only)");
+            return Ok(Arc::new(SoftwareHsmProvider::new()) as Arc<dyn SecurityProvider>);
         }
 
-        // SoftwareHsmProvider — pure in-process fallback, always succeeds.
-        // Keys are ephemeral (lost on restart) — suitable for development/CI.
-        use crate::security_provider::software_hsm::SoftwareHsmProvider;
-        tracing::info!("Using SoftwareHsmProvider (in-memory, ephemeral keys)");
-        Ok(Arc::new(SoftwareHsmProvider::new()) as Arc<dyn SecurityProvider>)
+        #[cfg(not(feature = "dev-crypto"))]
+        Err(ToadStoolError::not_found(
+            "No security provider available. BearDog not found and local fallback \
+             providers are disabled in production builds. Ensure BearDog is running \
+             or enable the `dev-crypto` feature for development."
+                .to_string(),
+        ))
     }
 
     /// Create custom protocol provider
@@ -380,7 +390,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_in_process_provider_succeeds() {
+    async fn test_in_process_provider_without_beardog() {
         let handle = CapabilityHandle::new(
             CapabilityInfo {
                 provider_id: "test".to_string(),
@@ -399,9 +409,11 @@ mod tests {
         );
 
         let result = SecurityProviderFactory::create_from_handle(&handle).await;
+        // BearDogSecurityProvider::new() succeeds even without BearDog (degraded mode).
+        // With dev-crypto, SoftwareHsmProvider/LocalKeyringProvider also act as fallback.
         assert!(result.is_ok());
-        let provider = result.unwrap();
-        let caps = provider.capabilities().await.unwrap();
+        let provider = result.expect("in-process provider creation should succeed");
+        let caps = provider.capabilities().await.expect("capabilities should work");
         assert!(!caps.is_empty());
     }
 

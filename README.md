@@ -267,6 +267,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S134 (Mar 8, 2026)**: BearDog crypto delegation enforced (secure_enclave). `dev-crypto` feature gate for SoftwareHsmProvider. lifecycle_ops refactored. Unused deps removed (notify, aes-gcm from secure_enclave). Volatile MMIO safe abstraction. Property-based tests (proptest).
 - **S133 (Mar 8, 2026)**: Ada Lovelace reclassification, f64_zeros_risk, fused_ops_healthy(), 14 ecology.* methods, NUCLEUS discovery, deploy graph routing, 20 semantic methods (71→91). Spring versions: hotSpring v0.6.23, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5.
 - **S131+ (Mar 7, 2026)**: Spring sync (all 5 springs pinned to latest). `#[allow]` → `#[expect]` lint evolution (3 stale suppressions removed). SPRING_ABSORPTION_TRACKER comprehensive update. coralReef E2E AMD dispatch milestone noted.
 - **S130+ (Mar 7, 2026)**: Deep debt execution. Clippy pedantic zero workspace-wide. Unsafe audit (70+ blocks justified). Dep/hardcoding/clone/file-size audits. 240 new coverage tests. CI pedantic gate.
@@ -328,4 +329,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 8, 2026 -- S133. 19,820+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. `#[expect]` evolution. All 5 springs synced. coralReef E2E AMD milestone. Rust 1.82+ (MSRV).
+**Last Updated**: March 8, 2026 -- S134. 19,820+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. All 5 springs synced. Rust 1.82+ (MSRV).

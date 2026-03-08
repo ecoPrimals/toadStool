@@ -403,7 +403,6 @@ fn test_only_acceptable_sys_crates() {
     // Check each -sys crate
     for crate_line in &sys_crates {
         let is_acceptable = crate_line.contains("linux-raw-sys") ||    // Syscall numbers ✅
-            crate_line.contains("inotify-sys") ||      // File watching ✅
             crate_line.contains("pyo3-ffi") ||         // Python FFI (optional) ✅
             crate_line.contains("seccomp-sys") ||      // Security (optional) ✅
             crate_line.contains("renderdoc-sys"); // GPU debugging (optional) ✅
@@ -452,10 +451,8 @@ fn test_true_100_percent_pure_rust() {
         tree.contains("etcetera"),
         "Should have etcetera (Pure Rust dirs)"
     );
-    assert!(
-        tree.contains("notify"),
-        "Should have notify (Pure Rust file watching)"
-    );
+    // notify removed: was unused (no Watcher implementation). When file watching
+    // is needed, rustix::fs::inotify provides pure Rust inotify access.
 
     println!("✅ TRUE 100% Pure Rust achieved!");
     println!("   All C library dependencies eliminated from production!");

@@ -56,9 +56,20 @@ pub trait NetworkManager: Send + Sync {
     /// Get default gateway IP for subnet
     ///
     /// **Returns**: Gateway IP (typically first IP in subnet)
-    fn get_gateway_ip(&self, _subnet_cidr: &str) -> String {
-        // Default implementation: use .1 as gateway
-        "10.0.0.1".to_string()
+    fn get_gateway_ip(&self, subnet_cidr: &str) -> String {
+        subnet_cidr
+            .split('/')
+            .next()
+            .and_then(|base| {
+                let mut octets: Vec<&str> = base.split('.').collect();
+                if octets.len() == 4 {
+                    octets[3] = "1";
+                    Some(octets.join("."))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| "10.0.0.1".to_string())
     }
 }
 

@@ -224,7 +224,77 @@ impl UnixJsonRpcClient {
 
 #[cfg(test)]
 mod tests {
+    // SPDX-License-Identifier: AGPL-3.0-or-later
     use super::*;
+    use proptest::prelude::*;
+
+    fn arb_jsonrpc_response_result() -> impl Strategy<Value = JsonRpcResponse<'static>> {
+        (
+            (1u64..10000u64),
+            prop_oneof![
+                any::<bool>().prop_map(|b| serde_json::json!(b)),
+                (0i64..10000i64).prop_map(|n| serde_json::json!(n)),
+                "[a-zA-Z0-9_ ]{0,100}".prop_map(|s| serde_json::json!(s)),
+                prop::collection::vec(any::<i64>(), 0..5).prop_map(|v| serde_json::json!(v)),
+                prop::collection::hash_map("[a-z]{1,10}", any::<i64>(), 0..5)
+                    .prop_map(|m| serde_json::json!(m)),
+            ],
+        )
+            .prop_map(|(id, result)| JsonRpcResponse {
+                jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
+                id,
+                result: Some(result),
+                error: None,
+            })
+    }
+
+    fn arb_jsonrpc_response_error() -> impl Strategy<Value = JsonRpcResponse<'static>> {
+        (
+            (1u64..10000u64),
+            (-32768i32..0i32),
+            "[a-zA-Z0-9 _-]{1,80}",
+            prop::option::of(prop_oneof![
+                any::<bool>().prop_map(|b| serde_json::json!(b)),
+                (0i64..100i64).prop_map(|n| serde_json::json!(n)),
+                "[a-z]{1,30}".prop_map(|s| serde_json::json!(s)),
+            ]),
+        )
+            .prop_map(|(id, code, message, data)| JsonRpcResponse {
+                jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
+                id,
+                result: None,
+                error: Some(JsonRpcError {
+                    code,
+                    message: Cow::Owned(message),
+                    data,
+                }),
+            })
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_jsonrpc_response_result_roundtrip(resp in arb_jsonrpc_response_result()) {
+            let json = serde_json::to_string(&resp).unwrap();
+            let restored: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
+            prop_assert_eq!(resp.id, restored.id);
+            prop_assert!(restored.result.is_some());
+            prop_assert!(restored.error.is_none());
+        }
+
+        #[test]
+        fn prop_jsonrpc_response_error_roundtrip(resp in arb_jsonrpc_response_error()) {
+            let json = serde_json::to_string(&resp).unwrap();
+            let restored: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
+            prop_assert_eq!(resp.id, restored.id);
+            prop_assert!(restored.result.is_none());
+            prop_assert!(restored.error.is_some());
+            let err = restored.error.unwrap();
+            prop_assert_eq!(resp.error.as_ref().unwrap().code, err.code);
+            prop_assert_eq!(resp.error.as_ref().unwrap().message.as_ref(), err.message.as_ref());
+        }
+    }
 
     #[test]
     fn test_client_creation() {

@@ -106,6 +106,21 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 ---
 
+## Recently Resolved (S134 — Node Atomic / BearDog Crypto Delegation — Mar 8, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| secure_enclave crypto deps | Removed unused `aes-gcm` and `getrandom`. Encryption/decryption delegated to BearDog via Node Atomic pattern. `blake3` retained for local audit hashing. |
+| `SoftwareHsmProvider` in production | Gated behind `dev-crypto` feature. Production builds enforce BearDog via `SecurityProvider` trait. `testing` feature auto-enables `dev-crypto`. |
+| `aes-gcm` always-on dep | Now optional (`dep:aes-gcm`) in distributed crate — only linked with `dev-crypto` feature. |
+| Duplicate module conflicts | `ecosystem/management.rs` (832L) and `executor/lifecycle_ops.rs` (853L) deleted — directory modules already in place. |
+| lifecycle_ops >800L | Refactored into `start.rs` (288L) + `stop.rs` (111L) + `tests.rs` (445L). Stale imports cleaned from `executor/mod.rs`. |
+| `notify` unused dep | Removed from `core/config` Cargo.toml (was declared but never used in code). |
+| Hardcoded magic numbers | wgpu_backend: 12 named constants. distributed/resources: 3 named constants. load_balancer: 2 named constants. |
+| Doc comment HTML warnings | 3 unescaped `Arc<str>` in doc comments → backtick-escaped. 1 broken intra-doc link fixed. |
+| Unsafe volatile MMIO | New `VolatileSlice` safe abstraction in akida-driver. `mmap.rs` and `mmio.rs` evolved to use safe API. |
+| Property-based tests | Added proptest for `ResourceAllocation`, `BackoffStrategy`, `NetworkConfig`, `RuntimeType`, `JsonRpcRequest`, `JsonRpcResponse`. |
+
 ## Recently Resolved (S133 — Mar 8, 2026)
 
 | Item | Resolution |
@@ -149,7 +164,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |------|-----------|
 | Clippy pedantic in CI | Added `clippy::pedantic` run to `ci.yml`. Two-step: pedantic check (default features) + all-features check |
 | Unsafe audit | All ~70+ blocks justified (V4L2, VFIO, GPU FFI, aligned alloc, secure enclave). No safe alternatives |
-| Dependency audit | Only 2 always-on C/FFI deps (sysinfo, notify). All others optional. Already heavily evolved to pure Rust |
+| Dependency audit | Only 1 always-on C/FFI dep (sysinfo). `notify` removed S134. `aes-gcm` optional (`dev-crypto`). Already heavily evolved to pure Rust |
 | Hardcoding evolution | `integrator_impl.rs` primal names evolved from string literals to `well_known::*` constants |
 | `#[allow]` audit | All 9 production `#[allow]` justified; 6 missing justification comments added |
 | Clone audit | 14 hot-path patterns documented. Arc evolution opportunities tracked in DEBT |

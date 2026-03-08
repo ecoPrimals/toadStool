@@ -68,7 +68,7 @@ pub struct GateGpuInfo {
 /// Routing decision for a compute job
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutingDecision {
-    /// Selected gate ID (Arc<str> avoids allocation on hot path)
+    /// Selected gate ID (`Arc<str>` avoids allocation on hot path)
     #[serde(
         serialize_with = "serialize_arc_str",
         deserialize_with = "deserialize_arc_str"
@@ -104,7 +104,7 @@ pub enum RoutingReason {
 pub struct JobRouter {
     /// Known gates and their capabilities
     gates: HashMap<Arc<str>, GateGpuInfo>,
-    /// Local gate ID (Arc<str> avoids allocation on route decisions)
+    /// Local gate ID (`Arc<str>` avoids allocation on route decisions)
     local_gate_id: Arc<str>,
 }
 
@@ -384,5 +384,73 @@ mod tests {
         let decision = router.route("tinyllama:latest", 2000);
         assert_eq!(decision.gate_id.as_ref(), "tower");
         assert!(matches!(decision.reason, RoutingReason::ModelLoaded));
+    }
+
+    #[test]
+    fn test_routing_decision_serialization_roundtrip() {
+        let decision = RoutingDecision {
+            gate_id: Arc::from("gate2"),
+            reason: RoutingReason::MostVramAvailable,
+            estimated_wait_ms: 150,
+        };
+        let json = serde_json::to_string(&decision).expect("serialize");
+        let parsed: RoutingDecision = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(parsed.gate_id.as_ref(), "gate2");
+        assert!(matches!(parsed.reason, RoutingReason::MostVramAvailable));
+        assert_eq!(parsed.estimated_wait_ms, 150);
+    }
+
+    #[test]
+    fn test_routing_decision_serialization_all_reasons() {
+        for (reason, expected_str) in [
+            (RoutingReason::ModelLoaded, "model_loaded"),
+            (RoutingReason::MostVramAvailable, "most_vram_available"),
+            (RoutingReason::ShortestQueue, "shortest_queue"),
+            (RoutingReason::OnlyOption, "only_option"),
+            (RoutingReason::Local, "local"),
+        ] {
+            let decision = RoutingDecision {
+                gate_id: Arc::from("test"),
+                reason: reason.clone(),
+                estimated_wait_ms: 0,
+            };
+            let json = serde_json::to_string(&decision).expect("serialize");
+            assert!(
+                json.contains(expected_str),
+                "expected {expected_str} in {json}"
+            );
+            let parsed: RoutingDecision = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(parsed.gate_id.as_ref(), "test");
+        }
+    }
+
+    #[test]
+    fn test_gate_gpu_info_serialization_roundtrip() {
+        let info = GateGpuInfo {
+            gate_id: Arc::from("tower"),
+            gpu_model: "RTX 4070".to_string(),
+            vram_total_mb: 12288,
+            vram_available_mb: 8000,
+            loaded_models: vec!["model1".to_string()],
+            queue_depth: 2,
+            reachable: true,
+        };
+        let json = serde_json::to_string(&info).expect("serialize");
+        let parsed: GateGpuInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(parsed.gate_id.as_ref(), "tower");
+        assert_eq!(parsed.gpu_model, "RTX 4070");
+        assert_eq!(parsed.vram_available_mb, 8000);
+    }
+
+    #[test]
+    fn test_route_local_fallback_when_no_reachable() {
+        let mut router = JobRouter::new("local-gate");
+        let mut gate = tower_gpu();
+        gate.reachable = false;
+        router.update_gate(gate);
+
+        let decision = router.route("any_model", 1000);
+        assert_eq!(decision.gate_id.as_ref(), "local-gate");
+        assert!(matches!(decision.reason, RoutingReason::OnlyOption));
     }
 }

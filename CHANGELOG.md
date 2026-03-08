@@ -5,7 +5,26 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 6, 2026 (Sessions 43-128 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery)
+## [Unreleased] - March 8, 2026 (Sessions 43-134 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation)
+
+### Session S134 (Mar 8, 2026) — Node Atomic / BearDog Crypto Delegation
+
+#### Crypto Delegation
+- **secure_enclave**: Removed unused `aes-gcm` and `getrandom` — encryption/decryption delegated to BearDog via Node Atomic pattern. `blake3` retained for local tamper-evident audit hashing.
+- **`dev-crypto` feature gate**: `SoftwareHsmProvider` and `LocalKeyringProvider` gated behind `dev-crypto` in distributed crate. Production enforces BearDog. `testing` auto-enables `dev-crypto`.
+- **`aes-gcm` optional**: Now `dep:aes-gcm` — only linked with `dev-crypto` feature.
+
+#### Refactoring
+- **lifecycle_ops**: Monolithic 853L file split into `start.rs` (288L) + `stop.rs` (111L) + `tests.rs` (445L).
+- **ecosystem/management**: Stale 832L `management.rs` removed; directory module already in place.
+- **Unused dep removal**: `notify` removed from core/config (was declared but unused). `aes-gcm`/`getrandom` removed from secure_enclave.
+
+#### Code Quality
+- Doc comment fixes: 3 unescaped `Arc<str>` → backtick-escaped, 1 broken intra-doc link fixed.
+- Hardcoded magic numbers replaced with named constants (wgpu_backend, resources, load_balancer).
+- New `VolatileSlice` safe abstraction for MMIO in akida-driver.
+- Property-based tests added (proptest) for ResourceAllocation, BackoffStrategy, NetworkConfig, RuntimeType, JsonRpcRequest, JsonRpcResponse.
+- Idiomatic Rust: index loops → iterator sum/fold, `.to_string()` → `String::from()` on hot paths.
 
 ### Session S128 (Mar 6, 2026) — Deep Debt Evolution: f64 Routing + Shader Compile IPC + Architecture Completion
 

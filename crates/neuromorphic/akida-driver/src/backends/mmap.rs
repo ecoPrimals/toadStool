@@ -13,6 +13,7 @@
 //! This provides better error handling and type safety while maintaining
 //! identical functionality.
 
+use crate::backends::volatile_access::VolatileSlice;
 use crate::error::{AkidaError, Result};
 use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
 use std::fs::{File, OpenOptions};
@@ -130,28 +131,8 @@ impl MmapRegion {
     ///
     /// Returns error if offset is out of bounds
     pub fn read_u32(&self, offset: usize) -> Result<u32> {
-        if offset + 4 > self.size {
-            return Err(AkidaError::transfer_failed(format!(
-                "Out of bounds read: offset={offset:#x}, size=4, limit={:#x}",
-                self.size
-            )));
-        }
-
-        // SAFETY: Volatile read from memory-mapped hardware register.
-        // Invariants that must hold:
-        // - Bounds validated above: offset + 4 <= self.size
-        // - ptr is valid (from successful mmap, stored in NonNull)
-        // - offset + 4 bytes are within mapped region
-        // - Pointer arithmetic: self.ptr.as_ptr().add(offset) is valid (offset < size)
-        // - Cast to *const u32: PCIe BAR registers are 4-byte aligned per spec
-        // - read_volatile is required: MMIO registers have side effects and compiler
-        //   must not reorder or optimize these reads (hardware may change value)
-        #[allow(clippy::cast_ptr_alignment)]
-        let value = unsafe {
-            let ptr = self.ptr.as_ptr().add(offset).cast::<u32>();
-            ptr.read_volatile()
-        };
-
+        let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        let value = slice.read_u32(offset)?;
         tracing::trace!("Read u32 @ {offset:#x} = {value:#x}");
         Ok(value)
     }
@@ -162,31 +143,9 @@ impl MmapRegion {
     ///
     /// Returns error if offset is out of bounds
     pub fn write_u32(&mut self, offset: usize, value: u32) -> Result<()> {
-        if offset + 4 > self.size {
-            return Err(AkidaError::transfer_failed(format!(
-                "Out of bounds write: offset={offset:#x}, size=4, limit={:#x}",
-                self.size
-            )));
-        }
-
         tracing::trace!("Write u32 @ {offset:#x} = {value:#x}");
-
-        // SAFETY: Volatile write to memory-mapped hardware register.
-        // Invariants that must hold:
-        // - Bounds validated above: offset + 4 <= self.size
-        // - ptr is valid (from successful mmap, stored in NonNull)
-        // - offset + 4 bytes are within mapped region
-        // - Pointer arithmetic: self.ptr.as_ptr().add(offset) is valid (offset < size)
-        // - Cast to *mut u32: PCIe BAR registers are 4-byte aligned per spec
-        // - write_volatile is required: MMIO writes have side effects (trigger hardware
-        //   operations) and compiler must not reorder or optimize these writes
-        #[allow(clippy::cast_ptr_alignment)]
-        unsafe {
-            let ptr = self.ptr.as_ptr().add(offset).cast::<u32>();
-            ptr.write_volatile(value);
-        }
-
-        Ok(())
+        let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        slice.write_u32(offset, value)
     }
 
     /// Read bytes at offset
@@ -195,31 +154,8 @@ impl MmapRegion {
     ///
     /// Returns error if read would exceed bounds
     pub fn read_bytes(&self, offset: usize, buffer: &mut [u8]) -> Result<()> {
-        if offset + buffer.len() > self.size {
-            return Err(AkidaError::transfer_failed(format!(
-                "Out of bounds read: offset={offset:#x}, size={}, limit={:#x}",
-                buffer.len(),
-                self.size
-            )));
-        }
-
-        // SAFETY: copy_nonoverlapping requires:
-        // - src is valid for reads of buffer.len() bytes
-        // - dst is valid for writes of buffer.len() bytes
-        // - src and dst do not overlap
-        // - Both pointers are properly aligned
-        // Invariants that hold:
-        // - Bounds validated above: offset + buffer.len() <= self.size
-        // - src = self.ptr.as_ptr().add(offset) is valid (offset < size, within mapped region)
-        // - dst = buffer.as_mut_ptr() is valid (buffer is a valid mutable slice)
-        // - No overlap: src points to mapped hardware memory, dst points to user buffer
-        // - Alignment: u8 has alignment 1, so both pointers are properly aligned
-        unsafe {
-            let src = self.ptr.as_ptr().add(offset);
-            std::ptr::copy_nonoverlapping(src, buffer.as_mut_ptr(), buffer.len());
-        }
-
-        Ok(())
+        let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        slice.read_region(offset, buffer)
     }
 
     /// Write bytes at offset
@@ -228,31 +164,8 @@ impl MmapRegion {
     ///
     /// Returns error if write would exceed bounds
     pub fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        if offset + data.len() > self.size {
-            return Err(AkidaError::transfer_failed(format!(
-                "Out of bounds write: offset={offset:#x}, size={}, limit={:#x}",
-                data.len(),
-                self.size
-            )));
-        }
-
-        // SAFETY: copy_nonoverlapping requires:
-        // - src is valid for reads of data.len() bytes
-        // - dst is valid for writes of data.len() bytes
-        // - src and dst do not overlap
-        // - Both pointers are properly aligned
-        // Invariants that hold:
-        // - Bounds validated above: offset + data.len() <= self.size
-        // - src = data.as_ptr() is valid (data is a valid slice)
-        // - dst = self.ptr.as_ptr().add(offset) is valid (offset < size, within mapped region)
-        // - No overlap: src points to user data, dst points to mapped hardware memory
-        // - Alignment: u8 has alignment 1, so both pointers are properly aligned
-        unsafe {
-            let dst = self.ptr.as_ptr().add(offset);
-            std::ptr::copy_nonoverlapping(data.as_ptr(), dst, data.len());
-        }
-
-        Ok(())
+        let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        slice.write_region(offset, data)
     }
 
     /// Get region size

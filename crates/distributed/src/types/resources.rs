@@ -176,11 +176,13 @@ pub struct DistributedRetryConfig {
 
 impl Default for DistributedRetryConfig {
     fn default() -> Self {
+        const DEFAULT_BACKOFF_BASE_MS: u64 = 1_000;
+        const DEFAULT_BACKOFF_MAX_MS: u64 = 30_000;
         Self {
             max_attempts: 3,
             backoff_strategy: BackoffStrategy::Exponential {
-                base_ms: 1000,
-                max_ms: 30000,
+                base_ms: DEFAULT_BACKOFF_BASE_MS,
+                max_ms: DEFAULT_BACKOFF_MAX_MS,
             },
             retry_conditions: vec![
                 RetryCondition::NetworkError,
@@ -249,10 +251,11 @@ impl std::hash::Hash for ResourceAllocation {
 
 impl Default for ResourceAllocation {
     fn default() -> Self {
+        const GIB: u64 = 1024 * 1024 * 1024;
         Self {
             cpu_cores: 1.0,
-            memory_bytes: 1024 * 1024 * 1024,       // 1GB
-            storage_bytes: 10 * 1024 * 1024 * 1024, // 10GB
+            memory_bytes: GIB,
+            storage_bytes: 10 * GIB,
             network_bandwidth: 100,
             gpu_allocation: None,
             custom_resources: HashMap::new(),
@@ -401,9 +404,118 @@ pub enum ResourceValue {
 }
 
 #[cfg(test)]
-#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 mod tests {
+    // SPDX-License-Identifier: AGPL-3.0-or-later
     use super::*;
+    use proptest::prelude::*;
+
+    fn arb_resource_allocation() -> impl Strategy<Value = ResourceAllocation> {
+        (
+            // Use integer-ish cpu_cores: JSON roundtrip can change float representation
+            (1u32..1024u32).prop_map(|n| n as f64),
+            (1024u64..(1u64 << 40)), // 1KB .. 1TB
+            (1024u64..(1u64 << 40)),
+            (100u64..(1u64 << 30)), // 100 B/s .. 1 GB/s
+            prop::option::of(((0u32..16), (1024u64..(1u64 << 30)), (1u32..128))),
+            // Exclude Float from custom_resources: JSON roundtrip can change float representation
+            prop::collection::hash_map(
+                "[a-z_]{1,20}",
+                prop_oneof![
+                    any::<i64>().prop_map(ResourceValue::Integer),
+                    "[a-zA-Z0-9_]{0,50}".prop_map(ResourceValue::String),
+                    any::<bool>().prop_map(ResourceValue::Boolean),
+                ],
+                0..5,
+            ),
+        )
+            .prop_map(
+                |(
+                    cpu_cores,
+                    memory_bytes,
+                    storage_bytes,
+                    network_bandwidth,
+                    gpu,
+                    custom_resources,
+                )| {
+                    ResourceAllocation {
+                        cpu_cores,
+                        memory_bytes,
+                        storage_bytes,
+                        network_bandwidth,
+                        gpu_allocation: gpu.map(|(device_id, memory_bytes, compute_units)| {
+                            GpuAllocation {
+                                device_id,
+                                memory_bytes,
+                                compute_units,
+                            }
+                        }),
+                        custom_resources,
+                    }
+                },
+            )
+    }
+
+    fn arb_backoff_strategy() -> impl Strategy<Value = BackoffStrategy> {
+        prop_oneof![
+            (1u64..60_000u64).prop_map(|delay_ms| BackoffStrategy::Fixed { delay_ms }),
+            ((100u64..5_000u64), (50u64..2_000u64)).prop_map(|(initial_ms, increment_ms)| {
+                BackoffStrategy::Linear {
+                    initial_ms,
+                    increment_ms,
+                }
+            }),
+            ((100u64..10_000u64), (1_000u64..60_000u64))
+                .prop_map(|(base_ms, max_ms)| BackoffStrategy::Exponential { base_ms, max_ms }),
+            ((100u64..10_000u64), (1_000u64..60_000u64)).prop_map(|(base_ms, max_ms)| {
+                BackoffStrategy::ExponentialJittered { base_ms, max_ms }
+            }),
+        ]
+    }
+
+    fn arb_network_config() -> impl Strategy<Value = NetworkConfig> {
+        (
+            ((1u16..65535), (1u16..65535)).prop_filter("port_range ordered", |(a, b)| a <= b),
+            prop_oneof![
+                Just(NetworkSecurityLevel::Low),
+                Just(NetworkSecurityLevel::Medium),
+                Just(NetworkSecurityLevel::High),
+                Just(NetworkSecurityLevel::Maximum),
+            ],
+            prop::collection::vec("[a-z]{4,10}", 0..5),
+        )
+            .prop_map(|(port_range, security_level, protocols)| NetworkConfig {
+                port_range,
+                security_level,
+                protocols,
+            })
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_resource_allocation_json_roundtrip(alloc in arb_resource_allocation()) {
+            let json = serde_json::to_string(&alloc).unwrap();
+            let restored: ResourceAllocation = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(alloc, restored);
+        }
+
+        #[test]
+        fn prop_backoff_strategy_json_roundtrip(strategy in arb_backoff_strategy()) {
+            let json = serde_json::to_string(&strategy).unwrap();
+            let restored: BackoffStrategy = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(format!("{strategy:?}"), format!("{restored:?}"));
+        }
+
+        #[test]
+        fn prop_network_config_json_roundtrip(config in arb_network_config()) {
+            let json = serde_json::to_string(&config).unwrap();
+            let restored: NetworkConfig = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(config.port_range, restored.port_range);
+            prop_assert_eq!(format!("{:?}", config.security_level), format!("{:?}", restored.security_level));
+            prop_assert_eq!(config.protocols, restored.protocols);
+        }
+    }
 
     #[test]
     fn resource_requirements_default_validation() {

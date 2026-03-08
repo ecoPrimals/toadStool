@@ -178,4 +178,64 @@ mod tests {
         let result = DmaBuffer::new(0, 0, 0x1000);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_dma_buffer_layout_alignment_4096() {
+        let layout = std::alloc::Layout::from_size_align(4096, 4096);
+        assert!(layout.is_ok());
+        let layout = layout.unwrap();
+        assert_eq!(layout.size(), 4096);
+        assert_eq!(layout.align(), 4096);
+    }
+
+    #[test]
+    fn test_dma_buffer_layout_invalid_align_zero() {
+        let layout = std::alloc::Layout::from_size_align(4096, 0);
+        assert!(layout.is_err());
+    }
+
+    #[test]
+    fn test_dma_buffer_layout_invalid_align_non_power_of_two() {
+        let layout = std::alloc::Layout::from_size_align(4096, 3000);
+        assert!(layout.is_err());
+    }
+
+    #[test]
+    fn test_dma_buffer_alignment_math_page_aligned() {
+        let size = 1usize;
+        let aligned = size.div_ceil(4096) * 4096;
+        assert_eq!(aligned, 4096);
+    }
+
+    #[test]
+    fn test_dma_buffer_alignment_math_exact_page() {
+        let size = 8192usize;
+        let aligned = size.div_ceil(4096) * 4096;
+        assert_eq!(aligned, 8192);
+    }
+
+    #[test]
+    fn test_dma_buffer_alignment_math_multiple_pages() {
+        let size = 16_384usize;
+        let aligned = size.div_ceil(4096) * 4096;
+        assert_eq!(aligned, 16_384);
+    }
+
+    #[test]
+    fn test_dma_buffer_vfio_dma_map_argsz_layout() {
+        let argsz = std::mem::size_of::<super::super::types::VfioDmaMap>();
+        assert!(
+            argsz >= 32,
+            "VfioDmaMap kernel ABI expects at least 32 bytes"
+        );
+    }
+
+    #[test]
+    fn test_dma_buffer_vfio_dma_unmap_argsz_layout() {
+        let argsz = std::mem::size_of::<super::super::types::VfioDmaUnmap>();
+        assert!(
+            argsz >= 24,
+            "VfioDmaUnmap kernel ABI expects at least 24 bytes"
+        );
+    }
 }

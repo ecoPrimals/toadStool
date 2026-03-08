@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 8, 2026 — S133**
+**March 8, 2026 — S134**
 
 ---
 
@@ -270,15 +270,16 @@ Real-time events: WebSocket removed. Use `compute.status` polling.
 ## Port Configuration
 
 ```bash
-# Environment overrides (all optional)
-TOADSTOOL_SERVER_PORT=8084
-TOADSTOOL_GPU_PORT=8085
-TOADSTOOL_DISTRIBUTED_PORT=8086
+# Environment overrides (all optional — defaults are 0 = OS-assigned)
+TOADSTOOL_SERVER_PORT=9000
+TOADSTOOL_GPU_PORT=9001
+TOADSTOOL_DISTRIBUTED_PORT=9002
 TOADSTOOL_METRICS_PORT=9090
 ```
 
-Default ports: 8084 (server), 8085 (GPU), 8086 (distributed), 9090 (metrics).
-Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
+Default ports: all 0 (OS-assigned at bind time). Override via env vars above.
+Port constants: `toadstool_config::ports::toadstool::{SERVER, GPU_COMPUTE, DISTRIBUTED, METRICS}`
+Port helpers: `toadstool_config::ports::{server_port(), gpu_compute_port(), distributed_port(), metrics_port()}`
 
 ---
 
@@ -290,7 +291,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-config` | Centralized config, ports, network |
 | `toadstool` | Core runtime, IPC server/client, scheduler |
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
-| `toadstool-api` | JSON-RPC API, types (REST + middleware removed; JSON-RPC polling) |
+| `toadstool-common` | Shared types, constants, universal adapter, primal discovery |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
 | `toadstool-core` | Generic hardware traits (NpuDispatch, NpuParameterController) |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |

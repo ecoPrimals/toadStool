@@ -516,7 +516,31 @@ pub use crate::runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy};
 
 #[cfg(test)]
 mod tests {
+    // SPDX-License-Identifier: AGPL-3.0-or-later
     use super::*;
+    use proptest::prelude::*;
+
+    fn arb_runtime_type() -> impl Strategy<Value = RuntimeType> {
+        prop_oneof![
+            Just(RuntimeType::Native),
+            Just(RuntimeType::Wasm),
+            Just(RuntimeType::Container),
+            Just(RuntimeType::Gpu),
+            Just(RuntimeType::Python),
+            "[a-zA-Z0-9_-]{1,50}".prop_map(|s| RuntimeType::Custom(Arc::from(s))),
+        ]
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_runtime_type_json_roundtrip(rt in arb_runtime_type()) {
+            let json = serde_json::to_string(&rt).unwrap();
+            let restored: RuntimeType = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(rt, restored);
+        }
+    }
 
     #[test]
     fn test_execution_status_equality() {

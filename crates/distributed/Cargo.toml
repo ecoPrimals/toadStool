@@ -25,7 +25,8 @@ mutex_atomic = "warn"
 [features]
 default = []
 channels = []
-testing = []  # Exposes new_for_testing for integration tests
+testing = ["dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for integration tests
+dev-crypto = ["dep:aes-gcm"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
 
 [dependencies]
 # Core ToadStool dependencies
@@ -54,7 +55,7 @@ tower = "0.4"
 
 # Clustering and load balancing
 rand = "0.8"
-aes-gcm = { workspace = true }
+aes-gcm = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true }
 hmac = { workspace = true }
 sha2 = { workspace = true }
@@ -92,3 +93,4 @@ tempfile = "3.0"
 temp-env = "0.3"
 toml = "0.8"
 anyhow = "1"
+proptest = { workspace = true }

@@ -99,13 +99,15 @@ pub struct RetryManager {
 impl FaultToleranceManager {
     #[must_use]
     pub fn new() -> Self {
+        const DEFAULT_BACKOFF_BASE_MS: u64 = 1_000;
+        const DEFAULT_BACKOFF_MAX_MS: u64 = 30_000;
         Self {
             _circuit_breakers: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             retries: Arc::new(RetryManager {
                 max_retries: 3,
                 backoff_strategy: BackoffStrategy::Exponential {
-                    base_ms: 1000,
-                    max_ms: 30000,
+                    base_ms: DEFAULT_BACKOFF_BASE_MS,
+                    max_ms: DEFAULT_BACKOFF_MAX_MS,
                 },
             }),
         }

@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 7, 2026 -- S131+ Spring Sync + Deep Debt Evolution
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,777 tests (0 failures) | ~85% line coverage (121K) | 65+ JSON-RPC methods | CI pedantic gate | All unsafe justified | `#[expect]` evolution | 2 C/FFI deps remaining (sysinfo, notify)
-**Latest**: S131+ — Spring sync (all 5 springs pinned to latest), `#[allow]` → `#[expect]` evolution (3 stale suppressions removed), SPRING_ABSORPTION_TRACKER comprehensive update, deep debt scan confirmed clean.
+**Updated**: March 8, 2026 -- S134 Node Atomic / BearDog Crypto Delegation
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,820+ tests (0 failures) | ~86% line coverage (121K) | 85+ JSON-RPC methods | CI pedantic gate | All unsafe justified | `#[expect]` evolution | 1 C/FFI dep remaining (sysinfo); notify removed S134
+**Latest**: S134 — BearDog crypto delegation enforced (secure_enclave aes-gcm/getrandom removed). `dev-crypto` feature gate for SoftwareHsmProvider. lifecycle_ops + management refactored. S133 — Cross-spring absorption (Ada reclassification, ecology.*, NUCLEUS discovery, deploy graph routing, 20 new semantic methods).
 
 ---
 
@@ -139,7 +139,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ### Session S130+: Deep Debt Execution (Mar 7, 2026)
 - **Unsafe audit**: All ~70+ blocks justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives.
-- **Dependency audit**: 2 always-on C/FFI deps (sysinfo, notify). All others optional/feature-gated. Already evolved to pure Rust.
+- **Dependency audit**: 1 always-on C/FFI dep (sysinfo). `notify` removed S134 (was unused). `aes-gcm` optional behind `dev-crypto` feature. All others optional/feature-gated. Already evolved to pure Rust.
 - **Hardcoding→constants**: Production primal names in `integrator_impl.rs` evolved to `well_known::*` constants.
 - **#[allow] audit**: All 9 justified, 6 comments added, 2 `unused_self` documented.
 - **Clone audit**: 14 hot-path patterns documented (tarpc_server, unibin/capabilities, cross_gate → Arc evolution tracked).

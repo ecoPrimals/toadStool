@@ -196,4 +196,58 @@ mod tests {
         let flags = ioctls::VFIO_DMA_MAP_FLAG_READ | ioctls::VFIO_DMA_MAP_FLAG_WRITE;
         assert_eq!(flags, 3);
     }
+
+    #[test]
+    fn test_vfio_dma_map_struct_layout_repr_c() {
+        let map = VfioDmaMap {
+            argsz: 32,
+            flags: ioctls::VFIO_DMA_MAP_FLAG_READ | ioctls::VFIO_DMA_MAP_FLAG_WRITE,
+            vaddr: 0x1000_0000,
+            iova: 0x2000_0000,
+            size: 4096,
+        };
+        assert_eq!(map.argsz, std::mem::size_of::<VfioDmaMap>() as u32);
+        assert_eq!(map.iova, 0x2000_0000);
+        assert_eq!(map.size, 4096);
+    }
+
+    #[test]
+    fn test_vfio_dma_unmap_struct_layout() {
+        let unmap = VfioDmaUnmap {
+            argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
+            flags: 0,
+            iova: 0x1000_0000,
+            size: 8192,
+        };
+        assert_eq!(unmap.iova, 0x1000_0000);
+        assert_eq!(unmap.size, 8192);
+    }
+
+    #[test]
+    fn test_vfio_device_info_argsz() {
+        let info = VfioDeviceInfo {
+            argsz: std::mem::size_of::<VfioDeviceInfo>() as u32,
+            flags: 0,
+            num_regions: 4,
+            num_irqs: 1,
+        };
+        assert!(info.argsz >= 16);
+        assert_eq!(info.num_regions, 4);
+    }
+
+    #[test]
+    fn test_poll_config_lifetime() {
+        let timeout_msg = "timeout";
+        let error_msg = "error";
+        let cfg = PollConfig {
+            reg: 0,
+            done_mask: 1,
+            error_mask: 2,
+            max_polls: 100,
+            yield_interval: 10,
+            timeout_msg,
+            error_msg,
+        };
+        assert_eq!(cfg.max_polls, 100);
+    }
 }

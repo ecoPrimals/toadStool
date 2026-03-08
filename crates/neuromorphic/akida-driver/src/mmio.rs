@@ -16,11 +16,13 @@
 #![allow(clippy::cast_ptr_alignment)]
 #![allow(clippy::items_after_statements)] // VFIO ioctl constants near usage
 
+use crate::backends::volatile_access::VolatileSlice;
 use crate::error::{AkidaError, Result};
 use rustix::io::Result as IoResult;
 use rustix::ioctl::{opcode, Ioctl, IoctlOutput, Opcode};
 use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
 use std::os::fd::AsFd;
+use std::ptr::NonNull;
 
 /// AKD1000 BAR regions
 #[derive(Debug, Clone, Copy)]
@@ -119,8 +121,8 @@ pub struct VfioRegionInfo {
 
 /// Mapped BAR region for MMIO access
 pub struct MappedRegion {
-    /// Memory-mapped pointer
-    ptr: *mut u8,
+    /// Memory-mapped pointer (non-null from mmap)
+    ptr: NonNull<u8>,
     /// Size of the mapping
     size: usize,
     /// BAR index
@@ -130,7 +132,7 @@ pub struct MappedRegion {
 impl std::fmt::Debug for MappedRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MappedRegion")
-            .field("ptr", &format_args!("{:p}", self.ptr))
+            .field("ptr", &format_args!("{:p}", self.ptr.as_ptr()))
             .field("size", &self.size)
             .field("bar", &self.bar)
             .finish()
@@ -153,6 +155,10 @@ impl MappedRegion {
     /// Returns an error if:
     /// - The VFIO ioctl to get region info fails
     /// - Memory mapping the BAR region fails
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mmap call returns a null pointer (should not occur on success).
     pub fn map(device_fd: &impl AsFd, bar: Bar) -> Result<Self> {
         // Query region info
         #[allow(clippy::cast_possible_truncation)]
@@ -242,15 +248,17 @@ impl MappedRegion {
             })?
         };
 
+        let ptr = NonNull::new(ptr.cast()).expect("mmap returns non-null pointer on success");
+
         tracing::info!(
             "Mapped BAR{} at {:p}, size={:#x}",
             bar as u32,
-            ptr,
+            ptr.as_ptr(),
             region_info.size
         );
 
         Ok(Self {
-            ptr: ptr.cast(),
+            ptr,
             size: region_info.size as usize,
             bar,
         })
@@ -262,11 +270,10 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn read32(&self, offset: usize) -> u32 {
-        assert!(offset + 4 <= self.size, "Register offset out of bounds");
-        // SAFETY: read_volatile necessary for MMIO - hardware can change value.
-        // Invariants: (1) ptr from mmap in map(), valid for self.size; (2) offset+4 <= size;
-        // (3) u32 aligned; (4) no uninit reads. Caller guarantees: offset in bounds.
-        unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u32>()) }
+        let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        slice
+            .read_u32(offset)
+            .expect("Register offset out of bounds")
     }
 
     /// Write a 32-bit register
@@ -275,13 +282,10 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn write32(&self, offset: usize, value: u32) {
-        assert!(offset + 4 <= self.size, "Register offset out of bounds");
-        // SAFETY: write_volatile necessary for MMIO - triggers hardware side effects.
-        // Invariants: (1) ptr from mmap; (2) offset+4 <= size; (3) u32 aligned.
-        // Caller guarantees: offset in bounds.
-        unsafe {
-            std::ptr::write_volatile(self.ptr.add(offset).cast::<u32>(), value);
-        }
+        let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        slice
+            .write_u32(offset, value)
+            .expect("Register offset out of bounds");
     }
 
     /// Read a 64-bit register
@@ -290,11 +294,10 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn read64(&self, offset: usize) -> u64 {
-        assert!(offset + 8 <= self.size, "Register offset out of bounds");
-        // SAFETY: read_volatile necessary for MMIO - hardware can change value.
-        // Invariants: (1) ptr from mmap; (2) offset+8 <= size; (3) u64 aligned.
-        // Caller guarantees: offset in bounds.
-        unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u64>()) }
+        let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        slice
+            .read_u64(offset)
+            .expect("Register offset out of bounds")
     }
 
     /// Write a 64-bit register
@@ -303,13 +306,10 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn write64(&self, offset: usize, value: u64) {
-        assert!(offset + 8 <= self.size, "Register offset out of bounds");
-        // SAFETY: write_volatile necessary for MMIO - triggers hardware side effects.
-        // Invariants: (1) ptr from mmap; (2) offset+8 <= size; (3) u64 aligned.
-        // Caller guarantees: offset in bounds.
-        unsafe {
-            std::ptr::write_volatile(self.ptr.add(offset).cast::<u64>(), value);
-        }
+        let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
+        slice
+            .write_u64(offset, value)
+            .expect("Register offset out of bounds");
     }
 
     /// Get BAR type
@@ -330,7 +330,7 @@ impl Drop for MappedRegion {
         // ptr+size that was previously mapped; (3) Drop runs at most once; (4) no refs.
         unsafe {
             // Ignore error in Drop (can't propagate, would need to log)
-            let _ = munmap(self.ptr.cast(), self.size);
+            let _ = munmap(self.ptr.as_ptr().cast(), self.size);
         }
         tracing::debug!("Unmapped BAR{}", self.bar as u32);
     }

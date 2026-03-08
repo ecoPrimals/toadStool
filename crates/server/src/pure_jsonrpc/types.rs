@@ -165,3 +165,75 @@ impl JsonWorkloadSubmission {
         })
     }
 }
+
+#[cfg(test)]
+mod proptest_tests {
+    use super::JsonRpcRequest;
+    use proptest::prelude::*;
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    struct JsonRpcRequestBuilder {
+        jsonrpc: String,
+        method: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        params: Option<serde_json::Value>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        id: Option<serde_json::Value>,
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_jsonrpc_request_parse_method_params_id(
+            method in "[a-zA-Z0-9_.]{1,60}",
+            id_num in prop::option::of(0i64..10000i64),
+        ) {
+            let builder = JsonRpcRequestBuilder {
+                jsonrpc: "2.0".to_string(),
+                method: method.clone(),
+                params: Some(serde_json::json!({"key": "value", "n": 42})),
+                id: id_num.map(|n| serde_json::json!(n)),
+            };
+            let json = serde_json::to_string(&builder).unwrap();
+            let parsed: JsonRpcRequest<'_> = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed.jsonrpc.as_ref(), "2.0");
+            prop_assert_eq!(parsed.method.as_ref(), method);
+            prop_assert!(parsed.params.is_some());
+        }
+
+        #[test]
+        fn prop_jsonrpc_request_parse_string_id(
+            method in "[a-z_]+",
+            id_str in "[a-zA-Z0-9_-]{1,30}",
+        ) {
+            let builder = JsonRpcRequestBuilder {
+                jsonrpc: "2.0".to_string(),
+                method: method.clone(),
+                params: None,
+                id: Some(serde_json::Value::String(id_str.clone())),
+            };
+            let json = serde_json::to_string(&builder).unwrap();
+            let parsed: JsonRpcRequest<'_> = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed.method.as_ref(), method);
+            prop_assert!(parsed.id.is_some());
+        }
+
+        #[test]
+        fn prop_jsonrpc_request_parse_array_params(
+            method in "[a-z.]+",
+        ) {
+            let builder = JsonRpcRequestBuilder {
+                jsonrpc: "2.0".to_string(),
+                method: method.clone(),
+                params: Some(serde_json::json!([1, 2, "three"])),
+                id: Some(serde_json::json!(1)),
+            };
+            let json = serde_json::to_string(&builder).unwrap();
+            let parsed: JsonRpcRequest<'_> = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(parsed.method.as_ref(), method);
+            prop_assert!(parsed.params.is_some());
+        }
+    }
+}

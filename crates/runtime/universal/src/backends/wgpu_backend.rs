@@ -234,10 +234,19 @@ impl HardwareFingerprint {
         // Estimate TFLOPS from device type and workgroup count.
         // Discrete GPUs: ~10-80 TFLOPS f32, ~0.3-40 TFLOPS f64
         // Integrated: ~1-4 TFLOPS f32
+        const MAX_WORKGROUPS_NORMALIZER: f64 = 65535.0;
+        const DISCRETE_PEAK_TFLOPS_F32: f64 = 40.0;
+        const INTEGRATED_PEAK_TFLOPS_F32: f64 = 4.0;
+        const FALLBACK_TFLOPS_F32: f64 = 0.5;
+
         let estimated_tflops_f32 = match device_type {
-            GpuDeviceType::Discrete => (max_workgroups as f64 / 65535.0) * 40.0,
-            GpuDeviceType::Integrated => (max_workgroups as f64 / 65535.0) * 4.0,
-            _ => 0.5,
+            GpuDeviceType::Discrete => {
+                (max_workgroups as f64 / MAX_WORKGROUPS_NORMALIZER) * DISCRETE_PEAK_TFLOPS_F32
+            }
+            GpuDeviceType::Integrated => {
+                (max_workgroups as f64 / MAX_WORKGROUPS_NORMALIZER) * INTEGRATED_PEAK_TFLOPS_F32
+            }
+            _ => FALLBACK_TFLOPS_F32,
         };
 
         let f64_reliable = supports_f64 && !f64_compute_unreliable;
@@ -332,41 +341,51 @@ impl WgpuComputeUnit {
         // max_compute_workgroups_per_dimension is the best proxy wgpu exposes for parallelism.
         let max_wg = limits.max_compute_workgroups_per_dimension;
 
+        const GIB: u64 = 1024 * 1024 * 1024;
+        const DISCRETE_MIN_VRAM: u64 = 4 * GIB;
+        const INTEGRATED_MIN_VRAM: u64 = GIB;
+        const VIRTUAL_MIN_VRAM: u64 = 2 * GIB;
+        const CPU_MIN_VRAM: u64 = GIB / 2;
+        const DISCRETE_BW_BPS: u64 = 500_000_000_000;
+        const INTEGRATED_BW_BPS: u64 = 50_000_000_000;
+        const VIRTUAL_BW_BPS: u64 = 100_000_000_000;
+        const CPU_BW_BPS: u64 = 25_000_000_000;
+
         let (memory_capacity, compute_throughput, power_profile, bandwidth, batch_size) =
             match info.device_type {
                 wgpu::DeviceType::DiscreteGpu => (
-                    limits.max_buffer_size.max(4 * 1024 * 1024 * 1024),
+                    limits.max_buffer_size.max(DISCRETE_MIN_VRAM),
                     10e12,
                     PowerProfile::High,
-                    500_000_000_000_u64, // ~500 GB/s typical
+                    DISCRETE_BW_BPS,
                     65_536_usize,
                 ),
                 wgpu::DeviceType::IntegratedGpu => (
-                    limits.max_buffer_size.max(1024 * 1024 * 1024),
+                    limits.max_buffer_size.max(INTEGRATED_MIN_VRAM),
                     1e12,
                     PowerProfile::Medium,
-                    50_000_000_000,
+                    INTEGRATED_BW_BPS,
                     16_384,
                 ),
                 wgpu::DeviceType::VirtualGpu => (
-                    limits.max_buffer_size.max(2 * 1024 * 1024 * 1024),
+                    limits.max_buffer_size.max(VIRTUAL_MIN_VRAM),
                     5e12,
                     PowerProfile::Medium,
-                    100_000_000_000,
+                    VIRTUAL_BW_BPS,
                     32_768,
                 ),
                 wgpu::DeviceType::Cpu => (
-                    limits.max_buffer_size.max(512 * 1024 * 1024),
+                    limits.max_buffer_size.max(CPU_MIN_VRAM),
                     100e9,
                     PowerProfile::Low,
-                    25_000_000_000,
+                    CPU_BW_BPS,
                     4_096,
                 ),
                 _ => (
-                    limits.max_buffer_size.max(1024 * 1024 * 1024),
+                    limits.max_buffer_size.max(INTEGRATED_MIN_VRAM),
                     1e12,
                     PowerProfile::Medium,
-                    50_000_000_000,
+                    INTEGRATED_BW_BPS,
                     16_384,
                 ),
             };

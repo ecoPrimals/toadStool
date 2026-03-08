@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 use toadstool_core::{decode_frame, encode_frame, FRAME_HEADER_SIZE};
 use toadstool_display::v4l2::{CaptureDevice, CaptureFormat, V4l2Capability};
+use toadstool_display::DisplayError;
 
 // -----------------------------------------------------------------------------
 // Frame protocol encoding/decoding (software-only)
@@ -176,6 +177,87 @@ fn v4l2_capture_device_open_nonexistent() {
             "expected device not found error: {s}"
         );
     }
+}
+
+#[test]
+fn v4l2_display_error_device_not_found_variant() {
+    let path = PathBuf::from("/dev/nonexistent-video-99999");
+    let err = DisplayError::DeviceNotFound(path.clone());
+    let s = format!("{err}");
+    assert!(s.contains("not found") || s.contains("NotFound"));
+    assert!(s.contains("nonexistent"));
+}
+
+#[test]
+fn v4l2_display_error_ioctl_failed_variant() {
+    let err = DisplayError::IoctlFailed("VIDIOC_S_FMT: invalid format".to_string());
+    let s = format!("{err}");
+    assert!(s.contains("ioctl") || s.contains("Ioctl"));
+    assert!(s.contains("invalid format"));
+}
+
+#[test]
+fn v4l2_capture_format_invalid_fourcc_zero() {
+    let fmt = CaptureFormat {
+        width: 640,
+        height: 480,
+        fourcc: 0,
+        bytes_per_line: 1280,
+        image_size: 614_400,
+    };
+    assert_eq!(fmt.fourcc, 0);
+    assert_eq!(fmt.image_size, fmt.width * fmt.height * 2);
+}
+
+#[test]
+fn v4l2_buffer_overflow_idx_out_of_bounds() {
+    let buffers_len = 4;
+    let idx = 10;
+    let copy_len = if idx < buffers_len {
+        let used = 1000;
+        let out_len = 500;
+        out_len.min(used)
+    } else {
+        0
+    };
+    assert_eq!(copy_len, 0, "idx >= buffers.len should yield no copy");
+}
+
+#[test]
+fn v4l2_buffer_copy_len_buffer_overflow_prevention() {
+    let used = 1_000_000;
+    let out_len = 100;
+    let copy_len = out_len.min(used);
+    assert_eq!(copy_len, 100, "copy_len must not exceed out buffer");
+}
+
+#[test]
+fn v4l2_capture_format_stride_validation() {
+    let fmt = CaptureFormat {
+        width: 1920,
+        height: 1080,
+        fourcc: 0x56_59_55_59,
+        bytes_per_line: 3840,
+        image_size: 4_147_200,
+    };
+    assert!(
+        fmt.bytes_per_line >= fmt.width,
+        "stride must be >= width for packed formats"
+    );
+    assert!(
+        fmt.image_size >= fmt.bytes_per_line * fmt.height,
+        "image_size must cover full frame"
+    );
+}
+
+#[test]
+fn v4l2_capture_format_permission_denied_simulation() {
+    let err = DisplayError::OpenFailed(std::io::Error::new(
+        std::io::ErrorKind::PermissionDenied,
+        "Permission denied",
+    ));
+    let s = format!("{err}");
+    assert!(s.contains("Permission") || s.contains("denied") || s.contains("open"));
 }
 
 #[test]

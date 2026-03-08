@@ -44,12 +44,18 @@
 //! ```
 
 pub mod factory;
-pub mod local_keyring;
 pub mod provider;
-pub mod software_hsm;
 pub mod tcp_provider;
 pub mod types;
 pub mod unix_socket_provider;
+
+// In-process fallback providers for dev/CI only.
+// Production deployments delegate all crypto to BearDog (Node Atomic pattern).
+// Enable via `dev-crypto` feature (auto-enabled by `testing` feature).
+#[cfg(feature = "dev-crypto")]
+pub mod local_keyring;
+#[cfg(feature = "dev-crypto")]
+pub mod software_hsm;
 
 // BearDog implementation (ONE of many possible implementations)
 pub mod beardog_impl;
@@ -58,7 +64,8 @@ pub use factory::*;
 pub use provider::*;
 pub use types::*;
 
-// Re-export BearDog implementation
 pub use beardog_impl::BearDogSecurityProvider;
+#[cfg(feature = "dev-crypto")]
 pub use local_keyring::LocalKeyringProvider;
+#[cfg(feature = "dev-crypto")]
 pub use software_hsm::SoftwareHsmProvider;

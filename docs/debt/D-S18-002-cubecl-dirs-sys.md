@@ -1,6 +1,6 @@
 # D-S18-002: cubecl Transitive dirs-sys Dependency (ecoBin Purity)
 
-**Status**: Documented • **Priority**: Low • **ecoBin**: Violates pure-Rust requirement
+**Status**: **RESOLVED (S97)** — cubecl fully removed from workspace; `dirs-sys-next` only via wasmtime-cache (feature-gated) • **Priority**: ~~Low~~ N/A • **ecoBin**: No longer violated
 
 ---
 
@@ -85,4 +85,4 @@ cargo tree -p cubecl
 
 ---
 
-*Analysis: 2026-02-22. Last updated: 2026-02-23. Verified: dirs-sys still present via burn-inference 0.16 → burn-wgpu → cubecl 0.4.0 → dirs → dirs-sys. cubecl has not yet switched to etcetera; resolution options unchanged.*
+*Analysis: 2026-02-22. Resolved: S97 (2026-03-06) — `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust); cubecl fully removed from workspace. `dirs-sys-next` now only via wasmtime-cache (feature-gated, not in core binary path). ecoBin purity restored.*

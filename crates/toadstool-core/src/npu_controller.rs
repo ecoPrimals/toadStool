@@ -17,7 +17,7 @@ use std::fmt::Debug;
 /// A single proxy measurement from the simulation state.
 ///
 /// NPU controllers observe these to make parameter suggestions.
-/// Generalizes hotSpring's [`ProxyFeatures`] pattern for adaptive simulation steering.
+/// Generalizes hotSpring's `ProxyFeatures` pattern for adaptive simulation steering.
 #[derive(Debug, Clone)]
 pub struct ProxyFeature {
     /// Feature name (e.g. `acceptance_rate`, `residual_norm`, `energy_drift`).

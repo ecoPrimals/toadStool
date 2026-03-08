@@ -59,7 +59,7 @@ impl JsonRpcHandler {
         let local_gate_id = std::env::var("HOSTNAME")
             .or_else(|_| std::env::var("TOADSTOOL_GATE_ID"))
             .or_else(|_| std::fs::read_to_string("/etc/hostname").map(|h| h.trim().to_string()))
-            .unwrap_or_else(|_| "local".to_string());
+            .unwrap_or_else(|_| String::from("local"));
         Self {
             version: version.into(),
             start_time: std::time::Instant::now(),

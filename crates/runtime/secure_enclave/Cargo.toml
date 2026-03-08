@@ -23,11 +23,11 @@ futures = "0.3"
 lz4_flex = "0.11"  # Pure Rust LZ4 implementation
 ruzstd = "0.8"  # Pure Rust Zstd implementation (no C dependencies!)
 
-# Cryptography
-aes-gcm = "0.10"
-# blake3: Pure Rust mode (no C/ASM optimizations for TRUE cross-compile!)
+# Cryptography — encryption/decryption delegated to BearDog via Tower Atomic
+# (crypto.encrypt / crypto.decrypt over JSON-RPC Unix socket).
+# blake3 kept for local tamper-evident audit chain hashing (latency-critical,
+# no network round-trip; pure Rust mode for ecoBin cross-compilation).
 blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
-getrandom = { version = "0.2", features = ["std"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
