@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 8, 2026 -- S134 Node Atomic / BearDog Crypto Delegation
+**Updated**: March 8, 2026 -- S135 groundSpring V100 Absorption + Deep Debt Evolution
 **Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,840+ tests (0 failures) | ~86% line coverage (121K) | 85+ JSON-RPC methods | CI pedantic gate | All unsafe justified | `#[expect]` evolution | 1 C/FFI dep remaining (sysinfo); notify removed S134
-**Latest**: S134 — BearDog crypto delegation enforced (secure_enclave aes-gcm/getrandom removed). `dev-crypto` feature gate for SoftwareHsmProvider. lifecycle_ops + management refactored. S133 — Cross-spring absorption (Ada reclassification, ecology.*, NUCLEUS discovery, deploy graph routing, 20 new semantic methods).
+**Latest**: S135 — groundSpring V100 absorption (SubstrateCapabilityKind::SovereignCompile). All hardcoded primal names evolved to interned_strings constants. precision_defaults module. GPU f64 reduction smoke test. Pre-existing debt fixes. S134 — BearDog crypto delegation enforced. S133 — Cross-spring absorption (Ada reclassification, ecology.*, NUCLEUS discovery, deploy graph routing).
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-**~85% line coverage** (121K production lines). 19,777 tests pass. Software-only modules at ~89% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~86% line coverage** (121K production lines). 19,840+ tests pass. Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -135,7 +135,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **Absorption tracker comprehensive update**: New P3 items (coralReef E2E milestone, Fp64Strategy regression tracking), SCS-CN/Stewart/Blaney-Criddle marked DONE, historical items consolidated.
 - **Deep debt scan**: All files <1000L, all unsafe=hardware FFI, no production hardcoding, mocks test-isolated, C deps optional.
 - **IPC namespace resolution**: toadStool is canonical proxy for `science.*`; springs may also call barraCuda directly.
-- **Coverage**: ~85% line (121K production lines), 19,777 tests, 0 failures.
+- **Coverage**: ~86% line (121K production lines), 19,840+ tests, 0 failures.
 
 ### Session S130+: Deep Debt Execution (Mar 7, 2026)
 - **Unsafe audit**: All ~70+ blocks justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives.

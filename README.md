@@ -329,4 +329,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 8, 2026 -- S134. 19,840+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. All 5 springs synced. Rust 1.82+ (MSRV).
+**Last Updated**: March 8, 2026 -- S135. 19,840+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. groundSpring V100 sovereign absorption. All hardcoded primal names evolved to interned_strings constants. Rust 1.82+ (MSRV).

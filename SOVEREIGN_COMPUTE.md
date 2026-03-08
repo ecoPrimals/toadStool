@@ -272,4 +272,4 @@ Zero central coordinator required for network formation.
 
 *"The mycelium is the internet of the forest. ToadStool is the mycelium of compute."*
 
-*Last updated: March 6, 2026 — Session 96. Phases 0–4 complete and live in barraCuda (transferred S93–S94). ToadStool provides HardwareFingerprint, is_sovereign_capable(), and GpuAdapterInfo to feed the sovereign pipeline.*
+*Last updated: March 8, 2026 — S135. Phases 0–4 complete and live in barraCuda (transferred S93–S94). ToadStool provides HardwareFingerprint, is_sovereign_capable(), SubstrateCapabilityKind::SovereignCompile, and GpuAdapterInfo to feed the sovereign pipeline.*

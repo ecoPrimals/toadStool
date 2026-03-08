@@ -32,7 +32,7 @@ Architecture Decision Records (ADRs) capture important architectural decisions a
 | ADR | Title | Status |
 |-----|-------|--------|
 | ADR-005 | Async Runtime Selection (tokio) | Planned |
-| ADR-006 | Error Handling Strategy (thiserror/anyhow) | Planned |
+| ADR-006 | Error Handling Strategy (thiserror only — anyhow removed S74) | Planned |
 
 ### ❌ Deprecated
 
