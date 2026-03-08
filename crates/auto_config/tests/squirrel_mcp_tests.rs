@@ -348,7 +348,10 @@ fn test_response_suggestions() {
 }
 
 #[test]
-#[allow(clippy::cast_precision_loss)]
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "u64 to f64 for percentage calculation"
+)]
 fn test_configuration_diff() {
     // Test configuration diff tracking
     let old_value = 60u64;
@@ -429,7 +432,10 @@ fn test_concurrent_request_handling() {
 }
 
 #[test]
-#[allow(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "u16 midpoint fits u8 for priority"
+)]
 fn test_request_priority_calculation() {
     // Test request priority calculation
     let agent_priority = 5u8;

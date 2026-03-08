@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 7, 2026 -- S130
+**Last Updated**: March 8, 2026 -- S133
 
 ---
 
@@ -17,7 +17,7 @@
 | Roadmap and next steps | [NEXT_STEPS.md](NEXT_STEPS.md) |
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
-| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-65-total) |
+| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-85-total) |
 | Hardware Transport Layer | [specs/HARDWARE_TRANSPORT_SPEC.md](specs/HARDWARE_TRANSPORT_SPEC.md) |
 | Dual-Fabric Architecture | [specs/DUAL_FABRIC_ARCHITECTURE.md](specs/DUAL_FABRIC_ARCHITECTURE.md) |
 | Try GPU operations | See barraCuda (`ecoPrimals/barraCuda/`) |
@@ -31,14 +31,14 @@
 
 ---
 
-## Current State (S130 — March 7, 2026)
+## Current State (S133 — March 8, 2026)
 
 **Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration. coralReef shader compilation proxy with capability-based discovery.
 
 - **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery via `poll_safe()`.
 - **ecoBin verified** — `pure-rust` feature compiles with zero C FFI dependencies. PyO3 feature-gated.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
-- **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, ~60+ justified `unsafe` blocks (all SAFETY documented), zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `unimplemented!()`, zero FIXME/HACK, zero `dbg!()`. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
+- **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, ~70+ justified `unsafe` blocks (all SAFETY documented), zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `unimplemented!()`, zero FIXME/HACK, zero `dbg!()`. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
 - **Sovereignty RESOLVED** — All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated.
 - **Sovereign pipeline** — `HardwareFingerprint`, `is_sovereign_capable()`, `safe_allocation_limit` (NVK PTE guard), 12-variant `SubstrateCapabilityKind`, 8-variant `SubstrateType`.
 - **NPU dispatch** — Generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter. `NpuParameterController` trait (absorbed from hotSpring).
@@ -48,8 +48,8 @@
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
 - **coralReef shader proxy** — `shader.compile.*` handlers proxy to coralReef with capability-based discovery and graceful naga fallback.
 - **Cross-spring provenance** — `toadstool.provenance` JSON-RPC method exposes 17+ documented cross-spring flows for ecosystem introspection.
-- **19,140+ workspace tests** | all quality gates green (0 warnings)
-- **65+ JSON-RPC methods** (dynamically built from semantic registry)
+- **19,820+ workspace tests** | all quality gates green (0 warnings, clippy pedantic clean)
+- **85+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 
 ---
@@ -124,6 +124,5 @@ docs/
   guides/                  -- Deployment and usage guides
   architecture/            -- Design documents and ADRs
   reference/               -- API reference, constants
-  audits/                  -- Security and quality audits
 specs/                     -- Technical specifications
 ```

@@ -6,6 +6,7 @@
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation,
+    clippy::float_cmp,
     clippy::no_effect_underscore_binding
 )]
 
@@ -40,7 +41,10 @@ async fn test_performance_hardening_config_clone() {
     assert_eq!(config.enable_caching, cloned.enable_caching);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_optimized_monitoring_config_default() {
     let config = OptimizedMonitoringConfig::default();
@@ -53,7 +57,10 @@ async fn test_optimized_monitoring_config_default() {
     assert_eq!(config.aggregation_window, Duration::from_secs(60));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_config_default() {
     let config = MemoryPoolConfig::default();
@@ -65,7 +72,10 @@ async fn test_memory_pool_config_default() {
     assert_eq!(config.cleanup_interval, Duration::from_secs(60));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_caching_config_default() {
     let config = CachingConfig::default();
@@ -97,7 +107,6 @@ async fn test_performance_connection_pool_config_default() {
     assert_eq!(config.health_check_interval, Duration::from_secs(60));
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitoring_config_clone() {
     let config = OptimizedMonitoringConfig::default();
@@ -108,7 +117,6 @@ async fn test_monitoring_config_clone() {
     assert_eq!(config.batch_size, cloned.batch_size);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_config_clone() {
     let config = MemoryPoolConfig::default();
@@ -119,7 +127,6 @@ async fn test_memory_pool_config_clone() {
     assert_eq!(config.growth_factor, cloned.growth_factor);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_caching_config_clone() {
     let config = CachingConfig::default();
@@ -130,7 +137,6 @@ async fn test_caching_config_clone() {
     assert_eq!(config.hit_rate_threshold, cloned.hit_rate_threshold);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_monitoring_config() {
     let config = OptimizedMonitoringConfig {
@@ -147,7 +153,6 @@ async fn test_custom_monitoring_config() {
     assert_eq!(config.high_load_multiplier, 0.25);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_memory_pool_config() {
     let config = MemoryPoolConfig {
@@ -163,7 +168,6 @@ async fn test_custom_memory_pool_config() {
     assert_eq!(config.growth_factor, 2.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_caching_config() {
     let config = CachingConfig {
@@ -178,7 +182,6 @@ async fn test_custom_caching_config() {
     assert_eq!(config.hit_rate_threshold, 0.9);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitoring_adaptive_sampling_multipliers() {
     let config = OptimizedMonitoringConfig::default();
@@ -194,7 +197,6 @@ async fn test_monitoring_adaptive_sampling_multipliers() {
     assert!(low_load_interval > config.base_sampling_interval.as_millis() as f64);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_growth_calculation() {
     let config = MemoryPoolConfig::default();
@@ -207,7 +209,6 @@ async fn test_memory_pool_growth_calculation() {
     assert!(grown_size <= config.max_size);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_shrink_threshold() {
     let config = MemoryPoolConfig::default();
@@ -220,7 +221,6 @@ async fn test_memory_pool_shrink_threshold() {
     assert!(shrink_point < config.max_size);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cache_hit_rate_threshold() {
     let config = CachingConfig::default();
@@ -305,7 +305,6 @@ async fn test_performance_config_serialization_fields() {
     // All fields accessible means serialization will work
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_extreme_monitoring_config() {
     let config = OptimizedMonitoringConfig {
@@ -321,7 +320,6 @@ async fn test_extreme_monitoring_config() {
     assert_eq!(config.batch_size, 100);
 }
 
-#[allow(clippy::float_cmp)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_minimal_memory_pool_config() {
     let config = MemoryPoolConfig {
@@ -337,7 +335,10 @@ async fn test_minimal_memory_pool_config() {
     assert!(config.growth_factor > 1.0);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_large_cache_config() {
     let config = CachingConfig {

@@ -632,7 +632,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // expected literal from empty constraints
+    #[expect(clippy::float_cmp, reason = "expected literal from empty constraints")]
     async fn test_empty_constraints_returns_score_one() {
         let engine = CompositionEngine::from_runtime().await.unwrap();
         let request = CompositionRequest::new("empty");
@@ -761,7 +761,10 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // expected literal when hard constraint fails
+    #[expect(
+        clippy::float_cmp,
+        reason = "expected literal when hard constraint fails"
+    )]
     async fn test_hard_constraint_failure_zeroes_score() {
         let engine = CompositionEngine::from_runtime().await.unwrap();
         let request = CompositionRequest::new("hard_fail")

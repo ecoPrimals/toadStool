@@ -119,7 +119,7 @@ impl Default for FaultToleranceManager {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "test values are exact literals")]
 mod tests {
     use super::*;
 

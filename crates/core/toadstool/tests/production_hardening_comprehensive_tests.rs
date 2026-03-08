@@ -239,7 +239,7 @@ fn test_memory_pressure_config_default() {
     assert!(config.emergency_threshold > config.critical_threshold);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_memory_pressure_config_custom() {
     let config = MemoryPressureConfig {
@@ -254,7 +254,7 @@ fn test_memory_pressure_config_custom() {
     assert_eq!(config.emergency_threshold, 95.0);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_memory_pressure_config_clone() {
     let config = MemoryPressureConfig::default();
@@ -368,7 +368,7 @@ fn test_memory_pressure_level_round_trip() {
     assert!(matches!(deserialized, MemoryPressureLevel::Critical));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_memory_pressure_config_round_trip() {
     let original = MemoryPressureConfig::default();
@@ -410,7 +410,7 @@ fn test_circuit_breaker_config_zero_timeout() {
     assert_eq!(config.timeout, Duration::from_secs(0));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_memory_pressure_config_extreme_thresholds() {
     let config = MemoryPressureConfig {

@@ -41,10 +41,10 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 19,777 workspace tests (0 failures, 203 intentional ignores) |
+| `cargo test --workspace` | 19,820+ workspace tests (0 failures, 203 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | ~60+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (65+ dynamically built)
+### JSON-RPC Methods (85+ dynamically built)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -157,6 +157,9 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 | `gate.*` | `update`, `remove`, `list`, `route` | Distributed routing |
 | `transport.*` | `discover`, `list`, `route` | Hardware transport discovery + routing |
 | `shader.compile.*` | `wgsl`, `spirv`, `status`, `capabilities` | coralReef proxy (capability-based discovery, naga fallback) |
+| `ecology.*` | 14 methods | Ecosystem integration (NUCLEUS discovery, capability routing) |
+| `discovery.*` | NUCLEUS discovery, capability probing | Runtime capability-based discovery |
+| `deploy.*` | graph routing, workload placement | Deploy graph routing and placement |
 | `toadstool.provenance` | cross-spring flow matrix | Cross-spring evolution introspection API |
 
 ---
@@ -235,12 +238,12 @@ toadStool/
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings (`-D warnings`) | 0 |
+| Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 19,777 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Workspace tests | 19,820+ (server + core + distributed + common + config + CLI + testing + display + auto_config) |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | ~60+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
@@ -259,18 +262,18 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 19,777 tests; focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 19,820+ tests; focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
-- **S130 (Mar 7, 2026)**: Cross-spring shader rewiring. `shader.compile.*` stubs evolved to real coralReef proxy handlers with capability-based discovery. `CoralReefClient` with env → XDG manifest → socket fallback. `cross_spring_provenance.rs` with 17+ documented cross-spring flows and `toadstool.provenance` JSON-RPC method. `SHADER_COMPILER` capability added to port resolution. 31 new tests (proxy, provenance, benchmark validation). Cross-spring evolution narrative handoff.
-- **S129 (Mar 7, 2026)**: Deep debt execution. C dependency evolution (`flate2` → pure Rust backend, `procfs` default features disabled). Capability-based port resolution (`resolve_capability_or_legacy_port`). 5 god files smart-refactored (ipc/server.rs 987→428, container/lib.rs 981→582, ecosystem.rs 963→556, handler/mod.rs 832→610, nestgate/client.rs 824→555). 200+ coverage tests added. 19,109 tests passing, 0 failures. `String` → `Cow<'static, str>` / `Arc<str>` in hot paths. Const assertions for frame protocol. Generated artifacts removed from git.
-- **S128 (Mar 6, 2026)**: f64 shared-memory bug absorbed (groundSpring V84-V85). `PrecisionRoutingAdvice` enum. 4 `shader.compile.*` IPC methods (coralReef preparation). Architecture stubs evolved to typed implementations (auth, scheduling). Capability-based handler evolution.
-- **S95–S96 (Mar 6, 2026)**: Sovereign pipeline: `HardwareFingerprint`, `SubstrateCapabilityKind`. 5 god files split. `crates/api/` orphan resolved. V4L2 unsafe documented. Debris cleanup.
-- **S94b (Mar 5, 2026)**: Generic `NpuDispatch` trait + `AkidaNpuDispatch`. NestGate mocks → real RPC. D-SOV completed. All hardcoded ports evolved.
-- **S90–93**: REST API deleted (JSON-RPC only). barraCuda budded to own primal. ecoBin verified.
-- **S69–86**: 5 spring handoffs. metalForge streaming. 16+ large files refactored. rust-version 1.75→1.82.
+- **S133 (Mar 8, 2026)**: Ada Lovelace reclassification, f64_zeros_risk, fused_ops_healthy(), 14 ecology.* methods, NUCLEUS discovery, deploy graph routing, 20 semantic methods (71→91). Spring versions: hotSpring v0.6.23, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5.
+- **S131+ (Mar 7, 2026)**: Spring sync (all 5 springs pinned to latest). `#[allow]` → `#[expect]` lint evolution (3 stale suppressions removed). SPRING_ABSORPTION_TRACKER comprehensive update. coralReef E2E AMD dispatch milestone noted.
+- **S130+ (Mar 7, 2026)**: Deep debt execution. Clippy pedantic zero workspace-wide. Unsafe audit (70+ blocks justified). Dep/hardcoding/clone/file-size audits. 240 new coverage tests. CI pedantic gate.
+- **S130 (Mar 7, 2026)**: Cross-spring shader rewiring. `shader.compile.*` evolved to real coralReef proxy. Cross-spring provenance tracking. 31 new tests.
+- **S129 (Mar 7, 2026)**: C dep evolution. 5 god files refactored. 200+ coverage tests. Zero-copy hot paths.
+- **S128 (Mar 6, 2026)**: f64 shared-memory bug absorbed. `PrecisionRoutingAdvice`. `shader.compile.*` IPC. Architecture stubs evolved.
+- **S90–S96**: REST API deleted. barraCuda budded. Sovereign pipeline. NpuDispatch. ecoBin verified.
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -280,9 +283,9 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 19,777 tests; focus on hardware-dependent code |
-| D-S20-003 | neuralSpring `evolved/` migration (~2075 lines) | Blocked -- awaiting neuralSpring team |
-| D-S18-002 | cubecl transitive `dirs-sys` | Blocked -- needs upstream PR |
+| D-COV | Test coverage → 90% | Active -- 19,820+ tests; focus on hardware-dependent code |
+| D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
+| D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
 ### Resolved (S94b)
 
@@ -325,4 +328,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 7, 2026 -- S130. 19,777 workspace tests. 65+ JSON-RPC methods (dynamically built). coralReef shader proxy with capability-based discovery. Cross-spring provenance tracking. 45+ god files refactored. Pure Rust C dep elimination. Rust 1.82+ (MSRV).
+**Last Updated**: March 8, 2026 -- S133. 19,820+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. `#[expect]` evolution. All 5 springs synced. coralReef E2E AMD milestone. Rust 1.82+ (MSRV).

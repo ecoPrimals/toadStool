@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 //! Validation and creation tests for BYOB implementation
 
 use super::super::*;

@@ -75,7 +75,10 @@ async fn test_cpu_core_detection() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[allow(clippy::cast_precision_loss)]
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "bytes to f64 for GB calculation"
+)]
 async fn test_memory_calculation() -> Result<()> {
     // Test memory size calculations
     let bytes = 1024u64 * 1024 * 1024 * 16; // 16 GB

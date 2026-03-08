@@ -105,10 +105,17 @@ impl SystemResourceMonitor {
             while *is_monitoring_flag.read().await {
                 interval_timer.tick().await;
 
-                let processes = process_map.read().await;
-                let mut updated_metrics = HashMap::new();
+                // Snapshot process list and release lock before await (avoid holding lock across .await)
+                let process_snapshot: Vec<(String, ProcessInfo)> = {
+                    let processes = process_map.read().await;
+                    processes
+                        .iter()
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect()
+                };
 
-                for (workload_id, process_info) in processes.iter() {
+                let mut updated_metrics = HashMap::new();
+                for (workload_id, process_info) in process_snapshot {
                     match Self::measure_process_resources(
                         process_info.pid,
                         &process_info.name,

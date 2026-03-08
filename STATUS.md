@@ -1,4 +1,4 @@
-# Status -- March 7, 2026 (S131+ Spring Sync + Deep Debt Evolution)
+# Status -- March 8, 2026 (S133 Cross-Spring Absorption)
 
 ## Quality Gates
 
@@ -8,8 +8,8 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (in CI) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **19,777 tests, 0 failures** (216 intentional ignores for GPU hardware) |
-| `cargo llvm-cov` (excl GPU crates) | **~84% line** | 121K production lines. Remaining gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
+| `cargo test --workspace` | PASS | **19,820+ tests, 0 failures** (216+ intentional ignores for GPU hardware) |
+| `cargo llvm-cov` (excl GPU crates) | **~86% line** | 121K production lines. Software-only ~90%. Remaining gap: hardware-dependent ioctl code (V4L2/VFIO) |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
@@ -32,11 +32,11 @@
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
 | Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (1,868 .rs files, 517K total lines) |
-| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic` across entire workspace. Production `#[allow]` evolved to `#[expect]` where possible (S131+). 3 stale suppressions discovered and removed. |
-| Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
+| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic` across entire workspace. Production `#[allow]` evolved to `#[expect]` (S131+, S132). 50 stale suppressions discovered and removed total. |
+| Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
-| JSON-RPC methods | **65+** (was 61; +`toadstool.provenance` S130; `shader.compile.*` evolved from stubs to coralReef proxy S130; methods dynamically built from semantic registry) |
+| JSON-RPC methods | **85+** (was 65; +14 ecology, +4 discovery, +2 deploy S133; `shader.compile.*` evolved from stubs to coralReef proxy S130; methods dynamically built from semantic registry) |
 | Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
@@ -44,7 +44,7 @@
 | Sovereignty | **RESOLVED** (S94b). All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated. BearDog user-facing strings neutralized. |
 | ecoBin | **PyO3 optional** — `pure-rust` feature compiles cleanly with zero C FFI deps (S90, verified S92) |
 | unsafe docs | **100%** — all `unsafe` blocks have `// SAFETY:` comments (S90) |
-| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90). 14 hot-path patterns documented (S130+): tarpc_server WorkloadResult/capabilities, unibin/capabilities static strings, cross_gate IDs → Arc evolution tracked |
+| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90). 14 hot-path patterns documented (S130+). **3 evolved (S132)**: cross_gate IDs → `Arc<str>`, unibin/capabilities → `Vec<Arc<str>>`, coordinator service_id → `Arc<str>`. Deferred: `WorkloadResult` Arc wrap (cascading). |
 | Production `todo!()` / `unimplemented!()` | **0** — confirmed by full codebase audit (S92) |
 | Production FIXME / HACK | **0** — confirmed by full codebase audit (S92) |
 | ComputeDispatch adoption | **144 ops migrated** (~139 legacy ops remaining, incremental) |
@@ -89,6 +89,17 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S132: Deep Debt Execution (Mar 8, 2026)
+- **`#[allow]` → `#[expect]` completion**: 60+ production attributes migrated. 47 stale/unfulfilled expectations discovered and removed. 12 redundant `#[allow(deprecated)]` removed.
+- **Wildcard re-exports (D-WC) RESOLVED**: 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). All remaining wildcards justified.
+- **Arc\<RwLock\> contention bugs fixed (5)**: `gpu/scheduler.rs` (2 — lock held across await), `memory_pressure.rs` (callbacks), `native/lib.rs` (process kill), `monitoring/lib.rs` (measurement). All fixed by clone-before-await pattern.
+- **Hot-path clone → Arc (3)**: cross_gate IDs → `Arc<str>`, unibin/capabilities → `Vec<Arc<str>>`, coordinator service_id → `Arc<str>`.
+- **Arduino stub evolved**: `read_serial_output()` method with proper serial timeout and buffered collection replaces simplified stub.
+- **Hardcoding evolution**: `integrator_impl.rs` `"toadstool"` → `PRIMAL_NAME` constant. Stale cast suppressions removed from `byob_impl`.
+- **Coverage expansion**: +33 tests (V4L2 frame/format/buffer: 15, VFIO DMA/IOVA: 9, testing infra: 9).
+- **memory_pressure callbacks**: Evolved `Box<dyn Callback>` → `Arc<dyn Callback>` for lock-free invocation.
+- All quality gates green: 0 clippy pedantic, 0 fmt, doc pass, 19,810+ tests, 0 failures.
 
 ### S130+: Deep Debt Execution (Mar 7, 2026)
 - **Clippy pedantic zero**: Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors, 0 warnings. Added pedantic run to CI (`ci.yml`).

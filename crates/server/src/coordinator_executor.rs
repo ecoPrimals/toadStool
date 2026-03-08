@@ -39,7 +39,8 @@ use crate::tarpc_server::WorkloadExecutor;
 /// with the server's RPC interface.
 pub struct CoordinatorExecutor {
     coordinator: Arc<DistributedCoordinator>,
-    service_id: String,
+    /// Arc<str> avoids allocation on hot-path query_capabilities clone
+    service_id: Arc<str>,
 }
 
 impl CoordinatorExecutor {
@@ -50,9 +51,9 @@ impl CoordinatorExecutor {
     /// Returns error if coordinator initialization fails
     pub async fn new(
         config: DistributedConfig,
-        service_id: impl Into<String>,
+        service_id: impl AsRef<str>,
     ) -> Result<Self, String> {
-        let service_id = service_id.into();
+        let service_id = Arc::from(service_id.as_ref());
         info!(
             "Initializing coordinator executor for service: {}",
             service_id
@@ -116,7 +117,6 @@ impl WorkloadExecutor for CoordinatorExecutor {
         })
     }
 
-    #[allow(clippy::unused_async)] // WorkloadExecutor trait; sync sysinfo query
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
         info!("Querying coordinator capabilities (self-knowledge only)");
 
@@ -136,14 +136,13 @@ impl WorkloadExecutor for CoordinatorExecutor {
         let available_memory = system.available_memory(); // Already in bytes
 
         Ok(ComputeCapabilities {
-            service_id: self.service_id.clone(),
+            service_id: self.service_id.as_ref().to_string(),
             compute_units: vec![ComputeUnit {
                 id: "coordinator-local".to_string(),
                 unit_type: "distributed".to_string(),
                 name: "Distributed Coordinator".to_string(),
                 cores: cpu_cores,
                 memory_bytes: total_memory,
-                #[allow(clippy::cast_precision_loss)]
                 tflops: Some((cpu_cores as f64) * 0.1),
                 utilization: 0.0,
             }],

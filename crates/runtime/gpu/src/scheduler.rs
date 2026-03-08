@@ -31,7 +31,7 @@ pub enum SchedulingPolicy {
 
 /// Performance history entry
 #[derive(Debug, Clone)]
-#[allow(dead_code, reason = "reserved for future performance metrics")]
+#[expect(dead_code, reason = "reserved for future performance metrics")]
 struct PerformanceRecord {
     resource_id: String,
     workload_signature: String,
@@ -96,17 +96,18 @@ impl UniversalComputeScheduler {
         &self,
         requirements: &ComputeRequirements,
     ) -> ToadStoolResult<Arc<dyn UniversalComputeResource>> {
-        let resources = self.resources.read().await;
-
-        if resources.is_empty() {
-            return Err(ToadStoolError::runtime("No compute resources registered"));
-        }
-
-        // 1. Filter by capabilities
-        let capable: Vec<_> = resources
-            .iter()
-            .filter(|r| r.can_execute(requirements))
-            .collect();
+        // Clone capable resources before await to avoid holding lock across .await
+        let capable: Vec<Arc<dyn UniversalComputeResource>> = {
+            let resources = self.resources.read().await;
+            if resources.is_empty() {
+                return Err(ToadStoolError::runtime("No compute resources registered"));
+            }
+            resources
+                .iter()
+                .filter(|r| r.can_execute(requirements))
+                .map(Arc::clone)
+                .collect()
+        };
 
         if capable.is_empty() {
             return Err(ToadStoolError::runtime(
@@ -114,8 +115,8 @@ impl UniversalComputeScheduler {
             ));
         }
 
-        // 2. Rank by policy
-        let best = self.rank_resources(&capable, requirements).await?;
+        // 2. Rank by policy (lock released before await)
+        let best = self.rank_resources_owned(&capable, requirements).await?;
 
         tracing::info!(
             "Selected resource: {} for workload (policy: {:?})",
@@ -123,27 +124,34 @@ impl UniversalComputeScheduler {
             self.policy
         );
 
-        Ok(Arc::clone(best))
+        Ok(best)
     }
 
-    /// Rank resources according to scheduling policy
-    async fn rank_resources<'a>(
+    /// Rank resources according to scheduling policy (owned Vec to avoid lock across await)
+    async fn rank_resources_owned(
         &self,
-        resources: &'a [&'a Arc<dyn UniversalComputeResource>],
+        resources: &[Arc<dyn UniversalComputeResource>],
         requirements: &ComputeRequirements,
-    ) -> ToadStoolResult<&'a Arc<dyn UniversalComputeResource>> {
+    ) -> ToadStoolResult<Arc<dyn UniversalComputeResource>> {
+        let refs: Vec<&Arc<dyn UniversalComputeResource>> = resources.iter().collect();
         match self.policy {
-            SchedulingPolicy::Performance => {
-                self.select_by_performance(resources, requirements).await
+            SchedulingPolicy::Performance => self
+                .select_by_performance(&refs, requirements)
+                .await
+                .map(Arc::clone),
+            SchedulingPolicy::Efficiency => self
+                .select_by_efficiency(&refs, requirements)
+                .await
+                .map(Arc::clone),
+            SchedulingPolicy::LoadBalance => {
+                self.select_by_load_balance(&refs).await.map(Arc::clone)
             }
-            SchedulingPolicy::Efficiency => {
-                self.select_by_efficiency(resources, requirements).await
+            SchedulingPolicy::CapabilityMatch => self
+                .select_by_capability_match(&refs, requirements)
+                .map(Arc::clone),
+            SchedulingPolicy::LowLatency => {
+                self.select_by_latency(&refs, requirements).map(Arc::clone)
             }
-            SchedulingPolicy::LoadBalance => self.select_by_load_balance(resources).await,
-            SchedulingPolicy::CapabilityMatch => {
-                self.select_by_capability_match(resources, requirements)
-            }
-            SchedulingPolicy::LowLatency => self.select_by_latency(resources, requirements),
         }
     }
 
@@ -267,19 +275,23 @@ impl UniversalComputeScheduler {
 
     /// Get cached utilization or query resource
     async fn get_cached_utilization(&self, resource: &Arc<dyn UniversalComputeResource>) -> f32 {
-        let resource_id = resource.resource_id();
-        let mut cache = self.utilization_cache.write().await;
-
-        if let Some((utilization, timestamp)) = cache.get(resource_id) {
-            // Cache valid for 1 second
-            if timestamp.elapsed() < Duration::from_secs(1) {
-                return *utilization;
+        let resource_id = resource.resource_id().to_string();
+        // Check cache first, release lock before await
+        {
+            let cache = self.utilization_cache.read().await;
+            if let Some((utilization, timestamp)) = cache.get(&resource_id) {
+                if timestamp.elapsed() < Duration::from_secs(1) {
+                    return *utilization;
+                }
             }
         }
 
-        // Query and cache
+        // Query resource (lock released - do NOT hold across await)
         let utilization = resource.utilization().await;
-        cache.insert(resource_id.to_string(), (utilization, Instant::now()));
+
+        // Update cache
+        let mut cache = self.utilization_cache.write().await;
+        cache.insert(resource_id, (utilization, Instant::now()));
         utilization
     }
 

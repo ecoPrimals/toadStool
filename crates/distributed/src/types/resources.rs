@@ -401,7 +401,7 @@ pub enum ResourceValue {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 mod tests {
     use super::*;
 

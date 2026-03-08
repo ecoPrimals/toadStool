@@ -187,6 +187,50 @@ impl SemanticMethodRegistry {
         add_mapping("science.substrate.probe", "science_substrate_probe");
 
         // ═══════════════════════════════════════════════════════════
+        // ECOLOGY DOMAIN - airSpring science offload routing
+        //
+        // Springs call these through toadStool as compute.offload
+        // targets. toadStool routes to the appropriate science
+        // primal discovered at runtime via capability sockets.
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("ecology.et0_fao56", "ecology_et0_fao56");
+        add_mapping("ecology.water_balance", "ecology_water_balance");
+        add_mapping("ecology.yield_response", "ecology_yield_response");
+        add_mapping("ecology.thornthwaite", "ecology_thornthwaite");
+        add_mapping("ecology.gdd", "ecology_gdd");
+        add_mapping("ecology.pedotransfer", "ecology_pedotransfer");
+        add_mapping("ecology.spi_drought_index", "ecology_spi_drought_index");
+        add_mapping("ecology.autocorrelation", "ecology_autocorrelation");
+        add_mapping("ecology.gamma_cdf", "ecology_gamma_cdf");
+        add_mapping("ecology.runoff_scs_cn", "ecology_runoff_scs_cn");
+        add_mapping("ecology.van_genuchten_theta", "ecology_van_genuchten_theta");
+        add_mapping("ecology.van_genuchten_k", "ecology_van_genuchten_k");
+        add_mapping("ecology.bootstrap_ci", "ecology_bootstrap_ci");
+        add_mapping("ecology.jackknife_ci", "ecology_jackknife_ci");
+
+        // ═══════════════════════════════════════════════════════════
+        // DISCOVERY DOMAIN - NUCLEUS primal discovery (groundSpring V99)
+        //
+        // Adaptive health checks and direct primal socket discovery
+        // absorbed from groundSpring's live NUCLEUS integration.
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("discovery.primals", "discovery_primals");
+        add_mapping("discovery.primal_health", "discovery_primal_health");
+        add_mapping("discovery.direct_rpc", "discovery_direct_rpc");
+        add_mapping("discovery.topology", "discovery_topology");
+
+        // ═══════════════════════════════════════════════════════════
+        // DEPLOY DOMAIN - Science primal deploy graphs (wetSpring V99)
+        //
+        // Capability routing for science primal orchestration.
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("deploy.capability_call", "deploy_capability_call");
+        add_mapping("deploy.graph_status", "deploy_graph_status");
+
+        // ═══════════════════════════════════════════════════════════
         // SHADER DOMAIN - Shader compilation IPC (coralReef pipeline)
         // ═══════════════════════════════════════════════════════════
 

@@ -515,7 +515,10 @@ mod gpu_runtime_tests {
 mod resource_allocation_tests {
     use super::HashMap;
 
-    #[allow(clippy::float_cmp)]
+    #[expect(
+        clippy::float_cmp,
+        reason = "comparing against exact literal initialization"
+    )]
     #[test]
     fn test_cpu_allocation_per_runtime() {
         let allocations = HashMap::from([("native", 2.0f64), ("wasm", 1.0), ("container", 4.0)]);
@@ -531,7 +534,6 @@ mod resource_allocation_tests {
         assert_eq!(memory_mb.get("wasm"), Some(&512));
     }
 
-    #[allow(clippy::float_cmp)]
     #[test]
     fn test_resource_limit_enforcement() {
         let max_cpu = 16.0f64;
@@ -540,7 +542,10 @@ mod resource_allocation_tests {
         assert!(requested_cpu > max_cpu);
     }
 
-    #[allow(clippy::float_cmp)]
+    #[expect(
+        clippy::float_cmp,
+        reason = "comparing against exact literal initialization"
+    )]
     #[test]
     fn test_resource_reservation() {
         #[derive(Debug)]
@@ -755,7 +760,10 @@ mod performance_tests {
 mod configuration_tests {
     use super::HashMap;
 
-    #[allow(clippy::float_cmp)]
+    #[expect(
+        clippy::float_cmp,
+        reason = "comparing against exact literal initialization"
+    )]
     #[test]
     fn test_runtime_config_defaults() {
         #[derive(Debug)]

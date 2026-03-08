@@ -41,8 +41,6 @@ showcase/**/*.bin
 showcase/**/*.npz
 **/*.csv
 **/*.json
-!package.json
-!package-lock.json
 !biome.yaml
 !toadstool.toml
 
@@ -63,5 +61,5 @@ docs/team/
 # --- Benches (not frequently edited) ---
 benches/
 
-# --- UI (not active) ---
-ui/
+# --- UI (fossilized to ecoPrimals/fossil/toadStool/ui-scaffold-S131) ---
+# ui/

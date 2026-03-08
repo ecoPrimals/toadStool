@@ -33,12 +33,10 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 // Mock types for testing (reserved for future use)
-#[allow(clippy::unused_async)]
 struct MockCliContext {
     temp_dir: TempDir,
 }
 
-#[allow(clippy::unused_async)]
 impl MockCliContext {
     fn new() -> Result<Self> {
         Ok(Self {

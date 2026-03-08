@@ -213,7 +213,10 @@ fn test_resource_limits_default() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // comparing against exact literal initialization
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 fn test_resource_limits_custom() {
     let limits = ResourceLimits {
         max_cpu_usage: 80.0,

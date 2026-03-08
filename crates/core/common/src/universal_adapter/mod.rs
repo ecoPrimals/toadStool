@@ -44,11 +44,20 @@ pub mod graceful_degradation;
 pub mod provider_registry;
 pub mod request_builder;
 
-pub use capability_types::*;
-pub use discovery_engine::*;
-pub use graceful_degradation::*;
-pub use provider_registry::*;
-pub use request_builder::*;
+pub use capability_types::{
+    CapabilityHandle, CapabilityInfo, CapabilityType, ComputeFeature, CoordinationFeature,
+    HealthStatus, IntelligenceFeature, ModelType, MonitoringFeature, NetworkFeature,
+    SecurityFeature, ServiceEndpoint, StorageFeature, TrustLevel,
+};
+pub use discovery_engine::{
+    DiscoveryEngine, DiscoverySource, EnvironmentSource, LocalRegistrySource, MDnsSource,
+};
+pub use graceful_degradation::{DegradationStrategy, GracefulDegradation};
+pub use provider_registry::ProviderRegistry;
+pub use request_builder::{
+    CapabilityRequestBuilder, CoordinationRequestBuilder, IntelligenceRequestBuilder,
+    SecurityRequestBuilder, StorageRequestBuilder,
+};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;

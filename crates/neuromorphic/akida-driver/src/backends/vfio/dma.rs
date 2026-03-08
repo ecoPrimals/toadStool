@@ -123,7 +123,10 @@ impl DmaBuffer {
 }
 
 impl Drop for DmaBuffer {
-    #[allow(clippy::cast_possible_truncation)] // struct sizes always fit u32
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "struct sizes always fit u32"
+    )]
     fn drop(&mut self) {
         // SAFETY: munlock matches mlock from new(); must unlock before dealloc.
         unsafe {

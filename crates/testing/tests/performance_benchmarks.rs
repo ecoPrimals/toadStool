@@ -312,7 +312,7 @@ async fn benchmark_api_performance() {
                     .timeout(Duration::from_secs(10))
                     .build();
             }
-            #[allow(clippy::unreachable)] // Benchmark: all enum variants covered
+            #[expect(clippy::unreachable, reason = "Benchmark: all enum variants covered")]
             _ => unreachable!(),
         }
     }

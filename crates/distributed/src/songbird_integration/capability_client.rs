@@ -336,7 +336,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_capability_discovery_pattern() {
         let discovery = Arc::new(DiscoveryEngine::new());
 
@@ -347,7 +346,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_discover_with_mock_source() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
@@ -366,7 +364,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_get_best_service() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
@@ -384,7 +381,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_get_best_service_empty_fails() {
         let discovery = Arc::new(DiscoveryEngine::new());
 
@@ -398,7 +394,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_is_healthy_with_services() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
@@ -415,7 +410,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_is_healthy_without_services() {
         let discovery = Arc::new(DiscoveryEngine::new());
 
@@ -427,7 +421,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_get_stats() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
@@ -447,7 +440,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_execute_with_failover_success() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
@@ -471,7 +463,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_execute_with_failover_empty_services() {
         let discovery = Arc::new(DiscoveryEngine::new());
 
@@ -487,7 +478,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_refresh_discovery() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
@@ -506,7 +496,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
     async fn test_client_stats_debug() {
         let stats = ClientStats {
             available_services: 3,

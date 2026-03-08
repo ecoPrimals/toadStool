@@ -79,7 +79,7 @@ impl JobHandler {
             Ok(job_id) => Ok(serde_json::json!({
                 "job_id": job_id,
                 "routing": {
-                    "gate_id": routing.gate_id,
+                    "gate_id": routing.gate_id.as_ref(),
                     "reason": routing.reason,
                     "estimated_wait_ms": routing.estimated_wait_ms,
                 }
@@ -179,9 +179,9 @@ impl JobHandler {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
         let gate_info: crate::cross_gate::GateGpuInfo = serde_json::from_value(params.clone())
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid gate info: {e}")))?;
-        let gate_id = gate_info.gate_id.clone();
+        let gate_id = std::sync::Arc::clone(&gate_info.gate_id);
         self.router.write().await.update_gate(gate_info);
-        Ok(serde_json::json!({"updated": true, "gate_id": gate_id}))
+        Ok(serde_json::json!({"updated": true, "gate_id": gate_id.as_ref()}))
     }
 
     pub(super) async fn gate_remove(
@@ -215,7 +215,7 @@ impl JobHandler {
         let router = self.router.read().await;
         let decision = router.route(model, vram);
         Ok(serde_json::json!({
-            "gate_id": decision.gate_id,
+            "gate_id": decision.gate_id.as_ref(),
             "reason": decision.reason,
             "estimated_wait_ms": decision.estimated_wait_ms,
         }))

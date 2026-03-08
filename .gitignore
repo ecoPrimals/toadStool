@@ -51,3 +51,7 @@ test_results.txt
 # Downloaded ML models (too large for git)
 models/huggingface/
 models/akida/
+
+# Fossilized directories (moved to ecoPrimals/fossil/)
+results/
+ui/

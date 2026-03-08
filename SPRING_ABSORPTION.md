@@ -1,23 +1,61 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 7, 2026 — Session 131+  
-**Sources**: hotSpring (v0.6.19), neuralSpring (V89/S131), wetSpring (V97e), airSpring (V0.7.3), groundSpring (V96), barraCuda (v0.3.3), coralReef (Phase 10/Iter 10), wateringHole (updated MAR07)  
+**Date**: March 8, 2026 — Session 133  
+**Sources**: hotSpring (v0.6.23), neuralSpring (V90/S132), wetSpring (V99), airSpring (v0.7.5), groundSpring (V99), barraCuda (v0.3.3 `a898dee`), coralReef (Phase 10/Iter 12), wateringHole (updated MAR08)  
+**S133**: Cross-spring absorption from all 5 springs (Mar 8 handoffs). Ada Lovelace `F64NativeNoSharedMem` reclassification (P0 from groundSpring V98 + neuralSpring V90). `f64_zeros_risk` field + `fused_ops_healthy()` canary on `GpuAdapterInfo`. 14 airSpring ecology JSON-RPC methods (`ecology.*` domain). NUCLEUS adaptive discovery pattern (`discovery.primals`, `discovery.primal_health`, `discovery.direct_rpc`, `discovery.topology`). wetSpring deploy graph routing (`deploy.capability_call`, `deploy.graph_status`). 20 new semantic methods (71→91). biomeOS socket directory scan on daemon startup. Forward-to-primal JSON-RPC proxy for live cross-primal IPC.  
+**S132**: Deep debt — `#[allow]` → `#[expect]` (60+ instances), wildcard re-exports narrowed, 5 concurrency bugs fixed, `Arc<str>` hot-path evolution, 33 new tests. 19,810+ tests, 0 failures.  
 **S131+**: Spring sync + deep debt evolution. `#[allow]` → `#[expect]` (3 stale suppressions removed). All 5 springs pinned to latest. SPRING_ABSORPTION_TRACKER comprehensive update. 19,777 tests, 0 failures.  
 **S130+**: Clippy pedantic clean (workspace-wide, 0 warnings). Spring sync: all 5 springs confirm zero API breakage against toadStool S130. Pin versions updated.  
 **S130**: Cross-spring shader rewiring — `shader.compile.*` stubs evolved to real coralReef proxy with capability-based discovery. `CoralReefClient` with lazy connection. `cross_spring_provenance.rs` (17+ flows, `toadstool.provenance` method). 31 new tests.  
 **S129**: Deep debt execution — C dep evolution, capability-based port resolution, 5 god files refactored, 200+ coverage tests, zero-copy hot paths. 19,109 tests, 0 failures.  
 **S128**: f64 shared-memory bug absorbed (groundSpring V84-V85), PrecisionRoutingAdvice, sovereign_binary_capable, shader.compile.* IPC, capability-based handler evolution, architecture stub completion.
 
+## S133 Cross-Spring Absorption — All Springs Pinned to Latest
+
+Pulled all 5 springs + wateringHole + barraCuda + coralReef handoffs from Mar 8, 2026.
+
+### Pin Updates
+- hotSpring → **v0.6.23**: Chuna 41/41, dynamical N_f=4 staggered flow, zero clippy/panics, `log` migration
+- groundSpring → **V99**: First live NUCLEUS connection (4 primals), adaptive health, direct primal sockets, 936 tests
+- neuralSpring → **V90/S132**: Upstream rewire to S130+/barraCuda HEAD/coralReef Iter 10, 902 lib tests
+- wetSpring → **V99**: biomeOS science primal (9 capabilities), deploy graph, 300 experiments, 8,886+ checks
+- airSpring → **v0.7.5**: Drought index leaned, 14 JSON-RPC methods, 854 lib tests, 35 capabilities
+
+### S133 Absorption Items Executed
+
+| Item | Source | Description |
+|------|--------|-------------|
+| **Ada Lovelace `F64NativeNoSharedMem`** | groundSpring V98, neuralSpring V90 (P0) | `is_nvidia_ada_lovelace()` detection; RTX 40xx + proprietary → `f64_zeros_risk: true` |
+| **`f64_zeros_risk` field** | barraCuda V033 cross-spring | New bool on `GpuAdapterInfo` for NVK+FP64 and Ada Lovelace proprietary |
+| **`fused_ops_healthy()` canary** | barraCuda V033, all springs | Returns `!f64_zeros_risk`; springs check before fused reductions |
+| **14 ecology JSON-RPC methods** | airSpring v0.7.5 | `ecology.et0_fao56` through `ecology.jackknife_ci`; routed to airSpring socket |
+| **NUCLEUS discovery** | groundSpring V99 | `discovery.primals`, `discovery.primal_health`, `discovery.direct_rpc`, `discovery.topology` |
+| **Deploy graph routing** | wetSpring V99 | `deploy.capability_call`, `deploy.graph_status`; capability-based primal routing |
+| **Forward-to-primal proxy** | groundSpring V99 pattern | Unix socket JSON-RPC proxy with 30s timeout and structured error handling |
+| **biomeOS socket scan** | groundSpring V99 | Daemon startup scans `$XDG_RUNTIME_DIR/biomeos/` for primal sockets |
+| **20 semantic methods** | all springs | Registry grew from 71→91 methods across ecology, discovery, deploy domains |
+
+### Key Findings
+- **coralReef Iteration 12**: 2 more compiler gaps closed (GPR→Pred coercion, const_tracker negated immediates), 6 new math functions, 955/991 tests. NVIDIA E2E fully wired (awaiting hardware validation).
+- **hotSpring v0.6.23**: `create_pipeline_f64_entry_precise` critical for precision-sensitive multi-entry shaders (FMA fusion corrupts complex arithmetic). Complex WGSL multiplication footgun documented.
+- **barraCuda V033**: `SumReduceF64`/`VarianceReduceF64` DF64 variants fix P0 fused reduction bug. `fused_ops_healthy()` canary in `test_prelude`. `GpuViewF64` stepping-stone API.
+- **All springs pinned to barraCuda `a898dee`, toadStool S130+ `bfe7977b`, coralReef `d29a734`**. All confirm zero API breakage.
+
+### Verdict
+toadStool S133 absorbs all Mar 8 spring handoffs. P0 Ada Lovelace reclassification complete. Remaining work is barraCuda-owned (full `GpuView` buffer-to-buffer ops, tridiagonal eigensolver) or coralReef-owned (NVIDIA E2E validation, RA SSA tracking fix).
+
+---
+
 ## S130+ Spring Sync — All Springs Current, No New Absorption Needed
 
 Reviewed 8 handoffs across all 5 springs + wateringHole (Mar 5-7, 2026). All springs confirm zero API breakage against toadStool S130. No new shaders or code changes needed for toadStool.
 
 ### Pin Updates
-- hotSpring v0.6.17 → **v0.6.19**: DF64 compilation fully delegated to barraCuda, 3 Chuna papers CPU-complete, cross-spring GPU benchmarks
-- groundSpring V85 → **V95**: coralReef Phase 11 push buffer encoding fixed (5/5 GPU method tests pass on Titan V), 102 delegations (was 87)
-- neuralSpring V86/S128 → **V87/S129**: struct-based API migration complete, `#![forbid(unsafe_code)]` enforced, 883 lib + 240 bins
-- wetSpring V97d → **V97d+**: ecosystem sync validated (1,347 tests, 0 failures, zero API breakage), streaming I/O deprecation
-- airSpring V071: NVK zero-output detection + CPU fallback, Kokkos validation gap documented, cargo-deny added
+- hotSpring → **v0.6.19**: DF64 compilation fully delegated to barraCuda, 3 Chuna papers CPU-complete, cross-spring GPU benchmarks
+- groundSpring → **V96**: PrecisionRoutingAdvice in 11 GPU dispatch paths, 925 tests, 102 delegations
+- neuralSpring → **V89/S131**: full upstream rewire, `#![forbid(unsafe_code)]` enforced, 901 lib + 43 forge tests, 89.1% coverage
+- wetSpring → **V97e**: fully lean (zero local WGSL), builder pattern migration complete, PrecisionRoutingAdvice + Provenance API
+- airSpring → **V0.7.3**: Write→Absorb→Lean cycle complete, all 6 local GPU ops absorbed upstream, PrecisionRoutingAdvice
 
 ### Key Findings
 - **neuralSpring V87**: 12 GPU test failures on llvmpipe — fused shaders return 0.0. Hypothesis: wgpu 28 + llvmpipe interaction. Action: barraCuda investigation.
@@ -258,11 +296,11 @@ toadStool is current. All absorption through S130 is confirmed. Remaining work i
 
 | Spring | Version | Key Metric |
 |--------|---------|------------|
-| hotSpring | v0.6.17 | 669 tests, 39/39 suites, gradient flow + brain + Verlet |
-| groundSpring | V80 | 812+390 tests, 395/395 validation, 187 metalForge checks |
-| neuralSpring | V86/S128 | 4,100+ tests, 218/218 validate_all, 42 WGSL |
-| wetSpring | V97d | 1,047+200 tests, 0 local WGSL (fully lean), 150+ primitives |
-| airSpring | V071 | 827+1,498 tests, wgpu 28, 3 local WGSL ops remaining |
+| hotSpring | v0.6.23 | 738 lib + 53 integration, Chuna 41/41, 84 WGSL shaders, zero clippy/panics |
+| groundSpring | V99 | 936 + 382 Python, 97.25% coverage, live NUCLEUS (4 primals), 102 delegations |
+| neuralSpring | V90/S132 | 902 lib + 43 forge, 89.1% coverage, 218/218 validate_all, `#![forbid(unsafe_code)]` |
+| wetSpring | V99 | 1,047 + 200 forge, 95.86% coverage, biomeOS science primal, 300 experiments |
+| airSpring | v0.7.5 | 854 + 186 forge, 95.66% coverage, 14 JSON-RPC methods, fully lean (0 local WGSL) |
 
 ---
 

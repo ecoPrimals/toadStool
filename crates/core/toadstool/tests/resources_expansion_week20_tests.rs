@@ -3,6 +3,7 @@
 //!
 //! Target: Increase resources.rs coverage from 44.12% → 60%+
 //! Focus: Edge cases, error handling, serialization
+#![allow(clippy::float_cmp)]
 
 use toadstool::resources::*;
 
@@ -10,7 +11,6 @@ use toadstool::resources::*;
 // ResourceRequirements Tests - Comprehensive
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_default() {
     let reqs = ResourceRequirements::default();
@@ -49,7 +49,6 @@ fn test_resource_requirements_serialization() {
     assert!(json.contains("memory"));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_deserialization() {
     let json = r#"{
@@ -67,7 +66,6 @@ fn test_resource_requirements_deserialization() {
     assert_eq!(reqs.cpu.min_cores, 2.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_clone() {
     let original = ResourceRequirements::default();
@@ -81,7 +79,6 @@ fn test_resource_requirements_clone() {
 // CpuRequirements Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_default() {
     let cpu = CpuRequirements::default();
@@ -91,7 +88,6 @@ fn test_cpu_requirements_default() {
     assert!(cpu.architecture.is_none());
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_with_max() {
     let cpu = CpuRequirements {
@@ -105,7 +101,6 @@ fn test_cpu_requirements_with_max() {
     assert_eq!(cpu.architecture, Some("x86_64".to_string()));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_fractional_cores() {
     let cpu = CpuRequirements {
@@ -142,7 +137,6 @@ fn test_cpu_requirements_serialization() {
     assert!(json.contains("x86_64"));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_clone() {
     let original = CpuRequirements::default();
@@ -443,7 +437,6 @@ fn test_gpu_requirements_clone() {
 // RuntimeMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_default() {
     let metrics = RuntimeMetrics::default();
@@ -452,7 +445,6 @@ fn test_runtime_metrics_default() {
     assert_eq!(metrics.memory.used_bytes, 0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_creation() {
     let metrics = RuntimeMetrics {
@@ -485,7 +477,6 @@ fn test_runtime_metrics_serialization() {
     assert!(json.contains("cpu"));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_clone() {
     let original = RuntimeMetrics::default();
@@ -498,7 +489,6 @@ fn test_runtime_metrics_clone() {
 // CpuMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_default() {
     let cpu = CpuMetrics::default();
@@ -508,7 +498,6 @@ fn test_cpu_metrics_default() {
     assert_eq!(cpu.cpu_time_seconds, 0.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_with_values() {
     let cpu = CpuMetrics {
@@ -522,7 +511,6 @@ fn test_cpu_metrics_with_values() {
     assert_eq!(cpu.cpu_time_seconds, 450.2);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_high_usage() {
     let cpu = CpuMetrics {
@@ -535,7 +523,6 @@ fn test_cpu_metrics_high_usage() {
     assert_eq!(cpu.cores_used, 16.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_serialization() {
     let cpu = CpuMetrics {
@@ -552,7 +539,6 @@ fn test_cpu_metrics_serialization() {
 // MemoryMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_default() {
     let mem = MemoryMetrics::default();
@@ -562,7 +548,6 @@ fn test_memory_metrics_default() {
     assert_eq!(mem.peak_bytes, 0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_with_values() {
     let mem = MemoryMetrics {
@@ -576,7 +561,6 @@ fn test_memory_metrics_with_values() {
     assert_eq!(mem.usage_percent, 25.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_large_values() {
     let mem = MemoryMetrics {
@@ -589,7 +573,6 @@ fn test_memory_metrics_large_values() {
     assert_eq!(mem.usage_percent, 75.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_serialization() {
     let mem = MemoryMetrics {

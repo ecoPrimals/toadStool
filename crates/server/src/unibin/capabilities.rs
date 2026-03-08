@@ -2,19 +2,25 @@
 //! Local capability detection and verification
 //!
 //! Pure Rust hardware detection for GPU, CPU, and memory capabilities.
+//!
+//! Returns `Vec<Arc<str>>` to avoid allocations when capabilities are shared
+//! across handlers (clone is refcount bump, not memcpy).
+
+use std::sync::Arc;
 
 /// Query local GPU and compute capabilities
 ///
 /// Uses sysinfo and wgpu for pure Rust discovery.
+/// Returns `Arc<str>` per capability — clone is cheap (refcount bump).
 #[expect(clippy::unused_async, reason = "may add async GPU discovery")]
-pub async fn query_local_capabilities() -> Vec<String> {
-    let mut capabilities = vec!["compute".to_string(), "cpu".to_string()];
+pub async fn query_local_capabilities() -> Vec<Arc<str>> {
+    let mut capabilities: Vec<Arc<str>> = vec![Arc::from("compute"), Arc::from("cpu")];
 
     let cpus = std::thread::available_parallelism()
         .map(std::num::NonZero::get)
         .unwrap_or(4);
     if cpus >= 16 {
-        capabilities.push("high-core-count".to_string());
+        capabilities.push(Arc::from("high-core-count"));
         tracing::info!("✅ High core count detected: {} cores", cpus);
     }
 
@@ -26,7 +32,7 @@ pub async fn query_local_capabilities() -> Vec<String> {
     )]
     let total_memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
     if total_memory_gb >= 32.0 {
-        capabilities.push("high-memory".to_string());
+        capabilities.push(Arc::from("high-memory"));
         tracing::info!("✅ High memory detected: {:.1} GB", total_memory_gb);
     }
 
@@ -34,7 +40,7 @@ pub async fn query_local_capabilities() -> Vec<String> {
     {
         let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
         if !adapters.is_empty() {
-            capabilities.push("gpu".to_string());
+            capabilities.push(Arc::from("gpu"));
 
             for adapter in adapters {
                 let info = adapter.get_info();
@@ -42,33 +48,36 @@ pub async fn query_local_capabilities() -> Vec<String> {
 
                 match info.backend {
                     wgpu::Backend::Vulkan => {
-                        if !capabilities.contains(&"vulkan".to_string()) {
-                            capabilities.push("vulkan".to_string());
+                        if !capabilities.iter().any(|c| c.as_ref() == "vulkan") {
+                            capabilities.push(Arc::from("vulkan"));
                         }
                     }
                     wgpu::Backend::Metal => {
-                        if !capabilities.contains(&"metal".to_string()) {
-                            capabilities.push("metal".to_string());
+                        if !capabilities.iter().any(|c| c.as_ref() == "metal") {
+                            capabilities.push(Arc::from("metal"));
                         }
                     }
                     wgpu::Backend::Dx12 => {
-                        if !capabilities.contains(&"dx12".to_string()) {
-                            capabilities.push("dx12".to_string());
+                        if !capabilities.iter().any(|c| c.as_ref() == "dx12") {
+                            capabilities.push(Arc::from("dx12"));
                         }
                     }
                     _ => {}
                 }
 
                 let name_lower = info.name.to_lowercase();
-                if name_lower.contains("nvidia") && !capabilities.contains(&"cuda".to_string()) {
-                    capabilities.push("cuda".to_string());
-                } else if name_lower.contains("amd") && !capabilities.contains(&"rocm".to_string())
+                if name_lower.contains("nvidia")
+                    && !capabilities.iter().any(|c| c.as_ref() == "cuda")
                 {
-                    capabilities.push("rocm".to_string());
+                    capabilities.push(Arc::from("cuda"));
+                } else if name_lower.contains("amd")
+                    && !capabilities.iter().any(|c| c.as_ref() == "rocm")
+                {
+                    capabilities.push(Arc::from("rocm"));
                 } else if name_lower.contains("intel")
-                    && !capabilities.contains(&"oneapi".to_string())
+                    && !capabilities.iter().any(|c| c.as_ref() == "oneapi")
                 {
-                    capabilities.push("oneapi".to_string());
+                    capabilities.push(Arc::from("oneapi"));
                 }
             }
         } else {
@@ -81,7 +90,7 @@ pub async fn query_local_capabilities() -> Vec<String> {
         tracing::info!("GPU discovery disabled (compile with --features gpu-discovery)");
     }
 
-    capabilities.push("orchestration".to_string());
+    capabilities.push(Arc::from("orchestration"));
     tracing::info!("📊 Local capabilities: {:?}", capabilities);
     capabilities
 }
@@ -100,15 +109,15 @@ mod tests {
     async fn query_local_capabilities_always_includes_compute_cpu_orchestration() {
         let caps = query_local_capabilities().await;
         assert!(
-            caps.contains(&"compute".to_string()),
+            caps.iter().any(|c| c.as_ref() == "compute"),
             "should include 'compute': {caps:?}"
         );
         assert!(
-            caps.contains(&"cpu".to_string()),
+            caps.iter().any(|c| c.as_ref() == "cpu"),
             "should include 'cpu': {caps:?}"
         );
         assert!(
-            caps.contains(&"orchestration".to_string()),
+            caps.iter().any(|c| c.as_ref() == "orchestration"),
             "should include 'orchestration': {caps:?}"
         );
     }
@@ -118,7 +127,10 @@ mod tests {
         let caps = query_local_capabilities().await;
         let mut seen = std::collections::HashSet::new();
         for c in &caps {
-            assert!(seen.insert(c), "duplicate capability '{c}' in {caps:?}");
+            assert!(
+                seen.insert(c.as_ref()),
+                "duplicate capability '{c}' in {caps:?}"
+            );
         }
     }
 

@@ -245,7 +245,10 @@ fn test_audit_config_clone_debug() {
 // IntrusionDetectionConfig Tests (5 tests)
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[test]
 fn test_intrusion_detection_config_default() {
     let config = IntrusionDetectionConfig::default();
@@ -258,7 +261,10 @@ fn test_intrusion_detection_config_default() {
     assert!(config.allowed_ips.contains(&"127.0.0.1".to_string()));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[test]
 fn test_intrusion_detection_config_strict() {
     let config = IntrusionDetectionConfig {
@@ -274,7 +280,10 @@ fn test_intrusion_detection_config_strict() {
     assert!(config.allowed_ips.is_empty());
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[test]
 fn test_intrusion_detection_config_permissive() {
     let config = IntrusionDetectionConfig {
@@ -294,7 +303,10 @@ fn test_intrusion_detection_config_permissive() {
     assert_eq!(config.allowed_ips.len(), 3);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[test]
 fn test_intrusion_detection_config_different_thresholds() {
     let thresholds = vec![0.5, 0.6, 0.7, 0.8, 0.9, 0.95];
@@ -311,7 +323,10 @@ fn test_intrusion_detection_config_different_thresholds() {
     }
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[test]
 fn test_intrusion_detection_config_clone_debug() {
     let config1 = IntrusionDetectionConfig::default();

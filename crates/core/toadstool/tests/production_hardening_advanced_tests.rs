@@ -423,7 +423,7 @@ async fn test_memory_pressure_callback_registration() {
     let handler = MemoryPressureHandler::new(config);
 
     // Should be able to register callback without error
-    handler.register_callback(Box::new(TestCallback)).await;
+    handler.register_callback(Arc::new(TestCallback)).await;
 }
 
 // ============================================================================

@@ -249,7 +249,7 @@ fn test_metric_collection_multiple() {
 }
 
 #[test]
-#[allow(clippy::cast_precision_loss)]
+#[expect(clippy::cast_precision_loss, reason = "u64 to f64 for calculation")]
 fn test_metric_collection_average() {
     let metrics = vec![10.0, 20.0, 30.0];
     let sum: f64 = metrics.iter().sum();

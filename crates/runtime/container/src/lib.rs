@@ -361,7 +361,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(clippy::float_cmp, reason = "test values are exact literals")]
     async fn test_get_metrics() {
         if let Ok(engine) = ContainerRuntimeEngine::new() {
             let metrics = engine.get_metrics().await;

@@ -1,8 +1,0 @@
-Operation,Size,PredictedDevice,Score,ActualDevice,TimeMs,Correct,OverheadMs
-MatMul,16×16,CPU (Native Rust + SIMD),0.900,CPU,0.00,true,0.002
-MatMul,64×64,NVIDIA GeForce RTX 3090,0.700,GPU,20.42,false,0.001
-MatMul,256×256,NVIDIA GeForce RTX 3090,0.980,GPU,6.64,false,0.002
-MatMul,1024×1024,NVIDIA GeForce RTX 3090,0.980,GPU,17.50,false,0.002
-MatMul,2048×2048,NVIDIA GeForce RTX 3090,0.980,GPU,95.57,false,0.001
-ReLU,[100],CPU (Native Rust + SIMD),0.900,CPU,0.00,true,0.004
-ReLU,[1000],CPU (Native Rust + SIMD),0.800,CPU,0.00,true,0.001

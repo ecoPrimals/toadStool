@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 7, 2026 — S130+**
+**March 8, 2026 — S133**
 
 ---
 
@@ -68,7 +68,7 @@ cd showcase/cross-platform && cargo run --release
 
 ---
 
-## JSON-RPC Methods (65+ total, dynamically built)
+## JSON-RPC Methods (85+ total, dynamically built)
 
 ### Core (`toadstool.*`)
 
@@ -582,4 +582,4 @@ Scientific middleware has moved to barraCuda. See `cargo doc -p barracuda --open
 
 ---
 
-**Last Updated**: March 7, 2026 — S130+
+**Last Updated**: March 8, 2026 — S133

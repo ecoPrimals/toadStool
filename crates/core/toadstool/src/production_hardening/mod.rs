@@ -85,8 +85,9 @@ impl ProductionHardeningManager {
             self.leak_detector.start_cleanup_task().await;
         }
         if self.config.enable_memory_pressure {
-            let callback = Box::new(DefaultMemoryPressureCallback);
-            self.memory_handler.register_callback(callback).await;
+            self.memory_handler
+                .register_callback(Arc::new(DefaultMemoryPressureCallback))
+                .await;
         }
         Ok(())
     }

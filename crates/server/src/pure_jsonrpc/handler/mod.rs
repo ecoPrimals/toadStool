@@ -207,6 +207,19 @@ impl JsonRpcHandler {
             "science.substrate.discover" => return science::science_substrate_discover().await,
             "science.substrate.probe" => return science::science_substrate_probe(params).await,
 
+            // Ecology domain — airSpring science offload routing
+            m if m.starts_with("ecology.") => return science::ecology_offload(m, params).await,
+
+            // Discovery domain — NUCLEUS primal discovery (groundSpring V99)
+            "discovery.primals" => return science::discovery_primals().await,
+            "discovery.primal_health" => return science::discovery_primal_health(params).await,
+            "discovery.direct_rpc" => return science::discovery_direct_rpc(params).await,
+            "discovery.topology" => return science::discovery_topology().await,
+
+            // Deploy domain — science primal capability routing (wetSpring V99)
+            "deploy.capability_call" => return science::deploy_capability_call(params).await,
+            "deploy.graph_status" => return science::deploy_graph_status().await,
+
             "shader.compile.wgsl" => return self.shader_compile_wgsl(params).await,
             "shader.compile.spirv" => return self.shader_compile_spirv(params).await,
             "shader.compile.status" => return self.shader_compile_status(params).await,
@@ -251,6 +264,16 @@ impl JsonRpcHandler {
             "shader_compile_status" => self.shader_compile_status(params).await,
             "shader_compile_capabilities" => self.shader_compile_capabilities().await,
             "toadstool_provenance" => Self::toadstool_provenance().await,
+            "discovery_primals" => science::discovery_primals().await,
+            "discovery_primal_health" => science::discovery_primal_health(params).await,
+            "discovery_direct_rpc" => science::discovery_direct_rpc(params).await,
+            "discovery_topology" => science::discovery_topology().await,
+            "deploy_capability_call" => science::deploy_capability_call(params).await,
+            "deploy_graph_status" => science::deploy_graph_status().await,
+            n if n.starts_with("ecology_") => {
+                let method = n.replace('_', ".");
+                science::ecology_offload(&method, params).await
+            }
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
     }

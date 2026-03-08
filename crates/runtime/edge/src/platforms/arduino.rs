@@ -285,7 +285,42 @@ impl ArduinoDevice {
         
         Ok(response)
     }
-    
+
+    /// Read serial output with a timeout.
+    ///
+    /// Collects all bytes available on the serial port within `timeout`,
+    /// returning whatever the Arduino has written back.
+    async fn read_serial_output(&self, timeout: Duration) -> ToadStoolResult<String> {
+        let mut port_guard = self.serial_port.write().await;
+
+        let port = port_guard.as_mut().ok_or_else(|| {
+            ToadStoolError::connection_error("Serial port not connected".to_string())
+        })?;
+
+        port.set_timeout(timeout).map_err(|e| {
+            ToadStoolError::execution_error(format!("Failed to set serial timeout: {e}"))
+        })?;
+
+        let mut collected = Vec::with_capacity(4096);
+        let mut buf = [0u8; 1024];
+        let deadline = Instant::now() + timeout;
+
+        while Instant::now() < deadline {
+            match port.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => collected.extend_from_slice(&buf[..n]),
+                Err(e) if e.kind() == std::io::ErrorKind::TimedOut => break,
+                Err(e) => {
+                    return Err(ToadStoolError::execution_error(format!(
+                        "Serial read error: {e}"
+                    )));
+                }
+            }
+        }
+
+        Ok(String::from_utf8_lossy(&collected).into_owned())
+    }
+
     /// Compile Arduino code
     async fn compile_code(&self, code: &str) -> ToadStoolResult<Vec<u8>> {
         let code_hash = format!("{:x}", md5::compute(code));
@@ -509,14 +544,15 @@ impl EdgeDevice for ArduinoDevice {
         // Compile and upload code
         let compiled_code = self.compile_code(code).await?;
         self.upload_code(&compiled_code).await?;
-        
-        // ✅ MODERNIZED: Removed simulation sleep
-        // NOTE: Real Arduino execution monitoring requires serial port integration
-        // Arduino runs continuously, read from serial buffer for actual monitoring
-        // Stub: simplified implementation until serial monitor integration is wired
-        
-        // Get output from serial monitor
-        let output = self.send_command("STATUS").await.unwrap_or_else(|_| "Running".to_string());
+
+        // Read serial output after upload completes.
+        // Arduino boards run continuously; we collect whatever the board
+        // has written back to serial since the upload finished.
+        let output = match self.read_serial_output(Duration::from_secs(2)).await {
+            Ok(serial_out) if !serial_out.is_empty() => serial_out,
+            Ok(_) => "Deployed — no serial output within timeout".to_string(),
+            Err(_) => "Deployed — serial monitor unavailable".to_string(),
+        };
         
         // Update execution status
         {

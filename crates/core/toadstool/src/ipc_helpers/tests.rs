@@ -289,10 +289,13 @@ fn test_get_semantic_name_unknown_returns_none() {
 #[test]
 fn test_list_semantic_methods_count_and_contents() {
     let methods = list_semantic_methods();
-    assert_eq!(methods.len(), 71);
+    assert_eq!(methods.len(), 91);
     assert!(methods.contains(&"compute.execute".to_string()));
     assert!(methods.contains(&"shader.compile.wgsl".to_string()));
     assert!(methods.contains(&"toadstool.provenance".to_string()));
+    assert!(methods.contains(&"ecology.et0_fao56".to_string()));
+    assert!(methods.contains(&"discovery.primals".to_string()));
+    assert!(methods.contains(&"deploy.capability_call".to_string()));
 }
 
 #[test]

@@ -40,7 +40,7 @@ fn create_test_config_in(dir: &TempDir) -> PolicyManagerConfig {
 
 /// Convenience wrapper that allocates a fresh unique temp directory.
 fn create_test_config() -> (TempDir, PolicyManagerConfig) {
-    #[allow(clippy::expect_used)]
+    #[expect(clippy::expect_used, reason = "test helper; expect is intentional")]
     let dir = tempfile::tempdir().expect("temp dir");
     let config = create_test_config_in(&dir);
     (dir, config)

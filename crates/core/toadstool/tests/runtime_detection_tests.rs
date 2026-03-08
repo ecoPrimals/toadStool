@@ -279,10 +279,11 @@ fn test_write_bandwidth_is_less_than_read() {
         );
 
         // Write should be at least 70% of read (reasonable ratio)
-        #[allow(
+        #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
-            clippy::cast_precision_loss
+            clippy::cast_precision_loss,
+            reason = "bandwidth ratio calculation; read*0.7 fits u64"
         )]
         let min_write = (read as f64 * 0.7) as u64;
         assert!(

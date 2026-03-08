@@ -126,18 +126,18 @@ fn test_server_event_error_occurred_with_execution_id() {
 
 #[test]
 fn test_route_reachable_empty_returns_only_option() {
-    let router = JobRouter::new("local".to_string());
+    let router = JobRouter::new("local");
     let decision = router.route("any_model", 1000);
-    assert_eq!(decision.gate_id, "local");
+    assert_eq!(decision.gate_id.as_ref(), "local");
     assert!(matches!(decision.reason, RoutingReason::OnlyOption));
 }
 
 #[test]
 fn test_route_unreachable_gates_excluded() {
-    let mut router = JobRouter::new("local".to_string());
+    let mut router = JobRouter::new("local");
 
     let gate = GateGpuInfo {
-        gate_id: "remote".to_string(),
+        gate_id: std::sync::Arc::from("remote"),
         gpu_model: "RTX 4090".to_string(),
         vram_total_mb: 24000,
         vram_available_mb: 20000,
@@ -148,15 +148,15 @@ fn test_route_unreachable_gates_excluded() {
     router.update_gate(gate);
 
     let decision = router.route("model", 1000);
-    assert_eq!(decision.gate_id, "local");
+    assert_eq!(decision.gate_id.as_ref(), "local");
 }
 
 #[test]
 fn test_route_local_fallback_when_no_vram_candidates() {
-    let mut router = JobRouter::new("local".to_string());
+    let mut router = JobRouter::new("local");
 
     let gate = GateGpuInfo {
-        gate_id: "small_gpu".to_string(),
+        gate_id: std::sync::Arc::from("small_gpu"),
         gpu_model: "RTX 3060".to_string(),
         vram_total_mb: 12 * 1024,
         vram_available_mb: 100,

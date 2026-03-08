@@ -61,6 +61,12 @@ pub struct GpuAdapterInfo {
     /// DF64 paths and f32 shared-memory work correctly.
     /// Currently `false` for all adapters via naga/SPIR-V pipeline.
     pub f64_shared_memory_reliable: bool,
+    /// Whether fused f64 reductions risk returning zeros on this adapter.
+    ///
+    /// `true` for NVK + full/throttled FP64 devices and Ada Lovelace +
+    /// proprietary driver where shared-memory f64 reductions silently fail.
+    /// Springs and barraCuda use this to guard or skip fused reduction tests.
+    pub f64_zeros_risk: bool,
     /// Minimum subgroup size (warp size). 0 if unknown.
     pub min_subgroup_size: u32,
     /// Maximum subgroup size. 0 if unknown.
@@ -174,6 +180,9 @@ impl GpuAdapterInfo {
     /// Encapsulates the groundSpring V84-V85 discovery: naga/SPIR-V f64
     /// shared-memory reductions return zeros on all tested GPUs. This
     /// method tells callers exactly which path to use.
+    ///
+    /// Ada Lovelace (RTX 40xx) on proprietary drivers is classified as
+    /// `F64NativeNoSharedMem` per groundSpring V98 + neuralSpring V90.
     #[must_use]
     pub fn precision_routing(&self) -> PrecisionRoutingAdvice {
         if !self.supports_shader_f64 {
@@ -186,6 +195,16 @@ impl GpuAdapterInfo {
             return PrecisionRoutingAdvice::F64NativeNoSharedMem;
         }
         PrecisionRoutingAdvice::F64Native
+    }
+
+    /// Whether fused f64 operations are safe on this adapter.
+    ///
+    /// Returns `false` when shared-memory f64 reductions risk returning
+    /// zeros (NVK FP64 devices, Ada Lovelace proprietary). Callers should
+    /// run a variance canary probe or skip fused reductions.
+    #[must_use]
+    pub fn fused_ops_healthy(&self) -> bool {
+        !self.f64_zeros_risk
     }
 
     /// Maximum safe 2D dispatch dimensions (x * y must fit workgroup limit).
@@ -263,6 +282,17 @@ impl HardwareFingerprint {
             capabilities,
         }
     }
+}
+
+/// Detect Ada Lovelace architecture from adapter name.
+///
+/// Matches RTX 40xx series, L40, A6000 Ada, and explicit "Ada" mentions.
+fn is_nvidia_ada_lovelace(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    lower.contains("rtx 40")
+        || lower.contains("rtx40")
+        || lower.contains("l40")
+        || lower.contains("ada")
 }
 
 /// GPU device type classification.
@@ -382,6 +412,9 @@ impl WgpuComputeUnit {
                 || info.name.contains("Quadro GV100"));
         let f64_compute_unreliable = is_nvk_volta;
 
+        let is_ada_lovelace = is_nvidia_ada_lovelace(&info.name);
+        let is_proprietary_nvidia = info.driver.contains("nvidia") && !info.driver.contains("nvk");
+
         let min_subgroup_size = limits.min_subgroup_size;
         let max_subgroup_size = limits.max_subgroup_size;
 
@@ -405,6 +438,11 @@ impl WgpuComputeUnit {
         // path, this is always false via the standard wgpu/naga pipeline.
         let f64_shared_memory_reliable = false;
 
+        // f64 zeros risk: NVK + FP64 devices, or Ada Lovelace + proprietary
+        // driver (groundSpring V98 + neuralSpring V90 both report fused
+        // VarianceF64/CorrelationF64 returning 0.0 on RTX 40xx).
+        let f64_zeros_risk = (is_nvk && supports_f64) || (is_ada_lovelace && is_proprietary_nvidia);
+
         let adapter_info = GpuAdapterInfo {
             name: name.clone(),
             driver: info.driver.clone(),
@@ -421,6 +459,7 @@ impl WgpuComputeUnit {
             supports_shader_f64: supports_f64,
             f64_compute_unreliable,
             f64_shared_memory_reliable,
+            f64_zeros_risk,
             min_subgroup_size,
             max_subgroup_size,
             fingerprint,
@@ -471,7 +510,7 @@ impl ComputeUnit for WgpuComputeUnit {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 mod tests {
     use super::*;
 
@@ -542,6 +581,10 @@ mod tests {
         f64_shared_mem: bool,
         safe_alloc: u64,
     ) -> GpuAdapterInfo {
+        let is_nvk = driver.contains("nvk") || driver.contains("nouveau");
+        let is_ada = is_nvidia_ada_lovelace(name);
+        let is_prop_nv = driver.contains("nvidia") && !driver.contains("nvk");
+        let zeros_risk = (is_nvk && supports_f64) || (is_ada && is_prop_nv);
         GpuAdapterInfo {
             name: name.to_owned(),
             driver: driver.to_owned(),
@@ -558,6 +601,7 @@ mod tests {
             supports_shader_f64: supports_f64,
             f64_compute_unreliable: f64_unreliable,
             f64_shared_memory_reliable: f64_shared_mem,
+            f64_zeros_risk: zeros_risk,
             min_subgroup_size: 32,
             max_subgroup_size: 32,
             fingerprint: make_test_fingerprint(
@@ -726,5 +770,71 @@ mod tests {
         let info = make_test_adapter_info("Test", "nvidia", true, false, false, 4_294_967_296);
         assert!(!info.fingerprint.sovereign_binary_capable);
         assert!(info.fingerprint.sovereign_capable);
+    }
+
+    #[test]
+    fn test_ada_lovelace_proprietary_f64_zeros_risk() {
+        let info = make_test_adapter_info(
+            "NVIDIA GeForce RTX 4070",
+            "nvidia",
+            true,
+            false,
+            false,
+            4_294_967_296,
+        );
+        assert!(
+            info.f64_zeros_risk,
+            "Ada Lovelace + proprietary should have f64_zeros_risk"
+        );
+        assert!(
+            !info.fused_ops_healthy(),
+            "fused ops should not be healthy on Ada Lovelace proprietary"
+        );
+        assert_eq!(
+            info.precision_routing(),
+            PrecisionRoutingAdvice::F64NativeNoSharedMem
+        );
+    }
+
+    #[test]
+    fn test_ada_lovelace_nvk_f64_zeros_risk() {
+        let info = make_test_adapter_info(
+            "NVIDIA GeForce RTX 4090",
+            "nvk",
+            true,
+            false,
+            false,
+            1_200_000_000,
+        );
+        assert!(info.f64_zeros_risk, "NVK + f64 should have f64_zeros_risk");
+        assert!(!info.fused_ops_healthy());
+    }
+
+    #[test]
+    fn test_non_ada_proprietary_no_zeros_risk() {
+        let info = make_test_adapter_info(
+            "NVIDIA GeForce RTX 3090",
+            "nvidia",
+            true,
+            false,
+            false,
+            4_294_967_296,
+        );
+        assert!(
+            !info.f64_zeros_risk,
+            "Ampere + proprietary should not have f64_zeros_risk"
+        );
+        assert!(info.fused_ops_healthy());
+    }
+
+    #[test]
+    fn test_is_nvidia_ada_lovelace_detection() {
+        assert!(is_nvidia_ada_lovelace("NVIDIA GeForce RTX 4070"));
+        assert!(is_nvidia_ada_lovelace("NVIDIA GeForce RTX 4090"));
+        assert!(is_nvidia_ada_lovelace("NVIDIA L40"));
+        assert!(is_nvidia_ada_lovelace("NVIDIA RTX 4000 Ada Generation"));
+        assert!(!is_nvidia_ada_lovelace("NVIDIA GeForce RTX 3090"));
+        assert!(!is_nvidia_ada_lovelace("NVIDIA Titan V"));
+        assert!(!is_nvidia_ada_lovelace("AMD Radeon RX 6950 XT"));
     }
 }

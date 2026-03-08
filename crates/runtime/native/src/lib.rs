@@ -501,10 +501,17 @@ impl RuntimeEngine for NativeRuntimeEngine {
         Box::pin(async {
             info!("Shutting down Native Runtime Engine");
 
-            // Kill all active processes
-            let mut processes = self.active_processes.write().await;
-            for (execution_id, mut process_handle) in processes.drain() {
-                if let Some(mut child) = process_handle.child.take() {
+            // Collect processes to kill, release lock before await (avoid holding lock across .await)
+            let to_kill: Vec<(Uuid, Option<Child>)> = {
+                let mut processes = self.active_processes.write().await;
+                processes
+                    .drain()
+                    .map(|(id, mut h)| (id, h.child.take()))
+                    .collect()
+            };
+
+            for (execution_id, child_opt) in to_kill {
+                if let Some(mut child) = child_opt {
                     if let Err(e) = child.kill().await {
                         warn!("Failed to kill process {}: {}", execution_id, e);
                     }

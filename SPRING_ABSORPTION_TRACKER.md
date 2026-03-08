@@ -1,17 +1,18 @@
 # Spring Absorption Tracker
 
-**Session**: S131+ Spring Sync + Deep Debt Evolution (March 7, 2026)
-**ToadStool**: master, ~84% line coverage (517K lines, 1,868 .rs files). 19,777 tests, 0 failures. Clippy pedantic clean. `#[expect]` evolution (production code). coralReef shader proxy with capability-based discovery (live E2E on AMD). Cross-spring provenance tracking. All quality gates passing.
+**Session**: S133 Cross-Spring Absorption (March 8, 2026)
+**ToadStool**: master, ~86% line coverage (517K lines, 1,868+ .rs files). 19,810+ tests, 0 failures. Clippy pedantic clean. `#[expect]` evolution (production code). coralReef shader proxy with capability-based discovery (live E2E on AMD). Cross-spring provenance tracking. All quality gates passing.
+**S133**: Cross-spring absorption from all 5 springs (Mar 8 handoffs). Ada Lovelace `F64NativeNoSharedMem` reclassification (P0). `f64_zeros_risk` + `fused_ops_healthy()` canary on `GpuAdapterInfo`. 14 airSpring ecology JSON-RPC methods. NUCLEUS adaptive discovery pattern (groundSpring V99). Deploy graph routing (wetSpring V99). +20 semantic methods (71→91). biomeOS socket scan on startup.
 
 ## Spring Pin Status
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.19 | S128→S130+ | S130+→S131+ | 724 lib + 19 integration | DF64 delegation complete, 3 Chuna papers CPU-validated, cross-spring GPU benchmarks, `GpuView<T>` adoption target |
-| groundSpring | V96 | V95→S130+ | V96→S131+ | 925 + 390 forge | 102 (61 CPU + 41 GPU), PrecisionRoutingAdvice wired into 11 GPU paths, metalForge 30 workloads |
-| neuralSpring | V89/S131 | V87/S129→S130+ | V89/S131→S131+ | 901 lib + 43 forge + 240 bins | 89.1% coverage, isomorphic 25/25, full green, `#![forbid(unsafe_code)]` |
-| wetSpring | V97e | V97d+→S130+ | V97e→S131+ | 1,346 + 200 forge | Builder pattern migration complete, PrecisionRouting wired, provenance API, 0 local WGSL (fully lean) |
-| airSpring | V0.7.3 | V071→S130+ | V0.7.3→S131+ | 848 + 186 forge | Write→Absorb→Lean COMPLETE, all 6 local ops absorbed upstream, 0 local WGSL, provenance wired |
+| hotSpring | v0.6.23 | S130+→S131+ | S131+→S133 | 738 lib + 53 integration | Chuna 41/41, dynamical N_f=4 staggered flow, deep debt (zero clippy, zero panics), `log` migration |
+| groundSpring | V99 | V96→S131+ | V99→S133 | 936 + 382 Python | 102 (61 CPU + 41 GPU), live NUCLEUS (4 primals discovered), adaptive health, direct primal sockets |
+| neuralSpring | V90/S132 | V89/S131→S131+ | V90/S132→S133 | 902 lib + 43 forge + 240 bins | 89.1% coverage, upstream rewire to S130+/barraCuda `a898dee`/coralReef Iter 10 |
+| wetSpring | V99 | V97e→S131+ | V99→S133 | 1,047 + 200 forge | biomeOS science primal (9 capabilities), deploy graph, 300 experiments, 8,886+ checks |
+| airSpring | v0.7.5 | V0.7.3→S131+ | v0.7.5→S133 | 854 + 186 forge | Drought index leaned, 14 JSON-RPC science methods, 81 experiments, 35 capabilities |
 
 ## Absorption Status
 

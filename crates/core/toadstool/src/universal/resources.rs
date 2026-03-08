@@ -134,7 +134,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::float_cmp)] // literals just assigned in test
+    #[expect(clippy::float_cmp, reason = "literals just assigned in test")]
     fn test_universal_system_resources_struct() {
         let resources = UniversalSystemResources {
             cpu_cores: 16.0,
@@ -183,7 +183,10 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // default value from ResourceCoordinator::new
+    #[expect(
+        clippy::float_cmp,
+        reason = "default value from ResourceCoordinator::new"
+    )]
     async fn test_resource_coordinator_get_available_resources() {
         let coordinator = ResourceCoordinator::new().await.unwrap();
         let resources = coordinator.get_available_resources().await;
@@ -192,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // round-trip: both from same literal
+    #[expect(clippy::float_cmp, reason = "round-trip: both from same literal")]
     fn test_universal_system_resources_serde() {
         let resources = UniversalSystemResources {
             cpu_cores: 4.0,

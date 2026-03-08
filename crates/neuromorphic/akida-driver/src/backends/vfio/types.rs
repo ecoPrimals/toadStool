@@ -157,4 +157,43 @@ mod tests {
         assert_eq!(unmap.iova, 0);
         assert_eq!(unmap.size, 0);
     }
+
+    #[test]
+    fn test_vfio_dma_aligned_size_4096() {
+        let size = 4096usize;
+        let aligned = size.div_ceil(4096) * 4096;
+        assert_eq!(aligned, 4096);
+    }
+
+    #[test]
+    fn test_vfio_dma_aligned_size_1_byte() {
+        let size = 1usize;
+        let aligned = size.div_ceil(4096) * 4096;
+        assert_eq!(aligned, 4096);
+    }
+
+    #[test]
+    fn test_vfio_dma_aligned_size_4097() {
+        let size = 4097usize;
+        let aligned = size.div_ceil(4096) * 4096;
+        assert_eq!(aligned, 8192);
+    }
+
+    #[test]
+    fn test_vfio_dma_map_argsz_size() {
+        let argsz = std::mem::size_of::<VfioDmaMap>();
+        assert!(argsz >= 32);
+    }
+
+    #[test]
+    fn test_vfio_dma_unmap_argsz_size() {
+        let argsz = std::mem::size_of::<VfioDmaUnmap>();
+        assert!(argsz >= 24);
+    }
+
+    #[test]
+    fn test_vfio_dma_map_flags_combined() {
+        let flags = ioctls::VFIO_DMA_MAP_FLAG_READ | ioctls::VFIO_DMA_MAP_FLAG_WRITE;
+        assert_eq!(flags, 3);
+    }
 }

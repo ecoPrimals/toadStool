@@ -372,7 +372,7 @@ mod monitoring_logic_tests {
     }
 
     #[test]
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(clippy::cast_precision_loss, reason = "u64 to f64 for calculation")]
     fn test_process_cpu_calculation() {
         let cpu_time = 1000u64;
         let elapsed_time = 100u64;

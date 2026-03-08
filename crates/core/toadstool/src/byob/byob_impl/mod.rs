@@ -257,7 +257,7 @@ impl ByobComputeExecutor {
     }
 
     /// Monitor deployment health
-    #[allow(dead_code)] // Phase 2+: background health monitoring loop
+    #[expect(dead_code, reason = "Phase 2+: background health monitoring loop")]
     async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);
 
@@ -459,9 +459,7 @@ impl ByobComputeExecutor {
             _ => "203.0.114",
         };
 
-        // Generate a semi-random last octet based on service name
-        #[allow(clippy::cast_possible_truncation)]
-        let last_octet = service_spec.name.chars().map(|c| c as u32).sum::<u32>() % 200 + 50; // Range 50-249
+        let last_octet = service_spec.name.chars().map(|c| c as u32).sum::<u32>() % 200 + 50;
 
         let external_ip = format!("{base_ip}.{last_octet}");
 
@@ -517,7 +515,6 @@ impl ByobExecutor for ByobComputeExecutor {
         // Check concurrent deployment limit
         {
             let deployments = self.active_deployments.read().await;
-            #[allow(clippy::cast_possible_truncation)]
             if deployments.len() >= self.config.max_concurrent_deployments as usize {
                 return Err(ToadStoolError::resource(
                     "Maximum concurrent deployments reached".to_string(),

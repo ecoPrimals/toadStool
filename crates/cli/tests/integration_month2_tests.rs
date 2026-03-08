@@ -306,7 +306,6 @@ impl TestExecutor {
     }
 }
 
-#[allow(clippy::unused_async)]
 struct MockTask {
     active_tasks: Arc<AtomicUsize>,
     allocated_memory: Option<(Arc<AtomicUsize>, usize)>, // (shared mem, amount)

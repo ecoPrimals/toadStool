@@ -207,7 +207,6 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_system_scan() {
         let mut detector = HardwareDetector::new();
         let result = detector.scan_system().await;
@@ -219,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(clippy::float_cmp, reason = "test values are exact literals")]
     fn test_system_capabilities_default() {
         let capabilities = SystemCapabilities::default();
         assert_eq!(capabilities.cpu_cores, 4.0);

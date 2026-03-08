@@ -11,7 +11,7 @@ use toadstool::universal::UniversalSystemResources;
 
 // ── SystemResources ──────────────────────────────────────────────────────────
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_system_resources_creation() {
     let resources = SystemResources {
@@ -27,7 +27,7 @@ fn test_system_resources_creation() {
     assert_eq!(resources.available_gpu_units, 2);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_system_resources_clone() {
     let original = SystemResources {
@@ -81,7 +81,7 @@ fn test_system_resources_with_special_hardware() {
 
 // ── ResourceRequirements ─────────────────────────────────────────────────────
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_resource_requirements_default() {
     let requirements = ResourceRequirements::default();
@@ -89,7 +89,7 @@ fn test_resource_requirements_default() {
     assert!(requirements.gpu.is_none());
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_resource_requirements_with_cpu() {
     let requirements = ResourceRequirements {
@@ -135,7 +135,7 @@ fn test_resource_requirements_with_gpu() {
     assert_eq!(gpu.min_memory_bytes, Some(16 * 1024 * 1024 * 1024));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_resource_requirements_clone() {
     let original = ResourceRequirements {
@@ -173,7 +173,7 @@ fn test_resource_requirements_debug() {
 
 // ── CpuRequirements ──────────────────────────────────────────────────────────
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_requirements_default() {
     let cpu = CpuRequirements::default();
@@ -182,7 +182,7 @@ fn test_cpu_requirements_default() {
     assert!(cpu.architecture.is_none());
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_requirements_with_max_cores() {
     let cpu = CpuRequirements {
@@ -204,7 +204,7 @@ fn test_cpu_requirements_with_architecture() {
     assert_eq!(cpu.architecture, Some("aarch64".to_string()));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_requirements_clone() {
     let original = CpuRequirements {

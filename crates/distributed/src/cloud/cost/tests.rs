@@ -2,7 +2,11 @@
 //! Cost module tests
 
 #[cfg(test)]
-#[allow(clippy::float_cmp, clippy::module_inception)]
+#[expect(
+    clippy::float_cmp,
+    clippy::module_inception,
+    reason = "test module; comparing exact literals"
+)]
 mod tests {
     use super::super::optimizer::CloudCostOptimizer;
     use super::super::pricing::{infer_pricing_tier, CloudCostModel, PricingTier};

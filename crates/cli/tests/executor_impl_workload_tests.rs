@@ -166,7 +166,10 @@ mod workload_execution_tests {
         ];
 
         for (workload_type, expected_runtime) in workload_configs {
-            #[allow(clippy::match_same_arms)]
+            #[expect(
+                clippy::match_same_arms,
+                reason = "test: intentional same-arms for coverage"
+            )]
             let selected_runtime = match workload_type {
                 "binary_executable" => "native",
                 "wasm_module" => "wasm",

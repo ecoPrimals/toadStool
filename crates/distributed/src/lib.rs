@@ -138,7 +138,11 @@ pub use universal::{
 
 // Export substrate module and types for examples
 pub mod substrate {
-    pub use crate::universal::substrate::*;
+    pub use crate::universal::substrate::{
+        BiologicalComputingPlatform, ContainerPlatform, EdgeIoTPlatform, ExperimentalPlatform,
+        LanguageRuntime, NeuromorphicPlatform, OperatingSystemSupport, QuantumPlatform,
+        SpecializedArchitecture, TraditionalPlatform, UniversalSubstrateCapabilities,
+    };
 }
 
 // Also re-export substrate types directly

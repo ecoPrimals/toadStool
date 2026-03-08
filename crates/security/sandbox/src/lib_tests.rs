@@ -5,7 +5,7 @@
 //! Obsolete tests for non-existent types have been removed.
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 mod tests {
     use super::super::types::*;
     use std::path::PathBuf;

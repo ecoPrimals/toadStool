@@ -217,7 +217,10 @@ enum SecurityLevel {
     Strict,
 }
 
-#[allow(clippy::struct_excessive_bools)] // Policy flags for different permission dimensions
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "Policy flags for different permission dimensions"
+)]
 #[derive(Clone)]
 struct SecurityPolicy {
     level: SecurityLevel,
@@ -297,7 +300,6 @@ impl SecurityPolicy {
         Ok(())
     }
 
-    #[allow(clippy::unused_self)] // Part of policy API surface
     fn can_access_network(&self) -> bool {
         self.allow_network
     }
@@ -306,7 +308,7 @@ impl SecurityPolicy {
         self.allow_filesystem_write
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "trait method signature requires &self")]
     fn can_read_filesystem(&self) -> bool {
         true
     }

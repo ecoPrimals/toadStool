@@ -18,12 +18,8 @@ pub mod resources;
 pub mod timeouts;
 pub mod versions;
 
-// Re-export commonly used constants
-pub use compute::*;
-pub use display::*;
-pub use jsonrpc::*;
-pub use network::*;
+// Re-export commonly used constants (narrowed from wildcards; submodules remain for full access)
+pub use network::{
+    http_url, DEFAULT_HOSTNAME, DEFAULT_HTTP_PORT, DEFAULT_WS_PORT, LOCALHOST_IPV4, LOCALHOST_IPV6,
+};
 pub use primal_identity::PRIMAL_NAME;
-pub use resources::*;
-pub use timeouts::*;
-pub use versions::*;

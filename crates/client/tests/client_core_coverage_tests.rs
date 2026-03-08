@@ -17,7 +17,7 @@ use uuid::Uuid;
 // ToadStoolClient::new_for_testing tests
 // ============================================================================
 
-#[allow(clippy::expect_used)]
+#[expect(clippy::expect_used, reason = "test helper; expect is intentional")]
 fn test_client() -> ToadStoolClient {
     let config = ClientConfig {
         base_url: "unix:///tmp/test-toadstool-core.sock".to_string(),

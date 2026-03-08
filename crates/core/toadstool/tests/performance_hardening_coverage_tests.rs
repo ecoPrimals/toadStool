@@ -26,9 +26,15 @@ fn create_test_metrics(cpu_percent: f64, memory_percent: f64) -> RuntimeMetrics 
         },
         memory: MemoryMetrics {
             usage_percent: memory_percent,
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "test fixture; 8GB max fits u64"
+            )]
             used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "test fixture; 8GB max fits u64"
+            )]
             peak_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
         },
         storage: StorageMetrics::default(),

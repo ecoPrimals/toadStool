@@ -181,7 +181,7 @@ impl NaturalLanguageConfig {
     ///
     /// NOTE: Pass-through implementation - configuration validation happens
     /// elsewhere in the pipeline. Reserved for future optimization passes.
-    #[allow(dead_code)] // Reserved: future config optimization passes
+    #[expect(dead_code, reason = "Reserved: future config optimization passes")]
     fn validate_and_optimize(&self, config: ToadStoolConfig) -> ToadStoolResult<ToadStoolConfig> {
         // Configuration is validated during generation and by config module
         // This method is reserved for future optimization logic

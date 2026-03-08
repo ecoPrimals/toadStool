@@ -49,7 +49,8 @@ pub trait MemoryPressureCallback: Send + Sync {
 pub struct MemoryPressureHandler {
     config: MemoryPressureConfig,
     current_usage: Arc<RwLock<u64>>,
-    callbacks: Arc<RwLock<Vec<Box<dyn MemoryPressureCallback>>>>,
+    /// Arc-wrapped so we can clone and invoke without holding lock across .await
+    callbacks: Arc<RwLock<Vec<Arc<dyn MemoryPressureCallback>>>>,
 }
 
 impl MemoryPressureHandler {
@@ -62,13 +63,22 @@ impl MemoryPressureHandler {
         }
     }
 
-    pub async fn register_callback(&self, callback: Box<dyn MemoryPressureCallback>) {
+    /// Register a callback. Accepts `Arc` so we can clone and invoke without holding lock across await.
+    pub async fn register_callback(&self, callback: Arc<dyn MemoryPressureCallback>) {
         let mut callbacks = self.callbacks.write().await;
         callbacks.push(callback);
     }
 
+    /// Register from `Box`. Converts to `Arc` for storage (one-time allocation).
+    pub async fn register_callback_box(&self, callback: Box<dyn MemoryPressureCallback>) {
+        self.register_callback(Arc::from(callback)).await;
+    }
+
     pub async fn update_memory_usage(&self, total_memory: u64, used_memory: u64) {
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "u64 to f64 for percentage calculation"
+        )]
         let usage_percent = (used_memory as f64 / total_memory as f64) * 100.0;
 
         let level = if usage_percent >= self.config.emergency_threshold {
@@ -84,14 +94,21 @@ impl MemoryPressureHandler {
         *self.current_usage.write().await = used_memory;
 
         if level != MemoryPressureLevel::Normal {
-            let callbacks = self.callbacks.read().await;
-            for callback in callbacks.iter() {
+            // Clone Arc refs and release lock before await (avoid holding lock across .await)
+            let callback_arcs: Vec<Arc<dyn MemoryPressureCallback>> = {
+                let guard = self.callbacks.read().await;
+                guard.iter().map(Arc::clone).collect()
+            };
+            for callback in callback_arcs {
                 callback.handle_pressure(level, usage_percent).await;
             }
         }
     }
 
-    #[allow(clippy::unused_async)] // API consistency; may add async sysinfo in future
+    #[expect(
+        clippy::unused_async,
+        reason = "API consistency; may add async sysinfo in future"
+    )]
     pub async fn get_pressure_level(&self) -> MemoryPressureLevel {
         MemoryPressureLevel::Normal
     }
@@ -201,7 +218,9 @@ mod tests {
             check_interval: Duration::from_secs(10),
         };
         let handler = MemoryPressureHandler::new(config);
-        handler.register_callback(Box::new(CallbackTracker)).await;
+        handler
+            .register_callback_box(Box::new(CallbackTracker))
+            .await;
 
         // 75% should trigger Warning callback
         handler.update_memory_usage(100, 75).await;

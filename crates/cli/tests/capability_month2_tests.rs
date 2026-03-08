@@ -270,7 +270,7 @@ impl CapabilityDetector {
         matches!(name, "wasm" | "native" | "container")
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "trait method signature requires &self")]
     fn detect_container_runtime(&self) -> bool {
         true
     }
@@ -456,20 +456,17 @@ impl CapabilityResolver {
 }
 
 #[derive(Debug, Clone)]
-#[allow(clippy::unused_async)]
 struct Capability {
     name: String,
     version: String,
     provider: String,
 }
 
-#[allow(clippy::unused_async)]
 struct CapabilityProvider {
     name: String,
     priority: u8,
 }
 
-#[allow(clippy::unused_async)]
 struct ProviderInfo {
     name: String,
     priority: u8,

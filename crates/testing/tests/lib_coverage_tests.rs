@@ -142,3 +142,97 @@ fn test_constants_usage_in_timeout() {
     assert!(timeout.as_secs() > 0);
     assert!(timeout.as_secs() <= 30);
 }
+
+// ============================================================================
+// TestConstants (fixtures) Tests
+// ============================================================================
+
+#[test]
+fn test_test_constants_memory_limit() {
+    use toadstool_testing::TestConstants;
+
+    assert_eq!(TestConstants::DEFAULT_MEMORY_LIMIT, 1024 * 1024 * 1024);
+}
+
+#[test]
+#[allow(clippy::float_cmp)]
+fn test_test_constants_cpu_cores() {
+    use toadstool_testing::TestConstants;
+
+    assert_eq!(TestConstants::DEFAULT_CPU_CORES, 2.0);
+}
+
+#[test]
+fn test_test_constants_storage_limit() {
+    use toadstool_testing::TestConstants;
+
+    assert_eq!(
+        TestConstants::DEFAULT_STORAGE_LIMIT,
+        10 * 1024 * 1024 * 1024
+    );
+}
+
+#[test]
+fn test_test_constants_network_bandwidth() {
+    use toadstool_testing::TestConstants;
+
+    assert_eq!(TestConstants::DEFAULT_NETWORK_BANDWIDTH, 100);
+}
+
+#[test]
+fn test_test_constants_container_image() {
+    use toadstool_testing::TestConstants;
+
+    assert_eq!(TestConstants::TEST_CONTAINER_IMAGE, "alpine:latest");
+}
+
+#[test]
+fn test_test_constants_executable_path() {
+    use toadstool_testing::TestConstants;
+
+    assert_eq!(TestConstants::TEST_EXECUTABLE_PATH, "/bin/echo");
+}
+
+#[test]
+fn test_test_constants_working_dir() {
+    use toadstool_testing::TestConstants;
+
+    assert_eq!(TestConstants::TEST_WORKING_DIR, "/tmp");
+}
+
+// ============================================================================
+// Timeout helpers (helpers/timeout) Tests
+// ============================================================================
+
+#[test]
+fn test_timeout_error_display() {
+    use toadstool_testing::helpers::timeout::TimeoutError;
+
+    let err = TimeoutError::Elapsed;
+    assert!(err.to_string().contains("timed out"));
+}
+
+#[tokio::test]
+async fn test_with_timeout_duration_success() {
+    use std::time::Duration;
+    use toadstool_testing::helpers::timeout::with_timeout_duration;
+
+    let result = with_timeout_duration(async { 42 }, Duration::from_secs(1)).await;
+    assert_eq!(result, Ok(42));
+}
+
+#[tokio::test]
+async fn test_with_chaos_timeout_success() {
+    use toadstool_testing::helpers::timeout::with_chaos_timeout;
+
+    let result = with_chaos_timeout(async { "ok" }).await;
+    assert_eq!(result, Ok("ok"));
+}
+
+#[test]
+fn test_retry_error_display() {
+    use toadstool_testing::helpers::timeout::RetryError;
+
+    let err = RetryError::<String>::Timeout;
+    assert!(err.to_string().contains("timed out"));
+}

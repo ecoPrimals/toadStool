@@ -131,6 +131,34 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
         }
     }
 
+    // Scan biomeOS socket directory for stale sockets and discovered primals
+    // (groundSpring V99 adaptive discovery pattern).
+    let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
+    if biomeos_dir.exists() {
+        let mut discovered = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) == Some("sock") {
+                    if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                        discovered.push(name.to_string());
+                    }
+                }
+            }
+        }
+        if discovered.is_empty() {
+            info!("🔍 biomeOS socket dir exists but no primals discovered");
+        } else {
+            info!(
+                "🔍 Discovered {} primal socket(s): {}",
+                discovered.len(),
+                discovered.join(", ")
+            );
+        }
+    } else {
+        info!("🔍 biomeOS socket dir not found (standalone mode)");
+    }
+
     info!("🔌 Starting IPC servers (isomorphic mode)...");
 
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");

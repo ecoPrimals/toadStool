@@ -21,14 +21,36 @@
 //! Gate2 (RTX 3090, 24GB) is better for large models. Tower (RTX 4070)
 //! is better for quick inference. The router picks the right gate automatically.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
+use std::sync::Arc;
+
+fn serialize_arc_str<S>(v: &Arc<str>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_str(v)
+}
+
+fn deserialize_arc_str<'de, D>(d: D) -> Result<Arc<str>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(d)?;
+    Ok(Arc::from(s))
+}
 
 /// GPU capabilities for a single gate
+///
+/// Uses `Arc<str>` for gate_id to avoid allocations on hot-path route decisions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GateGpuInfo {
     /// Gate identifier (e.g., "tower", "gate2")
-    pub gate_id: String,
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub gate_id: Arc<str>,
     /// GPU model name (e.g., "RTX 4070", "RTX 3090")
     pub gpu_model: String,
     /// Total VRAM in MB
@@ -46,8 +68,12 @@ pub struct GateGpuInfo {
 /// Routing decision for a compute job
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutingDecision {
-    /// Selected gate ID
-    pub gate_id: String,
+    /// Selected gate ID (Arc<str> avoids allocation on hot path)
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub gate_id: Arc<str>,
     /// Reason for selection
     pub reason: RoutingReason,
     /// Estimated wait time in milliseconds
@@ -77,24 +103,24 @@ pub enum RoutingReason {
 #[derive(Debug, Clone)]
 pub struct JobRouter {
     /// Known gates and their capabilities
-    gates: HashMap<String, GateGpuInfo>,
-    /// Local gate ID
-    local_gate_id: String,
+    gates: HashMap<Arc<str>, GateGpuInfo>,
+    /// Local gate ID (Arc<str> avoids allocation on route decisions)
+    local_gate_id: Arc<str>,
 }
 
 impl JobRouter {
     /// Create a new job router for the given local gate
     #[must_use]
-    pub fn new(local_gate_id: impl Into<String>) -> Self {
+    pub fn new(local_gate_id: impl AsRef<str>) -> Self {
         Self {
             gates: HashMap::new(),
-            local_gate_id: local_gate_id.into(),
+            local_gate_id: Arc::from(local_gate_id.as_ref()),
         }
     }
 
     /// Update gate capabilities (called when Plasmodium reports new state)
     pub fn update_gate(&mut self, info: GateGpuInfo) {
-        self.gates.insert(info.gate_id.clone(), info);
+        self.gates.insert(Arc::clone(&info.gate_id), info);
     }
 
     /// Remove a gate (went offline)
@@ -115,7 +141,7 @@ impl JobRouter {
 
         if reachable.is_empty() {
             return RoutingDecision {
-                gate_id: self.local_gate_id.clone(),
+                gate_id: Arc::clone(&self.local_gate_id),
                 reason: RoutingReason::OnlyOption,
                 estimated_wait_ms: 0,
             };
@@ -127,7 +153,7 @@ impl JobRouter {
             .find(|g| g.loaded_models.iter().any(|m| m == model))
         {
             return RoutingDecision {
-                gate_id: gate.gate_id.clone(),
+                gate_id: Arc::clone(&gate.gate_id),
                 reason: RoutingReason::ModelLoaded,
                 #[allow(clippy::cast_possible_truncation)]
                 estimated_wait_ms: gate.queue_depth as u64 * 100, // rough estimate
@@ -144,7 +170,7 @@ impl JobRouter {
             candidates.sort_by(|a, b| b.vram_available_mb.cmp(&a.vram_available_mb));
             let best = candidates[0];
             return RoutingDecision {
-                gate_id: best.gate_id.clone(),
+                gate_id: Arc::clone(&best.gate_id),
                 reason: RoutingReason::MostVramAvailable,
                 #[allow(clippy::cast_possible_truncation)]
                 estimated_wait_ms: best.queue_depth as u64 * 100,
@@ -154,7 +180,7 @@ impl JobRouter {
         // 3. Shortest queue regardless of VRAM
         if let Some(gate) = reachable.iter().min_by_key(|g| g.queue_depth) {
             return RoutingDecision {
-                gate_id: gate.gate_id.clone(),
+                gate_id: Arc::clone(&gate.gate_id),
                 reason: RoutingReason::ShortestQueue,
                 #[allow(clippy::cast_possible_truncation)]
                 estimated_wait_ms: gate.queue_depth as u64 * 100,
@@ -163,7 +189,7 @@ impl JobRouter {
 
         // 4. Fallback to local
         RoutingDecision {
-            gate_id: self.local_gate_id.clone(),
+            gate_id: Arc::clone(&self.local_gate_id),
             reason: RoutingReason::Local,
             estimated_wait_ms: 0,
         }
@@ -171,7 +197,7 @@ impl JobRouter {
 
     /// Get all known gates
     #[must_use]
-    pub fn gates(&self) -> &HashMap<String, GateGpuInfo> {
+    pub fn gates(&self) -> &HashMap<Arc<str>, GateGpuInfo> {
         &self.gates
     }
 }
@@ -182,7 +208,7 @@ mod tests {
 
     fn tower_gpu() -> GateGpuInfo {
         GateGpuInfo {
-            gate_id: "tower".to_string(),
+            gate_id: Arc::from("tower"),
             gpu_model: "RTX 4070".to_string(),
             vram_total_mb: 12288,
             vram_available_mb: 8000,
@@ -194,7 +220,7 @@ mod tests {
 
     fn gate2_gpu() -> GateGpuInfo {
         GateGpuInfo {
-            gate_id: "gate2".to_string(),
+            gate_id: Arc::from("gate2"),
             gpu_model: "RTX 3090".to_string(),
             vram_total_mb: 24576,
             vram_available_mb: 20000,
@@ -206,39 +232,39 @@ mod tests {
 
     #[test]
     fn test_route_model_already_loaded() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
         router.update_gate(tower_gpu());
         router.update_gate(gate2_gpu());
 
         // tinyllama is loaded on tower
         let decision = router.route("tinyllama:latest", 2000);
-        assert_eq!(decision.gate_id, "tower");
+        assert_eq!(decision.gate_id.as_ref(), "tower");
         assert!(matches!(decision.reason, RoutingReason::ModelLoaded));
     }
 
     #[test]
     fn test_route_large_model_to_big_gpu() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
         router.update_gate(tower_gpu());
         router.update_gate(gate2_gpu());
 
         // New model needing 16GB VRAM -> gate2 has 20GB available
         let decision = router.route("mixtral:8x7b", 16000);
-        assert_eq!(decision.gate_id, "gate2");
+        assert_eq!(decision.gate_id.as_ref(), "gate2");
         assert!(matches!(decision.reason, RoutingReason::MostVramAvailable));
     }
 
     #[test]
     fn test_route_no_gates_falls_back_local() {
-        let router = JobRouter::new("tower".to_string());
+        let router = JobRouter::new("tower");
         let decision = router.route("any_model", 4000);
-        assert_eq!(decision.gate_id, "tower");
+        assert_eq!(decision.gate_id.as_ref(), "tower");
         assert!(matches!(decision.reason, RoutingReason::OnlyOption));
     }
 
     #[test]
     fn test_route_shortest_queue() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
 
         let mut tower = tower_gpu();
         tower.loaded_models.clear();
@@ -255,13 +281,13 @@ mod tests {
 
         // Neither has enough VRAM, pick shortest queue
         let decision = router.route("huge_model", 30000);
-        assert_eq!(decision.gate_id, "gate2");
+        assert_eq!(decision.gate_id.as_ref(), "gate2");
         assert!(matches!(decision.reason, RoutingReason::ShortestQueue));
     }
 
     #[test]
     fn test_update_and_remove_gate() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
         router.update_gate(tower_gpu());
         assert_eq!(router.gates().len(), 1);
 
@@ -274,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_unreachable_gate_skipped() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
 
         let mut gate2 = gate2_gpu();
         gate2.reachable = false;
@@ -285,25 +311,25 @@ mod tests {
 
         // gate2 has more VRAM but is unreachable
         let decision = router.route("new_model", 4000);
-        assert_eq!(decision.gate_id, "tower");
+        assert_eq!(decision.gate_id.as_ref(), "tower");
     }
 
     #[test]
     fn test_all_gates_unreachable_falls_back_to_local() {
-        let mut router = JobRouter::new("local".to_string());
+        let mut router = JobRouter::new("local");
 
         let mut gate = tower_gpu();
         gate.reachable = false;
         router.update_gate(gate);
 
         let decision = router.route("any_model", 1000);
-        assert_eq!(decision.gate_id, "local");
+        assert_eq!(decision.gate_id.as_ref(), "local");
         assert!(matches!(decision.reason, RoutingReason::OnlyOption));
     }
 
     #[test]
     fn test_route_estimated_wait_ms_model_loaded() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
         let mut tower = tower_gpu();
         tower.queue_depth = 3;
         router.update_gate(tower);
@@ -315,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_route_estimated_wait_ms_most_vram() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
         let mut gate2 = gate2_gpu();
         gate2.queue_depth = 4;
         gate2.loaded_models.clear();
@@ -328,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_update_gate_replaces_existing() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
         router.update_gate(tower_gpu());
 
         let mut updated = tower_gpu();
@@ -342,21 +368,21 @@ mod tests {
 
     #[test]
     fn test_remove_nonexistent_gate_is_noop() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
         router.remove_gate("nonexistent");
         assert_eq!(router.gates().len(), 0);
     }
 
     #[test]
     fn test_route_prefers_model_loaded_over_more_vram() {
-        let mut router = JobRouter::new("tower".to_string());
+        let mut router = JobRouter::new("tower");
 
         // tower has less VRAM available but model is loaded
         router.update_gate(tower_gpu()); // 8000 MB, tinyllama loaded
         router.update_gate(gate2_gpu()); // 20000 MB, no tinyllama
 
         let decision = router.route("tinyllama:latest", 2000);
-        assert_eq!(decision.gate_id, "tower");
+        assert_eq!(decision.gate_id.as_ref(), "tower");
         assert!(matches!(decision.reason, RoutingReason::ModelLoaded));
     }
 }

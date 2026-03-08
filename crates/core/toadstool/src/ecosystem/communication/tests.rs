@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Communication module tests
 
-#[allow(unused_imports)]
+#[expect(unused_imports, reason = "imports used across test functions")]
 use crate::ecosystem::{CommunicationManager, ServiceChannel, ServiceClient, ServiceStatus};
 
 #[tokio::test]

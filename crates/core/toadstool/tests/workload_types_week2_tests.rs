@@ -458,7 +458,7 @@ fn test_gpu_argument_buffer() {
 }
 
 #[test]
-#[allow(clippy::approx_constant)]
+#[expect(clippy::approx_constant, reason = "PI approximation for test")]
 fn test_gpu_argument_scalar() {
     let arg = GpuArgument::Scalar { value: 3.14 };
 

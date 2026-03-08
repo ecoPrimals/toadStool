@@ -204,7 +204,7 @@ impl EcosystemIntegrator {
 
         // Build service information
         let service_info = ServiceInfo {
-            name: "toadstool".to_string(),
+            name: toadstool_common::constants::PRIMAL_NAME.to_string(),
             capabilities: vec![
                 "wasm-execution".to_string(),
                 "container-runtime".to_string(),

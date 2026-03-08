@@ -10,7 +10,7 @@ use toadstool::universal::{JobPriority, UniversalJobType, UniversalSystemResourc
 // SystemResources Additional Tests (10 tests)
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_system_resources_creation() {
     let resources = UniversalSystemResources {
@@ -39,7 +39,6 @@ fn test_system_resources_minimal() {
     assert_eq!(resources.network_bandwidth, 0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_system_resources_large_values() {
     let resources = UniversalSystemResources {
@@ -54,7 +53,7 @@ fn test_system_resources_large_values() {
     assert!(resources.cpu_cores > 100.0);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_system_resources_fractional_cores() {
     let resources = UniversalSystemResources {
@@ -69,7 +68,7 @@ fn test_system_resources_fractional_cores() {
     assert_eq!(resources.cpu_cores, 2.5);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_system_resources_clone() {
     let resources1 = UniversalSystemResources {
@@ -115,7 +114,7 @@ fn test_system_resources_serialization() {
     assert!(!json.is_empty());
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_system_resources_deserialization() {
     let resources = UniversalSystemResources {

@@ -2,6 +2,7 @@
 // Copyright (C) 2025 ecoPrimals
 
 //! Comprehensive tests for resources.rs types.
+#![allow(clippy::float_cmp)]
 
 use std::time::{Duration, SystemTime};
 use toadstool::resources::*;
@@ -10,7 +11,6 @@ use toadstool::resources::*;
 // CpuRequirements Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_default() {
     let cpu = CpuRequirements::default();
@@ -19,7 +19,6 @@ fn test_cpu_requirements_default() {
     assert!(cpu.architecture.is_none());
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_with_range() {
     let cpu = CpuRequirements {
@@ -51,7 +50,6 @@ fn test_cpu_requirements_architectures() {
     assert_eq!(arm.architecture, Some("aarch64".to_string()));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_requirements_clone() {
     let cpu = CpuRequirements {
@@ -287,7 +285,6 @@ fn test_gpu_requirements_clone() {
 // ResourceRequirements Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_default() {
     let req = ResourceRequirements::default();
@@ -298,7 +295,6 @@ fn test_resource_requirements_default() {
     assert!(req.gpu.is_none());
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_with_gpu() {
     let req = ResourceRequirements {
@@ -325,7 +321,6 @@ fn test_resource_requirements_with_gpu() {
     assert_eq!(req.gpu.as_ref().unwrap().min_units, 1);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_high_performance() {
     let req = ResourceRequirements {
@@ -361,7 +356,6 @@ fn test_resource_requirements_high_performance() {
     assert!(req.gpu.is_some());
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_resource_requirements_clone() {
     let req = ResourceRequirements::default();
@@ -375,7 +369,6 @@ fn test_resource_requirements_clone() {
 // CpuMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_default() {
     let metrics = CpuMetrics::default();
@@ -384,7 +377,6 @@ fn test_cpu_metrics_default() {
     assert_eq!(metrics.cpu_time_seconds, 0.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_active() {
     let metrics = CpuMetrics {
@@ -398,7 +390,6 @@ fn test_cpu_metrics_active() {
     assert_eq!(metrics.cpu_time_seconds, 120.5);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_high_usage() {
     let metrics = CpuMetrics {
@@ -411,7 +402,6 @@ fn test_cpu_metrics_high_usage() {
     assert!(metrics.cores_used >= 15.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_cpu_metrics_clone() {
     let metrics = CpuMetrics {
@@ -429,7 +419,6 @@ fn test_cpu_metrics_clone() {
 // MemoryMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_default() {
     let metrics = MemoryMetrics::default();
@@ -438,7 +427,6 @@ fn test_memory_metrics_default() {
     assert_eq!(metrics.peak_bytes, 0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_active() {
     let metrics = MemoryMetrics {
@@ -463,7 +451,6 @@ fn test_memory_metrics_peak_tracking() {
     assert!(metrics.peak_bytes >= metrics.used_bytes);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_metrics_clone() {
     let metrics = MemoryMetrics {
@@ -481,7 +468,6 @@ fn test_memory_metrics_clone() {
 // StorageMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_storage_metrics_default() {
     let metrics = StorageMetrics::default();
@@ -491,7 +477,6 @@ fn test_storage_metrics_default() {
     assert_eq!(metrics.bytes_written, 0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_storage_metrics_active() {
     let metrics = StorageMetrics {
@@ -505,7 +490,6 @@ fn test_storage_metrics_active() {
     assert_eq!(metrics.usage_percent, 45.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_storage_metrics_heavy_io() {
     let metrics = StorageMetrics {
@@ -519,7 +503,6 @@ fn test_storage_metrics_heavy_io() {
     assert!(metrics.usage_percent > 50.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_storage_metrics_clone() {
     let metrics = StorageMetrics {
@@ -560,7 +543,6 @@ fn test_network_metrics_active() {
     assert_eq!(metrics.packets_received, 2000);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_network_metrics_high_traffic() {
     let metrics = NetworkMetrics {
@@ -574,7 +556,6 @@ fn test_network_metrics_high_traffic() {
     assert!(metrics.packets_sent > 100_000);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_network_metrics_clone() {
     let metrics = NetworkMetrics {
@@ -643,7 +624,6 @@ fn test_timing_metrics_clone() {
 // RuntimeMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_default() {
     let metrics = RuntimeMetrics::default();
@@ -655,7 +635,6 @@ fn test_runtime_metrics_default() {
     assert!(metrics.gpu.is_none());
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_complete() {
     let start = SystemTime::now();
@@ -695,7 +674,6 @@ fn test_runtime_metrics_complete() {
     assert_eq!(metrics.timing.duration, Duration::from_secs(120));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_runtime_metrics_clone() {
     let metrics = RuntimeMetrics::default();
@@ -709,7 +687,6 @@ fn test_runtime_metrics_clone() {
 // SystemResources Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_system_resources_default() {
     let sys = SystemResources::default();
@@ -721,7 +698,6 @@ fn test_system_resources_default() {
     assert_eq!(sys.available_gpu_units, 0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_system_resources_typical_server() {
     let sys = SystemResources {
@@ -738,7 +714,6 @@ fn test_system_resources_typical_server() {
     assert_eq!(sys.available_gpu_units, 2);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_system_resources_high_end() {
     let sys = SystemResources {
@@ -755,7 +730,6 @@ fn test_system_resources_high_end() {
     assert!(sys.available_gpu_units >= 4);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_system_resources_clone() {
     let sys = SystemResources::default();

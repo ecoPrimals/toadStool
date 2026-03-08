@@ -74,10 +74,11 @@ fn test_security_level_defaults() {
 }
 
 #[test]
-#[allow(
+#[expect(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "resource allocation percentage calculation"
 )]
 fn test_resource_allocation_percentage() {
     // Test resource allocation percentage calculation

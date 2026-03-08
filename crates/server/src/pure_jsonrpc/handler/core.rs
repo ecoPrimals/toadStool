@@ -106,7 +106,7 @@ pub(super) async fn discover_capabilities(
         "node_capabilities": [
             "compute", "workload", "orchestration", "ai_local",
             "gpu", "wasm", "container", "hardware_transport",
-            "science", "shader"
+            "science", "shader", "ecology", "discovery", "deploy"
         ],
         "methods": direct_methods,
         "version": version,

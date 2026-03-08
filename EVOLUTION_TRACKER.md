@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 7, 2026 — S130
+**Date**: March 8, 2026 — S133
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only. Zero-cost abstractions.
 
 ---
@@ -26,11 +26,11 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 
 | Spring | Version | Status | Key Deliverables |
 |--------|---------|--------|-----------------|
-| neuralSpring | V86/S128 | ✅ Core absorbed | 39/39 CPU↔GPU parity, AlphaFold2 17 shaders, HillGateGpu, SwarmNnGpu, DF64 ML primitives |
-| wetSpring | V97d | ✅ Core absorbed | 144 primitives, ValidationHarness, 52 papers |
-| airSpring | V071 | ✅ Core absorbed | Ops 0-8, seasonal pipeline, 72 experiments, 25 Tier A GPU |
-| groundSpring | V80 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, tissue_anderson |
-| hotSpring | v0.6.17 | ✅ Core absorbed | NVK serialization, brain arch, 31 experiments, NPU controlled params |
+| neuralSpring | V90/S132 | ✅ Core absorbed | 39/39 CPU↔GPU parity, AlphaFold2 17 shaders, HillGateGpu, SwarmNnGpu, DF64 ML primitives |
+| wetSpring | V99 | ✅ Core absorbed | 144 primitives, ValidationHarness, 52 papers |
+| airSpring | v0.7.5 | ✅ Core absorbed | Ops 0-8, seasonal pipeline, 72 experiments, 25 Tier A GPU |
+| groundSpring | V99 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, tissue_anderson |
+| hotSpring | v0.6.23 | ✅ Core absorbed | NVK serialization, brain arch, 31 experiments, NPU controlled params |
 | wateringHole | V69 | ✅ Core absorbed | Chi-squared batch, MC ET0 propagate |
 | groundSpring | V61 | ✅ S81 absorbed | InterconnectTopology, SubstratePipeline, BandwidthTier (PCIe P2P routing) |
 | neuralSpring | V70 | ✅ S81 absorbed | IFFT/NTT/INTT buffer fixes, `enable f64;` stripping |
@@ -111,7 +111,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 19,777 tests; ~83% line coverage (121K production lines). Focus: hardware-dependent code |
+| D-COV | Test coverage → 90% | Medium | 19,820+ tests; ~86% line coverage (121K production lines). Focus: hardware-dependent code |
 | D-SOV | ~~Sovereignty migration~~ | **RESOLVED S94b** | All 7 production callers migrated to `get_socket_path_for_capability()` |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
 | — | ~~vfio.rs smart refactoring~~ | **RESOLVED S94** | 971L → `vfio/` directory (types.rs, ioctl.rs, dma.rs, mod.rs) |
@@ -168,7 +168,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 
 | Status | Count | Notes |
 |--------|-------|-------|
-| Total `unsafe` blocks | ~60+ | All `// SAFETY:` documented (S77+S87: barracuda + runtime/gpu audit) |
+| Total `unsafe` blocks | ~70+ | All `// SAFETY:` documented (S77+S87+S131+: barracuda + runtime/gpu + V4L2 audit) |
 | Reducible | 0 | S77: All verified necessary (64-byte aligned alloc, wgpu FFI, CUDA FFI) |
 | `#![deny(unsafe_code)]` | 36 crates | 2 justified exceptions: gpu, secure_enclave |
 | SAFETY comments | ✅ | S77: Invariants, violation effects, and justification documented |
@@ -180,19 +180,44 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | Gate | Status |
 |------|--------|
 | `cargo check --workspace` | ✅ 0 errors |
-| `cargo clippy --workspace -- -D warnings` | ✅ 0 warnings (S96: clippy pedantic resolved) |
+| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | ✅ 0 warnings (S131+: `#[expect]` evolution) |
 | `cargo fmt --all -- --check` | ✅ 0 diffs |
 | `cargo doc --workspace --no-deps` | ✅ 0 warnings |
-| Workspace tests | ✅ 19,777 passed (S129) |
+| Workspace tests | ✅ 19,820+ passed (S133) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |
 | God files refactored | 40+ (all production files < 1000 lines) |
-| Test coverage (llvm-cov) | ~84% lines (excl GPU crates with SIGSEGV). Target: 90% |
-| `unsafe` blocks | ~60+ — all `// SAFETY:` documented (S96: V4L2 added) |
+| Test coverage (llvm-cov) | ~86% lines (121K production lines, excl GPU SIGSEGV). Target: 90% |
+| `unsafe` blocks | ~70+ — all `// SAFETY:` documented (S131+: full audit) |
 | File size limit | All < 1000 lines |
 
 ---
+
+### Session S133 (Mar 8, 2026)
+
+| Category | Change |
+|----------|--------|
+| Ada Lovelace reclassification | GPU adapter classification updated for Ada architecture |
+| f64_zeros_risk | f64 shared-memory zeros risk tracking and mitigation |
+| fused_ops_healthy() | Fused operations health check added |
+| 14 ecology.* methods | New ecology domain JSON-RPC methods for ecosystem integration |
+| NUCLEUS discovery | NUCLEUS capability discovery and routing |
+| deploy graph routing | Deploy graph routing and workload placement |
+| 20 semantic methods | Semantic method registry expanded 71→91 |
+| Spring versions | hotSpring v0.6.23, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5 |
+| Coverage | ~86% line (121K production lines), 19,820+ tests |
+
+### Session S131+ (Mar 7, 2026)
+
+| Category | Change |
+|----------|--------|
+| Spring sync | All 5 springs pinned: neuralSpring V89/S131, wetSpring V97e, airSpring V0.7.3, groundSpring V96, hotSpring v0.6.19 |
+| Lint evolution | `#[allow]` → `#[expect(lint, reason)]` (20+ attributes); 3 stale suppressions discovered and removed |
+| Deep debt scan | All files <1000L, unsafe=HW FFI only, no production hardcoding, mocks test-isolated |
+| IPC namespace | `science.*` resolved: toadStool canonical proxy, springs may call barraCuda directly |
+| coralReef milestone | First E2E sovereign GPU dispatch on AMD RX 6950 XT (pure Rust WGSL→PM4→readback) |
+| Coverage | ~85% line coverage (121K production lines) |
 
 ### Sessions S95–S96 (Mar 6, 2026)
 

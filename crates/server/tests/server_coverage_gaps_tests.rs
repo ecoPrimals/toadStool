@@ -349,10 +349,10 @@ async fn test_standalone_executor_query_capabilities() {
 
 #[test]
 fn test_route_shortest_queue_when_no_vram_candidates() {
-    let mut router = JobRouter::new("local".to_string());
+    let mut router = JobRouter::new("local");
 
     let gate = GateGpuInfo {
-        gate_id: "remote".to_string(),
+        gate_id: std::sync::Arc::from("remote"),
         gpu_model: "RTX 3060".to_string(),
         vram_total_mb: 12288,
         vram_available_mb: 100,

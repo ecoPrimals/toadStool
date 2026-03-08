@@ -7,7 +7,7 @@ use toadstool::resources::*;
 // CpuRequirements Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_requirements_default() {
     let cpu = CpuRequirements::default();
@@ -17,7 +17,7 @@ fn test_cpu_requirements_default() {
     assert!(cpu.architecture.is_none());
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_requirements_with_cores() {
     let cpu = CpuRequirements {
@@ -41,7 +41,7 @@ fn test_cpu_requirements_with_architecture() {
     assert_eq!(cpu.architecture, Some("x86_64".to_string()));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_requirements_fractional_cores() {
     let cpu = CpuRequirements {
@@ -54,7 +54,7 @@ fn test_cpu_requirements_fractional_cores() {
     assert_eq!(cpu.max_cores, Some(1.5));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_requirements_clone() {
     let cpu1 = CpuRequirements::default();
@@ -338,7 +338,7 @@ fn test_gpu_requirements_serialization() {
 // ResourceRequirements Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_resource_requirements_default() {
     let resources = ResourceRequirements::default();
@@ -364,7 +364,7 @@ fn test_resource_requirements_with_gpu() {
     assert!(resources.gpu.is_some());
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_resource_requirements_custom() {
     let resources = ResourceRequirements {
@@ -400,7 +400,7 @@ fn test_resource_requirements_custom() {
     assert_eq!(resources.network.max_latency_ms, Some(20));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_resource_requirements_clone() {
     let resources1 = ResourceRequirements::default();
@@ -421,7 +421,7 @@ fn test_resource_requirements_serialization() {
 // CpuMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_metrics_default() {
     let metrics = CpuMetrics::default();
@@ -431,7 +431,7 @@ fn test_cpu_metrics_default() {
     assert_eq!(metrics.cpu_time_seconds, 0.0);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_metrics_with_values() {
     let metrics = CpuMetrics {
@@ -445,7 +445,7 @@ fn test_cpu_metrics_with_values() {
     assert_eq!(metrics.cpu_time_seconds, 42.0);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_metrics_max_usage() {
     let metrics = CpuMetrics {
@@ -457,7 +457,7 @@ fn test_cpu_metrics_max_usage() {
     assert_eq!(metrics.usage_percent, 100.0);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_cpu_metrics_clone() {
     let metrics1 = CpuMetrics {
@@ -482,7 +482,7 @@ fn test_cpu_metrics_serialization() {
 // RuntimeMetrics Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_runtime_metrics_default() {
     let metrics = RuntimeMetrics::default();
@@ -491,7 +491,7 @@ fn test_runtime_metrics_default() {
     assert!(metrics.gpu.is_none());
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 #[test]
 fn test_runtime_metrics_clone() {
     let metrics1 = RuntimeMetrics::default();

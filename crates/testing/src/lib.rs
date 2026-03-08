@@ -66,8 +66,9 @@ pub mod properties;
 pub mod helpers;
 
 // Re-export commonly used testing utilities.
-// Wildcards retained: test helper crates are designed for `use toadstool_testing::*` in tests;
-// explicit re-exports would be verbose and tests typically glob-import anyway.
+// Wildcards retained: 50+ items across assertions/builders/fixtures/mocks; test helper crates
+// are designed for `use toadstool_testing::*` in tests; all items are used; explicit re-exports
+// would be verbose and tests typically glob-import anyway (per rule: 15+ items, all used).
 pub use assertions::*;
 pub use builders::*;
 pub use fixtures::*;

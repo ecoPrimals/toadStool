@@ -161,7 +161,10 @@ fn test_execution_request_with_runtime_hint() {
     assert_eq!(request.runtime_hint, Some(RuntimeType::Wasm));
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[test]
 fn test_execution_request_with_resources() {
     let resources = ResourceRequirements::default();
@@ -255,7 +258,10 @@ fn test_execution_response_with_runtime_used() {
     assert_eq!(response.runtime_used, RuntimeType::Container);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "comparing against exact literal initialization"
+)]
 #[test]
 fn test_execution_response_with_metrics() {
     let metrics = RuntimeMetrics::default();
@@ -535,7 +541,6 @@ async fn test_concurrent_state_transitions() {
 // State Persistence Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_execution_state_serialization_roundtrip() {
     let original = ExecutionRequest::default();

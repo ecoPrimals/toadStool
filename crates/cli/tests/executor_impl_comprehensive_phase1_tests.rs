@@ -745,17 +745,17 @@ impl MockBiomeExecutor {
         }
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "trait method signature requires &self")]
     fn is_ready(&self) -> bool {
         true
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "trait method signature requires &self")]
     fn has_valid_config(&self) -> bool {
         true
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "trait method signature requires &self")]
     fn has_distributed_coordinator(&self) -> bool {
         true
     }

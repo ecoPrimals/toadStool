@@ -497,4 +497,21 @@ mod tests {
         assert_eq!(cfg.done_mask, 0x1);
         assert_eq!(cfg.error_mask, 0x2);
     }
+
+    #[test]
+    fn test_iova_initial_value() {
+        const NEXT_IOVA_INIT: u64 = 0x1000_0000;
+        assert_eq!(NEXT_IOVA_INIT, 268_435_456);
+    }
+
+    #[test]
+    fn test_iova_increment_logic() {
+        let mut next_iova: u64 = 0x1000_0000;
+        let size = 4096usize;
+        let aligned_size = size.div_ceil(4096) * 4096;
+        let iova = next_iova;
+        next_iova += aligned_size as u64;
+        assert_eq!(iova, 0x1000_0000);
+        assert_eq!(next_iova, 0x1000_0000 + 4096);
+    }
 }

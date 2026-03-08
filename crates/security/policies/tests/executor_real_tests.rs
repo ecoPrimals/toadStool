@@ -209,7 +209,10 @@ struct PolicyAction {
     user: String,
 }
 
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "policy flags for different dimensions"
+)]
 struct PolicyResult {
     allowed: bool,
     conditions_evaluated: bool,
@@ -301,13 +304,19 @@ fn order_policies_by_priority(mut policies: Vec<Policy>) -> Vec<Policy> {
     policies
 }
 
-#[allow(clippy::unused_async)] // Trait impl may require async signature
+#[expect(
+    clippy::unused_async,
+    reason = "Trait impl may require async signature"
+)]
 async fn execute_policy_async(action: &PolicyAction) -> Result<PolicyResult, String> {
     // ✅ MODERNIZED: No sleep needed - async execution is immediate
     Ok(execute_policy_check(action))
 }
 
-#[allow(clippy::unused_async)] // API requires async for timeout semantics
+#[expect(
+    clippy::unused_async,
+    reason = "API requires async for timeout semantics"
+)]
 async fn execute_policy_with_timeout(action: &PolicyAction, _timeout: Duration) -> PolicyResult {
     // ✅ MODERNIZED: No sleep needed - policy execution is synchronous
     let mut result = execute_policy_check(action);
@@ -325,7 +334,10 @@ static POLICY_CACHE: std::sync::LazyLock<Arc<Mutex<HashMap<String, PolicyResult>
 fn execute_policy_with_cache(action: &PolicyAction) -> PolicyResult {
     let cache_key = format!("{}:{}:{}", action.operation, action.resource, action.user);
 
-    #[allow(clippy::unwrap_used)] // Test helper: mutex poisoning is test failure
+    #[expect(
+        clippy::unwrap_used,
+        reason = "Test helper: mutex poisoning is test failure"
+    )]
     let mut cache = POLICY_CACHE.lock().unwrap();
 
     if let Some(cached_result) = cache.get(&cache_key) {

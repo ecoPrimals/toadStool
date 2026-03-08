@@ -289,7 +289,10 @@ impl EventParser {
                 // Try to map other buttons by code
                 let code = button.code();
                 if (0x110..=0x11f).contains(&code) {
-                    #[allow(clippy::cast_possible_truncation)] // 0x110..0x11f fits in u8
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        reason = "0x110..0x11f range fits in u8"
+                    )]
                     MouseButton::Other((code - 0x110) as u8)
                 } else {
                     return None;
