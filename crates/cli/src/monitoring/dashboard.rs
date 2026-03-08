@@ -3,7 +3,6 @@
 
 #[cfg(unix)]
 use std::os::unix::fs::FileTypeExt;
-use std::path::Path;
 
 use crate::monitoring::collectors::{
     MetricsCollector, NetworkMetricsCollector, SystemMetricsCollector,
@@ -76,7 +75,7 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
     let mut biomes = Vec::new();
 
     let primary = platform_paths::biomeos_runtime_dir();
-    let fallback = Path::new("/tmp/toadstool");
+    let fallback = platform_paths::toadstool_temp_dir();
     let fallback_biomeos = fallback.join("biomeos");
 
     let dirs_to_scan: Vec<_> = [primary, fallback.to_path_buf(), fallback_biomeos]

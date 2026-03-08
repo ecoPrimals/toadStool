@@ -6,7 +6,7 @@
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Workspace Tests** | **19,820+** | 0 failures, 216 intentional GPU ignores |
+| **Workspace Tests** | **19,840+** | 0 failures, 216 intentional GPU ignores |
 | **Line Coverage** | **~86%** | 121K production lines. Gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
 | **Clippy Pedantic** | **0 warnings** | Full workspace, in CI |
 | **BarraCuda Tests** | Separate primal | Budded to `ecoPrimals/barraCuda/` (S93) |

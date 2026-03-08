@@ -239,7 +239,10 @@ impl BiomeExecutor {
         })
     }
 
-    async fn workload_source_to_spec(&self, source: &WorkloadSource) -> crate::Result<WorkloadSpec> {
+    async fn workload_source_to_spec(
+        &self,
+        source: &WorkloadSource,
+    ) -> crate::Result<WorkloadSpec> {
         match source {
             WorkloadSource::Container {
                 registry,

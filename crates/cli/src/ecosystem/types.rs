@@ -234,13 +234,15 @@ impl ServiceType {
 
     /// Create from service name (backward compatibility when parsing discovered services).
     /// Resolves legacy primal names to capability categories.
+    #[allow(deprecated)]
     pub fn from_name(name: &str) -> Self {
+        use toadstool_common::interned_strings::primals;
         Self::from_capability(match name.to_lowercase().as_str() {
-            "songbird" => "discovery",
-            "beardog" => "crypto",
-            "nestgate" => "storage",
-            "toadstool" => "compute",
-            "squirrel" => "compute",
+            n if n == primals::SONGBIRD => "discovery",
+            n if n == primals::BEARDOG => "crypto",
+            n if n == primals::NESTGATE => "storage",
+            n if n == primals::TOADSTOOL => "compute",
+            n if n == primals::SQUIRREL => "compute",
             other => other,
         })
     }
@@ -277,38 +279,40 @@ pub struct CryptoVerificationContext {
 }
 
 impl Default for CryptoVerificationContext {
+    #[allow(deprecated)]
     fn default() -> Self {
-        // Load trusted public keys from environment or configuration
+        use toadstool_common::interned_strings::{capabilities, primals};
+
         let mut trusted_keys = HashMap::new();
 
-        // Capability-based env vars (WateringHole sovereignty)
+        // Capability-based env vars first, legacy primal names for backward compat
         if let Ok(key) = std::env::var("CRYPTO_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert("crypto".to_string(), key.clone());
-            trusted_keys.insert("beardog".to_string(), key); // backward compat
+            trusted_keys.insert(capabilities::CRYPTO.to_string(), key.clone());
+            trusted_keys.insert(primals::BEARDOG.to_string(), key);
         } else if let Ok(key) = std::env::var("BEARDOG_PUBLIC_KEY") {
-            trusted_keys.insert("crypto".to_string(), key.clone());
-            trusted_keys.insert("beardog".to_string(), key);
+            trusted_keys.insert(capabilities::CRYPTO.to_string(), key.clone());
+            trusted_keys.insert(primals::BEARDOG.to_string(), key);
         }
         if let Ok(key) = std::env::var("STORAGE_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert("storage".to_string(), key.clone());
-            trusted_keys.insert("nestgate".to_string(), key); // backward compat
+            trusted_keys.insert(capabilities::STORAGE.to_string(), key.clone());
+            trusted_keys.insert(primals::NESTGATE.to_string(), key);
         } else if let Ok(key) = std::env::var("NESTGATE_PUBLIC_KEY") {
-            trusted_keys.insert("storage".to_string(), key.clone());
-            trusted_keys.insert("nestgate".to_string(), key);
+            trusted_keys.insert(capabilities::STORAGE.to_string(), key.clone());
+            trusted_keys.insert(primals::NESTGATE.to_string(), key);
         }
         if let Ok(key) = std::env::var("DISCOVERY_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert("discovery".to_string(), key.clone());
-            trusted_keys.insert("songbird".to_string(), key); // backward compat
+            trusted_keys.insert(capabilities::COORDINATION.to_string(), key.clone());
+            trusted_keys.insert(primals::SONGBIRD.to_string(), key);
         } else if let Ok(key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
-            trusted_keys.insert("discovery".to_string(), key.clone());
-            trusted_keys.insert("songbird".to_string(), key);
+            trusted_keys.insert(capabilities::COORDINATION.to_string(), key.clone());
+            trusted_keys.insert(primals::SONGBIRD.to_string(), key);
         }
 
         Self {
             trusted_public_keys: trusted_keys,
             revoked_keys: Vec::new(),
             verification_timestamp: std::time::SystemTime::now(),
-            max_age_minutes: 5, // 5 minute max age for responses
+            max_age_minutes: 5,
         }
     }
 }

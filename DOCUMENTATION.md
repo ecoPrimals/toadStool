@@ -48,7 +48,7 @@
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware.
 - **coralReef shader proxy** — `shader.compile.*` handlers proxy to coralReef with capability-based discovery and graceful naga fallback.
 - **Cross-spring provenance** — `toadstool.provenance` JSON-RPC method exposes 17+ documented cross-spring flows for ecosystem introspection.
-- **19,820+ workspace tests** | all quality gates green (0 warnings, clippy pedantic clean)
+- **19,840+ workspace tests** | all quality gates green (0 warnings, clippy pedantic clean)
 - **85+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 

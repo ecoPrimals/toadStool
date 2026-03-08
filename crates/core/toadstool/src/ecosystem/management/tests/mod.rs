@@ -7,9 +7,7 @@ mod status;
 
 use std::collections::HashMap;
 
-use toadstool_common::primal_identity::{
-    Capability, ComputeCapability, CoordinationCapability, ServiceEndpoint, StorageCapability,
-};
+use toadstool_common::primal_identity::{Capability, ComputeCapability, ServiceEndpoint};
 use toadstool_common::service_discovery::DiscoveredService;
 
 pub(super) fn create_test_service(name: &str, healthy: bool) -> DiscoveredService {

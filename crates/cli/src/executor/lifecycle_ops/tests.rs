@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use super::super::BiomeExecutor;
-use super::parse_env_vars;
+use super::start::parse_env_vars;
 
 fn make_minimal_container_manifest() -> crate::BiomeManifest {
     let now = std::time::SystemTime::now();

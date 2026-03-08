@@ -111,7 +111,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 19,820+ tests; ~86% line coverage (121K production lines). Focus: hardware-dependent code |
+| D-COV | Test coverage → 90% | Medium | 19,840+ tests; ~86% line coverage (121K production lines). Focus: hardware-dependent code |
 | D-SOV | ~~Sovereignty migration~~ | **RESOLVED S94b** | All 7 production callers migrated to `get_socket_path_for_capability()` |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
 | — | ~~vfio.rs smart refactoring~~ | **RESOLVED S94** | 971L → `vfio/` directory (types.rs, ioctl.rs, dma.rs, mod.rs) |
@@ -183,7 +183,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | ✅ 0 warnings (S131+: `#[expect]` evolution) |
 | `cargo fmt --all -- --check` | ✅ 0 diffs |
 | `cargo doc --workspace --no-deps` | ✅ 0 warnings |
-| Workspace tests | ✅ 19,820+ passed (S133) |
+| Workspace tests | ✅ 19,840+ passed (S133) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |
@@ -206,7 +206,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | deploy graph routing | Deploy graph routing and workload placement |
 | 20 semantic methods | Semantic method registry expanded 71→91 |
 | Spring versions | hotSpring v0.6.23, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5 |
-| Coverage | ~86% line (121K production lines), 19,820+ tests |
+| Coverage | ~86% line (121K production lines), 19,840+ tests |
 
 ### Session S131+ (Mar 7, 2026)
 

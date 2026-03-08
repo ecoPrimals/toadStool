@@ -10,22 +10,18 @@
 //!
 //! **Impact**: ~50-100 fewer allocations across ecosystem discovery
 
-/// Service names - Use these constants instead of string literals
+/// Service names — re-exports from `toadstool_common::interned_strings::primals`
+/// to avoid literal duplication. Prefer `interned_strings::primals::*` directly
+/// in new code; this module exists for CLI-local convenience and the `ALL` slice.
+#[allow(deprecated)]
 pub mod service_names {
-    /// Songbird coordination service
-    pub const SONGBIRD: &str = "songbird";
+    use toadstool_common::interned_strings::primals;
 
-    /// BearDog crypto service
-    pub const BEARDOG: &str = "beardog";
-
-    /// NestGate storage service
-    pub const NESTGATE: &str = "nestgate";
-
-    /// Squirrel orchestration service
-    pub const SQUIRREL: &str = "squirrel";
-
-    /// ToadStool compute service
-    pub const TOADSTOOL: &str = "toadstool";
+    pub const SONGBIRD: &str = primals::SONGBIRD;
+    pub const BEARDOG: &str = primals::BEARDOG;
+    pub const NESTGATE: &str = primals::NESTGATE;
+    pub const SQUIRREL: &str = primals::SQUIRREL;
+    pub const TOADSTOOL: &str = primals::TOADSTOOL;
 
     /// All known service names as slice
     pub const ALL: &[&str] = &[SONGBIRD, BEARDOG, NESTGATE, SQUIRREL, TOADSTOOL];

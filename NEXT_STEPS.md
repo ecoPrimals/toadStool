@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: March 8, 2026 -- S134 Node Atomic / BearDog Crypto Delegation
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,820+ tests (0 failures) | ~86% line coverage (121K) | 85+ JSON-RPC methods | CI pedantic gate | All unsafe justified | `#[expect]` evolution | 1 C/FFI dep remaining (sysinfo); notify removed S134
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,840+ tests (0 failures) | ~86% line coverage (121K) | 85+ JSON-RPC methods | CI pedantic gate | All unsafe justified | `#[expect]` evolution | 1 C/FFI dep remaining (sysinfo); notify removed S134
 **Latest**: S134 — BearDog crypto delegation enforced (secure_enclave aes-gcm/getrandom removed). `dev-crypto` feature gate for SoftwareHsmProvider. lifecycle_ops + management refactored. S133 — Cross-spring absorption (Ada reclassification, ecology.*, NUCLEUS discovery, deploy graph routing, 20 new semantic methods).
 
 ---
@@ -86,7 +86,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 19,820+ tests; focus on hardware-dependent code (toadStool D-COV)
+- [ ] **Test coverage target 90%** -- 19,840+ tests; focus on hardware-dependent code (toadStool D-COV)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -127,7 +127,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **deploy graph routing**: Deploy graph routing and workload placement.
 - **20 semantic methods**: Semantic method registry expanded 71→91.
 - **Spring versions**: hotSpring v0.6.23, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5.
-- **Coverage**: ~86% line (121K production lines), 19,820+ tests, 0 failures.
+- **Coverage**: ~86% line (121K production lines), 19,840+ tests, 0 failures.
 
 ### Session S131+: Spring Sync + Deep Debt Evolution (Mar 7, 2026)
 - **Spring pin update**: All 5 springs updated — groundSpring V95→V96, neuralSpring V87→V89, wetSpring V97d→V97e, airSpring V071→V0.7.3.

@@ -4,7 +4,7 @@
 //! This module provides pretty-printing and log display functionality.
 
 #[cfg(test)]
-use super::BiomeInfo;
+use crate::BiomeInfo;
 #[cfg(test)]
 use crate::BiomeStatus;
 #[cfg(test)]

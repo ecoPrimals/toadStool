@@ -41,7 +41,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 19,820+ workspace tests (0 failures, 203 intentional ignores) |
+| `cargo test --workspace` | 19,840+ workspace tests (0 failures, 203 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
@@ -241,7 +241,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 19,820+ (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Workspace tests | 19,840+ (server + core + distributed + common + config + CLI + testing + display + auto_config) |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -262,7 +262,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 19,820+ tests; focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 19,840+ tests; focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
@@ -284,7 +284,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 19,820+ tests; focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 19,840+ tests; focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -329,4 +329,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 8, 2026 -- S134. 19,820+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. All 5 springs synced. Rust 1.82+ (MSRV).
+**Last Updated**: March 8, 2026 -- S134. 19,840+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. All 5 springs synced. Rust 1.82+ (MSRV).

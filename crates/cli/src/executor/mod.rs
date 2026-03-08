@@ -105,6 +105,7 @@ mod wasm_ops; // WASM operations (loading, verification, execution)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     #[test]
     fn test_process_type_variants() {

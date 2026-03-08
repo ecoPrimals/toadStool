@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use super::BiomeExecutor;
 #[cfg(test)]
-use super::BiomeInfo;
+use crate::BiomeInfo;
 
 /// Resource manager for biome data and processes
 pub(super) struct ResourceManager<'a> {

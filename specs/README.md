@@ -8,7 +8,7 @@
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **19,820+ workspace tests** (0 failures, all concurrent)
+- **19,840+ workspace tests** (0 failures, all concurrent)
 - **85+ JSON-RPC methods** (dynamically built from 91 semantic methods)
 - **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport
 - **coralReef shader proxy** — capability-based discovery, naga fallback

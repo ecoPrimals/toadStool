@@ -50,6 +50,25 @@ pub(super) async fn science_gpu_dispatch(
     job.compute_submit(params).await
 }
 
+/// Conservative system-wide precision defaults from groundSpring V84-V98.
+///
+/// Per-adapter precision routing is available via `GpuAdapterInfo::precision_routing()`
+/// when the wgpu backend is active. These defaults cover the worst-case across all
+/// tested GPUs via the naga/SPIR-V pipeline.
+mod precision_defaults {
+    /// naga/SPIR-V f64 shared-memory reductions return zeros on all tested GPUs.
+    pub const F64_SHARED_MEMORY_RELIABLE: bool = false;
+    /// f64 element-wise arithmetic works on GPUs that report SHADER_F64.
+    pub const F64_NATIVE_ELEMENT_WISE: bool = true;
+    /// DF64 (double-float f32 pairs) reductions work correctly everywhere.
+    pub const DF64_REDUCTIONS: bool = true;
+    /// coralDriver binary submission path not yet production-ready.
+    pub const SOVEREIGN_BINARY_PIPELINE: bool = false;
+    pub const FUSED_OPS_CANARY: &str = "Run variance canary probe before fused GPU reductions";
+    pub const ROUTING_ADVICE: &str =
+        "Use DF64 for shared-memory reductions; per-adapter PrecisionRoutingAdvice available via wgpu backend";
+}
+
 /// Returns GPU capabilities for science workloads.
 #[expect(
     clippy::unused_async,
@@ -63,15 +82,14 @@ pub(super) async fn science_gpu_capabilities() -> JsonRpcResult {
         "devices": gpu_info,
         "supported_precisions": ["f32", "f64", "df64"],
         "precision_notes": {
-            "f64_shared_memory_reliable": false,
-            "f64_native_element_wise": true,
-            "df64_reductions": true,
-            "ada_lovelace_f64_zeros_risk": true,
-            "fused_ops_canary": "Run variance canary probe before fused GPU reductions",
-            "routing_advice": "Use DF64 for shared-memory reductions. Ada Lovelace proprietary classified F64NativeNoSharedMem."
+            "f64_shared_memory_reliable": precision_defaults::F64_SHARED_MEMORY_RELIABLE,
+            "f64_native_element_wise": precision_defaults::F64_NATIVE_ELEMENT_WISE,
+            "df64_reductions": precision_defaults::DF64_REDUCTIONS,
+            "fused_ops_canary": precision_defaults::FUSED_OPS_CANARY,
+            "routing_advice": precision_defaults::ROUTING_ADVICE,
         },
         "compute_backends": available_backends,
-        "sovereign_binary_pipeline": false,
+        "sovereign_binary_pipeline": precision_defaults::SOVEREIGN_BINARY_PIPELINE,
         "domain": "science",
     }))
 }

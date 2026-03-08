@@ -128,6 +128,9 @@ pub enum SubstrateCapabilityKind {
     Fhe,
     /// Subgroup / warp-level operations.
     SubgroupOps,
+    /// Sovereign compile pipeline (coralReef SPIR-V → native without vendor toolchains).
+    /// groundSpring V100: `SubstrateKind::Sovereign` recognition.
+    SovereignCompile,
 }
 
 /// Precision routing advice for f64 workloads.
@@ -229,15 +232,12 @@ impl HardwareFingerprint {
         f64_compute_unreliable: bool,
         max_workgroups: u32,
     ) -> Self {
-        let is_nvk = info.driver.contains("nvk") || info.driver.contains("nouveau");
-
-        // Estimate TFLOPS from device type and workgroup count.
-        // Discrete GPUs: ~10-80 TFLOPS f32, ~0.3-40 TFLOPS f64
-        // Integrated: ~1-4 TFLOPS f32
         const MAX_WORKGROUPS_NORMALIZER: f64 = 65535.0;
         const DISCRETE_PEAK_TFLOPS_F32: f64 = 40.0;
         const INTEGRATED_PEAK_TFLOPS_F32: f64 = 4.0;
         const FALLBACK_TFLOPS_F32: f64 = 0.5;
+
+        let is_nvk = info.driver.contains("nvk") || info.driver.contains("nouveau");
 
         let estimated_tflops_f32 = match device_type {
             GpuDeviceType::Discrete => {
@@ -283,6 +283,10 @@ impl HardwareFingerprint {
             capabilities.push(SubstrateCapabilityKind::Cg);
         }
 
+        if sovereign_capable {
+            capabilities.push(SubstrateCapabilityKind::SovereignCompile);
+        }
+
         Self {
             estimated_tflops_f32,
             estimated_tflops_f64,
@@ -317,11 +321,19 @@ pub enum GpuDeviceType {
 impl WgpuComputeUnit {
     /// Create from a wgpu adapter
     pub async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self, ComputeError> {
-        // Get adapter info
+        const GIB: u64 = 1024 * 1024 * 1024;
+        const DISCRETE_MIN_VRAM: u64 = 4 * GIB;
+        const INTEGRATED_MIN_VRAM: u64 = GIB;
+        const VIRTUAL_MIN_VRAM: u64 = 2 * GIB;
+        const CPU_MIN_VRAM: u64 = GIB / 2;
+        const DISCRETE_BW_BPS: u64 = 500_000_000_000;
+        const INTEGRATED_BW_BPS: u64 = 50_000_000_000;
+        const VIRTUAL_BW_BPS: u64 = 100_000_000_000;
+        const CPU_BW_BPS: u64 = 25_000_000_000;
+
         let info = adapter.get_info();
         let name = info.name.clone();
 
-        // Request device
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -336,20 +348,7 @@ impl WgpuComputeUnit {
             .map_err(|e| ComputeError::BackendError(e.to_string()))?;
 
         let limits = device.limits();
-
-        // Use actual device limits where available, estimate where wgpu doesn't expose details.
-        // max_compute_workgroups_per_dimension is the best proxy wgpu exposes for parallelism.
         let max_wg = limits.max_compute_workgroups_per_dimension;
-
-        const GIB: u64 = 1024 * 1024 * 1024;
-        const DISCRETE_MIN_VRAM: u64 = 4 * GIB;
-        const INTEGRATED_MIN_VRAM: u64 = GIB;
-        const VIRTUAL_MIN_VRAM: u64 = 2 * GIB;
-        const CPU_MIN_VRAM: u64 = GIB / 2;
-        const DISCRETE_BW_BPS: u64 = 500_000_000_000;
-        const INTEGRATED_BW_BPS: u64 = 50_000_000_000;
-        const VIRTUAL_BW_BPS: u64 = 100_000_000_000;
-        const CPU_BW_BPS: u64 = 25_000_000_000;
 
         let (memory_capacity, compute_throughput, power_profile, bandwidth, batch_size) =
             match info.device_type {
@@ -847,6 +846,36 @@ mod tests {
     }
 
     #[test]
+    fn test_sovereign_compile_capability_present() {
+        let fp = make_test_fingerprint(GpuDeviceType::Discrete, true, false, "nvidia", "Test GPU");
+        assert!(
+            fp.capabilities
+                .contains(&SubstrateCapabilityKind::SovereignCompile),
+            "sovereign-capable adapters should have SovereignCompile capability"
+        );
+    }
+
+    #[test]
+    fn test_sovereign_compile_absent_for_empty_driver() {
+        let info = wgpu::AdapterInfo {
+            name: "Unknown".to_owned(),
+            vendor: 0,
+            device: 0,
+            device_type: wgpu::DeviceType::Cpu,
+            driver: String::new(),
+            driver_info: String::new(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        let fp = HardwareFingerprint::from_adapter_info(&info, GpuDeviceType::Cpu, false, false, 1);
+        assert!(
+            !fp.capabilities
+                .contains(&SubstrateCapabilityKind::SovereignCompile),
+            "empty-driver adapters should not have SovereignCompile"
+        );
+        assert!(!fp.sovereign_capable);
+    }
+
+    #[test]
     fn test_is_nvidia_ada_lovelace_detection() {
         assert!(is_nvidia_ada_lovelace("NVIDIA GeForce RTX 4070"));
         assert!(is_nvidia_ada_lovelace("NVIDIA GeForce RTX 4090"));
@@ -855,5 +884,91 @@ mod tests {
         assert!(!is_nvidia_ada_lovelace("NVIDIA GeForce RTX 3090"));
         assert!(!is_nvidia_ada_lovelace("NVIDIA Titan V"));
         assert!(!is_nvidia_ada_lovelace("AMD Radeon RX 6950 XT"));
+    }
+
+    /// GPU f64 reduction smoke test (P1 — groundSpring V84-V100).
+    ///
+    /// Validates that all adapter configurations correctly flag
+    /// f64 shared-memory as unreliable via the naga/SPIR-V pipeline
+    /// and that precision routing steers callers to safe paths.
+    #[test]
+    fn test_f64_reduction_smoke_all_adapters() {
+        let configs = [
+            ("NVIDIA RTX 4090", "nvidia", true, false),
+            ("NVIDIA RTX 4070", "nvidia", true, false),
+            ("NVIDIA RTX 3090", "nvidia", true, false),
+            ("NVIDIA Titan V", "nvk", true, true),
+            ("NVIDIA RTX 3080", "nvk", true, false),
+            ("Intel Arc A770", "anv", false, false),
+            ("AMD RX 7900 XTX", "radv", false, false),
+        ];
+
+        for (name, driver, f64_support, f64_unreliable) in configs {
+            let info = make_test_adapter_info(
+                name,
+                driver,
+                f64_support,
+                f64_unreliable,
+                false,
+                4_294_967_296,
+            );
+
+            assert!(
+                !info.f64_shared_memory_reliable,
+                "{name}: f64 shared-memory must be unreliable via naga/SPIR-V"
+            );
+
+            let routing = info.precision_routing();
+            match (f64_support, f64_unreliable) {
+                (false, _) => assert_eq!(
+                    routing,
+                    PrecisionRoutingAdvice::F32Only,
+                    "{name}: no f64 → F32Only"
+                ),
+                (true, true) => assert_eq!(
+                    routing,
+                    PrecisionRoutingAdvice::Df64Only,
+                    "{name}: unreliable f64 → Df64Only"
+                ),
+                (true, false) => assert_eq!(
+                    routing,
+                    PrecisionRoutingAdvice::F64NativeNoSharedMem,
+                    "{name}: f64 OK but shared-mem broken → F64NativeNoSharedMem"
+                ),
+            }
+        }
+    }
+
+    /// Validates that fused_ops_healthy correctly tracks f64_zeros_risk
+    /// across NVK, Ada Lovelace proprietary, and safe configurations.
+    #[test]
+    fn test_fused_ops_healthy_matrix() {
+        let cases = [
+            ("NVIDIA RTX 4070", "nvidia", true, false, true), // Ada + proprietary → risk
+            ("NVIDIA RTX 3090", "nvidia", true, false, false), // Ampere + proprietary → no risk
+            ("NVIDIA RTX 4090", "nvk", true, false, true),    // NVK + f64 → risk
+            ("NVIDIA RTX 3090", "nvk", true, false, true),    // NVK + f64 → risk
+            ("Intel Arc A770", "anv", false, false, false),   // No f64 → no risk
+        ];
+
+        for (name, driver, f64_support, f64_unreliable, expect_risk) in cases {
+            let info = make_test_adapter_info(
+                name,
+                driver,
+                f64_support,
+                f64_unreliable,
+                false,
+                4_294_967_296,
+            );
+            assert_eq!(
+                info.f64_zeros_risk, expect_risk,
+                "{name}/{driver}: f64_zeros_risk mismatch"
+            );
+            assert_eq!(
+                info.fused_ops_healthy(),
+                !expect_risk,
+                "{name}/{driver}: fused_ops_healthy mismatch"
+            );
+        }
     }
 }

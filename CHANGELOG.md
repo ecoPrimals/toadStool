@@ -5,7 +5,34 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 8, 2026 (Sessions 43-134 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation)
+## [Unreleased] - March 8, 2026 (Sessions 43-135 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption)
+
+### Session S135 (Mar 8, 2026) — groundSpring V100 Absorption + Deep Debt Evolution
+
+#### groundSpring V100 Absorption
+- **`SubstrateCapabilityKind::SovereignCompile`**: New capability variant recognizing adapters whose sovereign pipeline (coralReef SPIR-V → native) can drive the GPU without vendor toolchains. Populated automatically from `sovereign_capable` flag in `HardwareFingerprint`.
+- **GPU f64 reduction smoke test**: Comprehensive test matrix validating that all adapter configurations correctly flag f64 shared-memory as unreliable via naga/SPIR-V and that `PrecisionRoutingAdvice` steers callers to safe paths.
+- **`fused_ops_healthy` matrix test**: Validates `f64_zeros_risk` tracking across NVK, Ada Lovelace proprietary, and safe configurations.
+
+#### Hardcoding → Constants Evolution
+- **CLI `from_name()` primal strings**: Raw `"songbird"`, `"beardog"`, `"nestgate"`, `"toadstool"`, `"squirrel"` replaced with `interned_strings::primals::*` constants.
+- **CLI `CryptoVerificationContext`**: Raw capability/primal strings replaced with `interned_strings::capabilities::*` and `interned_strings::primals::*`.
+- **CLI `service_names`**: Deduplicated — now re-exports from `interned_strings::primals::*` instead of declaring separate literals.
+- **Dashboard `/tmp/toadstool`**: Hardcoded path replaced with `platform_paths::toadstool_temp_dir()` (cross-platform).
+- **science.rs `precision_notes`**: Hardcoded inline JSON values extracted to documented `precision_defaults` module with named constants. Removed inaccurate `ada_lovelace_f64_zeros_risk` system-wide claim (per-adapter data available via `GpuAdapterInfo`).
+
+#### Pre-existing Debt Fixes
+- **`lifecycle_ops/tests.rs`**: Fixed `super::parse_env_vars` → `super::start::parse_env_vars` (stale import from S134 refactoring).
+- **`executor/display.rs`, `executor/resources.rs`**: Fixed `super::BiomeInfo` → `crate::BiomeInfo` (stale import from S134 refactoring).
+- **`executor/mod.rs` tests**: Added missing `use uuid::Uuid;` inside `#[cfg(test)]` module.
+- **`ecosystem/management/tests/`**: Created 4 missing test submodules (capabilities, health, lifecycle, status) that were declared in `mod.rs` but never materialized.
+- **`wgpu_backend.rs`**: Moved `const` declarations before `let` bindings in `from_adapter()` and `from_adapter_info()` to resolve 13 pedantic `items_after_statements` warnings.
+- Fixed unused import warning (`CoordinationCapability`, `StorageCapability`) in management tests.
+
+#### Quality
+- 6,435+ lib tests pass (0 failures)
+- Zero clippy pedantic warnings on changed crates
+- cargo fmt clean
 
 ### Session S134 (Mar 8, 2026) — Node Atomic / BearDog Crypto Delegation
 

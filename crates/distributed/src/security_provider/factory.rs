@@ -413,7 +413,10 @@ mod tests {
         // With dev-crypto, SoftwareHsmProvider/LocalKeyringProvider also act as fallback.
         assert!(result.is_ok());
         let provider = result.expect("in-process provider creation should succeed");
-        let caps = provider.capabilities().await.expect("capabilities should work");
+        let caps = provider
+            .capabilities()
+            .await
+            .expect("capabilities should work");
         assert!(!caps.is_empty());
     }
 
