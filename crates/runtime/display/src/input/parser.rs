@@ -173,7 +173,10 @@ impl EventParser {
                 })
             }
             evdev::RelativeAxisCode::REL_WHEEL => {
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "scroll value i32 → f64 acceptable"
+                )]
                 // Mouse wheel deltas are small; f32 sufficient
                 Some(InputEvent::MouseWheel {
                     delta_x: 0.0,
@@ -182,7 +185,10 @@ impl EventParser {
                 })
             }
             evdev::RelativeAxisCode::REL_HWHEEL => {
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "scroll value i32 → f64 acceptable"
+                )]
                 // Mouse wheel deltas are small; f32 sufficient
                 Some(InputEvent::MouseWheel {
                     delta_x: value as f32,

@@ -357,7 +357,10 @@ impl CaptureDevice {
     /// # Errors
     ///
     /// Returns an error if `VIDIOC_QBUF` or `VIDIOC_STREAMON` fails.
-    #[allow(clippy::cast_possible_truncation)] // Buffer index from hardware; loop bound fits u32
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "buffer index from hardware fits u32"
+    )]
     pub fn start_streaming(&mut self) -> Result<()> {
         for i in 0..self.buffers.len() {
             // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.

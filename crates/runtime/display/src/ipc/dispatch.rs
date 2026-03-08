@@ -78,12 +78,18 @@ async fn dispatch_method(
                 .as_str()
                 .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
             let window_id = WindowId::from_string(window_id_str)?;
-            #[allow(clippy::cast_possible_truncation)] // Display dimensions fit in u32
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "display dimensions fit in u32"
+            )]
             let width = params["width"]
                 .as_u64()
                 .ok_or_else(|| DisplayError::IpcError("Missing width".to_string()))?
                 as u32;
-            #[allow(clippy::cast_possible_truncation)] // Display dimensions fit in u32
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "display dimensions fit in u32"
+            )]
             let height = params["height"]
                 .as_u64()
                 .ok_or_else(|| DisplayError::IpcError("Missing height".to_string()))?

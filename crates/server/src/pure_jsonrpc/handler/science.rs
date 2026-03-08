@@ -51,7 +51,10 @@ pub(super) async fn science_gpu_dispatch(
 }
 
 /// Returns GPU capabilities for science workloads.
-#[allow(clippy::unused_async)]
+#[expect(
+    clippy::unused_async,
+    reason = "async for JSON-RPC handler consistency"
+)]
 pub(super) async fn science_gpu_capabilities() -> JsonRpcResult {
     let gpu_info = crate::gpu_system::query_gpu_devices();
     let available_backends = crate::gpu_system::query_available_backends();
@@ -80,7 +83,10 @@ pub(super) async fn science_npu_dispatch(
 }
 
 /// Returns NPU capabilities for science workloads.
-#[allow(clippy::unused_async)]
+#[expect(
+    clippy::unused_async,
+    reason = "async for JSON-RPC handler consistency"
+)]
 pub(super) async fn science_npu_capabilities() -> JsonRpcResult {
     Ok(serde_json::json!({
         "available": false,
@@ -91,7 +97,10 @@ pub(super) async fn science_npu_capabilities() -> JsonRpcResult {
 }
 
 /// Discovers available compute substrates (GPU, NPU, CPU).
-#[allow(clippy::unused_async)]
+#[expect(
+    clippy::unused_async,
+    reason = "async for JSON-RPC handler consistency"
+)]
 pub(super) async fn science_substrate_discover() -> JsonRpcResult {
     let gpu_info = crate::gpu_system::query_gpu_devices();
     Ok(serde_json::json!({

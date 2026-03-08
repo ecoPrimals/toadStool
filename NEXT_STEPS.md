@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 7, 2026 -- S130+ Deep Debt Execution
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,777 tests (0 failures) | 83.89% coverage | 65+ JSON-RPC methods | CI pedantic gate | All unsafe justified | 2 C/FFI deps remaining (sysinfo, notify)
-**Latest**: S130+ — Deep debt execution: unsafe audit (70+ blocks justified), dep audit (pure Rust evolved), hardcoding→constants, #[allow] audit, clone audit (14 hot-path patterns), CI pedantic gate, 240 new coverage tests.
+**Updated**: March 7, 2026 -- S131+ Spring Sync + Deep Debt Evolution
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,777 tests (0 failures) | ~85% line coverage (121K) | 65+ JSON-RPC methods | CI pedantic gate | All unsafe justified | `#[expect]` evolution | 2 C/FFI deps remaining (sysinfo, notify)
+**Latest**: S131+ — Spring sync (all 5 springs pinned to latest), `#[allow]` → `#[expect]` evolution (3 stale suppressions removed), SPRING_ABSORPTION_TRACKER comprehensive update, deep debt scan confirmed clean.
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-**83.89% line coverage** (121K production lines). 19,777 tests pass. Software-only modules at ~89% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~85% line coverage** (121K production lines). 19,777 tests pass. Software-only modules at ~89% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -84,6 +84,8 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **DF64 default path** -- transferred to barraCuda team (S93)
 - [x] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
+- [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
+- [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
 - [ ] **Test coverage target 90%** -- 19,777 tests; focus on hardware-dependent code (toadStool D-COV)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
@@ -114,7 +116,15 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-130+)
+## Completed This Session (S90-131+)
+
+### Session S131+: Spring Sync + Deep Debt Evolution (Mar 7, 2026)
+- **Spring pin update**: All 5 springs updated — groundSpring V95→V96, neuralSpring V87→V89, wetSpring V97d→V97e, airSpring V071→V0.7.3.
+- **`#[allow]` → `#[expect]` evolution**: Production lint suppressions evolved to `#[expect(lint, reason)]`. 3 stale suppressions discovered and removed (`cast_sign_loss` that didn't fire, `cast_possible_truncation` on lossless `char as u32`, `dead_code` on used field). `dead_code` on struct fields kept as `#[allow]` (fires in lib but not lib test).
+- **Absorption tracker comprehensive update**: New P3 items (coralReef E2E milestone, Fp64Strategy regression tracking), SCS-CN/Stewart/Blaney-Criddle marked DONE, historical items consolidated.
+- **Deep debt scan**: All files <1000L, all unsafe=hardware FFI, no production hardcoding, mocks test-isolated, C deps optional.
+- **IPC namespace resolution**: toadStool is canonical proxy for `science.*`; springs may also call barraCuda directly.
+- **Coverage**: ~85% line (121K production lines), 19,777 tests, 0 failures.
 
 ### Session S130+: Deep Debt Execution (Mar 7, 2026)
 - **Unsafe audit**: All ~70+ blocks justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives.

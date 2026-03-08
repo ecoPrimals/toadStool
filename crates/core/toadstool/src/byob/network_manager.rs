@@ -129,10 +129,9 @@ impl NetworkManager for ByobNetworkManager {
         // ✅ RUNTIME ALLOCATION: Allocate from team's IP pool
         // In production, this would query IP pool service
         // For now, use predictable allocation based on team ID hash
-        let team_hash = team_id.chars().fold(0u32, |acc, c| {
-            #[allow(clippy::cast_possible_truncation)]
-            acc.wrapping_add(c as u32)
-        });
+        let team_hash = team_id
+            .chars()
+            .fold(0u32, |acc, c| acc.wrapping_add(c as u32));
         let ip_offset = team_hash % 1000;
 
         // Use base 203.0.113.0/24 (TEST-NET-3 range, safe for examples)

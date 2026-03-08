@@ -1,4 +1,4 @@
-# Status -- March 7, 2026 (S130+ Deep Debt Execution)
+# Status -- March 7, 2026 (S131+ Spring Sync + Deep Debt Evolution)
 
 ## Quality Gates
 
@@ -31,8 +31,8 @@
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
 | Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
-| File size limit | **All < 1000 lines** (1,868 .rs files, 576K total lines) |
-| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic` across entire workspace. All `#[allow]` justified. |
+| File size limit | **All < 1000 lines** (1,868 .rs files, 517K total lines) |
+| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic` across entire workspace. Production `#[allow]` evolved to `#[expect]` where possible (S131+). 3 stale suppressions discovered and removed. |
 | Wildcard re-exports narrowed | 13 crates (sandbox, wasm, edge discovery/toolchain/comms/deployment + 6 prior) |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |

@@ -106,6 +106,17 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 ---
 
+## Recently Resolved (S131+ Spring Sync + Deep Debt — Mar 7, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| `#[allow]` → `#[expect]` evolution | Production lint suppressions evolved to `#[expect(lint, reason = "...")]` where possible. **3 stale suppressions discovered and removed** (`cast_sign_loss` that didn't fire, `cast_possible_truncation` on lossless cast, `dead_code` on used field). `dead_code` on struct fields kept as `#[allow]` (fires in lib but not lib test). |
+| Spring pin update | All 5 springs pinned to latest: groundSpring V96, neuralSpring V89/S131, wetSpring V97e, airSpring V0.7.3, hotSpring v0.6.19 |
+| SCS-CN/Stewart/Blaney-Criddle absorption confirmed | All 6 local airSpring ops absorbed upstream into `BatchedElementwiseF64` ops 14-19 |
+| `science.*` IPC namespace resolved | toadStool is canonical proxy; springs may also call barraCuda directly |
+| coralReef E2E AMD dispatch noted | First sovereign GPU dispatch on AMD RX 6950 XT (coralReef Phase 10/Iter 10) |
+| `SubstrateCapabilityKind::Fft` confirmed | Already present since S96; groundSpring V96 request fulfilled |
+
 ## Recently Resolved (S130+ Deep Debt — Mar 7, 2026)
 
 | Item | Resolution |

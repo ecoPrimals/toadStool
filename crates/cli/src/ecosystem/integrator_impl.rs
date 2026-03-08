@@ -405,7 +405,7 @@ impl EcosystemIntegrator {
 
     // Internal helper methods
 
-    #[allow(clippy::unused_async)] // CLI display; async for API consistency
+    #[expect(clippy::unused_async, reason = "async for CLI API consistency")]
     async fn print_ecosystem_table(&self) -> Result<()> {
         if self.endpoints.is_empty() && self.connections.is_empty() {
             println!("No ecosystem services discovered or connected");

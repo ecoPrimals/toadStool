@@ -1,8 +1,9 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: March 7, 2026 — Session 130+  
-**Sources**: hotSpring (v0.6.19), neuralSpring (V87/S129), wetSpring (V97d+), airSpring (V071), groundSpring (V95), wateringHole (updated MAR07)  
-**S130+**: Clippy pedantic clean (workspace-wide, 0 warnings). Spring sync: all 5 springs confirm zero API breakage against toadStool S130. Pin versions updated. 19,777 tests, 0 failures.  
+**Date**: March 7, 2026 — Session 131+  
+**Sources**: hotSpring (v0.6.19), neuralSpring (V89/S131), wetSpring (V97e), airSpring (V0.7.3), groundSpring (V96), barraCuda (v0.3.3), coralReef (Phase 10/Iter 10), wateringHole (updated MAR07)  
+**S131+**: Spring sync + deep debt evolution. `#[allow]` → `#[expect]` (3 stale suppressions removed). All 5 springs pinned to latest. SPRING_ABSORPTION_TRACKER comprehensive update. 19,777 tests, 0 failures.  
+**S130+**: Clippy pedantic clean (workspace-wide, 0 warnings). Spring sync: all 5 springs confirm zero API breakage against toadStool S130. Pin versions updated.  
 **S130**: Cross-spring shader rewiring — `shader.compile.*` stubs evolved to real coralReef proxy with capability-based discovery. `CoralReefClient` with lazy connection. `cross_spring_provenance.rs` (17+ flows, `toadstool.provenance` method). 31 new tests.  
 **S129**: Deep debt execution — C dep evolution, capability-based port resolution, 5 god files refactored, 200+ coverage tests, zero-copy hot paths. 19,109 tests, 0 failures.  
 **S128**: f64 shared-memory bug absorbed (groundSpring V84-V85), PrecisionRoutingAdvice, sovereign_binary_capable, shader.compile.* IPC, capability-based handler evolution, architecture stub completion.

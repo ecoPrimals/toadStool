@@ -59,7 +59,10 @@ impl ResourceCoordinator {
     /// Currently does not return errors, but future versions may return errors
     /// if system resource detection fails.
     #[must_use = "ResourceCoordinator creation should be checked"]
-    #[allow(clippy::unused_async)] // API consistency with async resource discovery
+    #[expect(
+        clippy::unused_async,
+        reason = "API consistency with async resource discovery"
+    )]
     pub async fn new() -> ToadStoolResult<Self> {
         let available_resources = UniversalSystemResources {
             cpu_cores: 8.0,                          // Default to 8 cores

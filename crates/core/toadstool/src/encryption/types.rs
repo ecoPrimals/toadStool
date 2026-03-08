@@ -70,7 +70,6 @@ pub struct EncryptionMetadata {
     pub encrypted_at: i64,
 }
 
-#[allow(clippy::cast_sign_loss)]
 fn unix_timestamp_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

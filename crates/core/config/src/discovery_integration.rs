@@ -173,7 +173,7 @@ pub async fn discover_with_load_balancing(
     match discovery.discover_capability(capability).await {
         Ok(services) if !services.is_empty() => {
             // Simple round-robin: use hash of timestamp to select
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation, reason = "endpoint count bounded")]
             let index = (std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()

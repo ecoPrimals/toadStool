@@ -453,7 +453,7 @@ pub async fn load_biome_manifest(path: &PathBuf) -> crate::Result<BiomeManifest>
 }
 
 /// Validate biome manifest
-#[allow(deprecated)] // Intentional: IPC addressing requires well-known names
+#[expect(deprecated, reason = "IPC addressing requires well-known names")]
 pub fn validate_manifest(manifest: &BiomeManifest) -> crate::Result<Vec<String>> {
     let mut warnings = Vec::new();
 

@@ -259,8 +259,10 @@ impl JsonRpcHandler {
     // Provenance domain — cross-spring evolution introspection
     // ═══════════════════════════════════════════════════════════
 
-    // Static capabilities response; async for JSON-RPC handler trait consistency
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
     async fn toadstool_provenance() -> Result<serde_json::Value, JsonRpcError> {
         Ok(toadstool::cross_spring_provenance::provenance_json())
     }

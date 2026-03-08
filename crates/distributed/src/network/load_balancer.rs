@@ -70,7 +70,7 @@ impl Default for NetworkLoadBalancer {
 /// Fault tolerance manager for network distribution
 pub struct FaultToleranceManager {
     _circuit_breakers: Arc<tokio::sync::RwLock<HashMap<String, CircuitBreaker>>>,
-    #[allow(dead_code)] // Used in tests
+    #[allow(dead_code, reason = "used in tests")]
     retries: Arc<RetryManager>,
 }
 

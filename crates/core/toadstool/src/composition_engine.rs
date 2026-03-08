@@ -135,7 +135,10 @@ impl CompositionEngine {
         };
 
         // Update stats
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "integer count to f64 acceptable"
+        )]
         // Intentional: millis to f64 for stats; precision sufficient
         let duration_ms = start.elapsed().as_millis() as f64;
         self.update_stats(&evaluation, duration_ms).await;
@@ -177,7 +180,10 @@ impl CompositionEngine {
 
             Constraint::MinMemoryGB(required_gb) => {
                 if let Some(available_bytes) = self.capabilities.compute.memory_bytes {
-                    #[allow(clippy::cast_precision_loss)]
+                    #[expect(
+                        clippy::cast_precision_loss,
+                        reason = "integer count to f64 acceptable"
+                    )]
                     let available_gb = available_bytes as f64 / 1_073_741_824.0; // bytes to GB
                     if available_gb >= *required_gb {
                         ConstraintSatisfaction::Satisfied
@@ -233,7 +239,10 @@ impl CompositionEngine {
                     ConstraintSatisfaction::Satisfied
                 } else {
                     // Partial satisfaction based on how close we are
-                    #[allow(clippy::cast_precision_loss)]
+                    #[expect(
+                        clippy::cast_precision_loss,
+                        reason = "integer count to f64 acceptable"
+                    )]
                     // Intentional: ratio for partial score; precision sufficient
                     let ratio = *preferred_ms as f64 / estimated_latency as f64;
                     ConstraintSatisfaction::Partial(ratio.min(1.0))
@@ -483,7 +492,10 @@ impl CompositionEngine {
             } else {
                 let total: f64 = soft_results.iter().map(|s| s.score()).sum();
                 let len = soft_results.len();
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "integer count to f64 acceptable"
+                )]
                 // Intentional: len to f64 for average; precision sufficient
                 let result = total / len as f64;
                 result
@@ -508,7 +520,10 @@ impl CompositionEngine {
         }
 
         // Update running average
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "integer count to f64 acceptable"
+        )]
         // Intentional: count to f64 for average; precision sufficient
         let total = stats.total_evaluations as f64;
         stats.avg_evaluation_ms = ((stats.avg_evaluation_ms * (total - 1.0)) + duration_ms) / total;

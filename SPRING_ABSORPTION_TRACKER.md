@@ -1,17 +1,17 @@
 # Spring Absorption Tracker
 
-**Session**: S130+ Clippy Pedantic Clean + Spring Sync (March 7, 2026)
-**ToadStool**: master, ~83% line coverage (576K lines, 1,868 .rs files). 19,777 tests, 0 failures. Clippy pedantic clean. coralReef shader proxy with capability-based discovery. Cross-spring provenance tracking. 45+ god files refactored. All quality gates passing.
+**Session**: S131+ Spring Sync + Deep Debt Evolution (March 7, 2026)
+**ToadStool**: master, ~84% line coverage (517K lines, 1,868 .rs files). 19,777 tests, 0 failures. Clippy pedantic clean. `#[expect]` evolution (production code). coralReef shader proxy with capability-based discovery (live E2E on AMD). Cross-spring provenance tracking. All quality gates passing.
 
 ## Spring Pin Status
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.19 | S97→S128 | S128→S130+ | 724 lib + 19 integration | Lattice QCD, MD reservoir, NPU, gradient flow, Verlet, DF64 delegation complete, 3 Chuna papers CPU-validated |
-| groundSpring | V95 | V85→S128 | V95→S130+ | 907 + 390 forge | 102 (61 CPU + 41 GPU), metalForge 30 workloads, coralReef Phase 11 push buffer fix |
-| neuralSpring | V87/S129 | V86/S128→S128 | V87/S129→S130+ | 883 lib + 240 bins | 46 upstream rewires, struct-based API migration complete, `#![forbid(unsafe_code)]` |
-| wetSpring | V97d+ | V97d→S128 | V97d+→S130+ | 1,047 + 200 forge | 150+ primitives, 0 local WGSL (fully lean), zero API breakage confirmed |
-| airSpring | V071 | V071→S128 | V071→S130+ | 850 + 61 forge | 21 Tier A GPU + 6 universal, 3 local WGSL ops, NVK zero-output detection |
+| hotSpring | v0.6.19 | S128→S130+ | S130+→S131+ | 724 lib + 19 integration | DF64 delegation complete, 3 Chuna papers CPU-validated, cross-spring GPU benchmarks, `GpuView<T>` adoption target |
+| groundSpring | V96 | V95→S130+ | V96→S131+ | 925 + 390 forge | 102 (61 CPU + 41 GPU), PrecisionRoutingAdvice wired into 11 GPU paths, metalForge 30 workloads |
+| neuralSpring | V89/S131 | V87/S129→S130+ | V89/S131→S131+ | 901 lib + 43 forge + 240 bins | 89.1% coverage, isomorphic 25/25, full green, `#![forbid(unsafe_code)]` |
+| wetSpring | V97e | V97d+→S130+ | V97e→S131+ | 1,346 + 200 forge | Builder pattern migration complete, PrecisionRouting wired, provenance API, 0 local WGSL (fully lean) |
+| airSpring | V0.7.3 | V071→S130+ | V0.7.3→S131+ | 848 + 186 forge | Write→Absorb→Lean COMPLETE, all 6 local ops absorbed upstream, 0 local WGSL, provenance wired |
 
 ## Absorption Status
 
@@ -67,6 +67,19 @@
 | `toadstool.provenance` JSON-RPC method | cross-spring | **DONE** S130 |
 | Clippy pedantic zero (workspace-wide) | deep debt | **DONE** S130+ |
 
+### P3 — New Items (from Mar 7 S131+ handoffs)
+
+| Item | Source | Status |
+|------|--------|--------|
+| `SubstrateCapabilityKind::Fft` already exists | groundSpring V96 request | **DONE** (already present since S96) |
+| coralReef E2E AMD dispatch (WGSL→RDNA2→PM4→GPU→readback, pure Rust) | coralReef Phase 10/Iter 10 | **Milestone noted** — sovereign pipeline proven |
+| `From<BarracudaError>` for typed error propagation | barraCuda v0.3.3 | Noted — available for cleaner error chains |
+| `#[allow]` → `#[expect]` in production code | neuralSpring pattern | **DONE** S131+ |
+| wetSpring `science.*` namespace: toadStool proxy confirmed canonical | wetSpring V97e | **DONE** — springs may call barraCuda directly or via toadStool proxy |
+| Fp64Strategy fused GPU regression (VarianceF64/CorrelationF64 return 0.0) | all springs | Tracked (barraCuda P0 blocker) |
+| `compile_wgsl_direct()` for sovereign metalForge compilation | neuralSpring V89 | Tracked (needs coralReef NVIDIA E2E) |
+| `Tensor::mean()` entry point | neuralSpring V89 | Tracked |
+
 ### P3 — Shader Evolution (tracked)
 
 | Item | Source | Status |
@@ -80,9 +93,9 @@
 | Multi-GPU interconnect | neuralSpring | Tracked |
 | Autocorrelation GPU op | neuralSpring V86 | Tracked |
 | R² score GPU op | neuralSpring V86 | Tracked |
-| SCS-CN, Stewart, Blaney-Criddle (3 ops) | airSpring local WGSL | Tracked |
-| Fused GPU seasonal pipeline (chain ops 0→7→1, no CPU round-trips) | airSpring V071 | Tracked (NEW) |
-| `UnidirectionalPipeline` for atlas_stream multi-year streaming | airSpring V071 | Tracked (NEW) |
+| SCS-CN, Stewart, Blaney-Criddle (3 ops) | airSpring V0.7.3 | **DONE** (absorbed upstream as ops 14-19) |
+| Fused GPU seasonal pipeline (chain ops 0→7→1, no CPU round-trips) | airSpring V071 | Tracked |
+| `UnidirectionalPipeline` for atlas_stream multi-year streaming | airSpring V071 | Tracked |
 
 ### P4 — Future (lower priority)
 
@@ -101,118 +114,125 @@
 | `SumReduceF64` / `VarianceReduceF64` Fp64Strategy branching fix | groundSpring V95 | Open (barraCuda-owned) |
 | wetSpring `special::{erf, ln_gamma, dot, l2_norm}` absorption | wetSpring V97d | Open (barraCuda-owned) |
 
-## New Handoff Items (Mar 7, 2026)
+## New Handoff Items (Mar 7, 2026 — S131+ Spring Sync)
 
-### From hotSpring v0.6.19
+### From hotSpring v0.6.19 (unchanged from previous sync)
 
 | Item | Impact |
 |------|--------|
-| DF64 compilation fully delegated to barraCuda | No toadStool action — hotSpring now calls `compile_shader_universal(Precision::Df64)` |
+| DF64 compilation fully delegated to barraCuda | No toadStool action — hotSpring uses `compile_shader_universal(Precision::Df64)` |
 | 3 Chuna papers (43-45) CPU-complete | GPU promotion is barraCuda-owned |
-| Cross-spring GPU benchmarks (Autocorrelation, Mean+Variance, Correlation, Chi-squared) | Benchmarked via barraCuda APIs; validates cross-spring evolution |
-| `GpuView<T>` adoption target | Eliminate per-call buffer upload/download for MD; barraCuda-owned |
-| Edition 2024 migration candidate | Align with barraCuda edition |
+| Cross-spring GPU benchmarks validated | Autocorrelation, Mean+Variance, Correlation, Chi-squared via barraCuda |
+| `GpuView<T>` adoption target | barraCuda-owned; eliminate per-call buffer upload/download |
 
-### From groundSpring V95
-
-| Item | Impact |
-|------|--------|
-| coralReef Phase 11: push buffer encoding fixed | `[PBENTRY]` bug was count/method field swap in Kepler+ Type 1 headers. All 5 GPU method tests pass on Titan V. coralReef-owned. |
-| NVIF constants aligned to Mesa `nvif/ioctl.h` | `ROUTE_NVIF=0x00`, `ROUTE_HIDDEN=0xFF`, `OWNER_NVIF=0x00`, `OWNER_ANY=0xFF` |
-| P0 barraCuda fixes: `SumReduceF64`/`VarianceReduceF64` missing Fp64Strategy | Consumer GPUs produce wrong values; barraCuda-owned |
-| `multinomial_sample_cpu` outside `cfg(gpu)` | CPU fallback gated behind GPU feature; barraCuda-owned |
-| Sovereign pipeline E2E: QMD CBUF binding is next blocker | coralReef-owned |
-
-### From neuralSpring V87/S129
+### From groundSpring V96 (NEW)
 
 | Item | Impact |
 |------|--------|
-| Struct-based API migration complete (HmmForwardArgs, GillespieModel, etc.) | neuralSpring consuming barraCuda APIs; no toadStool action |
-| 12 GPU test failures on llvmpipe (fused shaders return 0.0) | wgpu 28 + llvmpipe interaction; barraCuda investigation needed |
-| `#![forbid(unsafe_code)]` enforced | neuralSpring internal quality gate |
-| 883 lib + 240 bin tests; 218/218 validate_all PASS | Confirms evolution chain health |
+| PrecisionRoutingAdvice wired into 11 GPU dispatch paths | All f64 workgroup reductions check `get_device_f64_safe()` before dispatch |
+| 925 tests (was 907), 102 delegations (61 CPU + 41 GPU) | Ecosystem health confirmed |
+| Stale clippy fix + collapsible_if | Internal quality |
+| Requests: FFT in `SubstrateCapabilityKind` | **Already present** (`Fft` variant since S96) |
+| Requests: wire `shader.compile.*` to live coralReef | **Already complete** — `CoralReefClient` proxies to coralReef when available |
 
-### From wetSpring V97d/V97d+
-
-| Item | Impact |
-|------|--------|
-| Zero API breakage against toadStool S130 + barraCuda `2a6c072` | 1,347 tests pass; ecosystem sync confirmed |
-| New barraCuda primitives available: `BatchedOdeRK45F64`, provenance module, `mean_variance_to_buffer()` | wetSpring adoption targets; no toadStool action |
-| I/O API deprecation: `parse_fastq`/`parse_mzml`/`parse_ms2` → streaming iterators | wetSpring internal evolution |
-| 104 bare `.unwrap()` → contextual `.expect()` across 17 validators | Crash diagnostics improvement |
-
-### From airSpring V071
+### From neuralSpring V89/S131 (NEW)
 
 | Item | Impact |
 |------|--------|
-| NVK zero-output detection + CPU fallback in `gpu::bootstrap` | Recommends generic `NvkZeroGuard` in barraCuda; toadStool's `PrecisionRoutingAdvice` already routes around this |
-| Kokkos validation gap (100x-2600x dispatch overhead for stats ops) | Phase 1: persistent buffers + fused reductions; barraCuda-owned |
-| Provenance convention: benchmark JSON `_provenance.baseline_commit` as authoritative | Good practice note for all springs |
-| `cargo-deny` license enforcement added | airSpring internal quality gate |
+| Full green: 901 lib + 43 forge tests, 89.1% coverage | Zero debt, zero TODO/FIXME/MOCK in src/ |
+| Isomorphic catalog fix: 25/25 (100%) primitive coverage | WGSL discovery expanded to barraCuda + metalForge + Tensor ops |
+| P0: Fp64Strategy fused GPU regression still present | 11 tests gated via canary; barraCuda P0 |
+| Requests: `compile_wgsl_direct()` for sovereign compilation | Needs coralReef NVIDIA E2E first |
+| Requests: `Tensor::mean()` entry point | Tracked |
+| Pattern: `#[expect(lint, reason)]` instead of bare `#[allow]` | **Adopted in toadStool S131+** |
 
-### From Sovereign Pipeline (coralReef Phase 10-11)
-
-| Item | Impact |
-|------|--------|
-| `shader.compile.*` IPC contract aligned across 3 primals | toadStool, barraCuda, coralReef all on `shader.compile.*` namespace |
-| coralReef Phase 11: push buffer + NVIF encoding fixed | 5/5 GPU method tests pass on Titan V; remaining blocker is QMD CBUF binding |
-| coralReef Iteration 5-7: debt reduction, deep internalization, safety boundaries | 856 tests, zero warnings; AGPL-3.0 sovereign compiler |
-
-## New Handoff Items (Mar 5-6, 2026)
-
-### From hotSpring v0.6.17
+### From wetSpring V97e (NEW)
 
 | Item | Impact |
 |------|--------|
-| `gradient_flow.rs` — Wilson SU(3) gradient flow | CPU-only Tier 2 QCD; absorption candidate for barraCuda |
-| `brain.rs` — MD Nautilus Brain (12-head reservoir) | Uses upstream `nautilus`; validates NautilusBrain API |
-| 6 Verlet WGSL shaders | barraCuda absorption (build, check_displacement, copy_ref, force f64/df64) |
-| Kokkos parity: 27x→3.7x gap | Dispatch overhead dominates; persistent kernels + fused VV needed |
+| 1,346 tests, builder pattern migration complete | All barraCuda breaking API changes absorbed |
+| PrecisionRoutingAdvice wired in `GpuF64::optimal_precision()` | 4-tier routing (F64Native/NoSharedMem/Df64Only/F32Only) |
+| Provenance API: `shaders_authored()`, `shaders_consumed()`, `wetspring_provenance_summary()` | Cross-spring tracking |
+| IPC question: `science.*` overlap with toadStool S130 | **Resolved**: toadStool is canonical proxy; springs may also call barraCuda directly |
+| Re-export suggestions for barraCuda (HmmForwardArgs, Dada2DispatchArgs, etc.) | barraCuda-owned |
 
-### From groundSpring V80
-
-| Item | Impact |
-|------|--------|
-| Fused `correlation_full` GPU (5-accumulator) | barraCuda stats absorption candidate |
-| Welford single-pass CPU stats | `pearson_full_cpu` candidate for `barracuda::stats` |
-| metalForge: 30 workloads, 187 checks | Hardware validation corpus |
-| NUCLEUS atomics pattern | Reusable pass/fail harness |
-
-### From neuralSpring V86/S128
+### From airSpring V0.7.3 (NEW)
 
 | Item | Impact |
 |------|--------|
-| `VarianceReduceF64` → `VarianceF64` rewire | API name cleanup |
-| 46 upstream rewires complete | All 17 shortcomings resolved |
-| coralForge structure prediction | Independent shader catalog |
-| baseCamp biophysical AI (6 modules) | weight_spectral, info_flow, loss_landscape, neural_pgm, agent_coordination, immunological_anderson |
+| Write→Absorb→Lean COMPLETE: all 6 local ops absorbed upstream | Zero local WGSL, fully lean on barraCuda |
+| PrecisionRoutingAdvice integrated in `DevicePrecisionReport` | NVK shared-mem routing captured |
+| Upstream provenance registry integrated | `upstream_airspring_provenance()`, `upstream_cross_spring_matrix()` |
+| Requests: `shader.compile.wgsl` via toadStool JSON-RPC | **Already available** — `CoralReefClient` proxies when coralReef running |
+
+### From barraCuda v0.3.3 (NEW)
+
+| Item | Impact |
+|------|--------|
+| Typed error handling: `BarracudaCoreError` with `From<BarracudaError>` | Available for cleaner error chains at toadStool boundary |
+| Hardcoding → named constants (`LOCALHOST`, `JSONRPC_VERSION`, memory fallbacks) | Pattern aligned with toadStool constants |
+| 38 bare `#[allow(dead_code)]` → `#[allow(dead_code, reason = "...")]` | Matched by toadStool S131+ `#[expect]` evolution |
+| 3,100+ tests, zero unsafe, zero clippy warnings | Quality gates aligned |
+
+### From coralReef Phase 10/Iteration 10 (NEW — MILESTONE)
+
+| Item | Impact |
+|------|--------|
+| **First E2E sovereign GPU dispatch on AMD RX 6950 XT** | WGSL → coral-reef compiler → PM4 dispatch → GPU execution → host readback, all pure Rust |
+| 3 critical bugs fixed: wave size, literal constant emission, 64-bit address | Compiler and driver hardened |
+| 990 tests (953 passing, 37 ignored hw tests) | Quality gates green |
+| `ComputeDispatch::CoralReef` can route through `coral-gpu` for AMD | toadStool's shader proxy can now produce real native binaries on AMD |
+| NVIDIA E2E still pending | Next coralReef milestone |
+
+## Historical Handoff Items (Mar 5-6, 2026)
+
+Items from earlier sync sessions. Retained for cross-reference.
+
+### From hotSpring v0.6.17-v0.6.19
+
+| Item | Status |
+|------|--------|
+| DF64 delegation, cross-spring GPU benchmarks, Chuna papers | Absorbed S128-S130 |
+| `gradient_flow.rs`, `brain.rs`, 6 Verlet WGSL shaders | barraCuda-owned |
+| Kokkos parity: dispatch overhead dominates | barraCuda-owned (persistent buffers) |
+
+### From groundSpring V80-V95
+
+| Item | Status |
+|------|--------|
+| Fused `correlation_full` GPU, Welford CPU stats | barraCuda stats absorbed |
+| metalForge: 30 workloads, 187 checks | Hardware validation corpus (active) |
+| coralReef Phase 11 push buffer fix | coralReef-owned (fixed) |
+
+### From neuralSpring V86-V87/S128-S129
+
+| Item | Status |
+|------|--------|
+| 46 upstream rewires, struct-based API migration | Complete |
+| coralForge structure prediction, baseCamp biophysical AI | Independent catalogs |
+| 12 GPU test failures (fused shaders return 0.0) | barraCuda P0 (Fp64Strategy regression) |
 
 ### From wetSpring V97d
 
-| Item | Impact |
+| Item | Status |
 |------|--------|
-| Fused ops chain (Exp306–310) | DF64 dispatch routing |
-| 0 local WGSL (fully lean) | Reference for Write→Absorb→Lean pattern |
-| Bio Brain cross-spring integration | `BioNautilusBrain` adapter |
-| IPC science primal (JSON-RPC 2.0) | `science.diversity`, `science.qs_model`, `science.anderson` |
+| 0 local WGSL (fully lean), fused ops chain | Reference pattern |
+| Bio Brain, IPC science primal | Active |
 
 ### From airSpring V071
 
-| Item | Impact |
+| Item | Status |
 |------|--------|
-| wgpu 28 + subgroup detection | DevicePrecisionReport already reports subgroup sizes |
-| 3 local ops ready for absorption | Makkink→Op14, Turc→Op15, Hamon→Op16 (DONE upstream) |
-| 3 remaining local WGSL ops | SCS-CN, Stewart, Blaney-Criddle |
-| Nautilus/AirSpringBrain | ET₀ forecasting + drift detection |
+| 6 local ops absorption | **DONE** (all absorbed upstream as ops 14-19 in V0.7.2-V0.7.3) |
+| Nautilus/AirSpringBrain | Active |
 
-### From Sovereign Pipeline (coralReef/wateringHole)
+### From Sovereign Pipeline (coralReef Phases 1-10)
 
-| Item | Impact |
+| Item | Status |
 |------|--------|
-| coralReef Phases 1–5 complete | Sovereign Rust NVIDIA shader compiler (WGSL→SASS) |
-| coralDriver assigned to groundSpring | Level 4 sovereign compute |
-| Titan V pipeline: 4 levels | WGSL polyfills (done) → fork NAK → coralNak → coralDriver |
-| Ada Lovelace SM89 f64 crash | Proprietary driver cannot compile native f64 transcendentals |
+| coralReef Phases 1-5 (NVIDIA WGSL→SASS) | Complete |
+| coralReef Phase 10 (AMD WGSL→RDNA2) | **E2E PROVEN** on RX 6950 XT |
+| coralDriver (Level 4 sovereign compute) | Blocked on QMD CBUF binding |
 
 ## Cross-Spring Patterns
 
@@ -229,28 +249,29 @@
 
 ## Handoff Cross-Reference
 
-### Incoming (to ToadStool)
+### Incoming (to ToadStool) — Mar 7, 2026
 
 | Handoff | From | Key Items |
 |---------|------|-----------|
-| `NEURALSPRING_TOADSTOOL_V87_S129_API_SYNC_MAR07` | neuralSpring V87 | Struct-based API sync, 12 llvmpipe failures, `#![forbid(unsafe_code)]` |
-| `AIRSPRING_V071_DEEP_DEBT_NVK_TOADSTOOL_MAR07` | airSpring V071 | NVK zero-output detection, Kokkos gap, provenance convention |
-| `GROUNDSPRING_V95_TOADSTOOL_BARRACUDA_CORALREEF_MAR07` | groundSpring V95 | coralReef Phase 11 push buffer fix, 102 delegations, Fp64Strategy gaps |
-| `WETSPRING_V97D_DEEP_AUDIT_EVOLUTION_MAR07` | wetSpring V97d | Zero unsafe, streaming I/O deprecation, forge dispatch |
-| `WETSPRING_V97D_ECOSYSTEM_SYNC_MAR07` | wetSpring V97d+ | Zero API breakage vs S130, new primitives available |
+| `GROUNDSPRING_V96_UPSTREAM_REWIRE` | groundSpring V96 | PrecisionRoutingAdvice wired, 925 tests, FFT capability request |
+| `NEURALSPRING_TOADSTOOL_V89_S131_FULL_GREEN` | neuralSpring V89 | 89.1% coverage, isomorphic 25/25, Fp64Strategy P0 blocker |
+| `NEURALSPRING_TOADSTOOL_V88_S130_UPSTREAM_REWIRE` | neuralSpring V88 | Upstream rewire, `#[expect]` pattern |
+| `WETSPRING_V97E_BARRACUDA_TOADSTOOL_EVOLUTION` | wetSpring V97e | Builder patterns, science.* IPC overlap question, re-export suggestions |
+| `WETSPRING_V97E_PROVENANCE_REWIRE` | wetSpring V97e | Provenance API, precision routing, 1,346 tests |
+| `AIRSPRING_V073_MODERN_INTEGRATION` | airSpring V0.7.3 | Write→Absorb→Lean complete, provenance, PrecisionRouting |
+| `AIRSPRING_V073_BARRACUDA_TOADSTOOL_EVOLUTION` | airSpring V0.7.3 | Cross-spring shader flows, NVK shared-mem findings |
+| `BARRACUDA_V033_COMPREHENSIVE_AUDIT_EVOLUTION` | barraCuda v0.3.3 | Typed errors, hardcoding→constants, 3,100+ tests |
+| `CORALREEF_PHASE10_ITERATION10_E2E_GPU_DISPATCH` | coralReef Phase 10 | **First E2E AMD dispatch**, 3 critical bugs fixed, pure Rust pipeline |
 | `HOTSPRING_V0619_BARRACUDA_REWIRE_MAR06` | hotSpring v0.6.19 | DF64 delegation complete, `GpuView<T>` target |
 | `HOTSPRING_V0619_CROSS_SPRING_EVOLUTION_MAR06` | hotSpring v0.6.19 | 3 Chuna papers, cross-spring GPU benchmarks |
-| `CROSS_PRIMAL_IPC_REWIRE_SHADER_COMPILE_MAR07` | coralReef/ecosystem | `shader.compile.*` contract aligned across 3 primals |
-| `SOVEREIGN_TITAN_V_PIPELINE_GAPS_MAR06` | hotSpring/coralReef | is_sovereign_capable, NVK allocation guard |
-| `SOVEREIGN_PIPELINE_CROSS_PRIMAL_MAR05` | wateringHole | coralDriver routing, vendor-agnostic IR |
 
 ### Outgoing (from ToadStool)
 
 | Handoff | To | Session |
 |---------|----|---------|
-| `TOADSTOOL_S130_DEEP_DEBT_CLIPPY_PEDANTIC_MAR07` | Ecosystem | S130+ |
+| `TOADSTOOL_S131_SPRING_SYNC_DEEP_DEBT_MAR07` | Ecosystem | S131+ |
+| `TOADSTOOL_S130_DEEP_DEBT_EXECUTION_MAR07` | Ecosystem | S130+ |
 | `TOADSTOOL_S128_DEEP_DEBT_EVOLUTION_MAR06` | Ecosystem | S128 |
-| `TOADSTOOL_S97_SPRING_ABSORPTION_MAR06` | Ecosystem | S97 |
 
 ## metalForge Clarification
 

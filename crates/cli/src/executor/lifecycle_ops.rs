@@ -38,7 +38,7 @@ fn parse_env_vars(env_vars: &[String]) -> HashMap<String, String> {
 
 /// Internal lifecycle operation implementations
 impl BiomeExecutor {
-    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
+    #[expect(deprecated, reason = "IPC addressing requires well-known names")]
     pub(super) async fn start_biome_internal(
         &self,
         biome_name: &str,

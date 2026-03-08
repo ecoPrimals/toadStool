@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 
 /// Network metrics collector for distributed execution
 pub struct NetworkMetricsCollector {
-    #[allow(dead_code)] // Used in tests
+    #[allow(dead_code, reason = "used in tests")]
     metrics: Arc<RwLock<NetworkMetricsData>>,
 }
 

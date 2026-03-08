@@ -58,7 +58,7 @@ pub struct EcosystemDiscoverer {
 impl EcosystemDiscoverer {
     /// Create a new ecosystem discoverer (capability-based)
     #[must_use]
-    #[allow(deprecated)] // Legacy port fields used as bootstrap fallbacks during discovery
+    #[expect(deprecated, reason = "legacy port fields used as bootstrap fallbacks")]
     pub fn new() -> Self {
         let mut service_patterns = HashMap::new();
         let config = EnvironmentConfig::from_env();

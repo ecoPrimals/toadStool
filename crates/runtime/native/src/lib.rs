@@ -97,8 +97,10 @@ impl NativeRuntimeEngine {
     }
 
     /// Validate executable source and return the executable path
-    // &self retained for future config-based resolution
-    #[allow(clippy::unused_self)]
+    #[expect(
+        clippy::unused_self,
+        reason = "&self retained for future config-based resolution"
+    )]
     fn resolve_executable(&self, source: &ExecutableSource) -> ToadStoolResult<PathBuf> {
         match source {
             ExecutableSource::File { path } => {
@@ -136,8 +138,10 @@ impl NativeRuntimeEngine {
     }
 
     /// Apply security context to the command
-    // &self retained for future config-based resolution
-    #[allow(clippy::unused_self)]
+    #[expect(
+        clippy::unused_self,
+        reason = "&self retained for future config-based resolution"
+    )]
     fn apply_security_context(
         &self,
         mut command: TokioCommand,

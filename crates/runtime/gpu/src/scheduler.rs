@@ -31,7 +31,7 @@ pub enum SchedulingPolicy {
 
 /// Performance history entry
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Preserved for future performance metrics
+#[allow(dead_code, reason = "reserved for future performance metrics")]
 struct PerformanceRecord {
     resource_id: String,
     workload_signature: String,
