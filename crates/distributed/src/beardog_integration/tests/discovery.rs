@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BearDog discovery behavior tests — async endpoint selection and health
 
 use crate::beardog_integration::types::{BearDogCapability, BearDogEndpoint};

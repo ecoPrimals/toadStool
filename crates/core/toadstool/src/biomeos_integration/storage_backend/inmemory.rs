@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! In-memory storage backend for testing and lightweight deployments
 
 use std::collections::HashMap;
@@ -57,9 +57,9 @@ impl StorageBackend for InMemoryBackend {
             };
 
             let mut vols = volumes.lock().await;
-            vols.insert(config_name.clone(), volume_info.clone());
+            vols.insert(config_name, volume_info.clone());
 
-            tracing::debug!("Provisioned test volume: {}", config_name);
+            tracing::debug!("Provisioned test volume: {}", volume_info.name);
             Ok(volume_info)
         })
     }
@@ -84,9 +84,9 @@ impl StorageBackend for InMemoryBackend {
             };
 
             let mut vols = volumes.lock().await;
-            vols.insert(config_name.clone(), volume_info.clone());
+            vols.insert(config_name, volume_info.clone());
 
-            tracing::debug!("Provisioned test persistent volume: {}", config_name);
+            tracing::debug!("Provisioned test persistent volume: {}", volume_info.name);
             Ok(volume_info)
         })
     }

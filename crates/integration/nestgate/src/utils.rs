@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Utility functions for the NestGate storage client
 //!
 //! Provides checksum calculation, content-type detection, and cache cleanup.

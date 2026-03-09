@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Provider Registry - Runtime Catalog of Capability Providers
 //!
 //! Maintains a runtime registry of discovered providers and matches

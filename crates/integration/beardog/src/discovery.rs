@@ -1,7 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! bearDog service discovery via capability-based discovery
 //!
 //! Discovers bearDog entropy service at runtime - NO HARDCODING!
+#![allow(deprecated)] // primals::BEARDOG for IPC socket path fallback
+
+#[allow(deprecated)]
+use toadstool_common::interned_strings::primals;
 
 use crate::error::BeardogError;
 use crate::seed::{EphemeralSeed, SeedQuality};
@@ -75,7 +79,8 @@ impl EntropyClient {
                 let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
                     .await
                     .unwrap_or_else(|_| {
-                        toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock")
+                        toadstool_common::primal_sockets::get_biomeos_dir()
+                            .join(format!("{}.sock", primals::BEARDOG))
                     });
 
                 Ok(Self {
@@ -168,7 +173,8 @@ impl EntropyClient {
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
             .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock")
+                toadstool_common::primal_sockets::get_biomeos_dir()
+                    .join(format!("{}.sock", primals::BEARDOG))
             });
 
         let socket_client =

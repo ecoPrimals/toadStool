@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Property-based tests for config serialization
 //!
 //! Tests that config structures can be serialized and deserialized

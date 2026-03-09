@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Environment variable configuration overrides
 //!
 //! Handles applying environment variable overrides to ToadStool configuration

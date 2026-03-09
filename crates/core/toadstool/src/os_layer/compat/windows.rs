@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Windows compatibility layer.
 //!
 //! On Windows, initializes successfully. On other platforms, returns

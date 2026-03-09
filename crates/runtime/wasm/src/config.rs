@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! WebAssembly runtime configuration
 //!
 //! This module defines configuration types for the WASM runtime engine,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Unit tests for policy condition evaluator
 //! Target: crates/security/policies/src/evaluator.rs (2.58% coverage)
 

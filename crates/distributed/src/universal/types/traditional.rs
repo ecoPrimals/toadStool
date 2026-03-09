@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Traditional computing platforms
 //!
 //! Support for conventional CPU architectures including x86_64, ARM64,

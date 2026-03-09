@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["ToadStool Contributors"]
 description = "Secure enclave runtime for zero-knowledge compute"
 license.workspace = true
-repository = "https://github.com/ecoPrimals/toadstool"
+repository.workspace = true
 keywords = ["security", "enclave", "zero-knowledge", "cryptography"]
 categories = ["cryptography", "no-std"]
 

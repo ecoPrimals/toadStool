@@ -1,15 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
+#![allow(async_fn_in_trait)]
 #![allow(
-    async_fn_in_trait,
-    clippy::doc_markdown,
     clippy::missing_errors_doc,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::similar_names,
-    clippy::unused_async, // Trait/API consistency
-    clippy::default_trait_access,
+    clippy::cast_sign_loss
 )]
 
 //! `ToadStool` Advanced Analytics Engine

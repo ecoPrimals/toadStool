@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Unit tests for security policies library
 //!
 //! This module provides comprehensive unit tests for the security policies crate,

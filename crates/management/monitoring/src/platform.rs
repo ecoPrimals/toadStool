@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Platform-specific resource measurement
 //!
 //! Linux, macOS, and Windows implementations for process metrics.

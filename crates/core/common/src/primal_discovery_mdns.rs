@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration adapter between `primal_discovery` and mDNS
 //!
 //! This module provides mDNS-SD (multicast DNS service discovery) for finding
@@ -415,5 +415,46 @@ mod tests {
     #[test]
     fn test_default_discovery_timeout() {
         assert_eq!(DEFAULT_DISCOVERY_TIMEOUT, Duration::from_secs(3));
+    }
+
+    #[test]
+    fn test_convert_mdns_service_url_format() {
+        let endpoint = convert_mdns_service_to_endpoint(
+            "host.local".to_string(),
+            vec!["compute".to_string()],
+            "http://192.168.1.1:8080".to_string(),
+        );
+        assert!(endpoint.url.starts_with("http://"));
+        assert!(endpoint.url.contains(":8080"));
+    }
+
+    #[test]
+    fn test_convert_mdns_service_latency_initial_zero() {
+        let endpoint = convert_mdns_service_to_endpoint(
+            "svc".to_string(),
+            vec!["storage".to_string()],
+            "http://10.0.0.1:9000".to_string(),
+        );
+        assert_eq!(endpoint.latency_ms, 0);
+    }
+
+    #[test]
+    fn test_mdns_adapter_config_accessor() {
+        let config = DiscoveryConfig::default();
+        let result = MdnsAdapter::with_timeout(config, Duration::from_millis(100));
+        if let Ok(adapter) = result {
+            let adapter_config = adapter.config();
+            assert_eq!(
+                adapter_config.cache_ttl,
+                std::time::Duration::from_secs(300)
+            );
+            assert!(adapter_config.enable_mdns);
+        }
+    }
+
+    #[test]
+    fn test_toadstool_service_type_format() {
+        assert!(TOADSTOOL_SERVICE_TYPE.contains("toadstool"));
+        assert!(TOADSTOOL_SERVICE_TYPE.contains("tcp"));
     }
 }

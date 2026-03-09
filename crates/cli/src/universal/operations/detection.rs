@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Platform Detection Operations
 //!
 //! Extension trait for platform detection and capability testing operations.

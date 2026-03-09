@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Science domain handlers for JSON-RPC.
 //!
 //! Routes scientific compute through toadStool's workload infrastructure.
@@ -474,5 +474,581 @@ async fn forward_to_primal(
         Err(_) => Err(JsonRpcError::internal_error(
             "Primal response timed out (30s)".to_string(),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // SPDX-License-Identifier: AGPL-3.0-only
+    use std::borrow::Cow;
+    use std::sync::Arc;
+
+    use crate::pure_jsonrpc::handler::JsonRpcHandler;
+    use crate::pure_jsonrpc::types::JsonRpcError;
+    use crate::tarpc_server::StandaloneExecutor;
+
+    fn test_handler() -> JsonRpcHandler {
+        let executor = Arc::new(StandaloneExecutor::new());
+        JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
+    }
+
+    fn mk_request(
+        method: &str,
+        params: Option<serde_json::Value>,
+        id: i32,
+    ) -> crate::pure_jsonrpc::types::JsonRpcRequest<'static> {
+        crate::pure_jsonrpc::types::JsonRpcRequest {
+            jsonrpc: Cow::Borrowed("2.0"),
+            method: Cow::Owned(method.to_string()),
+            params,
+            id: Some(serde_json::json!(id)),
+        }
+    }
+
+    // ───── science.compute.* ─────
+
+    #[tokio::test]
+    async fn science_compute_submit_valid() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "tinyllama", "prompt": "test", "params": {} }
+        });
+        let request = mk_request("science.compute.submit", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("job_id").is_some());
+        assert!(result.get("routing").is_some());
+    }
+
+    #[tokio::test]
+    async fn science_compute_submit_missing_params() {
+        let handler = test_handler();
+        let request = mk_request("science.compute.submit", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn science_compute_submit_invalid_params() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "invalid": "job_type" });
+        let request = mk_request("science.compute.submit", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn science_compute_status_valid() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "m", "prompt": "p", "params": {} }
+        });
+        let submit_resp = handler
+            .handle_request(&mk_request("science.compute.submit", Some(params), 1))
+            .await;
+        let job_id = submit_resp
+            .result
+            .as_ref()
+            .and_then(|r| r.get("job_id"))
+            .and_then(|v| v.as_str())
+            .expect("job_id");
+
+        let status_params = serde_json::json!({ "job_id": job_id });
+        let request = mk_request("science.compute.status", Some(status_params), 2);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("state").is_some());
+    }
+
+    #[tokio::test]
+    async fn science_compute_status_missing_job_id() {
+        let handler = test_handler();
+        let request = mk_request("science.compute.status", Some(serde_json::json!({})), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn science_compute_status_invalid_uuid() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "job_id": "not-a-uuid" });
+        let request = mk_request("science.compute.status", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn science_compute_result_valid() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "m", "prompt": "p", "params": {} }
+        });
+        let submit_resp = handler
+            .handle_request(&mk_request("science.compute.submit", Some(params), 1))
+            .await;
+        let job_id = submit_resp
+            .result
+            .as_ref()
+            .and_then(|r| r.get("job_id"))
+            .and_then(|v| v.as_str())
+            .expect("job_id");
+
+        let result_params = serde_json::json!({ "job_id": job_id });
+        let request = mk_request("science.compute.result", Some(result_params), 2);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_some() || response.error.is_some());
+    }
+
+    #[tokio::test]
+    async fn science_compute_result_missing_job_id() {
+        let handler = test_handler();
+        let request = mk_request("science.compute.result", Some(serde_json::json!({})), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn science_compute_result_job_not_found() {
+        let handler = test_handler();
+        let job_id = uuid::Uuid::new_v4();
+        let params = serde_json::json!({ "job_id": job_id.to_string() });
+        let request = mk_request("science.compute.result", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(
+            err.code,
+            toadstool_common::constants::jsonrpc::error_codes::WORKLOAD_NOT_FOUND
+        );
+    }
+
+    #[tokio::test]
+    async fn science_compute_cancel_valid() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "m", "prompt": "p", "params": {} }
+        });
+        let submit_resp = handler
+            .handle_request(&mk_request("science.compute.submit", Some(params), 1))
+            .await;
+        let job_id = submit_resp
+            .result
+            .as_ref()
+            .and_then(|r| r.get("job_id"))
+            .and_then(|v| v.as_str())
+            .expect("job_id");
+
+        let cancel_params = serde_json::json!({ "job_id": job_id });
+        let request = mk_request("science.compute.cancel", Some(cancel_params), 2);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["cancelled"], true);
+    }
+
+    #[tokio::test]
+    async fn science_compute_cancel_missing_job_id() {
+        let handler = test_handler();
+        let request = mk_request("science.compute.cancel", Some(serde_json::json!({})), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    // ───── science.gpu.* ─────
+
+    #[tokio::test]
+    async fn science_gpu_dispatch_valid() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "tinyllama", "prompt": "test", "params": {} }
+        });
+        let request = mk_request("science.gpu.dispatch", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("job_id").is_some());
+    }
+
+    #[tokio::test]
+    async fn science_gpu_dispatch_missing_params() {
+        let handler = test_handler();
+        let request = mk_request("science.gpu.dispatch", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn science_gpu_capabilities_structure() {
+        let handler = test_handler();
+        let request = mk_request("science.gpu.capabilities", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("devices").is_some());
+        assert!(result.get("supported_precisions").is_some());
+        assert!(result.get("precision_notes").is_some());
+        assert!(result.get("compute_backends").is_some());
+        assert_eq!(result["domain"], "science");
+        assert!(result["precision_notes"]["f64_shared_memory_reliable"]
+            .as_bool()
+            .is_some());
+        assert!(result["precision_notes"]["df64_reductions"]
+            .as_bool()
+            .is_some());
+    }
+
+    // ───── science.npu.* ─────
+
+    #[tokio::test]
+    async fn science_npu_dispatch_valid() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "tinyllama", "prompt": "test", "params": {} }
+        });
+        let request = mk_request("science.npu.dispatch", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("job_id").is_some());
+    }
+
+    #[tokio::test]
+    async fn science_npu_dispatch_missing_params() {
+        let handler = test_handler();
+        let request = mk_request("science.npu.dispatch", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn science_npu_capabilities_structure() {
+        let handler = test_handler();
+        let request = mk_request("science.npu.capabilities", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["available"], false);
+        assert_eq!(result["domain"], "science");
+        assert!(result.get("supported_models").is_some());
+        assert!(result.get("note").is_some());
+    }
+
+    // ───── science.substrate.* ─────
+
+    #[tokio::test]
+    async fn science_substrate_discover_structure() {
+        let handler = test_handler();
+        let request = mk_request("science.substrate.discover", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        let substrates = result.get("substrates").expect("substrates");
+        assert!(substrates.get("gpu").is_some());
+        assert!(substrates.get("npu").is_some());
+        assert!(substrates.get("cpu").is_some());
+        assert_eq!(result["domain"], "science");
+    }
+
+    #[tokio::test]
+    async fn science_substrate_probe_with_capability() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "capability": "f64_reductions" });
+        let request = mk_request("science.substrate.probe", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["capability"], "f64_reductions");
+        assert_eq!(result["available"], true);
+        assert_eq!(result["domain"], "science");
+    }
+
+    #[tokio::test]
+    async fn science_substrate_probe_without_params_defaults_unknown() {
+        let handler = test_handler();
+        let request = mk_request("science.substrate.probe", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["capability"], "unknown");
+        assert_eq!(result["available"], true);
+    }
+
+    #[tokio::test]
+    async fn science_substrate_probe_empty_params() {
+        let handler = test_handler();
+        let request = mk_request("science.substrate.probe", Some(serde_json::json!({})), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["capability"], "unknown");
+    }
+
+    // ───── ecology.* ─────
+
+    #[tokio::test]
+    async fn ecology_offload_queued_when_no_socket() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "lat": 45.0, "lon": -122.0 });
+        let request = mk_request("ecology.et0_fao56", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["method"], "ecology.et0_fao56");
+        assert_eq!(result["status"], "queued");
+        assert_eq!(result["domain"], "ecology");
+        assert!(result.get("available_methods").is_some());
+        assert!(result.get("routing").is_some());
+    }
+
+    #[tokio::test]
+    async fn ecology_offload_without_params() {
+        let handler = test_handler();
+        let request = mk_request("ecology.water_balance", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["params_received"], false);
+    }
+
+    #[tokio::test]
+    async fn ecology_offload_multiple_methods() {
+        let handler = test_handler();
+        for method in [
+            "ecology.gdd",
+            "ecology.pedotransfer",
+            "ecology.spi_drought_index",
+            "ecology.bootstrap_ci",
+        ] {
+            let request = mk_request(method, None, 1);
+            let response = handler.handle_request(&request).await;
+            assert!(response.error.is_none(), "{method} should succeed");
+            let result = response.result.expect("result present");
+            assert_eq!(result["domain"], "ecology");
+        }
+    }
+
+    // ───── discovery.* ─────
+
+    #[tokio::test]
+    async fn discovery_primals_structure() {
+        let handler = test_handler();
+        let request = mk_request("discovery.primals", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("primals").is_some());
+        assert!(result.get("count").is_some());
+        assert!(result.get("socket_dir").is_some());
+        assert_eq!(result["domain"], "discovery");
+    }
+
+    #[tokio::test]
+    async fn discovery_primal_health_socket_not_found() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "name": "nonexistent_primal_xyz" });
+        let request = mk_request("discovery.primal_health", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["name"], "nonexistent_primal_xyz");
+        assert_eq!(result["healthy"], false);
+        assert!(result.get("reason").is_some());
+    }
+
+    #[tokio::test]
+    async fn discovery_primal_health_missing_name_defaults_unknown() {
+        let handler = test_handler();
+        let request = mk_request("discovery.primal_health", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["name"], "unknown");
+    }
+
+    #[tokio::test]
+    async fn discovery_direct_rpc_missing_name() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "method": "compute.health" });
+        let request = mk_request("discovery.direct_rpc", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("name"));
+    }
+
+    #[tokio::test]
+    async fn discovery_direct_rpc_missing_method() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "name": "airspring" });
+        let request = mk_request("discovery.direct_rpc", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("method"));
+    }
+
+    #[tokio::test]
+    async fn discovery_direct_rpc_socket_not_found() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "name": "nonexistent_primal_xyz",
+            "method": "compute.health"
+        });
+        let request = mk_request("discovery.direct_rpc", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+        assert!(err.message.contains("socket not found") || err.message.contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn discovery_topology_structure() {
+        let handler = test_handler();
+        let request = mk_request("discovery.topology", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("nodes").is_some());
+        assert!(result.get("self").is_some());
+        assert_eq!(result["protocol"], "JSON-RPC 2.0");
+        assert_eq!(result["domain"], "discovery");
+    }
+
+    // ───── deploy.* ─────
+
+    #[tokio::test]
+    async fn deploy_capability_call_missing_capability() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "method": "science.diversity" });
+        let request = mk_request("deploy.capability_call", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("capability"));
+    }
+
+    #[tokio::test]
+    async fn deploy_capability_call_missing_method() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "capability": "science.diversity" });
+        let request = mk_request("deploy.capability_call", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("method"));
+    }
+
+    #[tokio::test]
+    async fn deploy_capability_call_no_provider() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "capability": "nonexistent_capability_xyz",
+            "method": "science.diversity"
+        });
+        let request = mk_request("deploy.capability_call", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["status"], "no_provider");
+        assert!(result.get("note").is_some());
+    }
+
+    #[tokio::test]
+    async fn deploy_graph_status_structure() {
+        let handler = test_handler();
+        let request = mk_request("deploy.graph_status", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        let graphs = result.get("deploy_graphs").expect("deploy_graphs");
+        assert!(graphs.is_array());
+        assert!(!graphs.as_array().unwrap().is_empty());
+        assert_eq!(result["domain"], "deploy");
+    }
+
+    // ───── edge cases ─────
+
+    #[tokio::test]
+    async fn science_compute_submit_empty_inference_params() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "m", "prompt": "p", "params": {} }
+        });
+        let request = mk_request("science.compute.submit", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result.get("job_id").is_some());
+    }
+
+    #[tokio::test]
+    async fn science_substrate_probe_large_capability_name() {
+        let handler = test_handler();
+        let cap = "a".repeat(256);
+        let params = serde_json::json!({ "capability": cap });
+        let request = mk_request("science.substrate.probe", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["capability"], cap);
     }
 }

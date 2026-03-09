@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! OpenCL Backend Implementation
 //!
 //! Real GPU execution using OpenCL - works on NVIDIA, AMD, Intel

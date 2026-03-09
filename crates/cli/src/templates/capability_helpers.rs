@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-based template helpers
 //!
 //! This module provides helpers for migrating from hardcoded service names
 //! to capability-based service dependencies in templates.
 
 use std::collections::HashMap;
+use toadstool_common::interned_strings::runtime_types;
 #[allow(deprecated)]
-use toadstool_common::constants::ecosystem::well_known;
-use toadstool_common::constants::primal_identity::PRIMAL_NAME;
+use toadstool_common::interned_strings::{capabilities, primals};
 
 /// Map service names to their primary capabilities
 ///
@@ -15,12 +15,12 @@ use toadstool_common::constants::primal_identity::PRIMAL_NAME;
 /// service names and capability-based discovery.
 pub fn service_to_capability(service_name: &str) -> &'static str {
     match service_name.to_lowercase().as_str() {
-        s if s == well_known::BEARDOG => "pki",
-        s if s == well_known::SONGBIRD => "orchestration",
-        s if s == well_known::NESTGATE => "storage",
-        s if s == well_known::SQUIRREL => "ai",
-        s if s == PRIMAL_NAME => "compute:execution",
-        s if s == well_known::BIOMEOS => "os",
+        s if s == primals::BEARDOG => capabilities::PKI,
+        s if s == primals::SONGBIRD => capabilities::COORDINATION,
+        s if s == primals::NESTGATE => capabilities::STORAGE,
+        s if s == primals::SQUIRREL => capabilities::INTELLIGENCE,
+        s if s == primals::TOADSTOOL => capabilities::COMPUTE,
+        s if s == runtime_types::BIOMEOS => "os",
         _ => "unknown",
     }
 }
@@ -28,12 +28,12 @@ pub fn service_to_capability(service_name: &str) -> &'static str {
 /// Map capabilities to default service names (for backward compatibility)
 pub fn capability_to_service(capability: &str) -> &'static str {
     match capability {
-        "pki" => well_known::BEARDOG,
-        "orchestration" => well_known::SONGBIRD,
-        "storage" => well_known::NESTGATE,
-        "ai" => well_known::SQUIRREL,
-        "compute:execution" => PRIMAL_NAME,
-        "os" => well_known::BIOMEOS,
+        s if s == capabilities::PKI => primals::BEARDOG,
+        s if s == capabilities::COORDINATION => primals::SONGBIRD,
+        s if s == capabilities::STORAGE => primals::NESTGATE,
+        s if s == capabilities::INTELLIGENCE => primals::SQUIRREL,
+        s if s == capabilities::COMPUTE => primals::TOADSTOOL,
+        "os" => runtime_types::BIOMEOS,
         _ => "unknown",
     }
 }
@@ -68,12 +68,12 @@ pub fn capabilities_to_dependencies(capabilities: &[&str]) -> Vec<String> {
 /// Get all known capability mappings
 pub fn get_capability_mappings() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
-    map.insert(well_known::BEARDOG, "pki");
-    map.insert(well_known::SONGBIRD, "orchestration");
-    map.insert(well_known::NESTGATE, "storage");
-    map.insert(well_known::SQUIRREL, "ai");
-    map.insert(PRIMAL_NAME, "compute:execution");
-    map.insert(well_known::BIOMEOS, "os");
+    map.insert(primals::BEARDOG, capabilities::PKI);
+    map.insert(primals::SONGBIRD, capabilities::COORDINATION);
+    map.insert(primals::NESTGATE, capabilities::STORAGE);
+    map.insert(primals::SQUIRREL, capabilities::INTELLIGENCE);
+    map.insert(primals::TOADSTOOL, capabilities::COMPUTE);
+    map.insert(runtime_types::BIOMEOS, "os");
     map
 }
 
@@ -84,17 +84,17 @@ mod tests {
     #[test]
     fn test_service_to_capability() {
         assert_eq!(service_to_capability("beardog"), "pki");
-        assert_eq!(service_to_capability("songbird"), "orchestration");
+        assert_eq!(service_to_capability("songbird"), "coordination");
         assert_eq!(service_to_capability("nestgate"), "storage");
-        assert_eq!(service_to_capability("squirrel"), "ai");
+        assert_eq!(service_to_capability("squirrel"), "intelligence");
     }
 
     #[test]
     fn test_capability_to_service() {
         assert_eq!(capability_to_service("pki"), "beardog");
-        assert_eq!(capability_to_service("orchestration"), "songbird");
+        assert_eq!(capability_to_service("coordination"), "songbird");
         assert_eq!(capability_to_service("storage"), "nestgate");
-        assert_eq!(capability_to_service("ai"), "squirrel");
+        assert_eq!(capability_to_service("intelligence"), "squirrel");
     }
 
     #[test]
@@ -111,7 +111,7 @@ mod tests {
     fn test_get_capability_mappings() {
         let mappings = get_capability_mappings();
         assert_eq!(mappings.get("beardog"), Some(&"pki"));
-        assert_eq!(mappings.get("songbird"), Some(&"orchestration"));
+        assert_eq!(mappings.get("songbird"), Some(&"coordination"));
         assert!(mappings.len() >= 6);
     }
 }

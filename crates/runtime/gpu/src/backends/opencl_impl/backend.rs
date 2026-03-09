@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! OpenCL Backend - Core device discovery, creation, and execution
 //!
 //! Handles platform/device enumeration, context creation, program compilation,

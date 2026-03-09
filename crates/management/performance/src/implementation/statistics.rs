@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Metrics storage, cleanup, and model updates.
 //!
 //! Handles metrics history retention, runtime statistics aggregation,

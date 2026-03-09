@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 9, 2026 -- S136 Comprehensive Audit + Unsafe Hardening
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy pedantic | 19,840+ tests (0 failures) | ~86% line coverage (121K) | 85+ JSON-RPC methods | CI pedantic gate | All unsafe justified + `deny(unsafe_op_in_unsafe_fn)` on akida-driver | `#[expect]` evolution | 1 C/FFI dep remaining (sysinfo); notify removed S134
-**Latest**: S136 — Comprehensive audit (zero production mocks, zero hardcoded primal names, all unsafe documented). `deny(unsafe_op_in_unsafe_fn)` on akida-driver. Well-known hosts to constants. coralReef Iteration 20 tracked. S135 — groundSpring V100 absorption. S134 — BearDog crypto delegation enforced.
+**Updated**: March 9, 2026 -- S138 Deep Debt Audit & Evolution + Coverage Push
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic | 19,900+ tests (0 failures) | 83.04% line coverage (171K llvm-cov verified) | 85+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs
+**Latest**: S138 — Deep debt execution: +126 tests, license alignment to AGPL-3.0-only, 62 allow entries removed, 19 clone reductions, hardcoding evolution to interned_strings, llvm-cov verified 83.04%. S137 — sysinfo eliminated (toadstool-sysmon pure Rust). S136 — Comprehensive audit. S135 — groundSpring V100. S134 — BearDog crypto delegation.
 
 ---
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Server test fixtures for integration testing
 //!
 //! Test fixtures may use `expect()` for setup operations, as test setup

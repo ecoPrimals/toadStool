@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for `SecurityClient` (`beardog_integration/client_evolved.rs`) - coverage target 90%
 //!
 //! Tests encrypt, decrypt, sign, verify, `validate_token`, `generate_key`, `delete_key`,

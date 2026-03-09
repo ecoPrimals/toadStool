@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["ToadStool Contributors"]
 description = "Reservoir computing research for Akida neuromorphic hardware"
 license.workspace = true
-repository = "https://github.com/ecoPrimals/toadStool"
+repository.workspace = true
 keywords = ["neuromorphic", "reservoir", "akida", "research"]
 categories = ["science", "hardware-support"]
 

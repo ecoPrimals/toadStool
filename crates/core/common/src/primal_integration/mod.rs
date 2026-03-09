@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Inter-Primal Integration Discovery
 //!
 //! Runtime discovery of ecoPrimal services by capability rather than by primal name.

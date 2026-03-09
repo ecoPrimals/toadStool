@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::hash::Hash;
 use std::str::FromStr;

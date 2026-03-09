@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Configuration constants for ToadStool
 //!
 //! # ⚠️ DEPRECATION NOTICE
@@ -69,27 +69,33 @@ pub mod ports {
             Hardcoded primal names violate self-knowledge principle. See module docs."
 )]
 pub mod primals {
+    #[allow(deprecated)]
+    use toadstool_common::interned_strings::primals as canonical;
+
     /// Songbird service mesh identifier
     /// **DEPRECATED**: Discover coordinator by capability, not hardcoded name
-    pub const SONGBIRD: &str = "songbird";
+    #[allow(deprecated)]
+    pub const SONGBIRD: &str = canonical::SONGBIRD;
 
-    /// BearDog security service identifier\
+    /// BearDog security service identifier
     /// **DEPRECATED**: Discover security service by capability, not hardcoded name
-    pub const BEARDOG: &str = "beardog";
+    #[allow(deprecated)]
+    pub const BEARDOG: &str = canonical::BEARDOG;
 
     /// NestGate storage service identifier
     /// **DEPRECATED**: Discover storage service by capability, not hardcoded name
-    pub const NESTGATE: &str = "nestgate";
+    #[allow(deprecated)]
+    pub const NESTGATE: &str = canonical::NESTGATE;
 
     /// ToadStool compute service identifier
     /// **This is self-knowledge** - the only canonical name for THIS primal.
-    /// Acceptable for identifying ourselves, socket paths, and IPC addressing.
-    /// For discovering OTHER primals, use capability-based discovery, not these constants.
-    pub const TOADSTOOL: &str = "toadstool";
+    #[allow(deprecated)]
+    pub const TOADSTOOL: &str = canonical::TOADSTOOL;
 
     /// Squirrel MCP platform identifier
     /// **DEPRECATED**: Discover MCP platform by capability, not hardcoded name
-    pub const SQUIRREL: &str = "squirrel";
+    #[allow(deprecated)]
+    pub const SQUIRREL: &str = canonical::SQUIRREL;
 
     /// All known primal identifiers
     /// **DEPRECATED**: Cannot enumerate dynamic ecosystem - discover at runtime

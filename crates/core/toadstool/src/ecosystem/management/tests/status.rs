@@ -1,7 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 
 use crate::ecosystem::management::ServiceManager;
-use crate::ecosystem::types::ServiceStatus;
 
 #[tokio::test]
 async fn test_initial_service_status_empty() {
@@ -14,7 +13,10 @@ async fn test_initial_service_status_empty() {
 async fn test_service_status_after_registration() {
     let manager = ServiceManager::new();
     let svc = super::create_test_service("status-test", true);
-    manager.register_service(svc).await.expect("registration should succeed");
+    manager
+        .register_service(svc)
+        .await
+        .expect("registration should succeed");
     let all = manager.get_all_services().await;
     assert_eq!(all.len(), 1);
 }

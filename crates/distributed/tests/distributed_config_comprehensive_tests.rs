@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Distributed Configuration types
 //!
 //! Week 17 Sprint 6: Distributed coordination and configuration tests

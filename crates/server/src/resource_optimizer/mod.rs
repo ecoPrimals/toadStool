@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Resource optimization for collaborative intelligence
 
 mod allocation;
@@ -98,7 +98,11 @@ impl ResourceOptimizer {
         let available_cpu_cores = (total_cpu_cores * 80) / 100;
 
         let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
-            total: 0, available: 0, used: 0, swap_total: 0, swap_free: 0,
+            total: 0,
+            available: 0,
+            used: 0,
+            swap_total: 0,
+            swap_free: 0,
         });
         let total_memory_bytes = mem.total;
         let available_memory_bytes = mem.available;

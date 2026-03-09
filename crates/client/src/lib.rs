@@ -1,20 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::unreadable_literal,
-    clippy::no_effect_underscore_binding,
-    clippy::similar_names,
-    clippy::doc_markdown,
-    clippy::unused_async,
-    clippy::match_same_arms,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    clippy::cast_lossless,
-    clippy::unnecessary_wraps,
-    clippy::bool_to_int_with_if
-)]
+#![allow(clippy::missing_errors_doc)]
 
 //! # ToadStool Client Library
 //!

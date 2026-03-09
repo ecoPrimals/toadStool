@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
 
 //! Security monitoring for ToadStool.
@@ -182,8 +182,7 @@ impl SecurityMonitor {
     /// Detects anomalies (CPU > 90 %, memory > 95 %) and raises events.
     #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // numeric conversions for metrics
     pub async fn sample_resources(&self) {
-        let cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
-            .unwrap_or(0.0);
+        let cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0);
         let (mem_used, mem_total) = toadstool_sysmon::memory_info()
             .map(|m| (m.used, m.total))
             .unwrap_or((0, 1));

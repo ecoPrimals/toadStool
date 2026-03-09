@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Type definitions for universal compute operations
 //!
 //! **Zero-Copy Optimization** (Phase 2): Federation types now use `Arc<str>`.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Songbird Integration - Universal Signal Coordination
 //!
 //! **DEPRECATED**: Use `coordination_integration` for vendor-agnostic coordination services.

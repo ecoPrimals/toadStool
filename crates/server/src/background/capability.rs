@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability heartbeat background task
 //!
 //! Sends periodic heartbeats to registered primals (Songbird, Squirrel)

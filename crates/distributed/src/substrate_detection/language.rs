@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Language runtime detection (Python, Node, Java, Go, Rust).
 
 use super::probe;

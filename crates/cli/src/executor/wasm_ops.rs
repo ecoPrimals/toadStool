@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! WASM Loading and Execution Operations
 //!
 //! This module contains WASM-specific operations:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Microcontroller Platform Support
 //!
 //! This platform is discovered at runtime by probing hardware capabilities.

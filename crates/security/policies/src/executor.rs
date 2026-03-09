@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Policy action execution
 //!
 //! This module handles the execution of policy actions, including resource limits,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Runtime type selection and engine registration.
 //!
 //! Parses runtime hints, infers runtime from workload spec, and registers

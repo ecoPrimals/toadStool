@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Dashboard data collection and aggregation
 
 #[cfg(unix)]
@@ -159,8 +159,7 @@ pub fn collect_resource_usage() -> Result<SystemResourceUsage> {
         toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(100)).unwrap_or(0.0),
     );
 
-    let mem = toadstool_sysmon::memory_info()
-        .map_err(|e| crate::CliError::Other(e.to_string()))?;
+    let mem = toadstool_sysmon::memory_info().map_err(|e| crate::CliError::Other(e.to_string()))?;
     let memory_total_gb = mem.total as f64 / 1_073_741_824.0;
     let memory_used_gb = mem.used as f64 / 1_073_741_824.0;
 

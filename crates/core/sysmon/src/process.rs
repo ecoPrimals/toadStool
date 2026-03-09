@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Process monitoring via `/proc/[pid]/stat` and `/proc/[pid]/status`.
 
 use crate::error::{Result, SysmonError};
@@ -46,8 +46,7 @@ pub fn process_info(pid: u32) -> Result<Option<ProcessInfo>> {
 ///
 /// Returns an error if `/proc` cannot be read.
 pub fn process_count() -> Result<usize> {
-    let entries = std::fs::read_dir("/proc")
-        .map_err(|e| SysmonError::new("/proc", e))?;
+    let entries = std::fs::read_dir("/proc").map_err(|e| SysmonError::new("/proc", e))?;
     let count = entries
         .filter_map(std::result::Result::ok)
         .filter(|e| {
@@ -67,14 +66,15 @@ pub fn process_count() -> Result<usize> {
 ///
 /// Returns an error if `/proc` cannot be read.
 pub fn all_processes() -> Result<Vec<ProcessInfo>> {
-    let entries = std::fs::read_dir("/proc")
-        .map_err(|e| SysmonError::new("/proc", e))?;
+    let entries = std::fs::read_dir("/proc").map_err(|e| SysmonError::new("/proc", e))?;
     let boot_time = boot_time_secs()?;
     let mut procs = Vec::new();
 
     for entry in entries.filter_map(std::result::Result::ok) {
         let name = entry.file_name();
-        let Some(name_str) = name.to_str() else { continue };
+        let Some(name_str) = name.to_str() else {
+            continue;
+        };
         if !name_str.bytes().all(|b| b.is_ascii_digit()) {
             continue;
         }
@@ -84,7 +84,9 @@ pub fn all_processes() -> Result<Vec<ProcessInfo>> {
         };
 
         let stat_path = format!("/proc/{pid}/stat");
-        let Ok(stat_content) = std::fs::read_to_string(&stat_path) else { continue };
+        let Ok(stat_content) = std::fs::read_to_string(&stat_path) else {
+            continue;
+        };
 
         let status_path = format!("/proc/{pid}/status");
         let rss_bytes = std::fs::read_to_string(&status_path)
@@ -166,8 +168,8 @@ fn parse_vm_rss(content: &str) -> u64 {
 
 /// Boot time in seconds since epoch, from `/proc/stat` `btime` line.
 fn boot_time_secs() -> Result<u64> {
-    let content = std::fs::read_to_string("/proc/stat")
-        .map_err(|e| SysmonError::new("/proc/stat", e))?;
+    let content =
+        std::fs::read_to_string("/proc/stat").map_err(|e| SysmonError::new("/proc/stat", e))?;
     for line in content.lines() {
         if let Some(val) = line.strip_prefix("btime ") {
             return Ok(val.trim().parse().unwrap_or(0));
@@ -224,5 +226,64 @@ Threads: 1
             procs.iter().any(|p| p.pid == self_pid),
             "should include our own process"
         );
+    }
+
+    #[test]
+    fn test_parse_proc_stat_basic() {
+        // Format: pid (comm) state ppid ... utime stime ... starttime
+        // Fields 1-13 before utime, so utime=field 14 (index 11), stime=15 (12), starttime=22 (19)
+        let content = "12345 (test_process) R 1 12345 12345 0 -1 4194560 100 0 0 0 500 200 0 0 20 0 1 0 100000 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        let info = parse_proc_stat(content, 4096 * 1024, 1700000000); // rss 4MB, boot ~2023
+        assert!(info.is_some());
+        let info = info.unwrap();
+        assert_eq!(info.pid, 12345);
+        assert_eq!(info.name, "test_process");
+        assert_eq!(info.memory, 4096 * 1024);
+    }
+
+    #[test]
+    fn test_parse_proc_stat_comm_with_spaces() {
+        let content = "999 (process with spaces) R 1 999 999 0 -1 0 0 0 0 0 10 5 0 0 20 0 1 0 50000 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        let info = parse_proc_stat(content, 0, 1700000000);
+        assert!(info.is_some());
+        assert_eq!(info.unwrap().name, "process with spaces");
+    }
+
+    #[test]
+    fn test_parse_proc_stat_too_few_fields() {
+        // Need at least 20 fields after ); we provide 19
+        let content = "1 (init) S 0 1 1 0 -1 0 0 0 0 0 1 2 3 4 5 6 7 8";
+        let info = parse_proc_stat(content, 0, 1700000000);
+        assert!(info.is_none());
+    }
+
+    #[test]
+    fn test_parse_proc_stat_no_parens() {
+        let content = "12345 invalid R 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20";
+        let info = parse_proc_stat(content, 0, 1700000000);
+        assert!(info.is_none());
+    }
+
+    #[test]
+    fn test_parse_vm_rss_empty() {
+        assert_eq!(parse_vm_rss(""), 0);
+    }
+
+    #[test]
+    fn test_parse_vm_rss_no_vmrss() {
+        let content = "Name: test\nVmSize: 1000 kB\n";
+        assert_eq!(parse_vm_rss(content), 0);
+    }
+
+    #[test]
+    fn test_parse_vm_rss_malformed() {
+        let content = "VmRSS: abc kB\n";
+        assert_eq!(parse_vm_rss(content), 0);
+    }
+
+    #[test]
+    fn test_parse_vm_rss_zero() {
+        let content = "VmRSS:\t0 kB\n";
+        assert_eq!(parse_vm_rss(content), 0);
     }
 }

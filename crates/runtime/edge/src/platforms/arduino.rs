@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Arduino Platform Support
 //!
 //! Implementation of Arduino board support for ToadStool Edge Runtime.

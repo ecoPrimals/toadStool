@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive test coverage for runtime.rs `RuntimeSelectionStrategy`
 //!
 //! This test suite targets `RuntimeSelectionStrategy` defined in

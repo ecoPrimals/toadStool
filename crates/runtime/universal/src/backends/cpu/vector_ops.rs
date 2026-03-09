@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Vector Operations - Memory-Bound Pattern
 //!
 //! Operations with memory access patterns:

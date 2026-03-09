@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Adapter implementations for embedded systems
 //!
 //! This module contains the main adapter structs for 8-bit and 16-bit embedded systems.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Tests for capability-based primal discovery.
 #![allow(deprecated, clippy::await_holding_lock)]
 

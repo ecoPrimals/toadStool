@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Intent recognition for natural language configuration
 //!
 //! This module handles recognizing user intent from natural language descriptions

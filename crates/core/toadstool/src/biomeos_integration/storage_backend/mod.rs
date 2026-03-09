@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Storage backend traits and implementations for BiomeOS integration
 //!
 //! This module defines the trait interface for storage backends and provides

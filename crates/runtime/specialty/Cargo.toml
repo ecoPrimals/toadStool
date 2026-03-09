@@ -5,7 +5,7 @@ edition = "2021"
 description = "Specialty Hardware Runtime for ToadStool - Mainframes, embedded systems, industrial controllers, and exotic platforms"
 authors = ["ToadStool Team <team@toadstool.dev>"]
 license.workspace = true
-repository = "https://github.com/ecoPrimals/toadstool"
+repository.workspace = true
 categories = ["embedded", "hardware-support", "computation"]
 keywords = ["specialty", "mainframe", "embedded", "industrial", "universal-compute"]
 

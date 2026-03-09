@@ -8,7 +8,7 @@ categories = ["algorithms", "hardware-support", "science"]
 authors = ["ToadStool Team"]
 license.workspace = true
 description = "Adaptive optimization system for barraCuda GPU operations"
-repository = "https://github.com/ecoPrimals/toadStool"
+repository.workspace = true
 
 [dependencies]
 # Core dependencies

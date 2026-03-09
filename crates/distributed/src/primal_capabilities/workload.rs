@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Workload Execution
 //!
 //! Handles incoming workload requests from primals and executes them using the UniversalScheduler

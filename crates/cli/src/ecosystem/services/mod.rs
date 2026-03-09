@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! ⚠️ DEPRECATED MODULE - REMOVED
 //!
 //! **This module has been removed in favor of capability-based adapters.**

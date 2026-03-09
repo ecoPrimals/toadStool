@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Disk monitoring via `/proc/mounts` + `statvfs`.
 
 use crate::error::{Result, SysmonError};
@@ -52,8 +52,8 @@ const VIRTUAL_FILESYSTEMS: &[&str] = &[
 /// Returns an error if `/proc/mounts` cannot be read.
 #[cfg(target_os = "linux")]
 pub fn disk_usage() -> Result<Vec<DiskInfo>> {
-    let content = std::fs::read_to_string("/proc/mounts")
-        .map_err(|e| SysmonError::new("/proc/mounts", e))?;
+    let content =
+        std::fs::read_to_string("/proc/mounts").map_err(|e| SysmonError::new("/proc/mounts", e))?;
     let mut disks = Vec::new();
 
     for line in content.lines() {
@@ -101,6 +101,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_disk_usage_returns_results() {
         let disks = disk_usage().unwrap();
         // Should have at least root filesystem on any Linux system
@@ -114,6 +115,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_virtual_fs_excluded() {
         let disks = disk_usage().unwrap();
         for disk in &disks {
@@ -123,5 +125,26 @@ mod tests {
                 disk.filesystem
             );
         }
+    }
+
+    #[test]
+    #[cfg(not(target_os = "linux"))]
+    fn test_disk_usage_non_linux_returns_empty() {
+        let disks = disk_usage().unwrap();
+        assert!(disks.is_empty(), "non-Linux should return empty disk list");
+    }
+
+    #[test]
+    fn test_disk_usage_no_error() {
+        let result = disk_usage();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_disk_info_root_typically_present() {
+        let disks = disk_usage().unwrap();
+        let has_root = disks.iter().any(|d| d.mount_point == "/");
+        assert!(has_root, "root mount should typically be present on Linux");
     }
 }

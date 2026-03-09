@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive Ecosystem Coverage Tests - Zero to Hero
 //!
 //! Target: crates/core/toadstool/src/ecosystem.rs (643 lines)

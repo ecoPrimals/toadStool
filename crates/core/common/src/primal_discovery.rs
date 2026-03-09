@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Primal Discovery via Capabilities
 //!
 //! Each primal discovers others at runtime based on capabilities,

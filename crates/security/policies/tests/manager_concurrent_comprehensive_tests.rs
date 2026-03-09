@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive concurrent tests for `PolicyManager`
 //!
 //! ✅ MODERN CONCURRENT TESTING - No sleeps, no serial, fully event-driven

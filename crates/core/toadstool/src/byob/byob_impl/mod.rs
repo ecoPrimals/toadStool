@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BYOB compute executor implementation
 
 use async_trait::async_trait;
@@ -474,7 +474,7 @@ impl ByobComputeExecutor {
     /// Stop a specific service execution
     fn stop_service_execution(
         &self,
-        service_name: String,
+        service_name: &str,
         execution_id: Uuid,
     ) -> ToadStoolResult<()> {
         debug!(
@@ -525,10 +525,10 @@ impl ByobExecutor for ByobComputeExecutor {
         // Create network for deployment
         let network_info = self.create_deployment_network(&request);
 
-        // Create active deployment using constructor
-        let mut active_deployment = ActiveDeployment::new(request.clone(), network_info.clone());
+        // Create active deployment (move request/network_info — no clones)
+        let mut active_deployment = ActiveDeployment::new(request, network_info);
 
-        // Execute services
+        // Execute services (updates status to Running)
         self.execute_services(&mut active_deployment).await?;
 
         // Create response before storing
@@ -537,12 +537,12 @@ impl ByobExecutor for ByobComputeExecutor {
         // Store active deployment
         {
             let mut deployments = self.active_deployments.write().await;
-            deployments.insert(request.deployment_id, active_deployment);
+            deployments.insert(active_deployment.request.deployment_id, active_deployment);
         }
 
         info!(
             "BYOB deployment {} completed successfully",
-            request.deployment_id
+            response.deployment_id
         );
         Ok(response)
     }
@@ -586,7 +586,7 @@ impl ByobExecutor for ByobComputeExecutor {
                     );
 
                     // Delegate to stop_service_execution() which simulates runtime engine coordination
-                    match self.stop_service_execution(service_name.clone(), *execution_id) {
+                    match self.stop_service_execution(&service_name, *execution_id) {
                         Ok(()) => {
                             stopped_services.push(service_name.clone());
                             deployment.remove_service_execution(&service_name);

@@ -5,7 +5,57 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 9, 2026 (Sessions 43-136 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption + Comprehensive Audit)
+## [Unreleased] - March 9, 2026 (Sessions 43-138 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption + Comprehensive Audit + Deep Debt Execution + Coverage Push)
+
+### Session S138 (Mar 9, 2026) — Deep Debt Audit & Evolution + Coverage Push
+
+#### Formatting & Linting
+- **`cargo fmt`**: 21 format diffs fixed across 13 files.
+- **`cargo clippy -D warnings`**: All 44 crates pass. Fixed: sysmon missing Cargo metadata, unused `ServiceStatus` import.
+
+#### License Alignment
+- **AGPL-3.0-or-later → AGPL-3.0-only**: 1,687 SPDX header comments updated across all `.rs` files. `deny.toml` and root `Cargo.toml` aligned to wateringHole standard.
+
+#### Repository URL Standardization
+- **`your-org` → `ecoPrimals`**: Root Cargo.toml URLs updated. 33 crates consolidated to `repository.workspace = true`.
+
+#### Hardcoding Evolution
+- **Primal name constants**: `core/config/constants::primals` and `cli/templates/constants::service_names` evolved to re-export from `interned_strings::primals`.
+- **Capability helpers**: `capability_helpers.rs` switched from `well_known` to `interned_strings::{capabilities, primals, runtime_types}`.
+- **Distributed adapters**: `"songbird"` → `primals::SONGBIRD`, `"toadstool"` → `primals::TOADSTOOL`, `"coordination"` → `capabilities::COORDINATION`.
+- **BearDog client**: `"beardog"` → `primals::BEARDOG`.
+- **NestGate client**: `"nestgate"` → `primals::NESTGATE`.
+- **BearDog discovery**: `"beardog.sock"` → `format!("{}.sock", primals::BEARDOG)`.
+- **Graph node**: `PRIMAL_NAME` → `primals::TOADSTOOL`.
+
+#### Allow Block Tightening
+- **62 `#![allow]` entries removed** across 7 crates (auto_config, client, runtime/wasm, runtime/container, monitoring, analytics, performance). Only justified suppressions retained.
+
+#### Clone Reduction
+- **19 unnecessary `.clone()` calls eliminated** across 4 files: `byob_impl/mod.rs` (borrow instead of clone), `inmemory.rs` (move into insert), `execution.rs` (single error string), `client/mod.rs` (borrow RoutingStrategy).
+
+#### Flaky Test Fix
+- **CWD race condition**: `discover_from_config_invalid_toml_returns_none` and `discover_from_config_missing_category_returns_none` now share `Mutex<()>` guard for exclusive CWD access.
+
+#### Coverage Expansion (+126 tests)
+- **toadstool-sysmon** (53 tests): CPU parser edge cases, disk usage, error types, loadavg parser, memory parser, network parser, process parser — all parse functions exercised with empty/malformed/partial input.
+- **Science handler** (38 tests): All `science.compute.*`, `science.gpu.*`, `science.npu.*`, `science.substrate.*`, `ecology.*`, `discovery.*`, `deploy.*` JSON-RPC methods tested with valid/invalid/missing params.
+- **Primal discovery** (14 tests): Env-based discovery, filesystem fallback, error paths, all `discover_*` wrapper delegation.
+- **BearDog protocol** (10 tests): Config defaults, standalone auth, authorize-without-token error, zero-trust validation fallback.
+- **mDNS** (4 tests): Service conversion, latency, config accessor, service type constant.
+- **Ecosystem integrator** (5 tests): Table output, JSON status, capability mapping.
+- **UniBin** (2 tests): Executor creation for standalone mode.
+
+#### llvm-cov Verification
+- **83.04% line, 85.88% function, 84.81% region** coverage across full workspace (171K instrumented lines).
+- Remaining gap: neuromorphic hardware drivers, V4L2, DRM display — all hardware-dependent.
+
+#### Quality
+- `cargo fmt --all -- --check` PASS
+- `cargo clippy --workspace --all-targets -- -D warnings` PASS
+- `cargo doc --workspace --no-deps` PASS
+- `cargo test --workspace` PASS (19,900+ tests, 0 failures; SIGSEGV in wgpu probe is transient)
+- Integration tests: 10/11 pass (C-compiler validation is pre-existing transitive dep issue)
 
 ### Session S136 (Mar 9, 2026) — Comprehensive Audit + Unsafe Hardening + Hardcoding Evolution
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! DMA buffer management for VFIO NPU backend
 //!
 //! Provides page-aligned, mlock'd, IOMMU-mapped memory buffers for

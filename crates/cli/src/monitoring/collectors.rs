@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Metrics collectors - system, process, and network data collection
 
 use crate::Result;
@@ -38,8 +38,8 @@ impl MetricsCollector for SystemMetricsCollector {
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
 
-        let cpu_usage = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
-            .unwrap_or(0.0);
+        let cpu_usage =
+            toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0);
         metrics.push(Metric {
             name: "cpu_usage_percent".to_string(),
             value: MetricValue::Gauge(f64::from(cpu_usage)),

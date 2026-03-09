@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BiomeOS Storage Module Coverage Tests - November 7, 2025
 //!
 //! Target: Push `biomeos_integration/storage.rs` coverage toward 60%+

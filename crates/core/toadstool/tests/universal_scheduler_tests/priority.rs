@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Priority handling tests — all priority levels and ordering invariants.
 
 use std::sync::Arc;

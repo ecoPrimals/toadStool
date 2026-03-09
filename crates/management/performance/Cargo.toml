@@ -6,7 +6,7 @@ description = "Performance management and optimization for ToadStool"
 readme = "README.md"
 authors = ["ToadStool Project"]
 license.workspace = true
-repository = "https://github.com/toadstool-project/toadstool"
+repository.workspace = true
 keywords = ["performance", "optimization", "profiling", "benchmarking"]
 categories = ["development-tools::profiling"]
 

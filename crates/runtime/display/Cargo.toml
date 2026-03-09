@@ -2,7 +2,7 @@
 name = "toadstool-display"
 version = "0.1.0"
 edition = "2021"
-repository = "https://github.com/ecoPrimals/toadStool"
+repository.workspace = true
 authors = ["Toadstool Team"]
 description = "Display and input backend for ecoPrimals (drm/evdev use kernel FFI via libc)"
 license.workspace = true

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Protocol Structures
 //!
 //! This test suite provides extensive coverage of structure types used in protocol integration,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Akida Model Zoo CLI
 //!
 //! Manage Akida Model Zoo models - list, download, and validate.

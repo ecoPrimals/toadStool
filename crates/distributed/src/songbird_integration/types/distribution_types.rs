@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Metrics, job splitting, load estimation, and coordination types
 
 use uuid::Uuid;

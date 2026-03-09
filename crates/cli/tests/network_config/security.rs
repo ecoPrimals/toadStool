@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
         network_isolation: create_test_network_isolation_config(),
         audit_logging: create_test_audit_logging_config(),
     }

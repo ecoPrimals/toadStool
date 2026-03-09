@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Standard capability taxonomy
 //!
 //! Defines the standard capability identifiers used across the ecosystem.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Distributed Coordinator Executor Wrapper
 //!
 //! Integrates the `DistributedCoordinator` with the server's `WorkloadExecutor` trait.
@@ -128,7 +128,11 @@ impl WorkloadExecutor for CoordinatorExecutor {
             .unwrap_or(4);
 
         let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
-            total: 0, available: 0, used: 0, swap_total: 0, swap_free: 0,
+            total: 0,
+            available: 0,
+            used: 0,
+            swap_total: 0,
+            swap_free: 0,
         });
         let total_memory = mem.total;
         let available_memory = mem.available;

@@ -1,5 +1,5 @@
 #![allow(clippy::pedantic)]
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Coverage tests for crypto_integration/client.rs
 //!
 //! Tests CryptoServiceDiscovery, CryptoServiceClient creation, configuration,

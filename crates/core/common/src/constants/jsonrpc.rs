@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! JSON-RPC 2.0 protocol constants
 //!
 //! Standard JSON-RPC 2.0 error codes per specification:

@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Utility Operations
 //!
 //! Extension trait for utility helper methods.
 
+use crate::universal::types::{GpuInfo, HardwareInfo};
 use crate::Result;
 use std::collections::HashMap;
 use std::future::Future;
-use crate::universal::types::{GpuInfo, HardwareInfo};
 use toadstool_distributed::substrate_detection::PlatformType;
 
 /// Utility operations trait

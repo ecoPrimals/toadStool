@@ -1,7 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Storage client implementation using capability-based discovery
 //!
 //! **TRUE PRIMAL**: Self-knowledge only - discovers storage via capabilities!
+#![allow(deprecated)] // primals::NESTGATE for backward-compat service name fallback
+
 //!
 //! ## Philosophy
 //!
@@ -24,10 +26,10 @@
 
 use tracing::{debug, info};
 
+#[allow(deprecated)]
+use toadstool_common::interned_strings::primals;
 use toadstool_common::primal_identity::{Capability, StorageCapability};
 use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
-#[allow(deprecated)] // NESTGATE constant deprecated; migration in progress
-use toadstool_config::constants::primals::NESTGATE;
 
 use crate::config::NestGateConfig;
 use crate::types::{NestGateError, NestGateResult};
@@ -171,8 +173,7 @@ impl StorageClient {
         let service_name = service_name.unwrap_or_else(|| {
             // Fallback for backward compatibility
             // In production, prefer using discover() which provides the service name
-            #[allow(deprecated)] // Service name fallback deprecated; migration in progress
-            NESTGATE.to_string()
+            primals::NESTGATE.to_string()
         });
 
         let socket_path =

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Production Hardening Module Coverage Tests - November 7, 2025
 //!
 //! Target: Final push to cross 58% overall coverage threshold

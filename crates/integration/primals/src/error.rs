@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Primal integration error types
 //!
 //! This module defines errors for integrating with ecosystem primals (Songbird, BearDog, etc.).

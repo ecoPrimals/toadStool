@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // agent_backend_evolved.rs - Capability-based agent deployment backend
 //
 // DEEP DEBT EVOLUTION: Discovers AI/agent providers by capability, not by name.

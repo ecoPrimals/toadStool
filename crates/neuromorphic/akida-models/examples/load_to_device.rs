@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Example: Load model to Akida device
 //!
 //! Demonstrates the complete workflow of loading a parsed model to hardware.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Error extensions and wrappers
 //!
 //! This module provides extensions like `ToadStoolErrorWithCode` that add

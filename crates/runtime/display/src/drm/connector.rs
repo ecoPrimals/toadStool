@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! DRM connector enumeration and mode discovery.
 //!
 //! Discovers physical display connectors (HDMI, `DisplayPort`, etc.) and their

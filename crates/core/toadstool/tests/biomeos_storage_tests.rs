@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Tests for biomeOS storage integration.
 //!
 //! All configs use capability-based discovery: no hardcoded primal endpoints.

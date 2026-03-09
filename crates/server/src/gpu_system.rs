@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! GPU System Query Helpers
 //!
 //! Standalone functions for querying GPU devices, memory, and available backends.

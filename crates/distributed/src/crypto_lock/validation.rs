@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Cryptographic validation and verification for crypto lock system
 //!
 //! **Deep Debt Evolution**: Now capability-based via Universal Adapter!

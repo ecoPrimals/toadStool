@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Graph node types for workflow representation
 //!
 //! This module contains types for representing individual nodes in a workflow graph,
 //! including resource requirements and a fluent builder pattern.
+#![allow(deprecated)] // primals::TOADSTOOL for self-identification default
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -10,7 +11,8 @@ use std::time::Duration;
 use toadstool::resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
 };
-use toadstool_common::constants::PRIMAL_NAME;
+#[allow(deprecated)]
+use toadstool_common::interned_strings::primals;
 
 /// A node in the execution graph representing a workload unit
 ///
@@ -54,7 +56,7 @@ pub struct GraphNode {
 }
 
 fn default_primal() -> String {
-    PRIMAL_NAME.to_string()
+    primals::TOADSTOOL.to_string()
 }
 
 fn serialize_duration<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
@@ -126,7 +128,7 @@ impl GraphNode {
     pub fn simple(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
-            primal: PRIMAL_NAME.to_string(),
+            primal: primals::TOADSTOOL.to_string(),
             operation: operation.into(),
             requirements: NodeResourceRequirements::default(),
             duration: None,
@@ -157,7 +159,7 @@ impl GraphNodeBuilder {
     pub fn new(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
-            primal: PRIMAL_NAME.to_string(),
+            primal: primals::TOADSTOOL.to_string(),
             operation: operation.into(),
             cpu_cores: None,
             memory_bytes: None,

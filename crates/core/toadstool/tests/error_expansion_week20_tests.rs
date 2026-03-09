@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Error module expansion tests - Week 20
 //!
 //! Target: Increase error.rs coverage from 90.64% → 95%+

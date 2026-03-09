@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! End-to-end integration tests for AI/ML and CUDA workload routing
 //!
 //! These tests validate the entire flow from workload specification through

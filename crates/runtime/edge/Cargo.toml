@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["ToadStool Team"]
 description = "Edge/IoT runtime engine for ToadStool Universal Compute Platform"
 license.workspace = true
-repository = "https://github.com/toadstool-platform/toadstool"
+repository.workspace = true
 
 [dependencies]
 # Core dependencies

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Universal Compute Platform
 //!
 //! Week 18 Sprint 8: Universal compute types and functionality tests

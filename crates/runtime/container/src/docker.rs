@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Docker-specific operations for the container runtime engine
 //!
 //! Client creation, image management, container execution, and cleanup.

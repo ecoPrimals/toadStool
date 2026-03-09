@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Core handlers for JSON-RPC: health, version, capabilities, GPU info.
 //!
 //! Provides health checks, version information, capability discovery,

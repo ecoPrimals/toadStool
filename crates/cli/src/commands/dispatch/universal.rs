@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Universal compute command handlers
 //!
 //! Detect, Benchmark, Migrate, Federate - universal compute substrate operations.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Chaos Engineering Infrastructure
 //!
 //! Real chaos testing infrastructure for validating ToadStool resilience.

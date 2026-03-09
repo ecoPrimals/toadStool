@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Stop operations: biome shutdown, process termination, data purge
 
 use std::time::Duration;

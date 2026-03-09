@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Tests for akida-setup
 //!
 //! These tests verify the setup logic without requiring root or actual hardware.

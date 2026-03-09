@@ -1,12 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
 #![allow(
     clippy::missing_errors_doc,
-    clippy::unreadable_literal,
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    clippy::unused_async
+    clippy::cast_sign_loss
 )]
 
 //! `ToadStool` monitoring component

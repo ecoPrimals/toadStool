@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Reservoir generation for echo state networks
 //!
 //! Creates random, fixed-weight reservoirs with the echo state property.

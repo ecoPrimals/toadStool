@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
     config.standalone.max_queue_size = 100000;
 
     let coordinator = DistributedCoordinator::new(config).await;

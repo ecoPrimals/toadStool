@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Universal substrate for heterogeneous computing
 //!
 //! This module provides a unified interface for discovering and managing diverse computing

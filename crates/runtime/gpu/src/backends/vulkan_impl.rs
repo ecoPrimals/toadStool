@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Vulkan Compute Backend Implementation
 //!
 //! **Status**: ✅ Architecture finalized - delegates to wgpu for most use cases

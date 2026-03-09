@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! CPU as First-Class Compute Resource
 //!
 //! Treats CPU cores as a legitimate compute resource, not just a "fallback"
@@ -172,7 +172,9 @@ impl CpuComputeResource {
     }
 
     fn detect_ram_size() -> u64 {
-        toadstool_sysmon::memory_info().map(|m| m.total).unwrap_or(0)
+        toadstool_sysmon::memory_info()
+            .map(|m| m.total)
+            .unwrap_or(0)
     }
 
     /// Detect cache hierarchy

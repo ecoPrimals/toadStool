@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! CPU monitoring via `/proc/stat` and `/proc/cpuinfo`.
 
 use crate::error::{Result, SysmonError};
@@ -42,8 +42,8 @@ struct CpuTimes {
 
 impl CpuTimes {
     fn read() -> Result<Self> {
-        let content = std::fs::read_to_string("/proc/stat")
-            .map_err(|e| SysmonError::new("/proc/stat", e))?;
+        let content =
+            std::fs::read_to_string("/proc/stat").map_err(|e| SysmonError::new("/proc/stat", e))?;
         let mut per_cpu = Vec::new();
         for line in content.lines() {
             // Per-cpu lines: "cpu0 user nice system idle iowait irq softirq steal ..."
@@ -56,13 +56,16 @@ impl CpuTimes {
     }
 
     fn global_usage_since(&self, prev: &Self) -> f32 {
-        let (total_busy, total_idle) = self
-            .per_cpu
-            .iter()
-            .zip(&prev.per_cpu)
-            .fold((0u64, 0u64), |(b, i), (cur, prv)| {
-                (b + cur.0.saturating_sub(prv.0), i + cur.1.saturating_sub(prv.1))
-            });
+        let (total_busy, total_idle) =
+            self.per_cpu
+                .iter()
+                .zip(&prev.per_cpu)
+                .fold((0u64, 0u64), |(b, i), (cur, prv)| {
+                    (
+                        b + cur.0.saturating_sub(prv.0),
+                        i + cur.1.saturating_sub(prv.1),
+                    )
+                });
         let total = total_busy + total_idle;
         if total == 0 {
             return 0.0;
@@ -98,7 +101,12 @@ impl CpuTimes {
 
 fn parse_cpu_line(line: &str) -> (u64, u64) {
     let mut fields = line.split_whitespace().skip(1); // skip "cpuN"
-    let mut next = || fields.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+    let mut next = || {
+        fields
+            .next()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
     let user = next();
     let nice = next();
     let system = next();
@@ -171,5 +179,56 @@ mod tests {
         let (busy, idle) = parse_cpu_line("cpu0 1000 200 300 4000 100 50 25 10 0 0");
         assert_eq!(busy, 1000 + 200 + 300 + 50 + 25 + 10);
         assert_eq!(idle, 4000 + 100);
+    }
+
+    #[test]
+    fn test_parse_cpu_line_minimal_fields() {
+        // Only user, nice, system, idle - rest default to 0
+        let (busy, idle) = parse_cpu_line("cpu1 10 0 5 100");
+        assert_eq!(busy, 15); // user(10) + nice(0) + system(5), irq/softirq/steal = 0
+        assert_eq!(idle, 100); // idle only, iowait = 0
+    }
+
+    #[test]
+    fn test_parse_cpu_line_empty_after_prefix() {
+        let (busy, idle) = parse_cpu_line("cpu2");
+        assert_eq!(busy, 0);
+        assert_eq!(idle, 0);
+    }
+
+    #[test]
+    fn test_parse_cpu_line_malformed_numbers() {
+        // Non-numeric fields parse as 0 via unwrap_or(0)
+        let (busy, idle) = parse_cpu_line("cpu3 abc def xyz 1000 100 50 25 10 0 0");
+        // user=0, nice=0, system=0, idle=1000, iowait=100, irq=50, softirq=25, steal=10
+        assert_eq!(busy, 50 + 25 + 10); // irq + softirq + steal
+        assert_eq!(idle, 1000 + 100);
+    }
+
+    #[test]
+    fn test_parse_cpu_line_extra_fields_ignored() {
+        let (busy, idle) = parse_cpu_line("cpu4 1 2 3 4 5 6 7 8 9 10 11 12");
+        assert_eq!(busy, 1 + 2 + 3 + 6 + 7 + 8);
+        assert_eq!(idle, 4 + 5);
+    }
+
+    #[test]
+    fn test_cpu_brand_contains_sane_chars() {
+        let brand = cpu_brand().unwrap();
+        assert!(!brand.is_empty());
+        assert!(brand.chars().all(|c| c.is_ascii() || !c.is_control()));
+    }
+
+    #[test]
+    fn test_per_cpu_usage_in_range() {
+        let usages = per_cpu_usage(Duration::from_millis(50)).unwrap();
+        for (i, &u) in usages.iter().enumerate() {
+            assert!(
+                (0.0..=100.0).contains(&u),
+                "CPU {} usage {} out of range",
+                i,
+                u
+            );
+        }
     }
 }

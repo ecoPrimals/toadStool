@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Graph edge types for workflow dependencies
 
 use serde::{Deserialize, Serialize};

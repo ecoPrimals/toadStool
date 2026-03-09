@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Discovery Integration Tests
 //!
 //! Comprehensive tests for mDNS/DNS-SD discovery system and capability-based service discovery.

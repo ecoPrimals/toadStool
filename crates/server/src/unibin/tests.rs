@@ -1,8 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! UniBin tests
+//!
+//! Covers configuration/parsing paths, validation, and logic that does not
+//! require actual network binding.
 
 use super::execution::{
-    is_platform_constraint_str, is_selinux_enforcing, write_tcp_discovery_file,
+    create_executor, is_platform_constraint_str, is_selinux_enforcing, write_tcp_discovery_file,
 };
 use super::format::{ensure_biomeos_directory, get_socket_path, socket_filename_for_family};
 use super::*;
@@ -369,4 +372,50 @@ fn get_socket_path_xdg_runtime_dir_fallback() {
             assert!(path.parent().unwrap().exists());
         },
     );
+}
+
+// ── create_executor (standalone mode, no network) ────────────────────────────
+
+#[test]
+fn create_executor_standalone_mode() {
+    temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = create_executor("test-family").await;
+                assert!(
+                    result.is_ok(),
+                    "create_executor should succeed in standalone mode"
+                );
+                let executor = result.unwrap();
+                assert!(std::sync::Arc::strong_count(&executor) >= 1);
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
+}
+
+#[test]
+fn create_executor_standalone_mode_true_lowercase() {
+    temp_env::with_var("TOADSTOOL_STANDALONE", Some("true"), || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = create_executor("default").await;
+                assert!(
+                    result.is_ok(),
+                    "TOADSTOOL_STANDALONE=true should use standalone"
+                );
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }

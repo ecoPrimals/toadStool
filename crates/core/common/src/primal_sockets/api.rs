@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Public API - thin wrappers with single env snapshot at call site
 
 use std::path::PathBuf;

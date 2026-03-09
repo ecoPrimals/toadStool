@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Pure RPC Types for ToadStool Server
 //!
 //! **CONSOLIDATED**: Re-exports from `toadstool_integration_protocols::tarpc_service`

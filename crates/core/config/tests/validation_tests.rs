@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for configuration validation
 //!
 //! Coverage expansion: validation.rs had ZERO test coverage (346 lines, 40+ validations)

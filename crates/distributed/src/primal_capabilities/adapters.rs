@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Primal Adapters
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
-#![allow(deprecated)] // get_songbird_socket_path: intentional use during capability-discovery migration
+#![allow(deprecated)] // primals module deprecated; intentional use during capability-discovery migration
 
 use async_trait::async_trait;
-#[allow(deprecated)] // Protocol compatibility: primal_name in adapter
-use toadstool_common::constants::ecosystem::well_known::SONGBIRD;
+#[allow(deprecated)]
+use toadstool_common::interned_strings::{capabilities, primals};
 // No longer using reqwest - using unix sockets (pure Rust!)
 use serde::{Deserialize, Serialize};
 
@@ -71,8 +71,9 @@ impl SongbirdAdapter {
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
     pub fn new(songbird_endpoint: &str) -> Result<Self, DistributedError> {
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_capability("coordination");
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
+            capabilities::COORDINATION,
+        );
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
@@ -92,8 +93,9 @@ impl SongbirdAdapter {
         songbird_endpoint: &str,
         toadstool_endpoint: String,
     ) -> Result<Self, DistributedError> {
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_capability("coordination");
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
+            capabilities::COORDINATION,
+        );
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
@@ -109,7 +111,7 @@ impl SongbirdAdapter {
 #[async_trait]
 impl PrimalAdapter for SongbirdAdapter {
     fn primal_name(&self) -> &str {
-        SONGBIRD
+        primals::SONGBIRD
     }
 
     fn endpoint(&self) -> &str {
@@ -122,7 +124,7 @@ impl PrimalAdapter for SongbirdAdapter {
     ) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let registration = SongbirdRegistrationRequest {
-            service_id: "toadstool".to_string(),
+            service_id: primals::TOADSTOOL.to_string(),
             service_endpoint: self.toadstool_endpoint.clone(),
             capabilities: capabilities
                 .iter()
@@ -163,7 +165,7 @@ impl PrimalAdapter for SongbirdAdapter {
     async fn send_heartbeat(&self) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let heartbeat = SongbirdHeartbeat {
-            service_id: "toadstool".to_string(),
+            service_id: primals::TOADSTOOL.to_string(),
             timestamp: std::time::SystemTime::now(),
             status: "healthy".to_string(),
         };
@@ -189,7 +191,7 @@ impl PrimalAdapter for SongbirdAdapter {
     ) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let update = SongbirdCapabilityUpdate {
-            service_id: "toadstool".to_string(),
+            service_id: primals::TOADSTOOL.to_string(),
             capability_id: capability.id.clone(),
             available,
             timestamp: std::time::SystemTime::now(),
@@ -212,7 +214,7 @@ impl PrimalAdapter for SongbirdAdapter {
     async fn deregister(&self) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let request = SongbirdDeregisterRequest {
-            service_id: "toadstool".to_string(),
+            service_id: primals::TOADSTOOL.to_string(),
         };
 
         let params = serde_json::to_value(&request)?;

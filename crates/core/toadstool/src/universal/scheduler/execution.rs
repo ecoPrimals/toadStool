@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Job execution backends for UniversalScheduler
 //!
 //! Handles execution routing for Native, WASM, Primal, and BiomeOS job types.
@@ -239,16 +239,15 @@ impl UniversalScheduler {
                     let duration = start.elapsed();
                     let error_msg = format!("Failed to spawn '{executable}': {e}");
                     warn!("{}", error_msg);
-                    let error_for_stderr = error_msg.clone();
                     Ok(ExecutionResponse {
                         execution_id,
                         status: crate::execution::ExecutionStatus::Failed {
-                            error: error_msg.into(),
+                            error: error_msg.clone().into(),
                         },
                         output: crate::execution::ExecutionOutput {
                             data: bytes::Bytes::new(),
                             stdout: None,
-                            stderr: Some(error_for_stderr),
+                            stderr: Some(error_msg),
                             exit_code: Some(127),
                             format: Some("text/plain".to_string()),
                             result: HashMap::new(),
@@ -316,16 +315,15 @@ impl UniversalScheduler {
             module.len()
         );
         warn!("{}", error_msg);
-        let error_for_stderr = error_msg.clone();
         Ok(ExecutionResponse {
             execution_id: Uuid::new_v4(),
             status: crate::execution::ExecutionStatus::Failed {
-                error: error_msg.into(),
+                error: error_msg.clone().into(),
             },
             output: crate::execution::ExecutionOutput {
                 data: bytes::Bytes::new(),
                 stdout: None,
-                stderr: Some(error_for_stderr),
+                stderr: Some(error_msg),
                 exit_code: Some(126), // Command not executable
                 format: Some("text/plain".to_string()),
                 result: HashMap::new(),
@@ -422,16 +420,15 @@ impl UniversalScheduler {
                     let duration = start_time.elapsed();
                     let error_msg = format!("Primal '{primal_type}' execution failed: {e}");
                     warn!("{}", error_msg);
-                    let error_for_stderr = error_msg.clone();
                     Ok(ExecutionResponse {
                         execution_id,
                         status: crate::execution::ExecutionStatus::Failed {
-                            error: error_msg.into(),
+                            error: error_msg.clone().into(),
                         },
                         output: crate::execution::ExecutionOutput {
                             data: bytes::Bytes::new(),
                             stdout: None,
-                            stderr: Some(error_for_stderr),
+                            stderr: Some(error_msg),
                             exit_code: Some(1),
                             format: Some("text/plain".to_string()),
                             result: HashMap::new(),
@@ -460,16 +457,15 @@ impl UniversalScheduler {
                 }
             );
             warn!("{}", error_msg);
-            let error_for_stderr = error_msg.clone();
             Ok(ExecutionResponse {
                 execution_id,
                 status: crate::execution::ExecutionStatus::Failed {
-                    error: error_msg.into(),
+                    error: error_msg.clone().into(),
                 },
                 output: crate::execution::ExecutionOutput {
                     data: bytes::Bytes::new(),
                     stdout: None,
-                    stderr: Some(error_for_stderr),
+                    stderr: Some(error_msg),
                     exit_code: Some(127),
                     format: Some("text/plain".to_string()),
                     result: HashMap::new(),
@@ -570,16 +566,15 @@ impl UniversalScheduler {
                     let duration = start_time.elapsed();
                     let error_msg = format!("BiomeOS execution failed for team '{team_id}': {e}");
                     warn!("{}", error_msg);
-                    let error_for_stderr = error_msg.clone();
                     Ok(ExecutionResponse {
                         execution_id,
                         status: crate::execution::ExecutionStatus::Failed {
-                            error: error_msg.into(),
+                            error: error_msg.clone().into(),
                         },
                         output: crate::execution::ExecutionOutput {
                             data: bytes::Bytes::new(),
                             stdout: None,
-                            stderr: Some(error_for_stderr),
+                            stderr: Some(error_msg),
                             exit_code: Some(1),
                             format: Some("text/plain".to_string()),
                             result: HashMap::new(),
@@ -598,16 +593,15 @@ impl UniversalScheduler {
                 "BiomeOS integration not available: no BiomeOS primal provider registered for team '{team_id}'"
             );
             warn!("{}", error_msg);
-            let error_for_stderr = error_msg.clone();
             Ok(ExecutionResponse {
                 execution_id,
                 status: crate::execution::ExecutionStatus::Failed {
-                    error: error_msg.into(),
+                    error: error_msg.clone().into(),
                 },
                 output: crate::execution::ExecutionOutput {
                     data: bytes::Bytes::new(),
                     stdout: None,
-                    stderr: Some(error_for_stderr),
+                    stderr: Some(error_msg),
                     exit_code: Some(127),
                     format: Some("text/plain".to_string()),
                     result: HashMap::new(),

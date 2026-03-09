@@ -1,24 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
 #![allow(
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
-    clippy::doc_markdown,
-    clippy::unused_async,
-    clippy::unnecessary_wraps,
-    clippy::match_same_arms,
-    clippy::struct_excessive_bools,
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::needless_pass_by_value,
-    clippy::return_self_not_must_use,
-    clippy::wildcard_imports,
-    clippy::no_effect_underscore_binding,
-    clippy::used_underscore_binding,
-    clippy::items_after_statements,
-    clippy::cast_sign_loss,
-    clippy::default_trait_access,
-    clippy::unreadable_literal
+    clippy::cast_sign_loss
 )]
 
 //! # `ToadStool` Container Runtime Engine

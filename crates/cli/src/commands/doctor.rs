@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Doctor command - System health check and diagnostics
 //!
 //! **UniBin Standard Compliant**: Diagnose ToadStool installation, runtime,

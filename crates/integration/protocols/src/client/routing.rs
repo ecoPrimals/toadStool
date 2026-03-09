@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Service and endpoint selection for message routing
 
 use crate::config::RoutingStrategy;
@@ -7,15 +7,15 @@ use crate::types::{
 };
 
 /// Select service based on routing strategy
-pub fn select_service(
-    services: &[ServiceInfo],
-    strategy: RoutingStrategy,
-) -> ProtocolResult<&ServiceInfo> {
+pub fn select_service<'a>(
+    services: &'a [ServiceInfo],
+    strategy: &RoutingStrategy,
+) -> ProtocolResult<&'a ServiceInfo> {
     if services.is_empty() {
         return Err(ProtocolError::Routing("No services available".to_string()));
     }
 
-    match strategy {
+    match *strategy {
         RoutingStrategy::RoundRobin | RoutingStrategy::Random => services
             .iter()
             .find(|s| s.health_status == HealthStatus::Healthy)

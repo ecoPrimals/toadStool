@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # ToadStool tarpc Server Implementation
 //!
 //! High-performance binary RPC server for primal-to-primal communication.

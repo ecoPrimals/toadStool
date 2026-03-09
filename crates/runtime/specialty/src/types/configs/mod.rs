@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Configuration type definitions for legacy systems
 //!
 //! This module organizes legacy system configuration types by domain:

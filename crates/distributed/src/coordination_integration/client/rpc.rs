@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Coordination service client - RPC operations over unix socket
 //!
 //! **Design**: Works with ANY coordination provider via unix sockets (pure Rust!).

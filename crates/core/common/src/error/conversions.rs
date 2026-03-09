@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Type conversions from standard library and external types
 //!
 //! This module provides `From` implementations to convert common error types

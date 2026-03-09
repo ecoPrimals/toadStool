@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Windows-specific sandbox implementation
 //!
 //! This module provides Windows-specific sandboxing functionality using

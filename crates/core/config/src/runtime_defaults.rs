@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Runtime configuration defaults and validation
 //!
 //! This module provides default values and validation for runtime configuration

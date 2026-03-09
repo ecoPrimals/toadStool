@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Probing utilities for substrate detection.
 //!
 //! Provides command existence checks, Python package detection, and OS introspection.

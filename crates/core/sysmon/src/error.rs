@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Error types for toadstool-sysmon.
 
 use std::fmt;
@@ -30,3 +30,33 @@ impl SysmonError {
 }
 
 pub type Result<T> = std::result::Result<T, SysmonError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+
+    #[test]
+    fn test_sysmon_error_display() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "No such file");
+        let err = SysmonError::new("/proc/foo", io_err);
+        let display = err.to_string();
+        assert!(display.contains("sysmon"));
+        assert!(display.contains("/proc/foo"));
+        assert!(display.contains("No such file"));
+    }
+
+    #[test]
+    fn test_sysmon_error_source() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "access denied");
+        let err = SysmonError::new("/proc/stat", io_err);
+        let source = err.source().expect("should have source");
+        assert_eq!(source.to_string(), "access denied");
+    }
+
+    #[test]
+    fn test_sysmon_error_is_std_error() {
+        fn assert_error<E: std::error::Error>() {}
+        assert_error::<SysmonError>();
+    }
+}

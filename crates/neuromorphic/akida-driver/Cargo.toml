@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["ToadStool Team"]
 description = "Pure Rust driver for BrainChip Akida neuromorphic processors"
 license.workspace = true
-repository = "https://github.com/easilylazy/toadstool"
+repository.workspace = true
 keywords = ["akida", "neuromorphic", "ai", "driver", "hardware"]
 categories = ["hardware-support", "science"]
 

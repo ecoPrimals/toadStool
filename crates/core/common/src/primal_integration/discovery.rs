@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-based service discovery.
 //!
 //! Discovers ecoPrimal services via env vars, mDNS, Kubernetes, Docker Compose, and registries.
@@ -511,5 +511,196 @@ fn try_discover_via_filesystem(capability: &str) -> Option<Vec<PrimalEndpoint>> 
         }])
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // SPDX-License-Identifier: AGPL-3.0-only
+    use super::*;
+
+    #[test]
+    fn discover_service_by_capability_env_uppercase_conversion() {
+        // capability "object-storage" -> TOADSTOOL_OBJECT-STORAGE_ENDPOINT
+        temp_env::with_var(
+            "TOADSTOOL_OBJECT-STORAGE_ENDPOINT",
+            Some("https://s3.example.com/bucket"),
+            || {
+                let result = discover_service_by_capability("object-storage");
+                assert!(result.is_ok());
+                let endpoints = result.unwrap();
+                assert_eq!(endpoints.len(), 1);
+                assert_eq!(endpoints[0].url, "https://s3.example.com/bucket");
+                assert_eq!(endpoints[0].service_id, "object-storage-env");
+            },
+        );
+    }
+
+    #[test]
+    fn discover_service_by_capability_generic_url_pattern() {
+        // TOADSTOOL_SERVICE_{CAPABILITY}_URL - capability uppercased, hyphens stay
+        temp_env::with_var(
+            "TOADSTOOL_SERVICE_OBJECT-STORAGE_URL",
+            Some("http://minio:9000"),
+            || {
+                let result = discover_service_by_capability("object-storage");
+                assert!(result.is_ok());
+                let endpoints = result.unwrap();
+                assert_eq!(endpoints[0].service_id, "object-storage-service");
+                assert_eq!(endpoints[0].url, "http://minio:9000");
+            },
+        );
+    }
+
+    #[test]
+    fn discover_via_filesystem_xdg_runtime_dir_fallback() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let biomeos_dir = dir.path().join("biomeos");
+        let capability_dir = biomeos_dir.join("coordination");
+        std::fs::create_dir_all(&capability_dir).expect("create dirs");
+
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_SERVICE_DIR", None::<&str>),
+                ("XDG_RUNTIME_DIR", Some(dir.path().to_str().unwrap())),
+            ],
+            || {
+                let result = discover_service_by_capability("coordination");
+                assert!(result.is_ok());
+                let endpoints = result.unwrap();
+                assert_eq!(endpoints.len(), 1);
+                assert_eq!(endpoints[0].service_id, "coordination-fs");
+                assert!(endpoints[0].url.starts_with("file://"));
+                assert!(endpoints[0].url.contains("coordination"));
+            },
+        );
+    }
+
+    #[test]
+    fn discover_service_capability_generic_url_underscore_capability() {
+        // TOADSTOOL_SERVICE_{CAP}_URL - "custom_cap" -> CUSTOM_CAP
+        temp_env::with_var(
+            "TOADSTOOL_SERVICE_CUSTOM_CAP_URL",
+            Some("http://custom:9999"),
+            || {
+                let result = discover_service_by_capability("custom_cap");
+                assert!(result.is_ok());
+                let endpoints = result.unwrap();
+                assert_eq!(endpoints[0].url, "http://custom:9999");
+            },
+        );
+    }
+
+    #[test]
+    fn discover_encryption_delegates_to_capability() {
+        temp_env::with_var(
+            "TOADSTOOL_ENCRYPTION_ENDPOINT",
+            Some("http://crypto:6060"),
+            || {
+                let result = discover_encryption_service();
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap()[0].url, "http://crypto:6060");
+            },
+        );
+    }
+
+    #[test]
+    fn discover_storage_delegates_to_capability() {
+        temp_env::with_var(
+            "TOADSTOOL_STORAGE_ENDPOINT",
+            Some("http://storage:8080"),
+            || {
+                let result = discover_storage_service();
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap()[0].url, "http://storage:8080");
+            },
+        );
+    }
+
+    #[test]
+    fn discover_coordination_delegates_to_capability() {
+        temp_env::with_var(
+            "TOADSTOOL_COORDINATION_ENDPOINT",
+            Some("http://coord:6061"),
+            || {
+                let result = discover_coordination_service();
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap()[0].url, "http://coord:6061");
+            },
+        );
+    }
+
+    #[test]
+    fn discover_mcp_delegates_to_capability() {
+        temp_env::with_var("TOADSTOOL_MCP_ENDPOINT", Some("http://mcp:6062"), || {
+            let result = discover_mcp_service();
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap()[0].url, "http://mcp:6062");
+        });
+    }
+
+    #[test]
+    fn discover_cache_delegates_to_capability() {
+        temp_env::with_var(
+            "TOADSTOOL_CACHE_ENDPOINT",
+            Some("redis://localhost:6379"),
+            || {
+                let result = discover_cache_service();
+                assert!(result.is_ok());
+            },
+        );
+    }
+
+    #[test]
+    fn discover_database_delegates_to_capability() {
+        temp_env::with_var(
+            "TOADSTOOL_DATABASE_ENDPOINT",
+            Some("postgres://localhost:5432"),
+            || {
+                let result = discover_database_service();
+                assert!(result.is_ok());
+            },
+        );
+    }
+
+    #[test]
+    fn discover_object_storage_delegates_to_capability() {
+        temp_env::with_var(
+            "TOADSTOOL_OBJECT-STORAGE_ENDPOINT",
+            Some("https://s3.local"),
+            || {
+                let result = discover_object_storage();
+                assert!(result.is_ok());
+            },
+        );
+    }
+
+    #[test]
+    fn no_service_found_error_format() {
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_UNKNOWN_CAP_XYZ_ENDPOINT", None::<&str>),
+                ("TOADSTOOL_SERVICE_UNKNOWN_CAP_XYZ_URL", None::<&str>),
+            ],
+            || {
+                let result = discover_service_by_capability("unknown-cap-xyz");
+                assert!(result.is_err());
+                let err = result.unwrap_err();
+                assert!(err.to_string().contains("unknown-cap-xyz"));
+                assert!(err.to_string().contains("No service found"));
+            },
+        );
+    }
+
+    #[test]
+    fn primal_endpoint_healthy_and_last_check() {
+        let endpoint = PrimalEndpoint {
+            service_id: "test".to_string(),
+            url: "http://test:80".to_string(),
+            capabilities: vec!["test".to_string()],
+            healthy: true,
+            last_check: std::time::SystemTime::now(),
+        };
+        assert!(endpoint.healthy);
     }
 }

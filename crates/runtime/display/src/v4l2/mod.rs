@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! V4L2 capture device support via `rustix` — zero C dependencies.
 //!
 //! Provides safe wrappers around `Video4Linux2` ioctl calls for reading frames

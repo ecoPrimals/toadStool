@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Universal compute runtime
 //!
 //! This module provides the main UniversalRuntime API that applications use.

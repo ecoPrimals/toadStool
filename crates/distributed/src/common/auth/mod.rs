@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Common Authentication Abstractions
 //!
 //! Capability-based authentication for inter-primal trust. Primals discover

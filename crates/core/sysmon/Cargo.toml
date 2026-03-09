@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: AGPL-3.0-only
 [package]
 name = "toadstool-sysmon"
 version.workspace = true
@@ -6,7 +6,11 @@ edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Pure Rust system monitoring via /proc — replaces sysinfo (C dependency)"
+readme = "README.md"
+keywords = ["sysmon", "monitoring", "proc", "pure-rust", "linux"]
+categories = ["os", "hardware-support"]
 
 [dependencies]
 

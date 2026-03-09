@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Network monitoring via `/proc/net/dev`.
 
 use crate::error::{Result, SysmonError};
@@ -85,5 +85,66 @@ wlan0:  5555555   30000    1    0    0     0          0         0   444444   150
     fn test_network_stats_runs() {
         // Just verify it doesn't error; not all systems have non-lo interfaces
         let _stats = network_stats().unwrap();
+    }
+
+    #[test]
+    fn test_parse_net_dev_empty() {
+        let ifaces = parse_net_dev("");
+        assert!(ifaces.is_empty());
+    }
+
+    #[test]
+    fn test_parse_net_dev_header_only() {
+        let content = "\
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+";
+        let ifaces = parse_net_dev(content);
+        assert!(ifaces.is_empty());
+    }
+
+    #[test]
+    fn test_parse_net_dev_lo_excluded() {
+        let content = "\
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 1234567   10000    0    0    0     0          0         0  1234567   10000    0    0    0     0       0          0
+";
+        let ifaces = parse_net_dev(content);
+        assert!(ifaces.is_empty(), "lo should be excluded");
+    }
+
+    #[test]
+    fn test_parse_net_dev_insufficient_fields() {
+        let content = "\
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+  eth0: 1 2 3 4 5 6 7 8 9
+";
+        let ifaces = parse_net_dev(content);
+        assert!(ifaces.is_empty(), "need at least 10 numeric fields");
+    }
+
+    #[test]
+    fn test_parse_net_dev_no_colon_skipped() {
+        let content = "\
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+  invalid_line_no_colon
+";
+        let ifaces = parse_net_dev(content);
+        assert!(ifaces.is_empty());
+    }
+
+    #[test]
+    fn test_parse_net_dev_malformed_numbers() {
+        let content = "\
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+  eth0: abc def ghi jkl mno pqr stu vwx 1000000 2000 0 0 0 0 0 0
+";
+        let ifaces = parse_net_dev(content);
+        // filter_map(|s| s.parse().ok()) skips non-numeric, so we may get fewer than 10 vals
+        assert!(ifaces.is_empty() || ifaces[0].received == 0);
     }
 }

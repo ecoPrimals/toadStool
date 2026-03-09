@@ -1,10 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
 #![allow(async_fn_in_trait)]
 #![allow(
-    clippy::doc_markdown,
     clippy::must_use_candidate,
-    clippy::struct_excessive_bools,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss

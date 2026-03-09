@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(
     clippy::pedantic,
     clippy::redundant_closure,
@@ -18,11 +18,13 @@
 //! Comprehensive coverage tests for discovery module
 //! Target: exercise all branches including error paths and edge cases.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use toadstool_cli::ecosystem::discovery::{
     discover_from_config, discover_from_environment, discover_service_by_capability, verify_service,
 };
+
+static CWD_LOCK: Mutex<()> = Mutex::new(());
 #[allow(deprecated)]
 use toadstool_cli::ecosystem::types::{EcosystemService, ServiceEndpoint, TrustLevel};
 
@@ -90,9 +92,6 @@ fn discover_from_config_no_config_returns_none() {
 
 #[test]
 fn discover_from_config_with_valid_config_in_cwd() {
-    use std::sync::Mutex;
-    static CWD_LOCK: Mutex<()> = Mutex::new(());
-
     let dir = tempfile::tempdir().expect("temp dir");
     let config_dir = dir.path().join(".toadstool");
     std::fs::create_dir_all(&config_dir).expect("create dir");
@@ -130,6 +129,7 @@ url = "http://127.0.0.1:8082"
 
 #[test]
 fn discover_from_config_missing_category_returns_none() {
+    let _guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempfile::tempdir().expect("temp dir");
     let config_dir = dir.path().join(".toadstool");
     std::fs::create_dir_all(&config_dir).expect("create dir");
@@ -152,6 +152,7 @@ url = "http://127.0.0.1:9876"
 
 #[test]
 fn discover_from_config_invalid_toml_returns_none() {
+    let _guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempfile::tempdir().expect("temp dir");
     let config_dir = dir.path().join(".toadstool");
     std::fs::create_dir_all(&config_dir).expect("create dir");

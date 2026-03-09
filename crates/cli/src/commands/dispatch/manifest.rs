@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Manifest command handlers
 //!
 //! Validate and Init - biome manifest validation and template generation.

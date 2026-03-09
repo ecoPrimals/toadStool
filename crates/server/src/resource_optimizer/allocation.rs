@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Allocation strategies: bottleneck identification and opportunity discovery
 
 use std::collections::HashMap;

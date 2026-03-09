@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(clippy::float_cmp)]
 //! Unit tests for policy action executor
 //! Target: crates/security/policies/src/executor.rs (2.31% coverage)

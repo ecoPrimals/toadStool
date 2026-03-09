@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 
 use crate::composition_constraints::{Constraint, ConstraintSatisfaction};
 use crate::fractal_integration::FractalRuntime;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Hardware Transport Layer — any hardware input to any hardware output.
 //!
 //! Defines the generic [`HardwareTransport`] trait that all physical I/O paths

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration tests for `SystemResourceMonitor`
 //!
 //! Tests actual function execution to increase coverage

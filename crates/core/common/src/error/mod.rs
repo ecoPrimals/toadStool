@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Unified Error System for ToadStool Platform
 //!
 //! This module provides a comprehensive, hierarchical error system for the entire ToadStool platform.

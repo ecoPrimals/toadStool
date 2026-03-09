@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! API types for ToadStool daemon HTTP API
 //!
 //! Request and response types for workload submission and management.

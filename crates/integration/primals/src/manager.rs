@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Primal Integration Manager and bootstrap logic.
 
 use std::collections::{HashMap, HashSet};

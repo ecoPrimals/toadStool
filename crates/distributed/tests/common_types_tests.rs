@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for common types (capacity, distribution, load balancing)
 
 #![allow(clippy::float_cmp, clippy::unreadable_literal)]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(clippy::expect_used, clippy::unused_async)] // expect() is idiomatic in tests
 //! Capability system tests
 //!

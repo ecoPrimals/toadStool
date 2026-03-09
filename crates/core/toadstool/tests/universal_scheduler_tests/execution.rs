@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Execution backend tests — Native, WASM, Primal, BiomeOS paths via `schedule_job`.
 
 use std::collections::HashMap;

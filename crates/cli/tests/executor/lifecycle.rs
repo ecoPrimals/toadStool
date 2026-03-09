@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Executor lifecycle tests
 //!
 //! Tests for executor creation, initialization, and basic lifecycle operations.

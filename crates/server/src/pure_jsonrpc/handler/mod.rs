@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! JSON-RPC request handler and method router
 //!
 //! Routes JSON-RPC 2.0 requests to the appropriate executor or job queue.

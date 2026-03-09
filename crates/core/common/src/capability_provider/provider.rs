@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability provider abstraction.
 //!
 //! Provider of a specific capability. Abstracts away which primal provides the capability.

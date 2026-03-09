@@ -1,8 +1,8 @@
 # Spring Absorption Tracker
 
-**Session**: S136 Comprehensive Audit + Unsafe Hardening (March 9, 2026)
-**ToadStool**: master, ~86% line coverage (517K lines, 1,868+ .rs files). 19,840+ tests, 0 failures. Clippy pedantic clean. `#[expect]` evolution (production code). coralReef shader proxy with capability-based discovery (live E2E on AMD). Cross-spring provenance tracking. All quality gates passing.
-**S136**: Comprehensive audit — zero production mocks, zero hardcoded primal names, all unsafe documented. `deny(unsafe_op_in_unsafe_fn)` on akida-driver. Well-known hosts to constants. coralReef Iteration 20 tracked. All 5 springs reviewed (hotSpring v0.6.24, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5). barraCuda 3-tier lean-out, 4 plasma shaders. No immediate toadStool code changes from springs.
+**Session**: S138 Deep Debt Audit & Evolution + Coverage Push (March 9, 2026)
+**ToadStool**: master, 83.04% line coverage (171K lines llvm-cov verified, 1,868+ .rs files). 19,900+ tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**S138**: Deep debt execution — +126 tests (sysmon 53, science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2). License alignment AGPL-3.0-only. 62 allow entries removed. 19 clone reductions. Hardcoding evolution to interned_strings. 7 stale TODO(D-PEDANTIC) removed. SPRING_ABSORPTION.md archived to fossil (superseded by this tracker).
 **S135**: groundSpring V100 absorption (SubstrateCapabilityKind::SovereignCompile). GPU f64 reduction smoke test. All hardcoded primal names evolved to interned_strings constants. precision_defaults module. Pre-existing debt fixes.
 **S134**: BearDog crypto delegation enforced (Node Atomic). `dev-crypto` feature gate. secure_enclave aes-gcm/getrandom removed. lifecycle_ops + management refactored.
 **S133**: Cross-spring absorption from all 5 springs (Mar 8 handoffs). Ada Lovelace `F64NativeNoSharedMem` reclassification (P0). `f64_zeros_risk` + `fused_ops_healthy()` canary on `GpuAdapterInfo`. 14 airSpring ecology JSON-RPC methods. NUCLEUS adaptive discovery pattern (groundSpring V99). Deploy graph routing (wetSpring V99). +20 semantic methods (71→91). biomeOS socket scan on startup.

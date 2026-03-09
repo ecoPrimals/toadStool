@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Cluster management endpoint handlers
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};

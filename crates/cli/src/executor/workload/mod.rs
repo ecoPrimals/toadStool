@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Direct workload execution without biome.yaml
 //!
 //! This module implements the `toadstool execute` command for running

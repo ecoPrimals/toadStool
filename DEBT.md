@@ -75,7 +75,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~86% line coverage** (121K production lines). 19,840+ tests passing. +33 V4L2/VFIO/testing tests (S132). Remaining gap: ~7,100 lines, hardware-dependent ioctl paths. Software coverage at ~90%. |
+| D-COV | Test coverage → 90% | Medium | **83.04% line coverage** (llvm-cov verified S138). 19,900+ tests. +126 new tests (S138: sysmon 53, science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Software-only coverage approaching 90%. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
 
@@ -102,9 +102,26 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | ID | Description | Status |
 |----|-------------|--------|
 | D-S46-001 | Conv2D/Pool WGSL shader evolution (stride/padding/channels/batch) | GPU shaders exist, lack full parameter support |
-| D-S18-003 | e2e, fhe, comprehensive pending integration tests | Require future APIs |
+| D-S18-003 | e2e, fhe, comprehensive pending integration tests | Chaos framework exists (`testing/src/chaos/`). Integration tests: 10/11 pass (S138). Pure-Rust C-compiler validation is pre-existing failure (transitive deps). |
 
 ---
+
+## Recently Resolved (S138 — Deep Debt Audit & Evolution — Mar 9, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| `cargo fmt` 21 diffs | All 13 files formatted (sysmon, cli, server, security, gpu) |
+| Clippy `-D warnings` fail | `toadstool-sysmon` missing Cargo metadata (repository, readme, keywords, categories) added. Unused `ServiceStatus` import removed. All 44 crates now pass `clippy -D warnings`. |
+| License alignment | `AGPL-3.0-or-later` → `AGPL-3.0-only` per wateringHole standard. 1,687 SPDX headers updated. `deny.toml` updated. |
+| Placeholder URLs | `your-org` → `ecoPrimals` in root Cargo.toml. 33 crates with divergent repository URLs consolidated to `repository.workspace = true`. |
+| Hardcoded primal names | `core/config/constants::primals` and `cli/templates/constants::service_names` evolved to re-export from `interned_strings::primals`. `capability_helpers`, `graph_node`, `beardog/discovery`, `nestgate/client`, `distributed/adapters` evolved to interned constants. |
+| Production unwrap() audit | Confirmed CLEAN: all 2,044 unwrap() calls are in test code, doc examples, or testing helpers. Zero production unwraps. |
+| `#![allow(...)]` tightening | 62 allow entries removed across 7 crates (auto_config 14→5, client 13→1, runtime/wasm 24→5, runtime/container 19→5, monitoring, analytics, performance). |
+| Clone reduction | 19 unnecessary `.clone()` calls removed across 4 files (borrow, move-instead-of-clone patterns). |
+| Unsafe code audit | Confirmed: all ~70 unsafe blocks in hardware drivers only (akida MMIO/VFIO, V4L2, GPU memory), all `// SAFETY:` documented. 36+ crates have `#![deny(unsafe_code)]`. |
+| Flaky test fix | `discover_from_config_invalid_toml_returns_none` CWD race condition fixed with shared `Mutex<()>` guard. |
+| Coverage expansion | +126 new tests: sysmon 53 (cpu, disk, error, loadavg, memory, network, process parsers), science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2. |
+| llvm-cov verified | 83.04% line, 85.88% function, 84.81% region coverage (full workspace). |
 
 ## Recently Resolved (S137 — sysinfo Eliminated / ecoBin v3.0 — Mar 9, 2026)
 

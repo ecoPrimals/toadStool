@@ -5,7 +5,7 @@ edition = "2021"
 description = "Advanced monitoring and analytics engine for ToadStool"
 readme = "README.md"
 license.workspace = true
-repository = "https://github.com/ecoPrimals/toadstool"
+repository.workspace = true
 keywords = ["analytics", "monitoring", "metrics", "observability"]
 categories = ["development-tools::profiling"]
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Connection establishment and Unix socket helpers for primal-to-primal IPC
 
 use serde_json::json;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Platform detection helpers
 //!
 //! CPU introspection, shell utilities, and OS-specific queries used by detection.

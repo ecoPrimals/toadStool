@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // async_trait is no longer needed since we re-export the trait from compat module
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

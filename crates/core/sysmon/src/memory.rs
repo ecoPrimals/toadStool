@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Memory monitoring via `/proc/meminfo`.
 
 use crate::error::{Result, SysmonError};
@@ -94,5 +94,41 @@ SwapFree:        4096000 kB
         assert_eq!(parse_kb_value("  12345 kB"), 12345 * 1024);
         assert_eq!(parse_kb_value("  0 kB"), 0);
         assert_eq!(parse_kb_value(""), 0);
+    }
+
+    #[test]
+    fn test_parse_kb_value_malformed() {
+        assert_eq!(parse_kb_value("abc kB"), 0);
+        assert_eq!(parse_kb_value("  xyz  kB"), 0);
+        assert_eq!(parse_kb_value("  12345"), 12345 * 1024); // unit optional
+    }
+
+    #[test]
+    fn test_parse_meminfo_empty() {
+        let info = parse_meminfo("");
+        assert_eq!(info.total, 0);
+        assert_eq!(info.available, 0);
+        assert_eq!(info.used, 0);
+        assert_eq!(info.swap_total, 0);
+        assert_eq!(info.swap_free, 0);
+    }
+
+    #[test]
+    fn test_parse_meminfo_partial() {
+        let content = "MemTotal:       1024 kB\n";
+        let info = parse_meminfo(content);
+        assert_eq!(info.total, 1024 * 1024);
+        assert_eq!(info.available, 0);
+        assert_eq!(info.used, 1024 * 1024);
+    }
+
+    #[test]
+    fn test_parse_meminfo_used_saturating_sub() {
+        let content = "\
+MemTotal:       1000 kB
+MemAvailable:   2000 kB
+";
+        let info = parse_meminfo(content);
+        assert_eq!(info.used, 0); // saturating_sub when available > total
     }
 }

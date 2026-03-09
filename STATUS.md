@@ -1,4 +1,4 @@
-# Status -- March 9, 2026 (S137 sysinfo Eliminated — ecoBin v3.0)
+# Status -- March 9, 2026 (S138 Deep Debt Audit & Evolution)
 
 ## Quality Gates
 
@@ -8,12 +8,12 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (in CI) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **19,840+ tests, 0 failures** (216+ intentional ignores for GPU hardware) |
-| `cargo llvm-cov` (excl GPU crates) | **~86% line** | 121K production lines. Software-only ~90%. Remaining gap: hardware-dependent ioctl code (V4L2/VFIO) |
+| `cargo test --workspace` | PASS | **19,900+ tests, 0 failures** (+126 S138; 216+ intentional ignores for GPU hardware) |
+| `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
-| License compliance | PASS | **AGPL-3.0-or-later: all Cargo.toml + all 2,780+ .rs files have SPDX headers** |
+| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 2,780+ .rs files have SPDX headers** (aligned to wateringHole S138) |
 | Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
 | Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
 | Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route |
@@ -40,7 +40,7 @@
 | Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
-| SPDX headers | **100%** — all .rs files have AGPL-3.0-or-later (S90) |
+| SPDX headers | **100%** — all .rs files have AGPL-3.0-only (aligned S138) |
 | Sovereignty | **RESOLVED** (S94b). All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated. BearDog user-facing strings neutralized. |
 | ecoBin | **PyO3 optional** — `pure-rust` feature compiles cleanly with zero C FFI deps (S90, verified S92) |
 | unsafe docs | **100%** — all `unsafe` blocks have `// SAFETY:` comments (S90) |

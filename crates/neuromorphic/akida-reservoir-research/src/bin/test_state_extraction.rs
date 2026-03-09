@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Test: Can we extract internal NPU layer activations?
 //!
 //! **CRITICAL EXPERIMENT**: This determines if reservoir computing is feasible!

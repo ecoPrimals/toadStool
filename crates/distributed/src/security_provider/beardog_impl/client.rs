@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BearDog SecurityProvider Implementation
 //!
 //! Implements the generic SecurityProvider trait using BearDog primal.
@@ -11,8 +11,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-#[allow(deprecated)] // Protocol compatibility: provider metadata
-use toadstool_common::constants::ecosystem::well_known::BEARDOG;
+#[allow(deprecated)]
+use toadstool_common::interned_strings::primals;
 
 use crate::security_provider::{provider::*, types::*, EncryptionOptions, SigningOptions};
 
@@ -63,11 +63,11 @@ impl BearDogSecurityProvider {
 
         let metadata = ProviderMetadata {
             provider_id: uuid::Uuid::new_v4().to_string(),
-            provider_type: BEARDOG.to_string(),
+            provider_type: primals::BEARDOG.to_string(),
             provider_version: "2.0.0".to_string(),
             metadata: {
                 let mut m = HashMap::new();
-                m.insert("primal".to_string(), BEARDOG.to_string());
+                m.insert("primal".to_string(), primals::BEARDOG.to_string());
                 m.insert("discovery".to_string(), "runtime".to_string());
                 m
             },

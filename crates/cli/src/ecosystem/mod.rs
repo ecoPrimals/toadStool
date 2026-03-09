@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Ecosystem Integration - Sovereign Science Network
 //!
 //! Integration with the ecoPrimals ecosystem for distributed sovereign computing:
@@ -664,5 +664,88 @@ mod tests {
 
         assert_eq!(result.verified_count, 0);
         assert!(result.total_discovered > 0);
+    }
+
+    // ─── Integrator print_ecosystem_table with mock data ─────────────────────
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[allow(deprecated)]
+    async fn test_print_ecosystem_table_with_endpoints() {
+        let mut integrator = EcosystemIntegrator::new();
+        integrator.endpoints.insert(
+            "discovery:127.0.0.1:8080".to_string(),
+            ServiceEndpoint {
+                service_type: EcosystemService::Discovery,
+                address: "127.0.0.1:8080".parse().unwrap(),
+                version: Arc::from("1.0.0"),
+                capabilities: vec!["discovery".to_string(), "coordination".to_string()],
+                trust_level: TrustLevel::Verified,
+            },
+        );
+        let result = integrator.show_ecosystem_status("table").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[allow(deprecated)]
+    async fn test_print_ecosystem_table_with_connections() {
+        let mut integrator = EcosystemIntegrator::new();
+        integrator.connections.insert(
+            "coordination".to_string(),
+            ServiceConnection {
+                endpoint: ServiceEndpoint {
+                    service_type: EcosystemService::Discovery,
+                    address: "127.0.0.1:6061".parse().unwrap(),
+                    version: Arc::from("1.0"),
+                    capabilities: vec!["discovery".to_string()],
+                    trust_level: TrustLevel::Verified,
+                },
+                status: ConnectionStatus::Connected,
+                last_heartbeat: std::time::SystemTime::now(),
+                _auth_token: Some("token".to_string()),
+            },
+        );
+        let result = integrator.show_ecosystem_status("table").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[allow(deprecated)]
+    async fn test_show_ecosystem_status_json_with_endpoints() {
+        let mut integrator = EcosystemIntegrator::new();
+        integrator.endpoints.insert(
+            "crypto:127.0.0.1:6060".to_string(),
+            ServiceEndpoint {
+                service_type: EcosystemService::Crypto,
+                address: "127.0.0.1:6060".parse().unwrap(),
+                version: Arc::from("2.0"),
+                capabilities: vec!["crypto".to_string()],
+                trust_level: TrustLevel::Discovered,
+            },
+        );
+        let result = integrator.show_ecosystem_status("json").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_discover_services_capability_mapping_pki() {
+        let mut integrator = EcosystemIntegrator::new();
+        let result = integrator
+            .discover_services(vec!["pki".to_string()], 1)
+            .await;
+        if let Ok(discovery) = result {
+            assert!(discovery.scan_duration.as_secs() <= 2);
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_discover_services_capability_mapping_security() {
+        let mut integrator = EcosystemIntegrator::new();
+        let result = integrator
+            .discover_services(vec!["security".to_string()], 1)
+            .await;
+        if let Ok(discovery) = result {
+            assert!(discovery.verified_count <= discovery.total_discovered);
+        }
     }
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BearDog client capability parsing tests — JSON → typed capability
 
 use crate::beardog_integration::types::{

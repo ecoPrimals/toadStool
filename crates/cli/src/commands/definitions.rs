@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! CLI command definitions
 //!
 //! Subcommand enums and option structs for the ToadStool CLI.

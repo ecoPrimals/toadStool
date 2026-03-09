@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Discovery-Based Configuration Defaults
 //!
 //! EVOLVED: Configuration that uses runtime discovery instead of hardcoded addresses.

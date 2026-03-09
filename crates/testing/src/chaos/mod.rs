@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Chaos Engineering Framework for ToadStool
 //!
 //! This module provides infrastructure for chaos engineering tests that validate

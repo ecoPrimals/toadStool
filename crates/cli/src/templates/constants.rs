@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! 🎯 Zero-Copy Constants - Template Strings
 //!
 //! Central location for template string constants to avoid repeated allocations.
@@ -48,21 +48,24 @@ pub mod service_names {
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"storage\") instead of hardcoding \"nestgate\""
     )]
-    pub const NESTGATE: &str = "nestgate";
+    #[allow(deprecated)]
+    pub const NESTGATE: &str = toadstool_common::interned_strings::primals::NESTGATE;
 
     /// ⚠️ DEPRECATED: Use capability "security" instead
     #[deprecated(
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"security\") instead of hardcoding \"beardog\""
     )]
-    pub const BEARDOG: &str = "beardog";
+    #[allow(deprecated)]
+    pub const BEARDOG: &str = toadstool_common::interned_strings::primals::BEARDOG;
 
     /// ⚠️ DEPRECATED: Use capability "coordination" instead
     #[deprecated(
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"coordination\") instead of hardcoding \"songbird\""
     )]
-    pub const SONGBIRD: &str = "songbird";
+    #[allow(deprecated)]
+    pub const SONGBIRD: &str = toadstool_common::interned_strings::primals::SONGBIRD;
 }
 
 /// Docker registries

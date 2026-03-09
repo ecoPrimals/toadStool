@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Universal Compute Manager - Operation Traits
 //!
 //! This module contains extension traits that organize the manager's operations

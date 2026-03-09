@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! GELU and Dropout Operations Demo
 
 #![allow(clippy::cast_precision_loss)]

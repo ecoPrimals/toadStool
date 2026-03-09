@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Protocol client implementation for service communication
 //!
 //! Domain modules:
@@ -177,10 +177,8 @@ impl ProtocolClient {
             )));
         }
 
-        let service = routing::select_service(
-            &services,
-            self.config.routing_config.default_strategy.clone(),
-        )?;
+        let service =
+            routing::select_service(&services, &self.config.routing_config.default_strategy)?;
         let supported_transports = self.transport_manager.get_supported_transports();
         let endpoint = routing::select_endpoint(service, &supported_transports)?;
 
@@ -490,7 +488,7 @@ mod tests {
             create_test_service("service-3", "test", HealthStatus::Unhealthy),
         ];
 
-        let selected = routing::select_service(&services, RoutingStrategy::RoundRobin).unwrap();
+        let selected = routing::select_service(&services, &RoutingStrategy::RoundRobin).unwrap();
         assert_eq!(selected.id, "service-2", "Should select healthy service");
     }
 
@@ -504,14 +502,14 @@ mod tests {
             create_test_service("service-2", "test", HealthStatus::Unhealthy),
         ];
 
-        let selected = routing::select_service(&services, RoutingStrategy::RoundRobin).unwrap();
+        let selected = routing::select_service(&services, &RoutingStrategy::RoundRobin).unwrap();
         assert_eq!(selected.id, "service-1");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_select_service_empty() {
         let services: Vec<ServiceInfo> = vec![];
-        let result = routing::select_service(&services, RoutingStrategy::RoundRobin);
+        let result = routing::select_service(&services, &RoutingStrategy::RoundRobin);
 
         assert!(result.is_err());
         match result.unwrap_err() {

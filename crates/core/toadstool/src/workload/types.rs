@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Supporting types for workload specifications
 //!
 //! Types used by multiple `WorkloadSpec` variants. Domain separation allows

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Universal Unified Memory - Vendor-Agnostic Zero-Copy GPU Compute
 //!
 //! **Philosophy**: "If it has memory, we can share it" 🍄

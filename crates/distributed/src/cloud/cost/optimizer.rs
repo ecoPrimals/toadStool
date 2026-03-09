@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Cloud cost optimizer with estimation and budget enforcement
 
 use std::collections::HashMap;

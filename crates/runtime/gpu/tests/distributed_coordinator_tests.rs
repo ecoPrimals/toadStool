@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Distributed Coordinator Test Coverage
 //!
 //! Comprehensive tests for distributed GPU scheduling across multiple towers.

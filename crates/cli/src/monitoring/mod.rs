@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Monitoring and Observability - Real-time System Intelligence
 //!
 //! Comprehensive monitoring for `ToadStool` universal compute platform:

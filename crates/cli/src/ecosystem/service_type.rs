@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Service type identification - capability-based replacement for hardcoded enums
 //!
 //! This module replaces the deprecated `EcosystemService` enum with a capability-based
