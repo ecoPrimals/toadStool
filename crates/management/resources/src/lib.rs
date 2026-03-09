@@ -79,21 +79,25 @@ impl ResourceManager {
         violations
     }
 
-    /// Returns current system resource usage via sysinfo.
     #[must_use]
+    #[allow(clippy::cast_precision_loss)]
     pub fn current_usage() -> ResourceUsage {
-        let mut sys = sysinfo::System::new_all();
-        sys.refresh_all();
+        let cpu_percent = (f64::from(
+            toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0),
+        ) / 100.0)
+            .clamp(0.0, 1.0);
 
-        let cpu_percent = (f64::from(sys.global_cpu_info().cpu_usage()) / 100.0).clamp(0.0, 1.0);
-        let memory_used_bytes = sys.used_memory();
-        let memory_total_bytes = sys.total_memory().max(1);
+        let (memory_used_bytes, memory_total_bytes) = toadstool_sysmon::memory_info()
+            .map(|m| (m.used, m.total.max(1)))
+            .unwrap_or((0, 1));
 
-        let disks = sysinfo::Disks::new_with_refreshed_list();
+        let disks = toadstool_sysmon::disk_usage().unwrap_or_default();
         let (disk_used_bytes, disk_total_bytes) =
-            disks.list().iter().fold((0u64, 0u64), |(used, total), d| {
-                let t = d.total_space();
-                (used + t.saturating_sub(d.available_space()), total + t)
+            disks.iter().fold((0u64, 0u64), |(used, total), d| {
+                (
+                    used + d.total_space.saturating_sub(d.available_space),
+                    total + d.total_space,
+                )
             });
         let disk_total_bytes = disk_total_bytes.max(1);
 

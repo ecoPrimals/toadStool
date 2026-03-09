@@ -40,8 +40,9 @@ bindgen = { version = "0.69", optional = true }
 # mqtt = "0.1"  # Using latest available version
 # coap = "0.10"  # Optional - not critical for core functionality
 
-# Device discovery and management
-sysinfo = "0.30"
+# EVOLVED: sysinfo removed (Mar 9, 2026) — edge crate excluded from workspace,
+# migrate to toadstool-sysmon when re-enabled
+# sysinfo = "0.30"
 
 # HTTP client for file downloads (optional - used by ESP32 download_file when path is URL)
 reqwest = { version = "0.12", optional = true, default-features = false, features = ["rustls-tls"] }

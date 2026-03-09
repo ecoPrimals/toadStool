@@ -71,8 +71,8 @@ tracing = "0.1"
 thiserror = { workspace = true }
 # dashmap removed: evolved to std::sync::RwLock<HashMap> (no usage in source)
 
-# System information (pure Rust!)
-sysinfo = { workspace = true }
+# System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
+toadstool-sysmon = { workspace = true }
 
 # Configuration
 config = "0.14" 

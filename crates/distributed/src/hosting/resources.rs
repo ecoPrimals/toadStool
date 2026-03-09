@@ -81,20 +81,15 @@ impl HostingResourceManager {
     pub fn from_system(config: HostingResourceConfig) -> Self {
         let mut manager = Self::new(config);
 
-        // Query system resources using sysinfo (pure Rust!)
-        let mut sys = sysinfo::System::new_all();
-        sys.refresh_all();
-
-        // Set CPU cores
-        let cpu_cores = std::thread::available_parallelism()
-            .map(|n| n.get() as u64)
-            .unwrap_or(1);
+        #[allow(clippy::cast_possible_truncation)]
+        let cpu_cores = toadstool_sysmon::cpu_count() as u64;
         manager
             .total_resources
             .insert("cpu_cores".to_string(), cpu_cores);
 
-        // Set memory (in bytes)
-        let memory_bytes = sys.total_memory();
+        let memory_bytes = toadstool_sysmon::memory_info()
+            .map(|m| m.total)
+            .unwrap_or(0);
         manager
             .total_resources
             .insert("memory_bytes".to_string(), memory_bytes);

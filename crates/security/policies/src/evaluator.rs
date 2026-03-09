@@ -117,17 +117,12 @@ impl ConditionEvaluator {
                 cpu_percent,
                 memory_mb,
             } => {
-                use sysinfo::System;
-                let mut sys = System::new_all();
-                sys.refresh_all();
-
-                let cpus = sys.cpus();
-                let current_cpu = if cpus.is_empty() {
-                    0.0_f32
-                } else {
-                    cpus.iter().map(sysinfo::Cpu::cpu_usage).sum::<f32>() / cpus.len() as f32
-                };
-                let current_mem_mb = (sys.used_memory() / (1024 * 1024)) as u32;
+                let current_cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
+                    .unwrap_or(0.0);
+                #[allow(clippy::cast_possible_truncation)]
+                let current_mem_mb = toadstool_sysmon::memory_info()
+                    .map(|m| (m.used / (1024 * 1024)) as u32)
+                    .unwrap_or(0);
 
                 let cpu_ok =
                     cpu_percent.is_none_or(|threshold| f64::from(current_cpu) <= threshold);

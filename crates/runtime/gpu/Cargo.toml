@@ -51,7 +51,7 @@ thiserror = { workspace = true }
 parking_lot = "0.12"
 
 # System integration and monitoring
-sysinfo = { workspace = true }
+toadstool-sysmon = { workspace = true }
 rayon = "1.8"
 
 # Universal GPU compute frameworks (all optional for universal support)

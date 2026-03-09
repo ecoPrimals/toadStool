@@ -171,12 +171,8 @@ impl CpuComputeResource {
         None // Fallback: no SIMD detected
     }
 
-    /// Detect RAM size
     fn detect_ram_size() -> u64 {
-        use sysinfo::System;
-        let mut sys = System::new_all();
-        sys.refresh_memory();
-        sys.total_memory()
+        toadstool_sysmon::memory_info().map(|m| m.total).unwrap_or(0)
     }
 
     /// Detect cache hierarchy

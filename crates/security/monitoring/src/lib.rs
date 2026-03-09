@@ -182,18 +182,11 @@ impl SecurityMonitor {
     /// Detects anomalies (CPU > 90 %, memory > 95 %) and raises events.
     #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // numeric conversions for metrics
     pub async fn sample_resources(&self) {
-        use sysinfo::System;
-        let mut sys = System::new_all();
-        sys.refresh_all();
-
-        let cpus = sys.cpus();
-        let cpu = if cpus.is_empty() {
-            0.0_f32
-        } else {
-            cpus.iter().map(sysinfo::Cpu::cpu_usage).sum::<f32>() / cpus.len() as f32
-        };
-        let mem_used = sys.used_memory();
-        let mem_total = sys.total_memory();
+        let cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
+            .unwrap_or(0.0);
+        let (mem_used, mem_total) = toadstool_sysmon::memory_info()
+            .map(|m| (m.used, m.total))
+            .unwrap_or((0, 1));
         let timestamp_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)

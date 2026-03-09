@@ -156,8 +156,7 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
-# System monitoring
-sysinfo = { workspace = true }
+# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 
 # Async utilities
 futures = { workspace = true }

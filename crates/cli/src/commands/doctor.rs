@@ -16,8 +16,6 @@ use crate::Result;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use sysinfo::System;
-
 use toadstool_common::constants::ecosystem::well_known;
 use toadstool_common::constants::primal_identity::PRIMAL_NAME;
 
@@ -263,9 +261,9 @@ async fn check_hardware_health() -> HardwareReport {
         None
     };
 
-    // Memory detection
-    let sys = System::new_all();
-    let memory_total_mb = sys.total_memory() / (1024 * 1024);
+    let memory_total_mb = toadstool_sysmon::memory_info()
+        .map(|m| m.total / (1024 * 1024))
+        .unwrap_or(0);
 
     HardwareReport {
         cpu_cores,

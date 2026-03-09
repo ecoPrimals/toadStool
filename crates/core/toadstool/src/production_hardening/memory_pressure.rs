@@ -107,7 +107,7 @@ impl MemoryPressureHandler {
 
     #[expect(
         clippy::unused_async,
-        reason = "API consistency; may add async sysinfo in future"
+        reason = "API consistency; may add async monitoring in future"
     )]
     pub async fn get_pressure_level(&self) -> MemoryPressureLevel {
         MemoryPressureLevel::Normal

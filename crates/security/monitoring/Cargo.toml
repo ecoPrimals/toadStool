@@ -13,7 +13,7 @@ categories = ["development-tools::profiling"]
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["sync", "time"] }
 tracing = { workspace = true }
-sysinfo = { workspace = true }
+toadstool-sysmon = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }

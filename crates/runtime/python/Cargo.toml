@@ -47,8 +47,7 @@ futures = { workspace = true }
 pyo3 = { workspace = true, optional = true }
 pyo3-asyncio = { workspace = true, features = ["tokio-runtime"], optional = true }
 
-# System information
-sysinfo = { workspace = true }
+# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 
 [dev-dependencies]

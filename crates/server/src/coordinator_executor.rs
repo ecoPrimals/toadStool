@@ -127,13 +127,11 @@ impl WorkloadExecutor for CoordinatorExecutor {
             .map(|n| u32::try_from(n.get()).unwrap_or(4))
             .unwrap_or(4);
 
-        // Query memory - Pure Rust Evolution (Jan 17, 2026)
-        use sysinfo::System;
-        let mut system = System::new_all();
-        system.refresh_memory();
-
-        let total_memory = system.total_memory(); // Already in bytes
-        let available_memory = system.available_memory(); // Already in bytes
+        let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
+            total: 0, available: 0, used: 0, swap_total: 0, swap_free: 0,
+        });
+        let total_memory = mem.total;
+        let available_memory = mem.available;
 
         Ok(ComputeCapabilities {
             service_id: self.service_id.as_ref().to_string(),

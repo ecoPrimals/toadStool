@@ -124,9 +124,10 @@ impl LoadEstimator {
         let cpu_cores = std::thread::available_parallelism()
             .map(|n| n.get() as f64)
             .unwrap_or(4.0);
-        let mut sys = sysinfo::System::new_all();
-        sys.refresh_memory();
-        let total_memory = sys.total_memory() as f64;
+        #[allow(clippy::cast_precision_loss)]
+        let total_memory = toadstool_sysmon::memory_info()
+            .map(|m| m.total as f64)
+            .unwrap_or(1.0);
         let cpu_load = (job.resource_requirements.cpu.min_cores / cpu_cores).min(1.0);
         let memory_load =
             (job.resource_requirements.memory.min_bytes as f64 / total_memory).min(1.0);

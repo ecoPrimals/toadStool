@@ -3,7 +3,6 @@
 
 use crate::Result;
 use std::collections::HashMap;
-use sysinfo::{Disks, Networks, System};
 
 use crate::monitoring::types::{Metric, MetricBatch, MetricValue};
 
@@ -34,16 +33,13 @@ impl MetricsCollector for SystemMetricsCollector {
         "system"
     }
 
+    #[allow(clippy::cast_precision_loss)]
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
 
-        // System metrics (CPU, memory)
-        let mut system = System::new_all();
-        system.refresh_all();
-
-        // Real CPU usage (sysinfo 0.30+ API)
-        let cpu_usage = system.global_cpu_info().cpu_usage();
+        let cpu_usage = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
+            .unwrap_or(0.0);
         metrics.push(Metric {
             name: "cpu_usage_percent".to_string(),
             value: MetricValue::Gauge(f64::from(cpu_usage)),
@@ -51,29 +47,24 @@ impl MetricsCollector for SystemMetricsCollector {
             timestamp,
         });
 
-        // Real memory usage
-        let total_memory = system.total_memory();
-        let used_memory = system.used_memory();
-        let memory_usage_percent = if total_memory > 0 {
-            (used_memory as f64 / total_memory as f64) * 100.0
-        } else {
-            0.0
-        };
-        metrics.push(Metric {
-            name: "memory_usage_percent".to_string(),
-            value: MetricValue::Gauge(memory_usage_percent),
-            labels: HashMap::new(),
-            timestamp,
-        });
-
-        // Real storage usage (sysinfo 0.30+ uses separate Disks struct)
-        let disks = Disks::new_with_refreshed_list();
-        let mut total_disk: u64 = 0;
-        let mut used_disk: u64 = 0;
-        for disk in disks.iter() {
-            total_disk += disk.total_space();
-            used_disk += disk.total_space() - disk.available_space();
+        if let Ok(mem) = toadstool_sysmon::memory_info() {
+            let memory_usage_percent = if mem.total > 0 {
+                (mem.used as f64 / mem.total as f64) * 100.0
+            } else {
+                0.0
+            };
+            metrics.push(Metric {
+                name: "memory_usage_percent".to_string(),
+                value: MetricValue::Gauge(memory_usage_percent),
+                labels: HashMap::new(),
+                timestamp,
+            });
         }
+
+        let disks = toadstool_sysmon::disk_usage().unwrap_or_default();
+        let (total_disk, used_disk) = disks.iter().fold((0u64, 0u64), |(t, u), d| {
+            (t + d.total_space, u + d.total_space - d.available_space)
+        });
         let storage_usage_percent = if total_disk > 0 {
             (used_disk as f64 / total_disk as f64) * 100.0
         } else {
@@ -122,14 +113,12 @@ impl MetricsCollector for ProcessMetricsCollector {
         "process"
     }
 
+    #[allow(clippy::cast_precision_loss)]
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
-        let mut system = System::new_all();
-        system.refresh_processes();
 
-        // Real process count
-        let process_count = system.processes().len();
+        let process_count = toadstool_sysmon::process_count().unwrap_or(0);
         metrics.push(Metric {
             name: "process_count".to_string(),
             value: MetricValue::Gauge(process_count as f64),
@@ -169,20 +158,14 @@ impl MetricsCollector for NetworkMetricsCollector {
         "network"
     }
 
+    #[allow(clippy::cast_precision_loss)]
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
 
-        // sysinfo 0.30+ uses separate Networks struct
-        let networks = Networks::new_with_refreshed_list();
-
-        // Real network throughput
-        let mut total_rx: u64 = 0;
-        let mut total_tx: u64 = 0;
-        for (_interface_name, network) in networks.iter() {
-            total_rx += network.received();
-            total_tx += network.transmitted();
-        }
+        let interfaces = toadstool_sysmon::network_stats().unwrap_or_default();
+        let total_rx: u64 = interfaces.iter().map(|i| i.received).sum();
+        let total_tx: u64 = interfaces.iter().map(|i| i.transmitted).sum();
 
         metrics.push(Metric {
             name: "network_rx_bytes_per_sec".to_string(),

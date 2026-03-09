@@ -81,11 +81,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # UUID support
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
-# System info - Pure Rust Evolution (Jan 17, 2026)
-# OLD: sys-info = "0.9" (C dependency, blocked ARM cross-compilation)
-# sysinfo: cross-platform system monitoring (uses libc/core-foundation-sys/ntapi FFI)
-# Migration: sys_info::mem_info() → System::new_all() + refresh_memory()
-sysinfo = { workspace = true }
+# System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
+toadstool-sysmon = { workspace = true }
 
 # GPU detection via barraCuda (vendor-agnostic)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅

@@ -355,14 +355,12 @@ fn test_resource_requirements_validate_zero_memory() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_creation() {
-    let monitor = SystemResourceMonitor::new();
-    let _guard = monitor.system.read().await;
+    let _monitor = SystemResourceMonitor::new();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_default() {
-    let monitor = SystemResourceMonitor::default();
-    let _guard = monitor.system.read().await;
+    let _monitor = SystemResourceMonitor::default();
 }
 
 #[test]

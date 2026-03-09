@@ -10,30 +10,28 @@ use std::sync::Arc;
 
 /// Query local GPU and compute capabilities
 ///
-/// Uses sysinfo and wgpu for pure Rust discovery.
+/// Uses toadstool-sysmon and wgpu for pure Rust discovery (zero C).
 /// Returns `Arc<str>` per capability — clone is cheap (refcount bump).
 #[expect(clippy::unused_async, reason = "may add async GPU discovery")]
 pub async fn query_local_capabilities() -> Vec<Arc<str>> {
     let mut capabilities: Vec<Arc<str>> = vec![Arc::from("compute"), Arc::from("cpu")];
 
-    let cpus = std::thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(4);
+    let cpus = toadstool_sysmon::cpu_count();
     if cpus >= 16 {
         capabilities.push(Arc::from("high-core-count"));
-        tracing::info!("✅ High core count detected: {} cores", cpus);
+        tracing::info!("High core count detected: {cpus} cores");
     }
 
-    let mut sys = sysinfo::System::new_all();
-    sys.refresh_memory();
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "total_memory u64 → f64 acceptable"
-    )]
-    let total_memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
-    if total_memory_gb >= 32.0 {
-        capabilities.push(Arc::from("high-memory"));
-        tracing::info!("✅ High memory detected: {:.1} GB", total_memory_gb);
+    if let Ok(mem) = toadstool_sysmon::memory_info() {
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "total_memory u64 → f64 acceptable"
+        )]
+        let total_memory_gb = mem.total as f64 / 1024.0 / 1024.0 / 1024.0;
+        if total_memory_gb >= 32.0 {
+            capabilities.push(Arc::from("high-memory"));
+            tracing::info!("High memory detected: {total_memory_gb:.1} GB");
+        }
     }
 
     #[cfg(feature = "gpu-discovery")]

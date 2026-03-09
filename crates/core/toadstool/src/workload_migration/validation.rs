@@ -157,12 +157,10 @@ pub fn validate_preflight(
 /// Check whether the local machine has sufficient capacity to accept a
 /// migrated workload.
 fn check_local_capacity(requirements: &ResourceRequirements) -> ToadStoolResult<PreflightOutcome> {
-    use sysinfo::System;
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
-    let available_cpu_cores = u32::try_from(sys.cpus().len()).unwrap_or(u32::MAX);
-    let available_memory_mib = sys.available_memory() / (1024 * 1024);
+    let available_cpu_cores = u32::try_from(toadstool_sysmon::cpu_count()).unwrap_or(u32::MAX);
+    let available_memory_mib = toadstool_sysmon::memory_info()
+        .map(|m| m.available / (1024 * 1024))
+        .unwrap_or(0);
 
     if available_cpu_cores < requirements.min_cpu_cores {
         return Ok(PreflightOutcome::InsufficientLocalCapacity);

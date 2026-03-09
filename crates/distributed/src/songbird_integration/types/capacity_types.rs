@@ -32,26 +32,14 @@ impl CapacityInfo {
     }
 
     #[must_use]
+    #[allow(clippy::cast_precision_loss)]
     pub fn from_system() -> Self {
-        use sysinfo::Disks;
-        let cpu_cores = std::thread::available_parallelism()
-            .map(|n| n.get() as f64)
-            .unwrap_or(1.0);
-        let mut sys = sysinfo::System::new_all();
-        sys.refresh_memory();
-        let memory_bytes = sys.available_memory();
-        let disks = Disks::new_with_refreshed_list();
-        let storage_bytes: u64 = disks
-            .iter()
-            .filter(|disk| {
-                let fs = disk.file_system().to_string_lossy();
-                !fs.contains("tmpfs")
-                    && !fs.contains("devtmpfs")
-                    && !fs.contains("squashfs")
-                    && !fs.contains("overlay")
-            })
-            .map(sysinfo::Disk::available_space)
-            .sum();
+        let cpu_cores = toadstool_sysmon::cpu_count() as f64;
+        let memory_bytes = toadstool_sysmon::memory_info()
+            .map(|m| m.available)
+            .unwrap_or(0);
+        let disks = toadstool_sysmon::disk_usage().unwrap_or_default();
+        let storage_bytes: u64 = disks.iter().map(|d| d.available_space).sum();
         Self {
             cpu_cores,
             memory_bytes,

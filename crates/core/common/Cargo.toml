@@ -33,7 +33,7 @@ serde_json = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-sysinfo = { workspace = true }
+# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 humantime-serde = "1.1"
 
 # EVOLVED: Pure Rust UID detection (removed libc dependency!)

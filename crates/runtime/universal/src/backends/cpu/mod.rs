@@ -120,7 +120,7 @@ impl CpuComputeUnit {
 
     /// Discover available memory
     fn discover_memory() -> usize {
-        // Use sysinfo if available, otherwise estimate
+        // Parse /proc/meminfo on Linux, otherwise estimate
         #[cfg(target_os = "linux")]
         {
             // Read from /proc/meminfo

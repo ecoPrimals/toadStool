@@ -50,7 +50,7 @@ Nest    = Tower  + NestGate           <- storage
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
-| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) |
+| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` |
 | Hardcoded primal names | 0 -- all capability-based discovery via `get_socket_path_for_capability()` |
 | `async-trait` migration | 5 crates migrated to native AFIT; remaining uses justified by `dyn Trait` dispatch |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
@@ -209,7 +209,7 @@ toadStool/
 |   +-- ml/                        burn-inference (BERT, Whisper, Vision stubs with gated errors)
 |   +-- security/                  Sandbox, policies, monitoring
 |   +-- testing/                   Chaos, fault, property-based testing (proptest)
-|   +-- management/                Analytics, monitoring, resources (real ResourceManager with sysinfo)
+|   +-- management/                Analytics, monitoring, resources (real ResourceManager with toadstool-sysmon)
 +-- (fossil at ecoPrimals/fossil/toadStool/)
 +-- showcase/                      Demos (RBF, neuromorphic, GPU, FHE)
 +-- docs/                          Architecture, guides, audits, ADRs
@@ -251,7 +251,7 @@ toadStool/
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc` |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console` |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -299,7 +299,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description |
 |----|-------------|
-| management/resources | Placeholder evolved to real ResourceManager with sysinfo (re-added to workspace S95) |
+| management/resources | Real ResourceManager with toadstool-sysmon (pure Rust /proc, replaces sysinfo S137) |
 
 ### Transferred to barraCuda Team (S93)
 

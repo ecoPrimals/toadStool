@@ -386,7 +386,7 @@ async fn test_evaluate_resource_usage() {
     let evaluator = ConditionEvaluator::new();
     // Use ceilings that always pass on any real machine:
     // 100% CPU and 1 TiB memory. This validates that the evaluator reads
-    // actual sysinfo and returns Ok(true) when below these generous bounds.
+    // actual system metrics and returns Ok(true) when below these generous bounds.
     let condition = PolicyCondition::ResourceUsage {
         cpu_percent: Some(100.0),
         memory_mb: Some(1_000_000), // 1 TiB in MB — exceeds any real machine

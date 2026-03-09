@@ -94,14 +94,13 @@ etcetera = { workspace = true }
 # PURE RUST: reqwest removed - unix sockets only! ✅
 # mdns = "3.0"  # Note: mDNS discovery available via toadstool-config crate
 
-# System information
-sysinfo = { workspace = true }
+# System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
+toadstool-sysmon = { workspace = true }
 
 # Terminal UI and formatting
-console = "0.15"
+# EVOLVED: console removed (Mar 9, 2026) - unused import, libc dep eliminated (indicatif provides it transitively)
 indicatif = "0.17"
 colored = "2.0"
-# term_size removed: unused, terminal size available via console crate already in deps
 # atty removed (Feb 14, 2026): use std::io::IsTerminal (Rust 1.70+)
 
 # Process management

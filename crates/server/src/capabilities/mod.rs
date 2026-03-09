@@ -293,13 +293,11 @@ pub fn query_system_resources() -> SystemResources {
         .map(std::num::NonZero::get)
         .unwrap_or(4);
 
-    // Query memory (Pure Rust via sysinfo!)
-    use sysinfo::System;
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
-    let total_memory = sys.total_memory();
-    let available_memory = sys.available_memory();
+    let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
+        total: 0, available: 0, used: 0, swap_total: 0, swap_free: 0,
+    });
+    let total_memory = mem.total;
+    let available_memory = mem.available;
 
     // Query GPU devices (self-knowledge)
     let gpu_devices = query_gpu_devices();

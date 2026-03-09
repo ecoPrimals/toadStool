@@ -200,30 +200,16 @@ impl ResourceValidator {
         // Assume 80% available (rough heuristic, in production would query actual usage)
         let available_cpu_cores = (total_cpu_cores * 80) / 100;
 
-        // Query memory - Pure Rust Evolution (Jan 17, 2026)
-        // Migrated from sys-info (C dependency) to sysinfo (100% Pure Rust)
-        use sysinfo::{Disks, Networks, System};
-        let mut system = System::new_all();
-        system.refresh_memory();
+        let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
+            total: 0, available: 0, used: 0, swap_total: 0, swap_free: 0,
+        });
+        let total_memory_bytes = mem.total;
+        let available_memory_bytes = mem.available;
 
-        let total_memory_bytes = system.total_memory(); // Already in bytes
-        let available_memory_bytes = system.available_memory(); // Already in bytes
-
-        // Query disk - Deep Debt Evolution (Feb 17 2026)
-        // Use actual disk enumeration via sysinfo::Disks (pure Rust)
-        let disks = Disks::new_with_refreshed_list();
-        let (total_storage_bytes, available_storage_bytes): (u64, u64) = disks
-            .iter()
-            .filter(|disk| {
-                // Filter out virtual filesystems
-                let fs = disk.file_system().to_string_lossy();
-                !fs.contains("tmpfs")
-                    && !fs.contains("devtmpfs")
-                    && !fs.contains("squashfs")
-                    && !fs.contains("overlay")
-            })
-            .fold((0u64, 0u64), |(total, avail), disk| {
-                (total + disk.total_space(), avail + disk.available_space())
+        let disks = toadstool_sysmon::disk_usage().unwrap_or_default();
+        let (total_storage_bytes, available_storage_bytes): (u64, u64) =
+            disks.iter().fold((0u64, 0u64), |(total, avail), disk| {
+                (total + disk.total_space, avail + disk.available_space)
             });
 
         // Query GPU (if available) - uses runtime detection via toadstool-runtime-gpu
@@ -232,22 +218,16 @@ impl ResourceValidator {
         let (total_gpu_memory_bytes, available_gpu_memory_bytes, gpu_count, gpu_types) =
             self.query_gpu_capabilities().await;
 
-        // Network bandwidth - Deep Debt Evolution (Feb 17 2026)
-        // Query actual network interfaces for bandwidth estimate
-        let networks = Networks::new_with_refreshed_list();
-        let network_bandwidth_mbps = if networks.iter().count() > 0 {
-            // Sum received bytes across all interfaces as bandwidth indicator
-            // Most physical NICs are 1Gbps+, but we estimate conservatively
-            let total_received: u64 = networks.values().map(sysinfo::NetworkData::received).sum();
-            // If we've seen significant traffic, assume at least 1Gbps
-            // Otherwise fall back to conservative 100Mbps estimate
-            if total_received > 1_000_000_000 {
-                1000 // 1 Gbps
-            } else {
-                100 // Conservative 100 Mbps
-            }
-        } else {
+        let interfaces = toadstool_sysmon::network_stats().unwrap_or_default();
+        let network_bandwidth_mbps = if interfaces.is_empty() {
             100 // No interfaces detected, conservative fallback
+        } else {
+            let total_received: u64 = interfaces.iter().map(|i| i.received).sum();
+            if total_received > 1_000_000_000 {
+                1000
+            } else {
+                100
+            }
         };
 
         Ok(SystemCapabilities {

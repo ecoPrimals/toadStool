@@ -78,7 +78,7 @@ impl ResourceMonitor {
     /// Sample current resource usage
     pub fn sample_resources(&mut self) {
         // Test infrastructure: Using deterministic sample values for reproducible tests
-        // Production code would use actual system APIs (sysinfo, procfs, etc.)
+        // Production code would use toadstool-sysmon (pure Rust /proc parsing)
         self.memory_samples.push(100); // MB - Test value
         self.cpu_samples.push(50.0); // Percent - Test value
         self.disk_io_samples.push(1024); // Bytes - Test value

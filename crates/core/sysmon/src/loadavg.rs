@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Load average via `/proc/loadavg`.
+
+use crate::error::{Result, SysmonError};
+
+/// System load averages.
+#[derive(Debug, Clone, Copy)]
+pub struct LoadAverage {
+    pub one: f64,
+    pub five: f64,
+    pub fifteen: f64,
+}
+
+/// Read load averages from `/proc/loadavg`.
+///
+/// # Errors
+///
+/// Returns an error if `/proc/loadavg` cannot be read.
+pub fn load_average() -> Result<LoadAverage> {
+    let content = std::fs::read_to_string("/proc/loadavg")
+        .map_err(|e| SysmonError::new("/proc/loadavg", e))?;
+    Ok(parse_loadavg(&content))
+}
+
+fn parse_loadavg(content: &str) -> LoadAverage {
+    let mut fields = content.split_whitespace();
+    let one = fields
+        .next()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
+    let five = fields
+        .next()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
+    let fifteen = fields
+        .next()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
+    LoadAverage { one, five, fifteen }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_average_non_negative() {
+        let la = load_average().unwrap();
+        assert!(la.one >= 0.0);
+        assert!(la.five >= 0.0);
+        assert!(la.fifteen >= 0.0);
+    }
+
+    #[test]
+    fn test_parse_loadavg() {
+        let la = parse_loadavg("1.23 0.45 0.67 2/500 12345");
+        assert!((la.one - 1.23).abs() < f64::EPSILON);
+        assert!((la.five - 0.45).abs() < f64::EPSILON);
+        assert!((la.fifteen - 0.67).abs() < f64::EPSILON);
+    }
+}

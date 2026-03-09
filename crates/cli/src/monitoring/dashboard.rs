@@ -112,17 +112,15 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
             let (services_running, services_total, cpu_usage, memory_usage, uptime) = if is_pid {
                 if let Ok(contents) = std::fs::read_to_string(&path) {
                     if let Ok(pid) = contents.trim().parse::<u32>() {
-                        let mut sys = sysinfo::System::new_all();
-                        sys.refresh_all();
-                        if let Some(p) = sys.process(sysinfo::Pid::from_u32(pid)) {
-                            let cpu = f64::from(p.cpu_usage());
-                            let mem = p.memory() as f64 / 1_073_741_824.0;
-                            let start = p.start_time();
+                        if let Ok(Some(p)) = toadstool_sysmon::process_info(pid) {
+                            let cpu = f64::from(p.cpu_usage);
+                            #[allow(clippy::cast_precision_loss)]
+                            let mem = p.memory as f64 / 1_073_741_824.0;
                             let uptime_secs = std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap_or_default()
                                 .as_secs()
-                                .saturating_sub(start);
+                                .saturating_sub(p.start_time);
                             (1, 1, cpu, mem, std::time::Duration::from_secs(uptime_secs))
                         } else {
                             (0, 1, 0.0, 0.0, std::time::Duration::ZERO)
@@ -155,33 +153,33 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
 }
 
 /// Collects system resource usage metrics
+#[allow(clippy::cast_precision_loss)]
 pub fn collect_resource_usage() -> Result<SystemResourceUsage> {
-    let mut system = sysinfo::System::new_all();
-    system.refresh_all();
+    let cpu_percent = f64::from(
+        toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(100)).unwrap_or(0.0),
+    );
 
-    let cpu_percent = f64::from(system.global_cpu_info().cpu_usage());
-    let memory_total_gb = system.total_memory() as f64 / 1_073_741_824.0;
-    let memory_used_gb = system.used_memory() as f64 / 1_073_741_824.0;
+    let mem = toadstool_sysmon::memory_info()
+        .map_err(|e| crate::CliError::Other(e.to_string()))?;
+    let memory_total_gb = mem.total as f64 / 1_073_741_824.0;
+    let memory_used_gb = mem.used as f64 / 1_073_741_824.0;
 
-    let disks = sysinfo::Disks::new_with_refreshed_list();
-    let mut total_disk: u64 = 0;
-    let mut used_disk: u64 = 0;
-    for disk in disks.iter() {
-        total_disk += disk.total_space();
-        used_disk += disk.total_space() - disk.available_space();
-    }
+    let disks = toadstool_sysmon::disk_usage().unwrap_or_default();
+    let (total_disk, used_disk) = disks.iter().fold((0u64, 0u64), |(t, u), d| {
+        (t + d.total_space, u + d.total_space - d.available_space)
+    });
     let storage_total_gb = total_disk as f64 / 1_073_741_824.0;
     let storage_used_gb = used_disk as f64 / 1_073_741_824.0;
 
-    let networks = sysinfo::Networks::new_with_refreshed_list();
-    let mut total_rx: u64 = 0;
-    let mut total_tx: u64 = 0;
-    for (_name, net) in networks.iter() {
-        total_rx += net.received();
-        total_tx += net.transmitted();
-    }
+    let interfaces = toadstool_sysmon::network_stats().unwrap_or_default();
+    let total_rx: u64 = interfaces.iter().map(|i| i.received).sum();
+    let total_tx: u64 = interfaces.iter().map(|i| i.transmitted).sum();
     let network_rx_mbps = (total_rx as f64 * 8.0) / 1_000_000.0;
     let network_tx_mbps = (total_tx as f64 * 8.0) / 1_000_000.0;
+
+    let la = toadstool_sysmon::load_average()
+        .map(|l| vec![l.one, l.five, l.fifteen])
+        .unwrap_or_else(|_| vec![0.0, 0.0, 0.0]);
 
     Ok(SystemResourceUsage {
         cpu_percent,
@@ -191,10 +189,7 @@ pub fn collect_resource_usage() -> Result<SystemResourceUsage> {
         storage_total_gb,
         network_rx_mbps,
         network_tx_mbps,
-        load_average: {
-            let la = sysinfo::System::load_average();
-            vec![la.one, la.five, la.fifteen]
-        },
+        load_average: la,
     })
 }
 

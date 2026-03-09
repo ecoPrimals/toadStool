@@ -97,13 +97,13 @@ impl ResourceOptimizer {
             .unwrap_or(4);
         let available_cpu_cores = (total_cpu_cores * 80) / 100;
 
-        let mut system = sysinfo::System::new_all();
-        system.refresh_memory();
-
-        let total_memory_bytes = system.total_memory();
-        let available_memory_bytes = system.available_memory();
-        let total_storage_bytes = system.total_swap();
-        let available_storage_bytes = system.free_swap();
+        let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
+            total: 0, available: 0, used: 0, swap_total: 0, swap_free: 0,
+        });
+        let total_memory_bytes = mem.total;
+        let available_memory_bytes = mem.available;
+        let total_storage_bytes = mem.swap_total;
+        let available_storage_bytes = mem.swap_free;
 
         let (total_gpu_memory_bytes, available_gpu_memory_bytes, gpu_count, gpu_types) =
             Self::query_gpu_capabilities().await;

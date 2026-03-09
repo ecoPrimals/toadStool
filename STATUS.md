@@ -1,4 +1,4 @@
-# Status -- March 9, 2026 (S136 Comprehensive Audit + Unsafe Hardening)
+# Status -- March 9, 2026 (S137 sysinfo Eliminated — ecoBin v3.0)
 
 ## Quality Gates
 
@@ -26,7 +26,7 @@
 | Rust version | **1.82+** (is_some_and, div_ceil) |
 | `unsafe` blocks | **~70+** (all `// SAFETY:` documented; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
-| External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify**. `aes-gcm` optional (dev-crypto only). |
+| External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify, zero sysinfo, zero caps**. `aes-gcm` optional (dev-crypto only). `toadstool-sysmon` (pure Rust /proc) replaces sysinfo. |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. `SoftwareHsmProvider`/`LocalKeyringProvider` gated behind `dev-crypto` feature (S134). Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
@@ -89,6 +89,15 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S137: sysinfo Eliminated — ecoBin v3.0 (Mar 9, 2026)
+- **sysinfo (15 transitive crates → libc) fully eliminated**: Replaced with `toadstool-sysmon` — new pure Rust crate (`crates/core/sysmon/`) parsing `/proc` + `rustix` `statvfs`. 22+ call sites migrated across 18 source files in 8 crates. 20 unit tests + 1 doctest. `#![deny(unsafe_code)]`. Clippy pedantic clean.
+- **Dead deps removed**: `caps` (unused in security/{policies,sandbox}), `console` (unused in CLI). Both pulled libc for nothing.
+- **Cross-compile CI**: New `cross-compile` job in `.github/workflows/ci.yml` — `cargo check --target aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` without musl-tools/C toolchains.
+- **PURE_RUST_TRACKING.md**: New root doc tracking remaining libc paths (mio, tokio, wgpu-hal — all ecosystem transitive).
+- **ecoBin v3.0 certified**: First primal to eliminate infrastructure C. Pattern: `/proc` parsing + `rustix` replaces libc-based crates.
+- **Verification**: `cargo tree --workspace | grep sysinfo` → nothing. `cargo tree --workspace --invert libc` shows only ecosystem deps (mio, tokio, wgpu). 6,454 lib tests pass.
+- Handoff: `wateringHole/handoffs/TOADSTOOL_S137_SYSINFO_ELIMINATION_ECOBIN_V3_HANDOFF_MAR09_2026.md`
 
 ### S134: Node Atomic / BearDog Crypto Delegation (Mar 8, 2026)
 - **BearDog crypto delegation enforced**: `secure_enclave` crate: removed unused `aes-gcm` and `getrandom` dependencies. Docs updated to reflect Node Atomic pattern (BearDog owns encrypt/decrypt). `blake3` retained for local tamper-evident audit chain hashing (latency-critical, no network round-trip).

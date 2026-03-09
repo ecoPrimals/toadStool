@@ -11,4 +11,4 @@ categories = ["development-tools"]
 
 [dependencies]
 serde = { workspace = true }
-sysinfo = { workspace = true }
+toadstool-sysmon = { workspace = true }

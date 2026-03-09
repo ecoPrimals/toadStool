@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 8, 2026
+**Date**: March 9, 2026
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -106,6 +106,16 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 
 ---
 
+## Recently Resolved (S137 — sysinfo Eliminated / ecoBin v3.0 — Mar 9, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| sysinfo C dep (15 transitive crates → libc) | Replaced with `toadstool-sysmon` — pure Rust `/proc` parsing + `rustix` `statvfs`. 22+ call sites migrated across 18 files in 8 crates. 20 tests. |
+| `caps` dead dep (libc) | Removed from security/{policies,sandbox} Cargo.toml — never imported in code. |
+| `console` dead dep (libc) | Removed from cli/Cargo.toml — never imported; comes transitively via `indicatif`. |
+| Cross-compile CI | New `cross-compile` job: `cargo check --target aarch64-unknown-linux-gnu` + `armv7-unknown-linux-gnueabihf` without musl-tools. |
+| ecoBin v3.0 | First primal certified. Pattern: `/proc` + `rustix` eliminates infrastructure C. Remaining libc is ecosystem-transitive only (mio, tokio, wgpu). |
+
 ## Recently Resolved (S134 — Node Atomic / BearDog Crypto Delegation — Mar 8, 2026)
 
 | Item | Resolution |
@@ -164,7 +174,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |------|-----------|
 | Clippy pedantic in CI | Added `clippy::pedantic` run to `ci.yml`. Two-step: pedantic check (default features) + all-features check |
 | Unsafe audit | All ~70+ blocks justified (V4L2, VFIO, GPU FFI, aligned alloc, secure enclave). No safe alternatives |
-| Dependency audit | Only 1 always-on C/FFI dep (sysinfo). `notify` removed S134. `aes-gcm` optional (`dev-crypto`). Already heavily evolved to pure Rust |
+| Dependency audit | **Zero always-on C/FFI deps** (sysinfo eliminated S137, notify removed S134). `aes-gcm` optional (`dev-crypto`). Remaining libc is ecosystem transitive (mio, tokio). |
 | Hardcoding evolution | `integrator_impl.rs` primal names evolved from string literals to `well_known::*` constants |
 | `#[allow]` audit | All 9 production `#[allow]` justified; 6 missing justification comments added |
 | Clone audit | 14 hot-path patterns documented. Arc evolution opportunities tracked in DEBT |

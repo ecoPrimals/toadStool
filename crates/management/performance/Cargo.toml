@@ -24,8 +24,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
 
-# Performance monitoring and profiling
-sysinfo = { workspace = true }
+# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 
 # Statistics and machine learning
 statrs = "0.16"

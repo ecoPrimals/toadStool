@@ -6,8 +6,6 @@
 use crate::Result;
 use std::collections::HashMap;
 use std::future::Future;
-use sysinfo::System;
-
 use crate::universal::types::{GpuInfo, HardwareInfo};
 use toadstool_distributed::substrate_detection::PlatformType;
 
@@ -185,17 +183,14 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
         metadata
     }
 
+    #[allow(clippy::cast_precision_loss)]
     async fn get_system_hardware_info(&self) -> Result<HardwareInfo> {
-        let mut sys = System::new_all();
-        sys.refresh_all();
-
-        let cpu_model = sys
-            .cpus()
-            .first()
-            .map(|cpu| cpu.brand().to_string())
-            .unwrap_or_else(|| "Unknown CPU".to_string());
-
-        let memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
+        let cpu_model = toadstool_sysmon::cpu_brand().unwrap_or_else(|_| "Unknown CPU".to_string());
+        let memory_gb = toadstool_sysmon::memory_info()
+            .map(|m| m.total as f64 / 1024.0 / 1024.0 / 1024.0)
+            .unwrap_or(0.0);
+        #[allow(clippy::cast_possible_truncation)]
+        let cpu_cores = toadstool_sysmon::cpu_count() as u32;
 
         let storage_type = if std::path::Path::new("/sys/block/nvme0n1").exists() {
             "NVMe SSD".to_string()
@@ -209,7 +204,7 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
 
         Ok(HardwareInfo {
             cpu_model,
-            cpu_cores: sys.cpus().len() as u32,
+            cpu_cores,
             memory_gb,
             storage_type,
             gpu_info,

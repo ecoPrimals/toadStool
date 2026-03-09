@@ -306,28 +306,23 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         })
     }
 
+    #[allow(clippy::cast_precision_loss)]
     fn get_system_info(&self) -> SystemInfo {
-        use sysinfo::System;
-
-        let mut sys = System::new_all();
-        sys.refresh_all();
-
-        let cpu_model = sys
-            .cpus()
-            .first()
-            .map(|cpu| cpu.brand().to_string())
-            .unwrap_or_else(|| "Unknown CPU".to_string());
-
-        let memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
+        let cpu_model = toadstool_sysmon::cpu_brand().unwrap_or_else(|_| "Unknown CPU".to_string());
+        let memory_gb = toadstool_sysmon::memory_info()
+            .map(|m| m.total as f64 / 1024.0 / 1024.0 / 1024.0)
+            .unwrap_or(0.0);
+        #[allow(clippy::cast_possible_truncation)]
+        let cpu_cores = toadstool_sysmon::cpu_count() as u32;
 
         SystemInfo {
             os: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
             cpu_model,
-            cpu_cores: sys.cpus().len() as u32,
+            cpu_cores,
             memory_gb,
             storage_type: "Unknown".to_string(),
-            gpu_info: None, // Will be populated if GPU detection succeeds
+            gpu_info: None,
         }
     }
 }

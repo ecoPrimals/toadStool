@@ -26,51 +26,31 @@ pub fn get_total_memory() -> Option<u64> {
         }
     }
 
-    // Fallback: Use sysinfo crate or return None
     None
 }
 
 /// Get available disk space (bytes)
 ///
-/// Uses sysinfo for cross-platform disk detection (pure Rust).
+/// Uses toadstool-sysmon /proc parsing for disk detection (pure Rust, zero C).
 /// Returns the available space on the root/primary disk.
 pub fn get_available_disk() -> Option<u64> {
-    use sysinfo::Disks;
+    let disks = toadstool_sysmon::disk_usage().ok()?;
 
-    let disks = Disks::new_with_refreshed_list();
-
-    // Find the root filesystem or largest available disk
     let mut root_disk_space: Option<u64> = None;
     let mut largest_disk_space: u64 = 0;
 
-    for disk in disks.list() {
-        let available = disk.available_space();
+    for disk in &disks {
+        let available = disk.available_space;
 
-        // Check if this is the root filesystem
-        #[cfg(unix)]
-        {
-            let mount_point = disk.mount_point();
-            if mount_point.as_os_str() == "/" {
-                root_disk_space = Some(available);
-            }
+        if disk.mount_point == "/" {
+            root_disk_space = Some(available);
         }
 
-        #[cfg(windows)]
-        {
-            // On Windows, prefer C: drive
-            let mount_point = disk.mount_point().to_string_lossy();
-            if mount_point.starts_with("C:") {
-                root_disk_space = Some(available);
-            }
-        }
-
-        // Track largest disk as fallback
         if available > largest_disk_space {
             largest_disk_space = available;
         }
     }
 
-    // Return root disk space if found, otherwise largest disk
     root_disk_space.or(if largest_disk_space > 0 {
         Some(largest_disk_space)
     } else {

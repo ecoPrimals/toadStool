@@ -162,6 +162,23 @@ jobs:
             echo "Coverage meets target"
           fi
 
+  cross-compile:
+    name: Cross-Compilation (Pure Rust)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Check cross-compilation (no C toolchain)
+        run: cargo check --workspace --target ${{ matrix.target }}
+
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest

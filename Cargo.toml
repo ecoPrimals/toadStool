@@ -4,6 +4,7 @@ members = [
     # Core crates
     "crates/core/common",
     "crates/core/config", 
+    "crates/core/sysmon",
     "crates/core/toadstool",
     "crates/toadstool-core",  # NEW: Hardware infrastructure layer (Feb 8, 2026) 🍄
     "crates/auto_config",  # Re-enabled for zero-touch demo
@@ -166,9 +167,10 @@ sha2 = "0.10"
 ipnet = "2.9"
 # mdns removed: standardized on mdns-sd; edge stub doesn't need it
 
-# System monitoring
-sysinfo = "0.30"
-# EVOLVED: psutil removed (Feb 14, 2026) - unused, sysinfo covers all use cases
+# System monitoring — Pure Rust via /proc (replaces sysinfo)
+toadstool-sysmon = { path = "crates/core/sysmon" }
+# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon (pure Rust /proc, zero C)
+# EVOLVED: psutil removed (Feb 14, 2026) - unused
 
 # Async utilities
 futures = "0.3"

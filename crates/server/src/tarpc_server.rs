@@ -389,13 +389,13 @@ impl StandaloneExecutor {
             .map(|n| u32::try_from(n.get()).unwrap_or(4))
             .unwrap_or(4);
 
-        // Query real memory - Pure Rust Evolution (Jan 17, 2026)
-        use sysinfo::System;
-        let mut system = System::new_all();
-        system.refresh_memory();
-
-        let total_memory = system.total_memory(); // Already in bytes
-        let available_memory = system.available_memory(); // Already in bytes
+        let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
+            total: 0,
+            available: 0,
+            used: 0,
+            swap_total: 0,
+            swap_free: 0,
+        });
 
         Self {
             capabilities: ComputeCapabilities {
@@ -405,7 +405,7 @@ impl StandaloneExecutor {
                     unit_type: "cpu".to_string(),
                     name: format!("CPU Compute ({cpu_cores} cores)"),
                     cores: cpu_cores,
-                    memory_bytes: total_memory,
+                    memory_bytes: mem.total,
                     tflops: Self::estimate_cpu_tflops(cpu_cores),
                     utilization: 0.0,
                 }],
@@ -417,12 +417,12 @@ impl StandaloneExecutor {
                 available_resources: AvailableResources {
                     total_cpu_cores: cpu_cores,
                     available_cpu_cores: cpu_cores,
-                    total_memory_bytes: total_memory,
-                    available_memory_bytes: available_memory,
+                    total_memory_bytes: mem.total,
+                    available_memory_bytes: mem.available,
                     total_gpu_memory_bytes: None,
                     available_gpu_memory_bytes: None,
-                    cpu_utilization: Self::query_cpu_utilization(&mut system),
-                    memory_utilization: Self::query_memory_utilization(&system),
+                    cpu_utilization: Self::query_cpu_utilization(),
+                    memory_utilization: Self::query_memory_utilization(),
                     gpu_utilization: None,
                 },
                 metadata: std::collections::HashMap::new(),
@@ -438,39 +438,21 @@ impl StandaloneExecutor {
         Some((cores as f64) * 0.1)
     }
 
-    /// Query actual CPU utilization (pure Rust via sysinfo)
-    ///
-    /// Deep debt principle: Runtime discovery, no hardcoding
-    fn query_cpu_utilization(system: &mut sysinfo::System) -> f32 {
-        system.refresh_cpu_usage();
-
-        // Average utilization across all CPUs
-        let cpus = system.cpus();
-        if cpus.is_empty() {
-            return 0.0;
-        }
-
-        let total_usage: f32 = cpus.iter().map(sysinfo::Cpu::cpu_usage).sum();
-        let len = cpus.len();
-        #[allow(clippy::cast_precision_loss)]
-        let avg = total_usage / len as f32;
-        avg
+    /// Query actual CPU utilization via /proc/stat (pure Rust, zero C).
+    fn query_cpu_utilization() -> f32 {
+        toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0)
     }
 
-    /// Query actual memory utilization (pure Rust via sysinfo)
-    ///
-    /// Deep debt principle: Runtime discovery, no hardcoding
-    fn query_memory_utilization(system: &sysinfo::System) -> f32 {
-        let total = system.total_memory();
-        let available = system.available_memory();
-
-        if total == 0 {
+    /// Query actual memory utilization via /proc/meminfo (pure Rust, zero C).
+    fn query_memory_utilization() -> f32 {
+        let Ok(mem) = toadstool_sysmon::memory_info() else {
+            return 0.0;
+        };
+        if mem.total == 0 {
             return 0.0;
         }
-
-        let used = total.saturating_sub(available);
         #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-        let pct = ((used as f64 / total as f64) * 100.0) as f32;
+        let pct = ((mem.used as f64 / mem.total as f64) * 100.0) as f32;
         pct
     }
 }
@@ -508,8 +490,7 @@ impl WorkloadExecutor for StandaloneExecutor {
 
         let start = std::time::Instant::now();
 
-        // Query actual system utilization before execution
-        let pre_cpu_util = Self::query_cpu_utilization(&mut sysinfo::System::new());
+        let pre_cpu_util = Self::query_cpu_utilization();
 
         // Process the workload data
         // Real backends would parse submission.data and execute on GPU/CPU/NPU
@@ -528,8 +509,7 @@ impl WorkloadExecutor for StandaloneExecutor {
 
         let execution_duration = start.elapsed().as_secs_f64();
 
-        // Query post-execution utilization
-        let post_cpu_util = Self::query_cpu_utilization(&mut sysinfo::System::new());
+        let post_cpu_util = Self::query_cpu_utilization();
         let avg_cpu_util = (pre_cpu_util + post_cpu_util) / 2.0;
 
         // Estimate cores used based on utilization delta

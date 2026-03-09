@@ -229,7 +229,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | API orphan | crates/api/ ByobApi → container; dependency removed |
 | Unsafe docs | V4L2 `// SAFETY:` on all blocks |
 | Debris cleanup | Root tests/ stubs, stale checklists (11 files), false-positive TODOs |
-| management/resources | Re-added as real ResourceManager with sysinfo |
+| management/resources | Real ResourceManager — sysinfo→toadstool-sysmon (pure Rust) S137 |
 | Root docs | All updated to S96 |
 | Spring tracker | Updated to current versions (hotSpring v0.6.17, groundSpring V80, neuralSpring V86/S128, wetSpring V97d, airSpring V071) |
 

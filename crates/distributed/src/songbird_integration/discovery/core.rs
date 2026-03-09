@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use sysinfo::System;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;
 use tracing::debug;
@@ -234,19 +233,23 @@ impl SongbirdNetworkDiscovery {
         }
 
         let current_utilization = if total_capacity.cpu_cores > 0.0 {
-            let mut sys = System::new();
-            sys.refresh_cpu_usage();
-            sys.refresh_memory();
+            let cpu_utilization = f64::from(
+                toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0),
+            ) / 100.0;
 
-            let cpu_utilization = sys.global_cpu_info().cpu_usage() / 100.0;
+            let memory_utilization = toadstool_sysmon::memory_info()
+                .map(|m| {
+                    if m.total > 0 {
+                        #[allow(clippy::cast_precision_loss)]
+                        let pct = m.used as f64 / m.total as f64;
+                        pct
+                    } else {
+                        0.0
+                    }
+                })
+                .unwrap_or(0.0);
 
-            let memory_utilization = if sys.total_memory() > 0 {
-                (sys.total_memory() - sys.available_memory()) as f64 / sys.total_memory() as f64
-            } else {
-                0.0
-            };
-
-            (cpu_utilization as f64 * 0.6 + memory_utilization * 0.4).clamp(0.0, 1.0)
+            (cpu_utilization * 0.6 + memory_utilization * 0.4).clamp(0.0, 1.0)
         } else {
             0.0
         };

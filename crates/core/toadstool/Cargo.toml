@@ -44,8 +44,8 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 # Error handling
 thiserror = { workspace = true }
 
-# System monitoring
-sysinfo = { workspace = true }
+# System monitoring — Pure Rust via /proc (replaces sysinfo)
+toadstool-sysmon = { workspace = true }
 
 # Encoding
 base64 = "0.22"

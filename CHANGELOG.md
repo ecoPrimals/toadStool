@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Hardcoded values**: All production primal names already use `interned_strings::primals::*`. All ports from `toadstool_config::ports::*`. All paths from `platform_paths::*`. Remaining literals are test fixtures.
 - **Large files**: Largest production file `wgpu_backend.rs` at 974 lines (under 1000 limit).
 - **Unsafe code**: All 6 files with unsafe are hardware-access layers (MMIO, DMA, VFIO, V4L2) with documented SAFETY comments.
-- **External deps**: `sysinfo` is necessary FFI (no pure Rust alternative). All other FFI deps (`pyo3`, `cc`, `bindgen`, `esp-idf-sys`) are feature-gated optional.
+- **External deps**: Zero always-on C/FFI deps (sysinfo eliminated S137 → toadstool-sysmon pure Rust). All FFI deps (`pyo3`, `cc`, `bindgen`, `esp-idf-sys`) are feature-gated optional.
 - **TODOs**: Zero `TODO`/`FIXME`/`HACK` in production code. One `TEMPORARY` in disabled GPU segfault test.
 - **Dead code**: ~35 `#[allow(dead_code)]` items — all intentional (kernel ABI types, future-phase fields).
 - **ComputeDispatch**: Confirmed in barraCuda, not toadStool. Adapter-level smoke tests already present.

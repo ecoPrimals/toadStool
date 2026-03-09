@@ -30,35 +30,23 @@ pub async fn health_check_handler(State(state): State<ServerState>) -> impl Into
         }
     };
 
-    use sysinfo::System;
-
-    let mut sys = System::new();
-    sys.refresh_memory();
-    sys.refresh_cpu_usage();
-
-    let total_memory = sys.total_memory();
-    let used_memory = total_memory.saturating_sub(sys.available_memory());
-    #[allow(clippy::cast_precision_loss)]
-    let memory_usage_percent = if total_memory > 0 {
-        ((used_memory as f64 / total_memory as f64) * 100.0).clamp(0.0, 100.0)
-    } else {
-        45.0
-    };
-
-    #[allow(clippy::cast_precision_loss)]
-    let cpu_usage_percent = sys.global_cpu_info().cpu_usage() as f64;
-    let cpu_usage_percent = if cpu_usage_percent > 0.0 {
-        cpu_usage_percent.clamp(0.0, 100.0)
-    } else {
+    let (memory_usage_percent, cpu_usage_percent) = {
+        let mem = toadstool_sysmon::memory_info().ok();
         #[allow(clippy::cast_precision_loss)]
-        let total_cores = sys.cpus().len() as f64;
+        let mem_pct = mem
+            .filter(|m| m.total > 0)
+            .map(|m| ((m.used as f64 / m.total as f64) * 100.0).clamp(0.0, 100.0))
+            .unwrap_or(45.0);
+
         #[allow(clippy::cast_precision_loss)]
-        let available_cores = system_resources.available_cpu_cores as f64;
-        if total_cores > 0.0 && available_cores <= total_cores {
+        let total_cores = toadstool_sysmon::cpu_count() as f64;
+        let available_cores = system_resources.available_cpu_cores;
+        let cpu_pct = if total_cores > 0.0 && available_cores <= total_cores {
             ((1.0 - (available_cores / total_cores)) * 100.0).clamp(0.0, 100.0)
         } else {
             50.0
-        }
+        };
+        (mem_pct, cpu_pct)
     };
 
     let healthy = cpu_usage_percent < 90.0 && memory_usage_percent < 90.0;

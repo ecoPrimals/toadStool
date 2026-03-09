@@ -205,11 +205,10 @@ impl SelfIdentity {
         }
     }
 
-    /// Detect available memory using sysinfo
     fn detect_memory() -> u64 {
-        let mut sys = sysinfo::System::new_all();
-        sys.refresh_memory();
-        sys.total_memory()
+        toadstool_sysmon::memory_info()
+            .map(|m| m.total)
+            .unwrap_or(0)
     }
 
     /// Detect GPU availability using wgpu runtime detection
