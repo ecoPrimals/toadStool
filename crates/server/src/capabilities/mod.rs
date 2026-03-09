@@ -72,6 +72,9 @@ pub struct SystemResources {
 }
 
 /// GPU device information (self-knowledge)
+///
+/// Fields `render_node`, `driver`, and `arch` are populated on Linux from
+/// DRM sysfs and enable coralReef's `GpuContext::from_descriptor(vendor, arch, driver)`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuDevice {
     pub device_id: usize,
@@ -79,6 +82,15 @@ pub struct GpuDevice {
     pub vendor: String, // "nvidia", "amd", "intel", "apple"
     pub memory_bytes: u64,
     pub compute_capability: Option<String>,
+    /// DRM render node path, e.g. `/dev/dri/renderD128`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub render_node: Option<String>,
+    /// Kernel driver name, e.g. `amdgpu`, `nvidia`, `nouveau`, `i915`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub driver: Option<String>,
+    /// GPU micro-architecture, e.g. `rdna2`, `sm_86`, `xe_lpg`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arch: Option<String>,
 }
 
 impl PrimalCapabilities {
@@ -121,6 +133,7 @@ impl PrimalCapabilities {
     ///
     /// Deep debt principle: Announcement, not registration!
     /// - Writes capability file to shared discovery directory
+    /// - Also writes to ecoPrimals root for coralReef compatibility
     /// - Peers can read it to discover us
     /// - No centralized registry!
     ///
@@ -129,23 +142,32 @@ impl PrimalCapabilities {
     /// Returns error string if directory creation, serialization, or file write fails.
     pub async fn announce(&self) -> Result<(), String> {
         let discovery_dir = discovery_directory();
+        let eco_root = ecoprimals_root_directory();
 
-        // Create discovery directory if needed
         fs::create_dir_all(&discovery_dir)
             .await
             .map_err(|e| format!("Failed to create discovery directory: {e}"))?;
+        fs::create_dir_all(&eco_root)
+            .await
+            .map_err(|e| format!("Failed to create ecoPrimals root: {e}"))?;
 
-        // Write capability file
-        let capability_file = discovery_dir.join(format!("{}.json", self.primal_id));
         let json = serde_json::to_string_pretty(&self)
             .map_err(|e| format!("Failed to serialize capabilities: {e}"))?;
 
-        fs::write(&capability_file, json)
+        let filename = format!("{}.json", self.primal_id);
+
+        let canonical = discovery_dir.join(&filename);
+        fs::write(&canonical, &json)
             .await
             .map_err(|e| format!("Failed to write capability file: {e}"))?;
 
-        info!("📢 Announced capabilities: {}", capability_file.display());
-        info!("   Deep debt principle: Peer discovery, not centralized registry!");
+        let compat = eco_root.join(&filename);
+        fs::write(&compat, &json)
+            .await
+            .map_err(|e| format!("Failed to write compat capability file: {e}"))?;
+
+        info!("📢 Announced capabilities: {}", canonical.display());
+        info!("📢 coralReef-compat entry:  {}", compat.display());
 
         Ok(())
     }
@@ -263,23 +285,29 @@ impl PrimalCapabilities {
         Ok(peers)
     }
 
-    /// Cleanup announcement on shutdown
+    /// Cleanup announcement on shutdown (removes both canonical and compat entries)
     ///
     /// # Errors
     ///
     /// Returns error string if capability file removal fails.
     pub async fn cleanup(&self) -> Result<(), String> {
-        let discovery_dir = discovery_directory();
-        let capability_file = discovery_dir.join(format!("{}.json", self.primal_id));
+        let filename = format!("{}.json", self.primal_id);
 
-        if capability_file.exists() {
-            fs::remove_file(&capability_file)
+        let canonical = discovery_directory().join(&filename);
+        if canonical.exists() {
+            fs::remove_file(&canonical)
                 .await
                 .map_err(|e| format!("Failed to remove capability file: {e}"))?;
-
-            info!("🧹 Cleaned up capability announcement");
         }
 
+        let compat = ecoprimals_root_directory().join(&filename);
+        if compat.exists() {
+            fs::remove_file(&compat)
+                .await
+                .map_err(|e| format!("Failed to remove compat capability file: {e}"))?;
+        }
+
+        info!("🧹 Cleaned up capability announcements");
         Ok(())
     }
 }
@@ -343,7 +371,6 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                 let gpu_path = entry.path();
                 let pci_id = entry.file_name().to_string_lossy().to_string();
 
-                // Try to read GPU info
                 let info_path = gpu_path.join("information");
                 let mut name = format!("NVIDIA GPU {device_id}");
                 let mut memory_bytes = 0u64;
@@ -356,7 +383,6 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                     }
                 }
 
-                // Try to get memory from nvidia-smi
                 if let Ok(output) = std::process::Command::new("nvidia-smi")
                     .args([
                         "--query-gpu=memory.total",
@@ -375,12 +401,18 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                     }
                 }
 
+                let render_node = find_render_node_for_pci(&pci_id);
+                let driver = detect_nvidia_driver();
+
                 devices.push(GpuDevice {
                     device_id,
                     name,
                     vendor: "nvidia".to_string(),
                     memory_bytes,
                     compute_capability: Some(pci_id),
+                    render_node,
+                    driver,
+                    arch: None,
                 });
                 device_id += 1;
             }
@@ -428,7 +460,6 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                         }
                     }
 
-                    // Try to get memory (AMD exposes this in mem_info_vram_total)
                     let mut memory_bytes = 0u64;
                     let mem_path = device_path.join("mem_info_vram_total");
                     if let Ok(mem_str) = std::fs::read_to_string(&mem_path) {
@@ -437,12 +468,19 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                         }
                     }
 
+                    let render_node = find_render_node_sibling(&card_path);
+                    let driver = read_driver_name(&device_path);
+                    let arch = infer_gpu_arch(vendor, &device_path);
+
                     devices.push(GpuDevice {
                         device_id,
                         name: gpu_name,
                         vendor: vendor.to_string(),
                         memory_bytes,
                         compute_capability: None,
+                        render_node,
+                        driver,
+                        arch,
                     });
                     device_id += 1;
                 }
@@ -513,6 +551,9 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                                     vendor: vendor.to_string(),
                                     memory_bytes,
                                     compute_capability: None,
+                                    render_node: None,
+                                    driver: Some("metal".to_string()),
+                                    arch: None,
                                 });
                                 device_id += 1;
                             }
@@ -540,6 +581,104 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
     devices
 }
 
+/// Find the render node (e.g. `/dev/dri/renderD128`) for a card directory.
+///
+/// Given `/sys/class/drm/card0`, looks for a sibling `renderD*` whose
+/// `device` symlink points to the same PCI device.
+#[cfg(target_os = "linux")]
+fn find_render_node_sibling(card_path: &std::path::Path) -> Option<String> {
+    let parent = card_path.parent()?;
+    let card_device = card_path.join("device").canonicalize().ok()?;
+    if let Ok(entries) = std::fs::read_dir(parent) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with("renderD") {
+                let render_device = entry.path().join("device").canonicalize().ok();
+                if render_device.as_ref() == Some(&card_device) {
+                    return Some(format!("/dev/dri/{name}"));
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Find the render node for an NVIDIA GPU given its PCI address.
+#[cfg(target_os = "linux")]
+fn find_render_node_for_pci(pci_id: &str) -> Option<String> {
+    let drm_path = std::path::Path::new("/sys/class/drm");
+    if let Ok(entries) = std::fs::read_dir(drm_path) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with("renderD") {
+                let device_link = entry.path().join("device");
+                if let Ok(target) = std::fs::read_link(&device_link) {
+                    if target.to_string_lossy().contains(pci_id) {
+                        return Some(format!("/dev/dri/{name}"));
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Read the kernel driver name from the `driver` symlink in sysfs.
+#[cfg(target_os = "linux")]
+fn read_driver_name(device_path: &std::path::Path) -> Option<String> {
+    let driver_link = device_path.join("driver");
+    std::fs::read_link(driver_link)
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+}
+
+/// Detect NVIDIA driver type from loaded kernel modules.
+#[cfg(target_os = "linux")]
+fn detect_nvidia_driver() -> Option<String> {
+    if std::path::Path::new("/sys/module/nvidia").exists() {
+        Some("nvidia".to_string())
+    } else if std::path::Path::new("/sys/module/nouveau").exists() {
+        Some("nouveau".to_string())
+    } else {
+        None
+    }
+}
+
+/// Infer GPU micro-architecture from PCI revision and vendor.
+#[cfg(target_os = "linux")]
+fn infer_gpu_arch(vendor: &str, device_path: &std::path::Path) -> Option<String> {
+    let revision_path = device_path.join("revision");
+    let _revision = std::fs::read_to_string(revision_path).ok();
+    match vendor {
+        "amd" => {
+            let uevent = std::fs::read_to_string(device_path.join("uevent")).ok()?;
+            for line in uevent.lines() {
+                if line.starts_with("PCI_ID=") {
+                    let pci_id = line.trim_start_matches("PCI_ID=");
+                    if let Some(device_id) = pci_id.split(':').nth(1) {
+                        let id = u32::from_str_radix(device_id, 16).ok()?;
+                        return Some(amd_arch_from_device_id(id).to_string());
+                    }
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+/// Map AMD PCI device ID ranges to architecture names.
+#[cfg(target_os = "linux")]
+fn amd_arch_from_device_id(device_id: u32) -> &'static str {
+    match device_id {
+        0x73A0..=0x73FF => "rdna3",
+        0x7300..=0x739F => "rdna2",
+        0x6900..=0x69FF => "rdna1",
+        0x6860..=0x68FF => "vega",
+        _ => "unknown",
+    }
+}
+
 /// Capability name constants (avoids repeated literal allocations)
 pub(crate) const CAP_COMPUTE: &str = "compute";
 pub(crate) const CAP_ORCHESTRATION: &str = "orchestration";
@@ -547,6 +686,8 @@ pub(crate) const CAP_JSON_RPC: &str = "jsonrpc";
 pub(crate) const CAP_MEMORY_LARGE: &str = "memory-large";
 pub(crate) const CAP_MEMORY_MEDIUM: &str = "memory-medium";
 pub(crate) const CAP_MEMORY_SMALL: &str = "memory-small";
+pub(crate) const CAP_GPU_DISPATCH: &str = "gpu.dispatch";
+pub(crate) const CAP_SCIENCE_GPU_DISPATCH: &str = "science.gpu.dispatch";
 
 /// Build capabilities list from resources
 ///
@@ -577,6 +718,10 @@ pub fn build_capabilities(resources: &SystemResources) -> Vec<String> {
     }
 
     // GPU capabilities
+    if !resources.gpu_devices.is_empty() {
+        capabilities.push(CAP_GPU_DISPATCH.to_string());
+        capabilities.push(CAP_SCIENCE_GPU_DISPATCH.to_string());
+    }
     for (i, gpu) in resources.gpu_devices.iter().enumerate() {
         capabilities.push(format!("gpu-{i}"));
         capabilities.push(format!("gpu-{}", gpu.vendor));
@@ -593,11 +738,19 @@ fn runtime_base_dir() -> PathBuf {
         .unwrap_or_else(|_| std::env::temp_dir())
 }
 
-/// Get discovery directory
+/// Get discovery directory (canonical path)
 ///
 /// Prefers XDG_RUNTIME_DIR, falls back to platform temp directory.
 fn discovery_directory() -> PathBuf {
     runtime_base_dir().join("ecoPrimals").join("discovery")
+}
+
+/// Get ecoPrimals root directory (coralReef-compatible discovery path)
+///
+/// coralReef scans `$XDG_RUNTIME_DIR/ecoPrimals/` directly for discovery
+/// entries, so we dual-write to this root alongside `ecoPrimals/discovery/`.
+fn ecoprimals_root_directory() -> PathBuf {
+    runtime_base_dir().join("ecoPrimals")
 }
 
 /// Get default socket path for this primal

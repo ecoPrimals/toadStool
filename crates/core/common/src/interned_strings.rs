@@ -100,6 +100,18 @@ pub mod capabilities {
 
     /// Version control capability
     pub const VERSIONING: &str = "versioning";
+
+    /// GPU dispatch capability (coralReef/barraCuda compute triangle)
+    pub const GPU_DISPATCH: &str = "gpu.dispatch";
+
+    /// Science GPU dispatch (JSON-RPC method family)
+    pub const SCIENCE_GPU_DISPATCH: &str = "science.gpu.dispatch";
+
+    /// Shader compilation capability (coralReef sovereign pipeline)
+    pub const SHADER_COMPILE: &str = "shader.compile";
+
+    /// Orchestration capability
+    pub const ORCHESTRATION: &str = "orchestration";
 }
 
 /// Protocol constants
@@ -256,6 +268,10 @@ mod tests {
         assert_eq!(capabilities::STORAGE, "storage");
         assert_eq!(capabilities::COORDINATION, "coordination");
         assert_eq!(capabilities::ENCRYPTION, "encryption");
+        assert_eq!(capabilities::GPU_DISPATCH, "gpu.dispatch");
+        assert_eq!(capabilities::SCIENCE_GPU_DISPATCH, "science.gpu.dispatch");
+        assert_eq!(capabilities::SHADER_COMPILE, "shader.compile");
+        assert_eq!(capabilities::ORCHESTRATION, "orchestration");
     }
 
     #[test]

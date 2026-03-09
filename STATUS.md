@@ -1,4 +1,4 @@
-# Status -- March 9, 2026 (S138 Deep Debt Audit & Evolution)
+# Status -- March 9, 2026 (S139 Spring Absorption & Compute Triangle)
 
 ## Quality Gates
 
@@ -18,6 +18,8 @@
 | Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
 | Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route |
 | Progressive showcase | PASS | **15 demos, 4 levels** — local primal, shader pipeline, compute triangle (toadStool/barraCuda/coralReef), ecosystem integration. All build standalone. |
+| Compute triangle discovery | PASS | **Dual-write announce** (ecoPrimals/discovery/ + ecoPrimals/ root), `gpu.dispatch` capability, GPU descriptors with render_node/driver/arch. coralReef-compatible. |
+| Spring absorption | PASS | **StreamingDispatch** (hotSpring v0.6.24), **PipelineGraph DAG** (neuralSpring S134) absorbed into `toadstool::universal`. |
 
 ## Codebase Metrics
 

@@ -5,7 +5,31 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 9, 2026 (Sessions 43-138 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption + Comprehensive Audit + Deep Debt Execution + Coverage Push)
+## [Unreleased] - March 9, 2026 (Sessions 43-139 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption + Comprehensive Audit + Deep Debt Execution + Coverage Push + Spring Absorption + Compute Triangle)
+
+### Session S139 (Mar 9, 2026) — Spring Absorption & Compute Triangle Evolution
+
+#### Discovery Path Alignment (P0)
+- **Dual-write announce**: `PrimalCapabilities::announce()` now writes to both `ecoPrimals/discovery/` (canonical) and `ecoPrimals/` root (coralReef-compatible). Unblocks live compute triangle.
+- **Dual cleanup**: `cleanup()` removes both canonical and compat discovery entries.
+
+#### GPU Dispatch Capability (P0)
+- **`gpu.dispatch`** and **`science.gpu.dispatch`** capabilities now emitted by `build_capabilities()` when GPUs are detected.
+- New interned strings: `capabilities::GPU_DISPATCH`, `capabilities::SCIENCE_GPU_DISPATCH`, `capabilities::SHADER_COMPILE`, `capabilities::ORCHESTRATION`.
+
+#### GPU Descriptor Enrichment (P1)
+- **`GpuDevice` struct extended** with `render_node`, `driver`, `arch` fields (all `Option<String>`).
+- Linux DRM sysfs helpers: `find_render_node_sibling`, `read_driver_name`, `detect_nvidia_driver`, `infer_gpu_arch`.
+- Enables coralReef/barraCuda `GpuContext::from_descriptor(vendor, arch, driver)`.
+
+#### Streaming Dispatch Absorption (P2, from hotSpring v0.6.24)
+- New module `toadstool::universal::streaming_dispatch` with `DispatchMode`, `DispatchStats`, `StreamingDispatchContext`.
+- Backend-agnostic dispatch batching pattern (Single, Streaming, MegaBatch modes).
+
+#### Pipeline DAG Absorption (P3, from neuralSpring S134)
+- New module `toadstool::universal::pipeline_graph` with `PipelineGraph`, `StageNode`, `PipelineExecution`.
+- Kahn's algorithm topological sort, cycle detection, validation.
+- Canonical `compute_triangle_pipeline()` for discover -> compile -> dispatch.
 
 ### Session S138 (Mar 9, 2026) — Deep Debt Audit & Evolution + Coverage Push
 

@@ -72,6 +72,9 @@ fn test_build_capabilities_apple_gpu() {
             vendor: "apple".to_string(),
             memory_bytes: 8 * 1024 * 1024 * 1024,
             compute_capability: None,
+            render_node: None,
+            driver: Some("metal".to_string()),
+            arch: None,
         }],
         architecture: "aarch64".to_string(),
         os: "macos".to_string(),
@@ -94,6 +97,9 @@ fn test_build_capabilities_intel_gpu() {
             vendor: "intel".to_string(),
             memory_bytes: 256 * 1024 * 1024,
             compute_capability: None,
+            render_node: None,
+            driver: Some("i915".to_string()),
+            arch: None,
         }],
         architecture: "x86_64".to_string(),
         os: "linux".to_string(),
@@ -131,6 +137,9 @@ fn test_system_resources_serialization_roundtrip() {
             vendor: "nvidia".to_string(),
             memory_bytes: 8 * 1024 * 1024 * 1024,
             compute_capability: Some("8.0".to_string()),
+            render_node: None,
+            driver: None,
+            arch: None,
         }],
         architecture: "x86_64".to_string(),
         os: "linux".to_string(),
@@ -151,11 +160,17 @@ fn test_gpu_device_clone() {
         vendor: "nvidia".to_string(),
         memory_bytes: 16 * 1024 * 1024 * 1024,
         compute_capability: Some("8.9".to_string()),
+        render_node: Some("/dev/dri/renderD128".to_string()),
+        driver: Some("nvidia".to_string()),
+        arch: Some("sm_89".to_string()),
     };
     let cloned = gpu.clone();
     assert_eq!(cloned.device_id, gpu.device_id);
     assert_eq!(cloned.name, gpu.name);
     assert_eq!(cloned.vendor, gpu.vendor);
+    assert_eq!(cloned.render_node, gpu.render_node);
+    assert_eq!(cloned.driver, gpu.driver);
+    assert_eq!(cloned.arch, gpu.arch);
 }
 
 #[test]
@@ -205,6 +220,9 @@ fn test_gpu_device_debug_format() {
         vendor: "amd".to_string(),
         memory_bytes: 1024,
         compute_capability: None,
+        render_node: None,
+        driver: Some("amdgpu".to_string()),
+        arch: Some("rdna2".to_string()),
     };
     let formatted = format!("{gpu:?}");
     assert!(formatted.contains("GpuDevice"));

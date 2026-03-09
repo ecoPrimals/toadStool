@@ -10,6 +10,9 @@ fn test_gpu_device_serialization() {
         vendor: "nvidia".to_string(),
         memory_bytes: 8 * 1024 * 1024 * 1024,
         compute_capability: Some("8.0".to_string()),
+        render_node: Some("/dev/dri/renderD128".to_string()),
+        driver: Some("nvidia".to_string()),
+        arch: Some("sm_80".to_string()),
     };
 
     let json = serde_json::to_string(&gpu).expect("serialize");
@@ -19,6 +22,9 @@ fn test_gpu_device_serialization() {
     assert_eq!(parsed.vendor, gpu.vendor);
     assert_eq!(parsed.memory_bytes, gpu.memory_bytes);
     assert_eq!(parsed.compute_capability, gpu.compute_capability);
+    assert_eq!(parsed.render_node, gpu.render_node);
+    assert_eq!(parsed.driver, gpu.driver);
+    assert_eq!(parsed.arch, gpu.arch);
 }
 
 #[test]
@@ -29,11 +35,17 @@ fn test_gpu_device_without_compute_capability() {
         vendor: "intel".to_string(),
         memory_bytes: 1024 * 1024 * 1024,
         compute_capability: None,
+        render_node: None,
+        driver: None,
+        arch: None,
     };
 
     let json = serde_json::to_string(&gpu).expect("serialize");
     let parsed: GpuDevice = serde_json::from_str(&json).expect("deserialize");
     assert!(parsed.compute_capability.is_none());
+    assert!(parsed.render_node.is_none());
+    assert!(parsed.driver.is_none());
+    assert!(parsed.arch.is_none());
 }
 
 #[test]
