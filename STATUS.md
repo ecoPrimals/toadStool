@@ -17,6 +17,7 @@
 | Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
 | Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
 | Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route |
+| Progressive showcase | PASS | **15 demos, 4 levels** — local primal, shader pipeline, compute triangle (toadStool/barraCuda/coralReef), ecosystem integration. All build standalone. |
 
 ## Codebase Metrics
 

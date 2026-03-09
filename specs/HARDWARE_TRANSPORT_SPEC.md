@@ -3,7 +3,7 @@
 **Version**: 1.0  
 **Status**: Implemented (S94b)  
 **Crates**: `toadstool-core`, `toadstool-display`  
-**License**: AGPL-3.0-or-later
+**License**: AGPL-3.0-only
 
 ## Overview
 

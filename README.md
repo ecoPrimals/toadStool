@@ -56,7 +56,7 @@ Nest    = Tower  + NestGate           <- storage
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
+| License | AGPL-3.0-only -- root LICENSE file + SPDX headers on all files |
 | File size limit | All production files under 1000 lines (40+ god files smart-refactored into domain modules) |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
@@ -329,4 +329,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 9, 2026 -- S136. 19,840+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. `deny(unsafe_op_in_unsafe_fn)` on akida-driver. Well-known hosts extracted to constants. coralReef Iteration 20 tracked. Comprehensive audit: zero production mocks, zero hardcoded primal names, all unsafe documented. Rust 1.82+ (MSRV).
+**Last Updated**: March 9, 2026 -- S138. 19,900+ workspace tests. 83.04% line coverage (llvm-cov verified). 85+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). 15-demo progressive showcase. Compute triangle: toadStool/barraCuda/coralReef. Clippy pedantic zero. Rust 1.82+ (MSRV).

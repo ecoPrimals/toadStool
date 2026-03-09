@@ -57,6 +57,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cargo test --workspace` PASS (19,900+ tests, 0 failures; SIGSEGV in wgpu probe is transient)
 - Integration tests: 10/11 pass (C-compiler validation is pre-existing transitive dep issue)
 
+#### Progressive Showcase (15 demos, 4 levels)
+- **Level 00 — Local Primal** (5 demos): hello-compute (primal identity, capabilities, sysmon), hardware-discovery (CPU/GPU/NPU/disk/network substrates), workload-lifecycle (JSON-RPC 2.0 compute.submit/status/result/cancel), resource-management (estimation vs actual system), gpu-job-queue (GPU/NPU dispatch, priority queue).
+- **Level 01 — Shader Pipeline** (3 demos): naga-fallback (WGSL -> SPIR-V standalone), coralreef-compile (shader compilation with coralReef discovery), compile-status (async polling pattern).
+- **Level 02 — Compute Patterns** (4 demos): capability-discovery (runtime socket discovery for 6 primals), science-dispatch (science.gpu/npu/substrate methods), deploy-graph (capability routing to barraCuda), shader-to-gpu (headline: compile -> dispatch -> execute triangle).
+- **Level 03 — Ecosystem Integration** (3 demos): songbird-registration (cross-tower capability registration), beardog-secured-compute (zero-trust signed workloads), nestgate-artifact-storage (persistent compute artifacts).
+- All 15 demos build standalone, print formatted output with banners, and gracefully degrade when optional services are absent.
+- Stale `showcase/results/`, `scripts/`, `utils/` archived to `ecoPrimals/fossil/toadStool/showcase-legacy-S138/`.
+
+#### Doc Cleanup
+- **AGPL-3.0-or-later → AGPL-3.0-only**: 17 README.md files across crates and specs updated.
+- **Session headers**: 6 root docs updated from S135/S136 to S138 (specs/README, docs/README, TESTING.md, QUICK_REFERENCE, README, SOVEREIGN_COMPUTE).
+- **BREAKING_CHANGES.md**: "sysinfo" reference updated to "toadstool-sysmon".
+- **7 stale TODO(D-PEDANTIC)** comments removed from crate lib.rs files.
+
 ### Session S136 (Mar 9, 2026) — Comprehensive Audit + Unsafe Hardening + Hardcoding Evolution
 
 #### Unsafe Hardening

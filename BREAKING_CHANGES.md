@@ -7,7 +7,7 @@ Springs: check this file after updating your toadStool pin.
 
 ### Breaking Changes
 
-- **`management/resources` crate re-added to workspace** — evolved from placeholder to real `ResourceManager` with sysinfo. Springs that pinned a workspace without this member should update.
+- **`management/resources` crate re-added to workspace** — evolved from placeholder to real `ResourceManager` with `toadstool-sysmon` (pure Rust). Springs that pinned a workspace without this member should update.
 - **`SubstrateType` enum expanded** — 4→8 variants (`IntegratedGpu`, `Npu`, `Tpu`, `Fpga`, `Dsp`, `Quantum` added). Non-exhaustive match arms on `SubstrateType` need updating.
 - **`GpuAdapterInfo` fields added** — `fingerprint: HardwareFingerprint` and `safe_allocation_limit: u64` fields added.
 
