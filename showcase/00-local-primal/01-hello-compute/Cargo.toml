@@ -1,0 +1,13 @@
+[workspace]
+
+[package]
+name = "hello-compute"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "ToadStool showcase: primal identity and compute capabilities"
+
+[dependencies]
+toadstool-common = { path = "../../../crates/core/common" }
+toadstool-sysmon = { path = "../../../crates/core/sysmon" }
+colored = "2"

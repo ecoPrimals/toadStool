@@ -1,0 +1,15 @@
+[workspace]
+
+[package]
+name = "capability-discovery"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "ToadStool showcase: capability-based socket discovery"
+
+# Local crate path: ../../../crates/core/common
+
+[dependencies]
+serde_json = "1"
+colored = "2"
+tokio = { version = "1", features = ["full"] }

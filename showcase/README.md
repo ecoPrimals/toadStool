@@ -1,46 +1,115 @@
 # ToadStool Showcase Collection
-## Pure Rust Hardware Discovery Demonstrations
 
-**Status**: Active | **Updated**: March 3, 2026 — Session 94b
+**Hardware Discovery, Compute Orchestration, and Inter-Primal Compute Patterns**
 
----
-
-## Overview
-
-ToadStool showcases demonstrate hardware discovery and compute orchestration.
-Math/shader showcases (RBF surrogate, cross-platform GPU parity) have moved to
-`ecoPrimals/fossil/toadStool/` — barraCuda is a separate primal.
+**Status**: Active | **Updated**: March 9, 2026 -- S138
+**License**: AGPL-3.0-only
 
 ---
 
-## Showcases
+## Quick Start
 
-### 1. Neuromorphic Computing (`neuromorphic/`)
+### Run the Local Primal Showcase (30 minutes automated tour)
 
-- **01-akida-detection** — Hardware discovery for Akida NPUs
-- **02-akida-bioinformatics** — NPU-accelerated genomics (k-mer filtering)
-- **03-akida-llm-intent** — Intent classification on NPU
-- **04-raytracing-comparison** — NPU vs GPU workload selection
+```bash
+cd showcase/00-local-primal
+./01-hello-compute/demo.sh          # 30s  - Health, version, capabilities
+./02-hardware-discovery/demo.sh     # 60s  - CPU, GPU, NPU substrate probing
+./03-workload-lifecycle/demo.sh     # 60s  - Submit, status, result, cancel
+./04-resource-management/demo.sh    # 30s  - Resource estimation and optimization
+./05-gpu-job-queue/demo.sh          # 60s  - GPU dispatch and queue management
+```
 
-### 2. GPU Universal (`gpu-universal/`)
+### Compute Triangle Demo (toadStool + barraCuda + coralReef)
 
-Universal GPU operations via WGPU. Works on NVIDIA, AMD, Intel.
-
-### 3. Homomorphic Computing (`homomorphic-computing/`)
-
-FHE operations with GPU acceleration (NTT/INTT transforms).
-
-### 4. Akida Characterization (`akida-characterization/`)
-
-NPU performance characterization and benchmarks.
+```bash
+cd showcase/02-compute-patterns
+./04-shader-to-gpu/demo.sh          # The headline demo: compile -> dispatch -> execute
+```
 
 ---
 
-## Excluded from Workspace
+## Showcase Levels
+
+### Level 00: Local Primal (no external services needed)
+
+Demonstrates toadStool's core capabilities in isolation. Each demo uses library
+APIs directly and runs on any machine with Rust installed.
+
+| Demo | Time | What It Shows |
+|------|------|---------------|
+| 01-hello-compute | 30s | Health check, version, capability enumeration |
+| 02-hardware-discovery | 60s | CPU/GPU/NPU substrate probing via /proc + wgpu |
+| 03-workload-lifecycle | 60s | Full compute.submit -> status -> result -> cancel |
+| 04-resource-management | 30s | Resource estimation, validation, optimization suggestions |
+| 05-gpu-job-queue | 60s | GPU job dispatch, queue management, capabilities |
+
+### Level 01: Shader Pipeline (toadStool + coralReef)
+
+Demonstrates shader compilation with naga fallback and coralReef integration.
+
+| Demo | Time | What It Shows |
+|------|------|---------------|
+| 01-naga-fallback | 30s | WGSL compile via naga (no coralReef needed) |
+| 02-coralreef-compile | 60s | WGSL/SPIR-V compile via coralReef socket |
+| 03-compile-status | 30s | Async compilation status polling |
+
+### Level 02: Compute Patterns (toadStool + barraCuda + coralReef)
+
+Demonstrates the compute triangle: toadStool decides WHERE, barraCuda decides WHAT,
+coralReef compiles HOW.
+
+| Demo | Time | What It Shows |
+|------|------|---------------|
+| 01-capability-discovery | 30s | Runtime discovery of compute.sock, coralreef.sock |
+| 02-science-dispatch | 60s | science.compute.submit + science.gpu.dispatch |
+| 03-deploy-graph | 60s | deploy.capability_call routing to barraCuda |
+| 04-shader-to-gpu | 120s | Full triangle: compile -> dispatch -> execute |
+
+### Level 03: Ecosystem Integration (toadStool + phase1 primals)
+
+Demonstrates toadStool interacting with the broader ecoPrimals ecosystem.
+
+| Demo | Time | What It Shows |
+|------|------|---------------|
+| 01-songbird-registration | 60s | Register compute capabilities for cross-tower discovery |
+| 02-beardog-secured-compute | 60s | Signed workload submission via beardog tokens |
+| 03-nestgate-artifact-storage | 60s | Store/retrieve compute artifacts via nestgate |
+
+---
+
+## Hardware-Specific Showcases
+
+These predate the progressive showcase and require specialized hardware:
+
+| Directory | Description |
+|-----------|-------------|
+| neuromorphic/ | Akida NPU detection, bioinformatics, LLM intent |
+| gpu-universal/ | Universal GPU operations via wgpu (NVIDIA, AMD, Intel) |
+| homomorphic-computing/ | FHE operations with GPU acceleration |
+| akida-characterization/ | NPU performance characterization |
+| barracuda-validation/ | barraCuda compute validation (pre-budding) |
+| whitePaper/ | Technical white paper materials |
+
+---
+
+## Building
 
 All showcases are excluded from the main workspace build.
-Build individually: `cd showcase/<name> && cargo build --release`
+Build individually:
+
+```bash
+cd showcase/00-local-primal/01-hello-compute
+cargo build --release
+```
+
+Or run a demo directly:
+
+```bash
+./demo.sh
+```
 
 ---
 
-*See individual showcase READMEs for detailed instructions*
+*See [00_SHOWCASE_INDEX.md](00_SHOWCASE_INDEX.md) for the full learning path.*
+*See [QUICK_START.md](QUICK_START.md) for a 5-minute guided tour.*

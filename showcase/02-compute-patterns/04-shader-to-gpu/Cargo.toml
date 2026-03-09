@@ -1,0 +1,16 @@
+[workspace]
+
+[package]
+name = "shader-to-gpu"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "ToadStool showcase: the full compute triangle — coralReef, toadStool, barraCuda"
+
+# Local crate path: ../../../crates/core/common
+
+[dependencies]
+serde_json = "1"
+colored = "2"
+uuid = "1"
+tokio = { version = "1", features = ["full"] }
