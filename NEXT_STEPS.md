@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 9, 2026 -- S138 Deep Debt Audit & Evolution + Coverage Push
+**Updated**: March 9, 2026 -- S139 Spring Absorption & Compute Triangle Evolution
 **Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic | 19,900+ tests (0 failures) | 83.04% line coverage (171K llvm-cov verified) | 85+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs
-**Latest**: S138 — Deep debt execution: +126 tests, license alignment to AGPL-3.0-only, 62 allow entries removed, 19 clone reductions, hardcoding evolution to interned_strings, llvm-cov verified 83.04%. S137 — sysinfo eliminated (toadstool-sysmon pure Rust). S136 — Comprehensive audit. S135 — groundSpring V100. S134 — BearDog crypto delegation.
+**Latest**: S139 — Spring absorption: dual-write discovery (coralReef compat), gpu.dispatch capability, GPU descriptor enrichment (render_node/driver/arch), StreamingDispatch from hotSpring, PipelineGraph DAG from neuralSpring. S138 — Deep debt: +126 tests, AGPL-3.0-only, interned strings, 83% coverage. S137 — sysinfo eliminated. S136 — Audit. S135 — groundSpring V100.
 
 ---
 

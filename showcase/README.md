@@ -78,18 +78,10 @@ Demonstrates toadStool interacting with the broader ecoPrimals ecosystem.
 
 ---
 
-## Hardware-Specific Showcases
+## Archived Hardware Showcases
 
-These predate the progressive showcase and require specialized hardware:
-
-| Directory | Description |
-|-----------|-------------|
-| neuromorphic/ | Akida NPU detection, bioinformatics, LLM intent |
-| gpu-universal/ | Universal GPU operations via wgpu (NVIDIA, AMD, Intel) |
-| homomorphic-computing/ | FHE operations with GPU acceleration |
-| akida-characterization/ | NPU performance characterization |
-| barracuda-validation/ | barraCuda compute validation (pre-budding) |
-| whitePaper/ | Technical white paper materials |
+Pre-progressive hardware showcases archived to `ecoPrimals/fossil/toadStool/showcase-hardware-S139/` (S139).
+These predate the progressive showcase and required specialized hardware: neuromorphic, gpu-universal, homomorphic-computing, akida-characterization, barracuda-validation, whitePaper.
 
 ---
 

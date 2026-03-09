@@ -1,7 +1,8 @@
 # Spring Absorption Tracker
 
-**Session**: S138 Deep Debt Audit & Evolution + Coverage Push (March 9, 2026)
+**Session**: S139 Spring Absorption & Compute Triangle Evolution (March 9, 2026)
 **ToadStool**: master, 83.04% line coverage (171K lines llvm-cov verified, 1,868+ .rs files). 19,900+ tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**S139**: Spring absorption — surveyed all 6 springs. Dual-write discovery (coralReef compat). gpu.dispatch + science.gpu.dispatch capabilities. GpuDevice enriched with render_node/driver/arch. StreamingDispatch absorbed from hotSpring v0.6.24. PipelineGraph DAG absorbed from neuralSpring S134. Compute triangle unblocked on toadStool side.
 **S138**: Deep debt execution — +126 tests (sysmon 53, science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2). License alignment AGPL-3.0-only. 62 allow entries removed. 19 clone reductions. Hardcoding evolution to interned_strings. 7 stale TODO(D-PEDANTIC) removed. SPRING_ABSORPTION.md archived to fossil (superseded by this tracker).
 **S135**: groundSpring V100 absorption (SubstrateCapabilityKind::SovereignCompile). GPU f64 reduction smoke test. All hardcoded primal names evolved to interned_strings constants. precision_defaults module. Pre-existing debt fixes.
 **S134**: BearDog crypto delegation enforced (Node Atomic). `dev-crypto` feature gate. secure_enclave aes-gcm/getrandom removed. lifecycle_ops + management refactored.
