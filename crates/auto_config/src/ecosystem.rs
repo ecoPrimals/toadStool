@@ -31,6 +31,16 @@ mod capability_keys {
     pub const SELF: &str = "self";
 }
 
+/// Well-known hostnames probed during ecosystem discovery.
+/// These are mDNS/.local or public endpoints; none carry primal identity.
+mod wellknown_hosts {
+    pub const API_HOST: &str = "api.toadstool.dev";
+    pub const SERVICES_LOCAL: &str = "services.local";
+    pub const ECOSYSTEM_LOCAL: &str = "ecosystem.local";
+
+    pub const ALL: &[&str] = &[API_HOST, SERVICES_LOCAL, ECOSYSTEM_LOCAL];
+}
+
 /// Try env var for capability (capability-based, then legacy for backward compat)
 fn get_capability_endpoint(capability_key: &str, legacy_keys: &[&str]) -> Option<String> {
     let cap_var = format!("{}_ENDPOINT", capability_key.to_uppercase());
@@ -303,13 +313,7 @@ impl EcosystemDiscoverer {
     async fn discover_wellknown_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         let mut services = HashMap::new();
 
-        let wellknown_hosts = vec![
-            "api.toadstool.dev".to_string(),
-            "services.local".to_string(),
-            "ecosystem.local".to_string(),
-        ];
-
-        for host in wellknown_hosts {
+        for host in wellknown_hosts::ALL {
             for (capability_key, pattern) in &self.service_patterns {
                 for &port in &pattern.default_ports {
                     let endpoint = format!("http://{host}:{port}");

@@ -329,4 +329,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 8, 2026 -- S135. 19,840+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. groundSpring V100 sovereign absorption. All hardcoded primal names evolved to interned_strings constants. Rust 1.82+ (MSRV).
+**Last Updated**: March 9, 2026 -- S136. 19,840+ workspace tests. ~86% line coverage (121K production lines). 85+ JSON-RPC methods. Clippy pedantic zero. BearDog crypto delegation enforced. `dev-crypto` feature gate. `deny(unsafe_op_in_unsafe_fn)` on akida-driver. Well-known hosts extracted to constants. coralReef Iteration 20 tracked. Comprehensive audit: zero production mocks, zero hardcoded primal names, all unsafe documented. Rust 1.82+ (MSRV).

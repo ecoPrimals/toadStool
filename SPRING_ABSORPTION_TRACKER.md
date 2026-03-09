@@ -1,8 +1,9 @@
 # Spring Absorption Tracker
 
-**Session**: S135 groundSpring V100 Absorption + Deep Debt Evolution (March 8, 2026)
+**Session**: S136 Comprehensive Audit + Unsafe Hardening (March 9, 2026)
 **ToadStool**: master, ~86% line coverage (517K lines, 1,868+ .rs files). 19,840+ tests, 0 failures. Clippy pedantic clean. `#[expect]` evolution (production code). coralReef shader proxy with capability-based discovery (live E2E on AMD). Cross-spring provenance tracking. All quality gates passing.
-**S135**: groundSpring V100 absorption (SubstrateCapabilityKind::SovereignCompile). GPU f64 reduction smoke test. All hardcoded primal names evolved to interned_strings constants. precision_defaults module. Pre-existing debt fixes (management tests, lifecycle_ops imports, clippy items_after_statements).
+**S136**: Comprehensive audit — zero production mocks, zero hardcoded primal names, all unsafe documented. `deny(unsafe_op_in_unsafe_fn)` on akida-driver. Well-known hosts to constants. coralReef Iteration 20 tracked. All 5 springs reviewed (hotSpring v0.6.24, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5). barraCuda 3-tier lean-out, 4 plasma shaders. No immediate toadStool code changes from springs.
+**S135**: groundSpring V100 absorption (SubstrateCapabilityKind::SovereignCompile). GPU f64 reduction smoke test. All hardcoded primal names evolved to interned_strings constants. precision_defaults module. Pre-existing debt fixes.
 **S134**: BearDog crypto delegation enforced (Node Atomic). `dev-crypto` feature gate. secure_enclave aes-gcm/getrandom removed. lifecycle_ops + management refactored.
 **S133**: Cross-spring absorption from all 5 springs (Mar 8 handoffs). Ada Lovelace `F64NativeNoSharedMem` reclassification (P0). `f64_zeros_risk` + `fused_ops_healthy()` canary on `GpuAdapterInfo`. 14 airSpring ecology JSON-RPC methods. NUCLEUS adaptive discovery pattern (groundSpring V99). Deploy graph routing (wetSpring V99). +20 semantic methods (71→91). biomeOS socket scan on startup.
 
@@ -10,7 +11,7 @@
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.23 | S130+→S131+ | S131+→S133 | 738 lib + 53 integration | Chuna 41/41, dynamical N_f=4 staggered flow, deep debt (zero clippy, zero panics), `log` migration |
+| hotSpring | v0.6.24 | S131+→S133 | S133→S136 | 738 lib + 53 integration | Chuna 41/41, dynamical N_f=4 staggered flow, adaptive HMC, barracuda dep path→git, deep debt (zero clippy, zero panics) |
 | groundSpring | V99 | V96→S131+ | V99→S133 | 936 + 382 Python | 102 (61 CPU + 41 GPU), live NUCLEUS (4 primals discovered), adaptive health, direct primal sockets |
 | neuralSpring | V90/S132 | V89/S131→S131+ | V90/S132→S133 | 902 lib + 43 forge + 240 bins | 89.1% coverage, upstream rewire to S130+/barraCuda `a898dee`/coralReef Iter 10 |
 | wetSpring | V99 | V97e→S131+ | V99→S133 | 1,047 + 200 forge | biomeOS science primal (9 capabilities), deploy graph, 300 experiments, 8,886+ checks |

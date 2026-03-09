@@ -5,7 +5,38 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 8, 2026 (Sessions 43-135 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption)
+## [Unreleased] - March 9, 2026 (Sessions 43-136 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption + Comprehensive Audit)
+
+### Session S136 (Mar 9, 2026) — Comprehensive Audit + Unsafe Hardening + Hardcoding Evolution
+
+#### Unsafe Hardening
+- **`#![deny(unsafe_op_in_unsafe_fn)]`**: Added to `akida-driver` crate root — enforces that unsafe operations inside `unsafe fn` must use explicit `unsafe {}` blocks (Rust 2024 best practice).
+- **SAFETY comments**: Added to all 8 `VolatileSlice::from_raw_parts` call sites in `mmap.rs` and `mmio.rs`, documenting ptr/size invariants maintained by constructors and Drop.
+
+#### Hardcoding Evolution
+- **Well-known discovery hosts**: Extracted `"api.toadstool.dev"`, `"services.local"`, `"ecosystem.local"` from inline vec to `wellknown_hosts` module with named constants and `ALL` slice in `auto_config/ecosystem.rs`.
+- **Clippy pedantic**: Fixed `uninlined_format_args` lint in well-known host loop.
+
+#### Comprehensive Audit Findings (all clean)
+- **Mocks**: All mocks confirmed test-only (`#[cfg(test)]` or `testing` crate). Zero production mocks.
+- **Hardcoded values**: All production primal names already use `interned_strings::primals::*`. All ports from `toadstool_config::ports::*`. All paths from `platform_paths::*`. Remaining literals are test fixtures.
+- **Large files**: Largest production file `wgpu_backend.rs` at 974 lines (under 1000 limit).
+- **Unsafe code**: All 6 files with unsafe are hardware-access layers (MMIO, DMA, VFIO, V4L2) with documented SAFETY comments.
+- **External deps**: `sysinfo` is necessary FFI (no pure Rust alternative). All other FFI deps (`pyo3`, `cc`, `bindgen`, `esp-idf-sys`) are feature-gated optional.
+- **TODOs**: Zero `TODO`/`FIXME`/`HACK` in production code. One `TEMPORARY` in disabled GPU segfault test.
+- **Dead code**: ~35 `#[allow(dead_code)]` items — all intentional (kernel ABI types, future-phase fields).
+- **ComputeDispatch**: Confirmed in barraCuda, not toadStool. Adapter-level smoke tests already present.
+
+#### Spring Review
+- All 5 springs up to date (hotSpring v0.6.24, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5).
+- coralReef advanced to Iteration 20 (SSA dominance repair, sigmoid_f64 unblocked).
+- barraCuda 3-tier precision lean-out (F16 removed, templates removed). PrecisionRoutingAdvice unchanged.
+- No immediate toadStool code changes required from spring review.
+
+#### Quality
+- 6,405+ lib tests pass (0 failures)
+- Zero clippy pedantic warnings workspace-wide
+- Doc tests clean
 
 ### Session S135 (Mar 8, 2026) — groundSpring V100 Absorption + Deep Debt Evolution
 

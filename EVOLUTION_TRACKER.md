@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 8, 2026 — S135
+**Date**: March 9, 2026 — S136
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only. Zero-cost abstractions.
 
 ---
@@ -30,7 +30,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | wetSpring | V99 | ✅ Core absorbed | 144 primitives, ValidationHarness, 52 papers |
 | airSpring | v0.7.5 | ✅ Core absorbed | Ops 0-8, seasonal pipeline, 72 experiments, 25 Tier A GPU |
 | groundSpring | V99 | ✅ Core absorbed | 95/95 three-tier parity, wright_fisher, grid ops, tissue_anderson |
-| hotSpring | v0.6.23 | ✅ Core absorbed | NVK serialization, brain arch, 31 experiments, NPU controlled params |
+| hotSpring | v0.6.24 | ✅ Core absorbed | NVK serialization, brain arch, 31 experiments, NPU controlled params, adaptive dynamical HMC |
 | wateringHole | V69 | ✅ Core absorbed | Chi-squared batch, MC ET0 propagate |
 | groundSpring | V61 | ✅ S81 absorbed | InterconnectTopology, SubstratePipeline, BandwidthTier (PCIe P2P routing) |
 | neuralSpring | V70 | ✅ S81 absorbed | IFFT/NTT/INTT buffer fixes, `enable f64;` stripping |

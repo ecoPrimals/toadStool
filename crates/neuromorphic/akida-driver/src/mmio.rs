@@ -270,6 +270,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn read32(&self, offset: usize) -> u32 {
+        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .read_u32(offset)
@@ -282,6 +283,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn write32(&self, offset: usize, value: u32) {
+        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .write_u32(offset, value)
@@ -294,6 +296,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn read64(&self, offset: usize) -> u64 {
+        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .read_u64(offset)
@@ -306,6 +309,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn write64(&self, offset: usize, value: u64) {
+        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .write_u64(offset, value)

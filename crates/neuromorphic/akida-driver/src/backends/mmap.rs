@@ -131,6 +131,8 @@ impl MmapRegion {
     ///
     /// Returns error if offset is out of bounds
     pub fn read_u32(&self, offset: usize) -> Result<u32> {
+        // SAFETY: self.ptr is from a successful mmap in new(); self.size matches the mapping.
+        // The mapping is valid (file held open, not yet unmapped).
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         let value = slice.read_u32(offset)?;
         tracing::trace!("Read u32 @ {offset:#x} = {value:#x}");
@@ -144,6 +146,7 @@ impl MmapRegion {
     /// Returns error if offset is out of bounds
     pub fn write_u32(&mut self, offset: usize, value: u32) -> Result<()> {
         tracing::trace!("Write u32 @ {offset:#x} = {value:#x}");
+        // SAFETY: self.ptr/self.size invariants maintained by constructor and Drop.
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice.write_u32(offset, value)
     }
@@ -154,6 +157,7 @@ impl MmapRegion {
     ///
     /// Returns error if read would exceed bounds
     pub fn read_bytes(&self, offset: usize, buffer: &mut [u8]) -> Result<()> {
+        // SAFETY: self.ptr/self.size invariants maintained by constructor and Drop.
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice.read_region(offset, buffer)
     }
@@ -164,6 +168,7 @@ impl MmapRegion {
     ///
     /// Returns error if write would exceed bounds
     pub fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
+        // SAFETY: self.ptr/self.size invariants maintained by constructor and Drop.
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice.write_region(offset, data)
     }
