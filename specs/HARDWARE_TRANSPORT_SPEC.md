@@ -1,7 +1,7 @@
 # Hardware Transport Specification
 
-**Version**: 1.0  
-**Status**: Implemented (S94b)  
+**Version**: 1.1  
+**Status**: Implemented (S94b) + PCIe P2P specified (S142+)  
 **Crates**: `toadstool-core`, `toadstool-display`  
 **License**: AGPL-3.0-only
 
@@ -118,6 +118,71 @@ Phase 1 foundation in `toadstool-display::drm`:
 | `connector.rs`  | Enumerate connectors, modes, EDID               |
 | `modesetting.rs`| CRTC allocation, framebuffer attach, set_crtc    |
 | `pageflip.rs`   | Double-buffered page flip with VSync events      |
+
+## Planned: PcieTransport (GPU-to-GPU P2P)
+
+**Status**: Specified (S142+)
+**Medium**: PCIe peer-to-peer DMA
+**Direction**: Bidirectional
+
+GPU-to-GPU data transfer without CPU staging. PCIe P2P won't match NVLink
+bandwidth, but it outperforms CPU roundtrip by 4-10× for large payloads.
+
+### Discovery
+
+```
+/sys/bus/pci/devices/{addr}/
+├── class         # 0x030000 = VGA, 0x030200 = 3D
+├── vendor        # 0x10de = NVIDIA, 0x1002 = AMD
+├── numa_node     # NUMA locality
+└── iommu_group/  # IOMMU grouping (P2P requires same group or ACS)
+```
+
+- Discover PCIe topology via sysfs
+- Detect shared PCIe switch (common parent bridge)
+- NUMA-aware: prefer devices on same NUMA node
+- IOMMU group check: P2P requires compatible IOMMU config
+
+### Mechanism
+
+- **AMD (RDNA2+)**: dma-buf export via DRM render node (`DRM_IOCTL_PRIME_HANDLE_TO_FD`),
+  import on target device (`DRM_IOCTL_PRIME_FD_TO_HANDLE`). GEM buffer sharing.
+- **NVIDIA (NVK/nouveau)**: dma-buf via DRM GEM export/import. Native NVLink where available.
+- **Fallback**: CPU-staged copy via `PinnedMemory` (64-byte aligned DMA buffers)
+
+### Bandwidth
+
+| Interconnect | Theoretical | Practical | Latency |
+|-------------|-------------|-----------|---------|
+| PCIe 3.0 x16 | 16 GB/s | ~12 GB/s | ~1 µs |
+| PCIe 4.0 x16 | 32 GB/s | ~25 GB/s | ~1 µs |
+| PCIe 5.0 x16 | 64 GB/s | ~50 GB/s | ~1 µs |
+| NVLink 3 (A100) | 600 GB/s | ~500 GB/s | ~0.7 µs |
+| CPU staging | ~20 GB/s | ~8 GB/s | ~10 µs |
+
+### Spring Use Case
+
+hotSpring's brain architecture: RTX 3090 motor + Titan V pre-motor. Tensors
+move GPU-to-GPU via PCIe P2P instead of GPU→CPU→GPU. For a 64MB tensor,
+PCIe 3.0 P2P saves ~12ms per transfer vs CPU staging.
+
+## Planned: Streaming Transport
+
+**Status**: Specified (S142+)
+
+`transport.stream` enables continuous streaming between any Rx and Tx:
+
+```json
+{ "method": "transport.stream",
+  "params": { "rx_id": "/dev/video0", "tx_id": "pcie:0000:01:00.0→0000:02:00.0",
+              "buf_size": 1048576 } }
+→ { "stream_id": "...", "status": "streaming" }
+```
+
+- Background task with `CancellationToken`
+- Throughput metrics via `transport.status`
+- Auto-reconnect on transient errors
+- Backpressure: if Tx is slower than Rx, buffer up to configurable limit
 
 ## Sovereignty Compliance
 

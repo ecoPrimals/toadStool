@@ -1,7 +1,7 @@
 # Multi-Tenant Compute Architecture
-**Version**: 1.0  
-**Date**: February 8, 2026  
-**Status**: Active - Implementation in Progress
+**Version**: 1.1  
+**Date**: March 10, 2026  
+**Status**: Active - Implementation in Progress (S142+ P2)
 
 ---
 
@@ -17,6 +17,26 @@ ToadStool provides **multi-tenant NPU/GPU compute** with two-tier architecture:
 - Exhaust system resources
 - Escape sandbox boundaries
 - Exfiltrate data via network
+
+### Deployment Models (S142+)
+
+| Model | Description | Tenant Count | Isolation |
+|-------|-------------|-------------|-----------|
+| **Local Direct** | Spring runs directly on strandgate GPUs | 1 (self) | None — full access |
+| **Local Multi** | Multiple springs share strandgate GPUs | 2-4 | Priority-based quotas |
+| **Cloud Rental** | Our GPUs rented to external tenants | N | Full sandbox + quotas |
+| **Cloud Consumer** | We rent external GPUs (spot/reserved) | 1 (self) | Checkpointing for preemption |
+
+The same `science.gpu.dispatch` API works in all models. The `ResourceOrchestrator`
+decides isolation and allocation based on deployment mode. In local-direct mode
+(strandgate), orchestration is trivially "give everything." In cloud-rental mode,
+it enforces quotas, priorities, and GPU time-slicing.
+
+**Spring-primal parity**: When hotSpring trusts toadStool's orchestrator to place
+and optimize workloads as well as hotSpring does directly, hotSpring focuses
+entirely on science. Multi-tenancy is the mechanism that proves this trust — if
+toadStool can fairly allocate between competing tenants, a single tenant (a spring)
+gets optimal allocation by default.
 
 ---
 

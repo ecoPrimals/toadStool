@@ -35,6 +35,7 @@
 pub mod cpu;
 pub mod disk;
 pub mod error;
+pub mod gpu;
 pub mod loadavg;
 pub mod memory;
 pub mod network;
@@ -43,6 +44,7 @@ pub mod process;
 pub use cpu::{cpu_brand, cpu_count, cpu_usage, per_cpu_usage};
 pub use disk::{disk_usage, DiskInfo};
 pub use error::SysmonError;
+pub use gpu::{discover_gpus, GpuDevice, GpuTelemetry, GpuVendor, PcieTopology};
 pub use loadavg::{load_average, LoadAverage};
 pub use memory::{memory_info, MemoryInfo};
 pub use network::{network_stats, NetworkInterface};

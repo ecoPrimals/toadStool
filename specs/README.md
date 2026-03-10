@@ -1,23 +1,25 @@
 # ToadStool Specifications
 
-## Current Status (March 9, 2026 — S139)
+## Current Status (March 10, 2026 — S141)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
 - **`../STATUS.md`** — Detailed status with quality gates
+- **`../S142_EVOLUTION_PLAN.md`** — Active evolution plan (hardware-first, spring-parity)
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **19,840+ workspace tests** (0 failures, all concurrent)
-- **85+ JSON-RPC methods** (dynamically built from 91 semantic methods)
-- **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport
+- **19,900+ workspace tests** (0 failures, all concurrent)
+- **88+ JSON-RPC methods** (dynamically built from semantic registry)
+- **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport (PCIe P2P planned)
 - **coralReef shader proxy** — capability-based discovery, naga fallback
-- **Cross-spring provenance** — 17+ documented flows via `toadstool.provenance`
+- **Clippy pedantic** — 0 warnings with `--all-targets` (S141)
+- **Zero-copy** — `bytes::Bytes` in 6 GPU/runtime types (S141)
 - **Capability-based discovery** — sovereignty: all production callers migrated
 - **ecoBin pure-rust verified** — zero C FFI deps
 - **Rust 1.82+** — `is_some_and`, `div_ceil`, modern idiomatic patterns
 
-**Remaining toadStool debt:** D-COV (90% target)
+**Active evolution (S142+):** Hardware testing (P0), PCIe P2P transport (P1), multi-tenant (P2), telemetry (P3), checkpointing (P4). See `../S142_EVOLUTION_PLAN.md`.
 
 ---
 
