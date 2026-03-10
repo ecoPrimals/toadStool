@@ -17,6 +17,9 @@
 
 //! Mock implementations for testing
 
+// Hardware mocks for headless CI parity
+pub mod hardware;
+
 // Resource monitors
 pub mod resource_monitors;
 
@@ -24,6 +27,7 @@ pub mod resource_monitors;
 pub mod runtime_engines;
 
 // Export the successful mocks that compile
+pub use hardware::{MockGpuAdapter, MockHardwareFleet, MockNpuBackend, MockNpuInferenceResult};
 pub use resource_monitors::MockResourceMonitor;
 pub use runtime_engines::MockRuntimeEngine;
 
