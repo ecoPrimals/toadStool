@@ -72,6 +72,7 @@ pub mod error;
 pub mod load_balancer;
 pub mod orchestrator;
 pub mod policy;
+pub mod resource_orchestrator;
 pub mod scheduler;
 
 pub use error::OrchestrationError;
@@ -81,4 +82,8 @@ pub use orchestrator::{
     WorkloadOrchestrator, WorkloadRequest, WorkloadRequestBuilder, WorkloadResult,
 };
 pub use policy::SelectionPolicy;
+pub use resource_orchestrator::{
+    AvailableDevice, DeploymentModel, ResourceAllocation, ResourceOrchestrator, ResourceRequest,
+    TenantQuota, TenantUsage,
+};
 pub use scheduler::{ExecutionSchedule, ScheduledTask, SchedulingStrategy, WorkloadScheduler};

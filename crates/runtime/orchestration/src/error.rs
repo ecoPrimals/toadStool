@@ -17,4 +17,10 @@ pub enum OrchestrationError {
 
     #[error("Substrate error: {0}")]
     Substrate(String),
+
+    #[error("Resource unavailable: {0}")]
+    ResourceUnavailable(String),
+
+    #[error("Quota exceeded: {0}")]
+    QuotaExceeded(String),
 }
