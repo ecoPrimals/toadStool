@@ -1,4 +1,4 @@
-# Status -- March 10, 2026 (S141 Deep Debt Evolution & Pedantic Sweep)
+# Status -- March 10, 2026 (S142 Hardware-First Evolution)
 
 ## Quality Gates
 
@@ -16,7 +16,7 @@
 | License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 1,733 .rs files have SPDX headers** (S141: last `AGPL-3.0-or-later` in examples fixed) |
 | Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
 | Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
-| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route |
+| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route/open/stream/status (S142: +3 methods, PCIe P2P transport) |
 | Progressive showcase | PASS | **15 demos, 4 levels** — local primal, shader pipeline, compute triangle (toadStool/barraCuda/coralReef), ecosystem integration. All build standalone. |
 | Compute triangle discovery | PASS | **Dual-write announce** (ecoPrimals/discovery/ + ecoPrimals/ root), `gpu.dispatch` capability, GPU descriptors with render_node/driver/arch. coralReef-compatible. |
 | Spring absorption | PASS | **StreamingDispatch** (hotSpring v0.6.24), **PipelineGraph DAG** (neuralSpring S134) absorbed into `toadstool::universal`. |
@@ -92,6 +92,15 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S142: Hardware-First Evolution (Mar 10, 2026)
+- **Hardware test infrastructure**: `scripts/run-hardware-tests.sh` (strandgate fleet: AMD RX 6950 XT, NVIDIA RTX 3090, Akida AKD1000), `.github/workflows/hardware.yml` self-hosted runner CI, per-device `TOADSTOOL_GPU_ADAPTER`, hardware coverage mode.
+- **GPU sysmon telemetry** (`toadstool-sysmon::gpu`): `discover_gpus()` via `/sys/class/drm/card*`, `GpuTelemetry` (temp, power, clock, fan, VRAM, utilization), `PcieTopology` (gen, width, NUMA, IOMMU group). Verified on strandgate: AMD 42°C/10W/PCIe4x16, NVIDIA PCIe4x16.
+- **PCIe P2P transport** (`pcie_transport.rs`): `PcieTransport` implementing `HardwareTransport` for GPU-to-GPU paths. PCIe topology discovery via sysmon, bandwidth estimation (gen/width → practical bps), NUMA locality. Verified: AMD↔NVIDIA ~200 Gbps. 11+2 tests.
+- **Streaming JSON-RPC** (3 new methods, 91→94 total): `transport.open` (register PCIe transport), `transport.stream` (continuous background streaming with `CancellationToken`), `transport.status` (active stream stats).
+- **Multi-tenant orchestrator** (`resource_orchestrator.rs`): `ResourceOrchestrator` with `DeploymentModel` (LocalDirect, LocalMulti, CloudRental, CloudConsumer). `TenantQuota` enforcement (devices, VRAM, concurrent workloads). 12 tests.
+- **Mock hardware backends** (`mocks/hardware.rs`): `MockGpuAdapter` (strandgate fleet profiles), `MockNpuBackend` (Akida AKD1000), `MockHardwareFleet` (strandgate/headless_ci presets). 9 tests. Headless CI parity.
+- **Evolution plan**: `S142_EVOLUTION_PLAN.md` (hardware-first priorities, memory boundary, spring-parity milestones). Specs updated: `HARDWARE_TRANSPORT_SPEC.md` v1.1, `MULTITENANT_COMPUTE_ARCHITECTURE.md` v1.1.
 
 ### S141: Deep Debt Evolution & Pedantic Sweep (Mar 10, 2026)
 - **Clippy pedantic sweep (120+ fixes, 10 crates)**: `--all-targets` now passes workspace-wide. Fixed: doc backticks (30), unused async (12), missing `#[must_use]` (9), unnecessary Result wrapping (8), raw string hashes (7), unused self (6), identical match arms (6), struct_excessive_bools (5), float_cmp (15), HashMap::default→new (7), PI constant, case-sensitive extension, and 20+ other pedantic categories. All use `#[expect(..., reason = "...")]` pattern.
