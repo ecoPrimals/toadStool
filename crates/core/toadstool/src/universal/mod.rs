@@ -45,7 +45,9 @@ pub use registry::UniversalPrimalRegistry;
 pub use requests::{PrimalEndpoints, PrimalRequest, PrimalResponse, ResponseStatus};
 pub use resources::{ResourceAllocation, ResourceCoordinator, UniversalSystemResources};
 pub use scheduler::UniversalScheduler;
-pub use streaming_dispatch::{DispatchMode, DispatchStats, StreamingDispatchContext};
+pub use streaming_dispatch::{
+    DispatchMode, DispatchStats, ProgressCallback, StageProgress, StreamingDispatchContext,
+};
 pub use traits::UniversalPrimalProvider;
 pub use types::{
     NetworkLocation, PrimalCapability, PrimalContext, PrimalHealth, PrimalType, SecurityLevel,

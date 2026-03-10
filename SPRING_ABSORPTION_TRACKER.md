@@ -1,7 +1,8 @@
 # Spring Absorption Tracker
 
-**Session**: S139 Spring Absorption & Compute Triangle Evolution (March 9, 2026)
-**ToadStool**: master, 83.04% line coverage (171K lines llvm-cov verified, 1,868+ .rs files). 19,900+ tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**Session**: S140 Deep Debt Evolution & Spring Absorption Sprint (March 9-10, 2026)
+**ToadStool**: master, 83%+ line coverage. 19,900+ tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**S140**: Deep debt evolution — hardcoding elimination (beardog_impl, unibin/format, sandbox, primal_capabilities, display/ipc, cli/main, zero_config/discovery all evolved to interned_strings). StreamingDispatchContext enriched with healthSpring V13 execute_streaming() callback (StageProgress, ProgressCallback). barraCuda Sprint 2 API awareness (science.activations.list, science.rng.capabilities, science.special.functions JSON-RPC methods). Smart refactor: science.rs 1139→828 LOC via science_domains.rs extraction. New tests: 4 streaming dispatch + 3 barraCuda API handlers.
 **S139**: Spring absorption — surveyed all 6 springs. Dual-write discovery (coralReef compat). gpu.dispatch + science.gpu.dispatch capabilities. GpuDevice enriched with render_node/driver/arch. StreamingDispatch absorbed from hotSpring v0.6.24. PipelineGraph DAG absorbed from neuralSpring S134. Compute triangle unblocked on toadStool side.
 **S138**: Deep debt execution — +126 tests (sysmon 53, science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2). License alignment AGPL-3.0-only. 62 allow entries removed. 19 clone reductions. Hardcoding evolution to interned_strings. 7 stale TODO(D-PEDANTIC) removed. SPRING_ABSORPTION.md archived to fossil (superseded by this tracker).
 **S135**: groundSpring V100 absorption (SubstrateCapabilityKind::SovereignCompile). GPU f64 reduction smoke test. All hardcoded primal names evolved to interned_strings constants. precision_defaults module. Pre-existing debt fixes.
@@ -12,11 +13,12 @@
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.24 | S131+→S133 | S133→S136 | 738 lib + 53 integration | Chuna 41/41, dynamical N_f=4 staggered flow, adaptive HMC, barracuda dep path→git, deep debt (zero clippy, zero panics) |
-| groundSpring | V99 | V96→S131+ | V99→S133 | 936 + 382 Python | 102 (61 CPU + 41 GPU), live NUCLEUS (4 primals discovered), adaptive health, direct primal sockets |
-| neuralSpring | V90/S132 | V89/S131→S131+ | V90/S132→S133 | 902 lib + 43 forge + 240 bins | 89.1% coverage, upstream rewire to S130+/barraCuda `a898dee`/coralReef Iter 10 |
-| wetSpring | V99 | V97e→S131+ | V99→S133 | 1,047 + 200 forge | biomeOS science primal (9 capabilities), deploy graph, 300 experiments, 8,886+ checks |
-| airSpring | v0.7.5 | V0.7.3→S131+ | v0.7.5→S133 | 854 + 186 forge | Drought index leaned, 14 JSON-RPC science methods, 81 experiments, 35 capabilities |
+| hotSpring | v0.6.24 | S133→S136 | S136→S140 | 769 lib + 101 binaries + 84 WGSL | Chuna 44/44, Fp64Strategy::Sovereign, PrecisionRoutingAdvice, 44/46 coralReef shaders, streaming_dispatch |
+| groundSpring | V99 | V99→S133 | V99→S140 | 936 + 382 Python | 102 (61 CPU + 41 GPU), live NUCLEUS (4 primals), adaptive health, direct primal sockets |
+| neuralSpring | S135 | V90/S132→S133 | S135→S140 | 902 lib + 43 forge + 240 bins | petalTongue visualization, 7 domain scenario builders, DataChannel expansion |
+| wetSpring | V102 | V99→S133 | V102→S140 | 1,047 + 200 forge | petalTongue V2 full-domain, deep debt tolerance cleanup, DataChannel::Spectrum |
+| airSpring | v0.7.5 | v0.7.5→S133 | v0.7.5→S140 | 865 lib + 186 forge | 14 JSON-RPC science methods, gpu::autocorrelation, mean_variance_to_buffer, 35 capabilities |
+| healthSpring | V13 | (new) | V13→S140 | 317 tests (250+33+30+4) | Anderson QL fix, LCG centralization, clinical refactor, Songbird glob discovery |
 
 ## Absorption Status
 
@@ -72,7 +74,21 @@
 | `toadstool.provenance` JSON-RPC method | cross-spring | **DONE** S130 |
 | Clippy pedantic zero (workspace-wide) | deep debt | **DONE** S130+ |
 
-### P3 — New Items (from Mar 7 S131+ handoffs)
+### P3 — New Items (S140 — Mar 9-10 Spring Sync)
+
+| Item | Source | Status |
+|------|--------|--------|
+| Hardcoding evolution: beardog_impl, unibin/format, sandbox, primal_capabilities, display/ipc, cli/main, zero_config/discovery → interned_strings | deep debt | **DONE** S140 |
+| StreamingDispatchContext enriched with StageProgress + ProgressCallback | healthSpring V13 | **DONE** S140 |
+| barraCuda Sprint 2 API awareness (activations, rng, special) wired as JSON-RPC methods | barraCuda v0.3.3 Sprint 2 | **DONE** S140 |
+| science.rs smart refactor (1139→828 LOC) via science_domains.rs extraction | deep debt | **DONE** S140 |
+| healthSpring V13 pinned in tracker | healthSpring V13 | **DONE** S140 |
+| Fp64Strategy::Sovereign awareness | hotSpring v0.6.24 | Tracked (shader.compile.* proxy already handles; needs coralReef NVIDIA E2E) |
+| barraCuda `rng::lcg_step` consumption | barraCuda Sprint 2 | Noted — toadStool has no local LCG; awareness exposed via JSON-RPC |
+| DataChannel types for compute-to-viz routing | wetSpring/neuralSpring | Tracked (petalTongue integration) |
+| BatchReconcileGpu (DTL reconciliation) | wetSpring P2 | Tracked (blocked on barraCuda implementation) |
+
+### P3 — Items (from Mar 7 S131+ handoffs)
 
 | Item | Source | Status |
 |------|--------|--------|

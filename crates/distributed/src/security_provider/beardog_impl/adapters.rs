@@ -7,6 +7,8 @@
 // Allow deprecated during migration phase
 #[allow(deprecated)]
 use toadstool::error::ToadStoolResult;
+#[allow(deprecated)]
+use toadstool_common::interned_strings::primals;
 
 use crate::beardog_integration::types::*;
 use crate::security_provider::types::*;
@@ -43,12 +45,12 @@ pub fn from_beardog_permission(
         proof: SecurityProof {
             signature: vec![],
             algorithm: SignatureAlgorithm::EcdsaP256,
-            public_key_id: "beardog-key".to_string(),
+            public_key_id: format!("{}-key", primals::BEARDOG),
             signed_at: now,
         },
         provider_metadata: ProviderMetadata {
             provider_id: uuid::Uuid::new_v4().to_string(),
-            provider_type: "beardog".to_string(),
+            provider_type: primals::BEARDOG.to_string(),
             provider_version: "2.0.0".to_string(),
             metadata: std::collections::HashMap::new(),
         },

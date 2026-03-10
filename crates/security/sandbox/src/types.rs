@@ -39,6 +39,9 @@ pub struct SandboxConfig {
 
 impl Default for SandboxConfig {
     fn default() -> Self {
+        #[allow(deprecated)]
+        let primal_name = toadstool_common::interned_strings::primals::TOADSTOOL;
+
         // Platform-agnostic path resolution (ecoBin v2.0 compliant)
         let sandbox_root = std::env::var("XDG_DATA_HOME")
             .map(PathBuf::from)
@@ -47,9 +50,9 @@ impl Default for SandboxConfig {
                     .map(|h| PathBuf::from(h).join(".local/share"))
                     .unwrap_or_else(|_| std::env::temp_dir())
             })
-            .join("toadstool/sandbox");
+            .join(format!("{primal_name}/sandbox"));
 
-        let temp_dir = std::env::temp_dir().join("toadstool");
+        let temp_dir = std::env::temp_dir().join(primal_name);
 
         Self {
             advanced_features_enabled: true,

@@ -38,11 +38,13 @@ async fn main() -> Result<()> {
 
     // UNIBIN: Detect how we were invoked for backward compatibility
     let bin_path = std::env::args().next();
+    #[allow(deprecated)]
+    let default_name = toadstool_common::interned_strings::primals::TOADSTOOL;
     let bin_name = bin_path
         .as_deref()
         .and_then(|p| Path::new(p).file_name())
         .and_then(|n| n.to_str())
-        .unwrap_or("toadstool");
+        .unwrap_or(default_name);
 
     // If invoked as "toadstool-server", run in daemon mode automatically
     if bin_name == "toadstool-server" {

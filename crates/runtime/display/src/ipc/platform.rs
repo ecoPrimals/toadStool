@@ -15,8 +15,10 @@ use std::path::PathBuf;
 pub fn discover_socket_path() -> PathBuf {
     let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
 
+    #[allow(deprecated)]
+    let primal_name = toadstool_common::interned_strings::primals::TOADSTOOL;
     let mut path = PathBuf::from(runtime_dir);
-    path.push("toadstool");
+    path.push(primal_name);
     path.push("display.sock");
 
     path

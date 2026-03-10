@@ -84,14 +84,52 @@ impl DispatchStats {
     }
 }
 
+/// Per-stage progress report emitted by the streaming callback.
+///
+/// Absorbed from healthSpring V13 `execute_streaming()` callback pattern.
+#[derive(Clone, Debug)]
+pub struct StageProgress {
+    /// Zero-based index of the completed stage.
+    pub stage_index: usize,
+    /// Total number of stages in the pipeline.
+    pub total_stages: usize,
+    /// Name / label of the completed stage.
+    pub stage_name: String,
+    /// Wall time for this stage in seconds.
+    pub elapsed_secs: f64,
+}
+
+impl StageProgress {
+    /// Fraction of progress in `[0.0, 1.0]`.
+    #[must_use]
+    pub fn fraction(&self) -> f64 {
+        if self.total_stages > 0 {
+            (self.stage_index + 1) as f64 / self.total_stages as f64
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Callback signature for streaming progress updates.
+///
+/// The caller provides a closure that is invoked after each stage completes.
+/// This enables real-time progress reporting without polling.
+pub type ProgressCallback = Box<dyn FnMut(&StageProgress) + Send>;
+
 /// Streaming dispatch context for tracking and batching compute work.
 ///
 /// Backend-agnostic: the caller manages the actual GPU/CPU submission;
 /// this context tracks dispatch/submission counts and timing.
+///
+/// Optionally accepts a [`ProgressCallback`] (absorbed from healthSpring V13)
+/// for per-stage progress reporting.
 pub struct StreamingDispatchContext {
     mode: DispatchMode,
     stats: DispatchStats,
     started: Instant,
+    progress_cb: Option<ProgressCallback>,
+    total_stages: usize,
 }
 
 impl StreamingDispatchContext {
@@ -102,7 +140,19 @@ impl StreamingDispatchContext {
             mode,
             stats: DispatchStats::default(),
             started: Instant::now(),
+            progress_cb: None,
+            total_stages: 0,
         }
+    }
+
+    /// Attach a progress callback (healthSpring `execute_streaming()` pattern).
+    ///
+    /// The callback fires after each [`record_dispatch_with_progress`] call,
+    /// enabling real-time UIs and log-based monitoring.
+    pub fn with_progress(mut self, total_stages: usize, cb: ProgressCallback) -> Self {
+        self.total_stages = total_stages;
+        self.progress_cb = Some(cb);
+        self
     }
 
     /// Get the dispatch mode.
@@ -114,6 +164,24 @@ impl StreamingDispatchContext {
     /// Record a dispatch event (one compute kernel enqueued).
     pub fn record_dispatch(&mut self) {
         self.stats.n_dispatches += 1;
+    }
+
+    /// Record a dispatch with per-stage progress notification.
+    ///
+    /// If a progress callback is attached, emits a [`StageProgress`] with the
+    /// stage name and elapsed time since context creation.
+    pub fn record_dispatch_with_progress(&mut self, stage_name: &str) {
+        let idx = self.stats.n_dispatches;
+        self.stats.n_dispatches += 1;
+        if let Some(cb) = self.progress_cb.as_mut() {
+            let progress = StageProgress {
+                stage_index: idx,
+                total_stages: self.total_stages,
+                stage_name: stage_name.to_string(),
+                elapsed_secs: self.started.elapsed().as_secs_f64(),
+            };
+            cb(&progress);
+        }
     }
 
     /// Record a submission event (encoder flushed to substrate).
@@ -228,5 +296,57 @@ mod tests {
         let ctx = StreamingDispatchContext::new(DispatchMode::Single);
         let stats = ctx.finish();
         assert!(stats.wall_seconds >= 0.0);
+    }
+
+    #[test]
+    fn stage_progress_fraction() {
+        let p = StageProgress {
+            stage_index: 2,
+            total_stages: 10,
+            stage_name: "eigensolve".to_string(),
+            elapsed_secs: 0.1,
+        };
+        assert!((p.fraction() - 0.3).abs() < 1e-9);
+    }
+
+    #[test]
+    fn stage_progress_fraction_zero_stages() {
+        let p = StageProgress {
+            stage_index: 0,
+            total_stages: 0,
+            stage_name: "empty".to_string(),
+            elapsed_secs: 0.0,
+        };
+        assert_eq!(p.fraction(), 0.0);
+    }
+
+    #[test]
+    fn progress_callback_fires() {
+        use std::sync::{Arc, Mutex};
+
+        let log: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let log_clone = Arc::clone(&log);
+        let cb: ProgressCallback = Box::new(move |p: &StageProgress| {
+            log_clone.lock().unwrap().push(p.stage_name.clone());
+        });
+
+        let mut ctx = StreamingDispatchContext::new(DispatchMode::Streaming).with_progress(3, cb);
+        ctx.record_dispatch_with_progress("compile");
+        ctx.record_dispatch_with_progress("dispatch");
+        ctx.record_dispatch_with_progress("readback");
+
+        let captured = log.lock().unwrap();
+        assert_eq!(captured.len(), 3);
+        assert_eq!(captured[0], "compile");
+        assert_eq!(captured[1], "dispatch");
+        assert_eq!(captured[2], "readback");
+    }
+
+    #[test]
+    fn no_callback_dispatch_with_progress_still_counts() {
+        let mut ctx = StreamingDispatchContext::new(DispatchMode::Single);
+        ctx.record_dispatch_with_progress("step-1");
+        ctx.record_dispatch_with_progress("step-2");
+        assert_eq!(ctx.stats().n_dispatches, 2);
     }
 }

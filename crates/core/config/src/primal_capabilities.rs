@@ -246,9 +246,11 @@ impl PrimalCapabilitiesRegistry {
         // OLD: directories::ProjectDirs (pulled in dirs-sys)
         // NEW: etcetera (100% Pure Rust!)
         if let Ok(strategy) = etcetera::choose_base_strategy() {
+            #[allow(deprecated)]
+            let primal_name = toadstool_common::interned_strings::primals::TOADSTOOL;
             let config_path = strategy
                 .config_dir()
-                .join("toadstool")
+                .join(primal_name)
                 .join("primal-capabilities.toml");
             if config_path.exists() {
                 return Self::load_from_file(config_path);
@@ -364,7 +366,9 @@ impl PrimalCapabilitiesRegistry {
 /// **"Know thyself"** - a primal should know its own capabilities
 #[must_use]
 pub fn get_self_capabilities(registry: &PrimalCapabilitiesRegistry) -> Option<&PrimalDefinition> {
-    registry.get_primal("toadstool")
+    #[allow(deprecated)]
+    let self_name = toadstool_common::interned_strings::primals::TOADSTOOL;
+    registry.get_primal(self_name)
 }
 
 #[cfg(test)]

@@ -11,6 +11,7 @@ mod job;
 mod ollama;
 mod resources;
 mod science;
+mod science_domains;
 mod transport;
 mod workload;
 
@@ -206,6 +207,11 @@ impl JsonRpcHandler {
             "science.npu.capabilities" => return science::science_npu_capabilities().await,
             "science.substrate.discover" => return science::science_substrate_discover().await,
             "science.substrate.probe" => return science::science_substrate_probe(params).await,
+
+            // barraCuda Sprint 2 API awareness
+            "science.activations.list" => return science::science_activations_list().await,
+            "science.rng.capabilities" => return science::science_rng_capabilities().await,
+            "science.special.functions" => return science::science_special_functions().await,
 
             // Ecology domain — airSpring science offload routing
             m if m.starts_with("ecology.") => return science::ecology_offload(m, params).await,

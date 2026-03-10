@@ -5,7 +5,36 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 9, 2026 (Sessions 43-139 — Universal Precision + Sovereign Compiler + Deep Debt + Cross-Spring Absorption + Nautilus + ComputeDispatch Evolution + Sovereign Pipeline + f64 Shared-Memory Discovery + Node Atomic Crypto Delegation + groundSpring V100 Absorption + Comprehensive Audit + Deep Debt Execution + Coverage Push + Spring Absorption + Compute Triangle)
+## [Unreleased] - March 10, 2026 (Sessions 43-140)
+
+### Session S140 (Mar 9-10, 2026) — Deep Debt Evolution & Spring Absorption Sprint
+
+#### Hardcoding Elimination
+- **7 production files** evolved from raw string literals to `interned_strings::primals::*` constants: `beardog_impl/adapters.rs`, `unibin/format.rs`, `sandbox/types.rs`, `primal_capabilities.rs`, `display/ipc/platform.rs`, `cli/main.rs`, `zero_config/discovery.rs`
+- All primal self-knowledge paths now use `primals::TOADSTOOL`; security provider uses `primals::BEARDOG`
+
+#### StreamingDispatchContext Enrichment (healthSpring V13 Absorption)
+- **`StageProgress`** struct: per-stage progress reports with `stage_index`, `total_stages`, `stage_name`, `elapsed_secs`, `fraction()`
+- **`ProgressCallback`** type alias: `Box<dyn FnMut(&StageProgress) + Send>` for real-time streaming updates
+- **`with_progress()`** builder method on `StreamingDispatchContext` to attach callbacks
+- **`record_dispatch_with_progress()`** method: fires callback per stage without breaking existing `record_dispatch()` API
+
+#### barraCuda Sprint 2 API Awareness
+- **3 new JSON-RPC methods**: `science.activations.list`, `science.rng.capabilities`, `science.special.functions`
+- Exposes barraCuda `activations::*` (7 scalar + 4 batch), `rng::lcg_step` (CPU LCG + GPU xoshiro128**), and `special::*` (tridiagonal_ql, anderson_diagonalize, plasma_dispersion, Hill dose-response, population PK Monte Carlo) for springs that prefer proxy routing
+
+#### Smart Refactoring
+- **`science.rs`**: 1,139 → 828 LOC. Extracted ecology/discovery/deploy domain routing + `forward_to_primal` into `science_domains.rs` (343 LOC)
+- Both files under 1,000 LOC limit; zero test regressions
+
+#### Spring Pin Update
+- All 6 springs (hotSpring v0.6.24, groundSpring V99, neuralSpring S135, wetSpring V102, airSpring v0.7.5, healthSpring V13) pinned to S140
+- `SPRING_ABSORPTION_TRACKER.md` updated with S140 completions
+
+#### QA Gates
+- `cargo fmt`: 0 diffs
+- `cargo clippy -- -D warnings`: 0 warnings
+- `cargo test --workspace`: all passing (692s run)
 
 ### Session S139 (Mar 9, 2026) — Spring Absorption & Compute Triangle Evolution
 
