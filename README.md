@@ -329,4 +329,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 9, 2026 -- S139. 19,900+ workspace tests. 83.04% line coverage (llvm-cov verified). 85+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). 15-demo progressive showcase. Compute triangle live: dual-write discovery, gpu.dispatch, GPU descriptors with render_node/driver/arch. StreamingDispatch + PipelineGraph DAG absorbed. Clippy pedantic zero. Rust 1.82+ (MSRV).
+**Last Updated**: March 10, 2026 -- S140. 19,900+ workspace tests. 83%+ line coverage (llvm-cov verified). 88+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). 15-demo progressive showcase. Compute triangle live: dual-write discovery, gpu.dispatch, GPU descriptors with render_node/driver/arch. StreamingDispatch + PipelineGraph DAG + ProgressCallback absorbed. Hardcoding eliminated (7 files → interned_strings). barraCuda Sprint 2 APIs wired. Clippy pedantic zero. Rust 1.82+ (MSRV).

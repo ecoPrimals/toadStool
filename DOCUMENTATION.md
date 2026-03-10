@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 9, 2026 -- S139
+**Last Updated**: March 10, 2026 -- S140
 
 ---
 
@@ -16,8 +16,7 @@
 | Universal precision design | [specs/UNIVERSAL_PRECISION_ARCHITECTURE.md](specs/UNIVERSAL_PRECISION_ARCHITECTURE.md) |
 | Roadmap and next steps | [NEXT_STEPS.md](NEXT_STEPS.md) |
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
-| Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
-| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-85-total) |
+| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-88-total) |
 | Hardware Transport Layer | [specs/HARDWARE_TRANSPORT_SPEC.md](specs/HARDWARE_TRANSPORT_SPEC.md) |
 | Dual-Fabric Architecture | [specs/DUAL_FABRIC_ARCHITECTURE.md](specs/DUAL_FABRIC_ARCHITECTURE.md) |
 | Try GPU operations | See barraCuda (`ecoPrimals/barraCuda/`) |
@@ -50,7 +49,7 @@
 - **coralReef shader proxy** — `shader.compile.*` handlers proxy to coralReef with capability-based discovery and graceful naga fallback.
 - **Cross-spring provenance** — `toadstool.provenance` JSON-RPC method exposes 17+ documented cross-spring flows for ecosystem introspection.
 - **19,900+ workspace tests** | 83.04% line coverage (llvm-cov verified) | all quality gates green (0 warnings, clippy pedantic clean)
-- **85+ JSON-RPC methods** (dynamically built from semantic registry)
+- **88+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 
 ---
@@ -73,7 +72,7 @@
 
 **[SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md)** -- Sovereign Compute Evolution: Phases 0–3 complete, Phase 4 roadmap, latency models, Mesa NAK contribution plan.
 
-**[UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md)** -- GPU-resident unidirectional pipeline architecture.
+
 
 **[specs/](specs/)** -- Technical specifications (FP64 evolution, hybrid core streaming, NPU, multi-tenant, cross-platform).
 
@@ -119,7 +118,6 @@ NEXT_STEPS.md              -- Roadmap and upcoming work
 QUICK_REFERENCE.md         -- Commands, API, constants
 CHANGELOG.md               -- Full session history
 SOVEREIGN_COMPUTE.md       -- Sovereign compute roadmap
-UNIDIRECTIONAL_PIPELINE.md -- GPU-resident pipeline design
 DOCUMENTATION.md           -- This file (navigation hub)
 docs/
   guides/                  -- Deployment and usage guides

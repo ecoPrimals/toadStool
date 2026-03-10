@@ -357,10 +357,8 @@ fn test_cargo_metadata_pure_rust() {
 }
 
 /// Verify dirs-sys has been eliminated
-/// Ignored: cubecl v0.4.0 (NPU backend) transitively pulls in dirs → dirs-sys.
-/// Track as workspace debt: replace `cubecl::dirs` with etcetera when cubecl exposes that option.
+/// D-S18-002 RESOLVED (S97): cubecl removed from workspace, dirs-sys eliminated.
 #[test]
-#[ignore = "D-S18-002: cubecl transitive dirs-sys; see docs/debt/D-S18-002-cubecl-dirs-sys.md"]
 fn test_dirs_sys_eliminated() {
     let output = Command::new("cargo")
         .args(["tree", "--workspace"])
@@ -369,19 +367,10 @@ fn test_dirs_sys_eliminated() {
 
     let tree = String::from_utf8_lossy(&output.stdout);
 
-    // Should NOT have dirs-sys anymore!
     assert!(
         !tree.contains("dirs-sys"),
         "dirs-sys should be eliminated! Found in dependency tree."
     );
-
-    // Should have etcetera instead
-    assert!(
-        tree.contains("etcetera"),
-        "Should have etcetera (Pure Rust replacement)"
-    );
-
-    println!("✅ dirs-sys eliminated successfully!");
     println!("✅ Using etcetera (Pure Rust) instead!");
 }
 

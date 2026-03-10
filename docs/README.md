@@ -1,8 +1,8 @@
 # ToadStool Documentation
 
-**Updated**: March 9, 2026 -- S139
+**Updated**: March 10, 2026 -- S140
 
-Old integration guides and barracuda-specific docs archived to `ecoPrimals/fossil/toadStool/`.
+Old integration guides, barracuda-specific docs, and Feb 2026 planning docs archived to `ecoPrimals/fossil/toadStool/`.
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub.
 
 ---
@@ -26,9 +26,6 @@ Primary documentation lives at the repository root. See [../DOCUMENTATION.md](..
 
 ### Reference
 - **[reference/](reference/)** -- Constants, types, server methods, config patterns
-
-### Planning
-- **[planning/](planning/)** -- GPU pipeline, NAK contribution, hardware routing
 
 ### Debt
 - **[debt/](debt/)** -- Tracked debt items with evolution paths

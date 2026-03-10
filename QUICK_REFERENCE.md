@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 9, 2026 — S139**
+**March 10, 2026 — S140**
 
 ---
 
@@ -68,7 +68,7 @@ cd showcase/cross-platform && cargo run --release
 
 ---
 
-## JSON-RPC Methods (85+ total, dynamically built)
+## JSON-RPC Methods (88+ total, dynamically built)
 
 ### Core (`toadstool.*`)
 
@@ -174,6 +174,9 @@ cd showcase/cross-platform && cargo run --release
 | `science.npu.capabilities` | NPU capabilities for science |
 | `science.substrate.discover` | Discover compute substrates |
 | `science.substrate.probe` | Probe substrate capabilities |
+| `science.activations.list` | List available activation functions (barraCuda Sprint 2) |
+| `science.rng.capabilities` | RNG backend capabilities (CPU LCG, GPU xoshiro128**) |
+| `science.special.functions` | Special function catalog (tridiagonal QL, Anderson, plasma dispersion, Hill, PK Monte Carlo) |
 
 ### Shader Compilation (`shader.compile.*`) — coralReef Proxy
 

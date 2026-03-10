@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 9, 2026 — S139
+**Date**: March 10, 2026 — S140
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only. Zero-cost abstractions.
 
 ---
@@ -47,6 +47,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Spring absorption S97 | toadStool | ✅ S97 evolved | NVK Volta f64 probe (`f64_compute_unreliable`, `has_reliable_f64()`); subgroup size detection; `AdaptiveSimulationController` trait; `ProxyFeature` struct; `NpuInferenceRequest`; science.* IPC namespace (10 methods); ecoBin compliance (ring/zstd removed); +59 tests |
 | Deep debt S128 | toadStool | ✅ S128 evolved | **f64_shared_memory_reliable** on GpuAdapterInfo (groundSpring V84-V85 bug); **sovereign_binary_capable** on HardwareFingerprint; **PrecisionRoutingAdvice** enum + `precision_routing()` method; shader.compile.* IPC (4 methods); `discover_capabilities` dynamically built from registry; `query_available_backends()` runtime probing; architecture stubs evolved (auth TrustLevel/CapabilityToken, scheduling Priority/PlacementConstraint/Decision); +25 tests |
 | Deep debt S129 | toadStool | ✅ S129 evolved | **C dep elimination** (flate2→rust_backend, procfs default features disabled); **Capability-based ports** (`resolve_capability_or_legacy_port()`); 5 god files refactored (ipc/server 987→428, container/lib 981→582, ecosystem 963→556, handler/mod 832→610, nestgate/client 824→555); **Zero-copy hot paths** (Cow/Arc<str>); BYOB API state ownership split; 200+ coverage tests; long-running test debt (1,237x speedup); 19,109 tests, 0 failures |
+|| Deep debt S140 | toadStool | ✅ S140 evolved | **Hardcoding elimination** (7 production files → `interned_strings::primals::*`); **StreamingDispatch progress callbacks** (`StageProgress`, `ProgressCallback` from healthSpring V13); **barraCuda Sprint 2 API awareness** (3 new JSON-RPC: `science.activations.list`, `science.rng.capabilities`, `science.special.functions`); **Smart refactor** (science.rs 1139→828 LOC, science_domains.rs extracted); **Spring pins** (healthSpring V13 new); **Docs cleanup** (6 stale files → fossil); 19,900+ tests, 0 failures |
 
 ---
 
