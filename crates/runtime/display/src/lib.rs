@@ -86,6 +86,7 @@ pub mod capture_transport;
 pub mod drm;
 pub mod input;
 pub mod ipc;
+pub mod pcie_transport;
 pub mod serial_transport;
 pub mod transport;
 pub mod v4l2;
@@ -97,6 +98,7 @@ pub use capture_transport::{discover_capture_transports, CaptureTransport};
 pub use drm::DrmBackend;
 pub use input::{InputEvent, InputManager};
 pub use ipc::{DisplayClient, DisplayServer};
+pub use pcie_transport::{discover_pcie_transports, PcieTransport};
 pub use transport::{discover_display_transports, DisplayTransport};
 pub use window::{Window, WindowId, WindowManager};
 

@@ -26,11 +26,13 @@ impl TransportHandler {
         let display = toadstool_display::discover_display_transports();
         let capture = toadstool_display::discover_capture_transports();
         let serial = toadstool_display::serial_transport::discover_serial_transports();
+        let pcie = toadstool_display::discover_pcie_transports();
 
         let all: Vec<_> = display
             .iter()
             .chain(capture.iter())
             .chain(serial.iter())
+            .chain(pcie.iter())
             .map(|t| {
                 serde_json::json!({
                     "id": t.id,

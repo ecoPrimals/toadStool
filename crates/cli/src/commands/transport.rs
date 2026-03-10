@@ -5,7 +5,7 @@
 
 use toadstool_core::{TransportInfo, TransportMedium};
 use toadstool_display::{
-    discover_capture_transports, discover_display_transports,
+    discover_capture_transports, discover_display_transports, discover_pcie_transports,
     serial_transport::discover_serial_transports,
 };
 
@@ -73,13 +73,18 @@ async fn run_status() -> Result<()> {
         .iter()
         .filter(|t| t.medium == TransportMedium::Serial)
         .count();
+    let pcie_count = transports
+        .iter()
+        .filter(|t| t.medium == TransportMedium::Pcie)
+        .count();
 
     println!("Transport Layer Status");
     println!("═══════════════════════════════════════════════════");
-    println!("  Display outputs:  {}", display_count);
-    println!("  Capture devices: {}", capture_count);
-    println!("  Serial ports:     {}", serial_count);
-    println!("  Total:           {} transports", transports.len());
+    println!("  Display outputs:  {display_count}");
+    println!("  Capture devices:  {capture_count}");
+    println!("  Serial ports:     {serial_count}");
+    println!("  PCIe links:       {pcie_count}");
+    println!("  Total:            {} transports", transports.len());
 
     Ok(())
 }
@@ -89,6 +94,7 @@ fn discover_all_transports() -> Vec<TransportInfo> {
     transports.extend(discover_display_transports());
     transports.extend(discover_capture_transports());
     transports.extend(discover_serial_transports());
+    transports.extend(discover_pcie_transports());
     transports
 }
 

@@ -50,6 +50,9 @@ toadstool-common = { path = "../../core/common" }
 # Core hardware transport traits
 toadstool-core = { path = "../../toadstool-core" }
 
+# System monitoring (GPU discovery, PCIe topology)
+toadstool-sysmon = { path = "../../core/sysmon" }
+
 [dev-dependencies]
 tokio-test = "0.4"
 criterion = "0.5"
