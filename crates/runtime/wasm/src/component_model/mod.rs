@@ -82,7 +82,7 @@ impl ComponentModelSupport for WasmRuntimeEngine {
     /// Get component registry
     /// EVOLVED: Returns registry if component model is enabled
     fn get_component_registry(&self) -> Option<&ComponentRegistry> {
-        self.component_registry().map(|arc| arc.as_ref())
+        self.component_registry().map(std::convert::AsRef::as_ref)
     }
 
     /// Create component instance
@@ -157,6 +157,10 @@ impl ComponentModelSupport for WasmRuntimeEngine {
 impl WasmRuntimeEngine {
     /// Reference implementation for component function execution
     /// NOTE: In production, this would be replaced with actual WASM module invocation
+    #[expect(
+        clippy::unused_self,
+        reason = "trait method; may use self for future component resolution"
+    )]
     fn execute_reference_function(
         &self,
         function_name: &str,

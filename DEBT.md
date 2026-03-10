@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 10, 2026 — S140
+**Date**: March 10, 2026 — S141
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -105,6 +105,18 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Chaos framework exists (`testing/src/chaos/`). Integration tests: 10/11 pass (S138). Pure-Rust C-compiler validation is pre-existing failure (transitive deps). |
 
 ---
+
+## Recently Resolved (S141 — Deep Debt Evolution & Pedantic Sweep — Mar 10, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| Clippy pedantic `--all-targets` | 120+ fixes across 10 crates. Now passes `--all-targets` including test code. All `#[expect(..., reason = "...")]` pattern. |
+| Sovereignty: hardcoded primal names in science handlers | `deploy_graph_status` → runtime socket discovery. `ecology_offload` → capability-based. `"barracuda::*"` → `capabilities::*`. Shader pipeline → `capabilities::SHADER_COMPILE_NATIVE`. |
+| Zero-copy: `Vec<u8>` in GPU types | 6 types evolved to `bytes::Bytes` (zero-copy clone via refcount): `ComputeBuffer`, `UniversalKernel::Binary`, `WorkloadResult`, `CompiledKernel`, `KernelInput`, `KernelOutput`. |
+| SPDX: last `AGPL-3.0-or-later` | `examples/real_gpu_pool.rs` → `AGPL-3.0-only`. |
+| Broken doc link | `streaming_dispatch.rs:150` → `Self::record_dispatch_with_progress`. |
+| Flaky test | `test_concurrent_resource_monitoring_events` — subscribe-before-start barrier pattern. |
+| Stale doc references | `QUICK_REFERENCE.md`, neuromorphic READMEs, `NAK_DEFICIENCIES.md`, CI paths cleaned. |
 
 ## Recently Resolved (S138 — Deep Debt Audit & Evolution — Mar 9, 2026)
 
@@ -248,7 +260,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | Hardcoded discovery IP | `0.0.0.0` → `TOADSTOOL_DISCOVERY_BIND_ADDR` env var |
 | Root `tests/` debris | Stale test stubs removed; spec docs fossilized to `ecoPrimals/fossil/` |
 | Stale completion checklists | Removed trailing `✅ COMPLETE` blocks from 11 files |
-| `management/resources` re-added | Real `ResourceManager` with sysinfo (was placeholder removed in S94b) |
+| `management/resources` re-added | Real `ResourceManager` (was placeholder removed in S94b; evolved to `toadstool-sysmon` in S137) |
 | Clippy pedantic | **Full workspace pedantic clean**: `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` passes with 0 errors, 0 warnings (S130+) |
 
 ## Recently Resolved (Deep Debt Execution — Mar 5, 2026)
@@ -264,7 +276,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | `FrameworkHandle::Placeholder` | → `FrameworkHandle::Unavailable { name, reason }` with explicit context |
 | Hardcoded primal names (35+) | Evolved to `well_known::*` constants across primal_sockets, adapters, templates |
 | Production `unwrap()` (frame protocol) | Replaced with direct array indexing in `decode_frame` |
-| `management/resources` placeholder | Evolved to real `ResourceManager` with sysinfo (CPU, memory, disk tracking) |
+| `management/resources` placeholder | Evolved to real `ResourceManager` (CPU, memory, disk tracking; sysinfo → `toadstool-sysmon` S137) |
 | `collect_biome_status` stub | Real runtime directory scanning for socket/PID files |
 | `#![allow(clippy::unused_async)]` | Removed crate-level suppression from distributed (zero warnings without it) |
 | Dead code (15 fields) | Prefixed with `_`; 3 functions gated to `#[cfg(test)]` |
@@ -420,7 +432,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | network_config/types.rs >800 lines | Split 859→7 domain submodules |
 | builder.rs >1000 risk | Smart-refactored 975→mod.rs (129) + profiler.rs (531) + substrate.rs (338) |
 | EcosystemCaller dead code | Deleted entirely (deprecated since 2.0.0, zero references) |
-| Monitoring stub collectors | Evolved to real `sysinfo` (health thresholds, real metrics, session tracking) |
+| Monitoring stub collectors | Evolved to real metrics (health thresholds, session tracking; sysinfo → `toadstool-sysmon` S137) |
 | NestGate connect placeholder | Evolved to `primal_sockets::get_socket_path_for_service()` |
 | Sovereignty: port 8084 | `toadstool_config::ports::daemon_port()` — configurable, zero hardcoded |
 | Sovereignty: songbird discovery | `"mdns"` capability-based default (was hardcoded `"songbird"`) |

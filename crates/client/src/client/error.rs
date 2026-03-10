@@ -2,7 +2,7 @@
 //! Client error types
 //!
 //! This module defines the error types used throughout the ToadStool client library.
-//! ClientError integrates with the unified ToadStool error system while providing
+//! `ClientError` integrates with the unified ToadStool error system while providing
 //! client-specific error handling.
 
 use thiserror::Error;
@@ -13,7 +13,7 @@ use toadstool_common::error::{
 /// ToadStool client errors
 ///
 /// Client-specific error type that wraps common client library errors and provides
-/// bidirectional conversion with ToadStoolError for seamless integration.
+/// bidirectional conversion with `ToadStoolError` for seamless integration.
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("HTTP request failed: {0}")]
@@ -90,7 +90,6 @@ impl From<ClientError> for ToadStoolError {
 impl From<ToadStoolError> for ClientError {
     fn from(error: ToadStoolError) -> Self {
         match error {
-            ToadStoolError::Network(_) => ClientError::Server(error.to_string()),
             ToadStoolError::Security(_) => ClientError::Authentication(error.to_string()),
             ToadStoolError::Configuration(_) => ClientError::Configuration(error.to_string()),
             ToadStoolError::Execution(ExecutionError::Timeout { .. }) => {

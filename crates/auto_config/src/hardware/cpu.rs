@@ -40,6 +40,7 @@ impl Default for CpuInfo {
 
 /// CPU feature flags and capabilities
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[expect(clippy::struct_excessive_bools, reason = "configuration type")]
 pub struct CpuFeatures {
     pub supports_avx: bool,
     pub supports_avx2: bool,
@@ -58,7 +59,7 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
     // Try to read CPU info from /proc/cpuinfo on Linux
     if cfg!(target_os = "linux") {
         if let Ok(cpuinfo) = tokio::fs::read_to_string("/proc/cpuinfo").await {
-            cpu_info = parse_linux_cpuinfo(&cpuinfo)?;
+            cpu_info = parse_linux_cpuinfo(&cpuinfo);
         }
     }
 
@@ -85,7 +86,7 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
     }
 
     // Detect CPU features
-    cpu_info.features = detect_cpu_features()?;
+    cpu_info.features = detect_cpu_features();
 
     debug!(
         "Detected CPU: {} with {} cores",
@@ -95,7 +96,7 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
 }
 
 /// Parse Linux /proc/cpuinfo
-fn parse_linux_cpuinfo(cpuinfo: &str) -> ToadStoolResult<CpuInfo> {
+fn parse_linux_cpuinfo(cpuinfo: &str) -> CpuInfo {
     let mut parsed = CpuInfo {
         model_name: String::new(),
         ..CpuInfo::default()
@@ -151,7 +152,7 @@ fn parse_linux_cpuinfo(cpuinfo: &str) -> ToadStoolResult<CpuInfo> {
         parsed.model_name = "Unknown CPU".to_string();
     }
 
-    Ok(parsed)
+    parsed
 }
 
 /// Detect macOS CPU information
@@ -241,7 +242,7 @@ async fn detect_windows_cpu() -> ToadStoolResult<CpuInfo> {
 /// EVOLUTION: Runtime detection on TARGET hardware (not HOST)
 /// Enables cross-compilation while maintaining accurate feature detection
 /// Deep Debt: Complete implementation, detects on actual deployment hardware
-fn detect_cpu_features() -> ToadStoolResult<CpuFeatures> {
+fn detect_cpu_features() -> CpuFeatures {
     let mut features = CpuFeatures::default();
 
     // x86_64: Runtime detection on actual x86_64 hardware
@@ -298,7 +299,7 @@ fn detect_cpu_features() -> ToadStoolResult<CpuFeatures> {
         debug!(supports_riscv_v = has_v, "RISC-V CPU features detected");
     }
 
-    Ok(features)
+    features
 }
 
 /// Calculate CPU performance score
@@ -377,7 +378,7 @@ mod tests {
 
     #[test]
     fn test_parse_linux_cpuinfo_full() {
-        let cpuinfo = r#"processor	: 0
+        let cpuinfo = r"processor	: 0
 vendor_id	: GenuineIntel
 cpu family	: 6
 model name	: Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz
@@ -386,9 +387,9 @@ cache size	: 12288 KB
 flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch invpcid_single fsgsbase tsc_adjust bmi1 avx2 smep bmi2 invpcid mpx rdseed adx smap clflushopt xsaveopt xsavec xgetbv1 xsaves
 processor	: 1
 model name	: Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz
-"#;
+";
 
-        let result = super::parse_linux_cpuinfo(cpuinfo).unwrap();
+        let result = super::parse_linux_cpuinfo(cpuinfo);
         assert_eq!(
             result.model_name,
             "Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz"
@@ -404,7 +405,7 @@ model name	: Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz
 
     #[test]
     fn test_parse_linux_cpuinfo_empty() {
-        let result = super::parse_linux_cpuinfo("").unwrap();
+        let result = super::parse_linux_cpuinfo("");
         assert_eq!(result.model_name, "Unknown CPU");
         assert_eq!(result.physical_cores, 0);
         assert_eq!(result.logical_cores, 0);
@@ -412,12 +413,12 @@ model name	: Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz
 
     #[test]
     fn test_parse_linux_cpuinfo_arm_features() {
-        let cpuinfo = r#"processor	: 0
+        let cpuinfo = r"processor	: 0
 Features	: fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp
 model name	: ARMv8 Processor
-"#;
+";
 
-        let result = super::parse_linux_cpuinfo(cpuinfo).unwrap();
+        let result = super::parse_linux_cpuinfo(cpuinfo);
         assert_eq!(result.model_name, "ARMv8 Processor");
         assert_eq!(result.logical_cores, 1);
         assert!(result.instruction_sets.contains(&"asimd".to_string()));
@@ -425,14 +426,14 @@ model name	: ARMv8 Processor
 
     #[test]
     fn test_parse_linux_cpuinfo_malformed_values() {
-        let cpuinfo = r#"processor	: 0
+        let cpuinfo = r"processor	: 0
 cpu family	: not_a_number
 cpu MHz		: invalid
 cache size	: 8192 KB
 model name	: Test CPU
-"#;
+";
 
-        let result = super::parse_linux_cpuinfo(cpuinfo).unwrap();
+        let result = super::parse_linux_cpuinfo(cpuinfo);
         assert_eq!(result.model_name, "Test CPU");
         assert_eq!(result.family, 0);
         assert_eq!(result.cache_size_kb, 8192);
@@ -440,12 +441,12 @@ model name	: Test CPU
 
     #[test]
     fn test_parse_linux_cpuinfo_cache_without_kb() {
-        let cpuinfo = r#"processor	: 0
+        let cpuinfo = r"processor	: 0
 cache size	: 8192 MB
 model name	: Test CPU
-"#;
+";
 
-        let result = super::parse_linux_cpuinfo(cpuinfo).unwrap();
+        let result = super::parse_linux_cpuinfo(cpuinfo);
         assert_eq!(result.cache_size_kb, 8192);
     }
 

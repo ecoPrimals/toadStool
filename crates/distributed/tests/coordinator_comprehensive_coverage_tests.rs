@@ -108,7 +108,7 @@ fn create_execution_request() -> ExecutionRequest {
         resources: UniversalResourceRequirements::default(),
         security_context: SecurityContext::default(),
         timeout: Some(Duration::from_secs(60)),
-        environment: HashMap::default(),
+        environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,

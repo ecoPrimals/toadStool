@@ -11,6 +11,7 @@ use toadstool::resources::RuntimeMetrics;
 
 /// Performance optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[expect(clippy::struct_excessive_bools, reason = "configuration type")]
 pub struct PerformanceConfig {
     /// Enable runtime selection optimization
     pub enable_runtime_selection: bool,

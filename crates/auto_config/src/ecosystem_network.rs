@@ -57,22 +57,17 @@ pub async fn probe_service(
         )));
     }
 
-    get_service_info(endpoint, pattern).await
+    Ok(get_service_info(endpoint, pattern))
 }
 
 /// Get detailed service information
 ///
 /// **EVOLUTION**: HTTP probing removed, use environment-based discovery
-///
-/// # Errors
-/// Returns `ToadStoolError` if service info cannot be created.
-pub async fn get_service_info(
-    endpoint: &str,
-    pattern: &ServicePattern,
-) -> ToadStoolResult<ServiceInfo> {
+#[must_use]
+pub fn get_service_info(endpoint: &str, pattern: &ServicePattern) -> ServiceInfo {
     tracing::info!("Creating service info for {} at {}", pattern.name, endpoint);
 
-    Ok(ServiceInfo {
+    ServiceInfo {
         name: pattern.name.clone(),
         endpoint: endpoint.to_string(),
         service_type: format!("{:?}", pattern.service_type),
@@ -85,7 +80,7 @@ pub async fn get_service_info(
         status: ServiceStatus::Healthy,
         discovered_via: "environment_config".to_string(),
         response_time_ms: 0,
-    })
+    }
 }
 
 /// Scan a network range for services
@@ -212,9 +207,7 @@ mod tests {
             health_endpoints: vec![],
             required_capabilities: vec!["compute".to_string()],
         };
-        let result = get_service_info("http://192.168.1.1:9000", &pattern).await;
-        assert!(result.is_ok());
-        let info = result.unwrap();
+        let info = get_service_info("http://192.168.1.1:9000", &pattern);
         assert_eq!(info.name, "compute-svc");
         assert_eq!(info.endpoint, "http://192.168.1.1:9000");
         assert!(matches!(
@@ -271,9 +264,7 @@ mod tests {
             health_endpoints: vec![],
             required_capabilities: vec![],
         };
-        let info = get_service_info("http://localhost:8080", &pattern)
-            .await
-            .unwrap();
+        let info = get_service_info("http://localhost:8080", &pattern);
         if let Some(v) = old {
             std::env::set_var("COMPUTE_SVC_VERSION", v);
         } else {

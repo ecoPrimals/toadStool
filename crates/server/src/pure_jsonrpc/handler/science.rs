@@ -7,6 +7,7 @@
 
 use super::job::JobHandler;
 use crate::pure_jsonrpc::types::JsonRpcError;
+use toadstool_common::interned_strings::capabilities;
 
 type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
 
@@ -205,7 +206,7 @@ pub(super) async fn science_activations_list() -> JsonRpcResult {
         "activations": BARRACUDA_ACTIVATION_FUNCTIONS,
         "batch_variants": ["sigmoid_batch", "relu_batch", "gelu_batch", "swish_batch"],
         "precision": "f64",
-        "provider": "barracuda::activations",
+        "provider": capabilities::ACTIVATIONS,
         "domain": "science",
     }))
 }
@@ -219,12 +220,12 @@ pub(super) async fn science_rng_capabilities() -> JsonRpcResult {
     Ok(serde_json::json!({
         "cpu_prng": {
             "lcg": {
-                "function": "barracuda::rng::lcg_step",
+                "function": "rng.lcg_step",
                 "algorithm": "Knuth TAOCP Vol 2 LCG",
                 "output": "u64",
             },
             "uniform_f64": {
-                "function": "barracuda::rng::uniform_f64_sequence",
+                "function": "rng.uniform_f64_sequence",
                 "range": "[0.0, 1.0)",
             },
         },
@@ -251,7 +252,7 @@ pub(super) async fn science_special_functions() -> JsonRpcResult {
             "plasma_physics": ["plasma_dispersion_z", "plasma_dispersion_w"],
             "pharmacology": ["hill_dose_response", "population_pk_monte_carlo"],
         },
-        "provider": "barracuda::special",
+        "provider": capabilities::SPECIAL_FUNCTIONS,
         "domain": "science",
     }))
 }

@@ -14,6 +14,7 @@
 //! **Evolution path**: Callers should use `RuntimeDiscovery::discover_capability()`
 //! to obtain services; never pass services selected by `if name == "beardog"`.
 
+#[cfg(test)]
 mod tests;
 
 use std::collections::HashMap;

@@ -69,6 +69,10 @@ pub struct WasmRuntimeEngine {
     initialized: bool,
 }
 
+#[expect(
+    clippy::missing_fields_in_debug,
+    reason = "internal fields omitted for clarity"
+)]
 impl std::fmt::Debug for WasmRuntimeEngine {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WasmRuntimeEngine")
@@ -89,6 +93,10 @@ impl std::fmt::Debug for WasmRuntimeEngine {
 
 impl WasmRuntimeEngine {
     /// Create a new WebAssembly runtime engine
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "config is cloned internally for Arc storage"
+    )]
     pub fn new(config: WasmRuntimeConfig) -> ToadStoolResult<Self> {
         info!("Creating WebAssembly runtime engine (wasmi 1.0 - Pure Rust!)");
 
@@ -96,7 +104,7 @@ impl WasmRuntimeEngine {
         config.validate().map_err(ToadStoolError::configuration)?;
 
         // Create wasmi engine with configuration
-        let engine = Self::create_wasmi_engine(&config)?;
+        let engine = Self::create_wasmi_engine(&config);
 
         // Initialize components
         let metrics = Arc::new(MetricsCollector::new());
@@ -126,7 +134,7 @@ impl WasmRuntimeEngine {
     }
 
     /// Create wasmi engine with appropriate configuration
-    fn create_wasmi_engine(config: &WasmRuntimeConfig) -> ToadStoolResult<Engine> {
+    fn create_wasmi_engine(config: &WasmRuntimeConfig) -> Engine {
         debug!("Creating wasmi engine with Pure Rust interpreter");
 
         // wasmi 1.0 Config is much simpler than wasmtime!
@@ -144,7 +152,7 @@ impl WasmRuntimeEngine {
 
         info!("✅ Wasmi engine created - 100% Pure Rust interpreter ready!");
 
-        Ok(engine)
+        engine
     }
 
     /// Get engine reference

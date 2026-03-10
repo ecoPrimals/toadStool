@@ -24,7 +24,7 @@
 //! - `types`: Core data types for analytics, alerts, and dashboards
 //! - `engine`: Analytics engine trait definition
 //! - `utils`: Helper functions for statistical calculations
-//! - `implementation`: Main engine implementation (re-exported as IntelligentAnalyticsEngine)
+//! - `implementation`: Main engine implementation (re-exported as `IntelligentAnalyticsEngine`)
 
 mod config;
 mod engine;

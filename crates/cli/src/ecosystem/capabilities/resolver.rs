@@ -43,7 +43,7 @@ impl CapabilityResolver {
     /// ```no_run
     /// use toadstool_cli::ecosystem::capabilities::{CapabilityResolver, StandardCapability};
     ///
-    /// # async fn example(resolver: CapabilityResolver) -> anyhow::Result<()> {
+    /// # async fn example(resolver: CapabilityResolver) -> Result<(), Box<dyn std::error::Error>> {
     /// let provider = resolver
     ///     .resolve(StandardCapability::CryptoSignatureEd25519.id())
     ///     .await?;

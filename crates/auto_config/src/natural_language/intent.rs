@@ -119,6 +119,10 @@ pub fn create_intent_patterns() -> HashMap<String, ConfigurationIntent> {
 }
 
 /// Analyze natural language text to extract user intent
+#[expect(
+    clippy::implicit_hasher,
+    reason = "standard HashMap sufficient for intent patterns"
+)]
 pub fn analyze_intent(
     text: &str,
     patterns: &HashMap<String, ConfigurationIntent>,

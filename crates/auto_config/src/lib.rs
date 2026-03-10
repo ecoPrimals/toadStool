@@ -253,6 +253,7 @@ pub async fn quick_start() -> ToadStoolResult<toadstool_config::ToadStoolConfig>
 ///     Ok(())
 /// }
 /// ```
+#[expect(clippy::struct_excessive_bools, reason = "configuration type")]
 pub struct ConfigBuilder {
     enable_hardware_detection: bool,
     enable_ecosystem_discovery: bool,

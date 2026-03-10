@@ -403,8 +403,8 @@ pub enum KernelFormat {
 pub struct CompiledKernel {
     /// Kernel ID
     pub id: String,
-    /// Compiled binary/code
-    pub binary: Vec<u8>,
+    /// Compiled binary/code (zero-copy via refcounted `Bytes`)
+    pub binary: bytes::Bytes,
     /// Target framework
     pub framework: GpuFramework,
     /// Compilation timestamp
@@ -420,8 +420,8 @@ pub struct CompiledKernel {
 pub struct KernelInput {
     /// Parameter name
     pub name: String,
-    /// Input data
-    pub data: Vec<u8>,
+    /// Input data (zero-copy via refcounted `Bytes`)
+    pub data: bytes::Bytes,
     /// Data type
     pub data_type: DataType,
     /// Access pattern (read-only, write-only, read-write)
@@ -439,8 +439,8 @@ pub enum AccessPattern {
 /// Kernel execution output
 #[derive(Debug, Clone)]
 pub struct KernelOutput {
-    /// Output data buffers
-    pub buffers: HashMap<String, Vec<u8>>,
+    /// Output data buffers (zero-copy via refcounted `Bytes`)
+    pub buffers: HashMap<String, bytes::Bytes>,
     /// Execution metrics
     pub metrics: ExecutionMetrics,
     /// Any error information

@@ -221,7 +221,7 @@ impl ParallelComputeFramework for WebGpuFramework {
 
                 Ok(CompiledKernel {
                     id: Uuid::new_v4().to_string(),
-                    binary: kernel_source.as_bytes().to_vec(),
+                    binary: bytes::Bytes::copy_from_slice(kernel_source.as_bytes()),
                     framework: GpuFramework::WebGpu,
                     compiled_at: std::time::Instant::now(),
                     optimization_level: super::config::OptimizationLevel::Basic,
@@ -237,7 +237,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                 tracing::info!("Using SPIR-V kernel for WebGPU session {}", session_id);
                 Ok(CompiledKernel {
                     id: Uuid::new_v4().to_string(),
-                    binary: kernel_source.as_bytes().to_vec(),
+                    binary: bytes::Bytes::copy_from_slice(kernel_source.as_bytes()),
                     framework: GpuFramework::WebGpu,
                     compiled_at: std::time::Instant::now(),
                     optimization_level: super::config::OptimizationLevel::Basic,

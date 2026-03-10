@@ -6,6 +6,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+#[cfg(feature = "docker")]
+use futures::TryStreamExt;
 use tracing::{debug, info, warn};
 
 use toadstool::resources::RuntimeMetrics;
@@ -98,7 +100,6 @@ pub(crate) async fn ensure_image(
 
         let mut stream = docker.create_image(Some(create_image_options), None, auth_config);
 
-        use futures::TryStreamExt;
         while let Some(info) = stream
             .try_next()
             .await

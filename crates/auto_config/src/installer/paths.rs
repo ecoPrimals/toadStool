@@ -6,9 +6,9 @@ use std::path::PathBuf;
 use toadstool_common::platform_paths::Platform;
 
 /// Get default installation path for platform
-pub fn default_installation_path(platform: &Platform) -> PathBuf {
+pub fn default_installation_path(platform: Platform) -> PathBuf {
     match platform {
-        Platform::Linux => {
+        Platform::Linux | Platform::Android | Platform::Wasm | Platform::Unknown => {
             if let Ok(home) = std::env::var("HOME") {
                 PathBuf::from(home)
                     .join(".local")
@@ -35,23 +35,13 @@ pub fn default_installation_path(platform: &Platform) -> PathBuf {
                 PathBuf::from("C:\\Program Files\\ToadStool")
             }
         }
-        Platform::Android | Platform::Wasm | Platform::Unknown => {
-            if let Ok(home) = std::env::var("HOME") {
-                PathBuf::from(home)
-                    .join(".local")
-                    .join("share")
-                    .join("toadstool")
-            } else {
-                PathBuf::from("/opt/toadstool")
-            }
-        }
     }
 }
 
 /// Get config path for platform
-pub fn config_path_for_platform(platform: &Platform) -> PathBuf {
+pub fn config_path_for_platform(platform: Platform) -> PathBuf {
     match platform {
-        Platform::Linux => {
+        Platform::Linux | Platform::Android | Platform::Wasm | Platform::Unknown => {
             if let Ok(home) = std::env::var("HOME") {
                 PathBuf::from(home).join(".config").join("toadstool")
             } else {
@@ -75,18 +65,11 @@ pub fn config_path_for_platform(platform: &Platform) -> PathBuf {
                 PathBuf::from("C:\\ProgramData\\ToadStool\\config")
             }
         }
-        Platform::Android | Platform::Wasm | Platform::Unknown => {
-            if let Ok(home) = std::env::var("HOME") {
-                PathBuf::from(home).join(".config").join("toadstool")
-            } else {
-                PathBuf::from("/etc/toadstool")
-            }
-        }
     }
 }
 
 /// Platform display name
-pub fn platform_as_str(platform: &Platform) -> &'static str {
+pub fn platform_as_str(platform: Platform) -> &'static str {
     match platform {
         Platform::Linux => "Linux",
         Platform::MacOS => "macOS",

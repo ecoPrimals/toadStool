@@ -75,7 +75,7 @@ impl NativeWorkloadBuilder {
     ///
     /// # Arguments
     ///
-    /// * `environment` - HashMap of environment variable names to values
+    /// * `environment` - `HashMap` of environment variable names to values
     pub fn environment(mut self, environment: HashMap<String, String>) -> Self {
         self.environment = environment;
         self

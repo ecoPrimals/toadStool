@@ -350,7 +350,7 @@ impl CpuComputeContext {
         operation: &Operation,
         _parameters: &std::collections::HashMap<String, serde_json::Value>,
         workload: &UniversalWorkload,
-    ) -> ToadStoolResult<std::collections::HashMap<String, Vec<u8>>> {
+    ) -> ToadStoolResult<std::collections::HashMap<String, bytes::Bytes>> {
         match operation {
             Operation::GeneralCompute => self.execute_parallel_compute(workload).await,
             Operation::MatrixMultiply => {
@@ -372,7 +372,7 @@ impl CpuComputeContext {
     async fn execute_parallel_compute(
         &self,
         workload: &UniversalWorkload,
-    ) -> ToadStoolResult<std::collections::HashMap<String, Vec<u8>>> {
+    ) -> ToadStoolResult<std::collections::HashMap<String, bytes::Bytes>> {
         use rayon::prelude::*;
 
         let mut outputs = std::collections::HashMap::new();
@@ -386,7 +386,7 @@ impl CpuComputeContext {
                     .collect()
             });
 
-            outputs.insert(format!("output_{idx}"), output_data);
+            outputs.insert(format!("output_{idx}"), bytes::Bytes::from(output_data));
         }
 
         Ok(outputs)
@@ -397,19 +397,17 @@ impl CpuComputeContext {
     async fn execute_reduction(
         &self,
         workload: &UniversalWorkload,
-    ) -> ToadStoolResult<std::collections::HashMap<String, Vec<u8>>> {
+    ) -> ToadStoolResult<std::collections::HashMap<String, bytes::Bytes>> {
         use rayon::prelude::*;
 
         let mut outputs = std::collections::HashMap::new();
 
         for (idx, input) in workload.inputs.iter().enumerate() {
-            // Parallel reduction using Rayon
             let sum: u64 = self
                 .thread_pool
                 .install(|| input.data.par_iter().map(|&b| b as u64).sum());
 
-            // Convert sum to bytes
-            let result = sum.to_le_bytes().to_vec();
+            let result = bytes::Bytes::copy_from_slice(&sum.to_le_bytes());
             outputs.insert(format!("output_{idx}"), result);
         }
 
@@ -423,7 +421,7 @@ impl CpuComputeContext {
         language: &KernelLanguage,
         _code: &str,
         _workload: &UniversalWorkload,
-    ) -> ToadStoolResult<std::collections::HashMap<String, Vec<u8>>> {
+    ) -> ToadStoolResult<std::collections::HashMap<String, bytes::Bytes>> {
         match language {
             KernelLanguage::Rust => {
                 // NOTE: JIT compilation considered for future optimization
@@ -551,7 +549,7 @@ mod tests {
             },
             inputs: vec![ComputeBuffer {
                 name: "input".to_string(),
-                data: vec![1, 2, 3, 4, 5],
+                data: vec![1, 2, 3, 4, 5].into(),
                 element_type: crate::types::DataType::UInt8,
             }],
             output_size: 5,

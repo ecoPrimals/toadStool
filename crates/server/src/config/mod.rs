@@ -13,7 +13,7 @@ pub struct ServerConfig {
     /// Server bind address
     pub bind_address: String,
 
-    /// Enable REST API endpoints
+    /// Enable HTTP API endpoints
     pub enable_api: bool,
 
     /// Enable CORS for API access

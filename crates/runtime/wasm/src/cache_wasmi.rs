@@ -111,6 +111,10 @@ impl ModuleCache {
     }
 
     /// Evict least recently used entry
+    #[expect(
+        clippy::unused_async,
+        reason = "kept for API consistency with async cache interface"
+    )]
     async fn evict_lru(&self, cache: &mut HashMap<String, CachedModule>) {
         if cache.is_empty() {
             return;

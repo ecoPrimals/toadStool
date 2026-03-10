@@ -60,6 +60,10 @@ impl ModuleExecutor {
     }
 
     /// Synchronous execution logic (runs in blocking thread pool)
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "args cloned into WasiConfig; Vec needed for spawn_blocking move"
+    )]
     fn execute_module_sync(
         engine: &Engine,
         module: &Module,

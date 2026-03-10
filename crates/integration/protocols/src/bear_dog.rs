@@ -658,7 +658,9 @@ mod tests {
     fn bear_dog_config_default_socket_path() {
         let config = BearDogConfig::default();
         assert!(!config.socket_path.is_empty());
-        assert!(config.socket_path.ends_with(".sock"));
+        assert!(std::path::Path::new(&config.socket_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("sock")));
     }
 
     #[test]

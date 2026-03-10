@@ -11,7 +11,7 @@ use crate::config::ServerConfig;
 use crate::handlers;
 use crate::state::ServerState;
 
-/// Build the HTTP router with all routes and middleware.
+/// Build the HTTP router with all routes.
 ///
 /// Registers health endpoints, optional API endpoints (when `enable_api` is true),
 /// dashboard, and CORS when enabled.

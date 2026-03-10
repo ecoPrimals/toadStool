@@ -17,6 +17,7 @@ pub struct InstallationResult {
 
 /// Installation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[expect(clippy::struct_excessive_bools, reason = "configuration type")]
 pub struct InstallationConfig {
     pub installation_path: Option<PathBuf>,
     pub install_systemd_service: bool,

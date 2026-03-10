@@ -188,7 +188,8 @@ impl From<ToadStoolError> for ByobApiError {
         use toadstool::error::{ConfigError, ResourceError, SystemError};
 
         match err {
-            ToadStoolError::Resource(ResourceError::NotFound { .. }) => Self {
+            ToadStoolError::Resource(ResourceError::NotFound { .. })
+            | ToadStoolError::NotFound(_) => Self {
                 status: StatusCode::NOT_FOUND,
                 message: err.to_string(),
             },
@@ -206,10 +207,6 @@ impl From<ToadStoolError> for ByobApiError {
             },
             ToadStoolError::System(SystemError::NotSupported { .. }) => Self {
                 status: StatusCode::NOT_IMPLEMENTED,
-                message: err.to_string(),
-            },
-            ToadStoolError::NotFound(_) => Self {
-                status: StatusCode::NOT_FOUND,
                 message: err.to_string(),
             },
             _ => Self {

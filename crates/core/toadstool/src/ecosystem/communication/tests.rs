@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Communication module tests
 
-#[expect(unused_imports, reason = "imports used across test functions")]
-use crate::ecosystem::{CommunicationManager, ServiceChannel, ServiceClient, ServiceStatus};
+use crate::ecosystem::{CommunicationManager, ServiceStatus};
+#[cfg(not(feature = "networking"))]
+use crate::ecosystem::{ServiceChannel, ServiceClient};
 
 #[tokio::test]
 async fn test_communication_manager_creation() {

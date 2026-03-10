@@ -32,6 +32,10 @@ impl ConfigGenerator {
     }
 
     /// Generate optimal configuration based on discovered system capabilities
+    #[expect(
+        clippy::unused_async,
+        reason = "API contract for future async operations"
+    )]
     pub async fn generate_optimal_config(
         &mut self,
         hardware: &SystemCapabilities,
@@ -44,32 +48,33 @@ impl ConfigGenerator {
         let mut config = ToadStoolConfig::default();
 
         // Configure runtime engines based on hardware
-        self.configure_runtime_engines(&mut config, hardware, platform, usage_hints)?;
+        self.configure_runtime_engines(&mut config, hardware, platform, usage_hints);
 
         // Configure networking and ecosystem integration
         // Note: Ecosystem integration is handled through separate configuration systems
 
         // Configure security based on platform and environment
-        config.security = self.configure_security_settings(platform)?;
+        config.security = self.configure_security_settings(platform);
 
         // Apply platform-specific optimizations
-        self.apply_platform_optimizations(&mut config, platform)?;
+        self.apply_platform_optimizations(&mut config, platform);
 
         // Store configuration snapshot for learning
-        self.store_config_snapshot(&config, hardware, usage_hints)?;
+        self.store_config_snapshot(&config, hardware, usage_hints);
 
         debug!("Optimal configuration generated successfully");
         Ok(config)
     }
 
     /// Configure runtime engines based on hardware capabilities
+    #[expect(clippy::unused_self, reason = "may use self for future extensions")]
     fn configure_runtime_engines(
         &self,
         config: &mut ToadStoolConfig,
         hardware: &SystemCapabilities,
         _platform: &PlatformConfig,
         _usage_hints: &UsageHints,
-    ) -> ToadStoolResult<()> {
+    ) {
         // Runtime configuration based on hardware
         info!("🔧 Configuring runtime engines based on hardware capabilities");
 
@@ -109,14 +114,11 @@ impl ConfigGenerator {
         }
 
         debug!("Runtime engines configured");
-        Ok(())
     }
 
     /// Configure security settings based on platform and environment
-    fn configure_security_settings(
-        &self,
-        platform: &PlatformConfig,
-    ) -> ToadStoolResult<SecurityConfig> {
+    #[expect(clippy::unused_self, reason = "may use self for future extensions")]
+    fn configure_security_settings(&self, platform: &PlatformConfig) -> SecurityConfig {
         let mut security_config = SecurityConfig::default();
 
         // Sandbox configuration based on platform capabilities
@@ -131,15 +133,16 @@ impl ConfigGenerator {
             security_config.sandbox.enabled, security_config.auth.enabled
         );
 
-        Ok(security_config)
+        security_config
     }
 
     /// Apply platform-specific optimizations
+    #[expect(clippy::unused_self, reason = "may use self for future extensions")]
     fn apply_platform_optimizations(
         &self,
         config: &mut ToadStoolConfig,
         platform: &PlatformConfig,
-    ) -> ToadStoolResult<()> {
+    ) {
         for optimization in &platform.optimizations {
             match optimization.optimization_type.as_str() {
                 "containers" => {
@@ -169,7 +172,6 @@ impl ConfigGenerator {
             "Applied {} platform optimizations",
             platform.optimizations.len()
         );
-        Ok(())
     }
 
     /// Store configuration snapshot for learning and optimization
@@ -178,7 +180,7 @@ impl ConfigGenerator {
         config: &ToadStoolConfig,
         hardware: &SystemCapabilities,
         usage_hints: &UsageHints,
-    ) -> ToadStoolResult<()> {
+    ) {
         let snapshot = ConfigSnapshot {
             timestamp: std::time::SystemTime::now(),
             config: config.clone(),
@@ -195,6 +197,5 @@ impl ConfigGenerator {
         }
 
         debug!("Configuration snapshot stored for learning");
-        Ok(())
     }
 }

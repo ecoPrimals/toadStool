@@ -234,8 +234,8 @@ Each patch should be validated with the `validate_nak_eigensolve` binary
 |------|-------------|
 | `sm70_instr_latencies.rs` | SM70 instruction latency table for scheduler |
 | `rdna2_instr_latencies.rs` | RDNA2 latency table (AMD RADV/ACO reference) |
-| `../../crates/barracuda/src/shaders/linalg/batched_eigh_nak_optimized_f64.wgsl` | WGSL workarounds for all 5 deficiencies |
-| `../../crates/barracuda/src/shaders/optimizer/loop_unroller.rs` | barracuda WGSL loop unroller (reference implementation) |
+| `ecoPrimals/barraCuda/crates/barracuda/src/shaders/linalg/batched_eigh_nak_optimized_f64.wgsl` | WGSL workarounds for all 5 deficiencies (lives in barraCuda repo) |
+| `ecoPrimals/barraCuda/crates/barracuda/src/shaders/optimizer/loop_unroller.rs` | barraCuda WGSL loop unroller (reference implementation; lives in barraCuda repo) |
 
 ---
 

@@ -191,6 +191,10 @@ pub fn create_templates() -> HashMap<String, ConfigurationTemplate> {
 /// Get a template by name, returning general purpose if not found
 /// ✅ FIXED: Safe fallback chain - no `unwrap()` that could panic
 #[must_use]
+#[expect(
+    clippy::implicit_hasher,
+    reason = "standard HashMap sufficient for templates"
+)]
 pub fn get_template(
     templates: &HashMap<String, ConfigurationTemplate>,
     name: &str,

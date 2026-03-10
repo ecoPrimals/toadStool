@@ -43,7 +43,7 @@
 //!
 //! ## Features
 //!
-//! - **HTTP API Server**: REST API for workload submission and status monitoring
+//! - **JSON-RPC Server**: JSON-RPC 2.0 workload submission and status monitoring
 //! - **WebSocket Server**: Real-time event streaming and notifications  
 //! - **Runtime Engine Integration**: Support for Native, WASM, Container, Python, GPU runtimes
 //! - **Load Balancing**: Intelligent workload distribution across available resources

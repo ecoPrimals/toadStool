@@ -6,8 +6,11 @@
 //! plus the `forward_to_primal` Unix socket relay.
 
 use crate::pure_jsonrpc::types::JsonRpcError;
+use toadstool_common::interned_strings::capabilities;
 
 type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
+
+const ECOLOGY_CAPABILITY: &str = capabilities::ECOLOGY;
 
 // ═══════════════════════════════════════════════════════════
 // Ecology domain — airSpring science offload routing
@@ -44,20 +47,21 @@ pub(super) async fn ecology_offload(
     method: &str,
     params: Option<&serde_json::Value>,
 ) -> JsonRpcResult {
-    let socket_dir = toadstool_common::primal_sockets::get_biomeos_dir();
-    let primal_socket = socket_dir.join("airspring.sock");
+    let socket_path =
+        toadstool_common::primal_sockets::get_socket_path_for_capability(ECOLOGY_CAPABILITY);
 
-    if primal_socket.exists() {
-        return forward_to_primal(&primal_socket, method, params).await;
+    if socket_path.exists() {
+        return forward_to_primal(&socket_path, method, params).await;
     }
 
+    let socket_dir = toadstool_common::primal_sockets::get_biomeos_dir();
     Ok(serde_json::json!({
         "method": method,
         "status": "queued",
         "domain": "ecology",
         "available_methods": ECOLOGY_METHODS,
         "params_received": params.is_some(),
-        "routing": "No airSpring science primal discovered. Method registered for deferred execution.",
+        "routing": format!("No primal discovered for capability '{ECOLOGY_CAPABILITY}'. Method registered for deferred execution."),
         "discovery_path": socket_dir.display().to_string(),
     }))
 }
@@ -225,34 +229,32 @@ pub(super) async fn deploy_capability_call(params: Option<&serde_json::Value>) -
     forward_to_primal(&socket_path, method, call_params).await
 }
 
-/// Returns status of known deploy graphs and their science primals.
+/// Returns status of discovered deploy graphs by scanning the biomeOS socket
+/// directory at runtime. No hardcoded primal names -- sovereignty-compliant.
 #[allow(clippy::unused_async)]
 pub(super) async fn deploy_graph_status() -> JsonRpcResult {
     let socket_dir = toadstool_common::primal_sockets::get_biomeos_dir();
+    let mut graphs = Vec::new();
 
-    let known_graphs = [
-        ("wetspring", "science.diversity"),
-        ("airspring", "ecology.et0_fao56"),
-        ("groundspring", "science.noise_decomposition"),
-        ("neuralspring", "science.ml_surrogate"),
-        ("hotspring", "science.lattice_qcd"),
-    ];
-
-    let graphs: Vec<_> = known_graphs
-        .iter()
-        .map(|(primal, sample_cap)| {
-            let socket = socket_dir.join(format!("{primal}.sock"));
-            serde_json::json!({
-                "primal": primal,
-                "sample_capability": sample_cap,
-                "socket_exists": socket.exists(),
-                "socket_path": socket.display().to_string(),
-            })
-        })
-        .collect();
+    if let Ok(entries) = std::fs::read_dir(&socket_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("sock") {
+                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                    graphs.push(serde_json::json!({
+                        "primal": name,
+                        "socket_exists": path.exists(),
+                        "socket_path": path.display().to_string(),
+                    }));
+                }
+            }
+        }
+    }
 
     Ok(serde_json::json!({
         "deploy_graphs": graphs,
+        "discovered_count": graphs.len(),
+        "socket_dir": socket_dir.display().to_string(),
         "domain": "deploy",
     }))
 }

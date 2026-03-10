@@ -520,7 +520,7 @@ mod tests {
     #[test]
     fn resource_requirements_default_validation() {
         let req = ResourceRequirements::default();
-        assert_eq!(req.cpu.min_cores, 1.0);
+        assert!((req.cpu.min_cores - 1.0).abs() < f64::EPSILON);
         assert_eq!(req.memory.min_bytes, 1024 * 1024 * 1024);
         assert_eq!(req.storage.min_bytes, 1024 * 1024 * 1024);
         assert!(req.network.bandwidth_mbps.is_none());
@@ -533,7 +533,7 @@ mod tests {
             min_cores: 4.0,
             max_cores: Some(8.0),
         };
-        assert_eq!(cpu.min_cores, 4.0);
+        assert!((cpu.min_cores - 4.0).abs() < f64::EPSILON);
         assert_eq!(cpu.max_cores, Some(8.0));
     }
 
@@ -561,7 +561,7 @@ mod tests {
             min_memory_gb: 8.0,
             compute_capability: Some("8.0".to_string()),
         };
-        assert_eq!(gpu.min_memory_gb, 8.0);
+        assert!((gpu.min_memory_gb - 8.0).abs() < f64::EPSILON);
         assert_eq!(gpu.compute_capability.as_deref(), Some("8.0"));
     }
 
@@ -591,7 +591,7 @@ mod tests {
         };
         let core_req: toadstool::resources::ResourceRequirements = distributed.clone().into();
         let back: ResourceRequirements = core_req.into();
-        assert_eq!(back.cpu.min_cores, distributed.cpu.min_cores);
+        assert!((back.cpu.min_cores - distributed.cpu.min_cores).abs() < f64::EPSILON);
         assert_eq!(back.memory.min_bytes, distributed.memory.min_bytes);
         assert_eq!(back.gpu.as_ref().map(|g| g.min_memory_gb), Some(4.0));
     }
@@ -606,7 +606,7 @@ mod tests {
     #[test]
     fn resource_allocation_default() {
         let alloc = ResourceAllocation::default();
-        assert_eq!(alloc.cpu_cores, 1.0);
+        assert!((alloc.cpu_cores - 1.0).abs() < f64::EPSILON);
         assert_eq!(alloc.memory_bytes, 1024 * 1024 * 1024);
         assert_eq!(alloc.storage_bytes, 10 * 1024 * 1024 * 1024);
         assert!(alloc.gpu_allocation.is_none());
@@ -626,7 +626,7 @@ mod tests {
     #[test]
     fn resource_limits_default() {
         let limits = ResourceLimits::default();
-        assert_eq!(limits.max_cpu_cores, 4.0);
+        assert!((limits.max_cpu_cores - 4.0).abs() < f64::EPSILON);
         assert_eq!(limits.max_memory_bytes, 8 * 1024 * 1024 * 1024);
     }
 

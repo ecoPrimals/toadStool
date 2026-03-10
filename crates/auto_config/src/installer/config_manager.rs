@@ -22,11 +22,11 @@ impl ConfigManager {
     #[must_use]
     pub fn new() -> Self {
         let platform = Platform::detect();
-        let config_path = config_path_for_platform(&platform);
+        let config_path = config_path_for_platform(platform);
         Self { config_path }
     }
 
-    /// Create a ConfigManager with a custom path (for testing).
+    /// Create a `ConfigManager` with a custom path (for testing).
     #[must_use]
     pub fn with_path(config_path: PathBuf) -> Self {
         Self { config_path }

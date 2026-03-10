@@ -236,7 +236,7 @@ mod tests {
         let conn = NodeConnection::default();
         assert!(conn.from.is_empty());
         assert!(conn.to.is_empty());
-        assert_eq!(conn.latency, 0.0);
+        assert!((conn.latency - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]

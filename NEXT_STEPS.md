@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 10, 2026 -- S140 Deep Debt Evolution & Spring Absorption Sprint
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic | 19,900+ tests (0 failures) | 83%+ line coverage (171K llvm-cov verified) | 88+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs
-**Latest**: S140 — Deep debt: hardcoding elimination (7 files → interned_strings), StreamingDispatch progress callbacks (healthSpring V13), barraCuda Sprint 2 API awareness (activations/rng/special), science.rs smart refactor (1139→828 LOC). S139 — Spring absorption: dual-write discovery, gpu.dispatch, GPU descriptor enrichment, StreamingDispatch, PipelineGraph DAG. S138 — Deep debt: +126 tests, AGPL-3.0-only, interned strings, 83% coverage.
+**Updated**: March 10, 2026 -- S141 Deep Debt Evolution & Pedantic Sweep
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,900+ tests (0 failures) | 83%+ line coverage (171K llvm-cov verified) | 88+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs
+**Latest**: S141 — 120+ clippy pedantic fixes (10 crates, all-targets), Vec<u8>→Bytes zero-copy (6 GPU types), sovereignty evolution (deploy_graph_status→runtime discovery, ecology→capability-based, barracuda/coralReef strings→capabilities::*), flaky test fixed, SPDX aligned, doc link fixed, debris cleaned.
 
 ---
 
@@ -107,7 +107,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **API orphan resolved** -- crates/api/ ByobApi extracted to container crate (S96)
 - [x] **V4L2 unsafe docs** -- All SAFETY comments on unsafe blocks (S96)
 - [x] **Debris cleanup** -- root tests/ stubs, stale checklists, false-positive TODOs (S95)
-- [x] **management/resources re-added** -- real ResourceManager with sysinfo (S95)
+- [x] **management/resources re-added** -- real ResourceManager (S95; sysinfo → `toadstool-sysmon` S137)
 
 ### Cross-Repo Debt
 
@@ -139,7 +139,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ### Session S130+: Deep Debt Execution (Mar 7, 2026)
 - **Unsafe audit**: All ~70+ blocks justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives.
-- **Dependency audit**: 1 always-on C/FFI dep (sysinfo). `notify` removed S134 (was unused). `aes-gcm` optional behind `dev-crypto` feature. All others optional/feature-gated. Already evolved to pure Rust.
+- **Dependency audit**: **Zero always-on C/FFI deps** (sysinfo eliminated S137). `aes-gcm` optional behind `dev-crypto` feature. All others optional/feature-gated. Already evolved to pure Rust.
 - **Hardcoding→constants**: Production primal names in `integrator_impl.rs` evolved to `well_known::*` constants.
 - **#[allow] audit**: All 9 justified, 6 comments added, 2 `unused_self` documented.
 - **Clone audit**: 14 hot-path patterns documented (tarpc_server, unibin/capabilities, cross_gate → Arc evolution tracked).
@@ -179,7 +179,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **V4L2 unsafe documentation**: All `unsafe` blocks in `v4l2/device.rs` documented with `// SAFETY:` comments.
 - **Hardcoded IP evolved**: `0.0.0.0` fallback → `TOADSTOOL_DISCOVERY_BIND_ADDR` env var.
 - **Debris cleanup**: Root `tests/` stubs removed (fossilized to ecoPrimals/fossil/). Stale `✅ COMPLETE` checklists cleaned from 11 files. False-positive TODO in `input/parser.rs` removed. Sprint/date doc comments cleaned in test files.
-- **management/resources re-added**: Real `ResourceManager` with sysinfo re-added to workspace.
+- **management/resources re-added**: Real `ResourceManager` re-added to workspace (sysinfo → `toadstool-sysmon` S137).
 - **Clippy pedantic**: Resolved across workspace. `cargo clippy --lib -- -W clippy::pedantic` clean.
 - **Spring absorption tracker**: Updated to current spring versions (hotSpring v0.6.17, groundSpring V80, neuralSpring V86/S128, wetSpring V97d, airSpring V071).
 

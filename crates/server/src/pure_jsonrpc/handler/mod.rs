@@ -19,6 +19,7 @@ use std::borrow::Cow;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use toadstool::semantic_methods::SemanticMethodRegistry;
+use toadstool_common::interned_strings::capabilities;
 use tracing::{debug, error, info};
 
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JSONRPC_VERSION};
@@ -332,9 +333,9 @@ impl JsonRpcHandler {
         {
             return Ok(serde_json::json!({
                 "status": "compiled",
-                "pipeline": "coralreef_native",
+                "pipeline": capabilities::SHADER_COMPILE_NATIVE,
                 "source_language": "wgsl",
-                "coral_reef_available": true,
+                "native_compiler_available": true,
                 "result": result
             }));
         }
@@ -344,8 +345,8 @@ impl JsonRpcHandler {
             "pipeline": "naga_wgsl_to_spirv",
             "source_language": "wgsl",
             "target": "spirv",
-            "coral_reef_available": false,
-            "note": "Compilation routed through naga. coralReef not available for native binary."
+            "native_compiler_available": false,
+            "note": "Compilation routed through naga. Native compiler not available for binary output."
         }))
     }
 
@@ -371,9 +372,9 @@ impl JsonRpcHandler {
             if let Some(result) = self.coral_reef.compile_spirv(&words, arch).await {
                 return Ok(serde_json::json!({
                     "status": "compiled",
-                    "pipeline": "coralreef_native",
+                    "pipeline": capabilities::SHADER_COMPILE_NATIVE,
                     "source_language": "spirv",
-                    "coral_reef_available": true,
+                    "native_compiler_available": true,
                     "result": result
                 }));
             }
@@ -383,8 +384,8 @@ impl JsonRpcHandler {
             "status": "accepted",
             "pipeline": "spirv_passthrough",
             "source_language": "spirv",
-            "coral_reef_available": false,
-            "note": "SPIR-V accepted. coralReef not available for native binary compilation."
+            "native_compiler_available": false,
+            "note": "SPIR-V accepted. Native compiler not available for binary compilation."
         }))
     }
 
@@ -402,11 +403,11 @@ impl JsonRpcHandler {
         Ok(serde_json::json!({
             "compile_id": compile_id,
             "status": if coral_available { "tracking_available" } else { "not_found" },
-            "coral_reef_available": coral_available,
+            "native_compiler_available": coral_available,
             "note": if coral_available {
-                "coralReef pipeline active. Compilation results available synchronously."
+                "Native shader pipeline active. Compilation results available synchronously."
             } else {
-                "coralReef not available. Compilation tracking requires active compiler."
+                "Native compiler not discovered. Compilation tracking requires active compiler."
             }
         }))
     }
@@ -426,8 +427,8 @@ impl JsonRpcHandler {
             "source_languages": ["wgsl"],
             "target_formats": target_formats,
             "native_binary_compilation": coral_available,
-            "coral_reef_available": coral_available,
-            "coral_reef_version": health.as_ref().map(|h| h.version.as_str()),
+            "native_compiler_available": coral_available,
+            "compiler_version": health.as_ref().map(|h| h.version.as_str()),
             "supported_archs": supported_archs,
             "coral_driver_available": false,
             "naga_pipeline": true,
@@ -632,7 +633,7 @@ mod tests {
         let result = response.result.expect("result present");
         assert_eq!(result["domain"], "shader");
         assert!(result["naga_pipeline"].as_bool().unwrap());
-        assert!(!result["coral_reef_available"].as_bool().unwrap());
+        assert!(!result["native_compiler_available"].as_bool().unwrap());
         assert!(result["source_languages"].as_array().is_some());
     }
 

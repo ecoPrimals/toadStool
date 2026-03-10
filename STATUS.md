@@ -1,4 +1,4 @@
-# Status -- March 10, 2026 (S140 Deep Debt Evolution & Spring Absorption Sprint)
+# Status -- March 10, 2026 (S141 Deep Debt Evolution & Pedantic Sweep)
 
 ## Quality Gates
 
@@ -6,14 +6,14 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (in CI) |
-| `cargo doc --workspace --no-deps` | PASS | 0 warnings |
+| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
+| `cargo doc --workspace --no-deps` | PASS | 0 warnings (S141: broken doc link fixed) |
 | `cargo test --workspace` | PASS | **19,900+ tests, 0 failures** (+126 S138; 216+ intentional ignores for GPU hardware) |
 | `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
-| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 2,780+ .rs files have SPDX headers** (aligned to wateringHole S138) |
+| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 1,733 .rs files have SPDX headers** (S141: last `AGPL-3.0-or-later` in examples fixed) |
 | Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
 | Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
 | Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route |
@@ -35,7 +35,7 @@
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. `SoftwareHsmProvider`/`LocalKeyringProvider` gated behind `dev-crypto` feature (S134). Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
 | Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
 | File size limit | **All < 1000 lines** (1,868 .rs files, 517K total lines) |
-| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic` across entire workspace. Production `#[allow]` evolved to `#[expect]` (S131+, S132). 50 stale suppressions discovered and removed total. |
+| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic --all-targets` across entire workspace including test code (S141). Production `#[allow]` evolved to `#[expect]` (S131+, S132, S141). 170+ stale suppressions discovered and removed total. |
 | Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
@@ -47,7 +47,7 @@
 | Sovereignty | **RESOLVED** (S94b). All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated. BearDog user-facing strings neutralized. |
 | ecoBin | **PyO3 optional** — `pure-rust` feature compiles cleanly with zero C FFI deps (S90, verified S92) |
 | unsafe docs | **100%** — all `unsafe` blocks have `// SAFETY:` comments (S90) |
-| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90). 14 hot-path patterns documented (S130+). **3 evolved (S132)**: cross_gate IDs → `Arc<str>`, unibin/capabilities → `Vec<Arc<str>>`, coordinator service_id → `Arc<str>`. Deferred: `WorkloadResult` Arc wrap (cascading). |
+| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90). 14 hot-path patterns documented (S130+). **3 evolved (S132)**: cross_gate IDs → `Arc<str>`, unibin/capabilities → `Vec<Arc<str>>`, coordinator service_id → `Arc<str>`. **S141**: `Vec<u8>` → `bytes::Bytes` (zero-copy clone via refcount) in 6 GPU/runtime types. |
 | Production `todo!()` / `unimplemented!()` | **0** — confirmed by full codebase audit (S92) |
 | Production FIXME / HACK | **0** — confirmed by full codebase audit (S92) |
 | ComputeDispatch adoption | **144 ops migrated** (~139 legacy ops remaining, incremental) |
@@ -92,6 +92,16 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S141: Deep Debt Evolution & Pedantic Sweep (Mar 10, 2026)
+- **Clippy pedantic sweep (120+ fixes, 10 crates)**: `--all-targets` now passes workspace-wide. Fixed: doc backticks (30), unused async (12), missing `#[must_use]` (9), unnecessary Result wrapping (8), raw string hashes (7), unused self (6), identical match arms (6), struct_excessive_bools (5), float_cmp (15), HashMap::default→new (7), PI constant, case-sensitive extension, and 20+ other pedantic categories. All use `#[expect(..., reason = "...")]` pattern.
+- **Sovereignty evolution**: `deploy_graph_status` evolved from hardcoded 5-primal array to runtime socket discovery. `ecology_offload` evolved to `get_socket_path_for_capability(ECOLOGY)`. `"barracuda::*"` API metadata evolved to `capabilities::*` constants. Shader pipeline responses evolved from `"coralreef_native"` / `"coral_reef_available"` to `capabilities::SHADER_COMPILE_NATIVE` / `"native_compiler_available"`. 6 new capability constants added to `interned_strings`.
+- **Zero-copy evolution**: `Vec<u8>` → `bytes::Bytes` in 6 GPU/runtime types (`ComputeBuffer::data`, `UniversalKernel::Binary::data`, `WorkloadResult::outputs`, `CompiledKernel::binary`, `KernelInput::data`, `KernelOutput::buffers`). All callers updated (cpu_resource, compiler, frameworks, examples).
+- **Flaky test fixed**: `test_concurrent_resource_monitoring_events` — restructured barrier synchronization: subscribe-before-start pattern with 500ms timeout.
+- **SPDX alignment**: `examples/real_gpu_pool.rs` corrected from `AGPL-3.0-or-later` to `AGPL-3.0-only`.
+- **Doc link fixed**: `streaming_dispatch.rs:150` broken intra-doc link → `Self::record_dispatch_with_progress`.
+- **Debris cleanup**: Stale showcase references removed from `QUICK_REFERENCE.md`. Broken neuromorphic README links fixed. `NAK_DEFICIENCIES.md` paths updated. CI stale paths cleaned.
+- All quality gates green: 0 fmt, 0 clippy pedantic (all-targets), 0 doc warnings, all tests compile.
 
 ### S137: sysinfo Eliminated — ecoBin v3.0 (Mar 9, 2026)
 - **sysinfo (15 transitive crates → libc) fully eliminated**: Replaced with `toadstool-sysmon` — new pure Rust crate (`crates/core/sysmon/`) parsing `/proc` + `rustix` `statvfs`. 22+ call sites migrated across 18 source files in 8 crates. 20 unit tests + 1 doctest. `#![deny(unsafe_code)]`. Clippy pedantic clean.
@@ -161,7 +171,7 @@
 - **V4L2 unsafe documentation**: All `// SAFETY:` comments added to `v4l2/device.rs` blocks.
 - **Hardcoding evolved**: `0.0.0.0` → `TOADSTOOL_DISCOVERY_BIND_ADDR` env var.
 - **Debris cleanup**: Root `tests/` stubs removed (fossilized). Stale completion checklists cleaned from 11 files. False-positive TODOs removed. Sprint/date comments cleaned in test files.
-- **management/resources re-added**: Real ResourceManager with sysinfo re-added to workspace.
+- **management/resources re-added**: Real ResourceManager re-added to workspace (sysinfo → `toadstool-sysmon` S137).
 - **Clippy pedantic**: Resolved across workspace.
 - **Spring absorption tracker**: Updated to current spring versions.
 - All quality gates green: 0 clippy warnings, 0 fmt diffs, 0 doc warnings, 18,028 tests passing.

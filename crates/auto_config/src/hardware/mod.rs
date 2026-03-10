@@ -83,7 +83,7 @@ impl HardwareDetector {
 
         // Performance characteristics
         info!("  ⚡ Analyzing performance characteristics...");
-        capabilities.performance_class = self.classify_performance(&capabilities).await?;
+        capabilities.performance_class = self.classify_performance(&capabilities);
 
         info!("✅ Hardware scan complete:");
         info!(
@@ -99,10 +99,8 @@ impl HardwareDetector {
     }
 
     /// Classify system performance based on hardware capabilities
-    async fn classify_performance(
-        &self,
-        capabilities: &SystemCapabilities,
-    ) -> ToadStoolResult<PerformanceClass> {
+    #[expect(clippy::unused_self, reason = "may use self for future extensions")]
+    fn classify_performance(&self, capabilities: &SystemCapabilities) -> PerformanceClass {
         use tracing::debug;
 
         let cpu_score = cpu::calculate_cpu_score(&capabilities.cpu_info);
@@ -126,7 +124,7 @@ impl HardwareDetector {
             "Performance classification: {:?} (score: {:.1})",
             performance_class, total_score
         );
-        Ok(performance_class)
+        performance_class
     }
 }
 

@@ -40,7 +40,7 @@ pub struct ClientConfig {
     /// HTTP request timeout
     ///
     /// Note: For full timeout configuration (connection, read, write), consider
-    /// creating a more complete client config struct that uses TimeoutConfig base pattern.
+    /// creating a more complete client config struct that uses `TimeoutConfig` base pattern.
     pub request_timeout: Duration,
 
     /// Maximum retry attempts

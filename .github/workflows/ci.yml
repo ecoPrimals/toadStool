@@ -41,8 +41,8 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --all-features
 
-  test-gpu-showcase:
-    name: GPU Showcase Tests
+  test-showcase:
+    name: Showcase Build Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,14 +52,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config
-      - name: Run showcase tests (if present)
+      - name: Build showcase demos
         run: |
-          if [ -d "showcase/gpu-universal/ml-inference" ]; then
-            cd showcase/gpu-universal/ml-inference
-            cargo test --lib --features="cpu_fallback"
-          else
-            echo "Showcase directory not present — skipping"
-          fi
+          for dir in showcase/0*; do
+            for demo in "$dir"/*/; do
+              if [ -f "$demo/Cargo.toml" ]; then
+                echo "Building $demo"
+                cargo build --manifest-path "$demo/Cargo.toml"
+              fi
+            done
+          done
         continue-on-error: true
 
   fmt:
@@ -114,14 +116,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Build showcase examples (if present)
-        run: |
-          if [ -d "showcase/gpu-universal/ml-inference" ]; then
-            cd showcase/gpu-universal/ml-inference
-            cargo build --examples --release
-          else
-            echo "Showcase directory not present — skipping"
-          fi
+      - name: Build workspace examples
+        run: cargo build --examples --release
         continue-on-error: true
 
   coverage:

@@ -402,7 +402,7 @@ fn optimized_matmul_vulkan(...) {
 
 ### Benchmarks
 - [wgpu Performance](https://github.com/gfx-rs/wgpu/wiki/Performance)
-- Our benchmarks: `showcase/whitePaper/benchmarks/`
+- Our benchmarks: archived to `ecoPrimals/fossil/toadStool/`
 
 ### Alternatives
 - [OpenCL](https://www.khronos.org/opencl/)

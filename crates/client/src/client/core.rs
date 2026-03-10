@@ -2,7 +2,7 @@
 //! ToadStool client implementation
 //!
 //! Uses JSON-RPC 2.0 over Unix sockets (local) per biomeOS networking policy.
-//! NO reqwest/hyper/ring/openssl. Real-time events via JSON-RPC polling (no WebSocket).
+//! NO reqwest/hyper/ring/openssl. Real-time events via JSON-RPC polling (no `WebSocket`).
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -24,32 +24,32 @@ use super::types::{
 };
 
 /// Resolve socket path from config.
-/// - If base_url is "unix:" or starts with "unix://", extract path
-/// - Else use TOADSTOOL_SOCKET env or platform_paths for local
-fn resolve_socket_path(base_url: &str) -> ClientResult<PathBuf> {
+/// - If `base_url` is "unix:" or starts with "unix://", extract path
+/// - Else use `TOADSTOOL_SOCKET` env or `platform_paths` for local
+fn resolve_socket_path(base_url: &str) -> PathBuf {
     // Support unix:///path/to/socket or unix:path
     if base_url.starts_with("unix://") {
         let path = base_url
             .strip_prefix("unix://")
             .unwrap_or(base_url)
             .trim_start_matches('/');
-        return Ok(PathBuf::from(path));
+        return PathBuf::from(path);
     }
     if base_url.starts_with("unix:") {
         let path = base_url
             .strip_prefix("unix:")
             .unwrap_or("")
             .trim_start_matches('/');
-        return Ok(PathBuf::from(path));
+        return PathBuf::from(path);
     }
 
     // HTTP URL: use JSON-RPC socket (local daemon)
     // Env override for testing
     if let Ok(s) = std::env::var("TOADSTOOL_SOCKET") {
-        return Ok(PathBuf::from(s));
+        return PathBuf::from(s);
     }
     // Default: ToadStool JSON-RPC socket per platform_paths
-    Ok(toadstool_common::platform_paths::toadstool_socket_dir().join("toadstool.jsonrpc.sock"))
+    toadstool_common::platform_paths::toadstool_socket_dir().join("toadstool.jsonrpc.sock")
 }
 
 /// ToadStool client for interacting with ToadStool servers
@@ -88,7 +88,7 @@ impl ToadStoolClient {
             let _ = Url::parse(&config.base_url)?;
         }
 
-        let socket_path = resolve_socket_path(&config.base_url)?;
+        let socket_path = resolve_socket_path(&config.base_url);
         let rpc_client = UnixJsonRpcClient::new(socket_path);
 
         let client = Self {
@@ -120,6 +120,10 @@ impl ToadStoolClient {
     /// # Errors
     ///
     /// Returns an error - workload submission via JSON-RPC not fully implemented
+    #[expect(
+        clippy::unused_async,
+        reason = "API surface; may perform async I/O in future"
+    )]
     pub async fn submit_workload(
         &self,
         _workload: WorkloadSubmission,
@@ -131,7 +135,11 @@ impl ToadStoolClient {
 
     /// Get execution status
     ///
-    /// Use `compute.status` for GPU job status. Execution status (active_executions) not exposed.
+    /// Use `compute.status` for GPU job status. Execution status (`active_executions`) not exposed.
+    #[expect(
+        clippy::unused_async,
+        reason = "API surface; may perform async I/O in future"
+    )]
     pub async fn get_execution_status(&self, _execution_id: Uuid) -> ClientResult<ExecutionInfo> {
         Err(ClientError::Http(
             "Execution status: use compute.status for GPU jobs; workload executions not yet exposed via JSON-RPC".to_string(),
@@ -140,7 +148,7 @@ impl ToadStoolClient {
 
     /// Cancel an execution
     ///
-    /// Uses `compute.cancel` JSON-RPC for GPU jobs. Maps execution_id → job_id.
+    /// Uses `compute.cancel` JSON-RPC for GPU jobs. Maps `execution_id` → `job_id`.
     pub async fn cancel_execution(&self, execution_id: Uuid) -> ClientResult<()> {
         debug!("Cancelling execution: {}", execution_id);
 
@@ -193,7 +201,6 @@ impl ToadStoolClient {
                         );
                         let exec_status = match status_str.as_str() {
                             "completed" => ExecutionStatus::Completed,
-                            "failed" => ExecutionStatus::Failed,
                             "cancelled" => ExecutionStatus::Cancelled,
                             _ => ExecutionStatus::Failed,
                         };
@@ -227,7 +234,11 @@ impl ToadStoolClient {
 
     /// Get cluster status
     ///
-    /// Builds ClusterStatus from toadstool.health + compute.list (partial).
+    /// Builds `ClusterStatus` from toadstool.health + compute.list (partial).
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "cluster load for display; u64 count fits f64 for typical values"
+    )]
     pub async fn get_cluster_status(&self) -> ClientResult<ClusterStatus> {
         debug!("Getting cluster status");
 
@@ -264,9 +275,9 @@ impl ToadStoolClient {
 
         Ok(ClusterStatus {
             total_nodes: 1,
-            healthy_nodes: if healthy { 1 } else { 0 },
+            healthy_nodes: u32::from(healthy),
             cluster_load: (pending + running) as f64,
-            active_executions: (pending + running) as u32,
+            active_executions: u32::try_from(pending + running).unwrap_or(u32::MAX),
             available_runtimes: vec!["native".to_string(), "wasm".to_string()],
         })
     }
@@ -308,8 +319,12 @@ impl ToadStoolClient {
 
     /// Subscribe to server events.
     ///
-    /// WebSocket deprecated. Use JSON-RPC 2.0 polling: `compute.status` for execution
+    /// `WebSocket` deprecated. Use JSON-RPC 2.0 polling: `compute.status` for execution
     /// status, `toadstool.health` for cluster health. biomeOS/songbird coordination.
+    #[expect(
+        clippy::unused_async,
+        reason = "API surface; may perform async I/O in future"
+    )]
     pub async fn subscribe_to_events(
         &self,
     ) -> ClientResult<mpsc::UnboundedReceiver<ToadStoolEvent>> {
@@ -330,7 +345,7 @@ impl ToadStoolClient {
         if !config.base_url.starts_with("unix:") {
             let _ = Url::parse(&config.base_url)?;
         }
-        let socket_path = resolve_socket_path(&config.base_url)?;
+        let socket_path = resolve_socket_path(&config.base_url);
         let rpc_client = UnixJsonRpcClient::new(socket_path);
         Ok(Self {
             config,
@@ -347,20 +362,20 @@ mod tests {
 
     #[test]
     fn test_resolve_socket_path_unix_double_slash() {
-        let path = resolve_socket_path("unix:///run/toadstool.sock").unwrap();
+        let path = resolve_socket_path("unix:///run/toadstool.sock");
         assert!(path.to_string_lossy().contains("run/toadstool.sock"));
     }
 
     #[test]
     fn test_resolve_socket_path_unix_single() {
-        let path = resolve_socket_path("unix:/run/toadstool.sock").unwrap();
+        let path = resolve_socket_path("unix:/run/toadstool.sock");
         assert!(path.to_string_lossy().contains("run/toadstool.sock"));
     }
 
     #[test]
     fn test_resolve_socket_path_env_override() {
         std::env::set_var("TOADSTOOL_SOCKET", "/tmp/test_toadstool.sock");
-        let path = resolve_socket_path("http://localhost:8080").unwrap();
+        let path = resolve_socket_path("http://localhost:8080");
         assert_eq!(path, std::path::PathBuf::from("/tmp/test_toadstool.sock"));
         std::env::remove_var("TOADSTOOL_SOCKET");
     }
@@ -368,7 +383,7 @@ mod tests {
     #[test]
     fn test_resolve_socket_path_default_fallback() {
         std::env::remove_var("TOADSTOOL_SOCKET");
-        let path = resolve_socket_path("http://localhost:8080").unwrap();
+        let path = resolve_socket_path("http://localhost:8080");
         // Should return some reasonable socket path
         assert!(
             path.to_string_lossy().ends_with(".sock")
@@ -378,26 +393,26 @@ mod tests {
 
     #[test]
     fn test_resolve_socket_path_unix_triple_slash() {
-        let path = resolve_socket_path("unix:///tmp/toadstool.sock").unwrap();
+        let path = resolve_socket_path("unix:///tmp/toadstool.sock");
         assert!(path.to_string_lossy().contains("tmp"));
         assert!(path.to_string_lossy().contains("toadstool"));
     }
 
     #[test]
     fn test_resolve_socket_path_unix_no_leading_slash() {
-        let path = resolve_socket_path("unix:relative/path.sock").unwrap();
+        let path = resolve_socket_path("unix:relative/path.sock");
         assert!(!path.to_string_lossy().starts_with("//"));
     }
 
     #[test]
     fn test_resolve_socket_path_unix_empty_after_prefix() {
-        let path = resolve_socket_path("unix:").unwrap();
+        let path = resolve_socket_path("unix:");
         assert!(path.as_os_str().is_empty() || path.to_string_lossy().is_empty());
     }
 
     #[test]
     fn test_resolve_socket_path_unix_strip_leading_slashes() {
-        let path = resolve_socket_path("unix://///tmp/sock").unwrap();
+        let path = resolve_socket_path("unix://///tmp/sock");
         assert!(path.to_string_lossy().contains("tmp"));
     }
 

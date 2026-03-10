@@ -109,6 +109,7 @@ impl ContainerRuntimeEngine {
     }
 
     /// Add a resource monitor to the engine
+    #[must_use]
     pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
         self.resource_monitor = Some(monitor);
         self

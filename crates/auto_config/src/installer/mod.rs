@@ -44,7 +44,7 @@ impl SmartInstaller {
     #[must_use]
     pub fn new() -> Self {
         let platform = Platform::detect();
-        let installation_path = paths::default_installation_path(&platform);
+        let installation_path = paths::default_installation_path(platform);
 
         Self {
             platform,
@@ -92,7 +92,7 @@ impl SmartInstaller {
     ) -> Result<(), ToadStoolError> {
         info!(
             "📦 Installing platform-specific components for {}...",
-            paths::platform_as_str(&self.platform)
+            paths::platform_as_str(self.platform)
         );
 
         core::ensure_installation_directory(&self.installation_path).await?;
@@ -187,21 +187,21 @@ mod tests {
 
     #[test]
     fn test_default_installation_path() {
-        let linux_path = paths::default_installation_path(&Platform::Linux);
+        let linux_path = paths::default_installation_path(Platform::Linux);
         assert!(linux_path.to_string_lossy().contains("toadstool"));
 
-        let mac_path = paths::default_installation_path(&Platform::MacOS);
+        let mac_path = paths::default_installation_path(Platform::MacOS);
         assert!(mac_path.to_string_lossy().contains("ToadStool"));
 
-        let win_path = paths::default_installation_path(&Platform::Windows);
+        let win_path = paths::default_installation_path(Platform::Windows);
         assert!(win_path.to_string_lossy().contains("ToadStool"));
     }
 
     #[test]
     fn test_platform_as_str() {
-        assert_eq!(paths::platform_as_str(&Platform::Linux), "Linux");
-        assert_eq!(paths::platform_as_str(&Platform::MacOS), "macOS");
-        assert_eq!(paths::platform_as_str(&Platform::Windows), "Windows");
+        assert_eq!(paths::platform_as_str(Platform::Linux), "Linux");
+        assert_eq!(paths::platform_as_str(Platform::MacOS), "macOS");
+        assert_eq!(paths::platform_as_str(Platform::Windows), "Windows");
     }
 
     #[test]
@@ -212,13 +212,13 @@ mod tests {
 
     #[test]
     fn test_config_path_for_platform() {
-        let linux_path = paths::config_path_for_platform(&Platform::Linux);
+        let linux_path = paths::config_path_for_platform(Platform::Linux);
         assert!(linux_path.to_string_lossy().contains("toadstool"));
 
-        let mac_path = paths::config_path_for_platform(&Platform::MacOS);
+        let mac_path = paths::config_path_for_platform(Platform::MacOS);
         assert!(mac_path.to_string_lossy().contains("ToadStool"));
 
-        let win_path = paths::config_path_for_platform(&Platform::Windows);
+        let win_path = paths::config_path_for_platform(Platform::Windows);
         assert!(win_path.to_string_lossy().contains("ToadStool"));
     }
 
@@ -272,7 +272,7 @@ mod tests {
     #[tokio::test]
     async fn test_paths_default_installation_with_home() {
         temp_env::with_var("HOME", Some("/tmp/test-home"), || {
-            let path = paths::default_installation_path(&Platform::Linux);
+            let path = paths::default_installation_path(Platform::Linux);
             assert!(path.to_string_lossy().contains("toadstool"));
             assert!(path.to_string_lossy().contains("test-home"));
         });
@@ -281,7 +281,7 @@ mod tests {
     #[tokio::test]
     async fn test_paths_config_path_with_home() {
         temp_env::with_var("HOME", Some("/tmp/test-home"), || {
-            let path = paths::config_path_for_platform(&Platform::Linux);
+            let path = paths::config_path_for_platform(Platform::Linux);
             assert!(path.to_string_lossy().contains("toadstool"));
             assert!(path.to_string_lossy().contains("config"));
         });

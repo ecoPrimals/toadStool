@@ -45,6 +45,10 @@ pub struct IntelligentAnalyticsEngine {
 
 impl IntelligentAnalyticsEngine {
     /// Create a new intelligent analytics engine (pure Rust, in-memory)
+    #[expect(
+        clippy::unused_async,
+        reason = "API designed for async; future persistence will require await"
+    )]
     pub async fn new(config: AnalyticsConfig) -> ToadStoolResult<Self> {
         info!("Initializing intelligent analytics engine (in-memory)");
 
@@ -62,6 +66,10 @@ impl IntelligentAnalyticsEngine {
     }
 
     /// Start background analytics processing
+    #[expect(
+        clippy::unused_async,
+        reason = "spawned tasks use await; outer fn must stay async for API consistency"
+    )]
     pub async fn start_background_processing(self: Arc<Self>) -> ToadStoolResult<()> {
         info!("Starting background analytics processing");
 
@@ -172,7 +180,7 @@ impl IntelligentAnalyticsEngine {
         let n = data.len() as f64;
         let sum_x: f64 = x.iter().sum();
         let sum_y: f64 = data.iter().sum();
-        let sum_xy: f64 = x.iter().zip(data.iter()).map(|(xi, yi)| xi * yi).sum();
+        let sum_x_times_y: f64 = x.iter().zip(data.iter()).map(|(xi, yi)| xi * yi).sum();
         let sum_x2: f64 = x.iter().map(|xi| xi * xi).sum();
 
         let denominator = n * sum_x2 - sum_x * sum_x;
@@ -180,7 +188,7 @@ impl IntelligentAnalyticsEngine {
             return Vec::new();
         }
 
-        let slope = (n * sum_xy - sum_x * sum_y) / denominator;
+        let slope = (n * sum_x_times_y - sum_x * sum_y) / denominator;
         let intercept = (sum_y - slope * sum_x) / n;
 
         let current_time = SystemTime::now();
@@ -463,6 +471,10 @@ impl IntelligentAnalyticsEngine {
     ///
     /// **EVOLUTION**: Use Songbird for external HTTP when available.
     /// Currently a no-op that logs the export intent.
+    #[expect(
+        clippy::unused_async,
+        reason = "trait method; will await HTTP when Songbird integration added"
+    )]
     async fn export_to_webhook(&self, webhook: &WebhookConfig) -> ToadStoolResult<()> {
         // PURE RUST: External HTTP disabled -- use Songbird for external comms
         tracing::info!(
@@ -502,7 +514,7 @@ mod analytics_tests {
             timestamp: SystemTime::now(),
             runtime_type: None,
             execution_id: None,
-            tags: Default::default(),
+            tags: HashMap::new(),
         };
         let result = engine.collect_data_point(point).await;
         assert!(result.is_ok());
@@ -578,7 +590,7 @@ mod analytics_tests {
                 timestamp: now,
                 runtime_type: None,
                 execution_id: None,
-                tags: Default::default(),
+                tags: HashMap::new(),
             };
             engine.collect_data_point(point).await.unwrap();
         }
@@ -602,7 +614,7 @@ mod analytics_tests {
                 timestamp: now,
                 runtime_type: None,
                 execution_id: None,
-                tags: Default::default(),
+                tags: HashMap::new(),
             };
             engine.collect_data_point(point).await.unwrap();
         }
@@ -633,7 +645,7 @@ mod analytics_tests {
             timestamp: SystemTime::now(),
             runtime_type: None,
             execution_id: None,
-            tags: Default::default(),
+            tags: HashMap::new(),
         };
         engine.collect_data_point(point).await.unwrap();
         let alerts = engine.evaluate_alerts().await.unwrap();
@@ -653,7 +665,7 @@ mod analytics_tests {
             timestamp: SystemTime::now(),
             runtime_type: None,
             execution_id: None,
-            tags: Default::default(),
+            tags: HashMap::new(),
         };
         engine.collect_data_point(point).await.unwrap();
         let alerts = engine.evaluate_alerts().await.unwrap();
@@ -727,7 +739,7 @@ mod analytics_tests {
                 timestamp: now,
                 runtime_type: None,
                 execution_id: None,
-                tags: Default::default(),
+                tags: HashMap::new(),
             };
             engine.collect_data_point(point).await.unwrap();
         }
@@ -748,7 +760,7 @@ mod analytics_tests {
                 timestamp: now,
                 runtime_type: None,
                 execution_id: None,
-                tags: Default::default(),
+                tags: HashMap::new(),
             };
             engine.collect_data_point(point).await.unwrap();
         }

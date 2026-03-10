@@ -1,5 +1,5 @@
 #!/usr/bin/env cargo +nightly -Zscript
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Real GPU + CPU Pool with Universal Abstraction
 //!
 //! Uses ToadStool's universal compute interface - works with CUDA, `OpenCL`, Vulkan, or CPU
@@ -134,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 inputs: vec![ComputeBuffer {
                     name: "matrix_a".to_string(),
-                    data: vec![0u8; 64 * 1024 * 1024], // 64 MB
+                    data: bytes::Bytes::from(vec![0u8; 64 * 1024 * 1024]), // 64 MB
                     element_type: toadstool_runtime_gpu::types::DataType::UInt8,
                 }],
                 hints: OptimizationHints::default(),
@@ -210,7 +210,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 inputs: vec![ComputeBuffer {
                     name: "data".to_string(),
-                    data: vec![1u8; 8 * 1024 * 1024],
+                    data: bytes::Bytes::from(vec![1u8; 8 * 1024 * 1024]),
                     element_type: toadstool_runtime_gpu::types::DataType::UInt8,
                 }],
                 hints: OptimizationHints::default(),
@@ -285,7 +285,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 inputs: vec![ComputeBuffer {
                     name: "data".to_string(),
-                    data: vec![42u8; 16 * 1024 * 1024],
+                    data: bytes::Bytes::from(vec![42u8; 16 * 1024 * 1024]),
                     element_type: toadstool_runtime_gpu::types::DataType::UInt8,
                 }],
                 hints: OptimizationHints::default(),

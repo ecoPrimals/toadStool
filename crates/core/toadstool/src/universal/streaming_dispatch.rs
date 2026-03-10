@@ -147,7 +147,7 @@ impl StreamingDispatchContext {
 
     /// Attach a progress callback (healthSpring `execute_streaming()` pattern).
     ///
-    /// The callback fires after each [`record_dispatch_with_progress`] call,
+    /// The callback fires after each [`Self::record_dispatch_with_progress`] call,
     /// enabling real-time UIs and log-based monitoring.
     pub fn with_progress(mut self, total_stages: usize, cb: ProgressCallback) -> Self {
         self.total_stages = total_stages;
@@ -243,9 +243,9 @@ mod tests {
     #[test]
     fn stats_zero_dispatches() {
         let stats = DispatchStats::default();
-        assert_eq!(stats.amortization_ratio(), 0.0);
-        assert_eq!(stats.per_dispatch_us(), 0.0);
-        assert_eq!(stats.per_submission_us(), 0.0);
+        assert!((stats.amortization_ratio() - 0.0).abs() < f64::EPSILON);
+        assert!((stats.per_dispatch_us() - 0.0).abs() < f64::EPSILON);
+        assert!((stats.per_submission_us() - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -317,7 +317,7 @@ mod tests {
             stage_name: "empty".to_string(),
             elapsed_secs: 0.0,
         };
-        assert_eq!(p.fraction(), 0.0);
+        assert!((p.fraction() - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]

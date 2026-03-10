@@ -133,7 +133,7 @@ impl PrimalCapabilities {
     ///
     /// Deep debt principle: Announcement, not registration!
     /// - Writes capability file to shared discovery directory
-    /// - Also writes to ecoPrimals root for coralReef compatibility
+    /// - Also writes to ecoPrimals root for ecosystem-wide discovery
     /// - Peers can read it to discover us
     /// - No centralized registry!
     ///
@@ -167,7 +167,7 @@ impl PrimalCapabilities {
             .map_err(|e| format!("Failed to write compat capability file: {e}"))?;
 
         info!("📢 Announced capabilities: {}", canonical.display());
-        info!("📢 coralReef-compat entry:  {}", compat.display());
+        info!("📢 ecoPrimals root entry:   {}", compat.display());
 
         Ok(())
     }
@@ -745,9 +745,9 @@ fn discovery_directory() -> PathBuf {
     runtime_base_dir().join("ecoPrimals").join("discovery")
 }
 
-/// Get ecoPrimals root directory (coralReef-compatible discovery path)
+/// Get ecoPrimals root directory (ecosystem-compatible discovery path)
 ///
-/// coralReef scans `$XDG_RUNTIME_DIR/ecoPrimals/` directly for discovery
+/// Some primals scan `$XDG_RUNTIME_DIR/ecoPrimals/` directly for discovery
 /// entries, so we dual-write to this root alongside `ecoPrimals/discovery/`.
 fn ecoprimals_root_directory() -> PathBuf {
     runtime_base_dir().join("ecoPrimals")

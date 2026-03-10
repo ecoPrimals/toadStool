@@ -255,9 +255,8 @@ cargo run --release -p akida-driver --example detect_akida
 # Test userspace backend
 cargo run --release -p akida-driver --example detect_akida -- --backend=userspace
 
-# Run showcase
-cd showcase/neuromorphic/01-akida-detection
-./demo.sh
+# Run neuromorphic tests
+cargo test -p akida-driver
 ```
 
 ---

@@ -111,25 +111,25 @@ impl ComponentValue {
     #[must_use]
     pub fn matches_type(&self, expected: &InterfaceType) -> bool {
         match (self, expected) {
-            (ComponentValue::Bool(_), InterfaceType::Bool) => true,
-            (ComponentValue::U8(_), InterfaceType::U8) => true,
-            (ComponentValue::U16(_), InterfaceType::U16) => true,
-            (ComponentValue::U32(_), InterfaceType::U32) => true,
-            (ComponentValue::U64(_), InterfaceType::U64) => true,
-            (ComponentValue::S8(_), InterfaceType::S8) => true,
-            (ComponentValue::S16(_), InterfaceType::S16) => true,
-            (ComponentValue::S32(_), InterfaceType::S32) => true,
-            (ComponentValue::S64(_), InterfaceType::S64) => true,
-            (ComponentValue::F32(_), InterfaceType::F32) => true,
-            (ComponentValue::F64(_), InterfaceType::F64) => true,
-            (ComponentValue::String(_), InterfaceType::String) => true,
+            (ComponentValue::Bool(_), InterfaceType::Bool)
+            | (ComponentValue::U8(_), InterfaceType::U8)
+            | (ComponentValue::U16(_), InterfaceType::U16)
+            | (ComponentValue::U32(_), InterfaceType::U32)
+            | (ComponentValue::U64(_), InterfaceType::U64)
+            | (ComponentValue::S8(_), InterfaceType::S8)
+            | (ComponentValue::S16(_), InterfaceType::S16)
+            | (ComponentValue::S32(_), InterfaceType::S32)
+            | (ComponentValue::S64(_), InterfaceType::S64)
+            | (ComponentValue::F32(_), InterfaceType::F32)
+            | (ComponentValue::F64(_), InterfaceType::F64)
+            | (ComponentValue::String(_), InterfaceType::String)
+            | (ComponentValue::Option(None), InterfaceType::Option(_)) => true,
             (ComponentValue::List(values), InterfaceType::List(element_type)) => {
                 values.iter().all(|v| v.matches_type(element_type))
             }
             (ComponentValue::Option(Some(value)), InterfaceType::Option(inner_type)) => {
                 value.matches_type(inner_type)
             }
-            (ComponentValue::Option(None), InterfaceType::Option(_)) => true,
             _ => false,
         }
     }

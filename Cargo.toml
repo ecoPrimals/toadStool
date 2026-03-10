@@ -55,13 +55,7 @@ members = [
     "examples",
 ]
 
-exclude = [
-    # Showcases: excluded from workspace, build individually
-    "showcase/neuromorphic/01-akida-detection",
-    "showcase/neuromorphic/04-raytracing-comparison",
-    "showcase/gpu-universal/ml-inference",
-    "showcase/homomorphic-computing",
-]
+exclude = []
 
 [workspace.package]
 version = "0.1.0"

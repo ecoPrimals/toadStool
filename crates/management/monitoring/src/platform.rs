@@ -107,6 +107,10 @@ async fn measure_linux_resources(
 
 #[cfg(target_os = "linux")]
 #[allow(clippy::similar_names)]
+#[expect(
+    clippy::unused_async,
+    reason = "kept for API consistency with async resource monitoring"
+)]
 async fn measure_linux_network_stats(
     pid: u32,
 ) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {

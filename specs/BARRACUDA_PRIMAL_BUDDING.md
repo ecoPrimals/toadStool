@@ -304,8 +304,7 @@ cargo test --lib: 2,835 pass, 0 fail
 
 ### 5.4 Showcases rewired
 
-- `showcase/rbf-surrogate/Cargo.toml` → standalone barraCuda path
-- `showcase/cross-platform/Cargo.toml` → standalone barraCuda path
+- Showcase demos migrated to `ecoPrimals/fossil/toadStool/` — barraCuda owns its own showcases now
 
 ---
 

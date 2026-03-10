@@ -9,7 +9,7 @@
     clippy::cast_sign_loss
 )]
 
-//! ToadStool - Universal Compute Platform  
+//! ToadStool - Universal Compute Platform
 //! Copyright (C) 2025 ToadStool Development Team
 //!
 //! This program is free software: you can redistribute it and/or modify

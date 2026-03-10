@@ -35,7 +35,7 @@ pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<Memo
     // Try to get memory info from /proc/meminfo on Linux
     if cfg!(target_os = "linux") {
         if let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await {
-            memory_info = parse_linux_meminfo(&meminfo)?;
+            memory_info = parse_linux_meminfo(&meminfo);
         }
     }
 
@@ -88,7 +88,7 @@ pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<Memo
 }
 
 /// Parse Linux /proc/meminfo
-fn parse_linux_meminfo(meminfo: &str) -> ToadStoolResult<MemoryInfo> {
+fn parse_linux_meminfo(meminfo: &str) -> MemoryInfo {
     let mut memory_info = MemoryInfo::default();
 
     for line in meminfo.lines() {
@@ -117,7 +117,7 @@ fn parse_linux_meminfo(meminfo: &str) -> ToadStoolResult<MemoryInfo> {
         }
     }
 
-    Ok(memory_info)
+    memory_info
 }
 
 /// Calculate memory performance score
@@ -158,45 +158,45 @@ mod tests {
 
     #[test]
     fn test_parse_linux_meminfo_full() {
-        let meminfo = r#"MemTotal:       16777216 kB
+        let meminfo = r"MemTotal:       16777216 kB
 MemFree:         4194304 kB
 MemAvailable:    8388608 kB
 Buffers:          524288 kB
 Cached:          4194304 kB
 SwapTotal:       8388608 kB
 SwapFree:        8388608 kB
-"#;
+";
 
-        let result = super::parse_linux_meminfo(meminfo).unwrap();
+        let result = super::parse_linux_meminfo(meminfo);
         assert!((result.total_gb - 16.0).abs() < 0.1);
         assert!((result.available_gb - 8.0).abs() < 0.1);
     }
 
     #[test]
     fn test_parse_linux_meminfo_minimal() {
-        let meminfo = r#"MemTotal:        8388608 kB
+        let meminfo = r"MemTotal:        8388608 kB
 MemAvailable:    6291456 kB
-"#;
+";
 
-        let result = super::parse_linux_meminfo(meminfo).unwrap();
+        let result = super::parse_linux_meminfo(meminfo);
         assert!((result.total_gb - 8.0).abs() < 0.1);
         assert!((result.available_gb - 6.0).abs() < 0.1);
     }
 
     #[test]
     fn test_parse_linux_meminfo_empty() {
-        let result = super::parse_linux_meminfo("").unwrap();
+        let result = super::parse_linux_meminfo("");
         assert!((result.total_gb - 8.0).abs() < f64::EPSILON);
         assert!((result.available_gb - 6.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_parse_linux_meminfo_malformed_values() {
-        let meminfo = r#"MemTotal:       invalid kB
+        let meminfo = r"MemTotal:       invalid kB
 MemAvailable:   not_a_number kB
-"#;
+";
 
-        let result = super::parse_linux_meminfo(meminfo).unwrap();
+        let result = super::parse_linux_meminfo(meminfo);
         assert!((result.total_gb - 8.0).abs() < f64::EPSILON);
         assert!((result.available_gb - 6.0).abs() < f64::EPSILON);
     }
@@ -204,7 +204,7 @@ MemAvailable:   not_a_number kB
     #[test]
     fn test_parse_linux_meminfo_partial() {
         let meminfo = "MemTotal:       16777216 kB";
-        let result = super::parse_linux_meminfo(meminfo).unwrap();
+        let result = super::parse_linux_meminfo(meminfo);
         assert!((result.total_gb - 16.0).abs() < 0.1);
         assert!((result.available_gb - 6.0).abs() < f64::EPSILON);
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Comprehensive tests for ToadStoolClient
+//! Comprehensive tests for `ToadStoolClient`
 
 use super::config::{AuthConfig, ClientConfig};
 use std::collections::HashMap;

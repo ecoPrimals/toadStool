@@ -32,7 +32,7 @@ pub struct ByobServerConfig {
     /// Server port (overrides config file if set)
     pub port: Option<u16>,
 
-    /// Path to TOML config file (optional; if set, loads bind_address, port, byob_config from file)
+    /// Path to TOML config file (optional; if set, loads `bind_address`, port, `byob_config` from file)
     pub config_path: Option<String>,
 }
 
@@ -92,7 +92,7 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     Ok(())
 }
 
-/// Loaded config from file or defaults (bind_address, port for server binding)
+/// Loaded config from file or defaults (`bind_address`, port for server binding)
 struct LoadedConfig {
     bind_address: String,
     port: u16,
@@ -119,6 +119,10 @@ async fn load_config_inner(config_path: Option<&str>) -> ToadStoolResult<LoadedC
     }
 }
 
+#[expect(
+    clippy::unused_async,
+    reason = "kept for API consistency with async runtime creation"
+)]
 async fn create_runtime_engine() -> ToadStoolResult<Arc<dyn RuntimeEngine>> {
     info!("Initializing container runtime engine");
 

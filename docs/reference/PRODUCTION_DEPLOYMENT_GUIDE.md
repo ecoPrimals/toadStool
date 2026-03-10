@@ -437,19 +437,22 @@ curl http://localhost:8084/health
 ### Comprehensive Health Check
 
 ```bash
-# Check all endpoints
-curl http://localhost:8084/api/v2/status
+# Check status via JSON-RPC
+curl -X POST http://localhost:8084/jsonrpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"toadstool.status","params":{},"id":1}'
 
 # Expected response:
 {
-  "api": "healthy",
-  "runtimes": {
-    "native": "healthy",
-    "container": "healthy",
-    "wasm": "healthy"
-  },
-  "resources": {
-    "cpu_usage": 45.2,
+  "jsonrpc": "2.0",
+  "result": {
+    "runtimes": {
+      "native": "healthy",
+      "container": "healthy",
+      "wasm": "healthy"
+    },
+    "resources": {
+      "cpu_usage": 45.2,
     "memory_used_mb": 512,
     "active_connections": 23
   }

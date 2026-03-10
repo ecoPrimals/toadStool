@@ -248,8 +248,8 @@ ToadStool core.
 ## Quick Links
 
 - **Immediate work:** `../NEXT_STEPS.md`
-- **Planning docs:** `docs/planning/`
-- **Benchmarks:** `showcase/cross-platform/`
+- **Architecture docs:** `docs/architecture/`
+- **Showcases:** `showcase/` (4-level progressive demos)
 - **Hardware traits:** `crates/toadstool-core/src/` (NpuDispatch, NpuParameterController)
 - **GPU backends:** `crates/runtime/universal/src/backends/`
 - **Tests:** `cargo test --workspace`

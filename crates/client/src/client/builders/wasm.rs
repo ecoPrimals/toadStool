@@ -58,7 +58,7 @@ impl WasmWorkloadBuilder {
     ///
     /// # Arguments
     ///
-    /// * `environment` - HashMap of environment variable names to values
+    /// * `environment` - `HashMap` of environment variable names to values
     pub fn environment(mut self, environment: HashMap<String, String>) -> Self {
         self.environment = environment;
         self
@@ -98,7 +98,7 @@ impl WasmWorkloadBuilder {
     ///
     /// # Arguments
     ///
-    /// * `metadata` - HashMap of metadata key-value pairs
+    /// * `metadata` - `HashMap` of metadata key-value pairs
     pub fn metadata(mut self, metadata: HashMap<String, String>) -> Self {
         self.metadata = metadata;
         self

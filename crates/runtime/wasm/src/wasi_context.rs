@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! WASI context management for wasmi
 //!
-//! Provides WASI (WebAssembly System Interface) support using wasmi_wasi.
+//! Provides WASI (WebAssembly System Interface) support using `wasmi_wasi`.
 
 use std::path::PathBuf;
 use tracing::debug;
@@ -10,6 +10,7 @@ use wasmi_wasi::{WasiCtx, WasiCtxBuilder};
 use toadstool::error::ToadStoolResult;
 
 /// WASI configuration
+#[expect(clippy::struct_excessive_bools, reason = "configuration type")]
 #[derive(Debug, Clone)]
 pub struct WasiConfig {
     /// Inherit stdio from host

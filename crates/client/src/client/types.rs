@@ -77,7 +77,7 @@ impl From<ResourceRequirements> for toadstool::resources::ResourceRequirements {
     fn from(client: ResourceRequirements) -> Self {
         toadstool::resources::ResourceRequirements {
             cpu: toadstool::resources::CpuRequirements {
-                min_cores: client.cpu_cores.unwrap_or(1) as f64,
+                min_cores: f64::from(client.cpu_cores.unwrap_or(1)),
                 max_cores: None,
                 architecture: None,
             },
@@ -106,6 +106,11 @@ impl From<ResourceRequirements> for toadstool::resources::ResourceRequirements {
 }
 
 impl From<toadstool::resources::ResourceRequirements> for ResourceRequirements {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "min_cores from f64 to u32 for display; truncation acceptable"
+    )]
     fn from(core: toadstool::resources::ResourceRequirements) -> Self {
         ResourceRequirements {
             cpu_cores: Some(core.cpu.min_cores as u32),
@@ -166,7 +171,7 @@ pub struct ExecutionMetrics {
 
 /// Real-time execution events.
 ///
-/// These events are NOT delivered via WebSocket (deprecated, used C-FFI ring).
+/// These events are NOT delivered via `WebSocket` (deprecated, used C-FFI ring).
 /// Use JSON-RPC 2.0 polling (`compute.status` method) or biomeOS/songbird
 /// coordination for event streaming over Unix sockets.
 #[derive(Debug, Clone, Serialize, Deserialize)]

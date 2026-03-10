@@ -37,16 +37,14 @@ pub async fn detect_gpus(_detector: &HardwareDetector) -> ToadStoolResult<Vec<Gp
     }
 
     // Try to detect Intel GPUs
-    if let Ok(intel_gpus) = detect_intel_gpus().await {
-        gpus.extend(intel_gpus);
-    }
+    gpus.extend(detect_intel_gpus());
 
     debug!("Detected {} GPU(s)", gpus.len());
     Ok(gpus)
 }
 
 /// Parse nvidia-smi CSV output (--format=csv,noheader,nounits).
-/// Columns: name, memory.total (MB), driver_version
+/// Columns: name, memory.total (MB), `driver_version`
 pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
     let mut gpus = Vec::new();
 
@@ -118,7 +116,7 @@ async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
 }
 
 /// Detect Intel GPUs
-async fn detect_intel_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
+fn detect_intel_gpus() -> Vec<GpuInfo> {
     let mut gpus = Vec::new();
 
     // Intel GPU detection is more complex and platform-dependent
@@ -136,7 +134,7 @@ async fn detect_intel_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
         });
     }
 
-    Ok(gpus)
+    gpus
 }
 
 /// Get NVIDIA compute capability from GPU name

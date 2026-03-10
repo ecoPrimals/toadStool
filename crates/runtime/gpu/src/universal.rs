@@ -462,7 +462,7 @@ pub struct UniversalWorkload {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComputeBuffer {
     pub name: String,
-    pub data: Vec<u8>,
+    pub data: bytes::Bytes,
     pub element_type: DataType,
 }
 
@@ -477,7 +477,10 @@ pub enum UniversalKernel {
     },
 
     /// Pre-compiled binary
-    Binary { format: BinaryFormat, data: Vec<u8> },
+    Binary {
+        format: BinaryFormat,
+        data: bytes::Bytes,
+    },
 
     /// High-level operation description
     Operation {
@@ -529,8 +532,8 @@ pub struct OptimizationHints {
 /// Result of workload execution
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct WorkloadResult {
-    /// Output buffers
-    pub outputs: HashMap<String, Vec<u8>>,
+    /// Output buffers (zero-copy via refcounted `Bytes`)
+    pub outputs: HashMap<String, bytes::Bytes>,
 
     /// Execution metrics
     pub metrics: ExecutionMetrics,

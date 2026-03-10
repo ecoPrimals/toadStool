@@ -233,7 +233,7 @@ Threads: 1
         // Format: pid (comm) state ppid ... utime stime ... starttime
         // Fields 1-13 before utime, so utime=field 14 (index 11), stime=15 (12), starttime=22 (19)
         let content = "12345 (test_process) R 1 12345 12345 0 -1 4194560 100 0 0 0 500 200 0 0 20 0 1 0 100000 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
-        let info = parse_proc_stat(content, 4096 * 1024, 1700000000); // rss 4MB, boot ~2023
+        let info = parse_proc_stat(content, 4096 * 1024, 1_700_000_000); // rss 4MB, boot ~2023
         assert!(info.is_some());
         let info = info.unwrap();
         assert_eq!(info.pid, 12345);
@@ -244,7 +244,7 @@ Threads: 1
     #[test]
     fn test_parse_proc_stat_comm_with_spaces() {
         let content = "999 (process with spaces) R 1 999 999 0 -1 0 0 0 0 0 10 5 0 0 20 0 1 0 50000 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
-        let info = parse_proc_stat(content, 0, 1700000000);
+        let info = parse_proc_stat(content, 0, 1_700_000_000);
         assert!(info.is_some());
         assert_eq!(info.unwrap().name, "process with spaces");
     }
@@ -253,14 +253,14 @@ Threads: 1
     fn test_parse_proc_stat_too_few_fields() {
         // Need at least 20 fields after ); we provide 19
         let content = "1 (init) S 0 1 1 0 -1 0 0 0 0 0 1 2 3 4 5 6 7 8";
-        let info = parse_proc_stat(content, 0, 1700000000);
+        let info = parse_proc_stat(content, 0, 1_700_000_000);
         assert!(info.is_none());
     }
 
     #[test]
     fn test_parse_proc_stat_no_parens() {
         let content = "12345 invalid R 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20";
-        let info = parse_proc_stat(content, 0, 1700000000);
+        let info = parse_proc_stat(content, 0, 1_700_000_000);
         assert!(info.is_none());
     }
 

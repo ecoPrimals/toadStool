@@ -53,33 +53,33 @@ mod tests {
     #[test]
     fn test_parse_loadavg_empty() {
         let la = parse_loadavg("");
-        assert_eq!(la.one, 0.0);
-        assert_eq!(la.five, 0.0);
-        assert_eq!(la.fifteen, 0.0);
+        assert!(la.one.abs() < f64::EPSILON);
+        assert!(la.five.abs() < f64::EPSILON);
+        assert!(la.fifteen.abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_parse_loadavg_partial() {
         let la = parse_loadavg("5.0");
         assert!((la.one - 5.0).abs() < f64::EPSILON);
-        assert_eq!(la.five, 0.0);
-        assert_eq!(la.fifteen, 0.0);
+        assert!(la.five.abs() < f64::EPSILON);
+        assert!(la.fifteen.abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_parse_loadavg_malformed_numbers() {
         let la = parse_loadavg("abc xyz def 1/2 3");
-        assert_eq!(la.one, 0.0);
-        assert_eq!(la.five, 0.0);
-        assert_eq!(la.fifteen, 0.0);
+        assert!(la.one.abs() < f64::EPSILON);
+        assert!(la.five.abs() < f64::EPSILON);
+        assert!(la.fifteen.abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_parse_loadavg_whitespace_only() {
         let la = parse_loadavg("   \n\t  ");
-        assert_eq!(la.one, 0.0);
-        assert_eq!(la.five, 0.0);
-        assert_eq!(la.fifteen, 0.0);
+        assert!(la.one.abs() < f64::EPSILON);
+        assert!(la.five.abs() < f64::EPSILON);
+        assert!(la.fifteen.abs() < f64::EPSILON);
     }
 
     #[test]

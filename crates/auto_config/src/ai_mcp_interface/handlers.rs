@@ -80,7 +80,7 @@ impl super::AiMcpInterface {
         info!("🎯 Executing with AI intent: {}", intent.purpose);
 
         let mut config = self.auto_config.generate_intelligent_config().await?;
-        Self::apply_intent_optimizations(&mut config, &intent)?;
+        Self::apply_intent_optimizations(&mut config, &intent);
 
         let config_summary = ConfigurationSummary {
             name: "Intent-Optimized Configuration".to_string(),
@@ -311,7 +311,7 @@ impl super::AiMcpInterface {
     pub(super) fn apply_intent_optimizations(
         config: &mut toadstool_config::ToadStoolConfig,
         intent: &ExecutionIntent,
-    ) -> ToadStoolResult<()> {
+    ) {
         debug!("🔧 Applying intent optimizations for: {}", intent.purpose);
 
         for requirement in &intent.security_requirements {
@@ -352,7 +352,5 @@ impl super::AiMcpInterface {
         if intent.resource_hints.gpu_required {
             config.runtime.gpu = Some(toadstool_config::GpuConfig::default());
         }
-
-        Ok(())
     }
 }

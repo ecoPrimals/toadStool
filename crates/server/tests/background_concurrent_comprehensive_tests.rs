@@ -91,15 +91,10 @@ async fn test_concurrent_background_service_startup() {
 
 #[tokio::test]
 async fn test_concurrent_resource_monitoring_events() {
-    // ✅ EVENT-DRIVEN: Monitor resource usage events concurrently
     let state = create_test_state();
-    let _event_rx = state.event_broadcaster.subscribe();
 
-    // Start background services
-    start_background_services(state.clone()).await;
-
-    // Spawn 20 listeners for resource events
-    let barrier = Arc::new(Barrier::new(20));
+    // Subscribe all listeners BEFORE starting services so no early events are missed.
+    let barrier = Arc::new(Barrier::new(21)); // 20 listeners + 1 main task
     let mut tasks = vec![];
 
     for _ in 0..20 {
@@ -108,15 +103,18 @@ async fn test_concurrent_resource_monitoring_events() {
         tasks.push(tokio::spawn(async move {
             barrier.wait().await;
 
-            // Wait for resource usage event (with timeout)
+            // Allow several monitoring intervals (50ms each) to elapse.
             matches!(
-                timeout(Duration::from_millis(200), rx.recv()).await,
+                timeout(Duration::from_millis(500), rx.recv()).await,
                 Ok(Ok(ServerEvent::ResourceUsageUpdate { .. }))
             )
         }));
     }
 
-    // All listeners should receive events
+    // Start services after all listeners are subscribed, then release the barrier.
+    start_background_services(state.clone()).await;
+    barrier.wait().await;
+
     let mut received = 0;
     for task in tasks {
         if task.await.unwrap_or(false) {

@@ -75,6 +75,10 @@ impl NaturalLanguageConfig {
     /// # Errors
     ///
     /// Returns an error if intent analysis fails or configuration generation fails
+    #[expect(
+        clippy::unused_async,
+        reason = "API contract for future async operations"
+    )]
     pub async fn configure_from_text(&mut self, text: &str) -> ToadStoolResult<ToadStoolConfig> {
         info!("🗣️  Processing natural language configuration request");
 
@@ -90,7 +94,7 @@ impl NaturalLanguageConfig {
         );
 
         // Generate configuration from template
-        let config = self.generate_config_from_template(&template)?;
+        let config = self.generate_config_from_template(&template);
 
         Ok(config)
     }
@@ -109,6 +113,10 @@ impl NaturalLanguageConfig {
     /// # Errors
     ///
     /// Returns an error if the template is not found or configuration generation fails
+    #[expect(
+        clippy::unused_async,
+        reason = "API contract for future async operations"
+    )]
     pub async fn configure_from_template(
         &mut self,
         template_name: &str,
@@ -117,7 +125,7 @@ impl NaturalLanguageConfig {
             ToadStoolError::configuration(format!("Template not found: {template_name}"))
         })?;
 
-        self.generate_config_from_template(template)
+        Ok(self.generate_config_from_template(template))
     }
 
     /// Get list of available template names
@@ -138,10 +146,8 @@ impl NaturalLanguageConfig {
     }
 
     /// Generate configuration from a template
-    fn generate_config_from_template(
-        &self,
-        template: &ConfigurationTemplate,
-    ) -> ToadStoolResult<ToadStoolConfig> {
+    #[expect(clippy::unused_self, reason = "may use self for future extensions")]
+    fn generate_config_from_template(&self, template: &ConfigurationTemplate) -> ToadStoolConfig {
         info!(
             "⚙️  Generating configuration from template: {}",
             template.name
@@ -174,7 +180,7 @@ impl NaturalLanguageConfig {
         // config.security.set_level(security_level);
 
         info!("✅ Configuration generated successfully");
-        Ok(config)
+        config
     }
 
     /// Validate and optimize generated configuration
@@ -182,10 +188,11 @@ impl NaturalLanguageConfig {
     /// NOTE: Pass-through implementation - configuration validation happens
     /// elsewhere in the pipeline. Reserved for future optimization passes.
     #[expect(dead_code, reason = "Reserved: future config optimization passes")]
-    fn validate_and_optimize(&self, config: ToadStoolConfig) -> ToadStoolResult<ToadStoolConfig> {
+    #[expect(clippy::unused_self, reason = "reserved for future optimization logic")]
+    fn validate_and_optimize(&self, config: ToadStoolConfig) -> ToadStoolConfig {
         // Configuration is validated during generation and by config module
         // This method is reserved for future optimization logic
-        Ok(config)
+        config
     }
 }
 

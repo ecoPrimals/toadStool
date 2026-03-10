@@ -5,7 +5,37 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 10, 2026 (Sessions 43-140)
+## [Unreleased] - March 10, 2026 (Sessions 43-141)
+
+### Session S141 (Mar 10, 2026) — Deep Debt Evolution & Pedantic Sweep
+
+#### Clippy Pedantic (120+ fixes, 10 crates)
+- **`--all-targets` now passes workspace-wide** including test code
+- Fixed categories: doc backticks (30+), `#[must_use]` (9), Result simplification (8), unused async (12), raw string hashes (7), float_cmp (15), HashMap::default→new (7), identical match arms (6), struct_excessive_bools (5), similar_names, items_after_statements, PI constant, case-insensitive extension checks, and 20+ other pedantic lints
+- All suppressions use `#[expect(..., reason = "...")]` pattern
+
+#### Sovereignty Evolution
+- `deploy_graph_status` evolved from hardcoded 5-primal array to runtime socket directory scan
+- `ecology_offload` evolved from hardcoded `airspring.sock` to `get_socket_path_for_capability(ECOLOGY)`
+- `"barracuda::*"` API metadata evolved to `capabilities::ACTIVATIONS`, `capabilities::RNG`, `capabilities::SPECIAL_FUNCTIONS`
+- Shader pipeline responses evolved from `"coralreef_native"` / `"coral_reef_available"` to `capabilities::SHADER_COMPILE_NATIVE` / `"native_compiler_available"`
+- 6 new constants added to `interned_strings::capabilities` module
+
+#### Zero-Copy Evolution
+- `Vec<u8>` → `bytes::Bytes` in 6 GPU/runtime types: `ComputeBuffer::data`, `UniversalKernel::Binary::data`, `WorkloadResult::outputs`, `CompiledKernel::binary`, `KernelInput::data`, `KernelOutput::buffers`
+- All instantiation sites updated: cpu_resource, compiler, frameworks, examples
+
+#### Fixes
+- Flaky test `test_concurrent_resource_monitoring_events` — barrier synchronization with subscribe-before-start pattern
+- SPDX header: `examples/real_gpu_pool.rs` corrected from `AGPL-3.0-or-later` to `AGPL-3.0-only`
+- Broken intra-doc link in `streaming_dispatch.rs` → `Self::record_dispatch_with_progress`
+
+#### Debris Cleanup
+- Stale showcase references removed from `QUICK_REFERENCE.md` (rbf-surrogate, cross-platform → current 4-level demos)
+- Broken neuromorphic README links fixed (PURE_RUST_AKIDA_MIGRATION_PLAN → PURE_RUST_TRACKING.md)
+- `NAK_DEFICIENCIES.md` barraCuda paths updated (now references ecoPrimals/barraCuda)
+- `specs/README.md` stale `docs/planning/` and `showcase/cross-platform/` links fixed
+- CI stale paths for non-existent `showcase/gpu-universal/ml-inference` cleaned
 
 ### Session S140 (Mar 9-10, 2026) — Deep Debt Evolution & Spring Absorption Sprint
 

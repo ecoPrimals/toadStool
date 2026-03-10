@@ -66,7 +66,7 @@ async fn test_shader_compile_wgsl_fallback_without_coralreef() {
     assert!(response.error.is_none(), "Valid WGSL should succeed");
     let result = response.result.expect("result present");
     assert_eq!(result["pipeline"], "naga_wgsl_to_spirv");
-    assert_eq!(result["coral_reef_available"], false);
+    assert_eq!(result["native_compiler_available"], false);
 }
 
 #[tokio::test]
@@ -108,7 +108,7 @@ async fn test_shader_compile_spirv_fallback_without_coralreef() {
     assert!(response.error.is_none());
     let result = response.result.expect("result present");
     assert_eq!(result["pipeline"], "spirv_passthrough");
-    assert_eq!(result["coral_reef_available"], false);
+    assert_eq!(result["native_compiler_available"], false);
 }
 
 #[tokio::test]
@@ -122,7 +122,7 @@ async fn test_shader_compile_status_without_coralreef() {
     assert!(response.error.is_none());
     let result = response.result.expect("result present");
     assert_eq!(result["compile_id"], "test-123");
-    assert_eq!(result["coral_reef_available"], false);
+    assert_eq!(result["native_compiler_available"], false);
 }
 
 #[tokio::test]
@@ -142,7 +142,7 @@ async fn test_shader_compile_capabilities_without_coralreef() {
     let response = handler.handle_request(&request).await;
     assert!(response.error.is_none());
     let result = response.result.expect("result present");
-    assert_eq!(result["coral_reef_available"], false);
+    assert_eq!(result["native_compiler_available"], false);
     assert_eq!(result["native_binary_compilation"], false);
     assert_eq!(result["naga_pipeline"], true);
     assert_eq!(result["domain"], "shader");

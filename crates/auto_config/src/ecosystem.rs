@@ -21,7 +21,7 @@ pub use crate::ecosystem_types::{
     DiscoveredServices, DiscoverySummary, ServiceInfo, ServicePattern, ServiceStatus, ServiceType,
 };
 
-/// Capability identifiers for discovery (WateringHole sovereignty)
+/// Capability identifiers for discovery (`WateringHole` sovereignty)
 mod capability_keys {
     pub const DISCOVERY: &str = "discovery";
     pub const CRYPTO: &str = "crypto";

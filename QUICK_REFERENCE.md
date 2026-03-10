@@ -59,11 +59,17 @@ cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toa
 ## Showcases
 
 ```bash
-# RBF surrogate learning
-cd showcase/rbf-surrogate && ./demo.sh
+# Local primal — hello compute
+cd showcase/00-local-primal/01-hello-compute && ./demo.sh
 
-# Cross-platform benchmarks (GPU parity, cache validation, etc.)
-cd showcase/cross-platform && cargo run --release
+# Shader pipeline — naga fallback
+cd showcase/01-shader-pipeline/01-naga-fallback && ./demo.sh
+
+# Compute patterns — capability discovery
+cd showcase/02-compute-patterns/01-capability-discovery && ./demo.sh
+
+# Ecosystem integration — songbird registration
+cd showcase/03-ecosystem-integration/01-songbird-registration && ./demo.sh
 ```
 
 ---

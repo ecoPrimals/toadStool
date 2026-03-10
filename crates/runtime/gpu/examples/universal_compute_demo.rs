@@ -223,7 +223,7 @@ fn create_workload(
         },
         inputs: vec![ComputeBuffer {
             name: "input".to_string(),
-            data: vec![1u8; memory as usize],
+            data: vec![1u8; memory as usize].into(),
             element_type: DataType::UInt8,
         }],
         output_size: memory as usize,

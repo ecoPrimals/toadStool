@@ -107,11 +107,29 @@ pub mod capabilities {
     /// Science GPU dispatch (JSON-RPC method family)
     pub const SCIENCE_GPU_DISPATCH: &str = "science.gpu.dispatch";
 
-    /// Shader compilation capability (coralReef sovereign pipeline)
+    /// Shader compilation capability (sovereign pipeline)
     pub const SHADER_COMPILE: &str = "shader.compile";
+
+    /// Native shader compilation pipeline
+    pub const SHADER_COMPILE_NATIVE: &str = "shader.compile.native";
 
     /// Orchestration capability
     pub const ORCHESTRATION: &str = "orchestration";
+
+    /// Ecology domain capability (airSpring)
+    pub const ECOLOGY: &str = "ecology";
+
+    /// Science domain capability
+    pub const SCIENCE: &str = "science";
+
+    /// Activation function capabilities (barraCuda)
+    pub const ACTIVATIONS: &str = "science.activations";
+
+    /// RNG capabilities
+    pub const RNG: &str = "science.rng";
+
+    /// Special math functions
+    pub const SPECIAL_FUNCTIONS: &str = "science.special";
 }
 
 /// Protocol constants

@@ -135,7 +135,7 @@ impl UniversalKernelCompiler {
         // produce SPIR-V via naga.
         Ok(CompiledKernel {
             id: uuid::Uuid::new_v4().to_string(),
-            binary: optimized_source.into_bytes(),
+            binary: bytes::Bytes::from(optimized_source.into_bytes()),
             framework: target_framework,
             compiled_at: std::time::Instant::now(),
             optimization_level: self.config.optimization_level.clone(),
