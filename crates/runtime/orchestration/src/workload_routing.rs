@@ -52,6 +52,34 @@ pub enum WorkloadPattern {
     DiversityIndex,
 }
 
+impl WorkloadPattern {
+    /// Estimated GPU memory (VRAM) in bytes for a given problem size.
+    ///
+    /// Absorbed from healthSpring V19 `gpu_memory_estimate()` proposal.
+    /// Estimates are conservative upper bounds, suitable for scheduling
+    /// decisions (rejecting workloads that won't fit in available VRAM).
+    ///
+    /// The formula is pattern-dependent:
+    /// - N×N patterns (Pairwise, `SpatialPayoff`): `8 * N²` (f64 matrix)
+    /// - Batch patterns: `8 * N` per element (f64 vector)
+    /// - FFT: `16 * N` (complex f64 in + out)
+    /// - Sparse (`SpMV`): `24 * N` (CSR triple per row, pessimistic)
+    #[must_use]
+    pub const fn gpu_memory_estimate_bytes(self, problem_size: u64) -> u64 {
+        match self {
+            Self::Pairwise | Self::SpatialPayoff => {
+                problem_size.saturating_mul(problem_size).saturating_mul(8)
+            }
+            Self::Fft => problem_size.saturating_mul(16),
+            Self::SpMV => problem_size.saturating_mul(24),
+            Self::Stochastic | Self::PopulationPk | Self::DoseResponse => {
+                problem_size.saturating_mul(16)
+            }
+            _ => problem_size.saturating_mul(8),
+        }
+    }
+}
+
 /// Target compute substrate for workload execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SubstrateTarget {
@@ -109,6 +137,26 @@ impl WorkloadRouter {
     pub fn set_threshold(&mut self, threshold: RoutingThreshold) {
         self.thresholds.retain(|t| t.pattern != threshold.pattern);
         self.thresholds.push(threshold);
+    }
+
+    /// VRAM-aware routing: falls back to CPU if estimated GPU memory exceeds
+    /// `available_vram_bytes`, even when problem size crosses the GPU threshold.
+    ///
+    /// Absorbed from healthSpring V19 scheduling proposal.
+    #[must_use]
+    pub fn route_with_vram(
+        &self,
+        pattern: WorkloadPattern,
+        problem_size: u64,
+        available_vram_bytes: u64,
+    ) -> SubstrateTarget {
+        let base = self.route(pattern, problem_size);
+        if base == SubstrateTarget::Gpu
+            && pattern.gpu_memory_estimate_bytes(problem_size) > available_vram_bytes
+        {
+            return SubstrateTarget::Cpu;
+        }
+        base
     }
 }
 
@@ -426,12 +474,7 @@ mod tests {
     #[test]
     fn route_multi_gpu_single() {
         let router = WorkloadRouter::new();
-        let topo = toadstool_sysmon::pcie_topology::PcieTopologyGraph {
-            gpus: Vec::new(),
-            bridge_chains: std::collections::HashMap::new(),
-            pairs: Vec::new(),
-            bridge_fanout: std::collections::HashMap::new(),
-        };
+        let topo = toadstool_sysmon::pcie_topology::PcieTopologyGraph::empty();
         let placement = router.route_multi_gpu(&[0], 1, &topo);
         assert!(placement.is_some());
         assert_eq!(placement.unwrap().gpu_indices, vec![0]);
@@ -440,12 +483,7 @@ mod tests {
     #[test]
     fn route_multi_gpu_insufficient() {
         let router = WorkloadRouter::new();
-        let topo = toadstool_sysmon::pcie_topology::PcieTopologyGraph {
-            gpus: Vec::new(),
-            bridge_chains: std::collections::HashMap::new(),
-            pairs: Vec::new(),
-            bridge_fanout: std::collections::HashMap::new(),
-        };
+        let topo = toadstool_sysmon::pcie_topology::PcieTopologyGraph::empty();
         assert!(router.route_multi_gpu(&[0], 2, &topo).is_none());
         assert!(router.route_multi_gpu(&[], 1, &topo).is_none());
     }
@@ -551,6 +589,40 @@ mod tests {
         assert_eq!(
             router.route(WorkloadPattern::SpatialPayoff, 8_000),
             SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn gpu_memory_estimate_pairwise_quadratic() {
+        let est = WorkloadPattern::Pairwise.gpu_memory_estimate_bytes(1_000);
+        assert_eq!(est, 8_000_000, "1000×1000 f64 matrix = 8MB");
+    }
+
+    #[test]
+    fn gpu_memory_estimate_fft_linear() {
+        let est = WorkloadPattern::Fft.gpu_memory_estimate_bytes(1_000_000);
+        assert_eq!(est, 16_000_000, "1M complex f64 = 16MB");
+    }
+
+    #[test]
+    fn gpu_memory_estimate_reduction_linear() {
+        let est = WorkloadPattern::Reduction.gpu_memory_estimate_bytes(1_000_000);
+        assert_eq!(est, 8_000_000, "1M f64 elements = 8MB");
+    }
+
+    #[test]
+    fn route_with_vram_falls_back() {
+        let router = WorkloadRouter::new();
+        let two_gb: u64 = 2 * 1024 * 1024 * 1024;
+        assert_eq!(
+            router.route_with_vram(WorkloadPattern::Reduction, 1_000_000, two_gb),
+            SubstrateTarget::Gpu,
+            "8MB fits in 2GB VRAM"
+        );
+        assert_eq!(
+            router.route_with_vram(WorkloadPattern::Pairwise, 1_000_000, two_gb),
+            SubstrateTarget::Cpu,
+            "1M×1M f64 = 8TB, exceeds 2GB VRAM — fallback to CPU"
         );
     }
 

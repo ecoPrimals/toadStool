@@ -118,13 +118,18 @@ pub(super) async fn discover_capabilities(
     Ok(capabilities)
 }
 
-/// Returns GPU device and backend information.
+/// Returns GPU device, backend, and NVVM safety information.
+///
+/// Includes `nvvm_transcendental_risk` for each device so springs
+/// (hotSpring v0.6.26+) can make probe-time decisions without
+/// repeating the driver classification locally.
 #[allow(clippy::unused_async)]
 pub(super) async fn gpu_info() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_devices(),
         "driver": "wgpu",
         "compute_backends": crate::gpu_system::query_available_backends(),
+        "nvvm_safety": crate::gpu_system::query_nvvm_safety(),
     }))
 }
 

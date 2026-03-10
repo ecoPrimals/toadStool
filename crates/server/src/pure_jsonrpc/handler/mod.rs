@@ -379,8 +379,14 @@ impl JsonRpcHandler {
             ));
         }
 
+        let precision_advice = build_precision_advice(&request.target_devices);
+
         if let Some(resp) = self.coral_reef.compile_wgsl_multi(&request).await {
-            return Ok(serde_json::to_value(resp).unwrap_or_default());
+            let mut val = serde_json::to_value(resp).unwrap_or_default();
+            if let Some(obj) = val.as_object_mut() {
+                obj.insert("precision_advice".to_string(), precision_advice);
+            }
+            return Ok(val);
         }
 
         Ok(serde_json::json!({
@@ -389,6 +395,7 @@ impl JsonRpcHandler {
             "native_compiler_available": false,
             "note": "Multi-device compilation routed through naga fallback. coralReef not available.",
             "target_count": request.target_devices.len(),
+            "precision_advice": precision_advice,
         }))
     }
 
@@ -477,6 +484,61 @@ impl JsonRpcHandler {
             "domain": "shader"
         }))
     }
+}
+
+/// Build per-device precision tier advice for multi-GPU compilation.
+///
+/// Uses the same NVVM safety classification as `gpu.info` to advise
+/// which precision tiers are safe to compile for each target device.
+/// Prevents compilation of DF64/F64Precise transcendentals on
+/// proprietary NVIDIA drivers that may poison the device.
+fn build_precision_advice(
+    targets: &[crate::coral_reef_client::DeviceTarget],
+) -> serde_json::Value {
+    let sysmon_gpus = toadstool_sysmon::discover_gpus();
+
+    let advice: Vec<serde_json::Value> = targets
+        .iter()
+        .map(|target| {
+            let gpu = sysmon_gpus
+                .iter()
+                .find(|g| g.card_index == target.card_index);
+
+            let Some(gpu) = gpu else {
+                return serde_json::json!({
+                    "card_index": target.card_index,
+                    "safe_tiers": ["F32"],
+                    "avoid_transcendentals": true,
+                    "note": "GPU not found in sysfs — defaulting to conservative F32-only",
+                });
+            };
+
+            let driver = gpu.driver.as_str();
+            let is_nvk = driver.contains("nvk") || driver.contains("nouveau");
+            let is_radv = driver.contains("radv");
+            let is_nvidia_prop = driver.contains("nvidia") && !is_nvk;
+
+            let (safe_tiers, avoid_transcendentals) = if is_nvk || is_radv {
+                (
+                    serde_json::json!(["F32", "F64", "F64Precise", "DF64"]),
+                    false,
+                )
+            } else if is_nvidia_prop {
+                (serde_json::json!(["F32", "F64"]), true)
+            } else {
+                (serde_json::json!(["F32"]), true)
+            };
+
+            serde_json::json!({
+                "card_index": target.card_index,
+                "driver": driver,
+                "safe_tiers": safe_tiers,
+                "avoid_transcendentals": avoid_transcendentals,
+            })
+        })
+        .collect();
+
+    serde_json::json!(advice)
 }
 
 #[cfg(test)]

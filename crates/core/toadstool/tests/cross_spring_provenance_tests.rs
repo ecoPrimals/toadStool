@@ -115,9 +115,9 @@ fn test_provenance_json_contains_domains() {
     let domains = json["domains"].as_array().expect("domains array");
     assert!(domains.len() >= 8);
     let domain_strs: Vec<&str> = domains.iter().filter_map(|v| v.as_str()).collect();
-    assert!(domain_strs.contains(&"Precision"));
-    assert!(domain_strs.contains(&"NumericalStability"));
-    assert!(domain_strs.contains(&"Bioinformatics"));
+    assert!(domain_strs.contains(&"PRECISION"));
+    assert!(domain_strs.contains(&"NUMERICAL_STABILITY"));
+    assert!(domain_strs.contains(&"BIOINFORMATICS"));
 }
 
 #[test]
@@ -152,5 +152,9 @@ fn test_groundspring_chi_squared_reaches_all() {
         .iter()
         .find(|f| f.from == Spring::GroundSpring && f.pattern == "chi_squared_f64.wgsl")
         .expect("groundSpring chi-squared should exist");
-    assert_eq!(chi.to.len(), 5, "chi-squared should reach all 5 springs");
+    assert_eq!(
+        chi.to.len(),
+        Spring::ALL.len(),
+        "chi-squared should reach all springs"
+    );
 }

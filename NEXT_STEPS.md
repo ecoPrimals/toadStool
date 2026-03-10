@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 10, 2026 -- S145 Spring Absorption & Evolution
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,965 tests (0 failures) | ~86% line coverage (121K production lines) | 89+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
-**Latest**: S145 — PrecisionBrain absorbed (hotSpring v0.6.25), NvkZeroGuard absorbed (airSpring v0.7.5), 8 new WorkloadPatterns (neuralSpring S140 + healthSpring V14.1), 5 new capability domains, capability.call format standardization, Spring-as-Provider ProviderRegistry, ServerConfig port hardcoding evolved.
+**Updated**: March 10, 2026 -- S146 Spring Absorption & Deep Evolution
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,972 tests (0 failures) | ~86% line coverage (121K production lines) | 89+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
+**Latest**: S146 — nvvm_transcendental_risk in gpu.info (hotSpring v0.6.26), PrecisionBrain wired into compile_wgsl_multi, PcieTopologyGraph stable, SpringDomain +10 domains + SCREAMING_SNAKE_CASE, HealthSpring added, gpu_memory_estimate_bytes + route_with_vram, cross-spring provenance healthSpring flows. Spring pins: hotSpring v0.6.27, neuralSpring V96, wetSpring V109, healthSpring V19.
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-**~86% line coverage** (121K production lines). 19,965 tests pass. Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~86% line coverage** (121K production lines). 19,972 tests pass (S146). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 

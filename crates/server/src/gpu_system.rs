@@ -108,6 +108,67 @@ pub fn query_available_backends() -> Vec<&'static str> {
     backends
 }
 
+/// Query NVVM safety information for discovered GPUs.
+///
+/// Returns driver classification, poisoning risk, and transcendental
+/// safety per detected GPU so springs can make precision routing
+/// decisions without local probing (which risks device poisoning).
+///
+/// Absorbed from hotSpring v0.6.26 requirement: expose
+/// `nvvm_transcendental_risk` in runtime discovery.
+#[must_use]
+pub fn query_nvvm_safety() -> serde_json::Value {
+    let sysmon_gpus = toadstool_sysmon::discover_gpus();
+    let mut entries = Vec::new();
+
+    for gpu in &sysmon_gpus {
+        let driver = gpu.driver.as_str();
+        let is_nvk = driver.contains("nvk") || driver.contains("nouveau");
+        let is_radv = driver.contains("radv");
+        let is_nvidia_prop = driver.contains("nvidia") && !is_nvk;
+
+        let poisoning_risk = if is_nvk || is_radv {
+            "none"
+        } else if is_nvidia_prop {
+            "transcendental_only"
+        } else {
+            "unknown"
+        };
+
+        let transcendentals_safe = is_nvk || is_radv;
+
+        let safe_tiers = if is_nvk || is_radv {
+            serde_json::json!(["F32", "F64", "F64Precise", "DF64"])
+        } else if is_nvidia_prop {
+            serde_json::json!(["F32", "F64"])
+        } else {
+            serde_json::json!(["F32"])
+        };
+
+        entries.push(serde_json::json!({
+            "card_index": gpu.card_index,
+            "pci_slot": gpu.pci_slot,
+            "driver": driver,
+            "nvvm_poisoning_risk": poisoning_risk,
+            "nvvm_transcendental_risk": !transcendentals_safe && is_nvidia_prop,
+            "f64_transcendentals_safe": transcendentals_safe,
+            "df64_transcendentals_safe": transcendentals_safe,
+            "safe_tiers": safe_tiers,
+        }));
+    }
+
+    if entries.is_empty() {
+        return serde_json::json!({
+            "note": "No GPUs detected for NVVM safety classification",
+            "devices": [],
+        });
+    }
+
+    serde_json::json!({
+        "devices": entries,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,5 +189,11 @@ mod tests {
     fn test_query_available_backends_returns_at_least_one() {
         let backends = query_available_backends();
         assert!(!backends.is_empty());
+    }
+
+    #[test]
+    fn test_query_nvvm_safety_returns_valid_json() {
+        let safety = query_nvvm_safety();
+        assert!(safety.get("devices").is_some() || safety.get("note").is_some());
     }
 }

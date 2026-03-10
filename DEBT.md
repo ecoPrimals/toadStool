@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 10, 2026 — S144
+**Date**: March 10, 2026 — S146
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -75,7 +75,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~86% line coverage** (121K production lines). 19,965 tests (S145). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Software-only coverage approaching 90%. |
+| D-COV | Test coverage → 90% | Medium | **~86% line coverage** (121K production lines). 19,972 tests (S146). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Software-only coverage approaching 90%. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
 
@@ -144,7 +144,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | Unsafe code audit | Confirmed: all ~70 unsafe blocks in hardware drivers only (akida MMIO/VFIO, V4L2, GPU memory), all `// SAFETY:` documented. 36+ crates have `#![deny(unsafe_code)]`. |
 | Flaky test fix | `discover_from_config_invalid_toml_returns_none` CWD race condition fixed with shared `Mutex<()>` guard. |
 | Coverage expansion | +126 new tests: sysmon 53 (cpu, disk, error, loadavg, memory, network, process parsers), science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2. |
-| llvm-cov verified | ~86% line coverage (121K production lines, S145). 19,965 tests. |
+| llvm-cov verified | ~86% line coverage (121K production lines, S146). 19,972 tests. |
 
 ## Recently Resolved (S137 — sysinfo Eliminated / ecoBin v3.0 — Mar 9, 2026)
 

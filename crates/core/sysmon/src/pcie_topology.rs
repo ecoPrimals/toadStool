@@ -69,7 +69,15 @@ pub struct GpuPairTopology {
 }
 
 /// Full `PCIe` topology graph for all discovered GPUs.
+///
+/// # Stability
+///
+/// This API is **stable** as of toadStool S146. Springs may depend on
+/// `PcieTopologyGraph`, `pair()`, `switch_neighbors()`, and
+/// `effective_bandwidth_bps()` without breakage risk. Fields may be added
+/// (non-exhaustive struct) but existing methods are frozen.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct PcieTopologyGraph {
     /// All discovered GPU devices.
     pub gpus: Vec<GpuDevice>,
@@ -82,6 +90,17 @@ pub struct PcieTopologyGraph {
 }
 
 impl PcieTopologyGraph {
+    /// Construct an empty topology graph (for testing or manual assembly).
+    #[must_use]
+    pub fn empty() -> Self {
+        Self {
+            gpus: Vec::new(),
+            bridge_chains: HashMap::new(),
+            pairs: Vec::new(),
+            bridge_fanout: HashMap::new(),
+        }
+    }
+
     /// Get topology for a specific GPU pair.
     #[must_use]
     pub fn pair(&self, gpu_a: u32, gpu_b: u32) -> Option<&GpuPairTopology> {
@@ -359,34 +378,19 @@ mod tests {
 
     #[test]
     fn test_switch_neighbors_empty() {
-        let graph = PcieTopologyGraph {
-            gpus: Vec::new(),
-            bridge_chains: HashMap::new(),
-            pairs: Vec::new(),
-            bridge_fanout: HashMap::new(),
-        };
+        let graph = PcieTopologyGraph::empty();
         assert!(graph.switch_neighbors(0).is_empty());
     }
 
     #[test]
     fn test_pair_lookup_none() {
-        let graph = PcieTopologyGraph {
-            gpus: Vec::new(),
-            bridge_chains: HashMap::new(),
-            pairs: Vec::new(),
-            bridge_fanout: HashMap::new(),
-        };
+        let graph = PcieTopologyGraph::empty();
         assert!(graph.pair(0, 1).is_none());
     }
 
     #[test]
     fn test_effective_bandwidth_no_pair() {
-        let graph = PcieTopologyGraph {
-            gpus: Vec::new(),
-            bridge_chains: HashMap::new(),
-            pairs: Vec::new(),
-            bridge_fanout: HashMap::new(),
-        };
+        let graph = PcieTopologyGraph::empty();
         assert_eq!(graph.effective_bandwidth_bps(0, 1), 0);
     }
 

@@ -10,7 +10,11 @@ use serde::Serialize;
 use std::borrow::Cow;
 
 /// Domain categories for spring contributions.
+///
+/// String representation uses SCREAMING_SNAKE_CASE per wetSpring V109
+/// naming convention for cross-primal identifiers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
 pub enum SpringDomain {
     Precision,
     MolecularDynamics,
@@ -21,16 +25,56 @@ pub enum SpringDomain {
     Hydrology,
     Statistics,
     NumericalStability,
+    Pharmacokinetics,
+    Biosignal,
+    Microbiome,
+    Agriculture,
+    Environmental,
+    Phylogenetics,
+    MassSpectrometry,
+    UncertaintyQuantification,
+    EvolutionaryComputation,
+    Optimization,
+}
+
+impl SpringDomain {
+    /// SCREAMING_SNAKE_CASE identifier per wetSpring V109 convention.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Precision => "PRECISION",
+            Self::MolecularDynamics => "MOLECULAR_DYNAMICS",
+            Self::LatticeQcd => "LATTICE_QCD",
+            Self::CondensedMatter => "CONDENSED_MATTER",
+            Self::Bioinformatics => "BIOINFORMATICS",
+            Self::MachineLearning => "MACHINE_LEARNING",
+            Self::Hydrology => "HYDROLOGY",
+            Self::Statistics => "STATISTICS",
+            Self::NumericalStability => "NUMERICAL_STABILITY",
+            Self::Pharmacokinetics => "PHARMACOKINETICS",
+            Self::Biosignal => "BIOSIGNAL",
+            Self::Microbiome => "MICROBIOME",
+            Self::Agriculture => "AGRICULTURE",
+            Self::Environmental => "ENVIRONMENTAL",
+            Self::Phylogenetics => "PHYLOGENETICS",
+            Self::MassSpectrometry => "MASS_SPECTROMETRY",
+            Self::UncertaintyQuantification => "UNCERTAINTY_QUANTIFICATION",
+            Self::EvolutionaryComputation => "EVOLUTIONARY_COMPUTATION",
+            Self::Optimization => "OPTIMIZATION",
+        }
+    }
 }
 
 /// A spring in the ecoPrimals ecosystem.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[non_exhaustive]
 pub enum Spring {
     HotSpring,
     WetSpring,
     NeuralSpring,
     AirSpring,
     GroundSpring,
+    HealthSpring,
 }
 
 impl Spring {
@@ -40,16 +84,18 @@ impl Spring {
         Spring::NeuralSpring,
         Spring::AirSpring,
         Spring::GroundSpring,
+        Spring::HealthSpring,
     ];
 
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::HotSpring => "hotSpring",
             Self::WetSpring => "wetSpring",
             Self::NeuralSpring => "neuralSpring",
             Self::AirSpring => "airSpring",
             Self::GroundSpring => "groundSpring",
+            Self::HealthSpring => "healthSpring",
         }
     }
 }
@@ -263,6 +309,30 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 .into(),
             session: "S128 (groundSpring V84-V85 absorption)".into(),
         },
+        // healthSpring PK/PD dispatch thresholds -> ALL springs via toadStool
+        CrossSpringFlow {
+            from: Spring::HealthSpring,
+            to: Spring::ALL,
+            domain: SpringDomain::Pharmacokinetics,
+            pattern: "PopulationPk/DoseResponse WorkloadPatterns".into(),
+            description: "healthSpring V19 contributed PopulationPk and DoseResponse \
+                workload patterns with GPU crossover thresholds validated on real \
+                PK/PD datasets. Absorbed into toadStool WorkloadRouter for substrate \
+                routing, available to all springs."
+                .into(),
+            session: "S145 (healthSpring V14.1-V19 absorption)".into(),
+        },
+        CrossSpringFlow {
+            from: Spring::HealthSpring,
+            to: &[Spring::WetSpring, Spring::NeuralSpring],
+            domain: SpringDomain::Biosignal,
+            pattern: "DiversityIndex WorkloadPattern".into(),
+            description: "healthSpring/wetSpring co-developed DiversityIndex (Shannon/Simpson) \
+                GPU dispatch pattern, absorbed into toadStool's WorkloadRouter. \
+                Benefits microbiome and ecological diversity computations."
+                .into(),
+            session: "S145 (healthSpring V19 absorption)".into(),
+        },
     ]
 }
 
@@ -308,9 +378,11 @@ pub fn provenance_json() -> serde_json::Value {
             })
         }).collect::<Vec<_>>(),
         "domains": [
-            "Precision", "MolecularDynamics", "LatticeQcd", "CondensedMatter",
-            "Bioinformatics", "MachineLearning", "Hydrology", "Statistics",
-            "NumericalStability"
+            "PRECISION", "MOLECULAR_DYNAMICS", "LATTICE_QCD", "CONDENSED_MATTER",
+            "BIOINFORMATICS", "MACHINE_LEARNING", "HYDROLOGY", "STATISTICS",
+            "NUMERICAL_STABILITY", "PHARMACOKINETICS", "BIOSIGNAL", "MICROBIOME",
+            "AGRICULTURE", "ENVIRONMENTAL", "PHYLOGENETICS", "MASS_SPECTROMETRY",
+            "UNCERTAINTY_QUANTIFICATION", "EVOLUTIONARY_COMPUTATION", "OPTIMIZATION"
         ]
     })
 }
@@ -367,7 +439,7 @@ mod tests {
         assert_eq!(bug_flow.from, Spring::GroundSpring);
         assert_eq!(
             bug_flow.to.len(),
-            5,
+            Spring::ALL.len(),
             "bug discovery should reach all springs"
         );
     }
@@ -386,7 +458,7 @@ mod tests {
     fn test_provenance_json_structure() {
         let json = provenance_json();
         assert!(json["total_flows"].as_u64().unwrap() > 10);
-        assert_eq!(json["springs"].as_array().unwrap().len(), 5);
+        assert_eq!(json["springs"].as_array().unwrap().len(), Spring::ALL.len());
         assert!(!json["flows"].as_array().unwrap().is_empty());
         assert!(!json["matrix"].as_array().unwrap().is_empty());
     }
@@ -441,6 +513,40 @@ mod tests {
         assert!(
             flows.len() >= 15,
             "Should have at least 15 documented flows"
+        );
+    }
+
+    #[test]
+    fn test_spring_domain_as_str_screaming_snake() {
+        assert_eq!(SpringDomain::Precision.as_str(), "PRECISION");
+        assert_eq!(SpringDomain::LatticeQcd.as_str(), "LATTICE_QCD");
+        assert_eq!(SpringDomain::Pharmacokinetics.as_str(), "PHARMACOKINETICS");
+        assert_eq!(
+            SpringDomain::UncertaintyQuantification.as_str(),
+            "UNCERTAINTY_QUANTIFICATION"
+        );
+        for domain in [
+            SpringDomain::Precision,
+            SpringDomain::MolecularDynamics,
+            SpringDomain::Bioinformatics,
+            SpringDomain::Pharmacokinetics,
+            SpringDomain::Optimization,
+        ] {
+            let s = domain.as_str();
+            assert_eq!(s, s.to_uppercase(), "as_str must be SCREAMING_SNAKE_CASE");
+        }
+    }
+
+    #[test]
+    fn test_healthspring_flows_exist() {
+        let flows = cross_spring_flows();
+        let hs_flows: Vec<_> = flows
+            .iter()
+            .filter(|f| f.from == Spring::HealthSpring)
+            .collect();
+        assert!(
+            !hs_flows.is_empty(),
+            "healthSpring should have source contributions"
         );
     }
 }

@@ -41,7 +41,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 19,965 workspace tests (0 failures, 101 intentional ignores) |
+| `cargo test --workspace` | 19,972 workspace tests (0 failures, 101 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
@@ -267,6 +267,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S146 (Mar 10, 2026)**: Deep evolution — nvvm_transcendental_risk in gpu.info, PrecisionBrain wired into compile_wgsl_multi, PcieTopologyGraph stable, SpringDomain +10 domains (SCREAMING_SNAKE_CASE), HealthSpring added, gpu_memory_estimate_bytes + route_with_vram, cross-spring provenance expanded. Spring pins: hotSpring v0.6.27, neuralSpring V96, wetSpring V109, healthSpring V19. 19,972 tests.
 - **S145 (Mar 10, 2026)**: Spring absorption execution — PrecisionBrain (hotSpring v0.6.25), NvkZeroGuard (airSpring v0.7.5), 8 new WorkloadPatterns (neuralSpring S140 + healthSpring V14.1), 5 new capability domains, capability.call format standardization (ISSUE-003), Spring-as-Provider ProviderRegistry (ISSUE-007), ServerConfig port hardcoding evolved. 19,965 tests.
 - **S144 (Mar 9, 2026)**: PCIe switch topology, deprecated API migration, dead code audit, coralReef multi-device compile, topology-aware MultiGpuPlacement. Flaky test fix, clippy pedantic sweep, hot-path clone elimination.
 - **S140 (Mar 9, 2026)**: Deep debt evolution — hardcoding elimination, StreamingDispatchContext, barraCuda Sprint 2 API awareness, smart refactor science.rs (1139→828 LOC).
@@ -329,4 +330,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 10, 2026 -- S145. 19,965 workspace tests. ~86% line coverage (121K production lines). 89+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.25, groundSpring V100, neuralSpring V91/S140, wetSpring V99+, airSpring v0.7.5, healthSpring V14.1. PrecisionBrain + NvkZeroGuard + 8 new WorkloadPatterns + 5 capability domains + ProviderRegistry (Spring-as-Provider). Clippy pedantic zero. Rust 1.82+ (MSRV).
+**Last Updated**: March 10, 2026 -- S146. 19,972 workspace tests. ~86% line coverage (121K production lines). 89+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.27, groundSpring V100, neuralSpring V96/S143, wetSpring V109, airSpring v0.7.5, healthSpring V19. PrecisionBrain + NvkZeroGuard + nvvm_transcendental_risk + gpu_memory_estimate + route_with_vram + SCREAMING_SNAKE_CASE domains + ProviderRegistry. Clippy pedantic zero. Rust 1.82+ (MSRV).

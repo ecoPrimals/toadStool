@@ -168,7 +168,7 @@ async fn test_provenance_method_returns_data() {
     assert!(response.error.is_none(), "Provenance should succeed");
     let result = response.result.expect("result present");
     assert!(result["total_flows"].as_u64().unwrap() >= 15);
-    assert_eq!(result["springs"].as_array().unwrap().len(), 5);
+    assert!(result["springs"].as_array().unwrap().len() >= 6);
     assert!(!result["flows"].as_array().unwrap().is_empty());
     assert!(!result["matrix"].as_array().unwrap().is_empty());
 }
