@@ -93,6 +93,9 @@ pub(super) async fn discover_capabilities(
         "transport.discover",
         "transport.list",
         "transport.route",
+        "transport.open",
+        "transport.stream",
+        "transport.status",
     ];
 
     for m in &semantic_methods {

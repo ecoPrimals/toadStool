@@ -1,21 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Hardware transport layer for JSON-RPC handler.
 
+use std::collections::HashMap;
 use std::sync::Arc;
+
+use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
+use toadstool_core::HardwareTransport;
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 
+/// Active stream metadata tracked by the handler.
+struct ActiveStream {
+    rx_id: String,
+    tx_id: String,
+    cancel: CancellationToken,
+    bytes_transferred: Arc<std::sync::atomic::AtomicU64>,
+    started_at: std::time::Instant,
+}
+
 /// Handles hardware transport discovery and routing.
 pub(super) struct TransportHandler {
-    pub(super) transport_router: Arc<tokio::sync::Mutex<toadstool_core::TransportRouter>>,
+    pub(super) transport_router: Arc<Mutex<toadstool_core::TransportRouter>>,
+    active_streams: Mutex<HashMap<String, ActiveStream>>,
+    next_stream_id: Mutex<u64>,
 }
 
 impl TransportHandler {
     pub(super) fn new() -> Self {
         Self {
-            transport_router: Arc::new(tokio::sync::Mutex::new(
-                toadstool_core::TransportRouter::new(),
-            )),
+            transport_router: Arc::new(Mutex::new(toadstool_core::TransportRouter::new())),
+            active_streams: Mutex::new(HashMap::new()),
+            next_stream_id: Mutex::new(1),
         }
     }
 
@@ -76,6 +92,10 @@ impl TransportHandler {
             .get("tx_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'tx_id'"))?;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "buf_size is capped at practical values"
+        )]
         let buf_size = params
             .get("buf_size")
             .and_then(|v| v.as_u64())
@@ -90,5 +110,197 @@ impl TransportHandler {
             "rx_id": rx_id,
             "tx_id": tx_id
         }))
+    }
+
+    /// Register a discovered `PCIe` transport into the router by its link endpoints.
+    ///
+    /// Params: `{ "source_slot": "0000:25:00.0", "target_slot": "0000:41:00.0" }`
+    pub(super) async fn transport_open(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+        let source_slot = params
+            .get("source_slot")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'source_slot'"))?;
+        let target_slot = params
+            .get("target_slot")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'target_slot'"))?;
+
+        let links = toadstool_display::pcie_transport::discover_pcie_links();
+        let link = links
+            .iter()
+            .find(|l| l.source.pci_slot == source_slot && l.target.pci_slot == target_slot)
+            .ok_or_else(|| {
+                JsonRpcError::invalid_params(format!(
+                    "No PCIe link found between {source_slot} and {target_slot}"
+                ))
+            })?;
+
+        let transport =
+            toadstool_display::PcieTransport::open(link.source.clone(), link.target.clone())
+                .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+
+        let id = transport.info().id.clone();
+        let bandwidth = transport.bandwidth_bps();
+
+        let mut router = self.transport_router.lock().await;
+        router.register(Box::new(transport));
+
+        Ok(serde_json::json!({
+            "id": id,
+            "bandwidth_bps": bandwidth,
+            "status": "registered"
+        }))
+    }
+
+    /// Start continuous streaming between two registered transports.
+    ///
+    /// Params: `{ "rx_id": "...", "tx_id": "...", "buf_size": 65536 }`
+    /// Returns: `{ "stream_id": "...", "status": "streaming" }`
+    pub(super) async fn transport_stream(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+        let rx_id = params
+            .get("rx_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'rx_id'"))?
+            .to_string();
+        let tx_id = params
+            .get("tx_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'tx_id'"))?
+            .to_string();
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "buf_size is capped at practical values"
+        )]
+        let buf_size = params
+            .get("buf_size")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(65536) as usize;
+
+        {
+            let router = self.transport_router.lock().await;
+            if router.get(&rx_id).is_none() {
+                return Err(JsonRpcError::invalid_params(format!(
+                    "rx transport not registered: {rx_id}"
+                )));
+            }
+            if router.get(&tx_id).is_none() {
+                return Err(JsonRpcError::invalid_params(format!(
+                    "tx transport not registered: {tx_id}"
+                )));
+            }
+        }
+
+        let mut id_counter = self.next_stream_id.lock().await;
+        let stream_id = format!("stream-{}", *id_counter);
+        *id_counter += 1;
+
+        let cancel = CancellationToken::new();
+        let bytes_counter = Arc::new(std::sync::atomic::AtomicU64::new(0));
+
+        let stream = ActiveStream {
+            rx_id: rx_id.clone(),
+            tx_id: tx_id.clone(),
+            cancel: cancel.clone(),
+            bytes_transferred: Arc::clone(&bytes_counter),
+            started_at: std::time::Instant::now(),
+        };
+
+        self.active_streams
+            .lock()
+            .await
+            .insert(stream_id.clone(), stream);
+
+        let router = Arc::clone(&self.transport_router);
+        tokio::spawn(async move {
+            loop {
+                if cancel.is_cancelled() {
+                    break;
+                }
+
+                let result = {
+                    let mut r = router.lock().await;
+                    r.route_once(&rx_id, &tx_id, buf_size)
+                };
+
+                match result {
+                    Ok(n) => {
+                        bytes_counter.fetch_add(
+                            n as u64,
+                            std::sync::atomic::Ordering::Relaxed,
+                        );
+                    }
+                    Err(_) => {
+                        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                    }
+                }
+
+                tokio::task::yield_now().await;
+            }
+        });
+
+        Ok(serde_json::json!({
+            "stream_id": stream_id,
+            "status": "streaming"
+        }))
+    }
+
+    /// Query status of active streams.
+    ///
+    /// Params: `{ "stream_id": "stream-1" }` (optional — all streams if omitted)
+    pub(super) async fn transport_status(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let streams = self.active_streams.lock().await;
+
+        if let Some(params) = params {
+            if let Some(stream_id) = params.get("stream_id").and_then(|v| v.as_str()) {
+                let stream = streams.get(stream_id).ok_or_else(|| {
+                    JsonRpcError::invalid_params(format!("Unknown stream: {stream_id}"))
+                })?;
+
+                let bytes = stream
+                    .bytes_transferred
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                let elapsed = stream.started_at.elapsed();
+
+                return Ok(serde_json::json!({
+                    "stream_id": stream_id,
+                    "rx_id": stream.rx_id,
+                    "tx_id": stream.tx_id,
+                    "bytes_transferred": bytes,
+                    "elapsed_seconds": elapsed.as_secs_f64(),
+                    "active": !stream.cancel.is_cancelled(),
+                }));
+            }
+        }
+
+        let all: Vec<_> = streams
+            .iter()
+            .map(|(id, s)| {
+                let bytes = s
+                    .bytes_transferred
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                let elapsed = s.started_at.elapsed();
+                serde_json::json!({
+                    "stream_id": id,
+                    "rx_id": s.rx_id,
+                    "tx_id": s.tx_id,
+                    "bytes_transferred": bytes,
+                    "elapsed_seconds": elapsed.as_secs_f64(),
+                    "active": !s.cancel.is_cancelled(),
+                })
+            })
+            .collect();
+
+        Ok(serde_json::json!({ "streams": all, "count": all.len() }))
     }
 }

@@ -185,6 +185,9 @@ impl JsonRpcHandler {
             "transport.discover" => return self.transport.transport_discover(params).await,
             "transport.list" => return self.transport.transport_list().await,
             "transport.route" => return self.transport.transport_route(params).await,
+            "transport.open" => return self.transport.transport_open(params).await,
+            "transport.stream" => return self.transport.transport_stream(params).await,
+            "transport.status" => return self.transport.transport_status(params).await,
 
             "science.compute.submit" => {
                 return science::science_compute_submit(&self.job, params).await
