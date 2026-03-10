@@ -1,4 +1,4 @@
-# Status -- March 10, 2026 (S142 Hardware-First Evolution)
+# Status -- March 10, 2026 (S144 Last Mile Deep Debt)
 
 ## Quality Gates
 
@@ -7,19 +7,22 @@
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
-| `cargo doc --workspace --no-deps` | PASS | 0 warnings (S141: broken doc link fixed) |
-| `cargo test --workspace` | PASS | **19,900+ tests, 0 failures** (+126 S138; 216+ intentional ignores for GPU hardware) |
+| `cargo doc --workspace --no-deps` | PASS | 0 warnings |
+| `cargo test --workspace` | PASS | **19,900+ tests, 0 failures** |
 | `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
-| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 1,733 .rs files have SPDX headers** (S141: last `AGPL-3.0-or-later` in examples fixed) |
+| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 1,733 .rs files have SPDX headers** |
 | Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
-| Sovereignty | PASS | **Deprecated** primal-name APIs; capability-based APIs promoted; BearDog strings neutralized |
-| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route/open/stream/status (S142: +3 methods, PCIe P2P transport) |
+| Sovereignty | PASS | **Deprecated primal-name APIs migrated** — `primals::*` → `capabilities::*` across 20+ files (S144). All `#[allow(deprecated)]` removed from migrated sites. |
+| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route/open/stream/status. **PCIe switch topology** with shared-switch detection and contention-aware bandwidth (S144). |
 | Progressive showcase | PASS | **15 demos, 4 levels** — local primal, shader pipeline, compute triangle (toadStool/barraCuda/coralReef), ecosystem integration. All build standalone. |
 | Compute triangle discovery | PASS | **Dual-write announce** (ecoPrimals/discovery/ + ecoPrimals/ root), `gpu.dispatch` capability, GPU descriptors with render_node/driver/arch. coralReef-compatible. |
 | Spring absorption | PASS | **StreamingDispatch** (hotSpring v0.6.24), **PipelineGraph DAG** (neuralSpring S134) absorbed into `toadstool::universal`. |
+| Dead code audit | PASS | **~47 `#[allow(dead_code)]` with explicit `reason = "..."`** — all documented (S144) |
+| GPU test guards | PASS | **`gpu_guards` module** for safe wgpu test skipping on NVIDIA proprietary drivers (S144) |
+| Multi-device compile | PASS | **coralReef multi-device API** — `MultiDeviceCompileRequest`, `shader.compile.wgsl.multi` JSON-RPC endpoint (S144) |
 
 ## Codebase Metrics
 
@@ -33,14 +36,14 @@
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. `SoftwareHsmProvider`/`LocalKeyringProvider` gated behind `dev-crypto` feature (S134). Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
-| Dead code | **~25 justified `#[allow(dead_code)]`** (all documented with phase/reason) |
+| Dead code | **~47 justified `#[allow(dead_code, reason = "...")]`** — all with explicit reason annotations (S144: upgraded from comment-only justification to first-class `reason` parameter) |
 | File size limit | **All < 1000 lines** (1,868 .rs files, 517K total lines) |
 | Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic --all-targets` across entire workspace including test code (S141). Production `#[allow]` evolved to `#[expect]` (S131+, S132, S141). 170+ stale suppressions discovered and removed total. |
 | Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
-| JSON-RPC methods | **88+** (was 85; +3 barraCuda Sprint 2 S140: `science.activations.list`, `science.rng.capabilities`, `science.special.functions`; methods dynamically built from semantic registry) |
-| Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter |
+| JSON-RPC methods | **89+** (+1 S144: `shader.compile.wgsl.multi` for multi-device compilation; methods dynamically built from semantic registry) |
+| Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter + **PCIe P2P** with topology-aware routing |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
 | SPDX headers | **100%** — all .rs files have AGPL-3.0-only (aligned S138) |
@@ -92,6 +95,22 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S144: Last Mile Deep Debt (Mar 10, 2026)
+- **PCIe switch topology** (`pcie_topology.rs`): `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph` — sysfs parent bridge discovery, shared switch detection, contention-aware bandwidth estimation for multi-GPU daisy-chain arrays. `PcieLink` enriched with `via_switch`, `hops`, `contention_factor`. `WorkloadRouter::route_multi_gpu()` for topology-aware placement.
+- **Deprecated API migration (20+ files)**: `primals::TOADSTOOL` → `primal_identity::PRIMAL_NAME`. `primals::BEARDOG` → `capabilities::CRYPTO`. `primals::SONGBIRD` → `capabilities::COORDINATION`. `primals::NESTGATE` → `capabilities::STORAGE`. `EnvironmentConfig` deprecated fields → direct env vars. All `#[allow(deprecated)]` removed from migrated sites.
+- **Dead code audit (47 instances)**: All `#[allow(dead_code)]` upgraded to `#[allow(dead_code, reason = "...")]` with explicit justification (hardware placeholders, serde requirements, kernel ABI, future phases).
+- **Ignored test evolution**: `slow-tests` feature flag for conditional execution of slow integration tests across `auto_config`, `cli`, `testing` crates. `gpu_guards` module (`toadstool-testing`) for safe wgpu test skipping on NVIDIA proprietary drivers (SIGSEGV during device teardown).
+- **coralReef multi-device compile**: `MultiDeviceCompileRequest`, `DeviceTarget`, `MultiDeviceCompileResponse` types. `compile_wgsl` evolved with `target_device` parameter. New `compile_wgsl_multi` method. `shader.compile.wgsl.multi` JSON-RPC endpoint wired.
+- **Topology-aware orchestration**: `MultiGpuPlacement` in `WorkloadRouter` — selects GPU groups sharing PCIe switches for fast P2P communication (halo exchange, lattice QCD).
+
+### S143: Cross-Spring Absorption (Mar 10, 2026)
+- **NVVM poisoning defense** (`nvvm_safety.rs`): Absorbed from hotSpring v0.6.25. `NvvmPoisoningRisk`, `PrecisionTier` (F32/F64/F64Precise/Df64), `TierCapability`, `HardwareCalibration` with driver-aware safety (NVK safe, AMD safe, NVIDIA proprietary risky for transcendentals). `DeviceHealthStatus` (Healthy/PoisonSuspected/Poisoned). `best_tier()` routing (precision-critical vs throughput-bound). 14 tests.
+- **Workload routing** (`workload_routing.rs`): Cross-spring Kokkos parity thresholds from healthSpring V14.1 / neuralSpring S139 / hotSpring v0.6.25. `WorkloadRouter` with 10 patterns (Reduction, Scatter, MonteCarlo, OdeBatch, NlmeIteration, MatMul, Fft, SpMV, ElementWise, SmithWaterman). GPU crossover thresholds with provenance. 8 tests.
+- **Brain interrupt pattern** (`workload_health.rs`): Absorbed from hotSpring biomeGate Brain Architecture. `AttentionState` (Green/Yellow/Red), `WorkloadAnomaly` (7 variants), `InterruptAction` (7 variants), `WorkloadHealthMonitor` with streak-based escalation/de-escalation. 13 tests.
+- **Deep debt elimination**: Removed hardcoded primal names from pipeline_graph labels, hardcoded 4 GiB memory from monitoring platform (now runtime-discovered via sysmon), hardcoded `/etc/toadstool/policies` (now XDG/platform-aware), hardcoded `/run/user/1000` from 8 showcase demos (now UID-detected). Fixed pre-existing `deploy_graph_status_structure` test. Added `SubstrateCapabilities::memory_capacity_bytes` / `memory_bandwidth_bps` for runtime discovery.
+- **New capabilities**: `gpu.calibration`, `workload.routing` interned strings. NVVM safety data in `science.gpu.capabilities` JSON-RPC response.
+- **Spring sync review**: Pulled and reviewed hotSpring v0.6.25, groundSpring V99, neuralSpring S139, wetSpring V105, airSpring v0.7.5, healthSpring V14.1, wateringHole (55 active handoffs).
 
 ### S142: Hardware-First Evolution (Mar 10, 2026)
 - **Hardware test infrastructure**: `scripts/run-hardware-tests.sh` (strandgate fleet: AMD RX 6950 XT, NVIDIA RTX 3090, Akida AKD1000), `.github/workflows/hardware.yml` self-hosted runner CI, per-device `TOADSTOOL_GPU_ADAPTER`, hardware coverage mode.

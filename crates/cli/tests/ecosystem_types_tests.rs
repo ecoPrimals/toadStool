@@ -656,7 +656,6 @@ fn test_crypto_verification_context_default_with_env_vars() {
         || {
             let ctx = CryptoVerificationContext::default();
             assert!(ctx.trusted_public_keys.contains_key("crypto"));
-            assert!(ctx.trusted_public_keys.contains_key("beardog"));
         },
     );
 }

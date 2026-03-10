@@ -3,8 +3,8 @@
 
 use std::path::PathBuf;
 
-#[allow(deprecated)] // Protocol compatibility: service name matching requires well_known
-use crate::constants::ecosystem::well_known::{BEARDOG, BIOMEOS, NESTGATE, SONGBIRD, SQUIRREL};
+#[allow(deprecated)]
+use crate::constants::ecosystem::well_known::BIOMEOS;
 use crate::constants::primal_identity::PRIMAL_NAME;
 
 use super::discovery;
@@ -127,13 +127,13 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
     let normalized = service_name.to_lowercase();
     let s = normalized.as_str();
-    if s == BEARDOG || s == "bear-dog" {
+    if s == "beardog" || s == "bear-dog" {
         get_beardog_socket_path()
-    } else if s == SONGBIRD || s == "song-bird" {
+    } else if s == "songbird" || s == "song-bird" {
         get_songbird_socket_path()
-    } else if s == NESTGATE || s == "nest-gate" {
+    } else if s == "nestgate" || s == "nest-gate" {
         get_nestgate_socket_path()
-    } else if s == SQUIRREL {
+    } else if s == "squirrel" {
         get_squirrel_socket_path()
     } else if s == PRIMAL_NAME || s == "toad-stool" {
         get_toadstool_socket_path()

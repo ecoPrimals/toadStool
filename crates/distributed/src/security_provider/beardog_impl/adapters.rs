@@ -4,11 +4,9 @@
 //! Converts between generic SecurityProvider types and BearDog-specific types.
 //! This allows BearDog to work with the generic SecurityProvider interface.
 
-// Allow deprecated during migration phase
 #[allow(deprecated)]
 use toadstool::error::ToadStoolResult;
-#[allow(deprecated)]
-use toadstool_common::interned_strings::primals;
+use toadstool_common::interned_strings::capabilities;
 
 use crate::beardog_integration::types::*;
 use crate::security_provider::types::*;
@@ -45,12 +43,12 @@ pub fn from_beardog_permission(
         proof: SecurityProof {
             signature: vec![],
             algorithm: SignatureAlgorithm::EcdsaP256,
-            public_key_id: format!("{}-key", primals::BEARDOG),
+            public_key_id: format!("{}-key", capabilities::CRYPTO),
             signed_at: now,
         },
         provider_metadata: ProviderMetadata {
             provider_id: uuid::Uuid::new_v4().to_string(),
-            provider_type: primals::BEARDOG.to_string(),
+            provider_type: capabilities::CRYPTO.to_string(),
             provider_version: "2.0.0".to_string(),
             metadata: std::collections::HashMap::new(),
         },

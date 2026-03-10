@@ -203,7 +203,10 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "Hangs with llvm-cov instrumentation due to performance overhead"]
+    #[cfg_attr(
+        not(feature = "slow-tests"),
+        ignore = "Hangs with llvm-cov instrumentation due to performance overhead"
+    )]
     async fn test_benchmark_simple() {
         let config = PerformanceTestConfig {
             test_name: "simple".to_string(),
@@ -227,7 +230,10 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "Hangs with llvm-cov instrumentation due to performance overhead"]
+    #[cfg_attr(
+        not(feature = "slow-tests"),
+        ignore = "Hangs with llvm-cov instrumentation due to performance overhead"
+    )]
     async fn test_benchmark_with_resource_monitoring() {
         let config = PerformanceTestConfig {
             test_name: "with_monitoring".to_string(),
@@ -254,7 +260,10 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "Hangs with llvm-cov instrumentation due to performance overhead"]
+    #[cfg_attr(
+        not(feature = "slow-tests"),
+        ignore = "Hangs with llvm-cov instrumentation due to performance overhead"
+    )]
     async fn test_load_test_simple() {
         let config = PerformanceTestConfig::default();
         let manager = PerformanceTestManager::new(config);

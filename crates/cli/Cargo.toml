@@ -143,6 +143,7 @@ rustix = { version = "0.38", features = ["process"] }
 
 [features]
 default = ["full"]
+slow-tests = []
 full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm", "nautilus", "python"]
 python = ["dep:toadstool-runtime-python"]
 ecosystem = []

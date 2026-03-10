@@ -29,6 +29,7 @@ use toadstool_core::{
     HardwareTransport, TransportDirection, TransportError, TransportInfo, TransportMedium,
 };
 use toadstool_sysmon::gpu::{discover_gpus, GpuDevice, GpuVendor};
+use toadstool_sysmon::pcie_topology::{discover_topology, PciBridge};
 
 /// A `PCIe` link between two GPU render nodes.
 ///
@@ -72,6 +73,12 @@ pub struct PcieLink {
     pub bandwidth_bps: u64,
     /// Whether both GPUs share the same NUMA node.
     pub same_numa: bool,
+    /// The `PCIe` switch/bridge shared between source and target (if any).
+    pub via_switch: Option<PciBridge>,
+    /// Number of switch hops between source and target (0 = direct neighbor).
+    pub hops: u32,
+    /// Contention factor from switch fan-out (1.0 = uncontested, 0.25 = 4-way shared).
+    pub contention_factor: f64,
 }
 
 impl PcieTransport {
@@ -148,8 +155,7 @@ impl HardwareTransport for PcieTransport {
             .open(&self.target.render_node)
             .map_err(TransportError::Io)?;
 
-        file.write_all(data)
-            .map_err(TransportError::Io)?;
+        file.write_all(data).map_err(TransportError::Io)?;
 
         Ok(data.len())
     }
@@ -160,9 +166,7 @@ impl HardwareTransport for PcieTransport {
             .open(&self.source.render_node)
             .map_err(TransportError::Io)?;
 
-        let n = file
-            .read(buf)
-            .map_err(TransportError::Io)?;
+        let n = file.read(buf).map_err(TransportError::Io)?;
 
         Ok(n)
     }
@@ -170,36 +174,52 @@ impl HardwareTransport for PcieTransport {
 
 /// Discover all `PCIe` GPU-to-GPU links on the system.
 ///
-/// Returns one [`PcieLink`] for each ordered pair of GPUs. A system with
-/// 2 GPUs yields 2 links (A→B and B→A).
+/// Uses the full `PCIe` topology graph to include switch hierarchy, hop count,
+/// and contention factors. Returns one [`PcieLink`] for each ordered pair of
+/// GPUs. A system with 2 GPUs yields 2 links (A→B and B→A).
 #[must_use]
 pub fn discover_pcie_links() -> Vec<PcieLink> {
-    let gpus = discover_gpus();
-    if gpus.len() < 2 {
+    let topo = discover_topology();
+    if topo.gpus.len() < 2 {
         return Vec::new();
     }
 
     let mut links = Vec::new();
 
-    for source in &gpus {
-        for target in &gpus {
+    for source in &topo.gpus {
+        for target in &topo.gpus {
             if source.card_index == target.card_index {
                 continue;
             }
 
             let src_ep = endpoint_from_device(source);
             let tgt_ep = endpoint_from_device(target);
-            let bandwidth = estimate_link_bandwidth(&src_ep, &tgt_ep);
-            let same_numa = match (src_ep.numa_node, tgt_ep.numa_node) {
-                (Some(a), Some(b)) if a >= 0 && b >= 0 => a == b,
-                _ => false,
-            };
+
+            let pair_topo = topo.pair(source.card_index, target.card_index);
+
+            let bandwidth = pair_topo
+                .map(|_| topo.effective_bandwidth_bps(source.card_index, target.card_index))
+                .unwrap_or_else(|| estimate_link_bandwidth(&src_ep, &tgt_ep));
+
+            let same_numa = pair_topo.map(|p| p.same_numa).unwrap_or_else(|| {
+                matches!(
+                    (src_ep.numa_node, tgt_ep.numa_node),
+                    (Some(a), Some(b)) if a >= 0 && b >= 0 && a == b
+                )
+            });
+
+            let via_switch = pair_topo.and_then(|p| p.common_bridge.clone());
+            let hops = pair_topo.map_or(u32::MAX, |p| p.hops);
+            let contention_factor = pair_topo.map_or(1.0, |p| p.contention_factor);
 
             links.push(PcieLink {
                 source: src_ep,
                 target: tgt_ep,
                 bandwidth_bps: bandwidth,
                 same_numa,
+                via_switch,
+                hops,
+                contention_factor,
             });
         }
     }
@@ -276,7 +296,11 @@ fn raw_pcie_bandwidth_bps(gen: Option<u32>, width: Option<u32>) -> u64 {
         _ => return 0,
     };
     let lanes = u64::from(width.unwrap_or(1));
-    #[expect(clippy::cast_sign_loss, clippy::cast_possible_truncation, reason = "transfer rate is always positive and fits u64")]
+    #[expect(
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation,
+        reason = "transfer rate is always positive and fits u64"
+    )]
     let bits_per_second = (transfer_rate_gbps * 1e9) as u64 * lanes;
     bits_per_second
 }
@@ -344,7 +368,12 @@ mod tests {
         };
         let bw = estimate_link_bandwidth(&fast, &slow);
         let expected_raw = 128_000_000_000u64; // gen3 x16
-        #[expect(clippy::cast_sign_loss, clippy::cast_precision_loss, clippy::cast_possible_truncation, reason = "test assertion")]
+        #[expect(
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            reason = "test assertion"
+        )]
         let expected = (expected_raw as f64 * 0.78) as u64;
         assert_eq!(bw, expected);
     }
@@ -414,8 +443,12 @@ mod tests {
             },
             bandwidth_bps: 200_000_000_000,
             same_numa: true,
+            via_switch: None,
+            hops: 0,
+            contention_factor: 1.0,
         };
         assert!(link.same_numa);
+        assert!((link.contention_factor - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -425,7 +458,10 @@ mod tests {
 
     #[test]
     #[ignore = "requires 2+ GPU devices"]
-    #[expect(clippy::cast_precision_loss, reason = "display formatting for bandwidth")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "display formatting for bandwidth"
+    )]
     fn test_discover_pcie_links_on_hardware() {
         let links = discover_pcie_links();
         assert!(!links.is_empty(), "Expected PCIe links between GPUs");
@@ -444,9 +480,12 @@ mod tests {
         let links = discover_pcie_links();
         assert!(!links.is_empty());
         let link = &links[0];
-        let transport =
-            PcieTransport::open(link.source.clone(), link.target.clone());
-        assert!(transport.is_ok(), "Failed to open transport: {:?}", transport.err());
+        let transport = PcieTransport::open(link.source.clone(), link.target.clone());
+        assert!(
+            transport.is_ok(),
+            "Failed to open transport: {:?}",
+            transport.err()
+        );
         let t = transport.unwrap();
         assert!(t.is_available());
         assert!(t.bandwidth_bps() > 0);

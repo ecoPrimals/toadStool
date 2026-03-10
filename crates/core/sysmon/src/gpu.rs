@@ -59,7 +59,7 @@ pub struct GpuDevice {
     /// DRM driver name (e.g. "amdgpu", "nvidia", "nouveau", "i915")
     pub driver: String,
     /// Path to device sysfs directory
-    sysfs_device: PathBuf,
+    pub(crate) sysfs_device: PathBuf,
     /// Path to hwmon directory (if found)
     hwmon_path: Option<PathBuf>,
 }
@@ -90,12 +90,13 @@ pub struct GpuTelemetry {
 impl GpuTelemetry {
     /// VRAM utilization as a percentage (0.0 - 100.0).
     #[must_use]
-    #[expect(clippy::cast_precision_loss, reason = "VRAM bytes are well within f64 mantissa range for practical GPU sizes")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "VRAM bytes are well within f64 mantissa range for practical GPU sizes"
+    )]
     pub fn vram_utilization_percent(&self) -> Option<f64> {
         match (self.vram_used_bytes, self.vram_total_bytes) {
-            (Some(used), Some(total)) if total > 0 => {
-                Some(used as f64 / total as f64 * 100.0)
-            }
+            (Some(used), Some(total)) if total > 0 => Some(used as f64 / total as f64 * 100.0),
             _ => None,
         }
     }
@@ -138,8 +139,8 @@ pub fn discover_gpus() -> Vec<GpuDevice> {
 
         let pci_slot = read_sysfs_uevent_field(&device_path.join("uevent"), "PCI_SLOT_NAME")
             .unwrap_or_default();
-        let driver = read_sysfs_uevent_field(&device_path.join("uevent"), "DRIVER")
-            .unwrap_or_default();
+        let driver =
+            read_sysfs_uevent_field(&device_path.join("uevent"), "DRIVER").unwrap_or_default();
 
         let hwmon_path = find_hwmon_dir(&device_path);
 
@@ -163,33 +164,32 @@ impl GpuDevice {
     ///
     /// Sensors that are unavailable (runtime PM, permission, driver) return `None`.
     #[must_use]
-    #[expect(clippy::cast_precision_loss, reason = "hwmon values (millidegrees, microwatts, Hz) are well within f64 range")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "hwmon values (millidegrees, microwatts, Hz) are well within f64 range"
+    )]
     pub fn telemetry(&self) -> GpuTelemetry {
         let mut t = GpuTelemetry::default();
 
         if let Some(hwmon) = &self.hwmon_path {
-            t.temperature_celsius = read_sysfs_u64(&hwmon.join("temp1_input"))
-                .map(|v| v as f64 / 1000.0);
-            t.power_watts = read_sysfs_u64(&hwmon.join("power1_average"))
-                .map(|v| v as f64 / 1_000_000.0);
-            t.power_cap_watts = read_sysfs_u64(&hwmon.join("power1_cap"))
-                .map(|v| v as f64 / 1_000_000.0);
-            t.core_clock_mhz = read_sysfs_u64(&hwmon.join("freq1_input"))
-                .map(|v| v as f64 / 1_000_000.0);
-            t.memory_clock_mhz = read_sysfs_u64(&hwmon.join("freq2_input"))
-                .map(|v| v as f64 / 1_000_000.0);
+            t.temperature_celsius =
+                read_sysfs_u64(&hwmon.join("temp1_input")).map(|v| v as f64 / 1000.0);
+            t.power_watts =
+                read_sysfs_u64(&hwmon.join("power1_average")).map(|v| v as f64 / 1_000_000.0);
+            t.power_cap_watts =
+                read_sysfs_u64(&hwmon.join("power1_cap")).map(|v| v as f64 / 1_000_000.0);
+            t.core_clock_mhz =
+                read_sysfs_u64(&hwmon.join("freq1_input")).map(|v| v as f64 / 1_000_000.0);
+            t.memory_clock_mhz =
+                read_sysfs_u64(&hwmon.join("freq2_input")).map(|v| v as f64 / 1_000_000.0);
             t.fan_rpm = read_sysfs_u64(&hwmon.join("fan1_input"));
         }
 
         if self.vendor == GpuVendor::Amd {
-            t.utilization_percent = read_sysfs_u64(
-                &self.sysfs_device.join("gpu_busy_percent"),
-            )
-            .map(|v| v as f64);
-            t.vram_total_bytes =
-                read_sysfs_u64(&self.sysfs_device.join("mem_info_vram_total"));
-            t.vram_used_bytes =
-                read_sysfs_u64(&self.sysfs_device.join("mem_info_vram_used"));
+            t.utilization_percent =
+                read_sysfs_u64(&self.sysfs_device.join("gpu_busy_percent")).map(|v| v as f64);
+            t.vram_total_bytes = read_sysfs_u64(&self.sysfs_device.join("mem_info_vram_total"));
+            t.vram_used_bytes = read_sysfs_u64(&self.sysfs_device.join("mem_info_vram_used"));
         }
 
         t
@@ -245,11 +245,7 @@ impl GpuDevice {
 // --- sysfs helpers ---
 
 fn read_sysfs_u64(path: &Path) -> Option<u64> {
-    std::fs::read_to_string(path)
-        .ok()?
-        .trim()
-        .parse()
-        .ok()
+    std::fs::read_to_string(path).ok()?.trim().parse().ok()
 }
 
 fn read_sysfs_hex(path: &Path) -> Option<u32> {
@@ -259,7 +255,9 @@ fn read_sysfs_hex(path: &Path) -> Option<u32> {
 }
 
 fn read_sysfs_string(path: &Path) -> Option<String> {
-    std::fs::read_to_string(path).ok().map(|s| s.trim().to_string())
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|s| s.trim().to_string())
 }
 
 fn read_sysfs_uevent_field(uevent_path: &Path, key: &str) -> Option<String> {
@@ -381,13 +379,19 @@ mod tests {
             );
 
             let telem = gpu.telemetry();
-            println!("  temp: {:?}°C, power: {:?}W, vram: {:?}/{:?} bytes",
-                telem.temperature_celsius, telem.power_watts,
-                telem.vram_used_bytes, telem.vram_total_bytes);
+            println!(
+                "  temp: {:?}°C, power: {:?}W, vram: {:?}/{:?} bytes",
+                telem.temperature_celsius,
+                telem.power_watts,
+                telem.vram_used_bytes,
+                telem.vram_total_bytes
+            );
 
             let topo = gpu.pcie_topology();
-            println!("  PCIe gen{:?} x{:?}, NUMA {:?}, IOMMU group {:?}",
-                topo.gen, topo.width, topo.numa_node, topo.iommu_group);
+            println!(
+                "  PCIe gen{:?} x{:?}, NUMA {:?}, IOMMU group {:?}",
+                topo.gen, topo.width, topo.numa_node, topo.iommu_group
+            );
         }
     }
 }

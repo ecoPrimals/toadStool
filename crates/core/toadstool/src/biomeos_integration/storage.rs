@@ -218,7 +218,10 @@ impl StorageProvisioningManager {
 }
 
 /// Helper function to parse size strings (e.g., "100Gi", "1TB")
-#[allow(dead_code)] // Reserved: volume manifest size parsing; used in tests
+#[allow(
+    dead_code,
+    reason = "reserved for volume manifest size parsing; used in tests"
+)]
 fn parse_size_string(size_str: &str) -> Option<u64> {
     if let Some(value) = size_str.strip_suffix("Gi") {
         value.parse::<u64>().ok().map(|n| n * 1_073_741_824)

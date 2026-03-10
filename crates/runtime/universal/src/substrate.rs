@@ -189,6 +189,14 @@ pub struct SubstrateCapabilities {
 
     /// Best suited for continuous operation
     pub best_for_continuous: bool,
+
+    /// Memory capacity in bytes (runtime-discovered, 0 = unknown).
+    #[serde(default)]
+    pub memory_capacity_bytes: u64,
+
+    /// Memory bandwidth in bytes/second (runtime-discovered, 0 = unknown).
+    #[serde(default)]
+    pub memory_bandwidth_bps: u64,
 }
 
 impl SubstrateCapabilities {
@@ -207,6 +215,8 @@ impl SubstrateCapabilities {
                 best_for_latency: true,
                 best_for_energy: false,
                 best_for_continuous: true,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
             SubstrateType::Gpu => Self {
                 substrate_type,
@@ -217,6 +227,8 @@ impl SubstrateCapabilities {
                 best_for_latency: false,
                 best_for_energy: false,
                 best_for_continuous: true,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
             SubstrateType::IntegratedGpu => Self {
                 substrate_type,
@@ -227,6 +239,8 @@ impl SubstrateCapabilities {
                 best_for_latency: true,
                 best_for_energy: true,
                 best_for_continuous: true,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
             SubstrateType::Npu => Self {
                 substrate_type,
@@ -237,6 +251,8 @@ impl SubstrateCapabilities {
                 best_for_latency: true,
                 best_for_energy: true,
                 best_for_continuous: false,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
             SubstrateType::Tpu => Self {
                 substrate_type,
@@ -247,6 +263,8 @@ impl SubstrateCapabilities {
                 best_for_latency: false,
                 best_for_energy: false,
                 best_for_continuous: true,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
             SubstrateType::Fpga => Self {
                 substrate_type,
@@ -257,6 +275,8 @@ impl SubstrateCapabilities {
                 best_for_latency: true,
                 best_for_energy: true,
                 best_for_continuous: true,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
             SubstrateType::Dsp => Self {
                 substrate_type,
@@ -267,6 +287,8 @@ impl SubstrateCapabilities {
                 best_for_latency: true,
                 best_for_energy: true,
                 best_for_continuous: true,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
             SubstrateType::Quantum => Self {
                 substrate_type,
@@ -277,6 +299,8 @@ impl SubstrateCapabilities {
                 best_for_latency: false,
                 best_for_energy: false,
                 best_for_continuous: false,
+                memory_capacity_bytes: 0,
+                memory_bandwidth_bps: 0,
             },
         }
     }
@@ -474,8 +498,16 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
                 typical_ms: caps.latency_ms as u32,
                 deterministic: false,
             },
-            memory_capacity: 8 * 1024 * 1024 * 1024, // 8GB default
-            memory_bandwidth: 500 * 1024 * 1024 * 1024, // 500GB/s default
+            memory_capacity: if caps.memory_capacity_bytes > 0 {
+                caps.memory_capacity_bytes as usize
+            } else {
+                8 * 1024 * 1024 * 1024
+            },
+            memory_bandwidth: if caps.memory_bandwidth_bps > 0 {
+                caps.memory_bandwidth_bps as usize
+            } else {
+                500 * 1024 * 1024 * 1024
+            },
             compute_throughput: caps.throughput_ops_per_sec,
             optimal_batch_size: if caps.best_for_batch { 10_000 } else { 100 },
             supported_ops: vec![

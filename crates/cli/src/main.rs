@@ -38,8 +38,7 @@ async fn main() -> Result<()> {
 
     // UNIBIN: Detect how we were invoked for backward compatibility
     let bin_path = std::env::args().next();
-    #[allow(deprecated)]
-    let default_name = toadstool_common::interned_strings::primals::TOADSTOOL;
+    let default_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
     let bin_name = bin_path
         .as_deref()
         .and_then(|p| Path::new(p).file_name())

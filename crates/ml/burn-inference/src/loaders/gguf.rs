@@ -161,7 +161,7 @@ pub enum GgufMetaType {
 #[derive(Debug)]
 struct GgufTensorInfo {
     name: String,
-    #[allow(dead_code)] // GGUF format field; dims.len() used for shape
+    #[allow(dead_code, reason = "GGUF format field; dims.len() provides equivalent info")]
     n_dims: u32,
     dims: Vec<u64>,
     gguf_type: GgufType,

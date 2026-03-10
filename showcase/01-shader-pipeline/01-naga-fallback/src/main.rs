@@ -5,6 +5,20 @@ use serde_json::json;
 use std::path::Path;
 use tokio::net::UnixStream;
 
+/// `XDG_RUNTIME_DIR` fallback: discovers UID from `/proc/self/status` (pure Rust, no libc).
+fn runtime_dir_fallback() -> String {
+    let uid = std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("Uid:"))
+                .and_then(|l| l.split_whitespace().nth(1))
+                .and_then(|u| u.parse::<u32>().ok())
+        })
+        .unwrap_or(1000);
+    format!("/run/user/{uid}")
+}
+
 const WGSL_SOURCE: &str = r#"@group(0) @binding(0) var<storage, read_write> data: array<f32>;
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -57,7 +71,7 @@ async fn main() {
     println!("{}", "► Socket Check".cyan());
     let sock_path = std::env::var("XDG_RUNTIME_DIR")
         .map(|d| format!("{}/biomeos/toadstool.jsonrpc.sock", d))
-        .unwrap_or_else(|_| "/run/user/1000/biomeos/toadstool.jsonrpc.sock".to_string());
+        .unwrap_or_else(|_| format!("{}/biomeos/toadstool.jsonrpc.sock", runtime_dir_fallback()));
 
     let live = Path::new(&sock_path).exists()
         && UnixStream::connect(&sock_path).await.is_ok();

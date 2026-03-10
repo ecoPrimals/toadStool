@@ -291,7 +291,10 @@ async fn test_update_preferences_no_session_id() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "slow integration test - runs hardware/network detection"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - runs hardware/network detection"
+)]
 async fn test_get_system_status() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -332,7 +335,10 @@ async fn test_get_system_status() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"
+)]
 async fn test_request_counter_increments() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -372,7 +378,10 @@ async fn test_request_counter_increments() {
 }
 
 #[tokio::test]
-#[ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"
+)]
 async fn test_request_counter_multiple_requests() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -406,7 +415,10 @@ async fn test_request_counter_multiple_requests() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"
+)]
 async fn test_session_activity_updates() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -448,7 +460,10 @@ async fn test_session_activity_updates() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "slow integration test - runs auto-config generation"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - runs auto-config generation"
+)]
 async fn test_execute_with_intent_basic() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -494,7 +509,10 @@ async fn test_execute_with_intent_basic() {
 }
 
 #[tokio::test]
-#[ignore = "slow integration test - runs auto-config generation"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - runs auto-config generation"
+)]
 async fn test_execute_with_high_security_intent() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -540,7 +558,10 @@ async fn test_execute_with_high_security_intent() {
 }
 
 #[tokio::test]
-#[ignore = "slow integration test - runs auto-config generation"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - runs auto-config generation"
+)]
 async fn test_execute_with_gpu_intent() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -593,7 +614,10 @@ async fn test_execute_with_gpu_intent() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "slow integration test - runs NL config processing"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - runs NL config processing"
+)]
 async fn test_optimize_for_task() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -625,7 +649,10 @@ async fn test_optimize_for_task() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "slow integration test - runs NL config processing"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - runs NL config processing"
+)]
 async fn test_natural_language_config() {
     let mut interface = AiMcpInterface::new().unwrap();
 
@@ -656,7 +683,10 @@ async fn test_natural_language_config() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "slow integration test - calls GetSystemStatus which triggers hardware detection"
+)]
 async fn test_metadata_handling() {
     let mut interface = AiMcpInterface::new().unwrap();
 

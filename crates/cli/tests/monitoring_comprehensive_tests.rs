@@ -242,7 +242,10 @@ async fn test_metric_aggregation() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
-#[ignore = "Stress test - slow (>60s with coverage), run manually"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "Stress test - slow (>60s with coverage), run manually"
+)]
 async fn test_stress_500_concurrent_monitor_operations() {
     use tokio::time::{timeout, Duration};
 

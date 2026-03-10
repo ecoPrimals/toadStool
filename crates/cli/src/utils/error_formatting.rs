@@ -4,16 +4,13 @@
 //! Uses `Cow<'_, str>` for conditional allocation - only allocates when formatting is needed.
 
 use std::borrow::Cow;
-#[allow(deprecated)]
-use toadstool_config::constants::primals;
+use toadstool_common::interned_strings::capabilities;
 
 /// Get contextual error suggestion based on error content.
 ///
 /// Returns `Cow::Borrowed` for static suggestions, `Cow::Owned` for dynamic ones.
 ///
-/// Uses primal name constants for error string matching (UX hints) — not for
-/// service discovery or connection, so the deprecation doesn't apply.
-#[allow(deprecated)]
+/// Matches both capability names and legacy primal names in error strings for UX hints.
 pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static, str>> {
     let error_str = error.to_string().to_lowercase();
 
@@ -93,20 +90,20 @@ pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static
         ));
     }
 
-    // Ecosystem errors
-    if error_str.contains(primals::SONGBIRD) {
+    // Ecosystem errors (match both capability and legacy primal names)
+    if error_str.contains("songbird") || error_str.contains(capabilities::COORDINATION) {
         return Some(Cow::Borrowed(
             "💡 Use 'toadstool ecosystem discover' to find orchestration instances or check network connectivity.",
         ));
     }
 
-    if error_str.contains(primals::NESTGATE) {
+    if error_str.contains("nestgate") || error_str.contains(capabilities::STORAGE) {
         return Some(Cow::Borrowed(
             "💡 Verify storage endpoint and credentials. Use 'toadstool ecosystem storage --help' for options.",
         ));
     }
 
-    if error_str.contains(primals::BEARDOG) {
+    if error_str.contains("beardog") || error_str.contains(capabilities::CRYPTO) {
         return Some(Cow::Borrowed(
             "💡 Install PKI security permissions with 'toadstool ecosystem auth <permission-file>'.",
         ));

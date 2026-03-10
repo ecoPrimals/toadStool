@@ -18,7 +18,10 @@ use std::time::Duration;
 ///
 /// Deep Debt: These are NOT hardcoded - they're hardware constants
 /// that are part of the Akida AKD1000 specification.
-#[allow(dead_code)] // Some registers used in future phases
+#[allow(
+    dead_code,
+    reason = "hardware register definitions used in future driver phases"
+)]
 mod registers {
     pub const REG_DEVICE_ID: usize = 0x00; // Device identification
     pub const REG_VERSION: usize = 0x04; // Chip version

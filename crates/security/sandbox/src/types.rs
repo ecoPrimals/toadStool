@@ -39,8 +39,7 @@ pub struct SandboxConfig {
 
 impl Default for SandboxConfig {
     fn default() -> Self {
-        #[allow(deprecated)]
-        let primal_name = toadstool_common::interned_strings::primals::TOADSTOOL;
+        let primal_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
 
         // Platform-agnostic path resolution (ecoBin v2.0 compliant)
         let sandbox_root = std::env::var("XDG_DATA_HOME")

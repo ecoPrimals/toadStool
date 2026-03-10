@@ -213,7 +213,10 @@ impl VulkanBackend {
     /// Caller must ensure:
     /// - Device is valid for the lifetime of this backend
     /// - Memory properties match the device
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "Vulkan device constructor; used when Vulkan runtime is available"
+    )]
     pub unsafe fn with_device(
         _device: u64,          // vk::Device as u64
         _physical_device: u64, // vk::PhysicalDevice as u64

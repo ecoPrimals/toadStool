@@ -74,6 +74,8 @@ pub mod orchestrator;
 pub mod policy;
 pub mod resource_orchestrator;
 pub mod scheduler;
+pub mod workload_health;
+pub mod workload_routing;
 
 pub use error::OrchestrationError;
 pub use load_balancer::{BalancingStrategy, LoadBalancer, Substrate};
@@ -87,3 +89,9 @@ pub use resource_orchestrator::{
     TenantQuota, TenantUsage,
 };
 pub use scheduler::{ExecutionSchedule, ScheduledTask, SchedulingStrategy, WorkloadScheduler};
+pub use workload_health::{
+    AttentionState, InterruptAction, WorkloadAnomaly, WorkloadHealthMonitor, WorkloadInterrupt,
+};
+pub use workload_routing::{
+    MultiGpuPlacement, RoutingThreshold, SubstrateTarget, WorkloadPattern, WorkloadRouter,
+};

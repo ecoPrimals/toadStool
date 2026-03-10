@@ -113,6 +113,12 @@ pub mod capabilities {
     /// Native shader compilation pipeline
     pub const SHADER_COMPILE_NATIVE: &str = "shader.compile.native";
 
+    /// GPU hardware calibration (NVVM safety, precision tier probing).
+    pub const GPU_CALIBRATION: &str = "gpu.calibration";
+
+    /// Workload routing (substrate selection based on problem size).
+    pub const WORKLOAD_ROUTING: &str = "workload.routing";
+
     /// Orchestration capability
     pub const ORCHESTRATION: &str = "orchestration";
 

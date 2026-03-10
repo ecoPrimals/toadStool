@@ -476,8 +476,7 @@ impl ZeroConfigDeployment {
         let mut peers = Vec::new();
 
         // Primary: Unix socket discovery (biomeOS runtime)
-        #[allow(deprecated)]
-        let self_name = toadstool_common::interned_strings::primals::TOADSTOOL;
+        let self_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
         if let Some(peer) = self.try_unix_socket_discovery(self_name).await? {
             peers.push(peer);
         }

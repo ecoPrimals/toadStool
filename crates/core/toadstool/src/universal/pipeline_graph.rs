@@ -284,13 +284,13 @@ pub fn compute_triangle_pipeline() -> PipelineGraph {
         id: "compile".to_string(),
         capability: "shader.compile".to_string(),
         substrate: Substrate::CpuOnly,
-        label: "Shader Compile (coralReef)".to_string(),
+        label: "Shader Compile".to_string(),
     });
     g.add_stage(StageNode {
         id: "dispatch".to_string(),
         capability: "gpu.dispatch".to_string(),
         substrate: Substrate::GpuOnly,
-        label: "GPU Dispatch (barraCuda)".to_string(),
+        label: "GPU Dispatch".to_string(),
     });
 
     g.add_edge("discover", "compile");

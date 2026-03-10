@@ -114,7 +114,8 @@ impl AvailableDevice {
     /// VRAM remaining for new allocations.
     #[must_use]
     pub fn free_vram_bytes(&self) -> u64 {
-        self.total_vram_bytes.saturating_sub(self.allocated_vram_bytes)
+        self.total_vram_bytes
+            .saturating_sub(self.allocated_vram_bytes)
     }
 }
 
@@ -142,13 +143,8 @@ impl ResourceOrchestrator {
 
     /// Register a tenant with resource quotas.
     pub fn register_tenant(&self, tenant_id: &str, quota: TenantQuota) {
-        self.quotas
-            .write()
-            .insert(tenant_id.to_string(), quota);
-        self.usage
-            .write()
-            .entry(tenant_id.to_string())
-            .or_default();
+        self.quotas.write().insert(tenant_id.to_string(), quota);
+        self.usage.write().entry(tenant_id.to_string()).or_default();
     }
 
     /// Request resource allocation for a tenant.
@@ -247,8 +243,7 @@ impl ResourceOrchestrator {
         let device = devices
             .iter_mut()
             .filter(|d| {
-                request.preferred_devices.is_empty()
-                    || request.preferred_devices.contains(&d.index)
+                request.preferred_devices.is_empty() || request.preferred_devices.contains(&d.index)
             })
             .filter(|d| d.free_vram_bytes() >= request.min_vram_bytes)
             .max_by_key(|d| d.free_vram_bytes());
@@ -269,9 +264,7 @@ impl ResourceOrchestrator {
 
         let mut usage = self.usage.write();
         let tenant_usage = usage.entry(request.tenant_id.clone()).or_default();
-        tenant_usage
-            .device_allocations
-            .insert(idx, allocated);
+        tenant_usage.device_allocations.insert(idx, allocated);
         tenant_usage.active_workloads += 1;
 
         Ok(ResourceAllocation {
@@ -291,10 +284,7 @@ impl ResourceOrchestrator {
         self.allocate_local_multi(request)
     }
 
-    fn check_quota(
-        &self,
-        request: &ResourceRequest,
-    ) -> Result<(), OrchestrationError> {
+    fn check_quota(&self, request: &ResourceRequest) -> Result<(), OrchestrationError> {
         let quotas = self.quotas.read();
         let Some(quota) = quotas.get(&request.tenant_id) else {
             return Ok(());

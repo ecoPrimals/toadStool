@@ -2,11 +2,10 @@
 //! Primal Adapters
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
-#![allow(deprecated)] // primals module deprecated; intentional use during capability-discovery migration
 
 use async_trait::async_trait;
-#[allow(deprecated)]
-use toadstool_common::interned_strings::{capabilities, primals};
+use toadstool_common::constants::PRIMAL_NAME;
+use toadstool_common::interned_strings::capabilities;
 // No longer using reqwest - using unix sockets (pure Rust!)
 use serde::{Deserialize, Serialize};
 
@@ -111,7 +110,7 @@ impl SongbirdAdapter {
 #[async_trait]
 impl PrimalAdapter for SongbirdAdapter {
     fn primal_name(&self) -> &str {
-        primals::SONGBIRD
+        capabilities::COORDINATION
     }
 
     fn endpoint(&self) -> &str {
@@ -124,7 +123,7 @@ impl PrimalAdapter for SongbirdAdapter {
     ) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let registration = SongbirdRegistrationRequest {
-            service_id: primals::TOADSTOOL.to_string(),
+            service_id: PRIMAL_NAME.to_string(),
             service_endpoint: self.toadstool_endpoint.clone(),
             capabilities: capabilities
                 .iter()
@@ -165,7 +164,7 @@ impl PrimalAdapter for SongbirdAdapter {
     async fn send_heartbeat(&self) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let heartbeat = SongbirdHeartbeat {
-            service_id: primals::TOADSTOOL.to_string(),
+            service_id: PRIMAL_NAME.to_string(),
             timestamp: std::time::SystemTime::now(),
             status: "healthy".to_string(),
         };
@@ -191,7 +190,7 @@ impl PrimalAdapter for SongbirdAdapter {
     ) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let update = SongbirdCapabilityUpdate {
-            service_id: primals::TOADSTOOL.to_string(),
+            service_id: PRIMAL_NAME.to_string(),
             capability_id: capability.id.clone(),
             available,
             timestamp: std::time::SystemTime::now(),
@@ -214,7 +213,7 @@ impl PrimalAdapter for SongbirdAdapter {
     async fn deregister(&self) -> Result<(), DistributedError> {
         // Songbird Federation API via JSON-RPC over unix socket
         let request = SongbirdDeregisterRequest {
-            service_id: primals::TOADSTOOL.to_string(),
+            service_id: PRIMAL_NAME.to_string(),
         };
 
         let params = serde_json::to_value(&request)?;
@@ -301,7 +300,7 @@ mod tests {
             "http://toadstool:9090".to_string(),
         )
         .unwrap();
-        assert_eq!(adapter.primal_name(), "songbird");
+        assert_eq!(adapter.primal_name(), "coordination");
         assert_eq!(adapter.endpoint(), "http://songbird:8080");
     }
 
@@ -322,7 +321,7 @@ mod tests {
             let result = SongbirdAdapter::new("http://songbird:8080");
             assert!(result.is_ok());
             let adapter = result.unwrap();
-            assert_eq!(adapter.primal_name(), "songbird");
+            assert_eq!(adapter.primal_name(), "coordination");
             assert_eq!(adapter.endpoint(), "http://songbird:8080");
         });
     }
@@ -394,7 +393,7 @@ mod tests {
             "http://localhost:9090".to_string(),
         )
         .unwrap();
-        assert_eq!(adapter.primal_name(), "songbird");
+        assert_eq!(adapter.primal_name(), "coordination");
         assert_eq!(adapter.endpoint(), "unix:///tmp/songbird.sock");
     }
 

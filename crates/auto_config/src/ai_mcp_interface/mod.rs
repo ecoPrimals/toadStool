@@ -205,7 +205,10 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "slow integration test - runs full NL processing and hardware detection"]
+    #[cfg_attr(
+        not(feature = "slow-tests"),
+        ignore = "slow integration test - runs full NL processing and hardware detection"
+    )]
     async fn test_natural_language_config_request() {
         let mut interface = AiMcpInterface::new().unwrap();
 

@@ -224,7 +224,10 @@ impl OpenClBackend {
     /// - Context is valid for the lifetime of this backend
     /// - Device matches the context
     /// - SVM flag is correct for the device
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "OpenCL context constructor; used when OpenCL runtime is available"
+    )]
     pub unsafe fn with_context(
         _context_handle: u64,
         _device_handle: u64,

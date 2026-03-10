@@ -34,72 +34,17 @@ pub mod ports {
     pub const SQUIRREL: u16 = capability_fallback::PLATFORM;
 }
 
-/// # ⚠️ DEPRECATED: Ecosystem primal service names
+/// Capability-based service identifiers (preferred)
 ///
-/// **`WateringHole` Sovereignty**: Discover by CAPABILITY, not by hardcoded name.
-/// Scan for what a service CAN DO, not what it IS CALLED.
-///
-/// **Use `RuntimeDiscovery` instead** for primal-agnostic, capability-based discovery.
-///
-/// These hardcoded names assume:
-/// - Fixed primal names (not extensible)
-/// - Known ecosystem topology (not dynamic)
-/// - Centralized naming (not federated)
-///
-/// # Modern Alternative
-///
-/// ```rust,ignore
-/// use toadstool_common::{RuntimeDiscovery, Capability};
-///
-/// // OLD (hardcoded name):
-/// // let service_name = constants::primals::SONGBIRD;
-///
-/// // NEW (discover by capability):
-/// let discovery = RuntimeDiscovery::new(client);
-/// let services = discovery
-///     .discover_capability(&Capability::Coordination)
-///     .await?;
-/// // Returns whatever coordinator is available, regardless of name
-/// ```
-///
-/// **Philosophy**: ToadStool should only know about itself. Discover others at runtime.
-#[deprecated(
-    since = "0.3.0",
-    note = "Use RuntimeDiscovery::discover_capability() for primal-agnostic service discovery. \
-            Hardcoded primal names violate self-knowledge principle. See module docs."
-)]
-pub mod primals {
-    #[allow(deprecated)]
-    use toadstool_common::interned_strings::primals as canonical;
+/// Use these for discovery and routing. Re-exports from `toadstool_common::interned_strings::capabilities`.
+pub mod capabilities {
+    pub use toadstool_common::constants::PRIMAL_NAME;
+    pub use toadstool_common::interned_strings::capabilities::{
+        COORDINATION, CRYPTO, INTELLIGENCE, STORAGE,
+    };
 
-    /// Songbird service mesh identifier
-    /// **DEPRECATED**: Discover coordinator by capability, not hardcoded name
-    #[allow(deprecated)]
-    pub const SONGBIRD: &str = canonical::SONGBIRD;
-
-    /// BearDog security service identifier
-    /// **DEPRECATED**: Discover security service by capability, not hardcoded name
-    #[allow(deprecated)]
-    pub const BEARDOG: &str = canonical::BEARDOG;
-
-    /// NestGate storage service identifier
-    /// **DEPRECATED**: Discover storage service by capability, not hardcoded name
-    #[allow(deprecated)]
-    pub const NESTGATE: &str = canonical::NESTGATE;
-
-    /// ToadStool compute service identifier
-    /// **This is self-knowledge** - the only canonical name for THIS primal.
-    #[allow(deprecated)]
-    pub const TOADSTOOL: &str = canonical::TOADSTOOL;
-
-    /// Squirrel MCP platform identifier
-    /// **DEPRECATED**: Discover MCP platform by capability, not hardcoded name
-    #[allow(deprecated)]
-    pub const SQUIRREL: &str = canonical::SQUIRREL;
-
-    /// All known primal identifiers
-    /// **DEPRECATED**: Cannot enumerate dynamic ecosystem - discover at runtime
-    pub const ALL: &[&str] = &[SONGBIRD, BEARDOG, NESTGATE, TOADSTOOL, SQUIRREL];
+    /// All known capability identifiers
+    pub const ALL: &[&str] = &[COORDINATION, CRYPTO, STORAGE, PRIMAL_NAME, INTELLIGENCE];
 }
 
 /// Default network configuration
@@ -156,11 +101,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)] // Testing legacy constants during migration
-    fn test_primal_constants() {
-        assert_eq!(primals::SONGBIRD, "songbird");
-        assert_eq!(primals::BEARDOG, "beardog");
-        assert_eq!(primals::ALL.len(), 5);
+    fn test_capability_constants() {
+        assert_eq!(capabilities::COORDINATION, "coordination");
+        assert_eq!(capabilities::CRYPTO, "crypto");
+        assert_eq!(capabilities::ALL.len(), 5);
     }
 
     #[test]

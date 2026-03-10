@@ -5,7 +5,39 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 10, 2026 (Sessions 43-141)
+## [Unreleased] - March 10, 2026 (Sessions 43-144)
+
+### Session S144 (Mar 10, 2026) — Last Mile Deep Debt
+
+#### PCIe Switch Topology
+- **`pcie_topology.rs`** (`toadstool-sysmon`): `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph` — sysfs parent bridge chain discovery, shared switch detection, contention-aware bandwidth estimation for multi-GPU daisy-chain arrays
+- **`PcieLink` enriched**: `via_switch` (shared bridge), `hops` (switch hop count), `contention_factor` (fan-out contention 1.0–0.25)
+- **`WorkloadRouter::route_multi_gpu()`**: Topology-aware multi-GPU placement — selects GPU groups sharing PCIe switches for fast P2P communication
+- **`MultiGpuPlacement`**: Struct with `gpu_indices`, `shared_switch`, `min_interconnect_bps`
+
+#### Deprecated API Migration (20+ files)
+- `primals::TOADSTOOL` → `primal_identity::PRIMAL_NAME` in 7 files (server, cli, config, display, sandbox)
+- `primals::BEARDOG` → `capabilities::CRYPTO` in 5 files (distributed, integration/beardog)
+- `primals::SONGBIRD` → `capabilities::COORDINATION` in 2 files (distributed/songbird)
+- `primals::NESTGATE` → `capabilities::STORAGE` in 2 files (integration/nestgate)
+- `EnvironmentConfig` deprecated fields → direct env var lookups in 2 files (server config, scheduler)
+- `get_socket_path_for_service` → `get_socket_path_for_capability` in nestgate client
+- `well_known::BEARDOG` → `capabilities::CRYPTO` in beardog client
+- All `#[allow(deprecated)]` removed from migrated sites
+
+#### Dead Code Audit (47 instances)
+- All `#[allow(dead_code)]` upgraded to `#[allow(dead_code, reason = "...")]` with explicit justification
+- Categories: VFIO hardware registers, kernel ABI structs, serde-required fields, DRM modesetting pipeline, OpenCL/Vulkan constructors, future-phase placeholders
+
+#### Ignored Test Evolution
+- **`slow-tests` feature flag**: `auto_config`, `cli`, `testing` crates — `#[cfg_attr(not(feature = "slow-tests"), ignore = "...")]`
+- **`gpu_guards` module** (`toadstool-testing`): `is_wgpu_safe()`, `wgpu_skip_reason()`, `detect_nvidia_proprietary()` — safe wgpu test skipping on NVIDIA proprietary drivers (SIGSEGV during device teardown)
+
+#### coralReef Multi-Device Compile
+- `MultiDeviceCompileRequest`, `DeviceTarget`, `MultiDeviceCompileResponse` types
+- `compile_wgsl` evolved with `target_device` parameter for per-GPU ISA optimization
+- New `compile_wgsl_multi` method for array compilation
+- `shader.compile.wgsl.multi` JSON-RPC endpoint wired (both dot and snake_case)
 
 ### Session S141 (Mar 10, 2026) — Deep Debt Evolution & Pedantic Sweep
 

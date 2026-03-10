@@ -35,8 +35,11 @@ pub struct PolicyManagerConfig {
 
 impl Default for PolicyManagerConfig {
     fn default() -> Self {
+        let env = toadstool_common::platform_paths::PathEnv::from_env();
+        let paths = toadstool_common::platform_paths::PlatformPaths::new(&env);
+
         Self {
-            policy_dir: PathBuf::from("/etc/toadstool/policies"),
+            policy_dir: paths.config_dir().join("toadstool").join("policies"),
             cache_enabled: true,
             cache_ttl_hours: 24,
             strict_enforcement: true,

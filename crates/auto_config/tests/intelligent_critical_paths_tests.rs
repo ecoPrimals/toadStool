@@ -90,7 +90,10 @@ async fn test_generate_intelligent_config_completes() {
 }
 
 #[tokio::test]
-#[ignore = "Slow test - runs full auto-configuration pipeline"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "Slow test - runs full auto-configuration pipeline"
+)]
 async fn test_auto_configure_full_pipeline() {
     // Test the main zero-touch entry point
     let result = IntelligentAutoConfig::auto_configure().await;

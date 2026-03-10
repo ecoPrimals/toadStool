@@ -227,22 +227,21 @@ impl ServiceType {
             "discovery" | "orchestration" | "coordination" => ServiceType::Discovery,
             "crypto" | "pki" | "security" => ServiceType::Crypto,
             "storage" => ServiceType::Storage,
-            "compute" | "compute:execution" => ServiceType::Compute,
+            "compute" | "compute:execution" | "intelligence" => ServiceType::Compute,
             _ => ServiceType::Generic,
         }
     }
 
     /// Create from service name (backward compatibility when parsing discovered services).
     /// Resolves legacy primal names to capability categories.
-    #[allow(deprecated)]
     pub fn from_name(name: &str) -> Self {
-        use toadstool_common::interned_strings::primals;
+        use toadstool_common::interned_strings::capabilities;
         Self::from_capability(match name.to_lowercase().as_str() {
-            n if n == primals::SONGBIRD => "discovery",
-            n if n == primals::BEARDOG => "crypto",
-            n if n == primals::NESTGATE => "storage",
-            n if n == primals::TOADSTOOL => "compute",
-            n if n == primals::SQUIRREL => "compute",
+            n if n == "songbird" || n == capabilities::COORDINATION => capabilities::COORDINATION,
+            n if n == "beardog" || n == capabilities::CRYPTO => capabilities::CRYPTO,
+            n if n == "nestgate" || n == capabilities::STORAGE => capabilities::STORAGE,
+            n if n == "toadstool" || n == capabilities::COMPUTE => capabilities::COMPUTE,
+            n if n == "squirrel" => capabilities::INTELLIGENCE,
             other => other,
         })
     }
@@ -279,33 +278,26 @@ pub struct CryptoVerificationContext {
 }
 
 impl Default for CryptoVerificationContext {
-    #[allow(deprecated)]
     fn default() -> Self {
-        use toadstool_common::interned_strings::{capabilities, primals};
+        use toadstool_common::interned_strings::capabilities;
 
         let mut trusted_keys = HashMap::new();
 
         // Capability-based env vars first, legacy primal names for backward compat
         if let Ok(key) = std::env::var("CRYPTO_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::CRYPTO.to_string(), key.clone());
-            trusted_keys.insert(primals::BEARDOG.to_string(), key);
+            trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
         } else if let Ok(key) = std::env::var("BEARDOG_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::CRYPTO.to_string(), key.clone());
-            trusted_keys.insert(primals::BEARDOG.to_string(), key);
+            trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
         }
         if let Ok(key) = std::env::var("STORAGE_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::STORAGE.to_string(), key.clone());
-            trusted_keys.insert(primals::NESTGATE.to_string(), key);
+            trusted_keys.insert(capabilities::STORAGE.to_string(), key);
         } else if let Ok(key) = std::env::var("NESTGATE_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::STORAGE.to_string(), key.clone());
-            trusted_keys.insert(primals::NESTGATE.to_string(), key);
+            trusted_keys.insert(capabilities::STORAGE.to_string(), key);
         }
         if let Ok(key) = std::env::var("DISCOVERY_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::COORDINATION.to_string(), key.clone());
-            trusted_keys.insert(primals::SONGBIRD.to_string(), key);
+            trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
         } else if let Ok(key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::COORDINATION.to_string(), key.clone());
-            trusted_keys.insert(primals::SONGBIRD.to_string(), key);
+            trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
         }
 
         Self {

@@ -10,6 +10,9 @@ pub mod opencl;
 #[cfg(feature = "wgpu-backend")]
 pub mod wgpu_backend;
 
+#[cfg(feature = "wgpu-backend")]
+pub mod nvvm_safety;
+
 #[cfg(feature = "cpu")]
 pub use cpu::CpuComputeUnit;
 
@@ -20,4 +23,10 @@ pub use opencl::OpenClComputeUnit;
 pub use wgpu_backend::{
     GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, PrecisionRoutingAdvice,
     SubstrateCapabilityKind, WgpuComputeUnit,
+};
+
+#[cfg(feature = "wgpu-backend")]
+pub use nvvm_safety::{
+    check_device_health, DeviceHealthStatus, HardwareCalibration, NvvmPoisoningRisk, PrecisionTier,
+    TierCapability,
 };

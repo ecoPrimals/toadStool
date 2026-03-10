@@ -273,7 +273,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — run with --ignored on safe hardware"]
+    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
     async fn test_universal_runtime_discover_has_cpu() {
         let runtime = UniversalRuntime::discover().await.unwrap();
         assert!(runtime.num_units() > 0);
@@ -282,7 +282,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — run with --ignored on safe hardware"]
+    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
     async fn test_execute_on_cpu_unit() {
         let runtime = UniversalRuntime::discover().await.unwrap();
         let w = simple_f32_workload(
@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — run with --ignored on safe hardware"]
+    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
     async fn test_execute_optimal_dispatches() {
         let runtime = UniversalRuntime::discover().await.unwrap();
         let w = simple_f32_workload(
@@ -306,7 +306,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — run with --ignored on safe hardware"]
+    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
     async fn test_execute_on_invalid_index_returns_error() {
         let runtime = UniversalRuntime::discover().await.unwrap();
         let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![]));
@@ -315,7 +315,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — run with --ignored on safe hardware"]
+    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
     async fn test_execute_on_type_cpu() {
         let runtime = UniversalRuntime::discover().await.unwrap();
         let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![1.0, 2.0]));
@@ -327,7 +327,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — run with --ignored on safe hardware"]
+    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
     async fn test_units_by_type_cpu() {
         let runtime = UniversalRuntime::discover().await.unwrap();
         let cpu_units = runtime.units_by_type(ComputeUnitType::Cpu);
@@ -335,7 +335,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — run with --ignored on safe hardware"]
+    #[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
     async fn test_execute_map_f32() {
         let runtime = UniversalRuntime::discover().await.unwrap();
         let input = vec![1.0f32, 2.0, 3.0];

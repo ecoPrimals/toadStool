@@ -11,7 +11,10 @@ use super::buffer::DumbBuffer;
 use super::connector::{ConnectorInfo, DisplayMode};
 
 /// An active modesetting pipeline: connector -> encoder -> CRTC -> framebuffer.
-#[allow(dead_code)]
+#[allow(
+    dead_code,
+    reason = "DRM modesetting pipeline; used when display hardware is available"
+)]
 pub struct ModesetPipeline {
     /// The CRTC driving this pipeline.
     pub(crate) crtc: drm::control::crtc::Handle,

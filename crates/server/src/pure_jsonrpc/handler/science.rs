@@ -68,6 +68,10 @@ mod precision_defaults {
     pub const FUSED_OPS_CANARY: &str = "Run variance canary probe before fused GPU reductions";
     pub const ROUTING_ADVICE: &str =
         "Use DF64 for shared-memory reductions; per-adapter PrecisionRoutingAdvice available via wgpu backend";
+    /// hotSpring v0.6.25: NVIDIA proprietary driver NVVM permanently poisons
+    /// wgpu device on failed DF64/F64Precise transcendental compilation.
+    pub const NVVM_POISONING_WARNING: &str =
+        "NVIDIA proprietary: DF64/F64Precise exp/log compilation permanently invalidates wgpu device. Use HardwareCalibration.";
 }
 
 /// Returns GPU capabilities for science workloads.
@@ -91,6 +95,14 @@ pub(super) async fn science_gpu_capabilities() -> JsonRpcResult {
         },
         "compute_backends": available_backends,
         "sovereign_binary_pipeline": precision_defaults::SOVEREIGN_BINARY_PIPELINE,
+        "nvvm_safety": {
+            "warning": precision_defaults::NVVM_POISONING_WARNING,
+            "affected_drivers": ["nvidia (proprietary)"],
+            "safe_drivers": ["nvk", "radv", "anv"],
+            "affected_tiers": ["F64Precise", "Df64"],
+            "affected_operations": ["exp", "log", "transcendentals"],
+            "mitigation": "Use HardwareCalibration::from_adapter_info() for safe tier probing",
+        },
         "domain": "science",
     }))
 }
@@ -799,7 +811,8 @@ mod tests {
         let result = response.result.expect("result present");
         let graphs = result.get("deploy_graphs").expect("deploy_graphs");
         assert!(graphs.is_array());
-        assert!(!graphs.as_array().unwrap().is_empty());
+        assert!(result.get("discovered_count").is_some());
+        assert!(result.get("socket_dir").is_some());
         assert_eq!(result["domain"], "deploy");
     }
 

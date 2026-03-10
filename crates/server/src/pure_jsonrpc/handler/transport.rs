@@ -4,9 +4,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use toadstool_core::HardwareTransport;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
-use toadstool_core::HardwareTransport;
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 
@@ -232,10 +232,7 @@ impl TransportHandler {
 
                 match result {
                     Ok(n) => {
-                        bytes_counter.fetch_add(
-                            n as u64,
-                            std::sync::atomic::Ordering::Relaxed,
-                        );
+                        bytes_counter.fetch_add(n as u64, std::sync::atomic::Ordering::Relaxed);
                     }
                     Err(_) => {
                         tokio::time::sleep(std::time::Duration::from_millis(10)).await;

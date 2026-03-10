@@ -64,7 +64,7 @@ pub struct PrimalDiscoveryEngine {
 #[derive(Clone, Debug)]
 struct CachedEndpoint {
     service: DiscoveredService,
-    #[allow(dead_code)] // Reserved for future cache expiration logic
+    #[allow(dead_code, reason = "timestamped for future cache expiration logic")]
     discovered_at: Instant,
     last_checked: Instant,
 }

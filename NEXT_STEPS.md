@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 10, 2026 -- S141 Deep Debt Evolution & Pedantic Sweep
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,900+ tests (0 failures) | 83%+ line coverage (171K llvm-cov verified) | 88+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs
-**Latest**: S141 — 120+ clippy pedantic fixes (10 crates, all-targets), Vec<u8>→Bytes zero-copy (6 GPU types), sovereignty evolution (deploy_graph_status→runtime discovery, ecology→capability-based, barracuda/coralReef strings→capabilities::*), flaky test fixed, SPDX aligned, doc link fixed, debris cleaned.
+**Updated**: March 10, 2026 -- S144 Last Mile Deep Debt
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,900+ tests (0 failures) | 83%+ line coverage (171K llvm-cov verified) | 89+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
+**Latest**: S144 — PCIe switch topology (PcieTopologyGraph, shared switch detection, contention-aware bandwidth), deprecated API migration (primals→capabilities across 20+ files), dead code audit (47 instances with explicit reasons), ignored test evolution (slow-tests feature, gpu_guards), coralReef multi-device compile (MultiDeviceCompileRequest, shader.compile.wgsl.multi), topology-aware MultiGpuPlacement.
 
 ---
 
@@ -116,7 +116,29 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-133)
+## Completed This Session (S90-144)
+
+### Session S144: Last Mile Deep Debt (Mar 10, 2026)
+- **PCIe switch topology**: `pcie_topology.rs` — `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph` for sysfs-based bridge chain discovery, shared switch detection, contention-aware bandwidth estimation. Integrated into `PcieLink` (with `via_switch`, `hops`, `contention_factor`) and `WorkloadRouter` (topology-aware `route_multi_gpu`).
+- **Deprecated API migration (20+ files)**: `primals::TOADSTOOL` → `primal_identity::PRIMAL_NAME`. `primals::BEARDOG` → `capabilities::CRYPTO`. `primals::SONGBIRD` → `capabilities::COORDINATION`. `primals::NESTGATE` → `capabilities::STORAGE`. `EnvironmentConfig` deprecated fields → direct env vars. All `#[allow(deprecated)]` removed.
+- **Dead code audit (47 instances)**: All `#[allow(dead_code)]` upgraded to `#[allow(dead_code, reason = "...")]` with explicit justification.
+- **Ignored test evolution**: `slow-tests` feature flag across `auto_config`, `cli`, `testing`. `gpu_guards` module for safe wgpu test skipping on NVIDIA proprietary drivers.
+- **coralReef multi-device compile**: `MultiDeviceCompileRequest`, `DeviceTarget`, `MultiDeviceCompileResponse`. `compile_wgsl` with `target_device`. `compile_wgsl_multi`. `shader.compile.wgsl.multi` JSON-RPC endpoint.
+- All quality gates green: 0 fmt, 0 clippy, all tests pass.
+
+### Session S143: Cross-Spring Absorption (Mar 10, 2026)
+- **NVVM poisoning defense** (`nvvm_safety.rs`): Absorbed from hotSpring v0.6.25. `NvvmPoisoningRisk`, `PrecisionTier`, `HardwareCalibration` with driver-aware safety.
+- **Workload routing** (`workload_routing.rs`): Cross-spring Kokkos parity thresholds. `WorkloadRouter` with 10 patterns.
+- **Brain interrupt pattern** (`workload_health.rs`): `AttentionState`, `WorkloadAnomaly`, `InterruptAction`, `WorkloadHealthMonitor`.
+- **Deep debt**: Removed hardcoded primal names, memory constants, paths, UID. Added `SubstrateCapabilities::memory_capacity_bytes` / `memory_bandwidth_bps`.
+
+### Session S142: Hardware-First Evolution (Mar 10, 2026)
+- **Hardware test infrastructure**: `scripts/run-hardware-tests.sh`, `.github/workflows/hardware.yml`.
+- **GPU sysmon telemetry**: `discover_gpus()`, `GpuTelemetry`, `PcieTopology`.
+- **PCIe P2P transport**: `PcieTransport` for GPU-to-GPU paths.
+- **Streaming JSON-RPC**: `transport.open`, `transport.stream`, `transport.status`.
+- **Multi-tenant orchestrator**: `ResourceOrchestrator`, `DeploymentModel`, `TenantQuota`.
+- **Mock hardware backends**: `MockGpuAdapter`, `MockNpuBackend`, `MockHardwareFleet`.
 
 ### Session S133 (Mar 8, 2026)
 - **Ada Lovelace reclassification**: GPU adapter classification updated for Ada architecture.

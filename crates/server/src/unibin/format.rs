@@ -34,8 +34,7 @@ pub fn ensure_biomeos_directory(runtime_dir: &Path) -> ServerResult<PathBuf> {
 /// - If family ID is set and not "default": `toadstool-{family_id}.sock`
 #[must_use]
 pub fn socket_filename_for_family(family_id: &str) -> String {
-    #[allow(deprecated)]
-    let name = toadstool_common::interned_strings::primals::TOADSTOOL;
+    let name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
     if family_id.is_empty() || family_id == "default" {
         format!("{name}.sock")
     } else {

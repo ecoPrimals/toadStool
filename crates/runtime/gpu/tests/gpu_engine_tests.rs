@@ -53,7 +53,7 @@ fn create_test_request() -> ExecutionRequest {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop - run with --ignored"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_creation_default() {
     let result = UniversalGpuEngine::new().await;
     assert!(
@@ -68,7 +68,7 @@ async fn test_engine_creation_default() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_creation_with_config() {
     let config = create_test_config();
     let result = UniversalGpuEngine::with_config(config).await;
@@ -81,7 +81,7 @@ async fn test_engine_creation_with_config() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_capabilities() {
     let engine = UniversalGpuEngine::new().await.unwrap();
     let caps = engine.get_capabilities();
@@ -93,7 +93,7 @@ async fn test_engine_capabilities() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_initialization() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     let result = engine.initialize(RuntimeConfig::default()).await;
@@ -106,7 +106,7 @@ async fn test_engine_initialization() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_shutdown() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     engine.initialize(RuntimeConfig::default()).await.unwrap();
@@ -120,7 +120,7 @@ async fn test_engine_shutdown() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_supports_workload() {
     let engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -135,7 +135,7 @@ async fn test_engine_supports_workload() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_execute_request() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     engine.initialize(RuntimeConfig::default()).await.unwrap();
@@ -151,7 +151,7 @@ async fn test_engine_execute_request() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_metrics() {
     let engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -167,7 +167,7 @@ async fn test_engine_metrics() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_with_webgpu_framework() {
     let mut config = create_test_config();
     config.discovery.enabled_frameworks = vec![GpuFramework::WebGpu];
@@ -194,7 +194,7 @@ async fn test_engine_config_serialization() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_lifecycle() {
     // Test full lifecycle: create -> init -> shutdown
     let mut engine = UniversalGpuEngine::new().await.unwrap();
@@ -235,7 +235,7 @@ fn test_config_clone() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_multiple_init_calls() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -248,7 +248,7 @@ async fn test_engine_multiple_init_calls() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_shutdown_before_init() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -263,7 +263,7 @@ async fn test_engine_shutdown_before_init() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop"]
+#[ignore = "wgpu SIGSEGV on Vulkan+NVIDIA during drop — use TOADSTOOL_WGPU_SAFE=1 on safe drivers"]
 async fn test_engine_framework_fallback() {
     let mut config = create_test_config();
     config.discovery.auto_fallback = true;

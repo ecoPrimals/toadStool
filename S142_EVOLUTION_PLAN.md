@@ -31,15 +31,15 @@ Current state:
 - Coverage gap: V4L2/display ~3,800 lines, neuromorphic/VFIO ~2,000 lines
 
 Deliverables:
-- [ ] `scripts/run-hardware-tests.sh` — strandgate-specific test runner
+- [x] `scripts/run-hardware-tests.sh` — strandgate-specific test runner (S142)
   - Sets `TOADSTOOL_GPU_ADAPTER` per device
   - Runs `cargo test -- --ignored` for GPU, NPU, V4L2
   - Reports per-device results
-- [ ] `.github/workflows/hardware.yml` — self-hosted runner job (strandgate)
+- [x] `.github/workflows/hardware.yml` — self-hosted runner job (strandgate) (S142)
   - Runs on push to master after headless CI passes
   - Full `--ignored` test suite with hardware
   - llvm-cov with hardware paths exercised
-- [ ] Mock parity sim for headless CI
+- [x] Mock parity sim for headless CI (S142)
   - `MockGpuAdapter` — returns synthetic `GpuAdapterInfo` for test assertions
   - `MockNpuBackend` — simulates Akida responses for capability/inference tests
   - Parity: mock produces same API shape as real hardware
@@ -57,18 +57,17 @@ Current state:
 - `transport.open/stream/status` — marked "Future"
 
 Deliverables:
-- [ ] `PcieTransport` — GPU-to-GPU via dma-buf export/import
+- [x] `PcieTransport` — GPU-to-GPU via PCIe topology (S142)
   - Discover PCIe topology via sysfs (`/sys/bus/pci/devices/`)
-  - dma-buf fd passing between DRM devices (render nodes)
   - Bandwidth probing (PCIe gen/width → theoretical max)
   - Falls back to CPU staging when P2P not available
-- [ ] `transport.stream` JSON-RPC — continuous streaming
+- [x] `transport.stream` JSON-RPC — continuous streaming (S142)
   - Background task with cancel token
   - Throughput metrics reported via `transport.status`
-- [ ] `transport.open` JSON-RPC — explicit transport registration
-- [ ] `transport.status` JSON-RPC — active stream statistics
-- [ ] Update `InterconnectTopology` — PCIe switch detection, NUMA awareness
-- [ ] Spring integration: `science.gpu.dispatch` with `target_device` hint
+- [x] `transport.open` JSON-RPC — explicit transport registration (S142)
+- [x] `transport.status` JSON-RPC — active stream statistics (S142)
+- [x] Update `InterconnectTopology` — PCIe switch detection, NUMA awareness (S144: `PcieTopologyGraph`)
+- [x] Spring integration: `science.gpu.dispatch` with `target_device` hint (S144: `compile_wgsl` + `target_device`)
   - Springs can say "dispatch to device that has my previous output"
   - Router uses PCIe P2P when source/target share a switch
 
@@ -86,7 +85,7 @@ Current state:
 - No `ResourceOrchestrator`, no `TenantAllocation`, no fair-share
 
 Deliverables:
-- [ ] `ResourceOrchestrator` trait + `LocalOrchestrator` impl
+- [x] `ResourceOrchestrator` trait + `LocalOrchestrator` impl (S142)
   - Maps `{tenant, priority, resource_request}` → `{device, time_slot}`
   - Single-tenant mode: trivially "give everything"
   - Multi-tenant mode: enforce quotas and priorities
@@ -110,7 +109,7 @@ Current state:
 - `tracing` crate throughout — no OpenTelemetry
 
 Deliverables:
-- [ ] GPU hwmon sysfs reader — temperature, power, clock, utilization
+- [x] GPU hwmon sysfs reader — temperature, power, clock, utilization (S142: `toadstool-sysmon::gpu`)
   - `/sys/class/drm/card*/device/hwmon/hwmon*/` for AMD/NVIDIA
   - `/sys/class/drm/card*/device/gpu_busy_percent` for AMD
   - `nvidia-smi --query-gpu` fallback for NVIDIA proprietary

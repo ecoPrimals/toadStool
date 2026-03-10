@@ -48,24 +48,21 @@ pub mod service_names {
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"storage\") instead of hardcoding \"nestgate\""
     )]
-    #[allow(deprecated)]
-    pub const NESTGATE: &str = toadstool_common::interned_strings::primals::NESTGATE;
+    pub const NESTGATE: &str = toadstool_common::interned_strings::capabilities::STORAGE;
 
     /// ⚠️ DEPRECATED: Use capability "security" instead
     #[deprecated(
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"security\") instead of hardcoding \"beardog\""
     )]
-    #[allow(deprecated)]
-    pub const BEARDOG: &str = toadstool_common::interned_strings::primals::BEARDOG;
+    pub const BEARDOG: &str = toadstool_common::interned_strings::capabilities::CRYPTO;
 
     /// ⚠️ DEPRECATED: Use capability "coordination" instead
     #[deprecated(
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"coordination\") instead of hardcoding \"songbird\""
     )]
-    #[allow(deprecated)]
-    pub const SONGBIRD: &str = toadstool_common::interned_strings::primals::SONGBIRD;
+    pub const SONGBIRD: &str = toadstool_common::interned_strings::capabilities::COORDINATION;
 }
 
 /// Docker registries

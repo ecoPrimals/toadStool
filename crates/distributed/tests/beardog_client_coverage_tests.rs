@@ -91,7 +91,7 @@ fn beardog_client_new_creates() {
 fn provider_id_returns_beardog() {
     use toadstool::encryption::CryptoProvider;
     let client = BearDogClient::new(BearDogConfig::default()).unwrap();
-    assert_eq!(client.provider_id(), "beardog");
+    assert_eq!(client.provider_id(), "crypto");
 }
 
 #[test]

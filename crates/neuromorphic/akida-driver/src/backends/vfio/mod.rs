@@ -50,9 +50,15 @@ use types::PollConfig;
 pub struct VfioBackend {
     pcie_address: String,
     container: std::fs::File,
-    #[allow(dead_code)] // Needed for VFIO lifetime
+    #[allow(
+        dead_code,
+        reason = "VFIO group file descriptor required for kernel lifetime"
+    )]
     group: std::fs::File,
-    #[allow(dead_code)] // Needed for VFIO device lifetime management
+    #[allow(
+        dead_code,
+        reason = "VFIO device file descriptor required for kernel lifetime"
+    )]
     device: OwnedFd,
     control_regs: MappedRegion,
     capabilities: Capabilities,

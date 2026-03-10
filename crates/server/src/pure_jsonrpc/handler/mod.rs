@@ -231,6 +231,7 @@ impl JsonRpcHandler {
             "deploy.graph_status" => return science::deploy_graph_status().await,
 
             "shader.compile.wgsl" => return self.shader_compile_wgsl(params).await,
+            "shader.compile.wgsl.multi" => return self.shader_compile_wgsl_multi(params).await,
             "shader.compile.spirv" => return self.shader_compile_spirv(params).await,
             "shader.compile.status" => return self.shader_compile_status(params).await,
             "shader.compile.capabilities" => return self.shader_compile_capabilities().await,
@@ -270,6 +271,7 @@ impl JsonRpcHandler {
             "science_substrate_discover" => science::science_substrate_discover().await,
             "science_substrate_probe" => science::science_substrate_probe(params).await,
             "shader_compile_wgsl" => self.shader_compile_wgsl(params).await,
+            "shader_compile_wgsl_multi" => self.shader_compile_wgsl_multi(params).await,
             "shader_compile_spirv" => self.shader_compile_spirv(params).await,
             "shader_compile_status" => self.shader_compile_status(params).await,
             "shader_compile_capabilities" => self.shader_compile_capabilities().await,
@@ -328,10 +330,14 @@ impl JsonRpcHandler {
             .and_then(|p| p.get("opt_level"))
             .and_then(|v| v.as_u64())
             .map(|v| v as u32);
+        let target_device = params
+            .and_then(|p| p.get("target_device"))
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
 
         if let Some(result) = self
             .coral_reef
-            .compile_wgsl(shader_source, arch, opt_level)
+            .compile_wgsl(shader_source, arch, opt_level, target_device)
             .await
         {
             return Ok(serde_json::json!({
@@ -350,6 +356,39 @@ impl JsonRpcHandler {
             "target": "spirv",
             "native_compiler_available": false,
             "note": "Compilation routed through naga. Native compiler not available for binary output."
+        }))
+    }
+
+    async fn shader_compile_wgsl_multi(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        use crate::coral_reef_client::MultiDeviceCompileRequest;
+
+        let request: MultiDeviceCompileRequest = params
+            .and_then(|p| serde_json::from_value(p.clone()).ok())
+            .ok_or_else(|| {
+                JsonRpcError::invalid_params(
+                    "Expected MultiDeviceCompileRequest with 'wgsl_source' and 'target_devices'",
+                )
+            })?;
+
+        if request.target_devices.is_empty() {
+            return Err(JsonRpcError::invalid_params(
+                "target_devices must not be empty",
+            ));
+        }
+
+        if let Some(resp) = self.coral_reef.compile_wgsl_multi(&request).await {
+            return Ok(serde_json::to_value(resp).unwrap_or_default());
+        }
+
+        Ok(serde_json::json!({
+            "status": "accepted",
+            "pipeline": "naga_wgsl_to_spirv",
+            "native_compiler_available": false,
+            "note": "Multi-device compilation routed through naga fallback. coralReef not available.",
+            "target_count": request.target_devices.len(),
         }))
     }
 

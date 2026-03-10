@@ -22,6 +22,7 @@ tracing = "0.1"
 # ToadStool internal
 toadstool-runtime-universal = { path = "../universal" }
 toadstool-config = { path = "../../core/config" }
+toadstool-sysmon = { path = "../../core/sysmon" }
 
 # Concurrency
 futures = "0.3"

@@ -39,6 +39,7 @@ pub mod gpu;
 pub mod loadavg;
 pub mod memory;
 pub mod network;
+pub mod pcie_topology;
 pub mod process;
 
 pub use cpu::{cpu_brand, cpu_count, cpu_usage, per_cpu_usage};
@@ -48,4 +49,7 @@ pub use gpu::{discover_gpus, GpuDevice, GpuTelemetry, GpuVendor, PcieTopology};
 pub use loadavg::{load_average, LoadAverage};
 pub use memory::{memory_info, MemoryInfo};
 pub use network::{network_stats, NetworkInterface};
+pub use pcie_topology::{
+    discover_topology, raw_pcie_bandwidth_bps, GpuPairTopology, PciBridge, PcieTopologyGraph,
+};
 pub use process::{all_processes, process_count, process_info, ProcessInfo};

@@ -2,10 +2,7 @@
 //! bearDog service discovery via capability-based discovery
 //!
 //! Discovers bearDog entropy service at runtime - NO HARDCODING!
-#![allow(deprecated)] // primals::BEARDOG for IPC socket path fallback
-
-#[allow(deprecated)]
-use toadstool_common::interned_strings::primals;
+use toadstool_common::interned_strings::capabilities;
 
 use crate::error::BeardogError;
 use crate::seed::{EphemeralSeed, SeedQuality};
@@ -39,7 +36,7 @@ impl Default for SeedRequest {
 /// Uses capability-based discovery (no hardcoded URLs!).
 pub struct EntropyClient {
     /// Service endpoint (discovered at runtime)
-    #[allow(dead_code)] // Stored for diagnostics
+    #[allow(dead_code, reason = "stored for diagnostics and connection tracing")]
     endpoint: Option<String>,
     /// RPC client for communication (pure Rust unix socket!)
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
@@ -80,7 +77,7 @@ impl EntropyClient {
                     .await
                     .unwrap_or_else(|_| {
                         toadstool_common::primal_sockets::get_biomeos_dir()
-                            .join(format!("{}.sock", primals::BEARDOG))
+                            .join(format!("{}.sock", capabilities::CRYPTO))
                     });
 
                 Ok(Self {
@@ -174,7 +171,7 @@ impl EntropyClient {
             .await
             .unwrap_or_else(|_| {
                 toadstool_common::primal_sockets::get_biomeos_dir()
-                    .join(format!("{}.sock", primals::BEARDOG))
+                    .join(format!("{}.sock", capabilities::CRYPTO))
             });
 
         let socket_client =

@@ -213,7 +213,10 @@ async fn test_concurrent_platform_optimizers() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "Slow integration test - runs full auto-configuration"]
+#[cfg_attr(
+    not(feature = "slow-tests"),
+    ignore = "Slow integration test - runs full auto-configuration"
+)]
 async fn test_auto_configure_full_workflow() {
     // Test the complete auto-configuration workflow
     let result = IntelligentAutoConfig::auto_configure().await;
@@ -406,7 +409,7 @@ async fn test_interleaved_operations() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "Documentation example test"]
+#[cfg_attr(not(feature = "slow-tests"), ignore = "Documentation example test")]
 async fn test_documentation_example_works() {
     // Verify that the example from the module documentation works
     let result = IntelligentAutoConfig::auto_configure().await;

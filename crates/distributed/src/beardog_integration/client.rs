@@ -17,8 +17,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-#[allow(deprecated)] // Protocol compatibility: CryptoProvider::provider_id
-use toadstool_common::constants::ecosystem::well_known::BEARDOG;
+use toadstool_common::interned_strings::capabilities;
 use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_for_capability};
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
@@ -321,9 +320,8 @@ impl BearDogClient {
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl toadstool::encryption::CryptoProvider for BearDogClient {
-    #[allow(deprecated)] // BEARDOG used for provider identification
     fn provider_id(&self) -> &str {
-        BEARDOG
+        capabilities::CRYPTO
     }
 
     fn capabilities(&self) -> &toadstool::encryption::CryptoCapability {
@@ -521,7 +519,7 @@ mod tests {
     fn test_provider_id_returns_beardog() {
         #[allow(deprecated)]
         let client = BearDogClient::new(BearDogConfig::default()).unwrap();
-        assert_eq!(client.provider_id(), BEARDOG);
+        assert_eq!(client.provider_id(), capabilities::CRYPTO);
     }
 
     #[test]

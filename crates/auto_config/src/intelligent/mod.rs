@@ -239,7 +239,10 @@ mod tests {
     use super::*;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "slow integration test - runs hardware/network detection"]
+    #[cfg_attr(
+        not(feature = "slow-tests"),
+        ignore = "slow integration test - runs hardware/network detection"
+    )]
     async fn test_auto_configuration_basic() {
         let result = IntelligentAutoConfig::auto_configure().await;
         assert!(result.is_ok(), "Auto-configuration should succeed");

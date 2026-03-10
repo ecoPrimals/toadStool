@@ -2,7 +2,6 @@
 //! Storage client implementation using capability-based discovery
 //!
 //! **TRUE PRIMAL**: Self-knowledge only - discovers storage via capabilities!
-#![allow(deprecated)] // primals::NESTGATE for backward-compat service name fallback
 
 //!
 //! ## Philosophy
@@ -26,8 +25,7 @@
 
 use tracing::{debug, info};
 
-#[allow(deprecated)]
-use toadstool_common::interned_strings::primals;
+use toadstool_common::interned_strings::capabilities;
 use toadstool_common::primal_identity::{Capability, StorageCapability};
 use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
 
@@ -145,9 +143,8 @@ impl StorageClient {
     ///
     /// # Errors
     /// Returns an error if the client configuration is invalid or connection fails
-    #[allow(deprecated)] // connect() uses deprecated discovery; migration in progress
     pub async fn connect(service_name: &str) -> NestGateResult<Self> {
-        let socket = toadstool_common::primal_sockets::get_socket_path_for_service(service_name);
+        let socket = toadstool_common::primal_sockets::get_socket_path_for_capability(service_name);
         let config = NestGateConfig {
             endpoint: format!("unix://{}", socket.display()),
             ..Default::default()
@@ -173,7 +170,7 @@ impl StorageClient {
         let service_name = service_name.unwrap_or_else(|| {
             // Fallback for backward compatibility
             // In production, prefer using discover() which provides the service name
-            primals::NESTGATE.to_string()
+            capabilities::STORAGE.to_string()
         });
 
         let socket_path =

@@ -8,6 +8,14 @@ use std::process::Command;
 
 use crate::types::{MonitoringConfig, ResourceMonitorError};
 
+/// Total system memory in bytes, discovered at runtime via `/proc/meminfo`.
+/// Falls back to 4 GiB if `/proc` is unavailable (macOS, Windows).
+fn total_system_memory_bytes() -> f64 {
+    toadstool_sysmon::memory_info()
+        .map(|m| m.total as f64)
+        .unwrap_or(4.0 * 1024.0 * 1024.0 * 1024.0)
+}
+
 /// Gets platform-specific metrics for a process
 pub(crate) async fn get_platform_metrics(
     pid: u32,
@@ -91,7 +99,7 @@ async fn measure_linux_resources(
         memory: toadstool::resources::MemoryMetrics {
             used_bytes: (vm_rss * 1024.0) as u64, // VmRSS is in KB
             peak_bytes: (vm_rss * 1024.0) as u64,
-            usage_percent: (vm_rss * 1024.0 * 100.0) / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
+            usage_percent: (vm_rss * 1024.0 * 100.0) / total_system_memory_bytes(),
         },
         storage: toadstool::resources::StorageMetrics {
             usage_percent: 0.0,
@@ -241,7 +249,7 @@ async fn measure_macos_resources(
         memory: toadstool::resources::MemoryMetrics {
             used_bytes: rss_kb * 1024,
             peak_bytes: rss_kb * 1024,
-            usage_percent: (rss_kb * 1024 * 100) as f64 / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
+            usage_percent: (rss_kb * 1024 * 100) as f64 / total_system_memory_bytes(),
         },
         storage: toadstool::resources::StorageMetrics::default(),
         network: network_metrics,
@@ -327,7 +335,7 @@ async fn measure_windows_resources(
         memory: toadstool::resources::MemoryMetrics {
             used_bytes: working_set,
             peak_bytes: working_set,
-            usage_percent: (working_set * 100) as f64 / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
+            usage_percent: (working_set * 100) as f64 / total_system_memory_bytes(),
         },
         storage: toadstool::resources::StorageMetrics::default(),
         network: network_metrics,

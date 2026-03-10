@@ -181,11 +181,17 @@ struct JsonRpcRequest<P> {
 /// JSON-RPC 2.0 response
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse<R> {
-    #[allow(dead_code)] // Required for JSON-RPC 2.0 shape; not read after deserialization
+    #[allow(
+        dead_code,
+        reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
+    )]
     jsonrpc: String,
     result: Option<R>,
     error: Option<JsonRpcError>,
-    #[allow(dead_code)] // Required for JSON-RPC 2.0 shape; not read after deserialization
+    #[allow(
+        dead_code,
+        reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
+    )]
     id: u64,
 }
 

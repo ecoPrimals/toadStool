@@ -12,8 +12,7 @@ use toadstool_common::config_bases::{
     CacheConfig, ConnectionPoolConfig, HealthCheckConfig, HttpHealthCheckConfig, RetryConfig,
     TelemetryConfig, TimeoutConfig,
 };
-#[allow(deprecated)]
-use toadstool_config::constants::primals;
+use toadstool_common::interned_strings::capabilities;
 use tracing::info;
 
 /// Core configurator trait
@@ -59,7 +58,6 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
         }
     }
 
-    #[allow(deprecated)]
     fn default_config() -> SongbirdNetworkConfig {
         SongbirdNetworkConfig {
             service_mesh: ServiceMeshConfig {
@@ -176,7 +174,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
             cross_primal_security: CrossPrimalSecurityConfig {
                 enabled: true,
                 authentication: AuthenticationConfig {
-                    method: primals::BEARDOG.to_string(),
+                    method: capabilities::CRYPTO.to_string(),
                     token_validation: TokenValidationConfig {
                         validate_issuer: true,
                         validate_audience: true,

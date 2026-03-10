@@ -120,7 +120,6 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
     );
 
     info!("🌍 Attempting registration with Songbird discovery service...");
-    #[allow(deprecated)]
     match toadstool::ipc_helpers::register_with_songbird().await {
         Ok(()) => {
             info!("✅ Successfully registered with Songbird!");

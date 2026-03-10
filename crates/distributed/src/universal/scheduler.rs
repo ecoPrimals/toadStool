@@ -248,18 +248,15 @@ impl Default for NetworkEffectsConfig {
 }
 
 impl Default for SongbirdIntegrationConfig {
-    #[allow(deprecated)] // Using deprecated field during migration to capability-based discovery
     fn default() -> Self {
-        // Use environment-aware configuration
-        let port: u16 = std::env::var("TOADSTOOL_SONGBIRD_PORT")
+        let port: u16 = std::env::var("TOADSTOOL_COORDINATION_PORT")
+            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_PORT"))
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or_else(|| {
-                let config = toadstool_config::env_config::EnvironmentConfig::from_env();
-                config.network.songbird_port
-            });
-        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
-        let host = &config.network.bind_address;
+            .unwrap_or(8081);
+
+        let host =
+            std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string());
 
         Self {
             enabled: false,

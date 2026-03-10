@@ -228,7 +228,7 @@ impl MdnsDiscoveryClient {
     ///
     /// Note: Helper function for future mdns-sd integration.
     /// Currently using cache-based discovery.
-    #[allow(dead_code)] // Future: mdns-sd integration when cache-based discovery is replaced
+    #[allow(dead_code, reason = "reserved for mdns-sd integration")]
     fn mdns_to_discovered_service(
         id: String,
         address: IpAddr,

@@ -11,6 +11,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 "#;
 
+/// `XDG_RUNTIME_DIR` fallback: discovers UID from `/proc/self/status` (pure Rust, no libc).
+fn runtime_dir_fallback() -> String {
+    let uid = std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("Uid:"))
+                .and_then(|l| l.split_whitespace().nth(1))
+                .and_then(|u| u.parse::<u32>().ok())
+        })
+        .unwrap_or(1000);
+    format!("/run/user/{uid}")
+}
+
 fn check_path(path: &str) -> bool {
     Path::new(path).exists()
 }
@@ -24,7 +38,7 @@ async fn main() {
 
     // Section: Discovery
     println!("{}", "► Discovery".cyan());
-    let xdg = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+    let xdg = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| runtime_dir_fallback());
 
     let coralreef_url = std::env::var("CORALREEF_URL").ok();
     let eco_path = format!("{}/ecoPrimals/coralreef-core.json", xdg);

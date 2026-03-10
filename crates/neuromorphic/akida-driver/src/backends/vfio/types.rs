@@ -26,13 +26,25 @@ pub(crate) mod ioctls {
     pub const OP_GROUP_GET_DEVICE_FD: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 6);
 
     pub const OP_DEVICE_GET_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 7);
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "VFIO ioctl opcode; used in future driver operations"
+    )]
     pub const OP_DEVICE_GET_REGION_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 8);
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "VFIO ioctl opcode; used in future driver operations"
+    )]
     pub const OP_DEVICE_GET_IRQ_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 9);
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "VFIO ioctl opcode; used in future driver operations"
+    )]
     pub const OP_DEVICE_SET_IRQS: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 10);
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "VFIO ioctl opcode; used in future driver operations"
+    )]
     pub const OP_DEVICE_RESET: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 11);
 
     pub const OP_IOMMU_MAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 13);
@@ -40,12 +52,12 @@ pub(crate) mod ioctls {
 
     pub const VFIO_API_VERSION: i32 = 0;
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "VFIO IOMMU type; reserved for Type1 fallback")]
     pub const VFIO_TYPE1_IOMMU: u32 = 1;
     pub const VFIO_TYPE1V2_IOMMU: u32 = 3;
 
     pub const VFIO_GROUP_FLAGS_VIABLE: u32 = 1 << 0;
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "VFIO group flag; used to verify container state")]
     pub const VFIO_GROUP_FLAGS_CONTAINER_SET: u32 = 1 << 1;
 
     pub const VFIO_DMA_MAP_FLAG_READ: u32 = 1 << 0;
@@ -77,7 +89,10 @@ pub(crate) struct VfioDeviceInfo {
 /// VFIO region info structure (kernel ABI)
 #[repr(C)]
 #[derive(Debug, Default)]
-#[allow(dead_code)]
+#[allow(
+    dead_code,
+    reason = "VFIO kernel struct; fields required for ioctl interface"
+)]
 pub(crate) struct VfioRegionInfo {
     pub argsz: u32,
     pub flags: u32,

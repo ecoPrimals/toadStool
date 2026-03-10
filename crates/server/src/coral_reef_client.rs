@@ -33,6 +33,45 @@ pub struct CompileResponse {
     pub arch: Option<String>,
     #[serde(default)]
     pub status: Option<String>,
+    /// Target device this binary was compiled for (card index).
+    #[serde(default)]
+    pub target_device: Option<u32>,
+}
+
+/// Per-device compilation request for multi-GPU arrays.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiDeviceCompileRequest {
+    /// WGSL source to compile.
+    pub wgsl_source: String,
+    /// Target devices (card indices) to compile for.
+    pub target_devices: Vec<DeviceTarget>,
+    /// Optimization level (0-3).
+    #[serde(default)]
+    pub opt_level: Option<u32>,
+}
+
+/// A specific GPU device to compile for.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceTarget {
+    /// DRM card index (e.g. 0 for card0).
+    pub card_index: u32,
+    /// GPU architecture hint (e.g. `"gfx1030"`, `"sm89"`).
+    #[serde(default)]
+    pub arch: Option<String>,
+    /// `PCIe` group for topology-aware placement.
+    #[serde(default)]
+    pub pcie_group: Option<String>,
+}
+
+/// Multi-device compile response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiDeviceCompileResponse {
+    /// Per-device compile results, keyed by card index.
+    pub results: Vec<CompileResponse>,
+    /// Number of successful compilations.
+    pub success_count: u32,
+    /// Total devices targeted.
+    pub total_count: u32,
 }
 
 /// Client for coralReef shader compiler primal.
@@ -136,11 +175,17 @@ impl CoralReefClient {
     }
 
     /// Compile WGSL source to native binary via `shader.compile.wgsl`.
+    ///
+    /// Optionally targets a specific device (card index) for per-GPU ISA
+    /// optimization. When `target_device` is provided, coralReef compiles
+    /// for that device's architecture; when `None`, it compiles for the
+    /// default/generic architecture.
     pub async fn compile_wgsl(
         &self,
         source: &str,
         arch: Option<&str>,
         opt_level: Option<u32>,
+        target_device: Option<u32>,
     ) -> Option<serde_json::Value> {
         let client = self.client().await?;
         let mut params = serde_json::json!({
@@ -152,10 +197,33 @@ impl CoralReefClient {
         if let Some(o) = opt_level {
             params["opt_level"] = serde_json::json!(o);
         }
+        if let Some(d) = target_device {
+            params["target_device"] = serde_json::json!(d);
+        }
         match client.call("shader.compile.wgsl", params).await {
             Ok(result) => Some(result),
             Err(e) => {
                 warn!(error = %e, "coralReef WGSL compilation failed");
+                None
+            }
+        }
+    }
+
+    /// Compile WGSL source for multiple target devices simultaneously.
+    ///
+    /// Enables per-GPU ISA optimization for arrays of heterogeneous GPUs
+    /// (e.g. 4x RTX 3050 behind a `PCIe` switch, each getting its own
+    /// optimized binary).
+    pub async fn compile_wgsl_multi(
+        &self,
+        request: &MultiDeviceCompileRequest,
+    ) -> Option<MultiDeviceCompileResponse> {
+        let client = self.client().await?;
+        let params = serde_json::to_value(request).ok()?;
+        match client.call("shader.compile.wgsl.multi", params).await {
+            Ok(result) => serde_json::from_value(result).ok(),
+            Err(e) => {
+                warn!(error = %e, "coralReef multi-device WGSL compilation failed");
                 None
             }
         }
@@ -283,8 +351,65 @@ mod tests {
     #[tokio::test]
     async fn test_compile_wgsl_returns_none_without_coralreef() {
         let client = CoralReefClient::new();
-        let result = client.compile_wgsl("fn main() {}", None, None).await;
+        let result = client.compile_wgsl("fn main() {}", None, None, None).await;
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_compile_wgsl_with_target_device() {
+        let client = CoralReefClient::new();
+        let result = client
+            .compile_wgsl("fn main() {}", Some("gfx1030"), Some(2), Some(0))
+            .await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_compile_wgsl_multi_returns_none_without_coralreef() {
+        let client = CoralReefClient::new();
+        let request = MultiDeviceCompileRequest {
+            wgsl_source: "fn main() {}".to_string(),
+            target_devices: vec![
+                DeviceTarget {
+                    card_index: 0,
+                    arch: Some("gfx1030".to_string()),
+                    pcie_group: None,
+                },
+                DeviceTarget {
+                    card_index: 1,
+                    arch: Some("sm89".to_string()),
+                    pcie_group: Some("0000:00:01.0".to_string()),
+                },
+            ],
+            opt_level: Some(2),
+        };
+        assert!(client.compile_wgsl_multi(&request).await.is_none());
+    }
+
+    #[test]
+    fn test_multi_device_compile_request_serde() {
+        let request = MultiDeviceCompileRequest {
+            wgsl_source: "fn main() {}".to_string(),
+            target_devices: vec![DeviceTarget {
+                card_index: 0,
+                arch: Some("gfx1030".to_string()),
+                pcie_group: None,
+            }],
+            opt_level: Some(2),
+        };
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("gfx1030"));
+        let parsed: MultiDeviceCompileRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.target_devices.len(), 1);
+        assert_eq!(parsed.target_devices[0].card_index, 0);
+    }
+
+    #[test]
+    fn test_multi_device_compile_response_serde() {
+        let json = r#"{"results":[{"size":1024,"arch":"gfx1030","status":"success","target_device":0}],"success_count":1,"total_count":1}"#;
+        let resp: MultiDeviceCompileResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.success_count, 1);
+        assert_eq!(resp.results[0].target_device, Some(0));
     }
 
     #[tokio::test]

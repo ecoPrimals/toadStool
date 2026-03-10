@@ -3,16 +3,13 @@
 //!
 //! Implements the generic SecurityProvider trait using BearDog primal.
 
-// Allow deprecated during migration phase
-#[allow(deprecated)]
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-#[allow(deprecated)]
-use toadstool_common::interned_strings::primals;
+use toadstool_common::interned_strings::capabilities;
 
 use crate::security_provider::{provider::*, types::*, EncryptionOptions, SigningOptions};
 
@@ -63,11 +60,11 @@ impl BearDogSecurityProvider {
 
         let metadata = ProviderMetadata {
             provider_id: uuid::Uuid::new_v4().to_string(),
-            provider_type: primals::BEARDOG.to_string(),
+            provider_type: capabilities::CRYPTO.to_string(),
             provider_version: "2.0.0".to_string(),
             metadata: {
                 let mut m = HashMap::new();
-                m.insert("primal".to_string(), primals::BEARDOG.to_string());
+                m.insert("capability".to_string(), capabilities::CRYPTO.to_string());
                 m.insert("discovery".to_string(), "runtime".to_string());
                 m
             },
@@ -352,6 +349,6 @@ mod tests {
         let provider = BearDogSecurityProvider::new().await.unwrap();
         let metadata = provider.metadata().await.unwrap();
 
-        assert_eq!(metadata.provider_type, "beardog");
+        assert_eq!(metadata.provider_type, "crypto");
     }
 }

@@ -11,6 +11,20 @@ const ARTIFACT_TYPES: &[&str] = &[
     "Job outputs (matrices, datasets)",
 ];
 
+/// `XDG_RUNTIME_DIR` fallback: discovers UID from `/proc/self/status` (pure Rust, no libc).
+fn runtime_dir_fallback() -> String {
+    let uid = std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("Uid:"))
+                .and_then(|l| l.split_whitespace().nth(1))
+                .and_then(|u| u.parse::<u32>().ok())
+        })
+        .unwrap_or(1000);
+    format!("/run/user/{uid}")
+}
+
 #[tokio::main]
 async fn main() {
     println!("{}", "═══════════════════════════════════════════════════════════".cyan());
@@ -94,7 +108,7 @@ async fn main() {
     // Section: NestGate Socket Check
     println!("{}", "► NestGate Socket Check".cyan());
     let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|_| "/run/user/1000".to_string());
+        .unwrap_or_else(|_| runtime_dir_fallback());
     let nestgate_sock = format!("{}/biomeos/storage.sock", runtime_dir);
     let nestgate_found = Path::new(&nestgate_sock).exists();
     if nestgate_found {

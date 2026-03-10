@@ -10,20 +10,19 @@
 //!
 //! **Impact**: ~50-100 fewer allocations across ecosystem discovery
 
-/// Service names — re-exports from `toadstool_common::interned_strings::primals`
-/// to avoid literal duplication. Prefer `interned_strings::primals::*` directly
-/// in new code; this module exists for CLI-local convenience and the `ALL` slice.
-#[allow(deprecated)]
+/// Service names — capability-based constants from `toadstool_common::interned_strings::capabilities`.
+/// Prefer `interned_strings::capabilities::*` directly in new code.
 pub mod service_names {
-    use toadstool_common::interned_strings::primals;
+    use toadstool_common::constants::PRIMAL_NAME;
+    use toadstool_common::interned_strings::capabilities;
 
-    pub const SONGBIRD: &str = primals::SONGBIRD;
-    pub const BEARDOG: &str = primals::BEARDOG;
-    pub const NESTGATE: &str = primals::NESTGATE;
-    pub const SQUIRREL: &str = primals::SQUIRREL;
-    pub const TOADSTOOL: &str = primals::TOADSTOOL;
+    pub const SONGBIRD: &str = capabilities::COORDINATION;
+    pub const BEARDOG: &str = capabilities::CRYPTO;
+    pub const NESTGATE: &str = capabilities::STORAGE;
+    pub const SQUIRREL: &str = capabilities::INTELLIGENCE;
+    pub const TOADSTOOL: &str = PRIMAL_NAME;
 
-    /// All known service names as slice
+    /// All known capability identifiers as slice
     pub const ALL: &[&str] = &[SONGBIRD, BEARDOG, NESTGATE, SQUIRREL, TOADSTOOL];
 }
 
@@ -78,18 +77,18 @@ mod tests {
 
     #[test]
     fn test_service_names_defined() {
-        assert_eq!(service_names::SONGBIRD, "songbird");
-        assert_eq!(service_names::BEARDOG, "beardog");
-        assert_eq!(service_names::NESTGATE, "nestgate");
-        assert_eq!(service_names::SQUIRREL, "squirrel");
+        assert_eq!(service_names::SONGBIRD, "coordination");
+        assert_eq!(service_names::BEARDOG, "crypto");
+        assert_eq!(service_names::NESTGATE, "storage");
+        assert_eq!(service_names::SQUIRREL, "intelligence");
         assert_eq!(service_names::TOADSTOOL, "toadstool");
     }
 
     #[test]
     fn test_service_names_all() {
         assert_eq!(service_names::ALL.len(), 5);
-        assert!(service_names::ALL.contains(&"songbird"));
-        assert!(service_names::ALL.contains(&"beardog"));
+        assert!(service_names::ALL.contains(&"coordination"));
+        assert!(service_names::ALL.contains(&"crypto"));
     }
 
     #[test]

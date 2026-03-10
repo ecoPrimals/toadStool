@@ -479,7 +479,10 @@ mod tests {
     use super::*;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    #[ignore = "slow integration test - runs full system detection"]
+    #[cfg_attr(
+        not(feature = "slow-tests"),
+        ignore = "slow integration test - runs full system detection"
+    )]
     async fn test_quick_start() {
         // Test that quick_start doesn't panic
         let result = quick_start().await;

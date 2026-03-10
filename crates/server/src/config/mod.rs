@@ -45,14 +45,15 @@ pub struct ServerConfig {
 }
 
 impl Default for ServerConfig {
-    #[allow(deprecated)]
     fn default() -> Self {
-        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        let host =
+            std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let port: u16 = std::env::var("TOADSTOOL_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
         Self {
-            bind_address: format!(
-                "{}:{}",
-                config.network.bind_address, config.network.songbird_port
-            ),
+            bind_address: format!("{host}:{port}"),
             enable_api: true,
             enable_cors: true,
             max_concurrent_executions: 100,

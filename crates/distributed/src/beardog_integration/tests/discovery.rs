@@ -76,7 +76,7 @@ async fn test_beardog_discovery_preferred_location_network() {
 fn test_beardog_client_provider_id() {
     let config = BearDogConfig::default();
     let client = BearDogClient::new(config).unwrap();
-    assert_eq!(client.provider_id(), "beardog");
+    assert_eq!(client.provider_id(), "crypto");
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn test_beardog_client_creation_with_custom_config() {
 fn test_beardog_client_creation_default_config() {
     let config = BearDogConfig::default();
     let client = BearDogClient::new(config).unwrap();
-    assert_eq!(client.provider_id(), "beardog");
+    assert_eq!(client.provider_id(), "crypto");
 }
 
 #[tokio::test]

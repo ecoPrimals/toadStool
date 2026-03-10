@@ -14,8 +14,7 @@ use toadstool_common::constants::timeouts;
 use toadstool_common::infant_discovery::{
     DiscoveredService, DiscoveryEngine, DiscoverySource, ServiceHealth, ServiceMetadata,
 };
-#[allow(deprecated)]
-use toadstool_config::constants::primals::SONGBIRD;
+use toadstool_common::interned_strings::capabilities;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -260,7 +259,7 @@ impl CapabilityClient {
         Err(last_error.unwrap_or_else(|| {
             ToadStoolError::Integration(
                 toadstool_common::error::IntegrationError::ServiceUnavailable {
-                    service: SONGBIRD.to_string(),
+                    service: capabilities::COORDINATION.to_string(),
                     reason: "All services failed during failover attempt".to_string(),
                 },
             )

@@ -57,6 +57,7 @@ pub mod assertions;
 pub mod builders;
 pub mod chaos;
 pub mod fixtures;
+pub mod gpu_guards;
 pub mod integration;
 pub mod mocks;
 pub mod performance;

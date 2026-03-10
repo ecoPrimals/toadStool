@@ -6,7 +6,6 @@
 //! NPU inference results can use these mocks instead of `#[ignore]`.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Mock GPU adapter matching the shape of `GpuAdapterInfo` in
 /// `toadstool-runtime-universal`. Tests use this for assertions on adapter
@@ -157,7 +156,11 @@ impl MockGpuAdapter {
     /// Full strandgate fleet: AMD + NVIDIA + CPU.
     #[must_use]
     pub fn strandgate_fleet() -> Vec<Self> {
-        vec![Self::amd_rx6950xt(), Self::nvidia_rtx3090(), Self::cpu_software()]
+        vec![
+            Self::amd_rx6950xt(),
+            Self::nvidia_rtx3090(),
+            Self::cpu_software(),
+        ]
     }
 
     /// Whether this adapter is a discrete GPU (not CPU/integrated).

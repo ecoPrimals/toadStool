@@ -38,10 +38,10 @@ mod tests {
         let provider = BearDogSecurityProvider::new().await.unwrap();
         let metadata = provider.metadata().await.unwrap();
 
-        assert_eq!(metadata.provider_type, "beardog");
+        assert_eq!(metadata.provider_type, "crypto");
         assert_eq!(metadata.provider_version, "2.0.0");
-        assert!(metadata.metadata.contains_key("primal"));
-        assert_eq!(metadata.metadata.get("primal").unwrap(), "beardog");
+        assert!(metadata.metadata.contains_key("capability"));
+        assert_eq!(metadata.metadata.get("capability").unwrap(), "crypto");
     }
 
     #[tokio::test]
@@ -181,7 +181,7 @@ mod tests {
         assert!(!caps.is_empty());
 
         let metadata = provider.metadata().await.unwrap();
-        assert_eq!(metadata.provider_type, "beardog");
+        assert_eq!(metadata.provider_type, "crypto");
     }
 
     /// Test multiple providers can coexist

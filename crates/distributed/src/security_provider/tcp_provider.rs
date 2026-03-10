@@ -146,11 +146,17 @@ struct JsonRpcRequest<P> {
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse<R> {
-    #[allow(dead_code)] // JSON-RPC response fields; required for deserialization
+    #[allow(
+        dead_code,
+        reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
+    )]
     jsonrpc: String,
     result: Option<R>,
     error: Option<JsonRpcError>,
-    #[allow(dead_code)] // JSON-RPC response fields; required for deserialization
+    #[allow(
+        dead_code,
+        reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
+    )]
     id: u64,
 }
 

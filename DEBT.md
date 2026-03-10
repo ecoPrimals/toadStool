@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 10, 2026 — S141
+**Date**: March 10, 2026 — S144
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -105,6 +105,17 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Chaos framework exists (`testing/src/chaos/`). Integration tests: 10/11 pass (S138). Pure-Rust C-compiler validation is pre-existing failure (transitive deps). |
 
 ---
+
+## Recently Resolved (S144 — Last Mile Deep Debt — Mar 10, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| PCIe switch topology gap | `pcie_topology.rs` — `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph`. Sysfs parent bridge discovery, shared switch detection, contention-aware bandwidth for multi-GPU daisy-chain arrays (e.g. 4x RTX 3050 on PCIe switch). `PcieLink` enriched with `via_switch`, `hops`, `contention_factor`. |
+| Deprecated primal-name APIs (~23 production sites) | `primals::TOADSTOOL` → `primal_identity::PRIMAL_NAME` (7 files). `primals::BEARDOG` → `capabilities::CRYPTO` (5 files). `primals::SONGBIRD` → `capabilities::COORDINATION` (2 files). `primals::NESTGATE` → `capabilities::STORAGE` (2 files). `EnvironmentConfig` deprecated fields → direct env vars (2 files). All `#[allow(deprecated)]` removed from migrated sites. |
+| Dead code without justification (~47 instances) | All `#[allow(dead_code)]` upgraded to `#[allow(dead_code, reason = "...")]` with explicit justification. Categories: hardware register definitions (VFIO, Akida), kernel ABI structs, serde-required fields, future-phase placeholders, DRM modesetting pipeline. |
+| Ignored tests without strategy (~111 tests) | `slow-tests` feature flag for conditional execution across `auto_config`, `cli`, `testing` crates. `gpu_guards` module for safe wgpu test skipping on NVIDIA proprietary drivers (SIGSEGV). Test ignore reasons upgraded from bare `#[ignore]` to `#[cfg_attr(not(feature = "slow-tests"), ignore = "reason")]`. |
+| coralReef single-device limitation | `MultiDeviceCompileRequest`, `DeviceTarget`, `MultiDeviceCompileResponse` types. `compile_wgsl` evolved with `target_device` parameter. New `compile_wgsl_multi` method. `shader.compile.wgsl.multi` JSON-RPC endpoint. Per-GPU ISA optimization for heterogeneous arrays. |
+| Topology-unaware workload placement | `MultiGpuPlacement` in `WorkloadRouter` — evaluates GPU combinations for shared PCIe switches, minimizes hop count, maximizes effective interconnect bandwidth. |
 
 ## Recently Resolved (S141 — Deep Debt Evolution & Pedantic Sweep — Mar 10, 2026)
 
