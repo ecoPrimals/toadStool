@@ -1,4 +1,4 @@
-# Status -- March 10, 2026 (S144 Last Mile Deep Debt)
+# Status -- March 10, 2026 (S146 Deep Evolution)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **19,900+ tests, 0 failures** |
+| `cargo test --workspace` | PASS | **19,972 tests, 0 failures** (S146) |
 | `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
@@ -95,6 +95,23 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S146: Deep Evolution (Mar 10, 2026)
+- **nvvm_transcendental_risk** in `gpu.info` JSON-RPC response — per-device NVVM safety classification (poisoning risk, transcendental safety, safe precision tiers). Absorbed from hotSpring v0.6.26 request.
+- **PrecisionBrain wired into `compile_wgsl_multi`** — `shader.compile.wgsl.multi` response enriched with `precision_advice` per target device (safe tiers, avoid_transcendentals flag).
+- **PcieTopologyGraph marked stable** — `#[non_exhaustive]` + `empty()` constructor. Doc annotation declaring API stability for spring consumption.
+- **SpringDomain expansion** — +10 variants (Pharmacokinetics, Biosignal, Microbiome, Agriculture, Environmental, Phylogenetics, MassSpectrometry, UncertaintyQuantification, EvolutionaryComputation, Optimization). `as_str()` returns SCREAMING_SNAKE_CASE per wetSpring V109 convention.
+- **HealthSpring** added to `Spring` enum (`Spring::ALL` now 6 entries). 2 new cross-spring provenance flows for healthSpring PK/PD and DiversityIndex contributions.
+- **VRAM-aware routing** — `WorkloadPattern::gpu_memory_estimate_bytes()` for VRAM estimation. `WorkloadRouter::route_with_vram()` falls back to CPU when VRAM insufficient (healthSpring V19).
+- **Spring pins**: hotSpring v0.6.27, groundSpring V100, neuralSpring V96/S143, wetSpring V109, airSpring v0.7.5, healthSpring V19. 19,972 tests.
+
+### S145: Spring Absorption Execution (Mar 10, 2026)
+- **PrecisionBrain** absorbed from hotSpring v0.6.25 (domain-aware routing brain, F64 throttle detection, PrecisionHint enum).
+- **NvkZeroGuard** absorbed from airSpring v0.7.5 (zero-output detection, NaN contamination).
+- **8 new WorkloadPatterns** from neuralSpring S140 + healthSpring V14.1 (Pairwise, BatchFitness, HmmBatch, SpatialPayoff, Stochastic, PopulationPk, DoseResponse, DiversityIndex).
+- **5 new capability domains** (biology, health, measurement, optimization, visualization).
+- **capability.call format standardization** (qualified_method support).
+- **Spring-as-Provider ProviderRegistry** (ISSUE-007). ServerConfig port hardcoding evolved. 19,965 tests.
 
 ### S144: Last Mile Deep Debt (Mar 10, 2026)
 - **PCIe switch topology** (`pcie_topology.rs`): `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph` — sysfs parent bridge discovery, shared switch detection, contention-aware bandwidth estimation for multi-GPU daisy-chain arrays. `PcieLink` enriched with `via_switch`, `hops`, `contention_factor`. `WorkloadRouter::route_multi_gpu()` for topology-aware placement.

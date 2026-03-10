@@ -241,7 +241,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 19,965 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Workspace tests | 19,972 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -262,7 +262,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 19,965 tests; focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 19,972 tests (S146); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
@@ -285,7 +285,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 19,965 tests; focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 19,972 tests (S146); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 

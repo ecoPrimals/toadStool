@@ -86,7 +86,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 19,840+ tests; focus on hardware-dependent code (toadStool D-COV)
+- [ ] **Test coverage target 90%** -- 19,972 tests (S146); focus on hardware-dependent code (toadStool D-COV)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -116,7 +116,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-144)
+## Completed This Session (S90-146)
 
 ### Session S144: Last Mile Deep Debt (Mar 10, 2026)
 - **PCIe switch topology**: `pcie_topology.rs` — `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph` for sysfs-based bridge chain discovery, shared switch detection, contention-aware bandwidth estimation. Integrated into `PcieLink` (with `via_switch`, `hops`, `contention_factor`) and `WorkloadRouter` (topology-aware `route_multi_gpu`).

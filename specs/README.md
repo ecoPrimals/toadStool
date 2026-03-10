@@ -1,6 +1,6 @@
 # ToadStool Specifications
 
-## Current Status (March 10, 2026 — S141)
+## Current Status (March 10, 2026 — S146)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -9,8 +9,8 @@
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **19,900+ workspace tests** (0 failures, all concurrent)
-- **88+ JSON-RPC methods** (dynamically built from semantic registry)
+- **19,972 workspace tests** (0 failures, all concurrent)
+- **89+ JSON-RPC methods** (dynamically built from semantic registry)
 - **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport (PCIe P2P planned)
 - **coralReef shader proxy** — capability-based discovery, naga fallback
 - **Clippy pedantic** — 0 warnings with `--all-targets` (S141)

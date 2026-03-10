@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 10, 2026 -- S140
+**Last Updated**: March 10, 2026 -- S146
 
 ---
 
@@ -30,7 +30,7 @@
 
 ---
 
-## Current State (S138 — March 9, 2026)
+## Current State (S146 — March 10, 2026)
 
 **Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration. coralReef shader compilation proxy with capability-based discovery.
 
@@ -48,8 +48,8 @@
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware. All primal names via `interned_strings::primals::*`.
 - **coralReef shader proxy** — `shader.compile.*` handlers proxy to coralReef with capability-based discovery and graceful naga fallback.
 - **Cross-spring provenance** — `toadstool.provenance` JSON-RPC method exposes 17+ documented cross-spring flows for ecosystem introspection.
-- **19,900+ workspace tests** | 83.04% line coverage (llvm-cov verified) | all quality gates green (0 warnings, clippy pedantic clean)
-- **88+ JSON-RPC methods** (dynamically built from semantic registry)
+- **19,972 workspace tests** (S146) | ~86% line coverage (llvm-cov verified) | all quality gates green (0 warnings, clippy pedantic clean)
+- **89+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 
 ---
