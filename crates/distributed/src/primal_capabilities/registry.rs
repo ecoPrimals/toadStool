@@ -267,6 +267,110 @@ impl CapabilityRegistry {
     }
 }
 
+/// Registration from an external provider (e.g. a Spring) that offers
+/// a capability through a socket.
+///
+/// Part of the Spring-as-Provider pattern (ISSUE-007): Springs explicitly
+/// register with toadStool at startup rather than relying only on the
+/// filesystem convention `$XDG_RUNTIME_DIR/biomeos/{capability}.sock`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ProviderRegistration {
+    /// Capability domain this provider serves (e.g. "biology", "ecology").
+    pub capability: String,
+    /// Socket path where the provider listens for JSON-RPC calls.
+    pub socket_path: std::path::PathBuf,
+    /// JSON-RPC methods the provider supports.
+    pub methods: Vec<String>,
+    /// Human-readable provider name (e.g. "wetSpring", "airSpring").
+    pub provider_name: String,
+    /// Provider version string for compatibility tracking.
+    pub provider_version: String,
+    /// Timestamp of registration (seconds since UNIX epoch).
+    pub registered_at: u64,
+}
+
+/// Registry of external providers that have registered with toadStool.
+///
+/// Complements the filesystem-based socket discovery with explicit
+/// registrations. When both exist, the explicit registration takes
+/// precedence (it has richer metadata and liveness tracking).
+pub struct ProviderRegistry {
+    providers: HashMap<String, ProviderRegistration>,
+}
+
+impl ProviderRegistry {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            providers: HashMap::new(),
+        }
+    }
+
+    /// Register a provider for a capability domain.
+    ///
+    /// Replaces any existing provider for the same capability.
+    pub fn register(&mut self, registration: ProviderRegistration) {
+        self.providers
+            .insert(registration.capability.clone(), registration);
+    }
+
+    /// Deregister a provider by capability domain.
+    pub fn deregister(&mut self, capability: &str) -> Option<ProviderRegistration> {
+        self.providers.remove(capability)
+    }
+
+    /// Look up the socket path for a capability.
+    ///
+    /// Returns the explicit registration's socket path if present,
+    /// falling back to the filesystem convention via `primal_sockets`.
+    #[must_use]
+    pub fn resolve_socket(&self, capability: &str) -> std::path::PathBuf {
+        if let Some(reg) = self.providers.get(capability) {
+            return reg.socket_path.clone();
+        }
+        toadstool_common::primal_sockets::get_socket_path_for_capability(capability)
+    }
+
+    /// Whether a provider is explicitly registered for this capability.
+    #[must_use]
+    pub fn has_provider(&self, capability: &str) -> bool {
+        self.providers.contains_key(capability)
+    }
+
+    /// Get a provider registration.
+    #[must_use]
+    pub fn get_provider(&self, capability: &str) -> Option<&ProviderRegistration> {
+        self.providers.get(capability)
+    }
+
+    /// List all registered providers.
+    #[must_use]
+    pub fn all_providers(&self) -> Vec<&ProviderRegistration> {
+        self.providers.values().collect()
+    }
+
+    /// Prune registrations whose socket files no longer exist.
+    pub fn prune_stale(&mut self) -> Vec<ProviderRegistration> {
+        let stale_keys: Vec<String> = self
+            .providers
+            .iter()
+            .filter(|(_, reg)| !reg.socket_path.exists())
+            .map(|(k, _)| k.clone())
+            .collect();
+
+        stale_keys
+            .into_iter()
+            .filter_map(|k| self.providers.remove(&k))
+            .collect()
+    }
+}
+
+impl Default for ProviderRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -370,5 +474,105 @@ mod tests {
         let parsed: CapabilityResources = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.min_cpu_cores, 4);
         assert_eq!(parsed.gpu_memory_mb, Some(4096));
+    }
+
+    // ── ProviderRegistry tests ────────────────────────────────
+
+    fn make_registration(cap: &str, name: &str) -> ProviderRegistration {
+        ProviderRegistration {
+            capability: cap.to_string(),
+            socket_path: std::path::PathBuf::from(format!("/tmp/biomeos/{cap}.sock")),
+            methods: vec![format!("{cap}.list"), format!("{cap}.query")],
+            provider_name: name.to_string(),
+            provider_version: "1.0.0".to_string(),
+            registered_at: 1_710_000_000,
+        }
+    }
+
+    #[test]
+    fn test_provider_registry_register_and_lookup() {
+        let mut reg = ProviderRegistry::new();
+        reg.register(make_registration("biology", "wetSpring"));
+
+        assert!(reg.has_provider("biology"));
+        assert!(!reg.has_provider("ecology"));
+
+        let provider = reg.get_provider("biology").unwrap();
+        assert_eq!(provider.provider_name, "wetSpring");
+        assert_eq!(provider.methods.len(), 2);
+    }
+
+    #[test]
+    fn test_provider_registry_deregister() {
+        let mut reg = ProviderRegistry::new();
+        reg.register(make_registration("biology", "wetSpring"));
+        assert!(reg.has_provider("biology"));
+
+        let removed = reg.deregister("biology");
+        assert!(removed.is_some());
+        assert!(!reg.has_provider("biology"));
+    }
+
+    #[test]
+    fn test_provider_registry_replace() {
+        let mut reg = ProviderRegistry::new();
+        reg.register(make_registration("biology", "wetSpring-v1"));
+        reg.register(make_registration("biology", "wetSpring-v2"));
+
+        let provider = reg.get_provider("biology").unwrap();
+        assert_eq!(provider.provider_name, "wetSpring-v2");
+    }
+
+    #[test]
+    fn test_provider_registry_all_providers() {
+        let mut reg = ProviderRegistry::new();
+        reg.register(make_registration("biology", "wetSpring"));
+        reg.register(make_registration("ecology", "airSpring"));
+
+        let all = reg.all_providers();
+        assert_eq!(all.len(), 2);
+    }
+
+    #[test]
+    fn test_provider_registry_resolve_falls_back() {
+        let reg = ProviderRegistry::new();
+        let path = reg.resolve_socket("biology");
+        assert!(path.to_str().unwrap().contains("biology.sock"));
+    }
+
+    #[test]
+    fn test_provider_registry_resolve_prefers_explicit() {
+        let mut reg = ProviderRegistry::new();
+        reg.register(make_registration("biology", "wetSpring"));
+
+        let path = reg.resolve_socket("biology");
+        assert_eq!(path, std::path::PathBuf::from("/tmp/biomeos/biology.sock"));
+    }
+
+    #[test]
+    fn test_provider_registry_prune_stale() {
+        let mut reg = ProviderRegistry::new();
+        reg.register(ProviderRegistration {
+            capability: "nonexistent".to_string(),
+            socket_path: std::path::PathBuf::from("/tmp/definitely_not_existing_socket.sock"),
+            methods: vec![],
+            provider_name: "ghost".to_string(),
+            provider_version: "0.0.0".to_string(),
+            registered_at: 0,
+        });
+        assert!(reg.has_provider("nonexistent"));
+
+        let stale = reg.prune_stale();
+        assert_eq!(stale.len(), 1);
+        assert!(!reg.has_provider("nonexistent"));
+    }
+
+    #[test]
+    fn test_provider_registration_serde() {
+        let reg = make_registration("health", "healthSpring");
+        let json = serde_json::to_string(&reg).unwrap();
+        let parsed: ProviderRegistration = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.capability, "health");
+        assert_eq!(parsed.provider_name, "healthSpring");
     }
 }

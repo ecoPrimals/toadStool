@@ -31,10 +31,7 @@ pub fn process_info(pid: u32) -> Result<Option<ProcessInfo>> {
     };
 
     let status_path = format!("/proc/{pid}/status");
-    let rss_bytes = match std::fs::read_to_string(&status_path) {
-        Ok(c) => parse_vm_rss(&c),
-        Err(_) => 0,
-    };
+    let rss_bytes = std::fs::read_to_string(&status_path).map_or(0, |c| parse_vm_rss(&c));
 
     let boot_time = boot_time_secs()?;
     Ok(parse_proc_stat(&stat_content, rss_bytes, boot_time))

@@ -27,6 +27,7 @@ pub use wgpu_backend::{
 
 #[cfg(feature = "wgpu-backend")]
 pub use nvvm_safety::{
-    check_device_health, DeviceHealthStatus, HardwareCalibration, NvvmPoisoningRisk, PrecisionTier,
-    TierCapability,
+    check_device_health, nvk_zero_guard_check, nvk_zero_guard_check_f32, DeviceHealthStatus,
+    HardwareCalibration, NvvmPoisoningRisk, PrecisionBrain, PrecisionHint, PrecisionTier,
+    TierCapability, ZeroGuardVerdict,
 };

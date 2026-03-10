@@ -24,7 +24,7 @@ pub enum GpuVendor {
 }
 
 impl GpuVendor {
-    fn from_pci_vendor(vendor_id: u32) -> Self {
+    const fn from_pci_vendor(vendor_id: u32) -> Self {
         match vendor_id {
             0x1002 => Self::Amd,
             0x10de => Self::Nvidia,

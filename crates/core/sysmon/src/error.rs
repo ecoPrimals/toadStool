@@ -24,7 +24,7 @@ impl std::error::Error for SysmonError {
 }
 
 impl SysmonError {
-    pub(crate) fn new(path: &'static str, source: std::io::Error) -> Self {
+    pub(crate) const fn new(path: &'static str, source: std::io::Error) -> Self {
         Self { path, source }
     }
 }

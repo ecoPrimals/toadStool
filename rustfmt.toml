@@ -5,3 +5,7 @@ max_width = 100
 tab_spaces = 4
 use_field_init_shorthand = true
 use_try_shorthand = true
+# NOTE: imports_granularity and group_imports require nightly rustfmt.
+# When toolchain moves to nightly-capable fmt, uncomment:
+# imports_granularity = "Crate"
+# group_imports = "StdExternalCrate"

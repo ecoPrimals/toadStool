@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 10, 2026 -- S144 Last Mile Deep Debt
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,900+ tests (0 failures) | 83%+ line coverage (171K llvm-cov verified) | 89+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
-**Latest**: S144 — PCIe switch topology (PcieTopologyGraph, shared switch detection, contention-aware bandwidth), deprecated API migration (primals→capabilities across 20+ files), dead code audit (47 instances with explicit reasons), ignored test evolution (slow-tests feature, gpu_guards), coralReef multi-device compile (MultiDeviceCompileRequest, shader.compile.wgsl.multi), topology-aware MultiGpuPlacement.
+**Updated**: March 10, 2026 -- S145 Spring Absorption & Evolution
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,965 tests (0 failures) | ~86% line coverage (121K production lines) | 89+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
+**Latest**: S145 — PrecisionBrain absorbed (hotSpring v0.6.25), NvkZeroGuard absorbed (airSpring v0.7.5), 8 new WorkloadPatterns (neuralSpring S140 + healthSpring V14.1), 5 new capability domains, capability.call format standardization, Spring-as-Provider ProviderRegistry, ServerConfig port hardcoding evolved.
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-**~86% line coverage** (121K production lines). 19,840+ tests pass. Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~86% line coverage** (121K production lines). 19,965 tests pass. Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 

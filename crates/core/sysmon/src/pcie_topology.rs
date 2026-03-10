@@ -73,7 +73,7 @@ pub struct GpuPairTopology {
 pub struct PcieTopologyGraph {
     /// All discovered GPU devices.
     pub gpus: Vec<GpuDevice>,
-    /// Bridge ancestry for each GPU (card_index -> ordered list from device to root).
+    /// Bridge ancestry for each GPU (`card_index` -> ordered list from device to root).
     pub bridge_chains: HashMap<u32, Vec<PciBridge>>,
     /// Pairwise topology for each GPU pair.
     pub pairs: Vec<GpuPairTopology>,
@@ -121,33 +121,34 @@ impl PcieTopologyGraph {
         reason = "PCIe bandwidth values are well within f64 mantissa range"
     )]
     pub fn effective_bandwidth_bps(&self, gpu_a: u32, gpu_b: u32) -> u64 {
-        let pair = match self.pair(gpu_a, gpu_b) {
-            Some(p) => p,
-            None => return 0,
+        let Some(pair) = self.pair(gpu_a, gpu_b) else {
+            return 0;
         };
 
-        let gpu_a_dev = self.gpus.iter().find(|g| g.card_index == gpu_a);
-        let gpu_b_dev = self.gpus.iter().find(|g| g.card_index == gpu_b);
+        let dev_a = self.gpus.iter().find(|g| g.card_index == gpu_a);
+        let dev_b = self.gpus.iter().find(|g| g.card_index == gpu_b);
 
-        let (gen_a, width_a) = gpu_a_dev
-            .map(|g: &GpuDevice| {
-                let t = g.pcie_topology();
-                (t.gen.unwrap_or(3), t.width.unwrap_or(16))
-            })
-            .unwrap_or((3, 16));
+        let (gen_a, width_a) = dev_a.map_or((3, 16), |g: &GpuDevice| {
+            let t = g.pcie_topology();
+            (t.gen.unwrap_or(3), t.width.unwrap_or(16))
+        });
 
-        let (gen_b, width_b) = gpu_b_dev
-            .map(|g: &GpuDevice| {
-                let t = g.pcie_topology();
-                (t.gen.unwrap_or(3), t.width.unwrap_or(16))
-            })
-            .unwrap_or((3, 16));
+        let (gen_b, width_b) = dev_b.map_or((3, 16), |g: &GpuDevice| {
+            let t = g.pcie_topology();
+            (t.gen.unwrap_or(3), t.width.unwrap_or(16))
+        });
 
         let raw_a = raw_pcie_bandwidth_bps(gen_a, width_a);
         let raw_b = raw_pcie_bandwidth_bps(gen_b, width_b);
         let min_raw = raw_a.min(raw_b);
 
-        (min_raw as f64 * pair.contention_factor * 0.78) as u64
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "bandwidth product is always positive and within u64 range"
+        )]
+        let effective = (min_raw as f64 * pair.contention_factor * 0.78) as u64;
+        effective
     }
 }
 
@@ -233,9 +234,8 @@ fn discover_bridge_chain(device_path: &Path) -> Vec<PciBridge> {
     let mut chain = Vec::new();
     let mut depth = 0u32;
 
-    let resolved = match std::fs::canonicalize(device_path) {
-        Ok(p) => p,
-        Err(_) => return chain,
+    let Ok(resolved) = std::fs::canonicalize(device_path) else {
+        return chain;
     };
 
     let mut current = resolved;
@@ -284,14 +284,17 @@ fn find_common_bridge(
     chain_a: Option<&[PciBridge]>,
     chain_b: Option<&[PciBridge]>,
 ) -> (Option<PciBridge>, u32) {
-    let (a, b) = match (chain_a, chain_b) {
-        (Some(a), Some(b)) => (a, b),
-        _ => return (None, u32::MAX),
+    let (Some(a), Some(b)) = (chain_a, chain_b) else {
+        return (None, u32::MAX);
     };
 
     for (i, bridge_a) in a.iter().enumerate() {
         for (j, bridge_b) in b.iter().enumerate() {
             if bridge_a.pci_slot == bridge_b.pci_slot {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "bridge chains have at most ~8 entries (PCIe hierarchy depth)"
+                )]
                 let hops = (i as u32) + (j as u32);
                 return (Some(bridge_a.clone()), hops);
             }
@@ -307,11 +310,11 @@ pub const fn raw_pcie_bandwidth_bps(gen: u32, width: u32) -> u64 {
     let lane_bps: u64 = match gen {
         1 => 250_000_000,
         2 => 500_000_000,
-        3 => 984_600_000,
         4 => 1_969_000_000,
         5 => 3_938_000_000,
         6 => 7_563_000_000,
-        _ => 984_600_000, // default to Gen 3
+        // Gen 3 is the most common baseline; also used as fallback for unknown gens.
+        _ => 984_600_000,
     };
     lane_bps * width as u64
 }
@@ -489,11 +492,12 @@ mod tests {
 
         for pair in &graph.pairs {
             let bw = graph.effective_bandwidth_bps(pair.gpu_a, pair.gpu_b);
+            #[expect(clippy::cast_precision_loss, reason = "display-only bandwidth value")]
+            let bw_gbps = bw as f64 / 1e9;
             println!(
-                "  card{} <-> card{}: hops={}, contention={:.2}, same_numa={}, same_iommu={}, bw={:.1} Gbps",
+                "  card{} <-> card{}: hops={}, contention={:.2}, same_numa={}, same_iommu={}, bw={bw_gbps:.1} Gbps",
                 pair.gpu_a, pair.gpu_b, pair.hops, pair.contention_factor,
                 pair.same_numa, pair.same_iommu_group,
-                bw as f64 / 1e9
             );
         }
     }

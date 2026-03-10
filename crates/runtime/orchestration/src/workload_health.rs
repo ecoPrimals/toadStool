@@ -105,7 +105,7 @@ impl WorkloadHealthMonitor {
         }
     }
 
-    /// Record a healthy interval. May de-escalate if healthy_streak >= yellow_threshold.
+    /// Record a healthy interval. May de-escalate if `healthy_streak` >= `yellow_threshold`.
     /// Red never auto-de-escalates; use `reset()` for that.
     pub fn report_healthy(&mut self) {
         self.healthy_streak += 1;
@@ -191,8 +191,7 @@ impl WorkloadHealthMonitor {
         action: &InterruptAction,
     ) -> String {
         format!(
-            "Anomaly {:?} at {:?} — action: {:?}",
-            anomaly, severity, action
+            "Anomaly {anomaly:?} at {severity:?} — action: {action:?}"
         )
     }
 

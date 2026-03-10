@@ -3,6 +3,8 @@
 //!
 //! **Deep Debt**: Intelligent, configurable selection policies
 
+use std::sync::Arc;
+
 use crate::error::OrchestrationError;
 use crate::orchestrator::*;
 
@@ -52,7 +54,9 @@ impl SelectionPolicy {
         }
     }
 
-    /// Rank all substrates by score (descending)
+    /// Rank all substrates by score (descending).
+    ///
+    /// Uses `Arc::clone` rather than deep clone — cheap refcount bump.
     pub fn rank_all(
         &self,
         substrates: &[SubstrateHandle],
@@ -63,7 +67,7 @@ impl SelectionPolicy {
             .iter()
             .map(|s| {
                 let score = self.score_substrate(s, request, history);
-                (s.clone(), score)
+                (Arc::clone(s), score)
             })
             .collect();
 
@@ -72,69 +76,77 @@ impl SelectionPolicy {
         Ok(ranked)
     }
 
-    /// Select fastest substrate based on history
+    /// Select fastest substrate based on history.
+    ///
+    /// Tracks index during comparison to avoid cloning every candidate;
+    /// only the winning `Arc` is cloned once at the end.
     fn select_fastest(
         &self,
         substrates: &[SubstrateHandle],
         history: &PerformanceHistory,
     ) -> Result<SubstrateHandle, OrchestrationError> {
-        let mut best = substrates[0].clone();
+        let no_history = std::time::Duration::from_secs(999);
+        let mut best_idx = 0;
         let mut best_duration = history
-            .average_duration_for(best.substrate_type())
-            .unwrap_or(std::time::Duration::from_secs(999));
+            .average_duration_for(substrates[0].substrate_type())
+            .unwrap_or(no_history);
 
-        for substrate in substrates.iter().skip(1) {
+        for (i, substrate) in substrates.iter().enumerate().skip(1) {
             let duration = history
                 .average_duration_for(substrate.substrate_type())
-                .unwrap_or(std::time::Duration::from_secs(999));
+                .unwrap_or(no_history);
 
             if duration < best_duration {
-                best = substrate.clone();
+                best_idx = i;
                 best_duration = duration;
             }
         }
 
-        Ok(best)
+        Ok(Arc::clone(&substrates[best_idx]))
     }
 
-    /// Select most energy-efficient substrate
+    /// Select most energy-efficient substrate.
+    ///
+    /// Single `Arc::clone` at the end instead of per-candidate.
     fn select_most_efficient(
         &self,
         substrates: &[SubstrateHandle],
     ) -> Result<SubstrateHandle, OrchestrationError> {
-        let mut best = substrates[0].clone();
-        let mut best_power = best.capabilities().power_watts;
+        let mut best_idx = 0;
+        let mut best_power = substrates[0].capabilities().power_watts;
 
-        for substrate in substrates.iter().skip(1) {
+        for (i, substrate) in substrates.iter().enumerate().skip(1) {
             let power = substrate.capabilities().power_watts;
             if power < best_power {
-                best = substrate.clone();
+                best_idx = i;
                 best_power = power;
             }
         }
 
-        Ok(best)
+        Ok(Arc::clone(&substrates[best_idx]))
     }
 
-    /// Adaptive selection based on workload target
+    /// Adaptive selection based on workload target.
+    ///
+    /// Single `Arc::clone` at the end instead of per-candidate.
     fn select_adaptive(
         &self,
         substrates: &[SubstrateHandle],
         request: &WorkloadRequest,
         history: &PerformanceHistory,
     ) -> Result<SubstrateHandle, OrchestrationError> {
-        let mut best = substrates[0].clone();
-        let mut best_score = self.score_substrate(&best, request, history);
+        let mut best_idx = 0;
+        let mut best_score = self.score_substrate(&substrates[0], request, history);
 
-        for substrate in substrates.iter().skip(1) {
+        for (i, substrate) in substrates.iter().enumerate().skip(1) {
             let score = self.score_substrate(substrate, request, history);
             if score > best_score {
-                best = substrate.clone();
+                best_idx = i;
                 best_score = score;
             }
         }
 
-        Ok(best)
+        Ok(Arc::clone(&substrates[best_idx]))
     }
 
     /// Score a substrate for a workload (higher is better)

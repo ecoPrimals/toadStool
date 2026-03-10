@@ -112,7 +112,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 19,840+ tests; ~86% line coverage (121K production lines). Focus: hardware-dependent code |
+| D-COV | Test coverage → 90% | Medium | 19,965 tests; ~86% line coverage (121K production lines). Focus: hardware-dependent code |
 | D-SOV | ~~Sovereignty migration~~ | **RESOLVED S94b** | All 7 production callers migrated to `get_socket_path_for_capability()` |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
 | — | ~~vfio.rs smart refactoring~~ | **RESOLVED S94** | 971L → `vfio/` directory (types.rs, ioctl.rs, dma.rs, mod.rs) |
@@ -184,7 +184,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | ✅ 0 warnings (S131+: `#[expect]` evolution) |
 | `cargo fmt --all -- --check` | ✅ 0 diffs |
 | `cargo doc --workspace --no-deps` | ✅ 0 warnings |
-| Workspace tests | ✅ 19,840+ passed (S133) |
+| Workspace tests | ✅ 19,965 passed (S145) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |
@@ -194,6 +194,31 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | File size limit | All < 1000 lines |
 
 ---
+
+### Session S145 (Mar 10, 2026)
+
+| Category | Change |
+|----------|--------|
+| PrecisionBrain | Absorbed from hotSpring v0.6.25: domain-aware routing brain with cached route table, F64 throttle detection (>8× ratio), 4-level PrecisionHint enum (Critical/Moderate/ThroughputBound/LowPrecision) |
+| NvkZeroGuard | Absorbed from airSpring v0.7.5: zero-output detection for NVK on Volta (f64 + f32 variants), NaN contamination check, ZeroGuardVerdict enum |
+| TierCapability evolution | Added `dispatch_latency_ratio` field for PrecisionBrain F64 throttle heuristic |
+| Workload patterns | 8 new patterns absorbed from neuralSpring S140 + healthSpring V14.1: Pairwise (500K), BatchFitness (50K), HmmBatch (5K), SpatialPayoff (4K), Stochastic (100K), PopulationPk (100), DoseResponse (1K), DiversityIndex (500) |
+| Capability domains | 5 new domains: biology, health, measurement, optimization, visualization |
+| capability.call evolution | ISSUE-003: `qualified_method` format B support (`biology.phylo.infer`) alongside flat format A |
+| Spring-as-Provider | ISSUE-007: `ProviderRegistry` for explicit Spring registration with socket path, methods, version; `prune_stale()` for liveness; falls back to filesystem convention |
+| Hardcoding evolution | `ServerConfig::default()` port evolved from bare `8080` to `toadstool_config::ports` centralized lookup |
+| Spring versions | hotSpring v0.6.25, groundSpring V100, neuralSpring V91/S140, wetSpring V99+, airSpring v0.7.5, healthSpring V14.1 |
+| Coverage | 19,965 tests (18 new), 0 failures, 101 skipped |
+
+### Session S144 (Mar 9, 2026)
+
+| Category | Change |
+|----------|--------|
+| Flaky test fix | `test_concurrent_resource_monitoring_events`: event-type filtering for ResourceUsageUpdate in async broadcast |
+| Clippy pedantic | 16+ violations fixed in `pcie_topology.rs`: `let..else`, `map_or`, `#[expect]`, `const fn` evolution |
+| Hot-path optimization | `policy.rs`: eliminated N-1 intermediate `Arc::clone` in substrate selection |
+| Magic string | `ai_mcp_interface`: hardcoded "45 minutes" evolved to computed average from session timestamps |
+| Clippy auto-fix | `workload_routing.rs`, `workload_health.rs`: `doc_markdown`, `map_unwrap_or` |
 
 ### Session S133 (Mar 8, 2026)
 

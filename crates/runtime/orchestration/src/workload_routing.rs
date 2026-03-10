@@ -2,10 +2,10 @@
 //! Workload-size-aware routing thresholds from cross-spring Kokkos parity benchmarks.
 //!
 //! Thresholds are absorbed from:
-//! - **healthSpring V14.1**: kokkos_reduction, kokkos_scatter, kokkos_monte_carlo,
-//!   kokkos_ode_batch, kokkos_nlme_iteration
-//! - **neuralSpring S139**: bench_kokkos_parity, FFT, element-wise, BLAST pipeline
-//! - **groundSpring V99** / **hotSpring v0.6.25**: spectral SpMV
+//! - **healthSpring V14.1**: `kokkos_reduction`, `kokkos_scatter`, `kokkos_monte_carlo`,
+//!   `kokkos_ode_batch`, `kokkos_nlme_iteration`
+//! - **neuralSpring S139**: `bench_kokkos_parity`, FFT, element-wise, BLAST pipeline
+//! - **groundSpring V99** / **hotSpring v0.6.25**: spectral `SpMV`
 //!
 //! Each threshold defines a problem-size crossover below which CPU is faster than GPU.
 //! The router uses these to select the optimal substrate (CPU vs GPU) for a given
@@ -26,6 +26,30 @@ pub enum WorkloadPattern {
     SpMV,
     ElementWise,
     SmithWaterman,
+    /// Pairwise distance / similarity (N×N or N×M).
+    /// neuralSpring: `PairwiseL2Gpu`, `PairwiseHammingGpu`.
+    Pairwise,
+    /// Batch fitness evaluation (population × genome).
+    /// neuralSpring: `BatchFitnessGpu`, `SwarmNnGpu`.
+    BatchFitness,
+    /// HMM forward/backward (states × observations).
+    /// neuralSpring/wetSpring: `HmmBatchForwardF64`.
+    HmmBatch,
+    /// Spatial game / lattice payoff computation.
+    /// neuralSpring: `SpatialPayoffGpu`.
+    SpatialPayoff,
+    /// Stochastic population simulation (populations × loci).
+    /// neuralSpring: `WrightFisherGpu`, `BatchedMultinomialGpu`.
+    Stochastic,
+    /// Population pharmacokinetics (subjects × timepoints).
+    /// healthSpring: `PopulationPkGpu`, `NlmeDispatch`.
+    PopulationPk,
+    /// Dose-response sweep (concentrations × parameters).
+    /// healthSpring: `HillDoseResponseGpu`.
+    DoseResponse,
+    /// Diversity index computation (samples × taxa).
+    /// healthSpring/wetSpring: `ShannonGpu`, `SimpsonGpu`.
+    DiversityIndex,
 }
 
 /// Target compute substrate for workload execution.
@@ -70,8 +94,7 @@ impl WorkloadRouter {
             .thresholds
             .iter()
             .find(|t| t.pattern == pattern)
-            .map(|t| t.gpu_crossover_n)
-            .unwrap_or(u64::MAX);
+            .map_or(u64::MAX, |t| t.gpu_crossover_n);
 
         if problem_size > crossover {
             SubstrateTarget::Gpu
@@ -254,6 +277,46 @@ fn default_thresholds() -> Vec<RoutingThreshold> {
             gpu_crossover_n: 1_000,
             provenance: "neuralSpring S139 BLAST pipeline",
         },
+        RoutingThreshold {
+            pattern: WorkloadPattern::Pairwise,
+            gpu_crossover_n: 500_000,
+            provenance: "neuralSpring S140 pairwise_substrate bench",
+        },
+        RoutingThreshold {
+            pattern: WorkloadPattern::BatchFitness,
+            gpu_crossover_n: 50_000,
+            provenance: "neuralSpring S140 batch_fitness_substrate bench",
+        },
+        RoutingThreshold {
+            pattern: WorkloadPattern::HmmBatch,
+            gpu_crossover_n: 5_000,
+            provenance: "neuralSpring S140 hmm_substrate bench",
+        },
+        RoutingThreshold {
+            pattern: WorkloadPattern::SpatialPayoff,
+            gpu_crossover_n: 4_000,
+            provenance: "neuralSpring S140 spatial_substrate bench",
+        },
+        RoutingThreshold {
+            pattern: WorkloadPattern::Stochastic,
+            gpu_crossover_n: 100_000,
+            provenance: "neuralSpring S140 stochastic_substrate bench",
+        },
+        RoutingThreshold {
+            pattern: WorkloadPattern::PopulationPk,
+            gpu_crossover_n: 100,
+            provenance: "healthSpring V14.1 metalForge parallel_gpu_min",
+        },
+        RoutingThreshold {
+            pattern: WorkloadPattern::DoseResponse,
+            gpu_crossover_n: 1_000,
+            provenance: "healthSpring V14.1 metalForge sweep_gpu_min",
+        },
+        RoutingThreshold {
+            pattern: WorkloadPattern::DiversityIndex,
+            gpu_crossover_n: 500,
+            provenance: "healthSpring V14.1 metalForge reduce_gpu_min",
+        },
     ]
 }
 
@@ -385,5 +448,138 @@ mod tests {
         };
         assert!(router.route_multi_gpu(&[0], 2, &topo).is_none());
         assert!(router.route_multi_gpu(&[], 1, &topo).is_none());
+    }
+
+    #[test]
+    fn route_pairwise_crossover() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::Pairwise, 100_000),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::Pairwise, 1_000_000),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn route_batch_fitness_crossover() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::BatchFitness, 10_000),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::BatchFitness, 100_000),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn route_hmm_batch_crossover() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::HmmBatch, 1_000),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::HmmBatch, 10_000),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn route_population_pk_low_threshold() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::PopulationPk, 50),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::PopulationPk, 200),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn route_dose_response_crossover() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::DoseResponse, 500),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::DoseResponse, 2_000),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn route_diversity_index_crossover() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::DiversityIndex, 100),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::DiversityIndex, 1_000),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn route_stochastic_crossover() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::Stochastic, 50_000),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::Stochastic, 200_000),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn route_spatial_payoff_crossover() {
+        let router = WorkloadRouter::new();
+        assert_eq!(
+            router.route(WorkloadPattern::SpatialPayoff, 2_000),
+            SubstrateTarget::Cpu
+        );
+        assert_eq!(
+            router.route(WorkloadPattern::SpatialPayoff, 8_000),
+            SubstrateTarget::Gpu
+        );
+    }
+
+    #[test]
+    fn all_patterns_have_default_thresholds() {
+        let router = WorkloadRouter::new();
+        let patterns = [
+            WorkloadPattern::Reduction,
+            WorkloadPattern::Scatter,
+            WorkloadPattern::MonteCarlo,
+            WorkloadPattern::OdeBatch,
+            WorkloadPattern::NlmeIteration,
+            WorkloadPattern::MatMul,
+            WorkloadPattern::Fft,
+            WorkloadPattern::SpMV,
+            WorkloadPattern::ElementWise,
+            WorkloadPattern::SmithWaterman,
+            WorkloadPattern::Pairwise,
+            WorkloadPattern::BatchFitness,
+            WorkloadPattern::HmmBatch,
+            WorkloadPattern::SpatialPayoff,
+            WorkloadPattern::Stochastic,
+            WorkloadPattern::PopulationPk,
+            WorkloadPattern::DoseResponse,
+            WorkloadPattern::DiversityIndex,
+        ];
+        for pattern in patterns {
+            let result = router.route(pattern, 0);
+            assert_eq!(result, SubstrateTarget::Cpu, "size 0 should route to CPU for {pattern:?}");
+        }
     }
 }

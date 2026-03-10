@@ -41,7 +41,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 19,900+ workspace tests (0 failures, 216+ intentional ignores) |
+| `cargo test --workspace` | 19,965 workspace tests (0 failures, 101 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (85+ dynamically built)
+### JSON-RPC Methods (89+ dynamically built)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -241,7 +241,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 19,840+ (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Workspace tests | 19,965 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -262,18 +262,18 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 19,840+ tests; focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 19,965 tests; focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
-- **S134 (Mar 8, 2026)**: BearDog crypto delegation enforced (secure_enclave). `dev-crypto` feature gate for SoftwareHsmProvider. lifecycle_ops refactored. Unused deps removed (notify, aes-gcm from secure_enclave). Volatile MMIO safe abstraction. Property-based tests (proptest).
-- **S133 (Mar 8, 2026)**: Ada Lovelace reclassification, f64_zeros_risk, fused_ops_healthy(), 14 ecology.* methods, NUCLEUS discovery, deploy graph routing, 20 semantic methods (71→91). Spring versions: hotSpring v0.6.23, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5.
-- **S131+ (Mar 7, 2026)**: Spring sync (all 5 springs pinned to latest). `#[allow]` → `#[expect]` lint evolution (3 stale suppressions removed). SPRING_ABSORPTION_TRACKER comprehensive update. coralReef E2E AMD dispatch milestone noted.
-- **S130+ (Mar 7, 2026)**: Deep debt execution. Clippy pedantic zero workspace-wide. Unsafe audit (70+ blocks justified). Dep/hardcoding/clone/file-size audits. 240 new coverage tests. CI pedantic gate.
-- **S130 (Mar 7, 2026)**: Cross-spring shader rewiring. `shader.compile.*` evolved to real coralReef proxy. Cross-spring provenance tracking. 31 new tests.
-- **S129 (Mar 7, 2026)**: C dep evolution. 5 god files refactored. 200+ coverage tests. Zero-copy hot paths.
-- **S128 (Mar 6, 2026)**: f64 shared-memory bug absorbed. `PrecisionRoutingAdvice`. `shader.compile.*` IPC. Architecture stubs evolved.
+- **S145 (Mar 10, 2026)**: Spring absorption execution — PrecisionBrain (hotSpring v0.6.25), NvkZeroGuard (airSpring v0.7.5), 8 new WorkloadPatterns (neuralSpring S140 + healthSpring V14.1), 5 new capability domains, capability.call format standardization (ISSUE-003), Spring-as-Provider ProviderRegistry (ISSUE-007), ServerConfig port hardcoding evolved. 19,965 tests.
+- **S144 (Mar 9, 2026)**: PCIe switch topology, deprecated API migration, dead code audit, coralReef multi-device compile, topology-aware MultiGpuPlacement. Flaky test fix, clippy pedantic sweep, hot-path clone elimination.
+- **S140 (Mar 9, 2026)**: Deep debt evolution — hardcoding elimination, StreamingDispatchContext, barraCuda Sprint 2 API awareness, smart refactor science.rs (1139→828 LOC).
+- **S134 (Mar 8, 2026)**: BearDog crypto delegation enforced. `dev-crypto` feature gate. Volatile MMIO safe abstraction. Property-based tests (proptest).
+- **S133 (Mar 8, 2026)**: Cross-spring absorption from all 5 springs. Ada Lovelace reclassification, f64_zeros_risk, 14 ecology methods, NUCLEUS discovery, 20 semantic methods (71→91).
+- **S130+ (Mar 7, 2026)**: Clippy pedantic zero workspace-wide. Unsafe audit. 240 new coverage tests. CI pedantic gate.
+- **S128 (Mar 6, 2026)**: f64 shared-memory bug absorbed. `PrecisionRoutingAdvice`. `shader.compile.*` IPC.
 - **S90–S96**: REST API deleted. barraCuda budded. Sovereign pipeline. NpuDispatch. ecoBin verified.
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
@@ -284,7 +284,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 19,840+ tests; focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 19,965 tests; focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -329,4 +329,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 10, 2026 -- S140. 19,900+ workspace tests. 83%+ line coverage (llvm-cov verified). 88+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). 15-demo progressive showcase. Compute triangle live: dual-write discovery, gpu.dispatch, GPU descriptors with render_node/driver/arch. StreamingDispatch + PipelineGraph DAG + ProgressCallback absorbed. Hardcoding eliminated (7 files → interned_strings). barraCuda Sprint 2 APIs wired. Clippy pedantic zero. Rust 1.82+ (MSRV).
+**Last Updated**: March 10, 2026 -- S145. 19,965 workspace tests. ~86% line coverage (121K production lines). 89+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.25, groundSpring V100, neuralSpring V91/S140, wetSpring V99+, airSpring v0.7.5, healthSpring V14.1. PrecisionBrain + NvkZeroGuard + 8 new WorkloadPatterns + 5 capability domains + ProviderRegistry (Spring-as-Provider). Clippy pedantic zero. Rust 1.82+ (MSRV).

@@ -42,6 +42,10 @@ pub struct TierCapability {
     /// Whether f64 transcendentals (exp/log) are safe at this tier.
     /// Inferred from driver identity, not probed (probing risks poisoning).
     pub transcendentals_safe: bool,
+    /// Dispatch latency ratio vs F32 baseline (1.0 = same speed).
+    /// Used by `PrecisionBrain` for F64 throttle detection.
+    /// Default 1.0 when unknown; set from runtime calibration probes.
+    pub dispatch_latency_ratio: f64,
 }
 
 /// Hardware calibration for NVVM safety.
@@ -97,6 +101,7 @@ impl HardwareCalibration {
             compiles: true,
             dispatches: true,
             transcendentals_safe: true,
+            dispatch_latency_ratio: 1.0,
         }];
 
         if supports_f64 {
@@ -105,6 +110,7 @@ impl HardwareCalibration {
                 compiles: true,
                 dispatches: true,
                 transcendentals_safe: is_known && (is_nvk || is_radv || is_nvidia_proprietary),
+                dispatch_latency_ratio: 1.0,
             });
 
             let f64_precise_transcendentals_safe = is_nvk || is_radv;
@@ -113,6 +119,7 @@ impl HardwareCalibration {
                 compiles: true,
                 dispatches: true,
                 transcendentals_safe: f64_precise_transcendentals_safe,
+                dispatch_latency_ratio: 1.0,
             });
 
             let df64_transcendentals_safe = is_nvk || is_radv;
@@ -122,6 +129,7 @@ impl HardwareCalibration {
                 compiles: true,
                 dispatches: true,
                 transcendentals_safe: df64_transcendentals_safe,
+                dispatch_latency_ratio: 1.0,
             });
 
             Self {
@@ -190,6 +198,205 @@ impl HardwareCalibration {
         }
 
         PrecisionTier::F32
+    }
+}
+
+/// Precision requirement hint from science domains.
+///
+/// Domain-agnostic — callers (springs, barraCuda) classify their workload
+/// into one of these categories. `PrecisionBrain` maps the hint to the
+/// best available `PrecisionTier` on the current hardware.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PrecisionHint {
+    /// Requires maximum precision (dielectric response, eigensolve, NLME FOCE).
+    /// Routing: F64Precise → F64 → DF64 → F32.
+    Critical,
+    /// Needs f64 but not maximum precision (gradient flow, nuclear EOS, PK/PD).
+    /// Routing: F64 → DF64 → F32.
+    Moderate,
+    /// Throughput-limited; f64 acceptable but not at performance cost.
+    /// Routing: F64 (unless throttled) → DF64 → F32.
+    ThroughputBound,
+    /// f32 is sufficient (visualization, preprocessing, approximate).
+    /// Routing: F32 only.
+    LowPrecision,
+}
+
+/// Domain-aware precision routing brain (absorbed from hotSpring v0.6.25).
+///
+/// Builds a cached routing table from `HardwareCalibration` so callers get
+/// O(1) tier lookups. Encodes the F64-throttle heuristic: when F64 dispatch
+/// latency exceeds 8× F32 latency, throughput-bound workloads prefer DF64.
+#[derive(Debug, Clone)]
+pub struct PrecisionBrain {
+    calibration: HardwareCalibration,
+    /// Pre-computed tier for each `PrecisionHint` variant.
+    /// Index: Critical=0, Moderate=1, ThroughputBound=2, LowPrecision=3.
+    route_table: [PrecisionTier; 4],
+}
+
+impl PrecisionBrain {
+    /// Build a routing brain from hardware calibration.
+    ///
+    /// `f64_throttle_ratio` is the F64/F32 dispatch latency ratio above which
+    /// throughput-bound workloads prefer DF64 over F64. Pass `None` for the
+    /// default threshold of 8.0 (from hotSpring empirical measurement).
+    #[must_use]
+    pub fn new(calibration: HardwareCalibration, f64_throttle_ratio: Option<f64>) -> Self {
+        let threshold = f64_throttle_ratio.unwrap_or(8.0);
+        let f64_throttled = Self::detect_f64_throttle(&calibration, threshold);
+        let route_table = Self::build_route_table(&calibration, f64_throttled);
+
+        Self {
+            calibration,
+            route_table,
+        }
+    }
+
+    /// O(1) tier lookup for a precision hint.
+    #[must_use]
+    pub fn route(&self, hint: PrecisionHint) -> PrecisionTier {
+        self.route_table[hint as usize]
+    }
+
+    /// Whether the routed tier for this hint uses transcendentals safely.
+    #[must_use]
+    pub fn transcendentals_safe(&self, hint: PrecisionHint) -> bool {
+        self.calibration
+            .is_tier_safe(self.route(hint), true)
+    }
+
+    /// Access the underlying calibration.
+    #[must_use]
+    pub fn calibration(&self) -> &HardwareCalibration {
+        &self.calibration
+    }
+
+    /// Adapter name from calibration.
+    #[must_use]
+    pub fn adapter_name(&self) -> &str {
+        &self.calibration.adapter_name
+    }
+
+    fn detect_f64_throttle(cal: &HardwareCalibration, threshold: f64) -> bool {
+        let f32_cap = cal.tiers.iter().find(|t| t.tier == PrecisionTier::F32);
+        let f64_cap = cal.tiers.iter().find(|t| t.tier == PrecisionTier::F64);
+        match (f32_cap, f64_cap) {
+            (Some(f32_t), Some(f64_t)) if f32_t.dispatches && f64_t.dispatches => {
+                f64_t.dispatch_latency_ratio > threshold
+            }
+            _ => false,
+        }
+    }
+
+    fn build_route_table(cal: &HardwareCalibration, f64_throttled: bool) -> [PrecisionTier; 4] {
+        [
+            // Critical: F64Precise → F64 → DF64 → F32
+            Self::first_safe(
+                cal,
+                &[
+                    PrecisionTier::F64Precise,
+                    PrecisionTier::F64,
+                    PrecisionTier::Df64,
+                    PrecisionTier::F32,
+                ],
+            ),
+            // Moderate: F64 → DF64 → F32
+            Self::first_safe(
+                cal,
+                &[PrecisionTier::F64, PrecisionTier::Df64, PrecisionTier::F32],
+            ),
+            // ThroughputBound: F64 (unless throttled) → DF64 → F32
+            if f64_throttled {
+                Self::first_safe(
+                    cal,
+                    &[PrecisionTier::Df64, PrecisionTier::F64, PrecisionTier::F32],
+                )
+            } else {
+                Self::first_safe(
+                    cal,
+                    &[PrecisionTier::F64, PrecisionTier::Df64, PrecisionTier::F32],
+                )
+            },
+            // LowPrecision: F32
+            PrecisionTier::F32,
+        ]
+    }
+
+    fn first_safe(cal: &HardwareCalibration, order: &[PrecisionTier]) -> PrecisionTier {
+        for &tier in order {
+            if cal.is_tier_safe(tier, false) {
+                return tier;
+            }
+        }
+        PrecisionTier::F32
+    }
+}
+
+/// NVK zero-output guard (absorbed from airSpring v0.7.5).
+///
+/// NVK on certain architectures (Volta SM70) produces all-zeros for f64
+/// compute shaders that appear to compile and dispatch successfully.
+/// This guard validates shader output buffers and signals fallback.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZeroGuardVerdict {
+    /// Output contains non-zero values — computation is valid.
+    Valid,
+    /// Output is all zeros — likely NVK zero-output bug.
+    AllZeros,
+    /// Output is NaN-contaminated — precision failure.
+    NanContaminated,
+}
+
+/// Check a buffer of f64 results for NVK zero-output patterns.
+///
+/// Returns `ZeroGuardVerdict::AllZeros` when every element is exactly 0.0,
+/// which indicates the NVK zero-output bug on affected architectures.
+/// Returns `NanContaminated` if any element is NaN.
+#[must_use]
+pub fn nvk_zero_guard_check(output: &[f64]) -> ZeroGuardVerdict {
+    if output.is_empty() {
+        return ZeroGuardVerdict::Valid;
+    }
+
+    let mut all_zero = true;
+    for &v in output {
+        if v.is_nan() {
+            return ZeroGuardVerdict::NanContaminated;
+        }
+        if v != 0.0 {
+            all_zero = false;
+        }
+    }
+
+    if all_zero {
+        ZeroGuardVerdict::AllZeros
+    } else {
+        ZeroGuardVerdict::Valid
+    }
+}
+
+/// f32 variant of the zero-guard check.
+#[must_use]
+pub fn nvk_zero_guard_check_f32(output: &[f32]) -> ZeroGuardVerdict {
+    if output.is_empty() {
+        return ZeroGuardVerdict::Valid;
+    }
+
+    let mut all_zero = true;
+    for &v in output {
+        if v.is_nan() {
+            return ZeroGuardVerdict::NanContaminated;
+        }
+        if v != 0.0 {
+            all_zero = false;
+        }
+    }
+
+    if all_zero {
+        ZeroGuardVerdict::AllZeros
+    } else {
+        ZeroGuardVerdict::Valid
     }
 }
 
@@ -443,5 +650,125 @@ mod tests {
             NvvmPoisoningRisk::None,
             NvvmPoisoningRisk::TranscendentalOnly
         );
+    }
+
+    // ── PrecisionBrain tests ──────────────────────────────────
+
+    #[test]
+    fn brain_nvk_critical_routes_f64_precise() {
+        let adapter = make_test_adapter("NVIDIA RTX 3080", "nvk", true, false);
+        let cal = HardwareCalibration::from_adapter_info(&adapter);
+        let brain = PrecisionBrain::new(cal, None);
+
+        assert_eq!(brain.route(PrecisionHint::Critical), PrecisionTier::F64Precise);
+    }
+
+    #[test]
+    fn brain_nvk_moderate_routes_f64() {
+        let adapter = make_test_adapter("NVIDIA RTX 3080", "nvk", true, false);
+        let cal = HardwareCalibration::from_adapter_info(&adapter);
+        let brain = PrecisionBrain::new(cal, None);
+
+        assert_eq!(brain.route(PrecisionHint::Moderate), PrecisionTier::F64);
+    }
+
+    #[test]
+    fn brain_nvk_throughput_routes_f64() {
+        let adapter = make_test_adapter("NVIDIA RTX 3080", "nvk", true, false);
+        let cal = HardwareCalibration::from_adapter_info(&adapter);
+        let brain = PrecisionBrain::new(cal, None);
+
+        assert_eq!(brain.route(PrecisionHint::ThroughputBound), PrecisionTier::F64);
+    }
+
+    #[test]
+    fn brain_low_precision_always_f32() {
+        let adapter = make_test_adapter("NVIDIA RTX 3080", "nvk", true, false);
+        let cal = HardwareCalibration::from_adapter_info(&adapter);
+        let brain = PrecisionBrain::new(cal, None);
+
+        assert_eq!(brain.route(PrecisionHint::LowPrecision), PrecisionTier::F32);
+    }
+
+    #[test]
+    fn brain_f32_only_gpu_all_routes_f32() {
+        let adapter = make_test_adapter("Intel UHD 630", "anv", false, false);
+        let cal = HardwareCalibration::from_adapter_info(&adapter);
+        let brain = PrecisionBrain::new(cal, None);
+
+        assert_eq!(brain.route(PrecisionHint::Critical), PrecisionTier::F32);
+        assert_eq!(brain.route(PrecisionHint::Moderate), PrecisionTier::F32);
+        assert_eq!(brain.route(PrecisionHint::ThroughputBound), PrecisionTier::F32);
+        assert_eq!(brain.route(PrecisionHint::LowPrecision), PrecisionTier::F32);
+    }
+
+    #[test]
+    fn brain_nvidia_proprietary_critical_skips_f64_precise() {
+        let adapter = make_test_adapter("NVIDIA RTX 3090", "nvidia", true, false);
+        let cal = HardwareCalibration::from_adapter_info(&adapter);
+        let brain = PrecisionBrain::new(cal, None);
+
+        assert_eq!(brain.route(PrecisionHint::Critical), PrecisionTier::F64Precise);
+        assert_eq!(brain.route(PrecisionHint::Moderate), PrecisionTier::F64);
+    }
+
+    #[test]
+    fn brain_accessor_adapter_name() {
+        let adapter = make_test_adapter("NVIDIA RTX 3080", "nvk", true, false);
+        let cal = HardwareCalibration::from_adapter_info(&adapter);
+        let brain = PrecisionBrain::new(cal, None);
+
+        assert_eq!(brain.adapter_name(), "NVIDIA RTX 3080");
+        assert!(brain.calibration().has_any_f64);
+    }
+
+    // ── NvkZeroGuard tests ────────────────────────────────────
+
+    #[test]
+    fn zero_guard_valid_output() {
+        let output = [1.0, 2.0, 3.0, 0.5];
+        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::Valid);
+    }
+
+    #[test]
+    fn zero_guard_all_zeros() {
+        let output = [0.0, 0.0, 0.0, 0.0];
+        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::AllZeros);
+    }
+
+    #[test]
+    fn zero_guard_nan_contaminated() {
+        let output = [1.0, f64::NAN, 3.0];
+        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::NanContaminated);
+    }
+
+    #[test]
+    fn zero_guard_empty_is_valid() {
+        let output: [f64; 0] = [];
+        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::Valid);
+    }
+
+    #[test]
+    fn zero_guard_single_nonzero() {
+        let output = [0.0, 0.0, 1e-300, 0.0];
+        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::Valid);
+    }
+
+    #[test]
+    fn zero_guard_f32_all_zeros() {
+        let output: [f32; 4] = [0.0, 0.0, 0.0, 0.0];
+        assert_eq!(nvk_zero_guard_check_f32(&output), ZeroGuardVerdict::AllZeros);
+    }
+
+    #[test]
+    fn zero_guard_f32_valid() {
+        let output: [f32; 3] = [1.0, 0.0, 0.5];
+        assert_eq!(nvk_zero_guard_check_f32(&output), ZeroGuardVerdict::Valid);
+    }
+
+    #[test]
+    fn zero_guard_f32_nan() {
+        let output: [f32; 2] = [f32::NAN, 1.0];
+        assert_eq!(nvk_zero_guard_check_f32(&output), ZeroGuardVerdict::NanContaminated);
     }
 }

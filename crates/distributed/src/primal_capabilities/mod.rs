@@ -59,7 +59,7 @@ pub mod registry;
 pub mod workload;
 
 pub use adapters::{PrimalAdapter, SongbirdAdapter};
-pub use registry::{Capability, CapabilityRegistry};
+pub use registry::{Capability, CapabilityRegistry, ProviderRegistration, ProviderRegistry};
 pub use workload::{WorkloadExecutor, WorkloadRequest, WorkloadResponse};
 
 use crate::error::DistributedError;

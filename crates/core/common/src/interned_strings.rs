@@ -136,6 +136,21 @@ pub mod capabilities {
 
     /// Special math functions
     pub const SPECIAL_FUNCTIONS: &str = "science.special";
+
+    /// Biology domain capability (wetSpring — metagenomics, phylogenetics, mass spec)
+    pub const BIOLOGY: &str = "biology";
+
+    /// Health domain capability (healthSpring — PK/PD, NLME, biosignal)
+    pub const HEALTH: &str = "health";
+
+    /// Measurement/uncertainty domain capability (groundSpring — UQ, validation)
+    pub const MEASUREMENT: &str = "measurement";
+
+    /// Optimization domain capability (neuralSpring — ML, evolutionary computation)
+    pub const OPTIMIZATION: &str = "optimization";
+
+    /// Visualization / streaming pipeline capability (petalTongue)
+    pub const VISUALIZATION: &str = "visualization";
 }
 
 /// Protocol constants
@@ -296,6 +311,11 @@ mod tests {
         assert_eq!(capabilities::SCIENCE_GPU_DISPATCH, "science.gpu.dispatch");
         assert_eq!(capabilities::SHADER_COMPILE, "shader.compile");
         assert_eq!(capabilities::ORCHESTRATION, "orchestration");
+        assert_eq!(capabilities::BIOLOGY, "biology");
+        assert_eq!(capabilities::HEALTH, "health");
+        assert_eq!(capabilities::MEASUREMENT, "measurement");
+        assert_eq!(capabilities::OPTIMIZATION, "optimization");
+        assert_eq!(capabilities::VISUALIZATION, "visualization");
     }
 
     #[test]

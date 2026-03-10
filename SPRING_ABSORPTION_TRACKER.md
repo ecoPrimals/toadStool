@@ -1,7 +1,8 @@
 # Spring Absorption Tracker
 
-**Session**: S140 Deep Debt Evolution & Spring Absorption Sprint (March 9-10, 2026)
-**ToadStool**: master, 83%+ line coverage. 19,900+ tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**Session**: S145 Spring Absorption & Evolution Execution (March 10, 2026)
+**ToadStool**: master, ~86% line coverage. 19,965 tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**S145**: Spring absorption execution — PrecisionBrain absorbed from hotSpring v0.6.25 (domain-aware routing brain, F64 throttle detection, PrecisionHint enum). NvkZeroGuard absorbed from airSpring v0.7.5 (zero-output detection, NaN contamination). 8 new WorkloadPatterns from neuralSpring S140 + healthSpring V14.1 (Pairwise, BatchFitness, HmmBatch, SpatialPayoff, Stochastic, PopulationPk, DoseResponse, DiversityIndex). 5 new capability domains (biology, health, measurement, optimization, visualization). capability.call format B (qualified_method). Spring-as-Provider ProviderRegistry (ISSUE-007). ServerConfig port hardcoding evolved.
 **S140**: Deep debt evolution — hardcoding elimination (beardog_impl, unibin/format, sandbox, primal_capabilities, display/ipc, cli/main, zero_config/discovery all evolved to interned_strings). StreamingDispatchContext enriched with healthSpring V13 execute_streaming() callback (StageProgress, ProgressCallback). barraCuda Sprint 2 API awareness (science.activations.list, science.rng.capabilities, science.special.functions JSON-RPC methods). Smart refactor: science.rs 1139→828 LOC via science_domains.rs extraction. New tests: 4 streaming dispatch + 3 barraCuda API handlers.
 **S139**: Spring absorption — surveyed all 6 springs. Dual-write discovery (coralReef compat). gpu.dispatch + science.gpu.dispatch capabilities. GpuDevice enriched with render_node/driver/arch. StreamingDispatch absorbed from hotSpring v0.6.24. PipelineGraph DAG absorbed from neuralSpring S134. Compute triangle unblocked on toadStool side.
 **S138**: Deep debt execution — +126 tests (sysmon 53, science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2). License alignment AGPL-3.0-only. 62 allow entries removed. 19 clone reductions. Hardcoding evolution to interned_strings. 7 stale TODO(D-PEDANTIC) removed. SPRING_ABSORPTION.md archived to fossil (superseded by this tracker).
@@ -13,12 +14,12 @@
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.24 | S133→S136 | S136→S140 | 769 lib + 101 binaries + 84 WGSL | Chuna 44/44, Fp64Strategy::Sovereign, PrecisionRoutingAdvice, 44/46 coralReef shaders, streaming_dispatch |
-| groundSpring | V99 | V99→S133 | V99→S140 | 936 + 382 Python | 102 (61 CPU + 41 GPU), live NUCLEUS (4 primals), adaptive health, direct primal sockets |
-| neuralSpring | S135 | V90/S132→S133 | S135→S140 | 902 lib + 43 forge + 240 bins | petalTongue visualization, 7 domain scenario builders, DataChannel expansion |
-| wetSpring | V102 | V99→S133 | V102→S140 | 1,047 + 200 forge | petalTongue V2 full-domain, deep debt tolerance cleanup, DataChannel::Spectrum |
-| airSpring | v0.7.5 | v0.7.5→S133 | v0.7.5→S140 | 865 lib + 186 forge | 14 JSON-RPC science methods, gpu::autocorrelation, mean_variance_to_buffer, 35 capabilities |
-| healthSpring | V13 | (new) | V13→S140 | 317 tests (250+33+30+4) | Anderson QL fix, LCG centralization, clinical refactor, Songbird glob discovery |
+| hotSpring | v0.6.25 | S136→S140 | S140→S145 | 769 lib + 101 binaries + 84 WGSL | Chuna 44/44, Fp64Strategy::Sovereign, PrecisionRoutingAdvice, PrecisionBrain, HardwareCalibration, streaming_dispatch |
+| groundSpring | V100 | V99→S140 | V100→S145 | 936 + 382 Python | 102 (61 CPU + 41 GPU), live NUCLEUS (4 primals), adaptive health, direct primal sockets, SubstrateCapabilityKind::SovereignCompile |
+| neuralSpring | V91/S140 | S135→S140 | V91/S140→S145 | 902 lib + 43 forge + 240 bins | petalTongue visualization, 8 new WorkloadPatterns (Pairwise, BatchFitness, HmmBatch, SpatialPayoff, Stochastic), DataChannel |
+| wetSpring | V99+ | V102→S140 | V99+→S145 | 1,047 + 200 forge | petalTongue V2, DiversityIndex pattern, DataChannel::Spectrum |
+| airSpring | v0.7.5 | v0.7.5→S140 | v0.7.5→S145 | 865 lib + 186 forge | 14 JSON-RPC science methods, NvkZeroGuard absorbed, 35 capabilities |
+| healthSpring | V14.1 | V13→S140 | V14.1→S145 | 317+ tests | PopulationPk + DoseResponse + DiversityIndex thresholds, NLME dispatch, metalForge DispatchThresholds |
 
 ## Absorption Status
 
@@ -128,7 +129,7 @@
 | Omelyan integrator | wateringHole | Open |
 | Richards PDE (12 USDA textures) | wateringHole | Open |
 | Provenance tags | hotSpring, groundSpring, neuralSpring | Open |
-| Generic `NvkZeroGuard` wrapper concept | airSpring V071 NVK pattern | Open (barraCuda-owned) |
+| Generic `NvkZeroGuard` wrapper concept | airSpring v0.7.5 NVK pattern | **DONE** S145 (nvk_zero_guard_check + ZeroGuardVerdict in nvvm_safety.rs) |
 | llvmpipe fused shader dispatch investigation (12 tests return 0.0) | neuralSpring V87 | Open (barraCuda-owned) |
 | `CoralReefDevice` backend in barraCuda (sovereign SASS dispatch) | groundSpring V95 | Open (barraCuda-owned) |
 | QMD constant buffer binding (coralReef P0 blocker) | groundSpring V95 | Open (coralReef-owned) |

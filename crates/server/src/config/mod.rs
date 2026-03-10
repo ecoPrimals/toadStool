@@ -46,12 +46,12 @@ pub struct ServerConfig {
 
 impl Default for ServerConfig {
     fn default() -> Self {
-        let host =
-            std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string());
-        let port: u16 = std::env::var("TOADSTOOL_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(8080);
+        let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+            .unwrap_or_else(|_| toadstool_config::constants::network::LOCALHOST.to_string());
+        let port = toadstool_config::ports::get_port_with_env(
+            toadstool_config::ports::toadstool::DAEMON_API,
+            "TOADSTOOL_PORT",
+        );
         Self {
             bind_address: format!("{host}:{port}"),
             enable_api: true,

@@ -180,9 +180,23 @@ impl AiMcpInterface {
             "total_requests".to_string(),
             serde_json::Value::Number(request_count.into()),
         );
+        let avg_duration_desc = if sessions.is_empty() {
+            "no active sessions".to_string()
+        } else {
+            let now = SystemTime::now();
+            let total_secs: u64 = sessions
+                .values()
+                .filter_map(|s| now.duration_since(s.started_at).ok())
+                .map(|d| d.as_secs())
+                .sum();
+            let avg_secs = total_secs / sessions.len() as u64;
+            let mins = avg_secs / 60;
+            let secs = avg_secs % 60;
+            format!("{mins}m {secs}s")
+        };
         stats.insert(
             "average_session_duration".to_string(),
-            serde_json::Value::String("45 minutes".to_string()),
+            serde_json::Value::String(avg_duration_desc),
         );
 
         stats

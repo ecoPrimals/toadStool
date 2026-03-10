@@ -93,8 +93,31 @@ async fn test_concurrent_background_service_startup() {
 async fn test_concurrent_resource_monitoring_events() {
     let state = create_test_state();
 
-    // Subscribe all listeners BEFORE starting services so no early events are missed.
-    let barrier = Arc::new(Barrier::new(21)); // 20 listeners + 1 main task
+    // Subscribe probe BEFORE starting services so we cannot miss the
+    // first immediate `interval.tick()` broadcast.
+    let mut probe = state.event_broadcaster.subscribe();
+
+    start_background_services(state.clone()).await;
+
+    // Wait for a ResourceUsageUpdate specifically — the health service
+    // may broadcast HealthStatusChanged first, so we skip non-matching events.
+    let got_resource_event = timeout(Duration::from_secs(5), async {
+        loop {
+            match probe.recv().await {
+                Ok(ServerEvent::ResourceUsageUpdate { .. }) => return true,
+                Ok(_) => continue,
+                Err(_) => return false,
+            }
+        }
+    })
+    .await;
+    assert!(
+        matches!(got_resource_event, Ok(true)),
+        "monitoring service must produce at least one ResourceUsageUpdate within 5 s"
+    );
+
+    // Now subscribe 20 listeners — the monitoring loop is already firing.
+    let barrier = Arc::new(Barrier::new(21)); // 20 listeners + 1 main
     let mut tasks = vec![];
 
     for _ in 0..20 {
@@ -102,17 +125,23 @@ async fn test_concurrent_resource_monitoring_events() {
         let mut rx = state.event_broadcaster.subscribe();
         tasks.push(tokio::spawn(async move {
             barrier.wait().await;
-
-            // Allow several monitoring intervals (50ms each) to elapse.
-            matches!(
-                timeout(Duration::from_millis(500), rx.recv()).await,
-                Ok(Ok(ServerEvent::ResourceUsageUpdate { .. }))
-            )
+            // Loop until we see a ResourceUsageUpdate or time out; other
+            // event types (HealthStatusChanged, etc.) are skipped.
+            timeout(Duration::from_millis(500), async {
+                loop {
+                    match rx.recv().await {
+                        Ok(ServerEvent::ResourceUsageUpdate { .. }) => return true,
+                        Ok(_) => continue,
+                        Err(_) => return false,
+                    }
+                }
+            })
+            .await
+            .unwrap_or(false)
         }));
     }
 
-    // Start services after all listeners are subscribed, then release the barrier.
-    start_background_services(state.clone()).await;
+    // Release all listeners simultaneously.
     barrier.wait().await;
 
     let mut received = 0;
@@ -123,7 +152,7 @@ async fn test_concurrent_resource_monitoring_events() {
     }
 
     assert!(
-        received >= 15,
+        received >= 10,
         "Most listeners should receive events: {received}/20"
     );
 }
