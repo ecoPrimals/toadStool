@@ -5,6 +5,7 @@ members = [
     "crates/core/common",
     "crates/core/config", 
     "crates/core/sysmon",
+    "crates/core/hw-learn",
     "crates/core/toadstool",
     "crates/toadstool-core",  # NEW: Hardware infrastructure layer (Feb 8, 2026) 🍄
     "crates/auto_config",  # Re-enabled for zero-touch demo
