@@ -79,7 +79,10 @@ struct Recipe {
 /// - JSON parsing fails
 /// - Thermal safety check fails (before or after)
 /// - BAR0 read/write fails
-#[allow(unsafe_code)]
+#[allow(
+    unsafe_code,
+    reason = "register writes via Bar0Access require unsafe mmap operations"
+)]
 pub fn apply_recipe(recipe_json: &str, bar0: &mut Bar0Access) -> Result<InitResult> {
     let recipe: Recipe = serde_json::from_str(recipe_json)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
@@ -90,7 +93,10 @@ pub fn apply_recipe(recipe_json: &str, bar0: &mut Bar0Access) -> Result<InitResu
     let mut steps_failed = 0;
 
     for step in &recipe.steps {
-        #[allow(clippy::cast_possible_truncation)]
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "recipe values are 32-bit register values stored as u64"
+        )]
         match bar0.write_u32(step.offset, step.value as u32) {
             Ok(()) => {
                 steps_applied += 1;
@@ -160,7 +166,10 @@ pub fn apply_recipe(recipe_json: &str, bar0: &mut Bar0Access) -> Result<InitResu
 /// # Errors
 ///
 /// Returns error if thermal safety is violated or recipe application fails.
-#[allow(unsafe_code)]
+#[allow(
+    unsafe_code,
+    reason = "delegates to apply_recipe which writes BAR0 registers"
+)]
 pub fn apply_recipe_safe(
     recipe_json: &str,
     bar0: &mut Bar0Access,

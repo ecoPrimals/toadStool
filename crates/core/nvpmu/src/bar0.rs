@@ -48,7 +48,10 @@ impl Bar0Access {
     fn open_path(bdf: &str, path: &Path) -> Result<Self> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
 
-        #[allow(clippy::cast_possible_truncation)]
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "BAR0 size never exceeds usize on 64-bit Linux"
+        )]
         let size = file.metadata()?.len() as usize;
         if size == 0 {
             return Err(NvPmuError::SensorNotFound(format!(
@@ -90,8 +93,10 @@ impl Bar0Access {
     /// # Errors
     /// Returns error if offset is out of bounds.
     pub fn read_u32(&self, offset: u64) -> Result<u32> {
-        // Truncation is acceptable: BAR offsets never exceed usize on 64-bit (our only target)
-        #[allow(clippy::cast_possible_truncation)]
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "BAR offsets never exceed usize on 64-bit Linux"
+        )]
         let off = offset as usize;
         if off + 4 > self.size {
             return Err(NvPmuError::SensorNotFound(format!(
@@ -102,7 +107,10 @@ impl Bar0Access {
         // SAFETY: bounds checked above, ptr is from valid mmap, volatile
         // read is correct for MMIO registers. Alignment: BAR0 registers are
         // naturally u32-aligned; offsets must be 4-byte aligned by hardware spec.
-        #[allow(clippy::cast_ptr_alignment)]
+        #[allow(
+            clippy::cast_ptr_alignment,
+            reason = "BAR0 registers are naturally u32-aligned by hardware spec"
+        )]
         let val = unsafe {
             let p = self.ptr.as_ptr().add(off).cast::<u32>();
             std::ptr::read_volatile(p)
@@ -115,7 +123,10 @@ impl Bar0Access {
     /// # Errors
     /// Returns error if offset is out of bounds.
     pub fn write_u32(&mut self, offset: u64, value: u32) -> Result<()> {
-        #[allow(clippy::cast_possible_truncation)]
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "BAR offsets never exceed usize on 64-bit Linux"
+        )]
         let off = offset as usize;
         if off + 4 > self.size {
             return Err(NvPmuError::SensorNotFound(format!(
@@ -125,7 +136,10 @@ impl Bar0Access {
         }
         // SAFETY: bounds checked above, ptr is from valid mmap, volatile
         // write is correct for MMIO registers. Alignment: see read_u32.
-        #[allow(clippy::cast_ptr_alignment)]
+        #[allow(
+            clippy::cast_ptr_alignment,
+            reason = "BAR0 registers are naturally u32-aligned by hardware spec"
+        )]
         unsafe {
             let p = self.ptr.as_ptr().add(off).cast::<u32>();
             std::ptr::write_volatile(p, value);

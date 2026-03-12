@@ -4,7 +4,7 @@
 //! Uses `Cow<'_, str>` for conditional allocation - only allocates when formatting is needed.
 
 use std::borrow::Cow;
-use toadstool_common::interned_strings::capabilities;
+use toadstool_common::interned_strings::{capabilities, primals};
 
 /// Get contextual error suggestion based on error content.
 ///
@@ -91,19 +91,19 @@ pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static
     }
 
     // Ecosystem errors (match both capability and legacy primal names)
-    if error_str.contains("songbird") || error_str.contains(capabilities::COORDINATION) {
+    if error_str.contains(primals::SONGBIRD) || error_str.contains(capabilities::COORDINATION) {
         return Some(Cow::Borrowed(
             "💡 Use 'toadstool ecosystem discover' to find orchestration instances or check network connectivity.",
         ));
     }
 
-    if error_str.contains("nestgate") || error_str.contains(capabilities::STORAGE) {
+    if error_str.contains(primals::NESTGATE) || error_str.contains(capabilities::STORAGE) {
         return Some(Cow::Borrowed(
             "💡 Verify storage endpoint and credentials. Use 'toadstool ecosystem storage --help' for options.",
         ));
     }
 
-    if error_str.contains("beardog") || error_str.contains(capabilities::CRYPTO) {
+    if error_str.contains(primals::BEARDOG) || error_str.contains(capabilities::CRYPTO) {
         return Some(Cow::Borrowed(
             "💡 Install PKI security permissions with 'toadstool ecosystem auth <permission-file>'.",
         ));

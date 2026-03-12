@@ -121,7 +121,10 @@ fn parse_proc_stat(content: &str, rss_bytes: u64, boot_time: u64) -> Option<Proc
     let starttime: u64 = fields[19].parse().unwrap_or(0);
 
     let total_cpu_ticks = utime + stime;
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "tick counts fit f64 without meaningful precision loss"
+    )]
     let cpu_seconds = total_cpu_ticks as f64 / CLK_TCK as f64;
 
     let start_epoch = boot_time + starttime / CLK_TCK;
@@ -132,7 +135,11 @@ fn parse_proc_stat(content: &str, rss_bytes: u64, boot_time: u64) -> Option<Proc
         .as_secs();
     let alive_secs = now.saturating_sub(start_epoch);
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_precision_loss,
+        reason = "CPU percentage 0-100 fits f32; seconds fit f64"
+    )]
     let cpu_usage = if alive_secs > 0 {
         (cpu_seconds / alive_secs as f64 * 100.0) as f32
     } else {

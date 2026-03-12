@@ -23,12 +23,15 @@
 //! # Phase 3: BAR0 MMIO register access for software PMU init
 
 // bar0 and init modules require unsafe for mmap/MMIO — isolated from the rest
-#[allow(unsafe_code)]
+#[allow(unsafe_code, reason = "BAR0 MMIO requires mmap + volatile read/write")]
 pub mod bar0;
 pub mod error;
 pub mod firmware;
 pub mod hwmon;
-#[allow(unsafe_code)]
+#[allow(
+    unsafe_code,
+    reason = "init sequence writes to BAR0 registers via Bar0Access"
+)]
 pub mod init;
 pub mod monitor;
 pub mod nvidia_smi;

@@ -26,7 +26,7 @@ pub mod distiller;
 pub mod knowledge;
 pub mod observer;
 
-pub use applicator::{ApplyResult, ApplyVerdict, RecipeApplicator};
+pub use applicator::{ApplyResult, ApplyVerdict, RecipeApplicator, RegisterAccess};
 pub use brain_ext::{
     CapabilityGap, FirmwareInventory, FirmwareInventoryExt, FwStatus, LearningAdvisor,
     LearningOpportunity,

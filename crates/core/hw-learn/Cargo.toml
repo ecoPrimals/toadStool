@@ -4,11 +4,16 @@ version = "0.1.0"
 edition = "2021"
 description = "Vendor-neutral GPU hardware learning — observe, distill, apply compute init patterns across AMD/Intel/NVIDIA"
 license = "AGPL-3.0-only"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["gpu", "hardware-learning", "compute-init", "vendor-neutral"]
+categories = ["hardware-support", "science"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
 toadstool-sysmon = { path = "../sysmon" }
+rustix = { version = "1.1", features = ["fs"] }
 
 [dev-dependencies]

@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-only"
 description = "Sovereign GPU power management for NVIDIA GPUs — pure Rust, no firmware dependency"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["gpu", "nvidia", "power-management", "pmu"]
+categories = ["hardware-support", "science"]
 
 [dependencies]
 hw-learn = { path = "../hw-learn" }

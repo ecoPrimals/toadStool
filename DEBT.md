@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 12, 2026 — S147
+**Date**: March 12, 2026 — S149
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -75,11 +75,11 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~86% line coverage** (121K production lines). 20,015 tests (S147). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Software-only coverage approaching 90%. |
+| D-COV | Test coverage → 90% | Medium | **~86% line coverage** (121K production lines). 20,192 tests (S149). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Software-only coverage approaching 90%. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
-| D-KEYRING | Credential resolution: OS keyring lookup | Low | `resolve_credential()` chain placeholder. Wire `LocalKeyringProvider` to support arbitrary secret lookup by name (D-Bus SecretService / macOS Keychain). |
-| D-BD-SECRET | Credential resolution: BearDog `secret.resolve` | Low | BearDog RPC method for delegated secret retrieval. Wire into `resolve_credential()` chain. |
+| D-KEYRING | Credential resolution: OS keyring lookup | Low | **Partially resolved (S149)**: File-based credentials via `$XDG_CONFIG_HOME/toadstool/credentials` (0600 enforced). Remaining: D-Bus SecretService / macOS Keychain integration for full OS keyring support. |
+| D-BD-SECRET | ~~Credential resolution: BearDog `secret.resolve`~~ | **RESOLVED S149** | `probe_security_provider()` discovers `crypto` capability socket via `get_socket_path_for_capability("crypto")` and calls `secret.resolve` JSON-RPC. |
 
 ### Secret Management (S148 — Secret Audit & Hardening — Mar 12, 2026)
 

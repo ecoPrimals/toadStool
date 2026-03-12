@@ -62,7 +62,7 @@ exclude = []
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.80.0"
+rust-version = "1.82.0"
 authors = ["ToadStool Development Team"]
 license = "AGPL-3.0-only"
 repository = "https://github.com/ecoPrimals/toadstool"
@@ -149,8 +149,8 @@ pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
 
 # Security and sandboxing
 # once_cell removed: evolved to std::sync::LazyLock (Rust 1.80+)
-caps = "0.5"
-# EVOLVED: nix removed (Feb 14, 2026) - unused in production, libc for tests
+# EVOLVED: caps removed (Mar 12, 2026) — unused; was dead dep in security crates
+# EVOLVED: nix removed (Feb 14, 2026) — unused in production, libc for tests
 
 # Cryptography — all pure Rust (no C/FFI deps)
 aes-gcm = "0.10.3"
@@ -160,7 +160,7 @@ hmac = "0.12"
 sha2 = "0.10"
 
 # Networking
-ipnet = "2.9"
+# EVOLVED: ipnet removed (Mar 12, 2026) — unused; no crate references it
 # mdns removed: standardized on mdns-sd; edge stub doesn't need it
 
 # System monitoring — Pure Rust via /proc (replaces sysinfo)
@@ -170,11 +170,10 @@ toadstool-sysmon = { path = "crates/core/sysmon" }
 
 # Async utilities
 futures = "0.3"
-futures-util = "0.3"
 
 # CLI
 clap = { version = "4.4", features = ["derive", "env"] }
-console = "0.15"
+# EVOLVED: console removed (Mar 12, 2026) — unused; only transitive via indicatif
 indicatif = "0.17"
 
 # Development dependencies

@@ -1,4 +1,4 @@
-# Status -- March 12, 2026 (S148 Secret Audit & Hardening)
+# Status -- March 12, 2026 (S149 Deep Debt Execution & Evolution)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **20,015 tests, 0 failures** (S147) |
+| `cargo test --workspace` | PASS | **20,192 tests, 0 failures** (S149) |
 | `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
@@ -95,6 +95,18 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S149: Deep Debt Execution & Evolution (Mar 12, 2026)
+- **Clippy 0 code warnings** — Fixed all remaining: redundant match guards (`s if s == "beardog"` → direct patterns + `|` multi-match), `map_or` → `is_none_or`, `Error::new(ErrorKind::Other, e)` → `Error::other(e)`, long literal separators. All `#[allow]` lints now have `reason = "..."`.
+- **`resolve_credential()` chain fully wired** — `probe_keyring`: file-based credentials from `$XDG_CONFIG_HOME/toadstool/credentials` (KEY=VALUE, 0600 permissions enforced). `probe_security_provider`: discovers `crypto` capability socket, calls `secret.resolve` JSON-RPC via `UnixJsonRpcClient`. 13 tests (2 new).
+- **Handler refactor** — Shader domain (5 handlers + `build_precision_advice`) extracted from `handler/mod.rs` (849→615 lines) to `handler/shader.rs` (248 lines). Matches delegation pattern of other handler modules.
+- **Cargo metadata** — `hw-learn` and `nvpmu` Cargo.toml: added `repository`, `readme`, `keywords`, `categories`.
+- **Interned constants** — `error_formatting.rs`: string literal primal names → `primals::SONGBIRD/NESTGATE/BEARDOG`. `capability_helpers.rs` and `ecosystem/types.rs`: redundant guards → direct const match patterns.
+- **Orphaned deps removed** — `caps`, `console`, `ipnet`, `futures-util` from workspace. `rust-version` bumped 1.80→1.82.
+- **nouveau_drm evolved** — Raw `extern "C"` FFI (`open`, `close`) → `rustix::fs::open` + `OwnedFd`. Minimal documented `raw_ioctl` retained for DRM opcodes.
+- **hw-learn stubs implemented** — `RegisterAccess` trait defined and wired. `verify_register_via_access()` uses MMIO. `hw_learn_distill` binary updated to current API.
+- **Script fixes** — `toadstool-runtime-display` → `toadstool-display` in coverage, hardware test, and CI scripts.
+- 20,192 tests, 0 failures. `cargo fmt` clean. `cargo clippy` 0 code warnings.
 
 ### S148: Secret Audit & Hardening (Mar 12, 2026)
 - **Secret audit**: Full codebase + git history scan for leaked API keys, PII, credentials. Found 1 revoked HuggingFace token in git history (auto-revoked by GitHub secret scanning). No active secrets in working tree.

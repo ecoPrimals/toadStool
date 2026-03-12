@@ -13,7 +13,7 @@
 //! ## Credential Resolution
 //!
 //! Use [`resolve_credential`] to obtain secrets at runtime through the
-//! standard chain: **environment variable → OS keyring → BearDog delegation**.
+//! standard chain: **environment variable → OS keyring → security provider**.
 //! This eliminates every reason to hardcode a secret in source.
 //!
 //! ```rust,ignore
@@ -24,6 +24,7 @@
 //! ```
 
 use std::fmt;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -117,15 +118,15 @@ impl Eq for SecretString {}
 /// Errors from credential resolution.
 #[derive(Debug, thiserror::Error)]
 pub enum CredentialError {
-    #[error("credential '{name}' not found in environment, keyring, or BearDog")]
+    #[error("credential '{name}' not found in environment, keyring, or security provider")]
     NotFound { name: String },
 }
 
 /// Resolve a named credential through the standard chain:
 ///
 /// 1. **Environment variable** (`std::env::var(name)`)
-/// 2. **OS keyring** (future: D-Bus Secret Service / macOS Keychain)
-/// 3. **BearDog security provider** (future: JSON-RPC delegation)
+/// 2. **Credentials file** (`$XDG_CONFIG_HOME/toadstool/credentials`, 0600)
+/// 3. **Security provider** (capability `crypto` → `secret.resolve` JSON-RPC)
 ///
 /// Returns [`CredentialError::NotFound`] when all sources are exhausted.
 ///
@@ -139,42 +140,122 @@ pub async fn resolve_credential(name: &str) -> Result<SecretString, CredentialEr
         return Ok(SecretString::new(val));
     }
 
-    // 2. OS keyring (placeholder — wired when LocalKeyringProvider gains
-    //    arbitrary-key lookup, tracked as D-KEYRING)
+    // 2. File-based credentials (`$XDG_CONFIG_HOME/toadstool/credentials`).
+    //    Requires 0600 permissions. Format: KEY=VALUE per line.
     if let Some(val) = probe_keyring(name) {
-        tracing::debug!(credential = name, source = "keyring", "credential resolved");
+        tracing::debug!(
+            credential = name,
+            source = "credentials_file",
+            "credential resolved"
+        );
         return Ok(val);
     }
 
-    // 3. BearDog delegation (placeholder — wired when BearDog exposes a
-    //    `secret.resolve` JSON-RPC method, tracked as D-BD-SECRET)
-    if let Some(val) = probe_beardog(name).await {
-        tracing::debug!(credential = name, source = "beardog", "credential resolved");
+    // 3. Security provider delegation — discovers the `crypto` capability
+    //    socket and calls `secret.resolve` over JSON-RPC.
+    if let Some(val) = probe_security_provider(name).await {
+        tracing::debug!(
+            credential = name,
+            source = "security_provider",
+            "credential resolved"
+        );
         return Ok(val);
     }
 
     tracing::warn!(
         credential = name,
-        "credential not found in env, keyring, or beardog"
+        "credential not found in env, keyring, or security provider"
     );
     Err(CredentialError::NotFound {
         name: name.to_owned(),
     })
 }
 
-/// Keyring probe — returns `None` until `LocalKeyringProvider` supports
-/// arbitrary secret lookup.
-fn probe_keyring(_name: &str) -> Option<SecretString> {
+/// Resolve the credentials file path:
+/// `$TOADSTOOL_CREDENTIALS` > `$XDG_CONFIG_HOME/toadstool/credentials`
+/// > `$HOME/.config/toadstool/credentials`.
+fn credentials_file_path() -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("TOADSTOOL_CREDENTIALS") {
+        return Some(PathBuf::from(p));
+    }
+    let config_dir = std::env::var("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(|_| std::env::var("HOME").map(|h| PathBuf::from(h).join(".config")))
+        .ok()?;
+    Some(config_dir.join("toadstool").join("credentials"))
+}
+
+/// File-based credential lookup from the toadStool credentials file.
+///
+/// Format: one `KEY=VALUE` per line (shell-style, no quoting).
+/// The file MUST have `0600` permissions or it is rejected.
+fn probe_keyring(name: &str) -> Option<SecretString> {
+    let path = credentials_file_path()?;
+    if !path.is_file() {
+        return None;
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let meta = std::fs::metadata(&path).ok()?;
+        let mode = meta.permissions().mode() & 0o777;
+        if mode != 0o600 {
+            tracing::warn!(
+                path = %path.display(),
+                mode = format!("{mode:o}"),
+                "credentials file has unsafe permissions (need 0600), skipping"
+            );
+            return None;
+        }
+    }
+
+    let contents = std::fs::read_to_string(&path).ok()?;
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once('=') {
+            if key.trim() == name {
+                return Some(SecretString::new(value.trim().to_owned()));
+            }
+        }
+    }
     None
 }
 
-/// BearDog probe — returns `None` until BearDog exposes `secret.resolve`.
-#[expect(
-    clippy::unused_async,
-    reason = "will become async when BearDog RPC is wired (D-BD-SECRET)"
-)]
-async fn probe_beardog(_name: &str) -> Option<SecretString> {
-    None
+/// Discover the security provider via capability and request credential
+/// resolution over JSON-RPC (`secret.resolve`).
+///
+/// Returns `None` when the provider socket is absent or the call fails.
+async fn probe_security_provider(name: &str) -> Option<SecretString> {
+    let socket = crate::primal_sockets::get_socket_path_for_capability("crypto");
+    if !socket.exists() {
+        tracing::trace!(
+            capability = "crypto",
+            "security provider socket not present, skipping"
+        );
+        return None;
+    }
+
+    let client = crate::unix_jsonrpc_client::UnixJsonRpcClient::new(&socket);
+    let params = serde_json::json!({ "name": name });
+
+    match client.call("secret.resolve", params).await {
+        Ok(val) => {
+            let secret = val.as_str()?;
+            Some(SecretString::new(secret.to_owned()))
+        }
+        Err(e) => {
+            tracing::debug!(
+                credential = name,
+                error = %e,
+                "security provider secret.resolve call failed"
+            );
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -254,6 +335,57 @@ mod tests {
                 assert_eq!(s.expose_secret(), "val123");
             });
         });
+    }
+
+    #[test]
+    fn probe_keyring_reads_credentials_file() {
+        let dir = std::env::temp_dir().join("toadstool_test_keyring");
+        let _ = std::fs::create_dir_all(&dir);
+        let cred_path = dir.join("credentials");
+        std::fs::write(
+            &cred_path,
+            "# comment\nMY_TEST_KEY=secret_val_42\nOTHER=x\n",
+        )
+        .expect("write");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&cred_path, std::fs::Permissions::from_mode(0o600))
+                .expect("perms");
+        }
+        temp_env::with_var(
+            "TOADSTOOL_CREDENTIALS",
+            Some(cred_path.to_str().unwrap()),
+            || {
+                let val = probe_keyring("MY_TEST_KEY");
+                assert!(val.is_some());
+                assert_eq!(val.unwrap().expose_secret(), "secret_val_42");
+
+                let missing = probe_keyring("NOPE");
+                assert!(missing.is_none());
+            },
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn probe_keyring_rejects_unsafe_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join("toadstool_test_keyring_perms");
+        let _ = std::fs::create_dir_all(&dir);
+        let cred_path = dir.join("credentials");
+        std::fs::write(&cred_path, "KEY=val\n").expect("write");
+        std::fs::set_permissions(&cred_path, std::fs::Permissions::from_mode(0o644))
+            .expect("perms");
+        temp_env::with_var(
+            "TOADSTOOL_CREDENTIALS",
+            Some(cred_path.to_str().unwrap()),
+            || {
+                assert!(probe_keyring("KEY").is_none());
+            },
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

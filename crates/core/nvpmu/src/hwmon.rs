@@ -65,14 +65,20 @@ impl HwmonSensors {
 
     /// Temperature in degrees Celsius, if available.
     #[must_use]
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "millidegrees i64 fits f64 for temperature display"
+    )]
     pub fn temp_c(&self) -> Option<f64> {
         self.temp_mc.map(|mc| mc as f64 / 1000.0)
     }
 
     /// Power draw in watts, if available.
     #[must_use]
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "microwatts u64 fits f64 for power display"
+    )]
     pub fn power_w(&self) -> Option<f64> {
         self.power_uw.map(|uw| uw as f64 / 1_000_000.0)
     }
@@ -125,7 +131,7 @@ mod tests {
         let s = HwmonSensors {
             hwmon_path: PathBuf::from("/test"),
             temp_mc: Some(45000),
-            temp_crit_mc: Some(105000),
+            temp_crit_mc: Some(105_000),
             clock_mhz: None,
             mem_clock_mhz: None,
             power_uw: Some(120_000_000),

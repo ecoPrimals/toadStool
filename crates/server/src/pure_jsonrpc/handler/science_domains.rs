@@ -74,7 +74,10 @@ pub(super) async fn ecology_offload(
 // ═══════════════════════════════════════════════════════════
 
 /// Discovers available primals by scanning the biomeOS socket directory.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn discovery_primals() -> JsonRpcResult {
     let socket_dir = toadstool_common::primal_sockets::get_biomeos_dir();
     let mut primals = Vec::new();
@@ -167,7 +170,10 @@ pub(super) async fn discovery_direct_rpc(params: Option<&serde_json::Value>) -> 
 }
 
 /// Returns topology of discovered primals and their connections.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn discovery_topology() -> JsonRpcResult {
     let socket_dir = toadstool_common::primal_sockets::get_biomeos_dir();
     let mut nodes = Vec::new();
@@ -261,7 +267,10 @@ pub(super) async fn deploy_capability_call(params: Option<&serde_json::Value>) -
 
 /// Returns status of discovered deploy graphs by scanning the biomeOS socket
 /// directory at runtime. No hardcoded primal names -- sovereignty-compliant.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn deploy_graph_status() -> JsonRpcResult {
     let socket_dir = toadstool_common::primal_sockets::get_biomeos_dir();
     let mut graphs = Vec::new();

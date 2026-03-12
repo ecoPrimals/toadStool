@@ -90,19 +90,30 @@ impl NvidiaSmiSensors {
     pub fn to_hwmon_sensors(&self) -> HwmonSensors {
         HwmonSensors {
             hwmon_path: PathBuf::from("/dev/null"),
-            #[allow(clippy::cast_possible_truncation)]
+            #[allow(
+                clippy::cast_possible_truncation,
+                reason = "millidegrees from f64 celsius fits i64"
+            )]
             temp_mc: self.temp_c.map(|t| (t * 1000.0) as i64),
             temp_crit_mc: None,
             clock_mhz: self.clock_mhz,
             mem_clock_mhz: self.mem_clock_mhz,
             power_uw: self.power_w.map(|w| {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "microwatts from watts fits u64; power is always positive"
+                )]
                 {
                     (w * 1_000_000.0) as u64
                 }
             }),
             power_limit_uw: self.power_limit_w.map(|w| {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "microwatts from watts fits u64; power is always positive"
+                )]
                 {
                     (w * 1_000_000.0) as u64
                 }

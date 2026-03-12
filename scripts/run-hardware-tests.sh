@@ -170,7 +170,7 @@ run_display_tests() {
     local failed=0
 
     echo -e "${CYAN}Testing display transport...${NC}"
-    cargo test -p toadstool-runtime-display -- --ignored --test-threads=1 2>&1 \
+    cargo test -p toadstool-display -- --ignored --test-threads=1 2>&1 \
         | grep -E "test result" || failed=$((failed + 1))
 
     if [ $failed -gt 0 ]; then

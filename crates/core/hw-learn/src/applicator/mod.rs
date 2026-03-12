@@ -9,8 +9,28 @@
 pub mod nouveau_drm;
 pub mod verify;
 
-use crate::distiller::{InitRecipe, InitStep};
+use crate::distiller::{InitRecipe, InitStep, VerifyCheck};
 use serde::{Deserialize, Serialize};
+
+/// Abstraction over GPU register I/O.
+///
+/// Implementations provide direct register read/write — e.g.
+/// `nvpmu::Bar0Access` maps BAR0 via sysfs for MMIO, test mocks
+/// return canned values. The applicator uses this for `RegisterWrite`
+/// steps and `Verify::RegisterMatch` checks.
+pub trait RegisterAccess {
+    /// Read a 32-bit register at the given BAR-relative offset.
+    ///
+    /// # Errors
+    /// Returns an error string if the read fails (e.g. out of bounds).
+    fn read_u32(&self, offset: u64) -> Result<u32, String>;
+
+    /// Write a 32-bit register at the given BAR-relative offset.
+    ///
+    /// # Errors
+    /// Returns an error string if the write fails.
+    fn write_u32(&mut self, offset: u64, value: u32) -> Result<(), String>;
+}
 
 /// Result of applying a recipe.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,22 +69,44 @@ pub struct StepResult {
 }
 
 /// Recipe applicator — applies init recipes to target GPUs.
-pub struct RecipeApplicator {
+///
+/// Supports two modes:
+/// - **DRM-only** (`new(dry_run)`) — uses ioctl path via nouveau_drm.
+/// - **BAR0-backed** (`with_register_access`) — uses a `RegisterAccess`
+///   implementation (e.g. `nvpmu::Bar0Access`) for direct register writes
+///   and verification.
+pub struct RecipeApplicator<'a> {
     dry_run: bool,
+    register_access: Option<&'a mut dyn RegisterAccess>,
 }
 
-impl RecipeApplicator {
-    /// Create an applicator.
+impl<'a> RecipeApplicator<'a> {
+    /// Create an applicator without BAR0 access.
     ///
+    /// Register writes will be routed through the ioctl path.
     /// Set `dry_run` to true to simulate without writing to hardware.
+    #[must_use]
     pub fn new(dry_run: bool) -> Self {
-        Self { dry_run }
+        Self {
+            dry_run,
+            register_access: None,
+        }
+    }
+
+    /// Attach a `RegisterAccess` implementation for direct register I/O.
+    ///
+    /// When attached, `RegisterWrite` steps use BAR0 MMIO directly and
+    /// `Verify::RegisterMatch` uses `verify_register_via_access`.
+    #[must_use]
+    pub fn with_register_access(mut self, access: &'a mut dyn RegisterAccess) -> Self {
+        self.register_access = Some(access);
+        self
     }
 
     /// Apply a recipe to the target GPU.
     ///
     /// Returns an `ApplyResult` with per-step feedback.
-    pub fn apply(&self, recipe: &InitRecipe, card_path: &str) -> ApplyResult {
+    pub fn apply(&mut self, recipe: &InitRecipe, card_path: &str) -> ApplyResult {
         let mut step_results = Vec::new();
         let recipe_id = format!(
             "{}_{}_{}",
@@ -73,7 +115,7 @@ impl RecipeApplicator {
 
         for (i, step) in recipe.steps.iter().enumerate() {
             let result = if self.dry_run {
-                self.simulate_step(i, step)
+                Self::simulate_step(i, step)
             } else {
                 self.execute_step(i, step, card_path)
             };
@@ -107,7 +149,7 @@ impl RecipeApplicator {
         }
     }
 
-    fn simulate_step(&self, index: usize, step: &InitStep) -> StepResult {
+    fn simulate_step(index: usize, step: &InitStep) -> StepResult {
         let detail = match step {
             InitStep::RegisterWrite {
                 offset,
@@ -137,7 +179,11 @@ impl RecipeApplicator {
         }
     }
 
-    fn execute_step(&self, index: usize, step: &InitStep, card_path: &str) -> StepResult {
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "u64→u32 for 32-bit register values; init recipes use 32-bit writes"
+    )]
+    fn execute_step(&mut self, index: usize, step: &InitStep, card_path: &str) -> StepResult {
         match step {
             InitStep::RegisterWrite {
                 offset,
@@ -145,16 +191,30 @@ impl RecipeApplicator {
                 function,
             } => {
                 tracing::info!(offset, value, ?function, "register write");
-                // Actual register writes require debugfs or mapped BAR access.
-                // For now, this is a placeholder — the nouveau_drm module
-                // handles ioctl-based approaches.
-                StepResult {
-                    step_index: index,
-                    success: false,
-                    detail: format!(
-                        "direct register write 0x{offset:08x} not yet implemented \
-                         (use ioctl path via nouveau_drm module)"
-                    ),
+                if let Some(ref mut access) = self.register_access {
+                    match access.write_u32(*offset, *value as u32) {
+                        Ok(()) => StepResult {
+                            step_index: index,
+                            success: true,
+                            detail: format!(
+                                "BAR0 write 0x{offset:08x} = 0x{value:08x} ({function:?})"
+                            ),
+                        },
+                        Err(e) => StepResult {
+                            step_index: index,
+                            success: false,
+                            detail: format!("BAR0 write 0x{offset:08x} failed: {e}"),
+                        },
+                    }
+                } else {
+                    StepResult {
+                        step_index: index,
+                        success: false,
+                        detail: format!(
+                            "register write 0x{offset:08x}: no RegisterAccess attached \
+                             (attach Bar0Access via with_register_access())"
+                        ),
+                    }
                 }
             }
             InitStep::IoctlCall { ioctl_nr, args } => {
@@ -176,7 +236,21 @@ impl RecipeApplicator {
                     detail: format!("delayed {us}us"),
                 }
             }
-            InitStep::Verify { check } => verify::run_verification(index, card_path, check),
+            InitStep::Verify { check } => {
+                if let VerifyCheck::RegisterMatch {
+                    offset,
+                    expected,
+                    mask,
+                } = check
+                {
+                    if let Some(ref access) = self.register_access {
+                        return verify::verify_register_via_access(
+                            index, *access, *offset, *expected, *mask,
+                        );
+                    }
+                }
+                verify::run_verification(index, card_path, check)
+            }
         }
     }
 }
@@ -217,7 +291,7 @@ mod tests {
             description: "test".into(),
         };
 
-        let applicator = RecipeApplicator::new(true);
+        let mut applicator = RecipeApplicator::new(true);
         let result = applicator.apply(&recipe, "/dev/dri/card0");
         assert_eq!(result.verdict, ApplyVerdict::Success);
         assert_eq!(result.steps_executed, 3);

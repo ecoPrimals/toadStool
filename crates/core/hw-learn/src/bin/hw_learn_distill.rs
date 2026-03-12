@@ -2,15 +2,16 @@
 //! CLI tool: distill a PMU init recipe from two MMIO traces.
 //!
 //! Usage:
-//!   hw-learn-distill <chip> <baseline.txt> <compute.txt> [output.json]
+//!   hw-learn-distill <baseline.txt> <compute.txt> [output.json]
 //!
-//! Example:
-//!   hw-learn-distill gv100 baseline.txt compute.txt gv100_recipe.json
+//! The target GPU architecture is inferred from the compute trace.
+//! The baseline trace (no compute) is diffed against the compute trace
+//! to isolate compute-specific register writes.
 
-use hw_learn::distiller::{build_recipe, diff_traces};
-use hw_learn::knowledge::RecipeStore;
-use hw_learn::observer::MmioTrace;
-use std::path::Path;
+use hw_learn::distiller::{GpuArch, RecipeDistiller, Vendor};
+use hw_learn::knowledge::{export_recipe, KnowledgeStore};
+use hw_learn::observer::{GpuSelector, ObserveConfig, TraceMode, TraceObserver};
+use std::path::{Path, PathBuf};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -22,7 +23,7 @@ fn main() {
         );
         eprintln!();
         eprintln!("Distill a PMU init recipe from two MMIO traces.");
-        eprintln!("  chip:         GPU chip codename (e.g. gv100)");
+        eprintln!("  chip:         GPU chip codename (e.g. gv100, ad104)");
         eprintln!("  baseline.txt: MMIO trace without compute init");
         eprintln!("  compute.txt:  MMIO trace with compute init");
         eprintln!("  output.json:  Output recipe file (default: <chip>.json)");
@@ -34,51 +35,46 @@ fn main() {
     let compute_path = Path::new(&args[3]);
     let output_path = args
         .get(4)
-        .map(|s| s.to_string())
+        .cloned()
         .unwrap_or_else(|| format!("{chip}.json"));
 
+    let baseline_config = ObserveConfig {
+        mode: TraceMode::MmioTrace,
+        trace_path: Some(baseline_path.to_path_buf()),
+        gpu_selector: GpuSelector::Auto,
+        trigger_compute: false,
+    };
+    let compute_config = ObserveConfig {
+        mode: TraceMode::MmioTrace,
+        trace_path: Some(compute_path.to_path_buf()),
+        gpu_selector: GpuSelector::Auto,
+        trigger_compute: false,
+    };
+
     eprintln!("Loading baseline trace: {}", baseline_path.display());
-    let baseline = MmioTrace::from_file(baseline_path).unwrap_or_else(|e| {
+    let baseline = TraceObserver::observe(&baseline_config).unwrap_or_else(|e| {
         eprintln!("Error reading baseline: {e}");
         std::process::exit(1);
     });
-    eprintln!(
-        "  {} accesses, base: {:?}",
-        baseline.len(),
-        baseline.base_address
-    );
+    eprintln!("  {} events", baseline.events.len());
 
     eprintln!("Loading compute trace: {}", compute_path.display());
-    let compute = MmioTrace::from_file(compute_path).unwrap_or_else(|e| {
+    let compute = TraceObserver::observe(&compute_config).unwrap_or_else(|e| {
         eprintln!("Error reading compute trace: {e}");
         std::process::exit(1);
     });
-    eprintln!(
-        "  {} accesses, base: {:?}",
-        compute.len(),
-        compute.base_address
-    );
+    eprintln!("  {} events", compute.events.len());
 
-    let base_addr = compute.base_address.unwrap_or(0);
-    let diff = diff_traces(&baseline, &compute);
-    eprintln!("Diff: {} compute-specific writes", diff.len());
+    let target_arch = GpuArch {
+        vendor: infer_vendor(chip),
+        generation: String::new(),
+        chip: chip.to_string(),
+        compute_class: String::new(),
+    };
+    let recipe = RecipeDistiller::distill(&compute, Some(&baseline), target_arch);
+    eprintln!("Recipe: {} steps", recipe.steps.len());
 
-    let recipe = build_recipe(chip, &diff, base_addr);
-    eprintln!("Recipe: {} steps", recipe.len());
-
-    for step in &recipe.steps {
-        eprintln!(
-            "  {:#010x} = {:#010x}  ({:?}{})",
-            step.offset,
-            step.value,
-            step.class,
-            step.delay_us
-                .map(|d| format!(", delay {d}µs"))
-                .unwrap_or_default()
-        );
-    }
-
-    let json = recipe.to_json().unwrap_or_else(|e| {
+    let json = export_recipe(&recipe).unwrap_or_else(|e| {
         eprintln!("Error serializing recipe: {e}");
         std::process::exit(1);
     });
@@ -89,10 +85,27 @@ fn main() {
     });
     eprintln!("Recipe written to {output_path}");
 
-    // Also save to the default recipe store
-    let store = RecipeStore::default_location();
-    match store.save(&recipe) {
-        Ok(p) => eprintln!("Also saved to recipe store: {}", p.display()),
-        Err(e) => eprintln!("Warning: could not save to recipe store: {e}"),
+    let store_dir = PathBuf::from("hw-learn-recipes");
+    match KnowledgeStore::open(&store_dir) {
+        Ok(mut store) => match store.store(&recipe) {
+            Ok(id) => eprintln!("Also saved to knowledge store: {id}"),
+            Err(e) => eprintln!("Warning: could not save to knowledge store: {e}"),
+        },
+        Err(e) => eprintln!("Warning: could not open knowledge store: {e}"),
+    }
+}
+
+fn infer_vendor(chip: &str) -> Vendor {
+    let lower = chip.to_lowercase();
+    if lower.starts_with("gv")
+        || lower.starts_with("ga")
+        || lower.starts_with("ad")
+        || lower.starts_with("tu")
+    {
+        Vendor::Nvidia
+    } else if lower.starts_with("navi") || lower.starts_with("gfx") || lower.starts_with("rdna") {
+        Vendor::Amd
+    } else {
+        Vendor::Intel
     }
 }

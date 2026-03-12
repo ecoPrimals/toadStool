@@ -49,7 +49,7 @@ run_tier1() {
         "toadstool-runtime-gpu"
         "toadstool-runtime-universal"
         "toadstool-runtime-adaptive"
-        "toadstool-runtime-display"
+        "toadstool-display"
         "toadstool-runtime-native"
         "toadstool-runtime-orchestration"
         "toadstool-runtime-python"

@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 12, 2026 -- S147
+**Last Updated**: March 12, 2026 -- S149
 
 ---
 
@@ -30,7 +30,7 @@
 
 ---
 
-## Current State (S147 — March 12, 2026)
+## Current State (S149 — March 12, 2026)
 
 **Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration. coralReef shader compilation proxy with capability-based discovery.
 

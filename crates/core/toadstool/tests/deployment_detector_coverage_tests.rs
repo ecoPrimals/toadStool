@@ -35,8 +35,8 @@ async fn test_detector_aws_with_instance_and_region_env() {
                     } = &layer
                     {
                         assert!(matches!(provider, CloudProvider::AWS));
-                        assert!(instance_type.as_ref().map_or(true, |s| !s.is_empty()));
-                        assert!(region.as_ref().map_or(true, |s| !s.is_empty()));
+                        assert!(instance_type.as_ref().is_none_or(|s| !s.is_empty()));
+                        assert!(region.as_ref().is_none_or(|s| !s.is_empty()));
                     }
                 });
             })

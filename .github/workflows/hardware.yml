@@ -58,7 +58,7 @@ jobs:
         if: always()
         run: |
           if ls /dev/video* &>/dev/null; then
-            cargo test -p toadstool-runtime-display -- --ignored --test-threads=1
+            cargo test -p toadstool-display -- --ignored --test-threads=1
           else
             echo "No V4L2 capture device — skipping"
           fi

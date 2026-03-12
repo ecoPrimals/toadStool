@@ -17,6 +17,9 @@ pub mod classify;
 pub mod diff;
 pub mod recipe;
 
+pub use diff::diff_traces;
+pub use recipe::build_recipe;
+
 use crate::observer::ObserveResult;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

@@ -124,7 +124,10 @@ impl Timestamp {
 /// ```
 #[must_use]
 pub fn format_bytes(bytes: u64) -> String {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "byte counts up to petabytes fit f64 for human-readable display"
+    )]
     let mut size = bytes as f64;
     let units = ["B", "KB", "MB", "GB", "TB", "PB"];
     let mut unit_index = 0;

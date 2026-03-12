@@ -43,7 +43,6 @@ wiremock = { version = "0.6", optional = true }
 
 # Async testing
 futures = "0.3"
-futures-util = "0.3"
 
 # Serialization for test data
 serde = { version = "1.0", features = ["derive"] }

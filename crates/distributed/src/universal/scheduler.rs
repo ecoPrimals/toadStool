@@ -255,8 +255,8 @@ impl Default for SongbirdIntegrationConfig {
             .and_then(|p| p.parse().ok())
             .unwrap_or(8081);
 
-        let host =
-            std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+            .unwrap_or_else(|_| String::from(toadstool_config::defaults::network::LOCALHOST));
 
         Self {
             enabled: false,

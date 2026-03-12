@@ -237,11 +237,11 @@ impl ServiceType {
     pub fn from_name(name: &str) -> Self {
         use toadstool_common::interned_strings::capabilities;
         Self::from_capability(match name.to_lowercase().as_str() {
-            n if n == "songbird" || n == capabilities::COORDINATION => capabilities::COORDINATION,
-            n if n == "beardog" || n == capabilities::CRYPTO => capabilities::CRYPTO,
-            n if n == "nestgate" || n == capabilities::STORAGE => capabilities::STORAGE,
-            n if n == "toadstool" || n == capabilities::COMPUTE => capabilities::COMPUTE,
-            n if n == "squirrel" => capabilities::INTELLIGENCE,
+            "songbird" | capabilities::COORDINATION => capabilities::COORDINATION,
+            "beardog" | capabilities::CRYPTO => capabilities::CRYPTO,
+            "nestgate" | capabilities::STORAGE => capabilities::STORAGE,
+            "toadstool" | capabilities::COMPUTE => capabilities::COMPUTE,
+            "squirrel" => capabilities::INTELLIGENCE,
             other => other,
         })
     }

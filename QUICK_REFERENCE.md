@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 12, 2026 — S147**
+**March 12, 2026 — S149**
 
 ---
 
@@ -592,4 +592,4 @@ Scientific middleware has moved to barraCuda. See `cargo doc -p barracuda --open
 
 ---
 
-**Last Updated**: March 12, 2026 — S147
+**Last Updated**: March 12, 2026 — S149

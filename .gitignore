@@ -44,10 +44,7 @@ credentials.json
 *.dylib
 *.dll
 
-# Datasets (large files, don't commit)
-showcase/whitePaper/data/datasets/
-showcase/whitePaper/data/mnist/
-showcase/whitePaper/data/cifar10/
+# Datasets (large binary files, don't commit)
 *.ubyte
 *.idx3-ubyte
 *.idx1-ubyte

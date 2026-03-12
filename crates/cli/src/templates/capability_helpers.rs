@@ -15,17 +15,17 @@ use toadstool_common::interned_strings::runtime_types;
 /// service names and capability-based discovery.
 pub fn service_to_capability(service_name: &str) -> &'static str {
     match service_name.to_lowercase().as_str() {
-        s if s == "beardog" => capabilities::CRYPTO,
-        s if s == "songbird" => capabilities::COORDINATION,
-        s if s == "nestgate" => capabilities::STORAGE,
-        s if s == "squirrel" => capabilities::INTELLIGENCE,
-        s if s == "toadstool" => capabilities::COMPUTE,
-        s if s == capabilities::CRYPTO => capabilities::CRYPTO,
-        s if s == capabilities::COORDINATION => capabilities::COORDINATION,
-        s if s == capabilities::STORAGE => capabilities::STORAGE,
-        s if s == capabilities::INTELLIGENCE => capabilities::INTELLIGENCE,
-        s if s == capabilities::COMPUTE => capabilities::COMPUTE,
-        s if s == runtime_types::BIOMEOS => "os",
+        "beardog" => capabilities::CRYPTO,
+        "songbird" => capabilities::COORDINATION,
+        "nestgate" => capabilities::STORAGE,
+        "squirrel" => capabilities::INTELLIGENCE,
+        "toadstool" => capabilities::COMPUTE,
+        capabilities::CRYPTO => capabilities::CRYPTO,
+        capabilities::COORDINATION => capabilities::COORDINATION,
+        capabilities::STORAGE => capabilities::STORAGE,
+        capabilities::INTELLIGENCE => capabilities::INTELLIGENCE,
+        capabilities::COMPUTE => capabilities::COMPUTE,
+        runtime_types::BIOMEOS => "os",
         _ => "unknown",
     }
 }
@@ -33,11 +33,11 @@ pub fn service_to_capability(service_name: &str) -> &'static str {
 /// Map capabilities to default service names (for backward compatibility)
 pub fn capability_to_service(capability: &str) -> &'static str {
     match capability {
-        s if s == capabilities::CRYPTO => "beardog",
-        s if s == capabilities::COORDINATION => "songbird",
-        s if s == capabilities::STORAGE => "nestgate",
-        s if s == capabilities::INTELLIGENCE => "squirrel",
-        s if s == capabilities::COMPUTE => PRIMAL_NAME,
+        capabilities::CRYPTO => "beardog",
+        capabilities::COORDINATION => "songbird",
+        capabilities::STORAGE => "nestgate",
+        capabilities::INTELLIGENCE => "squirrel",
+        capabilities::COMPUTE => PRIMAL_NAME,
         "os" => runtime_types::BIOMEOS,
         _ => "unknown",
     }

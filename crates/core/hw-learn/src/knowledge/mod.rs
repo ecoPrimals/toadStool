@@ -83,8 +83,7 @@ impl KnowledgeStore {
         let filename = format!("{id}.json");
         let path = vendor_dir.join(&filename);
 
-        let json = serde_json::to_string_pretty(recipe)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let json = serde_json::to_string_pretty(recipe).map_err(std::io::Error::other)?;
         std::fs::write(&path, json)?;
 
         let entry = RecipeEntry {
@@ -166,8 +165,7 @@ impl KnowledgeStore {
     }
 
     fn save_index(&self) -> Result<(), std::io::Error> {
-        let json = serde_json::to_string_pretty(&self.index)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let json = serde_json::to_string_pretty(&self.index).map_err(std::io::Error::other)?;
         std::fs::write(self.store_dir.join("index.json"), json)
     }
 }

@@ -41,7 +41,14 @@ impl ConditionEvaluator {
     }
 
     /// Validate condition structure
-    #[allow(clippy::self_only_used_in_recursion, clippy::match_same_arms)]
+    #[allow(
+        clippy::self_only_used_in_recursion,
+        reason = "recursive validation uses &self for future regex cache access"
+    )]
+    #[allow(
+        clippy::match_same_arms,
+        reason = "each PolicyCondition variant has distinct validation even if Ok(()) arms look identical"
+    )]
     pub fn validate_condition(&self, condition: &PolicyCondition) -> Result<(), String> {
         match condition {
             PolicyCondition::WorkloadType { workload_types } => {
@@ -122,7 +129,10 @@ impl ConditionEvaluator {
             } => {
                 let current_cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
                     .unwrap_or(0.0);
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "used memory in MB fits u32 (max 4 TB)"
+                )]
                 let current_mem_mb = toadstool_sysmon::memory_info()
                     .map(|m| (m.used / (1024 * 1024)) as u32)
                     .unwrap_or(0);

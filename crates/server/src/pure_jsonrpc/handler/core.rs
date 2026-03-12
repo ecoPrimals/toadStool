@@ -15,14 +15,20 @@ use crate::rpc_types::HealthStatus;
 type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
 
 /// Returns health status with uptime and error count.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn health(
     version: &str,
     start_time: std::time::Instant,
     error_count: &AtomicU64,
 ) -> JsonRpcResult {
     let uptime = start_time.elapsed();
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "error count u64→usize is lossless on 64-bit"
+    )]
     let error_count_val = error_count.load(Ordering::Relaxed) as usize;
     let status = HealthStatus {
         healthy: true,
@@ -38,7 +44,10 @@ pub(super) async fn health(
 }
 
 /// Returns version and protocol information.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn version_info(version: &str) -> JsonRpcResult {
     let mut info = HashMap::new();
     info.insert(String::from("version"), version.to_string());
@@ -52,7 +61,10 @@ pub(super) async fn version_info(version: &str) -> JsonRpcResult {
 }
 
 /// Returns discovered capabilities including semantic methods.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn discover_capabilities(
     semantic_registry: &SemanticMethodRegistry,
     version: &str,
@@ -132,7 +144,10 @@ pub(super) async fn discover_capabilities(
 ///
 /// Also includes `firmware_inventory` for NVIDIA chips so callers can
 /// assess `compute_viable()` and `compute_blockers()` without local probing.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn gpu_info() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_devices(),
@@ -144,7 +159,10 @@ pub(super) async fn gpu_info() -> JsonRpcResult {
 }
 
 /// Returns GPU memory information per device.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(super) async fn gpu_memory() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_memory(),

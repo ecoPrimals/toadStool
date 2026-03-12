@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 12, 2026 -- S148 Secret Audit & Hardening
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,015 tests (0 failures) | ~86% line coverage (121K production lines) | 94+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening
-**Latest**: S148 — Secret audit (1 revoked HF token in history, 0 active leaks). `SecretString` type + `resolve_credential()` chain. Cloud credential structs hardened. CI secret scanning. `.gitignore` hardened. Doc PII cleaned.
+**Updated**: March 12, 2026 -- S149 Deep Debt Execution & Evolution
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,192 tests (0 failures) | ~86% line coverage (121K production lines) | 94+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening
+**Latest**: S149 — Deep debt execution: clippy 0 warnings, `resolve_credential()` fully wired (file-based + security provider RPC), handler/mod.rs refactored (shader extracted), orphaned deps removed, nouveau_drm evolved to rustix, hw-learn stubs → real implementations, interned constants everywhere.
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-**~86% line coverage** (121K production lines). 20,015 tests pass (S147). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~86% line coverage** (121K production lines). 20,192 tests pass (S149). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 

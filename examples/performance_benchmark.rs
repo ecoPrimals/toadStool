@@ -544,8 +544,7 @@ async fn benchmark_job_types(
                 context,
             },
             _ => {
-                #[expect(clippy::unreachable, reason = "i % 4 is exhaustively matched 0..=3")]
-                unreachable!()
+                unreachable!("i % 4 is exhaustively matched 0..=3")
             }
         };
 
