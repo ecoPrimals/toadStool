@@ -87,23 +87,13 @@ pub enum InitStep {
         function: RegFunction,
     },
     /// Make a DRM ioctl call with raw arguments.
-    IoctlCall {
-        ioctl_nr: u64,
-        args: Vec<u8>,
-    },
+    IoctlCall { ioctl_nr: u64, args: Vec<u8> },
     /// Load firmware for a specific engine.
-    FirmwareLoad {
-        engine: Engine,
-        path: PathBuf,
-    },
+    FirmwareLoad { engine: Engine, path: PathBuf },
     /// Wait for a specified duration (microseconds).
-    Delay {
-        us: u64,
-    },
+    Delay { us: u64 },
     /// Verify a condition after previous steps.
-    Verify {
-        check: VerifyCheck,
-    },
+    Verify { check: VerifyCheck },
 }
 
 /// Functional classification of a register write.
@@ -142,7 +132,11 @@ pub enum Engine {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VerifyCheck {
     /// Read a register and check it matches the expected value.
-    RegisterMatch { offset: u64, expected: u64, mask: u64 },
+    RegisterMatch {
+        offset: u64,
+        expected: u64,
+        mask: u64,
+    },
     /// Attempt a DRM ioctl and check it succeeds.
     IoctlSucceeds { ioctl_nr: u64 },
     /// Submit a trivial compute dispatch and verify readback.

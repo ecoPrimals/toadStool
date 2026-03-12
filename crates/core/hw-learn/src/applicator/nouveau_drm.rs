@@ -9,12 +9,7 @@ use super::StepResult;
 use std::os::unix::io::RawFd;
 
 /// Execute an ioctl step against a DRM device.
-pub fn execute_ioctl(
-    step_index: usize,
-    card_path: &str,
-    ioctl_nr: u64,
-    args: &[u8],
-) -> StepResult {
+pub fn execute_ioctl(step_index: usize, card_path: &str, ioctl_nr: u64, args: &[u8]) -> StepResult {
     let fd = match open_drm_device(card_path) {
         Ok(fd) => fd,
         Err(e) => {
@@ -51,7 +46,10 @@ fn open_drm_device(path: &str) -> Result<RawFd, String> {
     // O_RDWR | O_CLOEXEC
     let fd = unsafe { libc_open(cpath.as_ptr(), 0o2 | 0o2000000) };
     if fd < 0 {
-        Err(format!("open failed: errno {}", std::io::Error::last_os_error()))
+        Err(format!(
+            "open failed: errno {}",
+            std::io::Error::last_os_error()
+        ))
     } else {
         Ok(fd)
     }

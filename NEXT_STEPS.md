@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 12, 2026 -- S147 hw-learn Wiring & Sovereign Compute Hardening
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,015 tests (0 failures) | ~86% line coverage (121K production lines) | 94+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
-**Latest**: S147 — hw-learn pipeline wired (5 compute.hardware.* methods), nvpmu RegisterAccess bridge, spirv_codegen_safety rename (naga root-cause), FirmwareInventory in gpu.info. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35.
+**Updated**: March 12, 2026 -- S148 Secret Audit & Hardening
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,015 tests (0 failures) | ~86% line coverage (121K production lines) | 94+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening
+**Latest**: S148 — Secret audit (1 revoked HF token in history, 0 active leaks). `SecretString` type + `resolve_credential()` chain. Cloud credential structs hardened. CI secret scanning. `.gitignore` hardened. Doc PII cleaned.
 
 ---
 

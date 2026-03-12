@@ -216,29 +216,31 @@ pub(super) async fn discovery_topology() -> JsonRpcResult {
 ///
 /// Format B splits on the first `.` to extract capability and method.
 pub(super) async fn deploy_capability_call(params: Option<&serde_json::Value>) -> JsonRpcResult {
-    let (capability, method) =
-        if let Some(qm) = params.and_then(|p| p.get("qualified_method")).and_then(serde_json::Value::as_str) {
-            let dot = qm.find('.').ok_or_else(|| {
+    let (capability, method) = if let Some(qm) = params
+        .and_then(|p| p.get("qualified_method"))
+        .and_then(serde_json::Value::as_str)
+    {
+        let dot = qm.find('.').ok_or_else(|| {
+            JsonRpcError::invalid_params(
+                "qualified_method must contain at least one '.' (e.g. 'biology.phylo.infer')",
+            )
+        })?;
+        (&qm[..dot], &qm[dot + 1..])
+    } else {
+        let cap = params
+            .and_then(|p| p.get("capability"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| {
                 JsonRpcError::invalid_params(
-                    "qualified_method must contain at least one '.' (e.g. 'biology.phylo.infer')",
+                    "Missing 'capability' (or 'qualified_method') parameter",
                 )
             })?;
-            (&qm[..dot], &qm[dot + 1..])
-        } else {
-            let cap = params
-                .and_then(|p| p.get("capability"))
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| {
-                    JsonRpcError::invalid_params(
-                        "Missing 'capability' (or 'qualified_method') parameter",
-                    )
-                })?;
-            let meth = params
-                .and_then(|p| p.get("method"))
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| JsonRpcError::invalid_params("Missing 'method' parameter"))?;
-            (cap, meth)
-        };
+        let meth = params
+            .and_then(|p| p.get("method"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'method' parameter"))?;
+        (cap, meth)
+    };
 
     let call_params = params.and_then(|p| p.get("params"));
 

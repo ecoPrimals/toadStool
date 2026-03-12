@@ -72,11 +72,19 @@ pub enum TraceEventKind {
     /// MMIO register read: offset, returned value.
     RegisterRead { offset: u64, value: u64, width: u8 },
     /// DRM ioctl call: ioctl number, argument size, success/failure.
-    IoctlCall { ioctl_nr: u64, arg_size: u32, success: bool },
+    IoctlCall {
+        ioctl_nr: u64,
+        arg_size: u32,
+        success: bool,
+    },
     /// Firmware load: engine name, firmware path.
     FirmwareLoad { engine: String, path: String },
     /// GSP RPC message: function ID, payload size.
-    GspRpc { func_id: u32, payload_size: u32, direction: RpcDirection },
+    GspRpc {
+        func_id: u32,
+        payload_size: u32,
+        direction: RpcDirection,
+    },
     /// AMD PM4 packet: opcode, word count.
     Pm4Packet { opcode: u16, count: u16 },
     /// Intel batch buffer command: opcode, dword count.

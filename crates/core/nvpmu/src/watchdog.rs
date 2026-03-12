@@ -27,11 +27,7 @@ impl Watchdog {
     ///
     /// # Errors
     /// Returns error if initial sensor read fails.
-    pub fn start<F>(
-        device_path: &Path,
-        config: MonitorConfig,
-        on_event: F,
-    ) -> Result<Self>
+    pub fn start<F>(device_path: &Path, config: MonitorConfig, on_event: F) -> Result<Self>
     where
         F: Fn(SafetyStatus, &HwmonSensors) + Send + 'static,
     {
@@ -70,9 +66,7 @@ impl Watchdog {
                         }
                     }
 
-                    std::thread::sleep(std::time::Duration::from_millis(
-                        config.poll_interval_ms,
-                    ));
+                    std::thread::sleep(std::time::Duration::from_millis(config.poll_interval_ms));
                 }
 
                 tracing::info!("nvpmu watchdog stopped");

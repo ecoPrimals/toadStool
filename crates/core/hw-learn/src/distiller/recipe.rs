@@ -72,7 +72,11 @@ pub fn build_recipe(
         target_arch,
         steps,
         confidence: 0.0,
-        description: format!("Auto-distilled from {} trace ({} events)", driver, classified.len()),
+        description: format!(
+            "Auto-distilled from {} trace ({} events)",
+            driver,
+            classified.len()
+        ),
     }
 }
 

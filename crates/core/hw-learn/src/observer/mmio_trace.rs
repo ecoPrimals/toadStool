@@ -13,9 +13,10 @@ use std::io::BufRead;
 
 /// Parse an mmiotrace log file into trace events.
 pub fn parse_mmiotrace(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
-    let path = config.trace_path.as_ref().ok_or_else(|| {
-        ObserveError::TraceUnavailable("mmiotrace requires trace_path".into())
-    })?;
+    let path = config
+        .trace_path
+        .as_ref()
+        .ok_or_else(|| ObserveError::TraceUnavailable("mmiotrace requires trace_path".into()))?;
 
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
@@ -69,9 +70,17 @@ fn parse_mmio_line(line: &str, first_ts: &mut Option<f64>) -> Option<TraceEvent>
     let timestamp_us = ((timestamp - base) * 1_000_000.0) as u64;
 
     let kind = if is_write {
-        TraceEventKind::RegisterWrite { offset, value, width }
+        TraceEventKind::RegisterWrite {
+            offset,
+            value,
+            width,
+        }
     } else {
-        TraceEventKind::RegisterRead { offset, value, width }
+        TraceEventKind::RegisterRead {
+            offset,
+            value,
+            width,
+        }
     };
 
     Some(TraceEvent {
@@ -93,7 +102,11 @@ mod tests {
         let evt = evt.unwrap();
         assert_eq!(evt.timestamp_us, 0);
         match evt.kind {
-            TraceEventKind::RegisterWrite { offset, value, width } => {
+            TraceEventKind::RegisterWrite {
+                offset,
+                value,
+                width,
+            } => {
                 assert_eq!(offset, 0xfee00000);
                 assert_eq!(value, 1);
                 assert_eq!(width, 4);

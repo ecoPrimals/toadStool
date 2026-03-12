@@ -11,10 +11,8 @@ use crate::observer::{TraceEvent, TraceEventKind};
 /// Returns events that appear in `compute` but not in `baseline`,
 /// matched by event kind (register offset, ioctl number).
 pub fn diff_traces(baseline: &[TraceEvent], compute: &[TraceEvent]) -> Vec<TraceEvent> {
-    let baseline_keys: std::collections::HashSet<u64> = baseline
-        .iter()
-        .filter_map(|e| event_key(&e.kind))
-        .collect();
+    let baseline_keys: std::collections::HashSet<u64> =
+        baseline.iter().filter_map(|e| event_key(&e.kind)).collect();
 
     compute
         .iter()
@@ -45,7 +43,11 @@ mod tests {
     fn reg_write(offset: u64, value: u64) -> TraceEvent {
         TraceEvent {
             timestamp_us: 0,
-            kind: TraceEventKind::RegisterWrite { offset, value, width: 4 },
+            kind: TraceEventKind::RegisterWrite {
+                offset,
+                value,
+                width: 4,
+            },
             context: String::new(),
         }
     }
@@ -53,7 +55,11 @@ mod tests {
     #[test]
     fn diff_removes_baseline_events() {
         let baseline = vec![reg_write(0x100, 1), reg_write(0x200, 2)];
-        let compute = vec![reg_write(0x100, 1), reg_write(0x200, 2), reg_write(0x300, 3)];
+        let compute = vec![
+            reg_write(0x100, 1),
+            reg_write(0x200, 2),
+            reg_write(0x300, 3),
+        ];
 
         let diff = diff_traces(&baseline, &compute);
         assert_eq!(diff.len(), 1);

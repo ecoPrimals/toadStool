@@ -510,9 +510,7 @@ impl JsonRpcHandler {
 /// which precision tiers are safe to compile for each target device.
 /// Prevents compilation of DF64/F64Precise transcendentals on
 /// proprietary NVIDIA drivers that may poison the device.
-fn build_precision_advice(
-    targets: &[crate::coral_reef_client::DeviceTarget],
-) -> serde_json::Value {
+fn build_precision_advice(targets: &[crate::coral_reef_client::DeviceTarget]) -> serde_json::Value {
     let sysmon_gpus = toadstool_sysmon::discover_gpus();
 
     let advice: Vec<serde_json::Value> = targets

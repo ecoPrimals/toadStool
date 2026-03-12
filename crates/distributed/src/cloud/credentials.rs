@@ -1,35 +1,50 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Cloud credentials and authentication
 //!
-//! This module contains credential structures for different cloud providers
-//! and authentication methods.
+//! Secret fields use [`toadstool_common::SecretString`] so they are
+//! zeroized on drop and never leaked through `Debug`, `Display`, or
+//! `Serialize`. Non-secret identifiers remain plain `String`.
 
 use serde::{Deserialize, Serialize};
+use toadstool_common::SecretString;
 
 // ============================================================================
 // Cloud Provider Credentials
 // ============================================================================
 
 /// AWS credentials
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+///
+/// `access_key_id` is an identifier (safe to log).
+/// `secret_access_key` and `session_token` are secrets (redacted everywhere).
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AWSCredentials {
     pub access_key_id: String,
-    pub secret_access_key: String,
-    pub session_token: Option<String>,
+    pub secret_access_key: SecretString,
+    pub session_token: Option<SecretString>,
+}
+
+impl Default for AWSCredentials {
+    fn default() -> Self {
+        Self {
+            access_key_id: String::new(),
+            secret_access_key: SecretString::new(String::new()),
+            session_token: None,
+        }
+    }
 }
 
 /// Azure credentials
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AzureCredentials {
     pub tenant_id: String,
     pub client_id: String,
-    pub client_secret: String,
+    pub client_secret: SecretString,
 }
 
 /// GCP credentials
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GCPCredentials {
-    pub service_account_key: String,
+    pub service_account_key: SecretString,
 }
 
 /// Kubernetes configuration
@@ -62,10 +77,10 @@ pub enum EncryptionLevel {
 }
 
 /// Authentication methods
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AuthMethod {
     Token {
-        token: String,
+        token: SecretString,
     },
     Certificate {
         cert_path: String,
@@ -73,7 +88,7 @@ pub enum AuthMethod {
     },
     BearDogAuth {
         endpoint: String,
-        credentials: String,
+        credentials: SecretString,
     },
 }
 
@@ -85,8 +100,8 @@ mod tests {
     fn test_aws_credentials_creation() {
         let creds = AWSCredentials {
             access_key_id: "AKIAIOSFODNN7EXAMPLE".to_string(),
-            secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY".to_string(),
-            session_token: Some("session-token".to_string()),
+            secret_access_key: SecretString::from("test-secret-value"),
+            session_token: Some(SecretString::from("session-token")),
         };
         assert_eq!(creds.access_key_id, "AKIAIOSFODNN7EXAMPLE");
         assert!(creds.session_token.is_some());
@@ -101,11 +116,36 @@ mod tests {
     }
 
     #[test]
+    fn test_aws_secret_is_redacted_in_debug() {
+        let creds = AWSCredentials {
+            access_key_id: "AKIAIOSFODNN7EXAMPLE".to_string(),
+            secret_access_key: SecretString::from("should-not-appear"),
+            session_token: None,
+        };
+        let debug = format!("{creds:?}");
+        assert!(debug.contains("AKIAIOSFODNN7EXAMPLE"));
+        assert!(!debug.contains("should-not-appear"));
+        assert!(debug.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn test_aws_secret_is_redacted_in_json() {
+        let creds = AWSCredentials {
+            access_key_id: "key".to_string(),
+            secret_access_key: SecretString::from("super-secret"),
+            session_token: None,
+        };
+        let json = serde_json::to_string(&creds).expect("serialize");
+        assert!(!json.contains("super-secret"));
+        assert!(json.contains("[REDACTED]"));
+    }
+
+    #[test]
     fn test_azure_credentials_creation() {
         let creds = AzureCredentials {
             tenant_id: "tenant-123".to_string(),
             client_id: "client-456".to_string(),
-            client_secret: "secret".to_string(),
+            client_secret: SecretString::from("secret"),
         };
         assert_eq!(creds.tenant_id, "tenant-123");
         assert_eq!(creds.client_id, "client-456");
@@ -114,9 +154,12 @@ mod tests {
     #[test]
     fn test_gcp_credentials_creation() {
         let creds = GCPCredentials {
-            service_account_key: r#"{"type":"service_account"}"#.to_string(),
+            service_account_key: SecretString::from(r#"{"type":"service_account"}"#),
         };
-        assert!(creds.service_account_key.contains("service_account"));
+        assert!(creds
+            .service_account_key
+            .expose_secret()
+            .contains("service_account"));
     }
 
     #[test]
@@ -158,7 +201,7 @@ mod tests {
     #[test]
     fn test_auth_method_variants() {
         let _ = AuthMethod::Token {
-            token: "t".to_string(),
+            token: SecretString::from("t"),
         };
         let _ = AuthMethod::Certificate {
             cert_path: "/cert".to_string(),
@@ -166,44 +209,17 @@ mod tests {
         };
         let _ = AuthMethod::BearDogAuth {
             endpoint: "http://auth".to_string(),
-            credentials: "creds".to_string(),
+            credentials: SecretString::from("creds"),
         };
     }
 
     #[test]
-    fn test_aws_credentials_serialization() {
-        let creds = AWSCredentials {
-            access_key_id: "key".to_string(),
-            secret_access_key: "secret".to_string(),
-            session_token: None,
-        };
-        let json = serde_json::to_string(&creds).unwrap();
-        let parsed: AWSCredentials = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.access_key_id, creds.access_key_id);
-    }
-
-    #[test]
-    fn test_azure_credentials_serialization() {
-        let creds = AzureCredentials {
-            tenant_id: "t".to_string(),
-            client_id: "c".to_string(),
-            client_secret: "s".to_string(),
-        };
-        let json = serde_json::to_string(&creds).unwrap();
-        let parsed: AzureCredentials = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.tenant_id, creds.tenant_id);
-    }
-
-    #[test]
-    fn test_auth_method_serialization() {
+    fn test_auth_method_token_redacted_in_json() {
         let auth = AuthMethod::Token {
-            token: "my-token".to_string(),
+            token: SecretString::from("my-real-token"),
         };
-        let json = serde_json::to_string(&auth).unwrap();
-        let parsed: AuthMethod = serde_json::from_str(&json).unwrap();
-        match parsed {
-            AuthMethod::Token { token } => assert_eq!(token, "my-token"),
-            _ => panic!("Expected Token variant"),
-        }
+        let json = serde_json::to_string(&auth).expect("serialize");
+        assert!(!json.contains("my-real-token"));
+        assert!(json.contains("[REDACTED]"));
     }
 }

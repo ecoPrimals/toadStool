@@ -26,7 +26,10 @@ impl HwLearnHandler {
     ///
     /// Params: `{ "trace_data": "<mmiotrace text>" }`
     /// Returns: `{ "accesses": [...], "base_address": ... }`
-    #[expect(clippy::unused_async, reason = "async for JSON-RPC handler trait consistency")]
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
     pub async fn hw_learn_observe(
         &self,
         params: Option<&serde_json::Value>,
@@ -38,9 +41,8 @@ impl HwLearnHandler {
                 JsonRpcError::invalid_params("Missing required 'trace_data' string parameter")
             })?;
 
-        let trace = hw_learn::MmioTrace::parse(trace_data.as_bytes()).map_err(|e| {
-            JsonRpcError::invalid_params(format!("Failed to parse mmiotrace: {e}"))
-        })?;
+        let trace = hw_learn::MmioTrace::parse(trace_data.as_bytes())
+            .map_err(|e| JsonRpcError::invalid_params(format!("Failed to parse mmiotrace: {e}")))?;
 
         Ok(serde_json::json!({
             "domain": "compute.hardware",
@@ -55,7 +57,10 @@ impl HwLearnHandler {
     ///
     /// Params: `{ "baseline": "<mmiotrace>", "compute": "<mmiotrace>", "chip": "gv100", "base_address": 0 }`
     /// Returns: `{ "recipe": {...}, "diff_count": N }`
-    #[expect(clippy::unused_async, reason = "async for JSON-RPC handler trait consistency")]
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
     pub async fn hw_learn_distill(
         &self,
         params: Option<&serde_json::Value>,
@@ -109,7 +114,10 @@ impl HwLearnHandler {
     ///
     /// Params: `{ "recipe_json": "..." }` or `{ "chip": "gv100" }` (loads from store)
     /// Returns: `{ "result": {...} }`
-    #[expect(clippy::unused_async, reason = "async for JSON-RPC handler trait consistency")]
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
     pub async fn hw_learn_apply(
         &self,
         params: Option<&serde_json::Value>,
@@ -118,11 +126,11 @@ impl HwLearnHandler {
             JsonRpcError::invalid_params("Expected { recipe_json } or { chip } parameter")
         })?;
 
-        let recipe = if let Some(json_str) = p.get("recipe_json").and_then(serde_json::Value::as_str)
+        let recipe = if let Some(json_str) =
+            p.get("recipe_json").and_then(serde_json::Value::as_str)
         {
-            hw_learn::distiller::InitRecipe::from_json(json_str).map_err(|e| {
-                JsonRpcError::invalid_params(format!("Invalid recipe JSON: {e}"))
-            })?
+            hw_learn::distiller::InitRecipe::from_json(json_str)
+                .map_err(|e| JsonRpcError::invalid_params(format!("Invalid recipe JSON: {e}")))?
         } else if let Some(chip) = p.get("chip").and_then(serde_json::Value::as_str) {
             self.recipe_store.load(chip).map_err(|e| {
                 JsonRpcError::invalid_params(format!("Failed to load recipe for {chip}: {e}"))
@@ -154,14 +162,16 @@ impl HwLearnHandler {
     /// Save: `{ "action": "save", "recipe_json": "..." }`
     /// Load: `{ "action": "load", "chip": "gv100" }`
     /// List: `{ "action": "list" }`
-    #[expect(clippy::unused_async, reason = "async for JSON-RPC handler trait consistency")]
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
     pub async fn hw_learn_share_recipe(
         &self,
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let p = params.ok_or_else(|| {
-            JsonRpcError::invalid_params("Expected { action, ... } parameter")
-        })?;
+        let p = params
+            .ok_or_else(|| JsonRpcError::invalid_params("Expected { action, ... } parameter"))?;
 
         let action = p
             .get("action")
@@ -170,16 +180,15 @@ impl HwLearnHandler {
 
         match action {
             "save" => {
-                let json_str =
-                    p.get("recipe_json")
-                        .and_then(serde_json::Value::as_str)
-                        .ok_or_else(|| {
-                            JsonRpcError::invalid_params("Missing 'recipe_json' for save action")
-                        })?;
-                let recipe =
-                    hw_learn::distiller::InitRecipe::from_json(json_str).map_err(|e| {
-                        JsonRpcError::invalid_params(format!("Invalid recipe JSON: {e}"))
+                let json_str = p
+                    .get("recipe_json")
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| {
+                        JsonRpcError::invalid_params("Missing 'recipe_json' for save action")
                     })?;
+                let recipe = hw_learn::distiller::InitRecipe::from_json(json_str).map_err(|e| {
+                    JsonRpcError::invalid_params(format!("Invalid recipe JSON: {e}"))
+                })?;
                 let path = self.recipe_store.save(&recipe).map_err(|e| {
                     JsonRpcError::internal_error(format!("Failed to save recipe: {e}"))
                 })?;
@@ -192,16 +201,14 @@ impl HwLearnHandler {
                 }))
             }
             "load" => {
-                let chip =
-                    p.get("chip")
-                        .and_then(serde_json::Value::as_str)
-                        .ok_or_else(|| {
-                            JsonRpcError::invalid_params("Missing 'chip' for load action")
-                        })?;
+                let chip = p
+                    .get("chip")
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| {
+                        JsonRpcError::invalid_params("Missing 'chip' for load action")
+                    })?;
                 let recipe = self.recipe_store.load(chip).map_err(|e| {
-                    JsonRpcError::invalid_params(format!(
-                        "Failed to load recipe for {chip}: {e}"
-                    ))
+                    JsonRpcError::invalid_params(format!("Failed to load recipe for {chip}: {e}"))
                 })?;
                 Ok(serde_json::json!({
                     "domain": "compute.hardware",
@@ -242,7 +249,10 @@ impl HwLearnHandler {
     ///
     /// Params: `{ "chip": "gv100" }` (optional — probes firmware for that chip)
     /// Returns: `{ "pipeline": ..., "firmware": ..., "recipes": ... }`
-    #[expect(clippy::unused_async, reason = "async for JSON-RPC handler trait consistency")]
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
     pub async fn hw_learn_status(
         &self,
         params: Option<&serde_json::Value>,

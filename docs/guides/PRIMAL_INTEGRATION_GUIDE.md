@@ -281,7 +281,7 @@ let pool = sqlx::postgres::PgPool::connect(&db.first().unwrap().url).await?;
 
 Environment:
 ```bash
-export TOADSTOOL_DATABASE_ENDPOINT=postgresql://user:pass@postgres.prod:5432/dbname
+export TOADSTOOL_DATABASE_ENDPOINT=postgresql://$DB_USER:$DB_PASS@postgres.prod:5432/dbname
 ```
 
 ### S3-Compatible Storage

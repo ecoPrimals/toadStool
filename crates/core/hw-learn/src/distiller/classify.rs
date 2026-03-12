@@ -84,9 +84,9 @@ fn classify_ioctl(ioctl_nr: u64) -> RegFunction {
     // nouveau new UAPI ioctl numbers (from drm/nouveau_drm.h)
     let cmd = (ioctl_nr & 0xFF) as u8;
     match cmd {
-        0x00 => RegFunction::ContextAlloc,  // VM_INIT
-        0x01 => RegFunction::MemoryConfig,  // VM_BIND
-        0x02 => RegFunction::ChannelBind,   // CHANNEL_ALLOC (EXEC)
+        0x00 => RegFunction::ContextAlloc, // VM_INIT
+        0x01 => RegFunction::MemoryConfig, // VM_BIND
+        0x02 => RegFunction::ChannelBind,  // CHANNEL_ALLOC (EXEC)
         _ => RegFunction::Unknown,
     }
 }

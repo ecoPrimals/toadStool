@@ -182,7 +182,8 @@ pub fn query_firmware_inventory() -> serde_json::Value {
 
     for gpu in &sysmon_gpus {
         let driver = gpu.driver.as_str();
-        let is_nvidia = driver.contains("nvidia") || driver.contains("nvk") || driver.contains("nouveau");
+        let is_nvidia =
+            driver.contains("nvidia") || driver.contains("nvk") || driver.contains("nouveau");
 
         if is_nvidia {
             let chip = infer_chip_codename(&gpu.pci_slot);

@@ -32,7 +32,7 @@
 
 ```bash
 # 1. Build release binary
-cd /home/eastgate/Development/ecoPrimals/toadstool
+cd "$TOADSTOOL_SRC"  # e.g. ~/Development/ecoPrimals/phase1/toadStool
 cargo build --release --workspace
 
 # 2. Binaries are in:

@@ -9,6 +9,7 @@
 //! - Deployment configuration structs
 
 use std::collections::HashMap;
+use toadstool_common::SecretString;
 use toadstool_distributed::cloud::*;
 use uuid::Uuid;
 
@@ -19,12 +20,12 @@ use uuid::Uuid;
 #[test]
 fn test_auth_method_token() {
     let auth = AuthMethod::Token {
-        token: "secret-token-123".to_string(),
+        token: SecretString::from("secret-token-123"),
     };
 
     match auth {
         AuthMethod::Token { token } => {
-            assert_eq!(token, "secret-token-123");
+            assert_eq!(token.expose_secret(), "secret-token-123");
         }
         _ => panic!("Expected Token variant"),
     }
@@ -53,7 +54,7 @@ fn test_auth_method_certificate() {
 fn test_auth_method_beardog() {
     let auth = AuthMethod::BearDogAuth {
         endpoint: "https://beardog.example.com".to_string(),
-        credentials: "beardog-creds".to_string(),
+        credentials: SecretString::from("beardog-creds"),
     };
 
     match auth {
@@ -62,7 +63,7 @@ fn test_auth_method_beardog() {
             credentials,
         } => {
             assert_eq!(endpoint, "https://beardog.example.com");
-            assert_eq!(credentials, "beardog-creds");
+            assert_eq!(credentials.expose_secret(), "beardog-creds");
         }
         _ => panic!("Expected BearDogAuth variant"),
     }

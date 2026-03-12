@@ -9,6 +9,7 @@
 //! - Cost optimization
 //! - Compliance enforcement
 
+use toadstool_common::SecretString;
 use toadstool_distributed::cloud::{
     AWSCredentials, AuthMethod, AzureCredentials, CloudProvider, EncryptionLevel, GCPCredentials,
 };
@@ -19,7 +20,7 @@ fn test_cloud_provider_aws_creation() {
         region: "us-east-1".to_string(),
         credentials: AWSCredentials {
             access_key_id: "test-key".to_string(),
-            secret_access_key: "test-secret".to_string(),
+            secret_access_key: SecretString::from("test-secret"),
             session_token: None,
         },
         cost_budget: Some(1000.0),
@@ -45,7 +46,7 @@ fn test_cloud_provider_azure_creation() {
         credentials: AzureCredentials {
             tenant_id: "tenant".to_string(),
             client_id: "client".to_string(),
-            client_secret: "secret".to_string(),
+            client_secret: SecretString::from("secret"),
         },
         resource_group: "test-rg".to_string(),
     };
@@ -68,7 +69,7 @@ fn test_cloud_provider_gcp_creation() {
     let provider = CloudProvider::GCP {
         project: "test-project".to_string(),
         credentials: GCPCredentials {
-            service_account_key: "key".to_string(),
+            service_account_key: SecretString::from("key"),
         },
         zone: "us-central1-a".to_string(),
     };
@@ -123,7 +124,7 @@ fn test_cloud_provider_self_hosted() {
             "http://node2:8080".to_string(),
         ],
         auth_method: AuthMethod::Token {
-            token: "self-token".to_string(),
+            token: SecretString::from("self-token"),
         },
     };
 
@@ -176,12 +177,12 @@ fn test_encryption_level_variants() {
 #[test]
 fn test_auth_method_token() {
     let auth = AuthMethod::Token {
-        token: "my-token".to_string(),
+        token: SecretString::from("my-token"),
     };
 
     match auth {
         AuthMethod::Token { token } => {
-            assert_eq!(token, "my-token");
+            assert_eq!(token.expose_secret(), "my-token");
         }
         _ => panic!("Expected Token auth method"),
     }
@@ -254,7 +255,7 @@ fn test_multiple_cloud_providers() {
             region: "us-west-2".to_string(),
             credentials: AWSCredentials {
                 access_key_id: "key1".to_string(),
-                secret_access_key: "secret1".to_string(),
+                secret_access_key: SecretString::from("secret1"),
                 session_token: None,
             },
             cost_budget: None,
@@ -277,8 +278,8 @@ fn test_multiple_cloud_providers() {
 fn test_aws_credentials_structure() {
     let creds = AWSCredentials {
         access_key_id: "AKIAIOSFODNN7EXAMPLE".to_string(),
-        secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY".to_string(),
-        session_token: Some("session123".to_string()),
+        secret_access_key: SecretString::from("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
+        session_token: Some(SecretString::from("session123")),
     };
 
     assert!(!creds.access_key_id.is_empty());
@@ -291,7 +292,7 @@ fn test_azure_credentials_structure() {
     let creds = AzureCredentials {
         tenant_id: "tenant-123".to_string(),
         client_id: "client-456".to_string(),
-        client_secret: "secret-789".to_string(),
+        client_secret: SecretString::from("secret-789"),
     };
 
     assert!(!creds.tenant_id.is_empty());
@@ -302,7 +303,7 @@ fn test_azure_credentials_structure() {
 #[test]
 fn test_gcp_credentials_structure() {
     let creds = GCPCredentials {
-        service_account_key: "{\n  \"type\": \"service_account\"...}".to_string(),
+        service_account_key: SecretString::from("{\n  \"type\": \"service_account\"...}"),
     };
 
     assert!(!creds.service_account_key.is_empty());
@@ -399,7 +400,7 @@ fn test_cloud_provider_debug_representation() {
             region: "us-east-1".to_string(),
             credentials: AWSCredentials {
                 access_key_id: "key".to_string(),
-                secret_access_key: "secret".to_string(),
+                secret_access_key: SecretString::from("secret"),
                 session_token: None,
             },
             cost_budget: Some(500.0),
@@ -436,7 +437,7 @@ fn test_encryption_level_ordering() {
 fn test_auth_method_beardog_auth() {
     let auth = AuthMethod::BearDogAuth {
         endpoint: "https://beardog.auth.local".to_string(),
-        credentials: "beardog-creds".to_string(),
+        credentials: SecretString::from("beardog-creds"),
     };
 
     match auth {
@@ -445,7 +446,7 @@ fn test_auth_method_beardog_auth() {
             credentials,
         } => {
             assert_eq!(endpoint, "https://beardog.auth.local");
-            assert_eq!(credentials, "beardog-creds");
+            assert_eq!(credentials.expose_secret(), "beardog-creds");
         }
         _ => panic!("Expected BearDogAuth auth method"),
     }
@@ -454,7 +455,7 @@ fn test_auth_method_beardog_auth() {
 #[test]
 fn test_auth_method_serialization() {
     let auth = AuthMethod::Token {
-        token: "test-token".to_string(),
+        token: SecretString::from("test-token"),
     };
 
     let json = serde_json::to_string(&auth).expect("Should serialize");
@@ -477,19 +478,22 @@ fn test_cloud_provider_debug_format() {
 fn test_aws_credentials_with_session_token() {
     let creds = AWSCredentials {
         access_key_id: "key".to_string(),
-        secret_access_key: "secret".to_string(),
-        session_token: Some("session-token".to_string()),
+        secret_access_key: SecretString::from("secret"),
+        session_token: Some(SecretString::from("session-token")),
     };
 
     assert!(creds.session_token.is_some());
-    assert_eq!(creds.session_token.unwrap(), "session-token");
+    assert_eq!(
+        creds.session_token.unwrap().expose_secret(),
+        "session-token"
+    );
 }
 
 #[test]
 fn test_aws_credentials_without_session_token() {
     let creds = AWSCredentials {
         access_key_id: "key".to_string(),
-        secret_access_key: "secret".to_string(),
+        secret_access_key: SecretString::from("secret"),
         session_token: None,
     };
 
@@ -500,7 +504,7 @@ fn test_aws_credentials_without_session_token() {
 fn test_multiple_auth_methods() {
     let auth_methods = [
         AuthMethod::Token {
-            token: "token1".to_string(),
+            token: SecretString::from("token1"),
         },
         AuthMethod::Certificate {
             cert_path: "/path/cert".to_string(),
@@ -508,7 +512,7 @@ fn test_multiple_auth_methods() {
         },
         AuthMethod::BearDogAuth {
             endpoint: "https://auth.local".to_string(),
-            credentials: "creds".to_string(),
+            credentials: SecretString::from("creds"),
         },
     ];
 
@@ -521,7 +525,7 @@ fn test_cloud_provider_with_cost_budget() {
         region: "us-west-2".to_string(),
         credentials: AWSCredentials {
             access_key_id: "key".to_string(),
-            secret_access_key: "secret".to_string(),
+            secret_access_key: SecretString::from("secret"),
             session_token: None,
         },
         cost_budget: Some(1000.0),
@@ -542,7 +546,7 @@ fn test_cloud_provider_without_cost_budget() {
         region: "us-west-2".to_string(),
         credentials: AWSCredentials {
             access_key_id: "key".to_string(),
-            secret_access_key: "secret".to_string(),
+            secret_access_key: SecretString::from("secret"),
             session_token: None,
         },
         cost_budget: None,
@@ -568,7 +572,7 @@ fn test_self_hosted_with_multiple_endpoints() {
     let provider = CloudProvider::SelfHosted {
         endpoints: endpoints.clone(),
         auth_method: AuthMethod::Token {
-            token: "token".to_string(),
+            token: SecretString::from("token"),
         },
     };
 

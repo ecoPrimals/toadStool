@@ -38,6 +38,7 @@ pub mod primal_integration; // NEW: Self-knowledge only architecture
 pub mod primal_sockets;
 pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discovery
 pub mod runtime_ports; // NEW: Deep Debt compliant dynamic port discovery
+pub mod secret_string; // Zero-leakage secret wrapper + credential resolution chain
 pub mod self_identity; // Self-aware primal identity and capability discovery
 pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
 pub mod system_time_serde; // Serde for std::time::SystemTime (Unix timestamp)
@@ -56,6 +57,7 @@ pub use error::{
 };
 
 pub use error_codes::{codes, ErrorCategory, ErrorCode};
+pub use secret_string::SecretString;
 
 /// A unique identifier for `ToadStool` resources
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

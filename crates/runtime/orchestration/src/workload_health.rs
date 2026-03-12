@@ -190,9 +190,7 @@ impl WorkloadHealthMonitor {
         severity: AttentionState,
         action: &InterruptAction,
     ) -> String {
-        format!(
-            "Anomaly {anomaly:?} at {severity:?} — action: {action:?}"
-        )
+        format!("Anomaly {anomaly:?} at {severity:?} — action: {action:?}")
     }
 
     /// Current attention state.

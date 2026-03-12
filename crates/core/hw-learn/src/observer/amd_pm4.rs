@@ -13,9 +13,10 @@ use super::{ObserveConfig, ObserveError, ObserveResult, TraceEvent, TraceEventKi
 use std::io::BufRead;
 
 pub fn parse_pm4_trace(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
-    let path = config.trace_path.as_ref().ok_or_else(|| {
-        ObserveError::TraceUnavailable("PM4 trace requires trace_path".into())
-    })?;
+    let path = config
+        .trace_path
+        .as_ref()
+        .ok_or_else(|| ObserveError::TraceUnavailable("PM4 trace requires trace_path".into()))?;
 
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
@@ -82,7 +83,8 @@ fn parse_pm4_line(line: &str, seq: &mut u64) -> Option<TraceEvent> {
 fn extract_hex_field(line: &str, prefix: &str) -> Option<u64> {
     let start = line.find(prefix)? + prefix.len();
     let rest = &line[start..];
-    let end = rest.find(|c: char| !c.is_ascii_hexdigit() && c != 'x')
+    let end = rest
+        .find(|c: char| !c.is_ascii_hexdigit() && c != 'x')
         .unwrap_or(rest.len());
     let val = &rest[..end];
     if let Some(hex) = val.strip_prefix("0x") {
@@ -95,7 +97,9 @@ fn extract_hex_field(line: &str, prefix: &str) -> Option<u64> {
 fn extract_dec_field(line: &str, prefix: &str) -> Option<u16> {
     let start = line.find(prefix)? + prefix.len();
     let rest = &line[start..];
-    let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+    let end = rest
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(rest.len());
     rest[..end].parse().ok()
 }
 

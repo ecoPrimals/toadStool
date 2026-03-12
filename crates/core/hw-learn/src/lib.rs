@@ -27,7 +27,10 @@ pub mod knowledge;
 pub mod observer;
 
 pub use applicator::{ApplyResult, ApplyVerdict, RecipeApplicator};
-pub use brain_ext::{CapabilityGap, FirmwareInventory, FirmwareInventoryExt, FwStatus, LearningAdvisor, LearningOpportunity};
+pub use brain_ext::{
+    CapabilityGap, FirmwareInventory, FirmwareInventoryExt, FwStatus, LearningAdvisor,
+    LearningOpportunity,
+};
 pub use distiller::{InitRecipe, InitStep, RecipeDistiller, RegFunction};
 pub use knowledge::{ArchId, KnowledgeStore, RecipeId};
 pub use observer::{ObserveConfig, ObserveResult, TraceEvent, TraceObserver};

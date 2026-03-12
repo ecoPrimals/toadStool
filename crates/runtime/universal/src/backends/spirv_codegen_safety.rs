@@ -267,8 +267,7 @@ impl PrecisionBrain {
     /// Whether the routed tier for this hint uses transcendentals safely.
     #[must_use]
     pub fn transcendentals_safe(&self, hint: PrecisionHint) -> bool {
-        self.calibration
-            .is_tier_safe(self.route(hint), true)
+        self.calibration.is_tier_safe(self.route(hint), true)
     }
 
     /// Access the underlying calibration.
@@ -347,7 +346,7 @@ pub mod fleet {
     use super::*;
     use hw_learn::brain_ext::learning_advisor::{FleetGpu, LearningAdvisor, LearningOpportunity};
     use hw_learn::distiller::{GpuArch, Vendor};
-    use toadstool_sysmon::{GpuDevice, FirmwareInventory};
+    use toadstool_sysmon::{FirmwareInventory, GpuDevice};
 
     /// A GPU in the fleet with both precision calibration and firmware status.
     pub struct FleetMember {
@@ -415,14 +414,23 @@ pub mod fleet {
 
     fn infer_compute_class(adapter_name: &str) -> String {
         let name = adapter_name.to_uppercase();
-        if name.contains("RTX 40") { "sm89".into() }
-        else if name.contains("RTX 30") { "sm86".into() }
-        else if name.contains("RTX 20") { "sm75".into() }
-        else if name.contains("TITAN V") { "sm70".into() }
-        else if name.contains("RX 6") { "gfx1030".into() }
-        else if name.contains("RX 7") { "gfx1100".into() }
-        else if name.contains("ARC") { "gen12".into() }
-        else { "unknown".into() }
+        if name.contains("RTX 40") {
+            "sm89".into()
+        } else if name.contains("RTX 30") {
+            "sm86".into()
+        } else if name.contains("RTX 20") {
+            "sm75".into()
+        } else if name.contains("TITAN V") {
+            "sm70".into()
+        } else if name.contains("RX 6") {
+            "gfx1030".into()
+        } else if name.contains("RX 7") {
+            "gfx1100".into()
+        } else if name.contains("ARC") {
+            "gen12".into()
+        } else {
+            "unknown".into()
+        }
     }
 }
 
@@ -753,7 +761,10 @@ mod tests {
         let cal = HardwareCalibration::from_adapter_info(&adapter);
         let brain = PrecisionBrain::new(cal, None);
 
-        assert_eq!(brain.route(PrecisionHint::Critical), PrecisionTier::F64Precise);
+        assert_eq!(
+            brain.route(PrecisionHint::Critical),
+            PrecisionTier::F64Precise
+        );
     }
 
     #[test]
@@ -771,7 +782,10 @@ mod tests {
         let cal = HardwareCalibration::from_adapter_info(&adapter);
         let brain = PrecisionBrain::new(cal, None);
 
-        assert_eq!(brain.route(PrecisionHint::ThroughputBound), PrecisionTier::F64);
+        assert_eq!(
+            brain.route(PrecisionHint::ThroughputBound),
+            PrecisionTier::F64
+        );
     }
 
     #[test]
@@ -791,7 +805,10 @@ mod tests {
 
         assert_eq!(brain.route(PrecisionHint::Critical), PrecisionTier::F32);
         assert_eq!(brain.route(PrecisionHint::Moderate), PrecisionTier::F32);
-        assert_eq!(brain.route(PrecisionHint::ThroughputBound), PrecisionTier::F32);
+        assert_eq!(
+            brain.route(PrecisionHint::ThroughputBound),
+            PrecisionTier::F32
+        );
         assert_eq!(brain.route(PrecisionHint::LowPrecision), PrecisionTier::F32);
     }
 
@@ -801,7 +818,10 @@ mod tests {
         let cal = HardwareCalibration::from_adapter_info(&adapter);
         let brain = PrecisionBrain::new(cal, None);
 
-        assert_eq!(brain.route(PrecisionHint::Critical), PrecisionTier::F64Precise);
+        assert_eq!(
+            brain.route(PrecisionHint::Critical),
+            PrecisionTier::F64Precise
+        );
         assert_eq!(brain.route(PrecisionHint::Moderate), PrecisionTier::F64);
     }
 
@@ -832,7 +852,10 @@ mod tests {
     #[test]
     fn zero_guard_nan_contaminated() {
         let output = [1.0, f64::NAN, 3.0];
-        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::NanContaminated);
+        assert_eq!(
+            nvk_zero_guard_check(&output),
+            ZeroGuardVerdict::NanContaminated
+        );
     }
 
     #[test]
@@ -850,7 +873,10 @@ mod tests {
     #[test]
     fn zero_guard_f32_all_zeros() {
         let output: [f32; 4] = [0.0, 0.0, 0.0, 0.0];
-        assert_eq!(nvk_zero_guard_check_f32(&output), ZeroGuardVerdict::AllZeros);
+        assert_eq!(
+            nvk_zero_guard_check_f32(&output),
+            ZeroGuardVerdict::AllZeros
+        );
     }
 
     #[test]
@@ -862,6 +888,9 @@ mod tests {
     #[test]
     fn zero_guard_f32_nan() {
         let output: [f32; 2] = [f32::NAN, 1.0];
-        assert_eq!(nvk_zero_guard_check_f32(&output), ZeroGuardVerdict::NanContaminated);
+        assert_eq!(
+            nvk_zero_guard_check_f32(&output),
+            ZeroGuardVerdict::NanContaminated
+        );
     }
 }

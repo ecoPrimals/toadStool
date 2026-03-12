@@ -651,7 +651,11 @@ mod tests {
         ];
         for pattern in patterns {
             let result = router.route(pattern, 0);
-            assert_eq!(result, SubstrateTarget::Cpu, "size 0 should route to CPU for {pattern:?}");
+            assert_eq!(
+                result,
+                SubstrateTarget::Cpu,
+                "size 0 should route to CPU for {pattern:?}"
+            );
         }
     }
 }

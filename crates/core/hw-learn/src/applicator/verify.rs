@@ -5,21 +5,15 @@ use super::StepResult;
 use crate::distiller::VerifyCheck;
 
 /// Run a verification check after recipe application.
-pub fn run_verification(
-    step_index: usize,
-    card_path: &str,
-    check: &VerifyCheck,
-) -> StepResult {
+pub fn run_verification(step_index: usize, card_path: &str, check: &VerifyCheck) -> StepResult {
     match check {
-        VerifyCheck::RegisterMatch { offset, expected, mask } => {
-            verify_register(step_index, card_path, *offset, *expected, *mask)
-        }
-        VerifyCheck::IoctlSucceeds { ioctl_nr } => {
-            verify_ioctl(step_index, card_path, *ioctl_nr)
-        }
-        VerifyCheck::ComputeReadback => {
-            verify_compute_readback(step_index, card_path)
-        }
+        VerifyCheck::RegisterMatch {
+            offset,
+            expected,
+            mask,
+        } => verify_register(step_index, card_path, *offset, *expected, *mask),
+        VerifyCheck::IoctlSucceeds { ioctl_nr } => verify_ioctl(step_index, card_path, *ioctl_nr),
+        VerifyCheck::ComputeReadback => verify_compute_readback(step_index, card_path),
     }
 }
 

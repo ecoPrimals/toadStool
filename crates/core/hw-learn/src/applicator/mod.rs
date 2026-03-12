@@ -64,17 +64,11 @@ impl RecipeApplicator {
     /// Apply a recipe to the target GPU.
     ///
     /// Returns an `ApplyResult` with per-step feedback.
-    pub fn apply(
-        &self,
-        recipe: &InitRecipe,
-        card_path: &str,
-    ) -> ApplyResult {
+    pub fn apply(&self, recipe: &InitRecipe, card_path: &str) -> ApplyResult {
         let mut step_results = Vec::new();
         let recipe_id = format!(
             "{}_{}_{}",
-            recipe.target_arch.vendor,
-            recipe.target_arch.compute_class,
-            recipe.target_arch.chip
+            recipe.target_arch.vendor, recipe.target_arch.compute_class, recipe.target_arch.chip
         );
 
         for (i, step) in recipe.steps.iter().enumerate() {
@@ -115,7 +109,11 @@ impl RecipeApplicator {
 
     fn simulate_step(&self, index: usize, step: &InitStep) -> StepResult {
         let detail = match step {
-            InitStep::RegisterWrite { offset, value, function } => {
+            InitStep::RegisterWrite {
+                offset,
+                value,
+                function,
+            } => {
                 format!("[DRY] reg write 0x{offset:08x} = 0x{value:08x} ({function:?})")
             }
             InitStep::IoctlCall { ioctl_nr, .. } => {
@@ -141,7 +139,11 @@ impl RecipeApplicator {
 
     fn execute_step(&self, index: usize, step: &InitStep, card_path: &str) -> StepResult {
         match step {
-            InitStep::RegisterWrite { offset, value, function } => {
+            InitStep::RegisterWrite {
+                offset,
+                value,
+                function,
+            } => {
                 tracing::info!(offset, value, ?function, "register write");
                 // Actual register writes require debugfs or mapped BAR access.
                 // For now, this is a placeholder — the nouveau_drm module
@@ -158,16 +160,14 @@ impl RecipeApplicator {
             InitStep::IoctlCall { ioctl_nr, args } => {
                 nouveau_drm::execute_ioctl(index, card_path, *ioctl_nr, args)
             }
-            InitStep::FirmwareLoad { engine, path } => {
-                StepResult {
-                    step_index: index,
-                    success: path.exists(),
-                    detail: format!(
-                        "firmware {engine:?}: {}",
-                        if path.exists() { "found" } else { "MISSING" }
-                    ),
-                }
-            }
+            InitStep::FirmwareLoad { engine, path } => StepResult {
+                step_index: index,
+                success: path.exists(),
+                detail: format!(
+                    "firmware {engine:?}: {}",
+                    if path.exists() { "found" } else { "MISSING" }
+                ),
+            },
             InitStep::Delay { us } => {
                 std::thread::sleep(std::time::Duration::from_micros(*us));
                 StepResult {
@@ -176,9 +176,7 @@ impl RecipeApplicator {
                     detail: format!("delayed {us}us"),
                 }
             }
-            InitStep::Verify { check } => {
-                verify::run_verification(index, card_path, check)
-            }
+            InitStep::Verify { check } => verify::run_verification(index, card_path, check),
         }
     }
 }

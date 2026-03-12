@@ -60,25 +60,25 @@ pub fn stable_registers(vendor: Vendor) -> Vec<(u64, RegFunction)> {
     match vendor {
         Vendor::Nvidia => vec![
             // PMC (Power Management Controller) — stable since Fermi
-            (0x00000000, RegFunction::PowerGate),  // PMC_BOOT_0
-            (0x00000004, RegFunction::PowerGate),  // PMC_BOOT_1
-            (0x00000200, RegFunction::InterruptEnable),  // PMC_INTR_EN
+            (0x00000000, RegFunction::PowerGate), // PMC_BOOT_0
+            (0x00000004, RegFunction::PowerGate), // PMC_BOOT_1
+            (0x00000200, RegFunction::InterruptEnable), // PMC_INTR_EN
             // PTIMER — stable since NV04
-            (0x00009400, RegFunction::ClockEnable),  // PTIMER_TIME_0
-            (0x00009410, RegFunction::ClockEnable),  // PTIMER_TIME_1
+            (0x00009400, RegFunction::ClockEnable), // PTIMER_TIME_0
+            (0x00009410, RegFunction::ClockEnable), // PTIMER_TIME_1
         ],
         Vendor::Amd => vec![
             // GRBM (Graphics Register Bus Manager) — stable across GFX generations
-            (0x00008010, RegFunction::EngineReset),  // GRBM_STATUS
-            (0x00008020, RegFunction::EngineReset),  // GRBM_SOFT_RESET
+            (0x00008010, RegFunction::EngineReset), // GRBM_STATUS
+            (0x00008020, RegFunction::EngineReset), // GRBM_SOFT_RESET
             // SRBM (System Register Bus Manager)
-            (0x00000E60, RegFunction::PowerGate),  // SRBM_STATUS
+            (0x00000E60, RegFunction::PowerGate), // SRBM_STATUS
         ],
         Vendor::Intel => vec![
             // Ring registers — stable across Gen9+
-            (0x00002030, RegFunction::EngineReset),  // RING_HEAD (render)
-            (0x00002034, RegFunction::EngineReset),  // RING_TAIL (render)
-            (0x0000A090, RegFunction::PowerGate),  // FORCEWAKE
+            (0x00002030, RegFunction::EngineReset), // RING_HEAD (render)
+            (0x00002034, RegFunction::EngineReset), // RING_TAIL (render)
+            (0x0000A090, RegFunction::PowerGate),   // FORCEWAKE
         ],
     }
 }

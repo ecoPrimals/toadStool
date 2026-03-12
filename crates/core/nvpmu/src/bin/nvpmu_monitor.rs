@@ -50,7 +50,10 @@ fn main() {
             if let Ok(fw) = gpu.firmware() {
                 eprintln!(
                     "    firmware: PMU={:?} GSP={:?} GR={:?} compute_viable={}",
-                    fw.pmu, fw.gsp, fw.gr, fw.compute_viable()
+                    fw.pmu,
+                    fw.gsp,
+                    fw.gr,
+                    fw.compute_viable()
                 );
             }
         }

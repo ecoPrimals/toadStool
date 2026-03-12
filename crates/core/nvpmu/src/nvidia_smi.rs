@@ -95,18 +95,18 @@ impl NvidiaSmiSensors {
             temp_crit_mc: None,
             clock_mhz: self.clock_mhz,
             mem_clock_mhz: self.mem_clock_mhz,
-            power_uw: self
-                .power_w
-                .map(|w| {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    { (w * 1_000_000.0) as u64 }
-                }),
-            power_limit_uw: self
-                .power_limit_w
-                .map(|w| {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    { (w * 1_000_000.0) as u64 }
-                }),
+            power_uw: self.power_w.map(|w| {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                {
+                    (w * 1_000_000.0) as u64
+                }
+            }),
+            power_limit_uw: self.power_limit_w.map(|w| {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                {
+                    (w * 1_000_000.0) as u64
+                }
+            }),
             fan_rpm: None,
         }
     }

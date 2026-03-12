@@ -19,10 +19,24 @@ Thumbs.db
 *.profraw
 *.profdata
 
+# Secrets — NEVER commit credentials, tokens, or key material
+*.env
+.env.*
+!.env.example
+*-secrets/
+*-secrets.*
+api-keys*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+
 # Temporary
 *.tmp
 *.log
-.env.local
 
 # Build artifacts
 *.o

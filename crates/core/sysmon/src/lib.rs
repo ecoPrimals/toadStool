@@ -45,7 +45,9 @@ pub mod process;
 pub use cpu::{cpu_brand, cpu_count, cpu_usage, per_cpu_usage};
 pub use disk::{disk_usage, DiskInfo};
 pub use error::SysmonError;
-pub use gpu::{discover_gpus, FirmwareInventory, FwStatus, GpuDevice, GpuTelemetry, GpuVendor, PcieTopology};
+pub use gpu::{
+    discover_gpus, FirmwareInventory, FwStatus, GpuDevice, GpuTelemetry, GpuVendor, PcieTopology,
+};
 pub use loadavg::{load_average, LoadAverage};
 pub use memory::{memory_info, MemoryInfo};
 pub use network::{network_stats, NetworkInterface};

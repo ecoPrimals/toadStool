@@ -35,6 +35,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 humantime-serde = "1.1"
+zeroize = { version = "1.7", features = ["derive"] }
 
 # EVOLVED: Pure Rust UID detection (removed libc dependency!)
 # libc = "0.2"  # NO LONGER NEEDED - using pure Rust uid_detector!

@@ -6,10 +6,10 @@
 //! teach a same-vendor (or even cross-vendor) GPU that lacks firmware/init.
 
 use super::capability_gap::CapabilityGap;
-use toadstool_sysmon::FirmwareInventory;
-use crate::knowledge::arch_map;
 use crate::distiller::{GpuArch, Vendor};
+use crate::knowledge::arch_map;
 use serde::{Deserialize, Serialize};
+use toadstool_sysmon::FirmwareInventory;
 
 /// A discovered GPU in the fleet with its capabilities.
 #[derive(Debug, Clone)]
@@ -104,7 +104,11 @@ impl LearningAdvisor {
             }
         }
 
-        opportunities.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        opportunities.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         opportunities
     }
 

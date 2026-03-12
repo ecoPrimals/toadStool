@@ -59,7 +59,10 @@ fn main() {
         let fw = gpu.firmware_inventory();
         let topo = gpu.pcie_topology();
 
-        println!("  card{}: {} {:04x}", gpu.card_index, gpu.vendor, gpu.device_id);
+        println!(
+            "  card{}: {} {:04x}",
+            gpu.card_index, gpu.vendor, gpu.device_id
+        );
         println!("    driver: {}", gpu.driver);
         println!("    PCI: {}", gpu.pci_slot);
         println!("    PCIe: gen{:?} x{:?}", topo.gen, topo.width);
@@ -186,7 +189,10 @@ fn main() {
             },
             "opportunities": opportunities.len(),
         });
-        println!("{}", serde_json::to_string_pretty(&report).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).unwrap_or_default()
+        );
     }
 }
 

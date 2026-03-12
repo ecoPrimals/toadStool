@@ -74,7 +74,9 @@ impl KnowledgeStore {
     /// Store a new recipe, returning its ID.
     pub fn store(&mut self, recipe: &InitRecipe) -> Result<RecipeId, std::io::Error> {
         let arch_id = arch_to_id(&recipe.target_arch);
-        let vendor_dir = self.store_dir.join(vendor_dirname(recipe.target_arch.vendor));
+        let vendor_dir = self
+            .store_dir
+            .join(vendor_dirname(recipe.target_arch.vendor));
         std::fs::create_dir_all(&vendor_dir)?;
 
         let id = format!("{}_{}", arch_id, recipe_hash(recipe));
@@ -90,7 +92,10 @@ impl KnowledgeStore {
             source_arch: recipe.source_arch.clone(),
             target_arch: recipe.target_arch.clone(),
             confidence: recipe.confidence,
-            path: path.strip_prefix(&self.store_dir).unwrap_or(&path).to_path_buf(),
+            path: path
+                .strip_prefix(&self.store_dir)
+                .unwrap_or(&path)
+                .to_path_buf(),
         };
 
         self.index.recipes.entry(arch_id).or_default().push(entry);
@@ -130,7 +135,11 @@ impl KnowledgeStore {
         let entries = self.lookup(target);
         entries
             .into_iter()
-            .max_by(|a, b| a.confidence.partial_cmp(&b.confidence).unwrap_or(std::cmp::Ordering::Equal))
+            .max_by(|a, b| {
+                a.confidence
+                    .partial_cmp(&b.confidence)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .map(|e| e.id.clone())
     }
 

@@ -349,7 +349,7 @@ services:
     command: ["./start.sh"]
     args: ["--port", "3000"]
     environment:
-      DATABASE_URL: "postgresql://user:pass@db:5432/legacy"
+      DATABASE_URL: "${LEGACY_DATABASE_URL}"  # resolve from env; never hardcode credentials
     ports:
       - container_port: 3000
         host_port: 3000

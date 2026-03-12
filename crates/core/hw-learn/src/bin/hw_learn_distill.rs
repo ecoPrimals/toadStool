@@ -16,7 +16,10 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 4 {
-        eprintln!("Usage: {} <chip> <baseline.txt> <compute.txt> [output.json]", args[0]);
+        eprintln!(
+            "Usage: {} <chip> <baseline.txt> <compute.txt> [output.json]",
+            args[0]
+        );
         eprintln!();
         eprintln!("Distill a PMU init recipe from two MMIO traces.");
         eprintln!("  chip:         GPU chip codename (e.g. gv100)");
@@ -39,14 +42,22 @@ fn main() {
         eprintln!("Error reading baseline: {e}");
         std::process::exit(1);
     });
-    eprintln!("  {} accesses, base: {:?}", baseline.len(), baseline.base_address);
+    eprintln!(
+        "  {} accesses, base: {:?}",
+        baseline.len(),
+        baseline.base_address
+    );
 
     eprintln!("Loading compute trace: {}", compute_path.display());
     let compute = MmioTrace::from_file(compute_path).unwrap_or_else(|e| {
         eprintln!("Error reading compute trace: {e}");
         std::process::exit(1);
     });
-    eprintln!("  {} accesses, base: {:?}", compute.len(), compute.base_address);
+    eprintln!(
+        "  {} accesses, base: {:?}",
+        compute.len(),
+        compute.base_address
+    );
 
     let base_addr = compute.base_address.unwrap_or(0);
     let diff = diff_traces(&baseline, &compute);

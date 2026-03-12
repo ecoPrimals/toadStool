@@ -65,14 +65,18 @@ fn extract_hex(line: &str, prefix: &str) -> Option<u64> {
     let rest = &line[start..];
     let hex_start = rest.find("0x")? + 2;
     let rest = &rest[hex_start..];
-    let end = rest.find(|c: char| !c.is_ascii_hexdigit()).unwrap_or(rest.len());
+    let end = rest
+        .find(|c: char| !c.is_ascii_hexdigit())
+        .unwrap_or(rest.len());
     u64::from_str_radix(&rest[..end], 16).ok()
 }
 
 fn extract_dec(line: &str, prefix: &str) -> Option<u16> {
     let start = line.find(prefix)? + prefix.len();
     let rest = &line[start..];
-    let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+    let end = rest
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(rest.len());
     rest[..end].parse().ok()
 }
 

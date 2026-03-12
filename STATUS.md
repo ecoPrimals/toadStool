@@ -1,4 +1,4 @@
-# Status -- March 12, 2026 (S147 hw-learn Wiring + Sovereign Compute Hardening)
+# Status -- March 12, 2026 (S148 Secret Audit & Hardening)
 
 ## Quality Gates
 
@@ -95,6 +95,17 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S148: Secret Audit & Hardening (Mar 12, 2026)
+- **Secret audit**: Full codebase + git history scan for leaked API keys, PII, credentials. Found 1 revoked HuggingFace token in git history (auto-revoked by GitHub secret scanning). No active secrets in working tree.
+- **`SecretString` type** (`toadstool_common::secret_string`): Zeroize-on-drop, `Debug`/`Display`/`Serialize` emit `[REDACTED]`. `resolve_credential()` async chain: environment variable → OS keyring → BearDog delegation. 11 tests.
+- **Cloud credential hardening**: `AWSCredentials.secret_access_key`, `AzureCredentials.client_secret`, `GCPCredentials.service_account_key`, `AuthMethod::Token.token`, `AuthMethod::BearDogAuth.credentials` — all migrated from `String` to `SecretString`.
+- **CI secret scanning**: New `secret-scan` job in `ci.yml` — regex patterns for `sk-*`, `hf_*`, `ghp_*`, `AKIA*`, private keys.
+- **`.gitignore` hardening**: `*.env`, `*-secrets/`, `api-keys*`, `*.pem`, `*.key`, `*.p12`, `credentials.json`.
+- **PII cleanup**: `/home/eastgate` path removed from production guide. `postgresql://user:pass@...` → env-var references in docs/examples.
+- **Pre-existing clippy fix**: `toadstool-sysmon` collapsible_if lint resolved.
+- **Duplicate workspace member fix**: `crates/core/hw-learn` listed twice in root `Cargo.toml` — deduplicated.
+- **Root docs updated**: DEBT.md S148 secret management section, D-KEYRING and D-BD-SECRET debt items. STATUS/NEXT_STEPS refreshed. Stale `.cursorignore` entries cleaned.
 
 ### S147: hw-learn Wiring + Sovereign Compute Hardening (Mar 12, 2026)
 - **hw-learn pipeline wired** — 5 `compute.hardware.*` JSON-RPC methods: `observe` (parse mmiotrace), `distill` (diff traces → recipe), `apply` (dry-run), `share_recipe` (save/load/list), `status` (pipeline state + firmware inventory). Matches biomeOS v2.30 capability registration.

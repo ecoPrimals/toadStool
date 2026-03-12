@@ -7,9 +7,7 @@
 //! [  123.460] nouveau 0000:01:00.0: gsp: rpc reply fn=0x00000001 sz=32
 //! ```
 
-use super::{
-    ObserveConfig, ObserveError, ObserveResult, RpcDirection, TraceEvent, TraceEventKind,
-};
+use super::{ObserveConfig, ObserveError, ObserveResult, RpcDirection, TraceEvent, TraceEventKind};
 use std::io::BufRead;
 
 pub fn parse_gsp_rpc(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
@@ -66,7 +64,8 @@ fn parse_gsp_line(line: &str) -> Option<TraceEvent> {
 fn extract_field_u32(line: &str, prefix: &str) -> Option<u32> {
     let start = line.find(prefix)? + prefix.len();
     let rest = &line[start..];
-    let end = rest.find(|c: char| !c.is_ascii_hexdigit() && c != 'x')
+    let end = rest
+        .find(|c: char| !c.is_ascii_hexdigit() && c != 'x')
         .unwrap_or(rest.len());
     let val_str = &rest[..end];
     if let Some(hex) = val_str.strip_prefix("0x") {
@@ -96,7 +95,11 @@ mod tests {
         let evt = evt.unwrap();
         assert_eq!(evt.timestamp_us, 123456789);
         match evt.kind {
-            TraceEventKind::GspRpc { func_id, payload_size, direction } => {
+            TraceEventKind::GspRpc {
+                func_id,
+                payload_size,
+                direction,
+            } => {
                 assert_eq!(func_id, 1);
                 assert_eq!(payload_size, 64);
                 assert!(matches!(direction, RpcDirection::HostToGsp));
@@ -111,7 +114,9 @@ mod tests {
         let evt = parse_gsp_line(line);
         assert!(evt.is_some());
         match evt.unwrap().kind {
-            TraceEventKind::GspRpc { func_id, direction, .. } => {
+            TraceEventKind::GspRpc {
+                func_id, direction, ..
+            } => {
                 assert_eq!(func_id, 2);
                 assert!(matches!(direction, RpcDirection::GspToHost));
             }

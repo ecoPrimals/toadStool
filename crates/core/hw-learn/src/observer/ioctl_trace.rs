@@ -11,9 +11,10 @@ use super::{ObserveConfig, ObserveError, ObserveResult, TraceEvent, TraceEventKi
 use std::io::BufRead;
 
 pub fn parse_ioctl_trace(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
-    let path = config.trace_path.as_ref().ok_or_else(|| {
-        ObserveError::TraceUnavailable("ioctl trace requires trace_path".into())
-    })?;
+    let path = config
+        .trace_path
+        .as_ref()
+        .ok_or_else(|| ObserveError::TraceUnavailable("ioctl trace requires trace_path".into()))?;
 
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
@@ -66,7 +67,9 @@ fn extract_hex_after(s: &str, prefix: &str, _terminator: &str) -> Option<u64> {
     // Skip fd and path info to find the hex ioctl number
     let hex_start = rest.find("0x")?;
     let rest = &rest[hex_start + 2..];
-    let end = rest.find(|c: char| !c.is_ascii_hexdigit()).unwrap_or(rest.len());
+    let end = rest
+        .find(|c: char| !c.is_ascii_hexdigit())
+        .unwrap_or(rest.len());
     u64::from_str_radix(&rest[..end], 16).ok()
 }
 

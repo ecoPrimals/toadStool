@@ -35,9 +35,9 @@ pub mod nvidia_smi;
 pub mod pci;
 pub mod watchdog;
 
+pub use bar0::Bar0Access;
 pub use error::{NvPmuError, Result};
 pub use firmware::FirmwareInventory;
 pub use hwmon::HwmonSensors;
-pub use bar0::Bar0Access;
 pub use monitor::{MonitorConfig, SafetyStatus};
 pub use pci::NvidiaGpu;

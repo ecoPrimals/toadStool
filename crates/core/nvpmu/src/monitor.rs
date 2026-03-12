@@ -52,7 +52,10 @@ impl SafetyStatus {
     /// Whether it is safe to dispatch compute workloads.
     #[must_use]
     pub const fn compute_safe(self) -> bool {
-        matches!(self, Self::Normal | Self::ThermalWarning | Self::PowerWarning)
+        matches!(
+            self,
+            Self::Normal | Self::ThermalWarning | Self::PowerWarning
+        )
     }
 }
 

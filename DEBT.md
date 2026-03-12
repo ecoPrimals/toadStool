@@ -78,6 +78,24 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-COV | Test coverage → 90% | Medium | **~86% line coverage** (121K production lines). 20,015 tests (S147). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Software-only coverage approaching 90%. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
+| D-KEYRING | Credential resolution: OS keyring lookup | Low | `resolve_credential()` chain placeholder. Wire `LocalKeyringProvider` to support arbitrary secret lookup by name (D-Bus SecretService / macOS Keychain). |
+| D-BD-SECRET | Credential resolution: BearDog `secret.resolve` | Low | BearDog RPC method for delegated secret retrieval. Wire into `resolve_credential()` chain. |
+
+### Secret Management (S148 — Secret Audit & Hardening — Mar 12, 2026)
+
+**Root cause**: HuggingFace token `hf_ULwg...` was hardcoded in `showcase/gpu-universal/llm-local/test_mistral_7b.py` (added S139 archive, deleted same session). Token persists in git history on `origin/master`. Auto-revoked by GitHub secret scanning.
+
+**Remediation applied**:
+
+| Item | Resolution |
+|------|-----------|
+| `SecretString` type | `toadstool_common::secret_string` — zeroize-on-drop, `Debug`/`Display`/`Serialize` all emit `[REDACTED]`. `resolve_credential()` async chain: env → keyring → BearDog. |
+| Cloud credential structs | `AWSCredentials.secret_access_key`, `AzureCredentials.client_secret`, `GCPCredentials.service_account_key`, `AuthMethod::Token.token`, `AuthMethod::BearDogAuth.credentials` — all migrated from `String` to `SecretString`. |
+| `.gitignore` hardening | `*.env`, `.env.*`, `*-secrets/`, `api-keys*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `credentials.json` — all blocked. |
+| CI secret scan | `secret-scan` job in `ci.yml` — regex scan for `sk-*`, `hf_*`, `ghp_*`, `AKIA*`, private keys in all tracked files. |
+| Doc PII cleanup | `/home/eastgate` → `$TOADSTOOL_SRC` in production guide. `postgresql://user:pass@...` → env-var references in docs/examples. |
+
+**Remaining git history**: The revoked HF token persists in git history (commits `2b437462`, `9abfaac5`). Token is revoked. Scrubbing requires `git filter-repo` + force-push. Decision: accept fossil until next major rebase, since token is dead and file is deleted from working tree.
 
 ### Transferred to barraCuda Team (S93)
 

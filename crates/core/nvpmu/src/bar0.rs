@@ -46,10 +46,7 @@ impl Bar0Access {
     }
 
     fn open_path(bdf: &str, path: &Path) -> Result<Self> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path)?;
+        let file = OpenOptions::new().read(true).write(true).open(path)?;
 
         #[allow(clippy::cast_possible_truncation)]
         let size = file.metadata()?.len() as usize;
@@ -73,9 +70,7 @@ impl Bar0Access {
                 file.as_fd(),
                 0,
             )
-            .map_err(|e| {
-                std::io::Error::other(format!("mmap BAR0: {e}"))
-            })?;
+            .map_err(|e| std::io::Error::other(format!("mmap BAR0: {e}")))?;
             std::ptr::NonNull::new(addr.cast::<u8>())
                 .ok_or_else(|| std::io::Error::other("mmap returned null"))?
         };

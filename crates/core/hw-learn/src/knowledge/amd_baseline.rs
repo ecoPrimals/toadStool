@@ -95,7 +95,6 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
                 mask: 0x80000000, // GUI_ACTIVE bit should be 0 (idle)
             },
         },
-
         // ── Step 2: Firmware ──
         // Load MEC (Micro Engine Compute) microcode
         // The kernel loads PFP, ME, CE, MEC1, MEC2 firmware via CP registers
@@ -103,7 +102,6 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
             engine: Engine::Custom("MEC".into()),
             path: "/lib/firmware/amdgpu/navi21_mec.bin".into(),
         },
-
         // ── Step 3: Power ──
         // Enable clock gating for GFX (reduce idle power)
         InitStep::RegisterWrite {
@@ -111,7 +109,6 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
             value: 0x1, // RLC_ENABLE
             function: RegFunction::ClockEnable,
         },
-
         // ── Step 4: Memory ──
         // Set up RLC CSIB (Clear State Image Block) for context save/restore
         InitStep::RegisterWrite {
@@ -129,7 +126,6 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
             value: 4096,
             function: RegFunction::MemoryConfig,
         },
-
         // ── Step 5: Engine ──
         // Soft-reset the GFX engine to clean state
         InitStep::RegisterWrite {
@@ -145,14 +141,12 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
             function: RegFunction::EngineReset,
         },
         InitStep::Delay { us: 50 },
-
         // Select pipe 0, queue 0, ME 1 for compute (via GRBM_GFX_CNTL)
         InitStep::RegisterWrite {
             offset: GRBM_GFX_CNTL,
             value: 0x01000000, // MEID=1, PIPEID=0, QUEUEID=0
             function: RegFunction::ChannelBind,
         },
-
         // ── Step 6: Context ──
         // Set up Hardware Queue Descriptor (HQD) for compute queue
         // Deactivate HQD first
@@ -197,14 +191,12 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
             value: 1,
             function: RegFunction::ContextAlloc,
         },
-
         // Enable interrupts for compute completion
         InitStep::RegisterWrite {
             offset: SPI_CONFIG_CNTL,
             value: 0x1, // enable compute dispatch
             function: RegFunction::InterruptEnable,
         },
-
         // ── Step 7: Verify ──
         // Submit a trivial compute dispatch and verify readback
         InitStep::Verify {
@@ -309,19 +301,36 @@ mod tests {
         assert!(recipe.steps.len() >= 15);
         assert_eq!(recipe.source_arch.vendor, Vendor::Amd);
 
-        let has_engine_reset = recipe.steps.iter().any(|s| matches!(s,
-            InitStep::RegisterWrite { function: RegFunction::EngineReset, .. }
-        ));
+        let has_engine_reset = recipe.steps.iter().any(|s| {
+            matches!(
+                s,
+                InitStep::RegisterWrite {
+                    function: RegFunction::EngineReset,
+                    ..
+                }
+            )
+        });
         assert!(has_engine_reset);
 
-        let has_context = recipe.steps.iter().any(|s| matches!(s,
-            InitStep::RegisterWrite { function: RegFunction::ContextAlloc, .. }
-        ));
+        let has_context = recipe.steps.iter().any(|s| {
+            matches!(
+                s,
+                InitStep::RegisterWrite {
+                    function: RegFunction::ContextAlloc,
+                    ..
+                }
+            )
+        });
         assert!(has_context);
 
-        let has_verify = recipe.steps.iter().any(|s| matches!(s,
-            InitStep::Verify { check: VerifyCheck::ComputeReadback }
-        ));
+        let has_verify = recipe.steps.iter().any(|s| {
+            matches!(
+                s,
+                InitStep::Verify {
+                    check: VerifyCheck::ComputeReadback
+                }
+            )
+        });
         assert!(has_verify);
     }
 

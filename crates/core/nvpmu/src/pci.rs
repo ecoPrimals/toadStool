@@ -74,9 +74,7 @@ pub fn discover_gpus() -> Result<Vec<NvidiaGpu>> {
         let Ok(class) = read_hex_u32(&path.join("class")) else {
             continue;
         };
-        if (class & PCI_CLASS_MASK) != PCI_CLASS_VGA
-            && (class & PCI_CLASS_MASK) != PCI_CLASS_3D
-        {
+        if (class & PCI_CLASS_MASK) != PCI_CLASS_VGA && (class & PCI_CLASS_MASK) != PCI_CLASS_3D {
             continue;
         }
 
@@ -133,11 +131,11 @@ fn read_driver_name(device_path: &Path) -> Option<String> {
 /// Covers the GPUs in the ecoPrimals hardware matrix.
 fn infer_chip(device_id: u16) -> Option<String> {
     let chip = match device_id {
-        0x1D81 => "gv100",  // Titan V
+        0x1D81 => "gv100",                   // Titan V
         0x1E02 | 0x1E04 | 0x1E07 => "tu102", // RTX 2080 Ti family
-        0x2204 | 0x2206 => "ga102", // RTX 3090 / RTX 3080
-        0x2684 => "ad102", // RTX 4090
-        0x2704 | 0x2782 => "ad104", // RTX 4070 family
+        0x2204 | 0x2206 => "ga102",          // RTX 3090 / RTX 3080
+        0x2684 => "ad102",                   // RTX 4090
+        0x2704 | 0x2782 => "ad104",          // RTX 4070 family
         _ => return None,
     };
     Some(chip.to_string())

@@ -317,7 +317,10 @@ fn probe_nvidia_firmware(device_id: u32, driver: &str) -> FirmwareInventory {
         if gsp == FwStatus::Present || pmu == FwStatus::Present {
             (true, None)
         } else {
-            (false, Some("missing PMU and GSP firmware — compute channels unavailable".into()))
+            (
+                false,
+                Some("missing PMU and GSP firmware — compute channels unavailable".into()),
+            )
         }
     } else {
         (true, None)
@@ -380,10 +383,12 @@ fn nvidia_chip_name(device_id: u32) -> String {
 
 fn check_firmware_component(base: &Path, chip: &str, component: &str) -> FwStatus {
     let dir = base.join(chip).join(component);
-    if dir.exists() {
-        if std::fs::read_dir(&dir).map(|mut d| d.next().is_some()).unwrap_or(false) {
-            return FwStatus::Present;
-        }
+    if dir.exists()
+        && std::fs::read_dir(&dir)
+            .map(|mut d| d.next().is_some())
+            .unwrap_or(false)
+    {
+        return FwStatus::Present;
     }
     let flat = base.join(format!("{chip}_{component}.bin"));
     if flat.exists() {

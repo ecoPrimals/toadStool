@@ -175,6 +175,23 @@ jobs:
       - name: Check cross-compilation (no C toolchain)
         run: cargo check --workspace --target ${{ matrix.target }}
 
+  secret-scan:
+    name: Secret Leak Prevention
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for leaked secrets
+        run: |
+          echo "Scanning for hardcoded secrets in tracked files..."
+          PATTERNS='(sk-[a-zA-Z0-9]{20,}|hf_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9\-]{20,}|AKIA[0-9A-Z]{16}[^E]|xox[bpsar]-[0-9a-zA-Z\-]{10,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY)'
+          if git grep -lPn "$PATTERNS" -- ':!target/' ':!.git/' ':!*.lock'; then
+            echo "::error::Potential secret detected in tracked files — see above"
+            exit 1
+          fi
+          echo "No secrets found in working tree."
+
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest

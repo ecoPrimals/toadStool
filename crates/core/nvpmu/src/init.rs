@@ -45,7 +45,10 @@ pub struct InitResult {
 struct RecipeStep {
     offset: u64,
     value: u64,
-    #[expect(dead_code, reason = "preserved for recipe format compatibility; future use for 8/16-bit writes")]
+    #[expect(
+        dead_code,
+        reason = "preserved for recipe format compatibility; future use for 8/16-bit writes"
+    )]
     width: u8,
     #[serde(default)]
     delay_us: Option<u64>,

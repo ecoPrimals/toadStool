@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Capability gap analysis — what's preventing compute on a GPU.
 
-use toadstool_sysmon::{FirmwareInventory, FwStatus};
 use crate::distiller::{GpuArch, Vendor};
 use serde::{Deserialize, Serialize};
+use toadstool_sysmon::{FirmwareInventory, FwStatus};
 
 /// What's preventing compute on a GPU.
 #[derive(Debug, Clone, Serialize, Deserialize)]
