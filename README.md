@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (89+ dynamically built)
+### JSON-RPC Methods (94+ dynamically built)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -262,7 +262,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 20,015 tests (S146); focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 20,015 tests (S147); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
@@ -286,7 +286,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 20,015 tests (S146); focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 20,015 tests (S147); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 

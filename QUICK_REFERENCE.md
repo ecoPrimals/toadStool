@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**March 10, 2026 — S146**
+**March 12, 2026 — S147**
 
 ---
 
@@ -74,7 +74,7 @@ cd showcase/03-ecosystem-integration/01-songbird-registration && ./demo.sh
 
 ---
 
-## JSON-RPC Methods (88+ total, dynamically built)
+## JSON-RPC Methods (94+ total, dynamically built)
 
 ### Core (`toadstool.*`)
 
@@ -592,4 +592,4 @@ Scientific middleware has moved to barraCuda. See `cargo doc -p barracuda --open
 
 ---
 
-**Last Updated**: March 10, 2026 — S146
+**Last Updated**: March 12, 2026 — S147

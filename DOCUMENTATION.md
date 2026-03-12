@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 10, 2026 -- S146
+**Last Updated**: March 12, 2026 -- S147
 
 ---
 
@@ -16,7 +16,7 @@
 | Universal precision design | [specs/UNIVERSAL_PRECISION_ARCHITECTURE.md](specs/UNIVERSAL_PRECISION_ARCHITECTURE.md) |
 | Roadmap and next steps | [NEXT_STEPS.md](NEXT_STEPS.md) |
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
-| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-88-total) |
+| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-94-total-dynamically-built) |
 | Hardware Transport Layer | [specs/HARDWARE_TRANSPORT_SPEC.md](specs/HARDWARE_TRANSPORT_SPEC.md) |
 | Dual-Fabric Architecture | [specs/DUAL_FABRIC_ARCHITECTURE.md](specs/DUAL_FABRIC_ARCHITECTURE.md) |
 | Try GPU operations | See barraCuda (`ecoPrimals/barraCuda/`) |
@@ -30,7 +30,7 @@
 
 ---
 
-## Current State (S146 — March 10, 2026)
+## Current State (S147 — March 12, 2026)
 
 **Post-budding.** barraCuda is now a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration. coralReef shader compilation proxy with capability-based discovery.
 
@@ -48,8 +48,8 @@
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware. All primal names via `interned_strings::primals::*`.
 - **coralReef shader proxy** — `shader.compile.*` handlers proxy to coralReef with capability-based discovery and graceful naga fallback.
 - **Cross-spring provenance** — `toadstool.provenance` JSON-RPC method exposes 17+ documented cross-spring flows for ecosystem introspection.
-- **19,972 workspace tests** (S146) | ~86% line coverage (llvm-cov verified) | all quality gates green (0 warnings, clippy pedantic clean)
-- **89+ JSON-RPC methods** (dynamically built from semantic registry)
+- **20,015 workspace tests** (S147) | ~86% line coverage (llvm-cov verified) | all quality gates green (0 warnings, clippy pedantic clean)
+- **94+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 
 ---

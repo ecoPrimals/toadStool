@@ -543,7 +543,10 @@ async fn benchmark_job_types(
                 created_at: SystemTime::now(),
                 context,
             },
-            _ => unreachable!(),
+            _ => {
+                #[expect(clippy::unreachable, reason = "i % 4 is exhaustively matched 0..=3")]
+                unreachable!()
+            }
         };
 
         let job_type_name = match &job.job_type {

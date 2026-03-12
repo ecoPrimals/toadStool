@@ -1,6 +1,6 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 10, 2026 -- S146 Spring Absorption & Deep Evolution
+**Updated**: March 12, 2026 -- S147 hw-learn Wiring & Sovereign Compute Hardening
 **Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,015 tests (0 failures) | ~86% line coverage (121K production lines) | 94+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
 **Latest**: S147 — hw-learn pipeline wired (5 compute.hardware.* methods), nvpmu RegisterAccess bridge, spirv_codegen_safety rename (naga root-cause), FirmwareInventory in gpu.info. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35.
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-**~86% line coverage** (121K production lines). 20,015 tests pass (S146). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~86% line coverage** (121K production lines). 20,015 tests pass (S147). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -86,7 +86,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 20,015 tests (S146); focus on hardware-dependent code (toadStool D-COV)
+- [ ] **Test coverage target 90%** -- 20,015 tests (S147); focus on hardware-dependent code (toadStool D-COV)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -116,7 +116,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-146)
+## Completed This Session (S90-147)
 
 ### Session S144: Last Mile Deep Debt (Mar 10, 2026)
 - **PCIe switch topology**: `pcie_topology.rs` — `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph` for sysfs-based bridge chain discovery, shared switch detection, contention-aware bandwidth estimation. Integrated into `PcieLink` (with `via_switch`, `hops`, `contention_factor`) and `WorkloadRouter` (topology-aware `route_multi_gpu`).

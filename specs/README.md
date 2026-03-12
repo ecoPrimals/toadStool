@@ -181,17 +181,7 @@
 
 ## Archive
 
-Historical documents preserved in `archive/` (25 files):
-
-| Category | Documents |
-|----------|-----------|
-| **Evolution Phases** | BARRACUDA_PHASE3/5_EVOLUTION_HOTSPRING (superseded by PARITY_ROADMAP) |
-| **Science Audits** | SCIENCE_GAPS_FEB12, SCIENCE_GAPS_AUDIT_FEB12 (completed) |
-| **Optimization** | PERFORMANCE_OPTIMIZATION_PLAN/SUMMARY (implemented) |
-| **Architecture** | TOADSTOOL_CORE_IMPLEMENTATION_SPEC (completed) |
-| **Old Roadmaps** | UNIVERSAL_COMPUTE_*, FRACTAL_COMPOSITION_* (superseded) |
-
-These documents preserve the evolution history and design decisions. Current state is in active specs above.
+Historical documents have been moved to the `ecoPrimals/` fossil record. Current state is in active specs above.
 
 ---
 
