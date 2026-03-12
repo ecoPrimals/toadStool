@@ -1,0 +1,25 @@
+[package]
+name = "nvpmu"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "Sovereign GPU power management for NVIDIA GPUs — pure Rust, no firmware dependency"
+
+[dependencies]
+hw-learn = { path = "../hw-learn" }
+rustix = { version = "1", features = ["mm"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
+
+[[bin]]
+name = "nvpmu-apply"
+path = "src/bin/nvpmu_apply.rs"
+
+[[bin]]
+name = "nvpmu-monitor"
+path = "src/bin/nvpmu_monitor.rs"
+
+[dev-dependencies]
+tempfile = "3"

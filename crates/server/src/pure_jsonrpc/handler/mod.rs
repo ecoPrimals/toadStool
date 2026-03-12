@@ -7,6 +7,7 @@
 //! standard `{domain}.{operation}` naming convention.
 
 mod core;
+mod hw_learn;
 mod job;
 mod ollama;
 mod resources;
@@ -25,6 +26,7 @@ use tracing::{debug, error, info};
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JSONRPC_VERSION};
 use crate::coral_reef_client::SharedCoralReefClient;
 
+use hw_learn::HwLearnHandler;
 use job::JobHandler;
 use ollama::OllamaHandler;
 use resources::ResourceHandler;
@@ -41,6 +43,7 @@ pub struct JsonRpcHandler {
     start_time: std::time::Instant,
     error_count: Arc<AtomicU64>,
     semantic_registry: SemanticMethodRegistry,
+    hw_learn: HwLearnHandler,
     job: JobHandler,
     workload: WorkloadHandler,
     resources: ResourceHandler,
@@ -67,6 +70,7 @@ impl JsonRpcHandler {
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             semantic_registry: SemanticMethodRegistry::new(),
+            hw_learn: HwLearnHandler::new(),
             job: JobHandler::new(local_gate_id),
             workload: WorkloadHandler::new(executor),
             resources: ResourceHandler::new(),
@@ -230,6 +234,15 @@ impl JsonRpcHandler {
             "deploy.capability_call" => return science::deploy_capability_call(params).await,
             "deploy.graph_status" => return science::deploy_graph_status().await,
 
+            // Hardware learning domain — biomeOS v2.30 compute.hardware.* capabilities
+            "compute.hardware.observe" => return self.hw_learn.hw_learn_observe(params).await,
+            "compute.hardware.distill" => return self.hw_learn.hw_learn_distill(params).await,
+            "compute.hardware.apply" => return self.hw_learn.hw_learn_apply(params).await,
+            "compute.hardware.share_recipe" => {
+                return self.hw_learn.hw_learn_share_recipe(params).await
+            }
+            "compute.hardware.status" => return self.hw_learn.hw_learn_status(params).await,
+
             "shader.compile.wgsl" => return self.shader_compile_wgsl(params).await,
             "shader.compile.wgsl.multi" => return self.shader_compile_wgsl_multi(params).await,
             "shader.compile.spirv" => return self.shader_compile_spirv(params).await,
@@ -282,6 +295,11 @@ impl JsonRpcHandler {
             "discovery_topology" => science::discovery_topology().await,
             "deploy_capability_call" => science::deploy_capability_call(params).await,
             "deploy_graph_status" => science::deploy_graph_status().await,
+            "hw_learn_observe" => self.hw_learn.hw_learn_observe(params).await,
+            "hw_learn_distill" => self.hw_learn.hw_learn_distill(params).await,
+            "hw_learn_apply" => self.hw_learn.hw_learn_apply(params).await,
+            "hw_learn_share_recipe" => self.hw_learn.hw_learn_share_recipe(params).await,
+            "hw_learn_status" => self.hw_learn.hw_learn_status(params).await,
             n if n.starts_with("ecology_") => {
                 let method = n.replace('_', ".");
                 science::ecology_offload(&method, params).await

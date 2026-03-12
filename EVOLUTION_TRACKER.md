@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 10, 2026 — S146
+**Date**: March 12, 2026 — S147
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only. Zero-cost abstractions.
 
 ---
@@ -49,7 +49,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | Deep debt S129 | toadStool | ✅ S129 evolved | **C dep elimination** (flate2→rust_backend, procfs default features disabled); **Capability-based ports** (`resolve_capability_or_legacy_port()`); 5 god files refactored (ipc/server 987→428, container/lib 981→582, ecosystem 963→556, handler/mod 832→610, nestgate/client 824→555); **Zero-copy hot paths** (Cow/Arc<str>); BYOB API state ownership split; 200+ coverage tests; long-running test debt (1,237x speedup); 19,109 tests, 0 failures |
 || Deep debt S140 | toadStool | ✅ S140 evolved | **Hardcoding elimination** (7 production files → `interned_strings::primals::*`); **StreamingDispatch progress callbacks** (`StageProgress`, `ProgressCallback` from healthSpring V13); **barraCuda Sprint 2 API awareness** (3 new JSON-RPC: `science.activations.list`, `science.rng.capabilities`, `science.special.functions`); **Smart refactor** (science.rs 1139→828 LOC, science_domains.rs extracted); **Spring pins** (healthSpring V13 new); **Docs cleanup** (6 stale files → fossil); 19,900+ tests, 0 failures |
 || Spring absorption S145 | toadStool | ✅ S145 evolved | **PrecisionBrain** absorbed (hotSpring v0.6.25); **NvkZeroGuard** absorbed (airSpring v0.7.5); 8 new WorkloadPatterns (neuralSpring S140 + healthSpring V14.1); 5 new capability domains; capability.call format standardization; Spring-as-Provider ProviderRegistry; ServerConfig port hardcoding evolved; 19,965 tests |
-|| Spring absorption S146 | toadStool | ✅ S146 evolved | **nvvm_transcendental_risk** in gpu.info response (hotSpring v0.6.26 request); **PrecisionBrain wired into compile_wgsl_multi** (per-device precision advice); **PcieTopologyGraph** marked stable (#[non_exhaustive] + empty() constructor); **SpringDomain expanded** (+10 new domains, SCREAMING_SNAKE_CASE per wetSpring V109, HealthSpring added); **gpu_memory_estimate_bytes** on WorkloadPattern + route_with_vram (healthSpring V19); **Cross-spring provenance** expanded (healthSpring PK/PD + DiversityIndex flows); Spring pins updated to hotSpring v0.6.27, neuralSpring V96, wetSpring V109, healthSpring V19; 19,972 tests |
+|| Spring absorption S146 | toadStool | ✅ S146 evolved | **nvvm_transcendental_risk** in gpu.info response (hotSpring v0.6.26 request); **PrecisionBrain wired into compile_wgsl_multi** (per-device precision advice); **PcieTopologyGraph** marked stable (#[non_exhaustive] + empty() constructor); **SpringDomain expanded** (+10 new domains, SCREAMING_SNAKE_CASE per wetSpring V109, HealthSpring added); **gpu_memory_estimate_bytes** on WorkloadPattern + route_with_vram (healthSpring V19); **Cross-spring provenance** expanded (healthSpring PK/PD + DiversityIndex flows); Spring pins updated to hotSpring v0.6.27, neuralSpring V96, wetSpring V109, healthSpring V19; 20,015 tests |
 
 ---
 
@@ -114,7 +114,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 19,972 tests (S146); ~86% line coverage (121K production lines). Focus: hardware-dependent code |
+| D-COV | Test coverage → 90% | Medium | 20,015 tests (S147); ~86% line coverage (121K production lines). Focus: hardware-dependent code |
 | D-SOV | ~~Sovereignty migration~~ | **RESOLVED S94b** | All 7 production callers migrated to `get_socket_path_for_capability()` |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
 | — | ~~vfio.rs smart refactoring~~ | **RESOLVED S94** | 971L → `vfio/` directory (types.rs, ioctl.rs, dma.rs, mod.rs) |
@@ -186,7 +186,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | ✅ 0 warnings (S131+: `#[expect]` evolution) |
 | `cargo fmt --all -- --check` | ✅ 0 diffs |
 | `cargo doc --workspace --no-deps` | ✅ 0 warnings |
-| Workspace tests | ✅ 19,972 passed (S146) |
+| Workspace tests | ✅ 20,015 passed (S147) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |

@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: March 10, 2026 -- S146 Spring Absorption & Deep Evolution
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,972 tests (0 failures) | ~86% line coverage (121K production lines) | 89+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
-**Latest**: S146 — nvvm_transcendental_risk in gpu.info (hotSpring v0.6.26), PrecisionBrain wired into compile_wgsl_multi, PcieTopologyGraph stable, SpringDomain +10 domains + SCREAMING_SNAKE_CASE, HealthSpring added, gpu_memory_estimate_bytes + route_with_vram, cross-spring provenance healthSpring flows. Spring pins: hotSpring v0.6.27, neuralSpring V96, wetSpring V109, healthSpring V19.
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,015 tests (0 failures) | ~86% line coverage (121K production lines) | 94+ JSON-RPC methods | CI pedantic gate | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero stale TODOs | PCIe switch topology | Multi-device compile | GPU test guards
+**Latest**: S147 — hw-learn pipeline wired (5 compute.hardware.* methods), nvpmu RegisterAccess bridge, spirv_codegen_safety rename (naga root-cause), FirmwareInventory in gpu.info. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35.
 
 ---
 
@@ -28,7 +28,7 @@ parameter tuning.
 
 ### P1: Test Coverage → 90% (D-COV)
 
-**~86% line coverage** (121K production lines). 19,972 tests pass (S146). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~86% line coverage** (121K production lines). 20,015 tests pass (S146). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -86,7 +86,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 19,972 tests (S146); focus on hardware-dependent code (toadStool D-COV)
+- [ ] **Test coverage target 90%** -- 20,015 tests (S146); focus on hardware-dependent code (toadStool D-COV)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -127,7 +127,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - All quality gates green: 0 fmt, 0 clippy, all tests pass.
 
 ### Session S143: Cross-Spring Absorption (Mar 10, 2026)
-- **NVVM poisoning defense** (`nvvm_safety.rs`): Absorbed from hotSpring v0.6.25. `NvvmPoisoningRisk`, `PrecisionTier`, `HardwareCalibration` with driver-aware safety.
+- **SPIR-V codegen safety** (`spirv_codegen_safety.rs`, renamed from `nvvm_safety.rs` S147): Absorbed from hotSpring v0.6.25. Root cause: naga SPIR-V codegen. `NvvmPoisoningRisk`/`SpirvCodegenRisk`, `PrecisionTier`, `HardwareCalibration`, `PrecisionBrain`.
 - **Workload routing** (`workload_routing.rs`): Cross-spring Kokkos parity thresholds. `WorkloadRouter` with 10 patterns.
 - **Brain interrupt pattern** (`workload_health.rs`): `AttentionState`, `WorkloadAnomaly`, `InterruptAction`, `WorkloadHealthMonitor`.
 - **Deep debt**: Removed hardcoded primal names, memory constants, paths, UID. Added `SubstrateCapabilities::memory_capacity_bytes` / `memory_bandwidth_bps`.

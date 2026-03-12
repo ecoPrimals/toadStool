@@ -95,8 +95,9 @@ pub(super) async fn science_gpu_capabilities() -> JsonRpcResult {
         },
         "compute_backends": available_backends,
         "sovereign_binary_pipeline": precision_defaults::SOVEREIGN_BINARY_PIPELINE,
-        "nvvm_safety": {
+        "spirv_codegen_safety": {
             "warning": precision_defaults::NVVM_POISONING_WARNING,
+            "root_cause": "naga SPIR-V codegen (not NVVM — renamed per hotSpring v0.6.30)",
             "affected_drivers": ["nvidia (proprietary)"],
             "safe_drivers": ["nvk", "radv", "anv"],
             "affected_tiers": ["F64Precise", "Df64"],

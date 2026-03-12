@@ -84,6 +84,12 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
 toadstool-sysmon = { workspace = true }
 
+# Hardware learning pipeline — observe → distill → apply
+hw-learn = { path = "../core/hw-learn" }
+
+# NVIDIA GPU power management — BAR0, firmware inventory, sensors
+nvpmu = { path = "../core/nvpmu" }
+
 # GPU detection via barraCuda (vendor-agnostic)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
 futures = "0.3"

@@ -96,6 +96,11 @@ pub(super) async fn discover_capabilities(
         "transport.open",
         "transport.stream",
         "transport.status",
+        "compute.hardware.observe",
+        "compute.hardware.distill",
+        "compute.hardware.apply",
+        "compute.hardware.share_recipe",
+        "compute.hardware.status",
     ];
 
     for m in &semantic_methods {
@@ -109,7 +114,8 @@ pub(super) async fn discover_capabilities(
         "node_capabilities": [
             "compute", "workload", "orchestration", "ai_local",
             "gpu", "wasm", "container", "hardware_transport",
-            "science", "shader", "ecology", "discovery", "deploy"
+            "science", "shader", "ecology", "discovery", "deploy",
+            "hardware_learning"
         ],
         "methods": direct_methods,
         "version": version,
@@ -118,18 +124,22 @@ pub(super) async fn discover_capabilities(
     Ok(capabilities)
 }
 
-/// Returns GPU device, backend, and NVVM safety information.
+/// Returns GPU device, backend, NVVM safety, and firmware information.
 ///
 /// Includes `nvvm_transcendental_risk` for each device so springs
 /// (hotSpring v0.6.26+) can make probe-time decisions without
 /// repeating the driver classification locally.
+///
+/// Also includes `firmware_inventory` for NVIDIA chips so callers can
+/// assess `compute_viable()` and `compute_blockers()` without local probing.
 #[allow(clippy::unused_async)]
 pub(super) async fn gpu_info() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_devices(),
         "driver": "wgpu",
         "compute_backends": crate::gpu_system::query_available_backends(),
-        "nvvm_safety": crate::gpu_system::query_nvvm_safety(),
+        "spirv_codegen_safety": crate::gpu_system::query_spirv_codegen_safety(),
+        "firmware_inventory": crate::gpu_system::query_firmware_inventory(),
     }))
 }
 

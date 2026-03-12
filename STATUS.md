@@ -1,4 +1,4 @@
-# Status -- March 10, 2026 (S146 Deep Evolution)
+# Status -- March 12, 2026 (S147 hw-learn Wiring + Sovereign Compute Hardening)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **19,972 tests, 0 failures** (S146) |
+| `cargo test --workspace` | PASS | **20,015 tests, 0 failures** (S147) |
 | `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
@@ -96,6 +96,14 @@
 
 ## Session History (Recent)
 
+### S147: hw-learn Wiring + Sovereign Compute Hardening (Mar 12, 2026)
+- **hw-learn pipeline wired** — 5 `compute.hardware.*` JSON-RPC methods: `observe` (parse mmiotrace), `distill` (diff traces → recipe), `apply` (dry-run), `share_recipe` (save/load/list), `status` (pipeline state + firmware inventory). Matches biomeOS v2.30 capability registration.
+- **nvpmu RegisterAccess bridge** — `Bar0Access` now implements `hw_learn::applicator::RegisterAccess`, enabling hw-learn recipes to write hardware registers directly via BAR0 MMIO.
+- **spirv_codegen_safety rename** — `nvvm_safety.rs` → `spirv_codegen_safety.rs`. Root cause is naga SPIR-V codegen, not NVVM (per hotSpring v0.6.30). Backward-compat type alias `SpirvCodegenRisk`. Module doc updated.
+- **FirmwareInventory in gpu.info** — `query_firmware_inventory()` probes `/lib/firmware/nvidia/{chip}/` for each detected NVIDIA GPU. Reports `compute_viable`, `compute_blockers`, `needs_software_pmu`.
+- **PRIMAL_REGISTRY + genomeBin** updated — toadStool S147 status, spring pins (hotSpring v0.6.30, neuralSpring V98, coralReef Iter 35), new capabilities registered.
+- **Spring pins**: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35. 20,015 tests.
+
 ### S146: Deep Evolution (Mar 10, 2026)
 - **nvvm_transcendental_risk** in `gpu.info` JSON-RPC response — per-device NVVM safety classification (poisoning risk, transcendental safety, safe precision tiers). Absorbed from hotSpring v0.6.26 request.
 - **PrecisionBrain wired into `compile_wgsl_multi`** — `shader.compile.wgsl.multi` response enriched with `precision_advice` per target device (safe tiers, avoid_transcendentals flag).
@@ -103,7 +111,7 @@
 - **SpringDomain expansion** — +10 variants (Pharmacokinetics, Biosignal, Microbiome, Agriculture, Environmental, Phylogenetics, MassSpectrometry, UncertaintyQuantification, EvolutionaryComputation, Optimization). `as_str()` returns SCREAMING_SNAKE_CASE per wetSpring V109 convention.
 - **HealthSpring** added to `Spring` enum (`Spring::ALL` now 6 entries). 2 new cross-spring provenance flows for healthSpring PK/PD and DiversityIndex contributions.
 - **VRAM-aware routing** — `WorkloadPattern::gpu_memory_estimate_bytes()` for VRAM estimation. `WorkloadRouter::route_with_vram()` falls back to CPU when VRAM insufficient (healthSpring V19).
-- **Spring pins**: hotSpring v0.6.27, groundSpring V100, neuralSpring V96/S143, wetSpring V109, airSpring v0.7.5, healthSpring V19. 19,972 tests.
+- **Spring pins**: hotSpring v0.6.27, groundSpring V100, neuralSpring V96/S143, wetSpring V109, airSpring v0.7.5, healthSpring V19. 20,015 tests.
 
 ### S145: Spring Absorption Execution (Mar 10, 2026)
 - **PrecisionBrain** absorbed from hotSpring v0.6.25 (domain-aware routing brain, F64 throttle detection, PrecisionHint enum).
@@ -122,7 +130,7 @@
 - **Topology-aware orchestration**: `MultiGpuPlacement` in `WorkloadRouter` — selects GPU groups sharing PCIe switches for fast P2P communication (halo exchange, lattice QCD).
 
 ### S143: Cross-Spring Absorption (Mar 10, 2026)
-- **NVVM poisoning defense** (`nvvm_safety.rs`): Absorbed from hotSpring v0.6.25. `NvvmPoisoningRisk`, `PrecisionTier` (F32/F64/F64Precise/Df64), `TierCapability`, `HardwareCalibration` with driver-aware safety (NVK safe, AMD safe, NVIDIA proprietary risky for transcendentals). `DeviceHealthStatus` (Healthy/PoisonSuspected/Poisoned). `best_tier()` routing (precision-critical vs throughput-bound). 14 tests.
+- **SPIR-V codegen safety** (`spirv_codegen_safety.rs`, renamed from `nvvm_safety.rs` S147): Absorbed from hotSpring v0.6.25. Root cause: naga SPIR-V codegen. `NvvmPoisoningRisk`/`SpirvCodegenRisk`, `PrecisionTier` (F32/F64/F64Precise/Df64), `TierCapability`, `HardwareCalibration` with driver-aware safety (NVK safe, AMD safe, NVIDIA proprietary risky for transcendentals). `DeviceHealthStatus` (Healthy/PoisonSuspected/Poisoned). `PrecisionBrain` (O(1) routing table, F64-throttle detection). `NvkZeroGuard` (zero-output detection). `best_tier()` routing (precision-critical vs throughput-bound). 30+ tests.
 - **Workload routing** (`workload_routing.rs`): Cross-spring Kokkos parity thresholds from healthSpring V14.1 / neuralSpring S139 / hotSpring v0.6.25. `WorkloadRouter` with 10 patterns (Reduction, Scatter, MonteCarlo, OdeBatch, NlmeIteration, MatMul, Fft, SpMV, ElementWise, SmithWaterman). GPU crossover thresholds with provenance. 8 tests.
 - **Brain interrupt pattern** (`workload_health.rs`): Absorbed from hotSpring biomeGate Brain Architecture. `AttentionState` (Green/Yellow/Red), `WorkloadAnomaly` (7 variants), `InterruptAction` (7 variants), `WorkloadHealthMonitor` with streak-based escalation/de-escalation. 13 tests.
 - **Deep debt elimination**: Removed hardcoded primal names from pipeline_graph labels, hardcoded 4 GiB memory from monitoring platform (now runtime-discovered via sysmon), hardcoded `/etc/toadstool/policies` (now XDG/platform-aware), hardcoded `/run/user/1000` from 8 showcase demos (now UID-detected). Fixed pre-existing `deploy_graph_status_structure` test. Added `SubstrateCapabilities::memory_capacity_bytes` / `memory_bandwidth_bps` for runtime discovery.

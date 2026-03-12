@@ -272,4 +272,4 @@ Zero central coordinator required for network formation.
 
 *"The mycelium is the internet of the forest. ToadStool is the mycelium of compute."*
 
-*Last updated: March 10, 2026 — S146. Phases 0–4 complete and live in barraCuda (transferred S93–S94). ToadStool provides HardwareFingerprint, is_sovereign_capable(), SubstrateCapabilityKind::SovereignCompile, GpuAdapterInfo, and GPU descriptors (render_node/driver/arch) for coralReef from_descriptor(). Compute triangle discovery aligned. PcieTopologyGraph API marked stable (S146).*
+*Last updated: March 12, 2026 — S147. Phases 0–4 complete and live in barraCuda (transferred S93–S94). ToadStool provides HardwareFingerprint, is_sovereign_capable(), SubstrateCapabilityKind::SovereignCompile, GpuAdapterInfo, and GPU descriptors (render_node/driver/arch) for coralReef from_descriptor(). Compute triangle discovery aligned. PcieTopologyGraph API marked stable (S146). hw-learn pipeline wired (S147): observe/distill/apply/share/status via compute.hardware.* JSON-RPC. RegisterAccess bridge: nvpmu Bar0Access → hw-learn. FirmwareInventory in gpu.info. spirv_codegen_safety rename (naga root-cause).*

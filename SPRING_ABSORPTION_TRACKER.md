@@ -1,7 +1,8 @@
 # Spring Absorption Tracker
 
-**Session**: S146 Spring Absorption & Deep Evolution (March 10, 2026)
-**ToadStool**: master, ~86% line coverage. 19,972 tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**Session**: S147 hw-learn Wiring + Sovereign Compute Hardening (March 12, 2026)
+**ToadStool**: master, ~86% line coverage. 20,015 tests, 0 failures. Clippy pedantic clean. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Zero production unwraps. Zero stale TODOs. All quality gates passing.
+**S147**: hw-learn pipeline wired (5 compute.hardware.* methods), nvpmu RegisterAccess bridge (Bar0Access → hw-learn), spirv_codegen_safety rename (naga root-cause per hotSpring v0.6.30), FirmwareInventory in gpu.info, PRIMAL_REGISTRY + genomeBin updated. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35.
 **S146**: Deep evolution execution — nvvm_transcendental_risk exposed in gpu.info JSON-RPC response (hotSpring v0.6.26 request). PrecisionBrain wired into compile_wgsl_multi flow (per-device precision advice prevents NVVM poisoning). PcieTopologyGraph marked stable for spring consumption (#[non_exhaustive] + empty() constructor). SpringDomain expanded (+10 new domains: Pharmacokinetics, Biosignal, Microbiome, Agriculture, Environmental, Phylogenetics, MassSpectrometry, UncertaintyQuantification, EvolutionaryComputation, Optimization) with SCREAMING_SNAKE_CASE as_str() per wetSpring V109 convention. HealthSpring added to Spring enum. gpu_memory_estimate_bytes on WorkloadPattern + route_with_vram for VRAM-aware scheduling (healthSpring V19). Cross-spring provenance expanded (healthSpring PK/PD + DiversityIndex flows). Spring pins updated.
 **S145**: Spring absorption execution — PrecisionBrain absorbed from hotSpring v0.6.25 (domain-aware routing brain, F64 throttle detection, PrecisionHint enum). NvkZeroGuard absorbed from airSpring v0.7.5 (zero-output detection, NaN contamination). 8 new WorkloadPatterns from neuralSpring S140 + healthSpring V14.1 (Pairwise, BatchFitness, HmmBatch, SpatialPayoff, Stochastic, PopulationPk, DoseResponse, DiversityIndex). 5 new capability domains (biology, health, measurement, optimization, visualization). capability.call format B (qualified_method). Spring-as-Provider ProviderRegistry (ISSUE-007). ServerConfig port hardcoding evolved.
 **S140**: Deep debt evolution — hardcoding elimination (beardog_impl, unibin/format, sandbox, primal_capabilities, display/ipc, cli/main, zero_config/discovery all evolved to interned_strings). StreamingDispatchContext enriched with healthSpring V13 execute_streaming() callback (StageProgress, ProgressCallback). barraCuda Sprint 2 API awareness (science.activations.list, science.rng.capabilities, science.special.functions JSON-RPC methods). Smart refactor: science.rs 1139→828 LOC via science_domains.rs extraction. New tests: 4 streaming dispatch + 3 barraCuda API handlers.
@@ -130,7 +131,7 @@
 | Omelyan integrator | wateringHole | Open |
 | Richards PDE (12 USDA textures) | wateringHole | Open |
 | Provenance tags | hotSpring, groundSpring, neuralSpring | Open |
-| Generic `NvkZeroGuard` wrapper concept | airSpring v0.7.5 NVK pattern | **DONE** S145 (nvk_zero_guard_check + ZeroGuardVerdict in nvvm_safety.rs) |
+| Generic `NvkZeroGuard` wrapper concept | airSpring v0.7.5 NVK pattern | **DONE** S145 (nvk_zero_guard_check + ZeroGuardVerdict in spirv_codegen_safety.rs; renamed from nvvm_safety S147) |
 | llvmpipe fused shader dispatch investigation (12 tests return 0.0) | neuralSpring V87 | Open (barraCuda-owned) |
 | `CoralReefDevice` backend in barraCuda (sovereign SASS dispatch) | groundSpring V95 | Open (barraCuda-owned) |
 | QMD constant buffer binding (coralReef P0 blocker) | groundSpring V95 | Open (coralReef-owned) |

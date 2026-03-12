@@ -4,6 +4,8 @@ members = [
     # Core crates
     "crates/core/common",
     "crates/core/config", 
+    "crates/core/hw-learn",
+    "crates/core/nvpmu",
     "crates/core/sysmon",
     "crates/core/hw-learn",
     "crates/core/toadstool",
