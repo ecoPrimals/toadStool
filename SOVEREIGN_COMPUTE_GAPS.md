@@ -17,7 +17,7 @@ barraCuda (WGSL math)
 
 **IPC-first** (barraCuda v0.35): All inter-primal communication via JSON-RPC 2.0 at runtime. barraCuda has zero compile-time deps on coralReef or toadStool. VFIO detection is exclusively toadStool's responsibility via `compute.hardware.vfio_devices`.
 
-**coralReef Iteration 43**: PFIFO hardware channel creation via BAR0 MMIO (instance block, V2 MMU page tables, runlist, PCCSR bind/enable). RAMUSERD offsets corrected. The critical VFIO dispatch blocker is closed — hardware validation pending.
+**coralReef Iteration 43**: PFIFO hardware channel creation via BAR0 MMIO (instance block, V2 MMU page tables, runlist, PCCSR bind/enable). RAMUSERD offsets corrected (GP_GET=0x88, GP_PUT=0x8C). Hardware validation on Titan V: 6/7 VFIO tests pass. Dispatch blocked on USERD_TARGET encoding in runlist entry (DW0 bits [3:2] = 0 VRAM, should be 2 SYS_MEM_COH). One-register fix in coralReef `channel.rs`.
 
 Three dispatch paths:
 
@@ -34,7 +34,7 @@ Three dispatch paths:
 | # | Gap | Module | Description | Depends On |
 |:-:|-----|--------|-------------|------------|
 | 1 | ~~Dispatch client~~ | `server/handler/dispatch` | ✅ **Resolved S152**: `compute.dispatch.submit` accepts compiled GPU binary, resolves BDF (prefers VFIO), checks thermal, forwards to coralReef. Also: `status`, `result`, `capabilities`. `SOVEREIGN_BINARY_PIPELINE = true`. | — |
-| 2 | **VFIO hardware validation** | `nvpmu::vfio` | `VfioBar0Access` is implemented but untested on real VFIO-bound GPU hardware. Need a test rig with `vfio-pci` bound GPU + validation script. | Hardware access |
+| 2 | **VFIO hardware validation** | `nvpmu::vfio` | `VfioBar0Access` implemented. hotSpring validated 6/7 coralReef VFIO tests on Titan V (GV100). BAR0, DMA, upload/readback all pass. Dispatch blocked on coralReef USERD_TARGET encoding fix (one register). toadStool infra is ready. | coralReef fix |
 | 3 | ~~Error recovery / rollback~~ | `nvpmu::init` | ✅ **Resolved S151**: `RegisterSnapshot` captures pre-init state, `apply_with_recovery` rolls back on failure, `NvPmuError::PartialInit` reports rollback status. `init.rs` evolved to `dyn RegisterAccess`. | — |
 | 4 | ~~DMA buffer support~~ | `nvpmu::dma` | ✅ **Resolved S151**: `DmaAllocator` + `DmaBuffer` ported from akida-driver. Page-aligned, mlock'd, IOMMU-mapped with automatic cleanup. | — |
 
