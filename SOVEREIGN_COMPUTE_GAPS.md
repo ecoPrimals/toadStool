@@ -16,6 +16,8 @@ barraCuda (WHAT) → coralReef (COMPILE+DISPATCH) → toadStool (WHERE+ORCHESTRA
                      │                             │  thermal safety, routing)
 ```
 
+**coralReef Iteration 42** (VFIO sync + barraCuda API). The `compute.hardware.vfio_devices` JSON-RPC method provides the **VfioGpuInfo bridge** that unblocks barraCuda's `from_vfio_device` — toadStool discovers VFIO-bound GPUs and exposes descriptors for coralReef/barraCuda consumption.
+
 Three dispatch paths:
 
 | Path | Driver | BAR0 | Channels | toadStool Status |
@@ -78,6 +80,7 @@ Three dispatch paths:
 | Gap 9: Cross-gate GPU pooling | `RemoteDispatcher` (Unix + TCP relay), `GateGpuInfo.endpoint`, auto-forward in `compute_submit`, `compute.dispatch.forward` JSON-RPC method |
 | Unsafe evolution (display) | `MmapBuffer::as_slice()` centralizes V4L2 mmap unsafe; `read_frame` no longer has inline unsafe |
 | Gap 7: Mock hardware layers | `MockV4l2Device` (4 frame patterns, error injection, capture lifecycle) + `MockVfioDevice` (register sim, access log, `RegisterAccess` impl, error injection) in `crates/testing/src/mocks/` |
+| VfioGpuInfo bridge | `compute.hardware.vfio_devices` — discovers VFIO-bound GPUs, exposes descriptors for barraCuda `from_vfio_device` |
 
 ## Previously Resolved (S151)
 

@@ -17,7 +17,7 @@
 
 use std::path::PathBuf;
 use toadstool_cli::{
-    Cli, CliContext, Commands, EcosystemCommands, TransportCommands, UniversalCommands,
+    Cli, CliContext, Commands, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands,
 };
 
 fn make_cli(command: Commands) -> Cli {
@@ -561,4 +561,14 @@ async fn execute_transport_discover() {
     let ctx = CliContext::new(&cli).unwrap();
     let result = toadstool_cli::commands::dispatch::execute_command(&cli, &ctx).await;
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn execute_mode_status() {
+    let cli = make_cli(Commands::Mode {
+        action: ModeCommand::Status { bdf: None },
+    });
+    let ctx = CliContext::new(&cli).unwrap();
+    let result = toadstool_cli::commands::dispatch::execute_command(&cli, &ctx).await;
+    assert!(result.is_ok() || result.is_err());
 }

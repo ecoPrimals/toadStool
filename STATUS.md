@@ -42,7 +42,7 @@
 | Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
-| JSON-RPC methods | **95+** (includes `compute.dispatch.submit/status/result/capabilities`, `compute.dispatch.forward`; methods dynamically built from semantic registry) |
+| JSON-RPC methods | **96+** (includes `compute.dispatch.submit/status/result/capabilities`, `compute.dispatch.forward`, `compute.hardware.vfio_devices`; methods dynamically built from semantic registry) |
 | Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter + **PCIe P2P** with topology-aware routing |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |

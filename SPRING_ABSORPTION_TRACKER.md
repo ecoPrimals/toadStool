@@ -16,7 +16,7 @@
 
 | Spring | Version | Previous Pin | Current Pin | Tests | Delegations |
 |--------|---------|--------------|-------------|-------|-------------|
-| hotSpring | v0.6.30 | S145→S146 | S146→S147 | 769 lib + 101 binaries + 84 WGSL | Chuna 44/44, Fp64Strategy::Sovereign, PrecisionRoutingAdvice, PrecisionBrain, HardwareCalibration, streaming_dispatch, spirv_codegen_safety (renamed from nvvm), FirmwareInventory, sovereign DRM breakthrough |
+| hotSpring | v0.6.31 | S145→S146 | S146→S147 | 769 lib + 101 binaries + 84 WGSL | Chuna 44/44, Fp64Strategy::Sovereign, PrecisionRoutingAdvice, PrecisionBrain, HardwareCalibration, streaming_dispatch, spirv_codegen_safety (renamed from nvvm), FirmwareInventory, sovereign DRM breakthrough |
 | groundSpring | V100 | V99→S140 | V100→S146 | 936 + 382 Python | 102 (61 CPU + 41 GPU), live NUCLEUS (4 primals), adaptive health, direct primal sockets, SubstrateCapabilityKind::SovereignCompile |
 | neuralSpring | V96/S143 | V91/S140→S145 | V96/S143→S146 | 902 lib + 43 forge + 240 bins | petalTongue visualization, 8 new WorkloadPatterns, DataChannel, ParallelEighDispatch noted (barraCuda-level) |
 | wetSpring | V109 | V99+→S145 | V109→S146 | 1,047 + 200 forge | petalTongue V2, DiversityIndex pattern, DataChannel::Spectrum, SpringDomain SCREAMING_SNAKE_CASE convention adopted |

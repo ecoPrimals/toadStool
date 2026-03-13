@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (95+ dynamically built)
+### JSON-RPC Methods (96+ dynamically built)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -331,4 +331,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 13, 2026 -- S152. 20,262 workspace tests. ~86% line coverage (~150K production lines). 95+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.30, groundSpring V100, neuralSpring V98/S145, wetSpring V109, airSpring v0.7.5, healthSpring V19. Sovereign infrastructure complete: compute.dispatch.*, OS keyring, cross-gate pooling, mock hardware layers (V4L2/VFIO), SAFETY audit complete. Clippy pedantic zero. Rust 1.82+ (MSRV).
+**Last Updated**: March 13, 2026 -- S152. 20,262 workspace tests. ~86% line coverage (~150K production lines). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V98/S145, wetSpring V109, airSpring v0.7.5, healthSpring V19, coralReef Iteration 42. Sovereign infrastructure complete: compute.dispatch.*, OS keyring, cross-gate pooling, mock hardware layers (V4L2/VFIO), SAFETY audit complete. Clippy pedantic zero. Rust 1.82+ (MSRV).

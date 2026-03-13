@@ -323,6 +323,15 @@ pub enum Commands {
         config: Option<PathBuf>,
     },
 
+    /// GPU mode switching for single-GPU systems.
+    ///
+    /// Switches between gaming mode (nvidia/nouveau for display) and science
+    /// mode (vfio-pci for sovereign compute dispatch).
+    Mode {
+        #[command(subcommand)]
+        action: ModeCommand,
+    },
+
     /// Execute a workload directly (no biome.yaml required)
     Execute {
         /// Workload specification file (TOML or JSON)
@@ -475,5 +484,28 @@ pub enum UniversalCommands {
         /// Shared resources
         #[arg(short, long)]
         resources: Vec<String>,
+    },
+}
+
+/// GPU mode switching subcommands.
+#[derive(Clone, Subcommand)]
+pub enum ModeCommand {
+    /// Switch to science mode — bind GPU to vfio-pci for sovereign compute.
+    Science {
+        /// PCI BDF address (e.g. "0000:01:00.0"). Auto-detects if omitted.
+        #[arg(long)]
+        bdf: Option<String>,
+    },
+    /// Switch to gaming mode — unbind GPU from vfio-pci back to display driver.
+    Gaming {
+        /// PCI BDF address. Auto-detects if omitted.
+        #[arg(long)]
+        bdf: Option<String>,
+    },
+    /// Show current GPU mode.
+    Status {
+        /// PCI BDF address. Auto-detects if omitted.
+        #[arg(long)]
+        bdf: Option<String>,
     },
 }

@@ -120,6 +120,7 @@ pub(super) async fn discover_capabilities(
         "compute.hardware.auto_init",
         "compute.hardware.auto_init_all",
         "compute.hardware.status",
+        "compute.hardware.vfio_devices",
     ];
 
     for m in &semantic_methods {

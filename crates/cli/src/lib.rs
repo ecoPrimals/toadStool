@@ -135,7 +135,7 @@ where
     }
 }
 
-pub use commands::{Commands, EcosystemCommands, TransportCommands, UniversalCommands};
+pub use commands::{Commands, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands};
 
 /// `ToadStool` - Universal Compute Platform for Sovereign Science
 #[derive(Parser)]

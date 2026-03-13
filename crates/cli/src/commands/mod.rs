@@ -4,10 +4,11 @@
 //! This module contains command definitions and implementations of CLI subcommands.
 
 mod definitions;
-pub use definitions::{Commands, EcosystemCommands, TransportCommands, UniversalCommands};
+pub use definitions::{Commands, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands};
 
 pub mod dispatch;
 pub mod doctor;
+mod mode;
 pub mod transport;
 
 // NPU commands require akida-driver (optional)

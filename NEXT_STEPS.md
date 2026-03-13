@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: March 13, 2026 -- S152 Sovereign Infrastructure Complete
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,262 tests (0 failures) | ~86% line coverage (~150K production lines) | 95+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **OS keyring + cross-gate pooling + mock hardware layers**
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,262 tests (0 failures) | ~86% line coverage (~150K production lines) | 96+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **OS keyring + cross-gate pooling + mock hardware layers**
 **Latest**: S152 — Sovereign infrastructure complete: compute.dispatch.*, SOVEREIGN_BINARY_PIPELINE, GpuGen + multi-GPU auto_init_all, huge page DMA, MSI-X/eventfd, GpuPowerController, OS keyring (D-Bus/macOS Keychain), RemoteDispatcher cross-gate pooling, MockV4l2Device/MockVfioDevice, SAFETY audit complete. S151: RegisterSnapshot, DmaAllocator, PciFilter, thermal safety, VFIO automation.
 
 ---
