@@ -3,6 +3,14 @@
 Per-session log of API changes that may affect downstream springs.
 Springs: check this file after updating your toadStool pin.
 
+## Sessions S145–S152 (Mar 10–13, 2026)
+
+No breaking changes. All additions are backward-compatible:
+- New `compute.dispatch.*` and `compute.hardware.auto_init_all` JSON-RPC methods
+- New `os_keyring` module in toadstool-common
+- New `RemoteDispatcher` in cross_gate
+- New `MockV4l2Device` / `MockVfioDevice` in testing
+
 ## S95–S96 (March 6, 2026)
 
 ### Breaking Changes

@@ -41,10 +41,10 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 20,015 workspace tests (0 failures, 101 intentional ignores) |
+| `cargo test --workspace` | 20,262 workspace tests (0 failures, 101 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), SAFETY documentation complete |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (94+ dynamically built)
+### JSON-RPC Methods (95+ dynamically built)
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -241,9 +241,9 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 20,015 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Workspace tests | 20,262 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all `// SAFETY:` documented |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), SAFETY documentation complete |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
@@ -262,7 +262,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 20,015 tests (S147); focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 20,262 tests (S152); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
@@ -286,7 +286,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 20,015 tests (S147); focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 20,262 tests (S152); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -331,4 +331,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 12, 2026 -- S147. 20,015 workspace tests. ~86% line coverage (121K production lines). 94+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.30, groundSpring V100, neuralSpring V98/S145, wetSpring V109, airSpring v0.7.5, healthSpring V19. hw-learn pipeline (compute.hardware.*), nvpmu RegisterAccess bridge, spirv_codegen_safety (renamed from nvvm_safety), FirmwareInventory in gpu.info, PrecisionBrain + NvkZeroGuard + ProviderRegistry. Clippy pedantic zero. Rust 1.82+ (MSRV).
+**Last Updated**: March 13, 2026 -- S152. 20,262 workspace tests. ~86% line coverage (~150K production lines). 95+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.30, groundSpring V100, neuralSpring V98/S145, wetSpring V109, airSpring v0.7.5, healthSpring V19. Sovereign infrastructure complete: compute.dispatch.*, OS keyring, cross-gate pooling, mock hardware layers (V4L2/VFIO), SAFETY audit complete. Clippy pedantic zero. Rust 1.82+ (MSRV).

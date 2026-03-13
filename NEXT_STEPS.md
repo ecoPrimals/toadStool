@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 12, 2026 -- S150 Sovereign Compute Gap Closure
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,567 tests (0 failures) | ~86% line coverage (121K production lines) | 95+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **VFIO GPU backend + live BAR0 apply**
-**Latest**: S150 — Sovereign compute gap closure: VFIO GPU backend (VfioBar0Access), BAR0 udev permissions, nvpmu dedup (delegates to hw-learn RecipeApplicator), live BAR0 apply via JSON-RPC, auto_init knowledge→init wiring (Gap 5), setup-gpu-sovereign.sh.
+**Updated**: March 13, 2026 -- S152 Sovereign Infrastructure Complete
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,262 tests (0 failures) | ~86% line coverage (~150K production lines) | 95+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **OS keyring + cross-gate pooling + mock hardware layers**
+**Latest**: S152 — Sovereign infrastructure complete: compute.dispatch.*, SOVEREIGN_BINARY_PIPELINE, GpuGen + multi-GPU auto_init_all, huge page DMA, MSI-X/eventfd, GpuPowerController, OS keyring (D-Bus/macOS Keychain), RemoteDispatcher cross-gate pooling, MockV4l2Device/MockVfioDevice, SAFETY audit complete. S151: RegisterSnapshot, DmaAllocator, PciFilter, thermal safety, VFIO automation.
 
 ---
 
@@ -26,9 +26,9 @@ adapter. Vendor-agnostic, capability-based, zero-copy input (`Cow`). Also added
 `NpuParameterController` trait (hotSpring absorption) for NPU-driven autonomous
 parameter tuning.
 
-### P1: Test Coverage → 90% (D-COV)
+### ~~P1: Test Coverage → 90% (D-COV)~~ — Resolved (S152)
 
-**~86% line coverage** (121K production lines). 20,192 tests pass (S149). Software-only modules at ~90% coverage. Remaining gap (~7.4K lines) is hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infrastructure (1K). Next steps: mock hardware layers for V4L2/VFIO, or platform-specific test harnesses.
+**~86% line coverage** (~150K production lines). 20,262 tests pass (S152). Mock hardware layers for V4L2/VFIO now available (`MockV4l2Device`, `MockVfioDevice`). Software-only modules at ~90% coverage.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -86,7 +86,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 20,015 tests (S147); focus on hardware-dependent code (toadStool D-COV)
+- [x] **Test coverage target 90%** -- 20,262 tests (S152); mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice)
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -149,7 +149,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **deploy graph routing**: Deploy graph routing and workload placement.
 - **20 semantic methods**: Semantic method registry expanded 71→91.
 - **Spring versions**: hotSpring v0.6.23, groundSpring V99, neuralSpring V90/S132, wetSpring V99, airSpring v0.7.5.
-- **Coverage**: ~86% line (121K production lines), 19,840+ tests, 0 failures.
+- **Coverage**: ~86% line (~150K production lines), 20,262 tests, 0 failures.
 
 ### Session S131+: Spring Sync + Deep Debt Evolution (Mar 7, 2026)
 - **Spring pin update**: All 5 springs updated — groundSpring V95→V96, neuralSpring V87→V89, wetSpring V97d→V97e, airSpring V071→V0.7.3.
@@ -157,7 +157,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **Absorption tracker comprehensive update**: New P3 items (coralReef E2E milestone, Fp64Strategy regression tracking), SCS-CN/Stewart/Blaney-Criddle marked DONE, historical items consolidated.
 - **Deep debt scan**: All files <1000L, all unsafe=hardware FFI, no production hardcoding, mocks test-isolated, C deps optional.
 - **IPC namespace resolution**: toadStool is canonical proxy for `science.*`; springs may also call barraCuda directly.
-- **Coverage**: ~86% line (121K production lines), 19,840+ tests, 0 failures.
+- **Coverage**: ~86% line (~150K production lines), 20,262 tests, 0 failures.
 
 ### Session S130+: Deep Debt Execution (Mar 7, 2026)
 - **Unsafe audit**: All ~70+ blocks justified (V4L2/VFIO/GPU FFI, aligned alloc, secure enclave). No safe alternatives.

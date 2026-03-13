@@ -5,7 +5,7 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 10, 2026 (Sessions 43-144)
+## [Unreleased] - March 13, 2026 (Sessions 43-152)
 
 ### Session S144 (Mar 10, 2026) — Last Mile Deep Debt
 
@@ -38,6 +38,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `compile_wgsl` evolved with `target_device` parameter for per-GPU ISA optimization
 - New `compile_wgsl_multi` method for array compilation
 - `shader.compile.wgsl.multi` JSON-RPC endpoint wired (both dot and snake_case)
+
+### Session S152 (Mar 13, 2026) — Sovereign Infrastructure Complete
+- `compute.dispatch.submit/status/result/capabilities` (Gap 1)
+- `SOVEREIGN_BINARY_PIPELINE = true`
+- `GpuGen` enum + multi-arch register classification (Gap 5)
+- Multi-GPU parallel `auto_init_all` (Gap 12)
+- Huge page DMA (`MAP_HUGETLB` 2MB/1GB)
+- MSI-X / eventfd completion for VFIO
+- `GpuPowerController` — reset (FLR), power state management
+- `extern "C"` elimination → `rustix` `DrmIoctl`
+- OS keyring: D-Bus SecretService + macOS Keychain (Gap 8)
+- Cross-gate GPU pooling: `RemoteDispatcher` (Gap 9)
+- Mock hardware layers: `MockV4l2Device` + `MockVfioDevice` (Gap 7)
+- Unsafe audit: SAFETY documentation complete
+
+### Session S151 (Mar 12, 2026) — Sovereign Debt Closure
+- `RegisterSnapshot` + `apply_with_recovery` (Gap 3: error recovery)
+- `DmaAllocator` + `DmaBuffer` — page-aligned, mlock'd, IOMMU-mapped (Gap 4)
+- Unified PCI discovery with `PciFilter` and vendor constants (Gap 6)
+- Thermal safety enforcement: `check_thermal_for_bdf()`, `gpu.telemetry` (Gap 10)
+- VFIO bind/unbind automation with DRM/IOMMU safety (Gap 11)
+- V4L2 unsafe reduction: 6 `MaybeUninit` → `Default::default()`
+
+### Session S150 (Mar 12, 2026) — Sovereign Compute Gap Closure
+- `VfioBar0Access` — full VFIO lifecycle for NVIDIA GPUs
+- BAR0 udev permissions (`nvpmu::permissions`)
+- `setup-gpu-sovereign.sh` script
+- nvpmu recipe deduplication (delegates to hw-learn `RecipeApplicator`)
+- Live BAR0 apply via `compute.hardware.apply`
+- Auto-init knowledge→init wiring (Gap 5)
+
+### Session S149 (Mar 12, 2026) — Deep Debt Evolution
+- Credential chain complete, handler refactored
+- Clippy clean, pedantic across workspace
+
+### Session S148 (Mar 12, 2026) — Secret Audit Hardening
+- `SecretString` credential chain: env → file → security provider
+- Secret scan CI gate
+
+### Session S147 (Mar 12, 2026) — hw-learn Sovereign Pipeline
+- `compute.hardware.*` JSON-RPC methods: observe/distill/apply/share/status
+- `RegisterAccess` bridge: nvpmu `Bar0Access` → hw-learn
+- `FirmwareInventory` in `gpu.info`
+
+### Session S146 (Mar 10, 2026) — Deep Evolution
+- PCIe topology API stabilized
+- Industry GPU parity for neuralSpring
+
+### Session S145 (Mar 10, 2026) — Spring Absorption Evolution
+- Cross-spring absorption iteration for hotSpring/neuralSpring
+- Updated spring pinning table
 
 ### Session S141 (Mar 10, 2026) — Deep Debt Evolution & Pedantic Sweep
 
@@ -4151,11 +4202,10 @@ cargo run --example fhe_ntt_validation
 
 ## Links
 
-- [Production Readiness Assessment](FULL_SESSION_COMPLETION_DEC_20_2025.md)
-- [Comprehensive Audit](COMPREHENSIVE_CODE_AUDIT_DEC_20_2025.md)
-- [Security Audit Results](NEXT_PHASE_PROGRESS_DEC_20_2025.md)
-- [Benchmarks](NEXT_PHASE_PROGRESS_DEC_20_2025.md#key-insights-from-benchmarks)
-- [Path to A+](STATUS.md#path-to-a-98100)
+- [Sovereign Compute Gaps](SOVEREIGN_COMPUTE_GAPS.md)
+- [Status](STATUS.md)
+- [Next Steps](NEXT_STEPS.md)
+- [Sovereign Compute Evolution](SOVEREIGN_COMPUTE.md)
 
 ---
 

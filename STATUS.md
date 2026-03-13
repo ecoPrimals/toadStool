@@ -1,4 +1,4 @@
-# Status -- March 12, 2026 (S150 Sovereign Compute Gap Closure)
+# Status -- March 13, 2026 (S152 Sovereign Infrastructure Complete)
 
 ## Quality Gates
 
@@ -8,8 +8,8 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **19,567 tests, 0 failures** (S150) |
-| `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
+| `cargo test --workspace` | PASS | **20,262 tests, 0 failures** (S152) |
+| `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Mock hardware layers for V4L2/VFIO now available (S152). |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
@@ -30,19 +30,19 @@
 |--------|-------|
 | WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
 | Rust version | **1.82+** (is_some_and, div_ceil) |
-| `unsafe` blocks | **~70+** (all `// SAFETY:` documented; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
+| `unsafe` blocks | **~70+** (SAFETY audit complete S152; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
 | `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify, zero sysinfo, zero caps**. `aes-gcm` optional (dev-crypto only). `toadstool-sysmon` (pure Rust /proc) replaces sysinfo. |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. `SoftwareHsmProvider`/`LocalKeyringProvider` gated behind `dev-crypto` feature (S134). Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
 | Dead code | **~47 justified `#[allow(dead_code, reason = "...")]`** — all with explicit reason annotations (S144: upgraded from comment-only justification to first-class `reason` parameter) |
-| File size limit | **All < 1000 lines** (1,868 .rs files, 517K total lines) |
+| File size limit | **All < 1000 lines** (1,868 .rs files, ~150K production lines) |
 | Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic --all-targets` across entire workspace including test code (S141). Production `#[allow]` evolved to `#[expect]` (S131+, S132, S141). 170+ stale suppressions discovered and removed total. |
 | Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
 | Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
-| JSON-RPC methods | **89+** (+1 S144: `shader.compile.wgsl.multi` for multi-device compilation; methods dynamically built from semantic registry) |
+| JSON-RPC methods | **95+** (includes `compute.dispatch.submit/status/result/capabilities`, `compute.dispatch.forward`; methods dynamically built from semantic registry) |
 | Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter + **PCIe P2P** with topology-aware routing |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
 | Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
@@ -95,6 +95,20 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S152: Sovereign Infrastructure Complete (Mar 13, 2026)
+- **compute.dispatch.*** — `submit`, `status`, `result`, `capabilities`, `forward` (Gap 1). `SOVEREIGN_BINARY_PIPELINE = true`.
+- **GpuGen enum** — multi-arch register classification (Gap 5). Multi-GPU parallel `auto_init_all` (Gap 12).
+- **Huge page DMA** — `MAP_HUGETLB` 2MB/1GB. MSI-X / eventfd completion for VFIO.
+- **GpuPowerController** — reset (FLR), power state management. `extern "C"` elimination → `rustix` `DrmIoctl`.
+- **OS keyring** — D-Bus SecretService + macOS Keychain (Gap 8). Cross-gate GPU pooling: `RemoteDispatcher` (Gap 9).
+- **Mock hardware layers** — `MockV4l2Device` + `MockVfioDevice` (Gap 7). Unsafe audit: SAFETY documentation complete.
+- 20,262 tests, 0 failures. ~150K production lines.
+
+### S151: Sovereign Debt Closure (Mar 12, 2026)
+- **RegisterSnapshot** + `apply_with_recovery` (Gap 3: error recovery). **DmaAllocator** + **DmaBuffer** — page-aligned, mlock'd, IOMMU-mapped (Gap 4).
+- **Unified PCI discovery** — `PciFilter` and vendor constants (Gap 6). **Thermal safety** — `check_thermal_for_bdf()`, `gpu.telemetry` (Gap 10).
+- **VFIO bind/unbind automation** — DRM/IOMMU safety (Gap 11). V4L2 unsafe reduction: 6 `MaybeUninit` → `Default::default()`.
 
 ### S150: Sovereign Compute Gap Closure (Mar 12, 2026)
 - **VFIO GPU backend** — `nvpmu::vfio::VfioBar0Access` implements `RegisterAccess` for NVIDIA GPUs bound to `vfio-pci`. Full VFIO lifecycle: container → group → device fd → BAR0 mmap via `VFIO_DEVICE_GET_REGION_INFO`. Dual-use (gaming + science) path.

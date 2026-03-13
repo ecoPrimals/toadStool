@@ -1,5 +1,7 @@
 # S142+ Evolution Plan — Hardware-First, Spring-Parity, Sovereign Compute
 
+**COMPLETED** — All P0/P1 items from this plan are done. See [SOVEREIGN_COMPUTE_GAPS.md](SOVEREIGN_COMPUTE_GAPS.md) for current status.
+
 **Date**: March 10, 2026 — S142+
 **Philosophy**: Real hardware first. Springs earn trust in the primal by reaching
 parity. Telemetry is sovereign — it belongs to the system, not surveillance.
