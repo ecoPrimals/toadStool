@@ -1,13 +1,24 @@
 # Hardware Transport Specification
 
-**Version**: 1.1  
-**Status**: Implemented (S94b) + PCIe P2P specified (S142+)  
-**Crates**: `toadstool-core`, `toadstool-display`  
+**Version**: 1.2  
+**Status**: Implemented (S94b) + PCIe P2P implemented (S142) + VFIO interface (S150)  
+**Crates**: `toadstool-core`, `toadstool-display`, `nvpmu`  
 **License**: AGPL-3.0-only
 
 ## Overview
 
 The Hardware Transport Layer enables **any hardware input to any hardware output**. ToadStool owns the physical pipe: PCIe, HDMI, NVLink, serial, capture. This spec defines the generic `HardwareTransport` trait and its concrete implementations.
+
+### Relationship to VFIO
+
+VFIO is **not** a `HardwareTransport`. The `HardwareTransport` trait covers
+data-plane transports (frames in, frames out). VFIO is a control-plane
+interface for device binding, BAR0/BAR1 access, and IOMMU management — handled
+by `nvpmu::VfioBar0Access` and the `setup-gpu-sovereign.sh` tooling.
+
+The distinction:
+- **HardwareTransport**: data flow (HDMI, V4L2, PCIe P2P, serial)
+- **VFIO interface**: device ownership and register access (BAR0 init, permissions, GPU binding)
 
 ## Architecture
 

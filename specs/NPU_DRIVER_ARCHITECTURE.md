@@ -1,7 +1,7 @@
 # NPU Driver Architecture
-**Version**: 1.0  
-**Date**: February 8, 2026  
-**Status**: Active - Dual Backend Strategy
+**Version**: 1.1  
+**Date**: March 12, 2026  
+**Status**: Active - Dual Backend Strategy (NPU + GPU VFIO)
 
 ---
 
@@ -10,9 +10,22 @@
 ToadStool supports NPU access via **two backends**:
 
 1. **Kernel Driver Backend**: Full performance, privileged access
-2. **Userspace Driver Backend**: Sandboxed, isolated access
+2. **Userspace Driver Backend**: Sandboxed, isolated access via VFIO
 
 Both backends provide complete NPU wiring, selected based on trust level.
+
+### GPU VFIO Alignment (S150)
+
+The dual-backend VFIO approach now extends beyond NPU to GPU. `nvpmu` provides
+`VfioBar0Access` for NVIDIA GPUs bound to `vfio-pci`, implementing the same
+`hw_learn::applicator::RegisterAccess` trait used by sysfs-based `Bar0Access`.
+This shares the VFIO philosophy: full device ownership in userspace, no vendor
+kernel module required.
+
+| Device | VFIO Module | Purpose |
+|--------|-------------|---------|
+| NPU (AKD1000) | `akida-driver` | Inference, reservoir computing |
+| GPU (NVIDIA) | `nvpmu::vfio` | BAR0 MMIO, sovereign init |
 
 ---
 

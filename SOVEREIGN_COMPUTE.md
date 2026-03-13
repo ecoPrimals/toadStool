@@ -4,8 +4,9 @@
 Pure Rust. Any hardware. No vendor lock.
 
 **Full spec**: [`specs/SOVEREIGN_COMPUTE_EVOLUTION.md`](specs/SOVEREIGN_COMPUTE_EVOLUTION.md)
+**Remaining work**: [`SOVEREIGN_COMPUTE_GAPS.md`](SOVEREIGN_COMPUTE_GAPS.md) — checklist of gaps to close
 
-> **Note (S94):** Sovereign compiler Phases 0–4 and all shader/math infrastructure transferred to **barraCuda** (`ecoPrimals/barraCuda/`). File paths below refer to that repository. ToadStool continues to provide hardware discovery and capability probing that feeds the sovereign pipeline.
+> **Note (S150):** Sovereign compiler Phases 0–4 and all shader/math infrastructure transferred to **barraCuda** (`ecoPrimals/barraCuda/`). coralReef owns VFIO transport (GPU protocol). toadStool owns VFIO interface (device management, permissions, pooling). See gaps doc for remaining toadStool work.
 
 ---
 

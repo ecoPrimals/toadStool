@@ -1,15 +1,15 @@
 # Architecture Demarcation: barraCuda / toadStool / songBird
 
-**Version**: 1.0.0
-**Date**: March 2, 2026
-**Status**: Active — defines ownership boundaries for Phase 1 primals
-**Origin**: toadStool S89, post-barraCuda extraction
+**Version**: 2.0.0
+**Date**: March 12, 2026
+**Status**: Active — defines ownership boundaries and consumption chain
+**Origin**: toadStool S89, post-barraCuda extraction; S150 coralReef integration
 
 ---
 
 ## Overview
 
-The ecoPrimals compute stack is a 3-layer architecture. Each layer owns a
+The ecoPrimals compute stack is a 4-layer consumption chain. Each layer owns a
 distinct concern. Springs (domain validation projects) consume the stack from
 the top; infrastructure primals provide services from the bottom.
 
@@ -17,19 +17,38 @@ the top; infrastructure primals provide services from the bottom.
 Springs (hotSpring, wetSpring, neuralSpring, airSpring, groundSpring)
     │
     ▼
-barraCuda ── "WHAT to compute" ── math library + wgpu compute fabric
+barraCuda ── "WHAT to compute" ── math library + WGSL shaders
     │
-    ▼
-toadStool ── "WHERE and HOW" ── hardware orchestration + multi-framework routing
+    ▼  (consumed by)
+coralReef ── "HOW to compile & dispatch" ── WGSL→native compiler + coral-driver
+    │         VFIO transport: channels, QMD, pushbuf, DMA
+    ▼  (consumed by)
+toadStool ── "WHERE to run" ── hardware orchestration + VFIO interface
+    │         VFIO interface: device mgmt, BAR0 init, permissions, pooling
     │
     ├── songBird ── "the wire" ── network, discovery, NAT traversal
     ├── bearDog  ── "the vault" ── crypto, entropy, PKI
     └── nestGate ── "the shelf" ── storage, artifacts, data pipelines
 ```
 
-Springs depend on barraCuda directly for math. They depend on toadStool
-optionally when they need managed compute (multi-node, adaptive tuning,
-multi-framework routing, container isolation).
+**Consumption chain**: barraCuda → coralReef → toadStool. Each layer is
+consumed by the next. Springs depend on barraCuda for math, coralReef for
+sovereign compilation, and toadStool for managed compute (multi-node,
+adaptive tuning, GPU pooling, VFIO device management).
+
+### VFIO Interface vs Transport
+
+- **coralReef** owns the VFIO **transport** — coral-driver speaks the GPU's
+  protocol (channels, GPFIFO, QMD, push buffers, DMA). It knows *how* to
+  talk to GPUs.
+- **toadStool** owns the VFIO **interface** — manages which GPUs are available,
+  binds/unbinds VFIO devices, provides BAR0 access handles, enforces
+  permissions and thermal safety, and brokers device access to coralReef
+  (locally) or across toadStools (pooling via songBird).
+
+toadStool hands coralReef a ready-to-use VFIO device. coralReef dispatches
+compute through it. When local GPUs are busy, toadStool routes to another
+toadStool via songBird — portable, replaceable, no vendor lock-in.
 
 ---
 

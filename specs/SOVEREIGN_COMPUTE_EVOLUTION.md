@@ -1,7 +1,7 @@
 # Sovereign Compute Evolution — BarraCuda WGSL Optimizer & Mycelial ToadStool
 
-**Date**: February 25, 2026 (updated from Feb 18)
-**Status**: Phases 0-4 complete — Phase 4 naga-IR optimizer + SPIR-V passthrough live in `compile_shader_f64()`
+**Date**: March 12, 2026 (updated from Feb 25)
+**Status**: Phases 0-5 — Phase 5 sovereign BAR0, VFIO GPU interface, hw-learn live pipeline
 **Classification**: Core architecture evolution
 
 ---
@@ -394,8 +394,61 @@ without changes. Both paths converge on the same hardware target.
 | `CROSS_VENDOR_BENCHMARK_SPEC.md` | `bench_f64_builtins` feeds `MeasuredLatencyModel` |
 | `PRIMAL_CAPABILITY_SYSTEM.md` | ToadStool node discovery — the mycelial network foundation |
 | `NAK_CONTRIBUTION_PLAN_FEB18_2026.md` | Upstream NAK work (parallel, not dependent) |
+| `ARCHITECTURE_DEMARCATION.md` | Consumption chain: barraCuda → coralReef → toadStool |
+| `HARDWARE_TRANSPORT_SPEC.md` | Data-plane transports (HDMI, PCIe P2P) vs VFIO control-plane |
+| `NPU_DRIVER_ARCHITECTURE.md` | VFIO dual-backend (NPU + GPU) |
+
+---
+
+## Phase 5 — Sovereign BAR0 & VFIO GPU Interface (S150, March 12 2026)
+
+### Completed
+
+| Item | Module | Description |
+|------|--------|-------------|
+| BAR0 permissions | `nvpmu::permissions` | udev rules for non-root BAR0 MMIO (`gpu-mmio` group) |
+| Setup tooling | `scripts/setup-gpu-sovereign.sh` | Auto-detects GPUs, configures group/udev/permissions |
+| VFIO GPU backend | `nvpmu::vfio::VfioBar0Access` | BAR0 via VFIO container/group/device, `RegisterAccess` trait |
+| nvpmu dedup | `nvpmu::init` | Delegates to `hw_learn::RecipeApplicator`, eliminates register write duplication |
+| Live BAR0 apply | `compute.hardware.apply` | `live: true` param applies recipes to real hardware via BAR0 |
+| Auto-init pipeline | `compute.hardware.auto_init` | Auto-detects GPU, finds best recipe from `KnowledgeStore`, applies via BAR0 |
+| Hardware error variant | `NvPmuError::Hardware` | Specific error type for VFIO/BAR0 hardware failures |
+
+### Architecture Clarified
+
+**coralReef** = VFIO **transport** (GPU protocol: channels, GPFIFO, QMD, push buffers, DMA)
+**toadStool** = VFIO **interface** (device management: bind/unbind, BAR0, permissions, pooling)
+
+```
+toadStool (interface)          coralReef (transport)
+┌─────────────────────┐        ┌──────────────────────┐
+│ VFIO bind/unbind    │ ──────▶│ GPFIFO allocation    │
+│ BAR0 init (recipes) │        │ QMD construction     │
+│ Permissions/thermal │        │ Push buffer submit   │
+│ Device pooling      │        │ DMA buffer mgmt      │
+│ Multi-toadStool     │        │ WGSL → SASS dispatch │
+└─────────────────────┘        └──────────────────────┘
+```
+
+### Three Dispatch Paths
+
+| Path | Driver | BAR0 | Channels | Status |
+|------|--------|------|----------|--------|
+| **Sovereign** | none (VFIO) | `VfioBar0Access` | coralReef coral-driver | WIP — coralReef building transport |
+| **nouveau** | nouveau | sysfs `resource0` | kernel | Functional — BAR0 GR init proven |
+| **nvidia** | nvidia UVM | n/a (UVM handles) | UAPI | Functional — CTXNOTVALID resolved |
+
+### Remaining Phase 5 Gaps (toadStool side)
+
+See `../SOVEREIGN_COMPUTE_GAPS.md` for full tracker.
+
+- Multi-arch register classification (AMD, Intel alongside NVIDIA)
+- Unified PCI discovery (single scanner for GPU + NPU)
+- Full dispatch client (toadStool → coralReef dispatch interface)
+- Cross-toadStool GPU pooling (via songBird federation)
+- Error recovery and rollback for BAR0 init failures
 
 ---
 
 *Sovereign compute means: we write the math, any hardware runs it, no vendor
-can take it away. That is BarraCuda's contract with ToadStool.*
+can take it away. That is the ecoPrimals contract — barraCuda → coralReef → toadStool.*

@@ -1,25 +1,36 @@
 # ToadStool Specifications
 
-## Current Status (March 10, 2026 — S146)
+## Current Status (March 12, 2026 — S150)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
 - **`../STATUS.md`** — Detailed status with quality gates
-- **`../S142_EVOLUTION_PLAN.md`** — Active evolution plan (hardware-first, spring-parity)
+- **`../SOVEREIGN_COMPUTE_GAPS.md`** — Remaining work tracker (what to close before proceeding)
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **19,972 workspace tests** (0 failures, all concurrent)
-- **89+ JSON-RPC methods** (dynamically built from semantic registry)
-- **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport (PCIe P2P planned)
+- **19,567 workspace tests** (0 failures, all concurrent)
+- **95+ JSON-RPC methods** (dynamically built from semantic registry)
+- **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport (PCIe P2P implemented S142)
 - **coralReef shader proxy** — capability-based discovery, naga fallback
-- **Clippy pedantic** — 0 warnings with `--all-targets` (S141)
-- **Zero-copy** — `bytes::Bytes` in 6 GPU/runtime types (S141)
+- **VFIO interface** — `VfioBar0Access` for NVIDIA GPUs, BAR0 permissions, `setup-gpu-sovereign.sh`
+- **Live BAR0 apply** — `compute.hardware.apply` + `auto_init` (knowledge → init pipeline)
+- **Clippy pedantic** — 0 warnings with `--all-targets`
+- **Zero-copy** — `bytes::Bytes` in 6 GPU/runtime types
 - **Capability-based discovery** — sovereignty: all production callers migrated
 - **ecoBin pure-rust verified** — zero C FFI deps
 - **Rust 1.82+** — `is_some_and`, `div_ceil`, modern idiomatic patterns
 
-**Active evolution (S142+):** Hardware testing (P0), PCIe P2P transport (P1), multi-tenant (P2), telemetry (P3), checkpointing (P4). See `../S142_EVOLUTION_PLAN.md`.
+**Architecture:**
+```
+barraCuda (WHAT) → coralReef (COMPILE+DISPATCH) → toadStool (WHERE+ORCHESTRATE)
+                     │ VFIO transport              │ VFIO interface
+                     │ (coral-driver: channels,    │ (device mgmt, BAR0 init,
+                     │  QMD, pushbuf, DMA)         │  permissions, pooling,
+                     │                             │  thermal safety, routing)
+```
+
+**Active evolution:** Sovereign compute gap closure, VFIO validation, cross-toadStool pooling. See `../SOVEREIGN_COMPUTE_GAPS.md`.
 
 ---
 
@@ -37,11 +48,11 @@
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
-| **[SOVEREIGN_COMPUTE_EVOLUTION.md](./SOVEREIGN_COMPUTE_EVOLUTION.md)** | WGSL optimizer, LatencyModel, mycelial ToadStool — master roadmap | **Feb 18** | 🔄 Active |
+| **[SOVEREIGN_COMPUTE_EVOLUTION.md](./SOVEREIGN_COMPUTE_EVOLUTION.md)** | WGSL optimizer, VFIO interface/transport, mycelial ToadStool — master roadmap | **Mar 12** | 🔄 Active |
 | **[BARRACUDA_PRIMAL_BUDDING.md](./BARRACUDA_PRIMAL_BUDDING.md)** | barraCuda budding — fully untangled, zero cross-deps | **Mar 3** | ✅ Phase 5 Complete |
-| **[ARCHITECTURE_DEMARCATION.md](./ARCHITECTURE_DEMARCATION.md)** | 3-layer ownership: barraCuda (math), toadStool (orchestration), songBird (wire) | **Mar 2** | 🔄 Active |
+| **[ARCHITECTURE_DEMARCATION.md](./ARCHITECTURE_DEMARCATION.md)** | 4-layer chain: barraCuda → coralReef → toadStool + songBird (wire) | **Mar 12** | 🔄 Active |
 
-**Tracker**: [`../SOVEREIGN_COMPUTE.md`](../SOVEREIGN_COMPUTE.md) — root-level phase/status dashboard
+**Tracker**: [`../SOVEREIGN_COMPUTE_GAPS.md`](../SOVEREIGN_COMPUTE_GAPS.md) — remaining work before proceeding
 
 ### Performance & Evolution
 
@@ -57,7 +68,7 @@
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
-| **[NPU_DRIVER_ARCHITECTURE.md](./NPU_DRIVER_ARCHITECTURE.md)** | Pure Rust VFIO NPU driver design | Feb 8 | ✅ Current |
+| **[NPU_DRIVER_ARCHITECTURE.md](./NPU_DRIVER_ARCHITECTURE.md)** | Dual VFIO backend: NPU + GPU | **Mar 12** | ✅ Current |
 | **[NPU_MULTI_TENANT_ARCHITECTURE.md](./NPU_MULTI_TENANT_ARCHITECTURE.md)** | Multi-tenant NPU resource partitioning | Feb 8 | ✅ Current |
 | **[MULTITENANT_COMPUTE_ARCHITECTURE.md](./MULTITENANT_COMPUTE_ARCHITECTURE.md)** | Compute multi-tenancy across GPU/NPU/CPU | Feb 8 | ✅ Current |
 | ~~BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2~~ | Universal tensor ops (CPU, GPU, NPU) | Feb 2 | Transferred to barraCuda |
@@ -67,7 +78,7 @@
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
 | **[DUAL_FABRIC_ARCHITECTURE.md](./DUAL_FABRIC_ARCHITECTURE.md)** | Multi-machine dual-fabric: hardware backbone (toadStool) + network plane (Songbird) | **Mar 3** | ✅ Specified |
-| **[HARDWARE_TRANSPORT_SPEC.md](./HARDWARE_TRANSPORT_SPEC.md)** | `HardwareTransport` trait, frame protocol, DisplayTransport, CaptureTransport, SerialTransport, TransportRouter | **Mar 3** | ✅ Implemented |
+| **[HARDWARE_TRANSPORT_SPEC.md](./HARDWARE_TRANSPORT_SPEC.md)** | `HardwareTransport` trait + VFIO clarification — data-plane vs control-plane | **Mar 12** | ✅ Implemented |
 | **[DISPLAY_BACKEND_SPEC.md](./DISPLAY_BACKEND_SPEC.md)** | DRM/input backend — display hardware control | Jan 19 | ✅ Phase 1 Complete |
 
 ### Research & Extensions (Future Work)
