@@ -31,6 +31,6 @@ pub use brain_ext::{
     CapabilityGap, FirmwareInventory, FirmwareInventoryExt, FwStatus, LearningAdvisor,
     LearningOpportunity,
 };
-pub use distiller::{InitRecipe, InitStep, RecipeDistiller, RegFunction};
+pub use distiller::{GpuGen, InitRecipe, InitStep, RecipeDistiller, RegFunction};
 pub use knowledge::{ArchId, KnowledgeStore, RecipeId};
 pub use observer::{ObserveConfig, ObserveResult, TraceEvent, TraceObserver};

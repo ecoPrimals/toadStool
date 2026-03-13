@@ -154,6 +154,11 @@ impl CoralReefClient {
             .as_ref()
     }
 
+    /// Public accessor for the underlying client (for dispatch handler).
+    pub async fn client_ref(&self) -> Option<&UnixJsonRpcClient> {
+        self.client().await
+    }
+
     /// Whether coralReef is available (discovered and reachable).
     pub async fn is_available(&self) -> bool {
         self.client().await.is_some()

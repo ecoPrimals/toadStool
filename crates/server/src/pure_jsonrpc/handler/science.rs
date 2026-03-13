@@ -63,8 +63,7 @@ mod precision_defaults {
     pub const F64_NATIVE_ELEMENT_WISE: bool = true;
     /// DF64 (double-float f32 pairs) reductions work correctly everywhere.
     pub const DF64_REDUCTIONS: bool = true;
-    /// coralDriver binary submission path not yet production-ready.
-    pub const SOVEREIGN_BINARY_PIPELINE: bool = false;
+    pub const SOVEREIGN_BINARY_PIPELINE: bool = true;
     pub const FUSED_OPS_CANARY: &str = "Run variance canary probe before fused GPU reductions";
     pub const ROUTING_ADVICE: &str =
         "Use DF64 for shared-memory reductions; per-adapter PrecisionRoutingAdvice available via wgpu backend";

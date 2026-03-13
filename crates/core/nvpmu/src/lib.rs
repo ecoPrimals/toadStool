@@ -42,6 +42,7 @@ pub mod monitor;
 pub mod nvidia_smi;
 pub mod pci;
 pub mod permissions;
+pub mod power;
 #[allow(
     unsafe_code,
     reason = "VFIO BAR0 access requires mmap + volatile read/write + VFIO ioctls"
@@ -51,12 +52,13 @@ pub mod vfio_bind;
 pub mod watchdog;
 
 pub use bar0::Bar0Access;
-pub use dma::{DmaAllocator, DmaBuffer};
+pub use dma::{DmaAllocator, DmaBuffer, HugePageSize, supports_huge_pages};
 pub use error::{NvPmuError, Result};
 pub use firmware::FirmwareInventory;
 pub use hwmon::HwmonSensors;
 pub use init::RegisterSnapshot;
 pub use monitor::{MonitorConfig, SafetyStatus};
 pub use pci::NvidiaGpu;
-pub use vfio::VfioBar0Access;
+pub use power::{GpuPowerController, PciPowerState, ResetMethod};
+pub use vfio::{VfioBar0Access, VfioMsixInterrupt};
 pub use vfio_bind::{BindResult, BindingState};

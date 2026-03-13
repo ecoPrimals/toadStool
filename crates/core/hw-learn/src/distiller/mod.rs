@@ -17,6 +17,7 @@ pub mod classify;
 pub mod diff;
 pub mod recipe;
 
+pub use classify::GpuGen;
 pub use diff::diff_traces;
 pub use recipe::build_recipe;
 
@@ -165,7 +166,7 @@ impl RecipeDistiller {
             observation.events.clone()
         };
 
-        let classified = classify::classify_events(&compute_events);
+        let classified = classify::classify_events(&compute_events, Some(&target_arch.chip));
         recipe::build_recipe(classified, target_arch, &observation.driver)
     }
 }

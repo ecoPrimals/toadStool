@@ -22,10 +22,35 @@
 //! ```
 
 use crate::error::{NvPmuError, Result};
-use rustix::mm::{mlock, munlock};
+use rustix::mm::{mlock, mmap_anonymous, munlock, munmap, MapFlags, ProtFlags};
 use std::os::fd::{BorrowedFd, RawFd};
 
 const PAGE_SIZE: usize = 4096;
+const HUGE_PAGE_2M: usize = 2 * 1024 * 1024;
+const HUGE_PAGE_1G: usize = 1024 * 1024 * 1024;
+
+/// Huge page size for DMA allocations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HugePageSize {
+    /// Standard 4KB pages (uses regular alloc, not mmap).
+    Standard,
+    /// 2 MiB huge pages.
+    Huge2M,
+    /// 1 GiB huge pages.
+    Huge1G,
+}
+
+impl HugePageSize {
+    /// Page size in bytes.
+    #[must_use]
+    pub const fn page_size(&self) -> usize {
+        match self {
+            Self::Standard => PAGE_SIZE,
+            Self::Huge2M => HUGE_PAGE_2M,
+            Self::Huge1G => HUGE_PAGE_1G,
+        }
+    }
+}
 const IOVA_BASE: u64 = 0x1000_0000;
 
 /// VFIO DMA mapping request (matches kernel ABI).
@@ -89,6 +114,9 @@ pub struct DmaBuffer {
     iova: u64,
     size: usize,
     container_fd: RawFd,
+    /// When true, memory was allocated via mmap (huge pages); use munmap on drop.
+    /// When false, memory was allocated via alloc_zeroed; use dealloc on drop.
+    huge_page: bool,
 }
 
 impl DmaBuffer {
@@ -123,7 +151,7 @@ impl DmaBuffer {
 impl Drop for DmaBuffer {
     #[allow(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     fn drop(&mut self) {
-        // SAFETY: munlock matches mlock from allocate().
+        // SAFETY: munlock matches mlock from allocate() or allocate_huge().
         unsafe {
             let _ = munlock(self.vaddr.cast(), self.size);
         }
@@ -142,10 +170,17 @@ impl Drop for DmaBuffer {
         };
         let _ = unsafe { rustix::ioctl::ioctl(fd, ioctl) };
 
-        let layout = std::alloc::Layout::from_size_align(self.size, PAGE_SIZE)
-            .expect("Layout valid: matches alloc");
-        // SAFETY: dealloc matches alloc_zeroed from allocate(); same layout.
-        unsafe { std::alloc::dealloc(self.vaddr, layout) };
+        if self.huge_page {
+            // SAFETY: munmap matches mmap_anonymous from allocate_huge(); same ptr and size.
+            unsafe {
+                let _ = munmap(self.vaddr.cast(), self.size);
+            }
+        } else {
+            let layout = std::alloc::Layout::from_size_align(self.size, PAGE_SIZE)
+                .expect("Layout valid: matches alloc");
+            // SAFETY: dealloc matches alloc_zeroed from allocate(); same layout.
+            unsafe { std::alloc::dealloc(self.vaddr, layout) };
+        }
 
         tracing::debug!(iova = %format!("{:#x}", self.iova), "freed DMA buffer");
     }
@@ -247,8 +282,122 @@ impl DmaAllocator {
             iova,
             size: aligned_size,
             container_fd: self.container_fd,
+            huge_page: false,
         })
     }
+
+    /// Allocate a DMA buffer using huge pages for high-performance transfers.
+    ///
+    /// For [`HugePageSize::Standard`], delegates to [`allocate`](Self::allocate).
+    /// For 2M/1G huge pages, uses `mmap_anonymous` with `MAP_HUGETLB` instead
+    /// of `alloc_zeroed`. Size is rounded up to the page size boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if huge pages are unavailable, allocation, mlock, or
+    /// IOMMU mapping fails.
+    #[allow(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
+    pub fn allocate_huge(&mut self, size: usize, page_size: HugePageSize) -> Result<DmaBuffer> {
+        if size == 0 {
+            return Err(NvPmuError::Hardware(
+                "DMA buffer size must be > 0".to_string(),
+            ));
+        }
+
+        match page_size {
+            HugePageSize::Standard => return self.allocate(size),
+            HugePageSize::Huge2M | HugePageSize::Huge1G => {}
+        }
+
+        let page_sz = page_size.page_size();
+        let aligned_size = size.div_ceil(page_sz) * page_sz;
+
+        let map_flags = match page_size {
+            HugePageSize::Huge2M => MapFlags::hugetlb_with_size_log2(21)
+                .ok_or_else(|| NvPmuError::Hardware("MAP_HUGETLB 2M flag unsupported".into()))?,
+            HugePageSize::Huge1G => MapFlags::hugetlb_with_size_log2(30)
+                .ok_or_else(|| NvPmuError::Hardware("MAP_HUGETLB 1G flag unsupported".into()))?,
+            HugePageSize::Standard => unreachable!(),
+        };
+
+        // SAFETY: mmap_anonymous creates a fresh mapping; we own the returned ptr.
+        let vaddr = unsafe {
+            mmap_anonymous(
+                std::ptr::null_mut(),
+                aligned_size,
+                ProtFlags::READ | ProtFlags::WRITE,
+                map_flags,
+            )
+        }
+        .map_err(|e| NvPmuError::Hardware(format!("huge page mmap failed: {e}")))?
+        .cast::<u8>();
+
+        if vaddr.is_null() {
+            return Err(NvPmuError::Hardware(
+                "DMA huge page allocation failed (mmap returned null)".to_string(),
+            ));
+        }
+
+        // SAFETY: mlock prevents page-out; vaddr valid for aligned_size bytes.
+        if let Err(e) = unsafe { mlock(vaddr.cast(), aligned_size) } {
+            unsafe { let _ = munmap(vaddr.cast(), aligned_size); }
+            return Err(NvPmuError::Hardware(format!("mlock failed: {e}")));
+        }
+
+        let iova = self.next_iova;
+        let mut dma_map = VfioDmaMap {
+            argsz: std::mem::size_of::<VfioDmaMap>() as u32,
+            flags: VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
+            vaddr: vaddr as u64,
+            iova,
+            size: aligned_size as u64,
+        };
+
+        let fd = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
+        let ioctl = DmaIoctl::<OP_IOMMU_MAP_DMA, _> {
+            ptr: std::ptr::from_mut(&mut dma_map),
+        };
+
+        if let Err(e) = unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+            unsafe {
+                let _ = munlock(vaddr.cast(), aligned_size);
+                let _ = munmap(vaddr.cast(), aligned_size);
+            }
+            return Err(NvPmuError::Hardware(format!(
+                "VFIO DMA map failed: {e}"
+            )));
+        }
+
+        self.next_iova += aligned_size as u64;
+
+        tracing::debug!(
+            iova = %format!("{iova:#x}"),
+            size = aligned_size,
+            page_size = ?page_size,
+            "allocated DMA buffer (huge pages)"
+        );
+
+        Ok(DmaBuffer {
+            vaddr,
+            iova,
+            size: aligned_size,
+            container_fd: self.container_fd,
+            huge_page: true,
+        })
+    }
+}
+
+/// Check if the system supports huge pages (2M pages available).
+///
+/// Returns true if `/sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages`
+/// exists and has value > 0.
+#[must_use]
+pub fn supports_huge_pages() -> bool {
+    let path = "/sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages";
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    content.trim().parse::<u32>().map_or(false, |n| n > 0)
 }
 
 #[cfg(test)]
@@ -267,6 +416,35 @@ mod tests {
         assert_eq!(4096usize.div_ceil(PAGE_SIZE) * PAGE_SIZE, 4096);
         assert_eq!(4097usize.div_ceil(PAGE_SIZE) * PAGE_SIZE, 8192);
         assert_eq!(8192usize.div_ceil(PAGE_SIZE) * PAGE_SIZE, 8192);
+    }
+
+    #[test]
+    fn huge_page_size_constants() {
+        assert_eq!(HUGE_PAGE_2M, 2 * 1024 * 1024);
+        assert_eq!(HUGE_PAGE_1G, 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn huge_page_size_enum() {
+        assert_eq!(HugePageSize::Standard.page_size(), PAGE_SIZE);
+        assert_eq!(HugePageSize::Huge2M.page_size(), HUGE_PAGE_2M);
+        assert_eq!(HugePageSize::Huge1G.page_size(), HUGE_PAGE_1G);
+    }
+
+    #[test]
+    fn huge_page_alignment_math() {
+        assert_eq!(1usize.div_ceil(HUGE_PAGE_2M) * HUGE_PAGE_2M, HUGE_PAGE_2M);
+        assert_eq!(
+            (HUGE_PAGE_2M + 1).div_ceil(HUGE_PAGE_2M) * HUGE_PAGE_2M,
+            2 * HUGE_PAGE_2M
+        );
+        assert_eq!(1usize.div_ceil(HUGE_PAGE_1G) * HUGE_PAGE_1G, HUGE_PAGE_1G);
+    }
+
+    #[test]
+    fn supports_huge_pages_does_not_panic() {
+        // May be true or false depending on system; just ensure it doesn't panic.
+        let _ = supports_huge_pages();
     }
 
     #[test]

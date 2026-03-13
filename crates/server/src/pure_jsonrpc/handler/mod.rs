@@ -7,6 +7,7 @@
 //! standard `{domain}.{operation}` naming convention.
 
 mod core;
+mod dispatch;
 mod hw_learn;
 mod job;
 mod ollama;
@@ -25,6 +26,7 @@ use tracing::{debug, error, info};
 
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JSONRPC_VERSION};
 
+use dispatch::DispatchHandler;
 use hw_learn::HwLearnHandler;
 use job::JobHandler;
 use ollama::OllamaHandler;
@@ -43,6 +45,7 @@ pub struct JsonRpcHandler {
     start_time: std::time::Instant,
     error_count: Arc<AtomicU64>,
     semantic_registry: SemanticMethodRegistry,
+    dispatch: DispatchHandler,
     hw_learn: HwLearnHandler,
     job: JobHandler,
     workload: WorkloadHandler,
@@ -70,6 +73,7 @@ impl JsonRpcHandler {
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             semantic_registry: SemanticMethodRegistry::new(),
+            dispatch: DispatchHandler::new(crate::coral_reef_client::create_coral_reef_client()),
             hw_learn: HwLearnHandler::new(),
             job: JobHandler::new(local_gate_id),
             workload: WorkloadHandler::new(executor),
@@ -173,6 +177,11 @@ impl JsonRpcHandler {
             "compute.cancel" => return self.job.compute_cancel(params).await,
             "compute.list" => return self.job.compute_list(params).await,
 
+            "compute.dispatch.submit" => return self.dispatch.dispatch_submit(params).await,
+            "compute.dispatch.status" => return self.dispatch.dispatch_status(params).await,
+            "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,
+            "compute.dispatch.capabilities" => return self.dispatch.dispatch_capabilities(params).await,
+
             "gpu.info" => return core::gpu_info().await,
             "gpu.memory" => return core::gpu_memory().await,
             "gpu.telemetry" => return self.hw_learn.gpu_telemetry(params).await,
@@ -243,6 +252,9 @@ impl JsonRpcHandler {
                 return self.hw_learn.hw_learn_share_recipe(params).await
             }
             "compute.hardware.auto_init" => return self.hw_learn.hw_learn_auto_init(params).await,
+            "compute.hardware.auto_init_all" => {
+                return self.hw_learn.hw_learn_auto_init_all(params).await
+            }
             "compute.hardware.status" => return self.hw_learn.hw_learn_status(params).await,
 
             "shader.compile.wgsl" => return self.shader.compile_wgsl(params).await,
@@ -280,6 +292,10 @@ impl JsonRpcHandler {
             "science_compute_result" => science::science_compute_result(&self.job, params).await,
             "science_compute_cancel" => science::science_compute_cancel(&self.job, params).await,
             "science_gpu_dispatch" => science::science_gpu_dispatch(&self.job, params).await,
+            "dispatch_submit" => self.dispatch.dispatch_submit(params).await,
+            "dispatch_status" => self.dispatch.dispatch_status(params).await,
+            "dispatch_result" => self.dispatch.dispatch_result(params).await,
+            "dispatch_capabilities" => self.dispatch.dispatch_capabilities(params).await,
             "science_gpu_capabilities" => science::science_gpu_capabilities().await,
             "science_npu_dispatch" => science::science_npu_dispatch(&self.job, params).await,
             "science_npu_capabilities" => science::science_npu_capabilities().await,
@@ -303,6 +319,7 @@ impl JsonRpcHandler {
             "hw_learn_share_recipe" => self.hw_learn.hw_learn_share_recipe(params).await,
             "hw_learn_status" => self.hw_learn.hw_learn_status(params).await,
             "hw_learn_auto_init" => self.hw_learn.hw_learn_auto_init(params).await,
+            "hw_learn_auto_init_all" => self.hw_learn.hw_learn_auto_init_all(params).await,
             n if n.starts_with("ecology_") => {
                 let method = n.replace('_', ".");
                 science::ecology_offload(&method, params).await

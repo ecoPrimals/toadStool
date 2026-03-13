@@ -90,6 +90,10 @@ pub(super) async fn discover_capabilities(
         "compute.result",
         "compute.cancel",
         "compute.list",
+        "compute.dispatch.submit",
+        "compute.dispatch.status",
+        "compute.dispatch.result",
+        "compute.dispatch.capabilities",
         "ai.local_inference",
         "ai.local_execute",
         "gpu.info",
@@ -112,6 +116,8 @@ pub(super) async fn discover_capabilities(
         "compute.hardware.distill",
         "compute.hardware.apply",
         "compute.hardware.share_recipe",
+        "compute.hardware.auto_init",
+        "compute.hardware.auto_init_all",
         "compute.hardware.status",
     ];
 
