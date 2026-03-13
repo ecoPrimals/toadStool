@@ -4,6 +4,10 @@
 //! Replays hw-learn recipes via BAR0 MMIO to initialize the compute
 //! engine on GPUs without PMU firmware (Volta desktop).
 //!
+//! This module delegates to [`hw_learn::RecipeApplicator`] for the actual
+//! register write loop, converting the legacy JSON recipe format to the
+//! canonical [`hw_learn::distiller::InitRecipe`].
+//!
 //! # Usage
 //!
 //! ```rust,no_run
@@ -28,6 +32,10 @@ use crate::bar0::Bar0Access;
 use crate::error::Result;
 use crate::hwmon::HwmonSensors;
 use crate::monitor::{assert_thermal_safe, MonitorConfig};
+use hw_learn::applicator::{ApplyVerdict, RecipeApplicator};
+use hw_learn::distiller::{
+    DriverKind, GpuArch, InitRecipe, InitStep, RegFunction, Vendor, VerifyCheck,
+};
 
 /// Result of applying a PMU init recipe.
 #[derive(Debug, serde::Serialize)]
@@ -40,7 +48,7 @@ pub struct InitResult {
     pub success: bool,
 }
 
-/// Recipe step matching the hw-learn format.
+/// Legacy JSON recipe step format (kept for backward-compatible deserialization).
 #[derive(Debug, serde::Deserialize)]
 struct RecipeStep {
     offset: u64,
@@ -54,7 +62,7 @@ struct RecipeStep {
     delay_us: Option<u64>,
 }
 
-/// Verification read.
+/// Legacy verification read format.
 #[derive(Debug, serde::Deserialize)]
 struct VerifyRead {
     offset: u64,
@@ -62,7 +70,7 @@ struct VerifyRead {
     expected_value: u64,
 }
 
-/// Deserialized recipe.
+/// Legacy JSON recipe format.
 #[derive(Debug, serde::Deserialize)]
 struct Recipe {
     chip: String,
@@ -71,85 +79,106 @@ struct Recipe {
     verify_reads: Vec<VerifyRead>,
 }
 
+/// Convert a legacy `Recipe` to the canonical `InitRecipe` format.
+fn to_init_recipe(recipe: &Recipe) -> InitRecipe {
+    let mut steps: Vec<InitStep> =
+        Vec::with_capacity(recipe.steps.len() + recipe.verify_reads.len());
+
+    for s in &recipe.steps {
+        steps.push(InitStep::RegisterWrite {
+            offset: s.offset,
+            value: s.value,
+            function: RegFunction::Unknown,
+        });
+        if let Some(us) = s.delay_us {
+            steps.push(InitStep::Delay { us });
+        }
+    }
+
+    for v in &recipe.verify_reads {
+        steps.push(InitStep::Verify {
+            check: VerifyCheck::RegisterMatch {
+                offset: v.offset,
+                expected: v.expected_value,
+                mask: v.expected_mask,
+            },
+        });
+    }
+
+    let arch = GpuArch {
+        vendor: Vendor::Nvidia,
+        generation: String::new(),
+        chip: recipe.chip.clone(),
+        compute_class: String::new(),
+    };
+
+    InitRecipe {
+        source_arch: arch.clone(),
+        source_driver: DriverKind::Nouveau,
+        target_arch: arch,
+        steps,
+        confidence: 0.0,
+        description: format!("Legacy nvpmu recipe for {}", recipe.chip),
+    }
+}
+
 /// Apply a PMU init recipe from JSON to a BAR0-mapped GPU.
+///
+/// Accepts both the legacy nvpmu JSON format (`{ chip, steps, verify_reads }`)
+/// and the canonical hw-learn `InitRecipe` format. The actual write loop is
+/// delegated to [`hw_learn::RecipeApplicator`].
 ///
 /// # Errors
 ///
 /// Returns error if:
 /// - JSON parsing fails
-/// - Thermal safety check fails (before or after)
 /// - BAR0 read/write fails
 #[allow(
     unsafe_code,
     reason = "register writes via Bar0Access require unsafe mmap operations"
 )]
 pub fn apply_recipe(recipe_json: &str, bar0: &mut Bar0Access) -> Result<InitResult> {
-    let recipe: Recipe = serde_json::from_str(recipe_json)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    let (chip, init_recipe) = if let Ok(legacy) = serde_json::from_str::<Recipe>(recipe_json) {
+        let chip = legacy.chip.clone();
+        (chip, to_init_recipe(&legacy))
+    } else {
+        let canonical: InitRecipe = serde_json::from_str(recipe_json)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let chip = canonical.target_arch.chip.clone();
+        (chip, canonical)
+    };
 
-    tracing::info!(chip = %recipe.chip, steps = recipe.steps.len(), "applying PMU init recipe");
+    tracing::info!(chip = %chip, steps = init_recipe.steps.len(), "applying PMU init recipe via hw-learn");
 
-    let mut steps_applied = 0;
-    let mut steps_failed = 0;
+    let mut applicator = RecipeApplicator::new(false).with_register_access(bar0);
+    let result = applicator.apply(&init_recipe, "/dev/dri/card0");
 
-    for step in &recipe.steps {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "recipe values are 32-bit register values stored as u64"
-        )]
-        match bar0.write_u32(step.offset, step.value as u32) {
-            Ok(()) => {
-                steps_applied += 1;
-                tracing::debug!(
-                    offset = format!("{:#010x}", step.offset),
-                    value = format!("{:#010x}", step.value),
-                    "register write OK"
-                );
-            }
-            Err(e) => {
-                steps_failed += 1;
-                tracing::error!(
-                    offset = format!("{:#010x}", step.offset),
-                    err = %e,
-                    "register write FAILED"
-                );
-            }
-        }
+    let steps_applied = result.step_results.iter().filter(|r| r.success).count();
+    let steps_failed = result.step_results.iter().filter(|r| !r.success).count();
 
-        if let Some(delay) = step.delay_us {
-            std::thread::sleep(std::time::Duration::from_micros(delay));
-        }
-    }
+    let verify_passed = result
+        .step_results
+        .iter()
+        .filter(|r| r.success && r.detail.contains("verify"))
+        .count();
+    let verify_failed = result
+        .step_results
+        .iter()
+        .filter(|r| !r.success && r.detail.contains("verify"))
+        .count();
 
-    let mut verify_passed = 0;
-    let mut verify_failed = 0;
+    let success = result.verdict == ApplyVerdict::Success;
 
-    for v in &recipe.verify_reads {
-        match bar0.read_u32(v.offset) {
-            Ok(val) => {
-                let masked = u64::from(val) & v.expected_mask;
-                if masked == (v.expected_value & v.expected_mask) {
-                    verify_passed += 1;
-                } else {
-                    verify_failed += 1;
-                    tracing::warn!(
-                        offset = format!("{:#010x}", v.offset),
-                        read = format!("{:#010x}", val),
-                        expected = format!("{:#010x}", v.expected_value),
-                        "verify FAILED"
-                    );
-                }
-            }
-            Err(_) => {
-                verify_failed += 1;
+    if !success {
+        for sr in &result.step_results {
+            if !sr.success {
+                tracing::error!(step = sr.step_index, detail = %sr.detail, "step FAILED");
             }
         }
     }
-
-    let success = steps_failed == 0 && verify_failed == 0;
 
     Ok(InitResult {
-        chip: recipe.chip,
+        chip,
         steps_applied,
         steps_failed,
         verify_passed,
@@ -160,8 +189,8 @@ pub fn apply_recipe(recipe_json: &str, bar0: &mut Bar0Access) -> Result<InitResu
 
 /// Apply a recipe with thermal safety checks.
 ///
-/// Reads GPU temperature before and after applying the recipe.
-/// Aborts if the GPU is already above the critical temperature.
+/// Reads GPU temperature before applying the recipe. Aborts if the
+/// GPU is already above the critical temperature.
 ///
 /// # Errors
 ///
@@ -189,4 +218,57 @@ pub fn apply_recipe_safe(
     }
 
     Ok(result)
+}
+
+/// Apply a canonical `InitRecipe` directly (no JSON parsing).
+///
+/// Prefer this over `apply_recipe` when working with hw-learn's
+/// knowledge store or distiller output.
+///
+/// # Errors
+///
+/// Returns error if thermal safety is violated or recipe application fails.
+#[allow(
+    unsafe_code,
+    reason = "register writes via Bar0Access require unsafe mmap operations"
+)]
+pub fn apply_init_recipe(
+    recipe: &InitRecipe,
+    bar0: &mut Bar0Access,
+    sensors: &HwmonSensors,
+    config: &MonitorConfig,
+) -> Result<InitResult> {
+    assert_thermal_safe(sensors, config)?;
+
+    let chip = recipe.target_arch.chip.clone();
+    tracing::info!(chip = %chip, steps = recipe.steps.len(), "applying init recipe via hw-learn");
+
+    let mut applicator = RecipeApplicator::new(false).with_register_access(bar0);
+    let result = applicator.apply(recipe, "/dev/dri/card0");
+
+    let success = result.verdict == ApplyVerdict::Success;
+    if !success {
+        for sr in &result.step_results {
+            if !sr.success {
+                tracing::error!(step = sr.step_index, detail = %sr.detail, "step FAILED");
+            }
+        }
+    }
+
+    Ok(InitResult {
+        chip,
+        steps_applied: result.step_results.iter().filter(|r| r.success).count(),
+        steps_failed: result.step_results.iter().filter(|r| !r.success).count(),
+        verify_passed: result
+            .step_results
+            .iter()
+            .filter(|r| r.success && r.detail.contains("verify"))
+            .count(),
+        verify_failed: result
+            .step_results
+            .iter()
+            .filter(|r| !r.success && r.detail.contains("verify"))
+            .count(),
+        success,
+    })
 }

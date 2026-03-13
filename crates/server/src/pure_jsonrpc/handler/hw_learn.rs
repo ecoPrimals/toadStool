@@ -114,10 +114,16 @@ impl HwLearnHandler {
         }))
     }
 
-    /// `compute.hardware.apply` — Dry-run a recipe.
+    /// `compute.hardware.apply` — Apply a recipe (dry-run or live BAR0).
     ///
     /// Params: `{ "recipe_json": "..." }` or `{ "recipe_id": "..." }`
-    /// Returns: `{ "result": {...} }`
+    ///         Optional: `{ "live": true, "bdf": "0000:65:00.0" }`
+    ///
+    /// When `live` is true and BAR0 is accessible, the recipe is applied
+    /// directly to the GPU via MMIO register writes. Without `live`, the
+    /// applicator performs a dry-run simulation.
+    ///
+    /// Returns: `{ "result": {...}, "mode": "live"|"dry_run" }`
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"
@@ -151,19 +157,60 @@ impl HwLearnHandler {
             ));
         };
 
-        let mut applicator = hw_learn::RecipeApplicator::new(true);
-        let result = applicator.apply(&recipe, "/dev/dri/card0");
+        let live = p
+            .get("live")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
 
-        Ok(serde_json::json!({
-            "domain": "compute.hardware",
-            "operation": "apply",
-            "mode": "dry_run",
-            "verdict": format!("{:?}", result.verdict),
-            "steps_executed": result.steps_executed,
-            "steps_total": result.steps_total,
-            "result": serde_json::to_value(&result).unwrap_or_default(),
-            "note": "BAR0 live apply requires root privileges and explicit 'live: true' opt-in",
-        }))
+        let card_path = p
+            .get("card_path")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("/dev/dri/card0");
+
+        if live {
+            let bdf = resolve_bdf(p)?;
+            let mut bar0 = nvpmu::Bar0Access::open(&bdf).map_err(|e| {
+                JsonRpcError::internal_error(format!(
+                    "Failed to open BAR0 for {bdf}: {e}. \
+                     Run setup-gpu-sovereign.sh or use sudo."
+                ))
+            })?;
+
+            let mut applicator =
+                hw_learn::RecipeApplicator::new(false).with_register_access(&mut bar0);
+            let result = applicator.apply(&recipe, card_path);
+
+            if result.verdict == hw_learn::applicator::ApplyVerdict::Success {
+                if let Ok(mut store) = self.open_store() {
+                    let _ = store.store(&recipe);
+                }
+            }
+
+            Ok(serde_json::json!({
+                "domain": "compute.hardware",
+                "operation": "apply",
+                "mode": "live",
+                "bdf": bdf,
+                "verdict": format!("{:?}", result.verdict),
+                "steps_executed": result.steps_executed,
+                "steps_total": result.steps_total,
+                "result": serde_json::to_value(&result).unwrap_or_default(),
+            }))
+        } else {
+            let mut applicator = hw_learn::RecipeApplicator::new(true);
+            let result = applicator.apply(&recipe, card_path);
+
+            Ok(serde_json::json!({
+                "domain": "compute.hardware",
+                "operation": "apply",
+                "mode": "dry_run",
+                "verdict": format!("{:?}", result.verdict),
+                "steps_executed": result.steps_executed,
+                "steps_total": result.steps_total,
+                "result": serde_json::to_value(&result).unwrap_or_default(),
+                "note": "Pass 'live: true' with BAR0 access for real register writes",
+            }))
+        }
     }
 
     /// `compute.hardware.share_recipe` — Save, load, or list recipes.
@@ -295,9 +342,10 @@ impl HwLearnHandler {
             "domain": "compute.hardware",
             "operation": "status",
             "pipeline": {
-                "phase": "0 — trace-based (no live hardware access)",
+                "phase": "3 — BAR0 live apply available",
                 "stages": ["observe", "distill", "apply", "share_recipe"],
-                "bar0_live_apply": false,
+                "bar0_live_apply": true,
+                "bar0_requires": "gpu-mmio group or root (run setup-gpu-sovereign.sh)",
             },
             "recipes": {
                 "stored_architectures": arch_count,
@@ -306,6 +354,137 @@ impl HwLearnHandler {
             "gpus_detected": gpu_count,
         }))
     }
+}
+
+impl HwLearnHandler {
+    /// `compute.hardware.auto_init` — Auto-detect GPU, find best recipe, apply.
+    ///
+    /// This wires Gap 5 end-to-end: discover GPU → knowledge store → BAR0 apply.
+    ///
+    /// Params: `{ "bdf": "..." }` (optional, auto-detects if omitted)
+    ///         `{ "dry_run": true }` (optional, default false)
+    /// Returns: `{ "gpu": ..., "recipe_id": ..., "result": ... }`
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
+    pub async fn hw_learn_auto_init(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let gpus = nvpmu::pci::discover_gpus()
+            .map_err(|e| JsonRpcError::internal_error(format!("GPU discovery failed: {e}")))?;
+
+        if gpus.is_empty() {
+            return Err(JsonRpcError::internal_error("No NVIDIA GPUs found"));
+        }
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .map(String::from)
+            .unwrap_or_else(|| gpus[0].bdf.clone());
+
+        let gpu = gpus.iter().find(|g| g.bdf == bdf).ok_or_else(|| {
+            JsonRpcError::invalid_params(format!("GPU {bdf} not found in PCI scan"))
+        })?;
+
+        let chip = gpu.chip.as_deref().unwrap_or("unknown");
+        let target_arch = hw_learn::distiller::GpuArch {
+            vendor: hw_learn::distiller::Vendor::Nvidia,
+            generation: String::new(),
+            chip: chip.to_string(),
+            compute_class: String::new(),
+        };
+
+        let store = self.open_store()?;
+        let recipe_id = store.best_recipe(&target_arch).ok_or_else(|| {
+            JsonRpcError::internal_error(format!(
+                "No recipe found for {chip}. Run compute.hardware.distill first \
+                 to create a recipe from mmiotraces."
+            ))
+        })?;
+
+        let recipe = store
+            .load(&recipe_id)
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!("Failed to load recipe {recipe_id}: {e}"))
+            })?
+            .ok_or_else(|| {
+                JsonRpcError::internal_error(format!("Recipe {recipe_id} disappeared from store"))
+            })?;
+
+        let dry_run = params
+            .and_then(|p| p.get("dry_run"))
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+
+        let card_path = params
+            .and_then(|p| p.get("card_path"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("/dev/dri/card0");
+
+        if dry_run {
+            let mut applicator = hw_learn::RecipeApplicator::new(true);
+            let result = applicator.apply(&recipe, card_path);
+
+            return Ok(serde_json::json!({
+                "domain": "compute.hardware",
+                "operation": "auto_init",
+                "mode": "dry_run",
+                "gpu": { "bdf": bdf, "chip": chip },
+                "recipe_id": recipe_id,
+                "verdict": format!("{:?}", result.verdict),
+                "steps_total": result.steps_total,
+            }));
+        }
+
+        let mut bar0 = nvpmu::Bar0Access::open(&bdf).map_err(|e| {
+            JsonRpcError::internal_error(format!(
+                "BAR0 open failed for {bdf}: {e}. Run setup-gpu-sovereign.sh."
+            ))
+        })?;
+
+        let mut applicator = hw_learn::RecipeApplicator::new(false).with_register_access(&mut bar0);
+        let result = applicator.apply(&recipe, card_path);
+
+        let confidence = match result.verdict {
+            hw_learn::applicator::ApplyVerdict::Success => 1.0,
+            hw_learn::applicator::ApplyVerdict::PartialSuccess => 0.5,
+            _ => 0.0,
+        };
+
+        if let Ok(mut store) = self.open_store() {
+            let _ = store.update_confidence(&recipe_id, confidence);
+        }
+
+        Ok(serde_json::json!({
+            "domain": "compute.hardware",
+            "operation": "auto_init",
+            "mode": "live",
+            "gpu": { "bdf": bdf, "chip": chip, "driver": gpu.driver },
+            "recipe_id": recipe_id,
+            "verdict": format!("{:?}", result.verdict),
+            "steps_executed": result.steps_executed,
+            "steps_total": result.steps_total,
+            "confidence_updated": confidence,
+            "result": serde_json::to_value(&result).unwrap_or_default(),
+        }))
+    }
+}
+
+/// Resolve a PCI BDF address — either from params or auto-detect the first NVIDIA GPU.
+fn resolve_bdf(params: &serde_json::Value) -> Result<String, JsonRpcError> {
+    if let Some(bdf) = params.get("bdf").and_then(serde_json::Value::as_str) {
+        return Ok(bdf.to_string());
+    }
+
+    let gpus = nvpmu::pci::discover_gpus()
+        .map_err(|e| JsonRpcError::internal_error(format!("GPU discovery failed: {e}")))?;
+
+    gpus.first()
+        .map(|g| g.bdf.clone())
+        .ok_or_else(|| JsonRpcError::internal_error("No NVIDIA GPUs found for BAR0 access"))
 }
 
 fn observe_from_text(

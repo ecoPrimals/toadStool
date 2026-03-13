@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 12, 2026 -- S149 Deep Debt Execution & Evolution
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,192 tests (0 failures) | ~86% line coverage (121K production lines) | 94+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening
-**Latest**: S149 — Deep debt execution: clippy 0 warnings, `resolve_credential()` fully wired (file-based + security provider RPC), handler/mod.rs refactored (shader extracted), orphaned deps removed, nouveau_drm evolved to rustix, hw-learn stubs → real implementations, interned constants everywhere.
+**Updated**: March 12, 2026 -- S150 Sovereign Compute Gap Closure
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 19,567 tests (0 failures) | ~86% line coverage (121K production lines) | 95+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **VFIO GPU backend + live BAR0 apply**
+**Latest**: S150 — Sovereign compute gap closure: VFIO GPU backend (VfioBar0Access), BAR0 udev permissions, nvpmu dedup (delegates to hw-learn RecipeApplicator), live BAR0 apply via JSON-RPC, auto_init knowledge→init wiring (Gap 5), setup-gpu-sovereign.sh.
 
 ---
 

@@ -1,4 +1,4 @@
-# Status -- March 12, 2026 (S149 Deep Debt Execution & Evolution)
+# Status -- March 12, 2026 (S150 Sovereign Compute Gap Closure)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **20,192 tests, 0 failures** (S149) |
+| `cargo test --workspace` | PASS | **19,567 tests, 0 failures** (S150) |
 | `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Gap: neuromorphic/V4L2/DRM hardware code. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
@@ -95,6 +95,15 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S150: Sovereign Compute Gap Closure (Mar 12, 2026)
+- **VFIO GPU backend** — `nvpmu::vfio::VfioBar0Access` implements `RegisterAccess` for NVIDIA GPUs bound to `vfio-pci`. Full VFIO lifecycle: container → group → device fd → BAR0 mmap via `VFIO_DEVICE_GET_REGION_INFO`. Dual-use (gaming + science) path.
+- **BAR0 permissions** — `nvpmu::permissions` module: udev rule installer for `gpu-mmio` group, immediate BAR0 access check, per-device permission setter. `setup-gpu-sovereign.sh` script: GPU detection, group creation, udev rules, immediate application, VFIO guidance.
+- **nvpmu dedup** — `init::apply_recipe()` now delegates to `hw_learn::RecipeApplicator` via `RegisterAccess`. Accepts both legacy JSON format and canonical `InitRecipe`. New `apply_init_recipe()` for direct `InitRecipe` use. Eliminated ~80 lines of duplicated apply loop.
+- **Live BAR0 apply** — `compute.hardware.apply` JSON-RPC handler evolved from dry-run-only to support `"live": true` with automatic BDF detection via `nvpmu::pci::discover_gpus()`. On success, recipe stored to knowledge base.
+- **Gap 5 wiring** — New `compute.hardware.auto_init` method: auto-detect GPU → find best recipe in `KnowledgeStore` → apply via BAR0. Updates confidence score on result. End-to-end knowledge → init path.
+- **NvPmuError::Hardware variant** — Added for VFIO and hardware-specific errors distinct from I/O.
+- 19,567 tests, 0 failures. `cargo fmt` clean. Full workspace compile clean.
 
 ### S149: Deep Debt Execution & Evolution (Mar 12, 2026)
 - **Clippy 0 code warnings** — Fixed all remaining: redundant match guards (`s if s == "beardog"` → direct patterns + `|` multi-match), `map_or` → `is_none_or`, `Error::new(ErrorKind::Other, e)` → `Error::other(e)`, long literal separators. All `#[allow]` lints now have `reason = "..."`.

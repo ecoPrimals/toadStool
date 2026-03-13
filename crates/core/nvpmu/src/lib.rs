@@ -36,6 +36,12 @@ pub mod init;
 pub mod monitor;
 pub mod nvidia_smi;
 pub mod pci;
+pub mod permissions;
+#[allow(
+    unsafe_code,
+    reason = "VFIO BAR0 access requires mmap + volatile read/write + VFIO ioctls"
+)]
+pub mod vfio;
 pub mod watchdog;
 
 pub use bar0::Bar0Access;
@@ -44,3 +50,4 @@ pub use firmware::FirmwareInventory;
 pub use hwmon::HwmonSensors;
 pub use monitor::{MonitorConfig, SafetyStatus};
 pub use pci::NvidiaGpu;
+pub use vfio::VfioBar0Access;

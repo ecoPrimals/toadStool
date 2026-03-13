@@ -241,6 +241,7 @@ impl JsonRpcHandler {
             "compute.hardware.share_recipe" => {
                 return self.hw_learn.hw_learn_share_recipe(params).await
             }
+            "compute.hardware.auto_init" => return self.hw_learn.hw_learn_auto_init(params).await,
             "compute.hardware.status" => return self.hw_learn.hw_learn_status(params).await,
 
             "shader.compile.wgsl" => return self.shader.compile_wgsl(params).await,
@@ -300,6 +301,7 @@ impl JsonRpcHandler {
             "hw_learn_apply" => self.hw_learn.hw_learn_apply(params).await,
             "hw_learn_share_recipe" => self.hw_learn.hw_learn_share_recipe(params).await,
             "hw_learn_status" => self.hw_learn.hw_learn_status(params).await,
+            "hw_learn_auto_init" => self.hw_learn.hw_learn_auto_init(params).await,
             n if n.starts_with("ecology_") => {
                 let method = n.replace('_', ".");
                 science::ecology_offload(&method, params).await
