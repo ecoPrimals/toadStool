@@ -205,7 +205,7 @@
 | **First E2E sovereign GPU dispatch on AMD RX 6950 XT** | WGSL → coral-reef compiler → PM4 dispatch → GPU execution → host readback, all pure Rust |
 | 3 critical bugs fixed: wave size, literal constant emission, 64-bit address | Compiler and driver hardened |
 | 990 tests (953 passing, 37 ignored hw tests) | Quality gates green |
-| `ComputeDispatch::CoralReef` can route through `coral-gpu` for AMD | toadStool's shader proxy can now produce real native binaries on AMD |
+| `ComputeDispatch::CoralReef` routes via JSON-RPC IPC (barraCuda v0.35 IPC-first) | toadStool's shader proxy can now produce real native binaries on AMD |
 | NVIDIA E2E still pending | Next coralReef milestone |
 
 ## Historical Handoff Items (Mar 5-6, 2026)

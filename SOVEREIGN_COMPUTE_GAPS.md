@@ -1,6 +1,6 @@
 # Sovereign Compute — Remaining Gaps
 
-**Date**: March 13, 2026 — S152
+**Date**: March 13, 2026 — S153
 **Purpose**: Single checklist of work remaining before toadStool's sovereign compute pipeline is complete.
 **Scope**: toadStool-owned gaps only. barraCuda and coralReef track their own.
 
@@ -9,14 +9,15 @@
 ## Architecture Reference
 
 ```
-barraCuda (WHAT) → coralReef (COMPILE+DISPATCH) → toadStool (WHERE+ORCHESTRATE)
-                     │ VFIO transport              │ VFIO interface
-                     │ (coral-driver: channels,    │ (device mgmt, BAR0 init,
-                     │  QMD, pushbuf, DMA)         │  permissions, pooling,
-                     │                             │  thermal safety, routing)
+barraCuda (WGSL math)
+  → [JSON-RPC] coralReef (WGSL → native SASS/GFX binary)
+    → [JSON-RPC] toadStool (dispatch binary → VFIO/DRM → GPU)
+      → GPU hardware (any PCIe GPU — NVIDIA, AMD, Intel)
 ```
 
-**coralReef Iteration 42** (VFIO sync + barraCuda API). The `compute.hardware.vfio_devices` JSON-RPC method provides the **VfioGpuInfo bridge** that unblocks barraCuda's `from_vfio_device` — toadStool discovers VFIO-bound GPUs and exposes descriptors for coralReef/barraCuda consumption.
+**IPC-first** (barraCuda v0.35): All inter-primal communication via JSON-RPC 2.0 at runtime. barraCuda has zero compile-time deps on coralReef or toadStool. VFIO detection is exclusively toadStool's responsibility via `compute.hardware.vfio_devices`.
+
+**coralReef Iteration 43**: PFIFO hardware channel creation via BAR0 MMIO (instance block, V2 MMU page tables, runlist, PCCSR bind/enable). RAMUSERD offsets corrected. The critical VFIO dispatch blocker is closed — hardware validation pending.
 
 Three dispatch paths:
 
@@ -80,7 +81,8 @@ Three dispatch paths:
 | Gap 9: Cross-gate GPU pooling | `RemoteDispatcher` (Unix + TCP relay), `GateGpuInfo.endpoint`, auto-forward in `compute_submit`, `compute.dispatch.forward` JSON-RPC method |
 | Unsafe evolution (display) | `MmapBuffer::as_slice()` centralizes V4L2 mmap unsafe; `read_frame` no longer has inline unsafe |
 | Gap 7: Mock hardware layers | `MockV4l2Device` (4 frame patterns, error injection, capture lifecycle) + `MockVfioDevice` (register sim, access log, `RegisterAccess` impl, error injection) in `crates/testing/src/mocks/` |
-| VfioGpuInfo bridge | `compute.hardware.vfio_devices` — discovers VFIO-bound GPUs, exposes descriptors for barraCuda `from_vfio_device` |
+| VfioGpuInfo bridge | `compute.hardware.vfio_devices` — discovers VFIO-bound GPUs, exposes descriptors over IPC. toadStool is sole VFIO detection source (barraCuda v0.35 IPC-first removed local detection) |
+| ecoprimals-mode CLI | `toadstool mode science/gaming/status` — single-GPU mode switching between display driver and `vfio-pci` (S153) |
 
 ## Previously Resolved (S151)
 

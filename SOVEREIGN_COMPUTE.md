@@ -6,7 +6,7 @@ Pure Rust. Any hardware. No vendor lock.
 **Full spec**: [`specs/SOVEREIGN_COMPUTE_EVOLUTION.md`](specs/SOVEREIGN_COMPUTE_EVOLUTION.md)
 **Remaining work**: [`SOVEREIGN_COMPUTE_GAPS.md`](SOVEREIGN_COMPUTE_GAPS.md) — checklist of gaps to close
 
-> **Note (S150):** Sovereign compiler Phases 0–4 and all shader/math infrastructure transferred to **barraCuda** (`ecoPrimals/barraCuda/`). coralReef Iteration 42 (VFIO sync + barraCuda API) owns VFIO transport (GPU protocol). toadStool owns VFIO interface (device management, permissions, pooling). See gaps doc for remaining toadStool work.
+> **Note (S153):** Sovereign compiler Phases 0–4 and all shader/math infrastructure transferred to **barraCuda** (`ecoPrimals/barraCuda/`). **IPC-first architecture** (barraCuda v0.35): all inter-primal communication via JSON-RPC at runtime. coralReef Iteration 43 owns VFIO transport (PFIFO channel init, QMD, pushbuf, DMA). toadStool owns VFIO interface (device management, permissions, pooling, dispatch routing). See gaps doc for remaining work.
 
 ---
 
@@ -273,4 +273,4 @@ Zero central coordinator required for network formation.
 
 *"The mycelium is the internet of the forest. ToadStool is the mycelium of compute."*
 
-*Last updated: March 13, 2026 — S152. Phases 0–4 complete and live in barraCuda (transferred S93–S94). ToadStool sovereign infrastructure complete (S151–S152): all toadStool-owned gaps 1–12 resolved. compute.dispatch.submit/status/result/capabilities, SOVEREIGN_BINARY_PIPELINE, GpuGen + multi-GPU auto_init_all, huge page DMA (MAP_HUGETLB), MSI-X/eventfd VFIO completion, GpuPowerController (FLR, power state), OS keyring (D-Bus SecretService + macOS Keychain), cross-gate RemoteDispatcher pooling, MockV4l2Device/MockVfioDevice for headless CI, SAFETY audit complete. PcieTopologyGraph stable. hw-learn pipeline: compute.hardware.* JSON-RPC. RegisterAccess bridge. FirmwareInventory in gpu.info.*
+*Last updated: March 13, 2026 — S153. Phases 0–4 complete and live in barraCuda (transferred S93–S94). ToadStool sovereign infrastructure complete (S151–S153): all toadStool-owned gaps 1–12 resolved. IPC-first architecture: barraCuda v0.35 has zero compile-time primal deps; toadStool is sole VFIO detection source via `compute.hardware.vfio_devices`. coralReef Iteration 43: PFIFO hardware channel creation via BAR0 MMIO closes the critical VFIO dispatch blocker. Pipeline: barraCuda (WGSL) →[JSON-RPC] coralReef (compile) →[JSON-RPC] toadStool (dispatch) → GPU. ecoprimals-mode CLI for science/gaming switching. 96+ JSON-RPC methods. 20,262+ tests.*
