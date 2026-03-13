@@ -11,6 +11,9 @@ pub mod opencl;
 pub mod wgpu_backend;
 
 #[cfg(feature = "wgpu-backend")]
+pub mod nvk_zero_guard;
+
+#[cfg(feature = "wgpu-backend")]
 pub mod spirv_codegen_safety;
 
 #[cfg(feature = "cpu")]

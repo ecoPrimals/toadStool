@@ -28,6 +28,7 @@ pub mod error_codes;
 pub mod infant_discovery;
 pub mod interned_strings; // NEW: Zero-allocation string constants
 pub mod modern_utils;
+pub mod pci_discovery; // Unified PCI sysfs scanner (GPU + NPU + any accelerator)
 pub mod platform_paths; // NEW: Platform-agnostic path resolution (ecoBin v2.0)
 pub mod primal_capabilities; // Capability-to-primal reference mapping
 pub mod primal_discovery; // NEW: Runtime capability-based primal discovery

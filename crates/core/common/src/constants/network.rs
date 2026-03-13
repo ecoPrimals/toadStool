@@ -29,7 +29,7 @@ pub const METRICS_PORT: u16 = 9090;
 /// Default health check port
 pub const HEALTH_CHECK_PORT: u16 = 8082;
 
-/// Default gRPC port (e.g., Songbird coordination)
+/// Default gRPC port for coordination services
 pub const DEFAULT_GRPC_PORT: u16 = 50051;
 
 /// Default coordination discovery fallback port
@@ -43,42 +43,9 @@ pub const BYOB_DEFAULT_PORT: u16 = 8084;
 // at runtime via capability-based discovery (see `primal_identity.rs`,
 // `discovery_defaults.rs`).
 
-// ============================================================================
-// Vendor Service Fallback Defaults
-// ============================================================================
-//
-// These are FALLBACK DEFAULTS for vendor services (redis, postgres, etc.)
-// when explicit discovery fails. They should NOT be used as primary configuration.
-// Prefer environment variables or discovery mechanisms.
-//
-
-/// Redis default fallback port (prefer discovery or environment variable)
-#[deprecated(note = "Use discovery or REDIS_URL environment variable instead")]
-pub const REDIS_FALLBACK_PORT: u16 = 6379;
-
-/// `PostgreSQL` default fallback port (prefer discovery or environment variable)
-#[deprecated(note = "Use discovery or DATABASE_URL environment variable instead")]
-pub const POSTGRES_FALLBACK_PORT: u16 = 5432;
-
-/// `MongoDB` default fallback port (prefer discovery or environment variable)
-#[deprecated(note = "Use discovery or MONGODB_URL environment variable instead")]
-pub const MONGODB_FALLBACK_PORT: u16 = 27017;
-
-/// Prometheus default fallback port (prefer discovery or environment variable)
-#[deprecated(note = "Use discovery or PROMETHEUS_URL environment variable instead")]
-pub const PROMETHEUS_FALLBACK_PORT: u16 = 9090;
-
-/// Grafana default fallback port (prefer discovery or environment variable)
-#[deprecated(note = "Use discovery or GRAFANA_URL environment variable instead")]
-pub const GRAFANA_FALLBACK_PORT: u16 = 3000;
-
-/// Consul default fallback port (prefer discovery or `CONSUL_HTTP_ADDR` environment variable)
-#[deprecated(note = "Use discovery or CONSUL_HTTP_ADDR environment variable instead")]
-pub const CONSUL_FALLBACK_PORT: u16 = 8500;
-
-/// etcd default fallback port (prefer discovery or environment variable)
-#[deprecated(note = "Use discovery or ETCD_ENDPOINTS environment variable instead")]
-pub const ETCD_FALLBACK_PORT: u16 = 2379;
+// Vendor service fallback ports (Redis, Postgres, etc.) were removed.
+// Use env-based discovery: REDIS_URL, DATABASE_URL, MONGODB_URL, PROMETHEUS_URL,
+// GRAFANA_URL, CONSUL_HTTP_ADDR, ETCD_ENDPOINTS.
 
 // ============================================================================
 // Address Constants
@@ -185,7 +152,6 @@ pub fn default_https_url() -> String {
 /// 3. `TOADSTOOL_CONSUL_DEFAULT_ADDR` (full URL override for fallback)
 /// 4. Fallback to localhost:8500
 #[must_use]
-#[allow(deprecated)]
 pub fn consul_http_addr() -> String {
     std::env::var("CONSUL_HTTP_ADDR").unwrap_or_else(|_| {
         std::env::var("TOADSTOOL_CONSUL_DEFAULT_ADDR").unwrap_or_else(|_| {
@@ -194,7 +160,7 @@ pub fn consul_http_addr() -> String {
             let port = std::env::var("CONSUL_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(CONSUL_FALLBACK_PORT);
+                .unwrap_or(8500);
             http_url(&host, port)
         })
     })
@@ -208,7 +174,6 @@ pub fn consul_http_addr() -> String {
 /// 3. `TOADSTOOL_ETCD_DEFAULT_ENDPOINTS` (full URL override for fallback)
 /// 4. Fallback to localhost:2379
 #[must_use]
-#[allow(deprecated)]
 pub fn etcd_endpoints() -> String {
     std::env::var("ETCD_ENDPOINTS").unwrap_or_else(|_| {
         std::env::var("TOADSTOOL_ETCD_DEFAULT_ENDPOINTS").unwrap_or_else(|_| {
@@ -216,7 +181,7 @@ pub fn etcd_endpoints() -> String {
             let port = std::env::var("ETCD_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(ETCD_FALLBACK_PORT);
+                .unwrap_or(2379);
             http_url(&host, port)
         })
     })
@@ -235,18 +200,6 @@ mod tests {
         assert_eq!(DEFAULT_WS_PORT, 8081);
         assert_eq!(METRICS_PORT, 9090);
         assert_eq!(HEALTH_CHECK_PORT, 8082);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_vendor_fallback_ports() {
-        assert_eq!(REDIS_FALLBACK_PORT, 6379);
-        assert_eq!(POSTGRES_FALLBACK_PORT, 5432);
-        assert_eq!(MONGODB_FALLBACK_PORT, 27017);
-        assert_eq!(PROMETHEUS_FALLBACK_PORT, 9090);
-        assert_eq!(GRAFANA_FALLBACK_PORT, 3000);
-        assert_eq!(CONSUL_FALLBACK_PORT, 8500);
-        assert_eq!(ETCD_FALLBACK_PORT, 2379);
     }
 
     #[test]

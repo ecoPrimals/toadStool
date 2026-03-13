@@ -236,7 +236,7 @@ impl std::fmt::Display for FwStatus {
 ///
 /// Different vendors need different firmware:
 /// - **NVIDIA**: PMU (Volta-), GSP (Turing+), ACR, GR, SEC2
-/// - **Intel**: GuC (Graphics microController), HuC (HEVC codec)
+/// - **Intel**: `GuC` (Graphics microController), `HuC` (HEVC codec)
 /// - **AMD**: Usually none required (fully open driver)
 #[derive(Debug, Clone)]
 pub struct FirmwareInventory {
@@ -347,10 +347,10 @@ fn probe_intel_firmware(device_id: u32) -> FirmwareInventory {
     let huc = check_firmware_glob(base, &dev_hex, "huc");
 
     let compute_viable = guc == FwStatus::Present;
-    let blocking_reason = if !compute_viable {
-        Some("GuC firmware missing — compute engine disabled".into())
-    } else {
+    let blocking_reason = if compute_viable {
         None
+    } else {
+        Some("GuC firmware missing — compute engine disabled".into())
     };
 
     FirmwareInventory {

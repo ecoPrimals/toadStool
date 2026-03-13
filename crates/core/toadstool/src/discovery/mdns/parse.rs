@@ -4,6 +4,12 @@
 //! Extracted for testability; converts mdns-sd ServiceInfo records
 //! into the discovery module's DiscoveredService type.
 
+/// mDNS property key prefix for capability entries (e.g. `cap_storage` → storage)
+pub const CAPABILITY_PREFIX: &str = "cap_";
+
+/// mDNS property key suffix for capability feature lists (e.g. `cap_storage_features`)
+pub const CAPABILITY_FEATURES_SUFFIX: &str = "_features";
+
 use crate::discovery::DiscoveredService;
 use crate::error::{ToadStoolError, ToadStoolResult};
 use crate::self_identity::Capability;
@@ -39,14 +45,16 @@ pub fn parse_service_info(info: &ServiceInfo) -> ToadStoolResult<DiscoveredServi
     // Iterate through all properties to find capabilities
     for prop in info.get_properties().iter() {
         let key = prop.key();
-        if let Some(cap_name) = key.strip_prefix("cap_") {
-            if !cap_name.ends_with("_features") && processed_caps.insert(cap_name.to_string()) {
+        if let Some(cap_name) = key.strip_prefix(CAPABILITY_PREFIX) {
+            if !cap_name.ends_with(CAPABILITY_FEATURES_SUFFIX)
+                && processed_caps.insert(cap_name.to_string())
+            {
                 let cap_version = info
                     .get_property_val_str(key)
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "unknown".to_string());
 
-                let features_key = format!("cap_{cap_name}_features");
+                let features_key = format!("{CAPABILITY_PREFIX}{cap_name}{CAPABILITY_FEATURES_SUFFIX}");
                 let features = info
                     .get_property_val_str(&features_key)
                     .map(|f| f.split(',').map(|s| s.to_string()).collect())
@@ -105,7 +113,7 @@ mod tests {
         let instance_id = Uuid::new_v4();
         let mut properties = HashMap::new();
         properties.insert("instance_id".to_string(), instance_id.to_string());
-        properties.insert("primal_type".to_string(), "songbird".to_string());
+        properties.insert("primal_type".to_string(), "test-primal".to_string());
         properties.insert("version".to_string(), "2.0.0".to_string());
         properties.insert("cap_storage".to_string(), "1.0".to_string());
         properties.insert(
@@ -127,7 +135,7 @@ mod tests {
         let service = parse_service_info(&info).expect("parse should succeed");
 
         assert_eq!(service.instance_id, instance_id);
-        assert_eq!(service.primal_type, "songbird");
+        assert_eq!(service.primal_type, "test-primal");
         assert_eq!(service.version, "2.0.0");
         assert_eq!(service.endpoint, "127.0.0.1:8080");
         assert_eq!(service.protocols, vec!["http"]);

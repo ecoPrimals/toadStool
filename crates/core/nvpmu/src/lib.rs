@@ -25,12 +25,17 @@
 // bar0 and init modules require unsafe for mmap/MMIO — isolated from the rest
 #[allow(unsafe_code, reason = "BAR0 MMIO requires mmap + volatile read/write")]
 pub mod bar0;
+#[allow(
+    unsafe_code,
+    reason = "DMA buffer allocation requires mmap, mlock, and VFIO DMA ioctls"
+)]
+pub mod dma;
 pub mod error;
 pub mod firmware;
 pub mod hwmon;
 #[allow(
     unsafe_code,
-    reason = "init sequence writes to BAR0 registers via Bar0Access"
+    reason = "init sequence writes to BAR0 registers via RegisterAccess"
 )]
 pub mod init;
 pub mod monitor;
@@ -42,12 +47,16 @@ pub mod permissions;
     reason = "VFIO BAR0 access requires mmap + volatile read/write + VFIO ioctls"
 )]
 pub mod vfio;
+pub mod vfio_bind;
 pub mod watchdog;
 
 pub use bar0::Bar0Access;
+pub use dma::{DmaAllocator, DmaBuffer};
 pub use error::{NvPmuError, Result};
 pub use firmware::FirmwareInventory;
 pub use hwmon::HwmonSensors;
+pub use init::RegisterSnapshot;
 pub use monitor::{MonitorConfig, SafetyStatus};
 pub use pci::NvidiaGpu;
 pub use vfio::VfioBar0Access;
+pub use vfio_bind::{BindResult, BindingState};

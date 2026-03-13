@@ -8,6 +8,13 @@
 //! register write loop, converting the legacy JSON recipe format to the
 //! canonical [`hw_learn::distiller::InitRecipe`].
 //!
+//! # Register Snapshot & Rollback
+//!
+//! Before applying a recipe, [`apply_with_recovery`] captures the current
+//! values of all registers that will be written. On failure, it attempts
+//! to restore the original values. This is best-effort — hardware may
+//! not accept rollback writes after entering a bad state.
+//!
 //! # Usage
 //!
 //! ```rust,no_run
@@ -28,11 +35,10 @@
 //! This module performs direct register writes to GPU hardware.
 //! Thermal safety is checked before and after the sequence.
 
-use crate::bar0::Bar0Access;
-use crate::error::Result;
+use crate::error::{NvPmuError, Result};
 use crate::hwmon::HwmonSensors;
 use crate::monitor::{assert_thermal_safe, MonitorConfig};
-use hw_learn::applicator::{ApplyVerdict, RecipeApplicator};
+use hw_learn::applicator::{ApplyVerdict, RecipeApplicator, RegisterAccess};
 use hw_learn::distiller::{
     DriverKind, GpuArch, InitRecipe, InitStep, RegFunction, Vendor, VerifyCheck,
 };
@@ -46,6 +52,63 @@ pub struct InitResult {
     pub verify_passed: usize,
     pub verify_failed: usize,
     pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rollback_attempted: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rollback_succeeded: Option<bool>,
+}
+
+/// Pre-init register snapshot for rollback.
+#[derive(Debug)]
+pub struct RegisterSnapshot {
+    entries: Vec<(u64, u32)>,
+}
+
+impl RegisterSnapshot {
+    /// Capture current values of all registers that the recipe will write.
+    pub fn capture(recipe: &InitRecipe, access: &dyn RegisterAccess) -> Self {
+        let mut entries = Vec::new();
+        for step in &recipe.steps {
+            if let InitStep::RegisterWrite { offset, .. } = step {
+                if let Ok(val) = access.read_u32(*offset) {
+                    entries.push((*offset, val));
+                }
+            }
+        }
+        tracing::debug!(registers = entries.len(), "captured register snapshot");
+        Self { entries }
+    }
+
+    /// Restore registers to their captured values (best-effort).
+    ///
+    /// Returns `true` if all writes succeeded, `false` if any failed.
+    pub fn rollback(&self, access: &mut dyn RegisterAccess) -> bool {
+        let mut all_ok = true;
+        for &(offset, value) in self.entries.iter().rev() {
+            if let Err(e) = access.write_u32(offset, value) {
+                tracing::error!(offset = %format!("{offset:#x}"), "rollback write failed: {e}");
+                all_ok = false;
+            }
+        }
+        if all_ok {
+            tracing::info!(registers = self.entries.len(), "rollback completed successfully");
+        } else {
+            tracing::error!("rollback partially failed — GPU may be in inconsistent state");
+        }
+        all_ok
+    }
+
+    /// Number of register values captured.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Whether the snapshot captured any registers.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
 }
 
 /// Legacy JSON recipe step format (kept for backward-compatible deserialization).
@@ -122,140 +185,8 @@ fn to_init_recipe(recipe: &Recipe) -> InitRecipe {
     }
 }
 
-/// Apply a PMU init recipe from JSON to a BAR0-mapped GPU.
-///
-/// Accepts both the legacy nvpmu JSON format (`{ chip, steps, verify_reads }`)
-/// and the canonical hw-learn `InitRecipe` format. The actual write loop is
-/// delegated to [`hw_learn::RecipeApplicator`].
-///
-/// # Errors
-///
-/// Returns error if:
-/// - JSON parsing fails
-/// - BAR0 read/write fails
-#[allow(
-    unsafe_code,
-    reason = "register writes via Bar0Access require unsafe mmap operations"
-)]
-pub fn apply_recipe(recipe_json: &str, bar0: &mut Bar0Access) -> Result<InitResult> {
-    let (chip, init_recipe) = if let Ok(legacy) = serde_json::from_str::<Recipe>(recipe_json) {
-        let chip = legacy.chip.clone();
-        (chip, to_init_recipe(&legacy))
-    } else {
-        let canonical: InitRecipe = serde_json::from_str(recipe_json)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        let chip = canonical.target_arch.chip.clone();
-        (chip, canonical)
-    };
-
-    tracing::info!(chip = %chip, steps = init_recipe.steps.len(), "applying PMU init recipe via hw-learn");
-
-    let mut applicator = RecipeApplicator::new(false).with_register_access(bar0);
-    let result = applicator.apply(&init_recipe, "/dev/dri/card0");
-
-    let steps_applied = result.step_results.iter().filter(|r| r.success).count();
-    let steps_failed = result.step_results.iter().filter(|r| !r.success).count();
-
-    let verify_passed = result
-        .step_results
-        .iter()
-        .filter(|r| r.success && r.detail.contains("verify"))
-        .count();
-    let verify_failed = result
-        .step_results
-        .iter()
-        .filter(|r| !r.success && r.detail.contains("verify"))
-        .count();
-
-    let success = result.verdict == ApplyVerdict::Success;
-
-    if !success {
-        for sr in &result.step_results {
-            if !sr.success {
-                tracing::error!(step = sr.step_index, detail = %sr.detail, "step FAILED");
-            }
-        }
-    }
-
-    Ok(InitResult {
-        chip,
-        steps_applied,
-        steps_failed,
-        verify_passed,
-        verify_failed,
-        success,
-    })
-}
-
-/// Apply a recipe with thermal safety checks.
-///
-/// Reads GPU temperature before applying the recipe. Aborts if the
-/// GPU is already above the critical temperature.
-///
-/// # Errors
-///
-/// Returns error if thermal safety is violated or recipe application fails.
-#[allow(
-    unsafe_code,
-    reason = "delegates to apply_recipe which writes BAR0 registers"
-)]
-pub fn apply_recipe_safe(
-    recipe_json: &str,
-    bar0: &mut Bar0Access,
-    sensors: &HwmonSensors,
-    config: &MonitorConfig,
-) -> Result<InitResult> {
-    assert_thermal_safe(sensors, config)?;
-
-    let result = apply_recipe(recipe_json, bar0)?;
-
-    if !result.success {
-        tracing::error!(
-            chip = %result.chip,
-            failed = result.steps_failed,
-            "PMU init recipe partially failed — GPU may be in inconsistent state"
-        );
-    }
-
-    Ok(result)
-}
-
-/// Apply a canonical `InitRecipe` directly (no JSON parsing).
-///
-/// Prefer this over `apply_recipe` when working with hw-learn's
-/// knowledge store or distiller output.
-///
-/// # Errors
-///
-/// Returns error if thermal safety is violated or recipe application fails.
-#[allow(
-    unsafe_code,
-    reason = "register writes via Bar0Access require unsafe mmap operations"
-)]
-pub fn apply_init_recipe(
-    recipe: &InitRecipe,
-    bar0: &mut Bar0Access,
-    sensors: &HwmonSensors,
-    config: &MonitorConfig,
-) -> Result<InitResult> {
-    assert_thermal_safe(sensors, config)?;
-
-    let chip = recipe.target_arch.chip.clone();
-    tracing::info!(chip = %chip, steps = recipe.steps.len(), "applying init recipe via hw-learn");
-
-    let mut applicator = RecipeApplicator::new(false).with_register_access(bar0);
-    let result = applicator.apply(recipe, "/dev/dri/card0");
-
-    let success = result.verdict == ApplyVerdict::Success;
-    if !success {
-        for sr in &result.step_results {
-            if !sr.success {
-                tracing::error!(step = sr.step_index, detail = %sr.detail, "step FAILED");
-            }
-        }
-    }
-
-    Ok(InitResult {
+fn tally_results(chip: String, result: &hw_learn::applicator::ApplyResult) -> InitResult {
+    InitResult {
         chip,
         steps_applied: result.step_results.iter().filter(|r| r.success).count(),
         steps_failed: result.step_results.iter().filter(|r| !r.success).count(),
@@ -269,6 +200,325 @@ pub fn apply_init_recipe(
             .iter()
             .filter(|r| !r.success && r.detail.contains("verify"))
             .count(),
-        success,
+        success: result.verdict == ApplyVerdict::Success,
+        rollback_attempted: None,
+        rollback_succeeded: None,
+    }
+}
+
+/// Apply a PMU init recipe from JSON via any `RegisterAccess` backend.
+///
+/// Accepts both the legacy nvpmu JSON format (`{ chip, steps, verify_reads }`)
+/// and the canonical hw-learn `InitRecipe` format. The actual write loop is
+/// delegated to [`hw_learn::RecipeApplicator`].
+///
+/// Works with `Bar0Access` (sysfs), `VfioBar0Access` (VFIO), or any custom
+/// `RegisterAccess` implementation.
+///
+/// # Errors
+///
+/// Returns error if JSON parsing fails or BAR0 read/write fails.
+#[allow(
+    unsafe_code,
+    reason = "register writes via RegisterAccess require unsafe mmap operations"
+)]
+pub fn apply_recipe(
+    recipe_json: &str,
+    register_access: &mut dyn RegisterAccess,
+) -> Result<InitResult> {
+    let (chip, init_recipe) = if let Ok(legacy) = serde_json::from_str::<Recipe>(recipe_json) {
+        let chip = legacy.chip.clone();
+        (chip, to_init_recipe(&legacy))
+    } else {
+        let canonical: InitRecipe = serde_json::from_str(recipe_json)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let chip = canonical.target_arch.chip.clone();
+        (chip, canonical)
+    };
+
+    tracing::info!(chip = %chip, steps = init_recipe.steps.len(), "applying PMU init recipe via hw-learn");
+
+    let mut applicator = RecipeApplicator::new(false).with_register_access(register_access);
+    let result = applicator.apply(&init_recipe, "/dev/dri/card0");
+
+    if result.verdict != ApplyVerdict::Success {
+        for sr in &result.step_results {
+            if !sr.success {
+                tracing::error!(step = sr.step_index, detail = %sr.detail, "step FAILED");
+            }
+        }
+    }
+
+    Ok(tally_results(chip, &result))
+}
+
+/// Apply a recipe with thermal safety checks.
+///
+/// Reads GPU temperature before applying. Aborts if the GPU is above
+/// the critical temperature threshold.
+///
+/// # Errors
+///
+/// Returns error if thermal safety is violated or recipe application fails.
+#[allow(
+    unsafe_code,
+    reason = "delegates to apply_recipe which writes BAR0 registers"
+)]
+pub fn apply_recipe_safe(
+    recipe_json: &str,
+    register_access: &mut dyn RegisterAccess,
+    sensors: &HwmonSensors,
+    config: &MonitorConfig,
+) -> Result<InitResult> {
+    assert_thermal_safe(sensors, config)?;
+
+    let result = apply_recipe(recipe_json, register_access)?;
+
+    if !result.success {
+        tracing::error!(
+            chip = %result.chip,
+            failed = result.steps_failed,
+            "PMU init recipe partially failed — GPU may be in inconsistent state"
+        );
+    }
+
+    Ok(result)
+}
+
+/// Apply a canonical `InitRecipe` with thermal check and snapshot/rollback.
+///
+/// 1. Checks thermal safety
+/// 2. Captures register snapshot (pre-init values)
+/// 3. Applies recipe
+/// 4. On failure: rolls back to snapshot (best-effort)
+///
+/// This is the recommended entry point for all init operations.
+///
+/// # Errors
+///
+/// Returns error if thermal safety is violated. On partial init failure,
+/// returns `NvPmuError::PartialInit` with rollback status.
+#[allow(
+    unsafe_code,
+    reason = "register writes via RegisterAccess require unsafe mmap operations"
+)]
+pub fn apply_with_recovery(
+    recipe: &InitRecipe,
+    register_access: &mut dyn RegisterAccess,
+    sensors: &HwmonSensors,
+    config: &MonitorConfig,
+) -> Result<InitResult> {
+    assert_thermal_safe(sensors, config)?;
+
+    let chip = recipe.target_arch.chip.clone();
+    tracing::info!(chip = %chip, steps = recipe.steps.len(), "applying init recipe with recovery");
+
+    let snapshot = RegisterSnapshot::capture(recipe, register_access);
+
+    let mut applicator = RecipeApplicator::new(false).with_register_access(register_access);
+    let result = applicator.apply(recipe, "/dev/dri/card0");
+
+    let success = result.verdict == ApplyVerdict::Success;
+
+    if success {
+        return Ok(InitResult {
+            rollback_attempted: Some(false),
+            rollback_succeeded: None,
+            ..tally_results(chip, &result)
+        });
+    }
+
+    for sr in &result.step_results {
+        if !sr.success {
+            tracing::error!(step = sr.step_index, detail = %sr.detail, "step FAILED");
+        }
+    }
+
+    tracing::warn!(chip = %chip, "init failed — attempting rollback");
+    let rollback_ok = snapshot.rollback(register_access);
+
+    let mut init_result = tally_results(chip.clone(), &result);
+    init_result.rollback_attempted = Some(true);
+    init_result.rollback_succeeded = Some(rollback_ok);
+
+    Err(NvPmuError::PartialInit {
+        applied: init_result.steps_applied,
+        total: init_result.steps_applied + init_result.steps_failed,
+        rollback_status: if rollback_ok {
+            "succeeded".to_string()
+        } else {
+            "partial — GPU may need reset".to_string()
+        },
     })
+}
+
+/// Apply a canonical `InitRecipe` directly (no JSON parsing).
+///
+/// Prefer [`apply_with_recovery`] for production use — it adds snapshot/rollback.
+/// This simpler entry point is for backward compatibility.
+///
+/// # Errors
+///
+/// Returns error if thermal safety is violated or recipe application fails.
+#[allow(
+    unsafe_code,
+    reason = "register writes via RegisterAccess require unsafe mmap operations"
+)]
+pub fn apply_init_recipe(
+    recipe: &InitRecipe,
+    register_access: &mut dyn RegisterAccess,
+    sensors: &HwmonSensors,
+    config: &MonitorConfig,
+) -> Result<InitResult> {
+    assert_thermal_safe(sensors, config)?;
+
+    let chip = recipe.target_arch.chip.clone();
+    tracing::info!(chip = %chip, steps = recipe.steps.len(), "applying init recipe via hw-learn");
+
+    let mut applicator = RecipeApplicator::new(false).with_register_access(register_access);
+    let result = applicator.apply(recipe, "/dev/dri/card0");
+
+    if result.verdict != ApplyVerdict::Success {
+        for sr in &result.step_results {
+            if !sr.success {
+                tracing::error!(step = sr.step_index, detail = %sr.detail, "step FAILED");
+            }
+        }
+    }
+
+    Ok(tally_results(chip, &result))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct FakeRegAccess {
+        registers: std::collections::HashMap<u64, u32>,
+    }
+
+    impl FakeRegAccess {
+        fn new() -> Self {
+            Self {
+                registers: std::collections::HashMap::new(),
+            }
+        }
+    }
+
+    impl RegisterAccess for FakeRegAccess {
+        fn read_u32(&self, offset: u64) -> std::result::Result<u32, String> {
+            Ok(*self.registers.get(&offset).unwrap_or(&0))
+        }
+
+        fn write_u32(&mut self, offset: u64, value: u32) -> std::result::Result<(), String> {
+            self.registers.insert(offset, value);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn snapshot_captures_register_values() {
+        let mut access = FakeRegAccess::new();
+        access.registers.insert(0x100, 0xAABBCCDD);
+        access.registers.insert(0x200, 0x11223344);
+
+        let recipe = InitRecipe {
+            source_arch: GpuArch {
+                vendor: Vendor::Nvidia,
+                generation: String::new(),
+                chip: "test".into(),
+                compute_class: String::new(),
+            },
+            source_driver: DriverKind::Nouveau,
+            target_arch: GpuArch {
+                vendor: Vendor::Nvidia,
+                generation: String::new(),
+                chip: "test".into(),
+                compute_class: String::new(),
+            },
+            steps: vec![
+                InitStep::RegisterWrite {
+                    offset: 0x100,
+                    value: 0xFFFFFFFF,
+                    function: RegFunction::Unknown,
+                },
+                InitStep::RegisterWrite {
+                    offset: 0x200,
+                    value: 0x00000000,
+                    function: RegFunction::Unknown,
+                },
+            ],
+            confidence: 1.0,
+            description: "test recipe".into(),
+        };
+
+        let snapshot = RegisterSnapshot::capture(&recipe, &access);
+        assert_eq!(snapshot.len(), 2);
+
+        access.registers.insert(0x100, 0xFFFFFFFF);
+        access.registers.insert(0x200, 0x00000000);
+
+        let ok = snapshot.rollback(&mut access);
+        assert!(ok);
+        assert_eq!(access.registers[&0x100], 0xAABBCCDD);
+        assert_eq!(access.registers[&0x200], 0x11223344);
+    }
+
+    #[test]
+    fn empty_snapshot_rollback_succeeds() {
+        let mut access = FakeRegAccess::new();
+        let recipe = InitRecipe {
+            source_arch: GpuArch {
+                vendor: Vendor::Nvidia,
+                generation: String::new(),
+                chip: "test".into(),
+                compute_class: String::new(),
+            },
+            source_driver: DriverKind::Nouveau,
+            target_arch: GpuArch {
+                vendor: Vendor::Nvidia,
+                generation: String::new(),
+                chip: "test".into(),
+                compute_class: String::new(),
+            },
+            steps: vec![],
+            confidence: 1.0,
+            description: "empty".into(),
+        };
+
+        let snapshot = RegisterSnapshot::capture(&recipe, &access);
+        assert!(snapshot.is_empty());
+        assert!(snapshot.rollback(&mut access));
+    }
+
+    #[test]
+    fn to_init_recipe_converts_legacy_format() {
+        let recipe = Recipe {
+            chip: "gv100".into(),
+            steps: vec![RecipeStep {
+                offset: 0x100,
+                value: 0xAA,
+                width: 4,
+                delay_us: Some(10),
+            }],
+            verify_reads: vec![VerifyRead {
+                offset: 0x200,
+                expected_mask: 0xFF,
+                expected_value: 0x42,
+            }],
+        };
+
+        let init = to_init_recipe(&recipe);
+        assert_eq!(init.target_arch.chip, "gv100");
+        assert_eq!(init.steps.len(), 3);
+    }
+
+    #[test]
+    fn apply_recipe_parses_legacy_json() {
+        let json = r#"{"chip":"gv100","steps":[],"verify_reads":[]}"#;
+        let mut access = FakeRegAccess::new();
+        let result = apply_recipe(json, &mut access).unwrap();
+        assert!(result.success);
+        assert_eq!(result.chip, "gv100");
+    }
 }

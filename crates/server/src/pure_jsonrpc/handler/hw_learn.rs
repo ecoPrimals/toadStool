@@ -176,6 +176,16 @@ impl HwLearnHandler {
                 ))
             })?;
 
+            let thermal = check_thermal_for_bdf(&bdf);
+            if let Some(ref status) = thermal {
+                if !status.compute_safe() {
+                    return Err(JsonRpcError::internal_error(format!(
+                        "GPU {bdf} thermal status {:?} — refusing live apply",
+                        status
+                    )));
+                }
+            }
+
             let mut applicator =
                 hw_learn::RecipeApplicator::new(false).with_register_access(&mut bar0);
             let result = applicator.apply(&recipe, card_path);
@@ -191,6 +201,7 @@ impl HwLearnHandler {
                 "operation": "apply",
                 "mode": "live",
                 "bdf": bdf,
+                "thermal_checked": thermal.is_some(),
                 "verdict": format!("{:?}", result.verdict),
                 "steps_executed": result.steps_executed,
                 "steps_total": result.steps_total,
@@ -357,6 +368,52 @@ impl HwLearnHandler {
 }
 
 impl HwLearnHandler {
+    /// `gpu.telemetry` — Report thermal and power data for all detected GPUs.
+    ///
+    /// Returns per-GPU temperature, power, safety status.
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
+    pub async fn gpu_telemetry(
+        &self,
+        _params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let sysmon_gpus = toadstool_sysmon::discover_gpus();
+
+        let mut gpu_entries = Vec::new();
+        for gpu in &sysmon_gpus {
+            let telemetry = gpu.telemetry();
+            let safety = check_thermal_for_bdf(&gpu.pci_slot)
+                .unwrap_or(nvpmu::SafetyStatus::Unknown);
+
+            gpu_entries.push(serde_json::json!({
+                "card_index": gpu.card_index,
+                "driver": gpu.driver,
+                "pci_slot": gpu.pci_slot,
+                "vendor": format!("{:?}", gpu.vendor),
+                "device_id": format!("{:#06x}", gpu.device_id),
+                "temperature_celsius": telemetry.temperature_celsius,
+                "power_watts": telemetry.power_watts,
+                "power_cap_watts": telemetry.power_cap_watts,
+                "core_clock_mhz": telemetry.core_clock_mhz,
+                "fan_rpm": telemetry.fan_rpm,
+                "utilization_percent": telemetry.utilization_percent,
+                "vram_total_bytes": telemetry.vram_total_bytes,
+                "vram_used_bytes": telemetry.vram_used_bytes,
+                "safety_status": format!("{:?}", safety),
+                "compute_safe": safety.compute_safe(),
+            }));
+        }
+
+        Ok(serde_json::json!({
+            "domain": "gpu",
+            "operation": "telemetry",
+            "gpus": gpu_entries,
+            "gpu_count": gpu_entries.len(),
+        }))
+    }
+
     /// `compute.hardware.auto_init` — Auto-detect GPU, find best recipe, apply.
     ///
     /// This wires Gap 5 end-to-end: discover GPU → knowledge store → BAR0 apply.
@@ -439,11 +496,23 @@ impl HwLearnHandler {
             }));
         }
 
+        let thermal = check_thermal_for_bdf(&bdf);
+        if let Some(ref status) = thermal {
+            if !status.compute_safe() {
+                return Err(JsonRpcError::internal_error(format!(
+                    "GPU {bdf} thermal status {:?} — refusing auto_init",
+                    status
+                )));
+            }
+        }
+
         let mut bar0 = nvpmu::Bar0Access::open(&bdf).map_err(|e| {
             JsonRpcError::internal_error(format!(
                 "BAR0 open failed for {bdf}: {e}. Run setup-gpu-sovereign.sh."
             ))
         })?;
+
+        let snapshot = nvpmu::RegisterSnapshot::capture(&recipe, &bar0);
 
         let mut applicator = hw_learn::RecipeApplicator::new(false).with_register_access(&mut bar0);
         let result = applicator.apply(&recipe, card_path);
@@ -453,6 +522,19 @@ impl HwLearnHandler {
             hw_learn::applicator::ApplyVerdict::PartialSuccess => 0.5,
             _ => 0.0,
         };
+
+        let mut rollback_info = serde_json::json!(null);
+        if result.verdict != hw_learn::applicator::ApplyVerdict::Success
+            && !snapshot.is_empty()
+        {
+            tracing::warn!(bdf = %bdf, "auto_init failed — attempting rollback");
+            let rollback_ok = snapshot.rollback(&mut bar0);
+            rollback_info = serde_json::json!({
+                "attempted": true,
+                "succeeded": rollback_ok,
+                "registers": snapshot.len(),
+            });
+        }
 
         if let Ok(mut store) = self.open_store() {
             let _ = store.update_confidence(&recipe_id, confidence);
@@ -464,10 +546,12 @@ impl HwLearnHandler {
             "mode": "live",
             "gpu": { "bdf": bdf, "chip": chip, "driver": gpu.driver },
             "recipe_id": recipe_id,
+            "thermal_checked": thermal.is_some(),
             "verdict": format!("{:?}", result.verdict),
             "steps_executed": result.steps_executed,
             "steps_total": result.steps_total,
             "confidence_updated": confidence,
+            "rollback": rollback_info,
             "result": serde_json::to_value(&result).unwrap_or_default(),
         }))
     }
@@ -508,6 +592,31 @@ fn observe_from_text(
 
     let _ = std::fs::remove_file(&tmp_path);
     result
+}
+
+/// Check thermal safety for a GPU before dispatch.
+///
+/// Attempts to read hwmon sensors for the given BDF. Returns `None` if
+/// sensors are unavailable (e.g. no hwmon, proprietary driver).
+fn check_thermal_for_bdf(bdf: &str) -> Option<nvpmu::SafetyStatus> {
+    let device_path = std::path::PathBuf::from(format!("/sys/bus/pci/devices/{bdf}"));
+    let config = nvpmu::MonitorConfig::default();
+    match nvpmu::monitor::sample(&device_path, &config) {
+        Ok(sample) => {
+            if sample.status != nvpmu::SafetyStatus::Normal {
+                tracing::warn!(
+                    bdf,
+                    status = ?sample.status,
+                    "GPU thermal status is not Normal"
+                );
+            }
+            Some(sample.status)
+        }
+        Err(_) => {
+            tracing::debug!(bdf, "hwmon sensors unavailable — skipping thermal check");
+            None
+        }
+    }
 }
 
 fn dirs_for_store() -> PathBuf {

@@ -27,4 +27,11 @@ pub enum NvPmuError {
 
     #[error("thermal safety limit exceeded: {temp_mc} m°C > {limit_mc} m°C")]
     ThermalLimit { temp_mc: i64, limit_mc: i64 },
+
+    #[error("partial init failure: {applied}/{total} steps applied, rollback {rollback_status}")]
+    PartialInit {
+        applied: usize,
+        total: usize,
+        rollback_status: String,
+    },
 }

@@ -175,6 +175,7 @@ impl JsonRpcHandler {
 
             "gpu.info" => return core::gpu_info().await,
             "gpu.memory" => return core::gpu_memory().await,
+            "gpu.telemetry" => return self.hw_learn.gpu_telemetry(params).await,
 
             "ollama.list_models" => return self.ollama.ollama_list_models().await,
             "ollama.inference" => return self.ollama.ollama_inference(params).await,

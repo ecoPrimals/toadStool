@@ -16,6 +16,9 @@
 
 use super::wgpu_backend::GpuAdapterInfo;
 
+#[allow(unused_imports)]
+pub use super::nvk_zero_guard::*;
+
 /// NVVM poisoning risk classification inferred from driver identity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NvvmPoisoningRisk {
@@ -227,6 +230,10 @@ pub enum PrecisionHint {
     LowPrecision,
 }
 
+/// Default F64/F32 dispatch latency ratio above which throughput-bound workloads
+/// prefer DF64 over F64 (from hotSpring empirical measurement).
+const DEFAULT_F64_THROTTLE_RATIO: f64 = 8.0;
+
 /// Domain-aware precision routing brain (absorbed from hotSpring v0.6.25).
 ///
 /// Builds a cached routing table from `HardwareCalibration` so callers get
@@ -248,7 +255,7 @@ impl PrecisionBrain {
     /// default threshold of 8.0 (from hotSpring empirical measurement).
     #[must_use]
     pub fn new(calibration: HardwareCalibration, f64_throttle_ratio: Option<f64>) -> Self {
-        let threshold = f64_throttle_ratio.unwrap_or(8.0);
+        let threshold = f64_throttle_ratio.unwrap_or(DEFAULT_F64_THROTTLE_RATIO);
         let f64_throttled = Self::detect_f64_throttle(&calibration, threshold);
         let route_table = Self::build_route_table(&calibration, f64_throttled);
 
@@ -719,26 +726,6 @@ mod tests {
     }
 
     #[test]
-    fn test_check_device_health() {
-        assert_eq!(
-            check_device_health(false, false),
-            DeviceHealthStatus::Healthy
-        );
-        assert_eq!(
-            check_device_health(true, false),
-            DeviceHealthStatus::PoisonSuspected
-        );
-        assert_eq!(
-            check_device_health(true, true),
-            DeviceHealthStatus::Poisoned
-        );
-        assert_eq!(
-            check_device_health(false, true),
-            DeviceHealthStatus::Poisoned
-        );
-    }
-
-    #[test]
     fn test_precision_tier_equality() {
         assert_eq!(PrecisionTier::F32, PrecisionTier::F32);
         assert_ne!(PrecisionTier::F32, PrecisionTier::F64);
@@ -833,64 +820,5 @@ mod tests {
 
         assert_eq!(brain.adapter_name(), "NVIDIA RTX 3080");
         assert!(brain.calibration().has_any_f64);
-    }
-
-    // ── NvkZeroGuard tests ────────────────────────────────────
-
-    #[test]
-    fn zero_guard_valid_output() {
-        let output = [1.0, 2.0, 3.0, 0.5];
-        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::Valid);
-    }
-
-    #[test]
-    fn zero_guard_all_zeros() {
-        let output = [0.0, 0.0, 0.0, 0.0];
-        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::AllZeros);
-    }
-
-    #[test]
-    fn zero_guard_nan_contaminated() {
-        let output = [1.0, f64::NAN, 3.0];
-        assert_eq!(
-            nvk_zero_guard_check(&output),
-            ZeroGuardVerdict::NanContaminated
-        );
-    }
-
-    #[test]
-    fn zero_guard_empty_is_valid() {
-        let output: [f64; 0] = [];
-        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::Valid);
-    }
-
-    #[test]
-    fn zero_guard_single_nonzero() {
-        let output = [0.0, 0.0, 1e-300, 0.0];
-        assert_eq!(nvk_zero_guard_check(&output), ZeroGuardVerdict::Valid);
-    }
-
-    #[test]
-    fn zero_guard_f32_all_zeros() {
-        let output: [f32; 4] = [0.0, 0.0, 0.0, 0.0];
-        assert_eq!(
-            nvk_zero_guard_check_f32(&output),
-            ZeroGuardVerdict::AllZeros
-        );
-    }
-
-    #[test]
-    fn zero_guard_f32_valid() {
-        let output: [f32; 3] = [1.0, 0.0, 0.5];
-        assert_eq!(nvk_zero_guard_check_f32(&output), ZeroGuardVerdict::Valid);
-    }
-
-    #[test]
-    fn zero_guard_f32_nan() {
-        let output: [f32; 2] = [f32::NAN, 1.0];
-        assert_eq!(
-            nvk_zero_guard_check_f32(&output),
-            ZeroGuardVerdict::NanContaminated
-        );
     }
 }

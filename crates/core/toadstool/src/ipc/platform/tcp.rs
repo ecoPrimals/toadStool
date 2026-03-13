@@ -26,8 +26,9 @@ use tokio::net::{TcpListener, TcpStream};
 /// Default TCP port for ToadStool IPC (DEPRECATED)
 ///
 /// **DEEP DEBT VIOLATION**: Hardcoded ports break multi-instance support.
+/// Primal endpoints are discovered at runtime via capability-based mDNS.
 ///
-/// **Migration**: Use Unix sockets instead:
+/// **Migration**: Use Unix sockets or discovery:
 /// ```rust,ignore
 /// // OLD: TCP with hardcoded port
 /// let listener = tcp::bind("127.0.0.1", 8370).await?;
@@ -37,10 +38,7 @@ use tokio::net::{TcpListener, TcpStream};
 /// let socket_path = primal_sockets::get_toadstool_socket_path();
 /// let listener = unix::bind(&socket_path).await?;
 /// ```
-///
-/// **Legacy Port Assignments** (reference only):
-/// - ToadStool: 8370, Songbird: 8371, BearDog: 8372, Squirrel: 8373, NestGate: 8374
-#[deprecated(since = "0.2.0", note = "Use Unix sockets via platform::unix")]
+#[deprecated(since = "0.2.0", note = "Use Unix sockets via platform::unix or capability-based discovery")]
 pub const DEFAULT_PORT: u16 = 8370;
 
 /// Bind TCP listener
@@ -54,7 +52,7 @@ pub const DEFAULT_PORT: u16 = 8370;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let listener = tcp::bind("127.0.0.1", 8370).await?;
+///     let listener = tcp::bind("127.0.0.1", 0).await?; // port 0 = ephemeral
 ///     Ok(())
 /// }
 /// ```

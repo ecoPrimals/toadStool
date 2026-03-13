@@ -9,7 +9,6 @@
 use crate::{DisplayError, Result};
 use rustix::fd::OwnedFd;
 use rustix::fs;
-use std::mem::MaybeUninit;
 use std::os::unix::io::{AsFd, BorrowedFd};
 use std::path::{Path, PathBuf};
 
@@ -58,7 +57,7 @@ const V4L2_MEMORY_MMAP: u32 = 1;
 //
 // All V4L2 structs below are #[repr(C)] with only primitive types (u8, u32, i32, i64, arrays).
 // Zero-initialization is valid for all fields: 0 is valid for integers, null for pointers,
-// and padding bytes are unobserved. MaybeUninit::zeroed().assume_init() is safe for these.
+// and padding bytes are unobserved. Default is used for zero-initialization.
 
 #[repr(C)]
 struct v4l2_capability {
@@ -72,6 +71,7 @@ struct v4l2_capability {
 }
 
 #[repr(C)]
+#[derive(Default)]
 struct v4l2_pix_format {
     width: u32,
     height: u32,
@@ -96,7 +96,18 @@ struct v4l2_format {
     _pad: [u8; 128],
 }
 
+impl Default for v4l2_format {
+    fn default() -> Self {
+        Self {
+            type_: 0,
+            fmt: v4l2_pix_format::default(),
+            _pad: [0; 128],
+        }
+    }
+}
+
 #[repr(C)]
+#[derive(Default)]
 struct v4l2_requestbuffers {
     count: u32,
     type_: u32,
@@ -109,6 +120,7 @@ struct v4l2_requestbuffers {
 }
 
 #[repr(C)]
+#[derive(Default)]
 struct v4l2_buffer {
     index: u32,
     type_: u32,
@@ -250,8 +262,7 @@ impl CaptureDevice {
     ///
     /// Returns an error if the `VIDIOC_S_FMT` ioctl fails.
     pub fn set_format(&mut self, width: u32, height: u32, fourcc: u32) -> Result<CaptureFormat> {
-        // SAFETY: v4l2_format is #[repr(C)] with only primitive types; zeroed bytes are valid.
-        let mut fmt: v4l2_format = unsafe { MaybeUninit::zeroed().assume_init() };
+        let mut fmt: v4l2_format = v4l2_format::default();
         fmt.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         fmt.fmt.width = width;
         fmt.fmt.height = height;
@@ -288,8 +299,7 @@ impl CaptureDevice {
     ///
     /// Returns an error if `VIDIOC_REQBUFS` or buffer mapping fails.
     pub fn request_buffers(&mut self, count: u32) -> Result<u32> {
-        // SAFETY: v4l2_requestbuffers is #[repr(C)] with only primitive types; zeroed bytes valid.
-        let mut req: v4l2_requestbuffers = unsafe { MaybeUninit::zeroed().assume_init() };
+        let mut req: v4l2_requestbuffers = v4l2_requestbuffers::default();
         req.count = count;
         req.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         req.memory = V4L2_MEMORY_MMAP;
@@ -309,8 +319,7 @@ impl CaptureDevice {
 
         // mmap each buffer
         for i in 0..req.count {
-            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
-            let mut buf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
+            let mut buf: v4l2_buffer = v4l2_buffer::default();
             buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i;
@@ -363,8 +372,7 @@ impl CaptureDevice {
     )]
     pub fn start_streaming(&mut self) -> Result<()> {
         for i in 0..self.buffers.len() {
-            // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
-            let mut buf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
+            let mut buf: v4l2_buffer = v4l2_buffer::default();
             buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i as u32;
@@ -411,8 +419,7 @@ impl CaptureDevice {
             return Err(DisplayError::IoctlFailed("not streaming".into()));
         }
 
-        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
-        let mut buf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
+        let mut buf: v4l2_buffer = v4l2_buffer::default();
         buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory = V4L2_MEMORY_MMAP;
 
@@ -443,8 +450,7 @@ impl CaptureDevice {
         }
 
         // Re-queue
-        // SAFETY: v4l2_buffer is #[repr(C)] with only primitive types; zeroed bytes valid.
-        let mut rebuf: v4l2_buffer = unsafe { MaybeUninit::zeroed().assume_init() };
+        let mut rebuf: v4l2_buffer = v4l2_buffer::default();
         rebuf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         rebuf.memory = V4L2_MEMORY_MMAP;
         rebuf.index = buf.index;
