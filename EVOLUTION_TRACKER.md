@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 12, 2026 — S150
+**Date**: March 13, 2026 — S153
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only. Zero-cost abstractions.
 
 ---
@@ -116,7 +116,7 @@ All P0 dispatch wiring complete. Core absorption from 5 springs validated:
 | ID | Description | Priority | Status |
 |----|-------------|----------|--------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
-| D-COV | Test coverage → 90% | Medium | 20,015 tests (S147); ~86% line coverage (121K production lines). Focus: hardware-dependent code |
+| D-COV | Test coverage → 90% | Medium | 20,262 tests (S152); ~86% line coverage (~150K production lines). Mock hardware layers for V4L2/VFIO (S152). Focus: hardware-dependent code |
 | D-SOV | ~~Sovereignty migration~~ | **RESOLVED S94b** | All 7 production callers migrated to `get_socket_path_for_capability()` |
 | D-WC | Wildcard re-exports remaining | Low | 13 crates narrowed; remaining have 15+ items (justified) |
 | — | ~~vfio.rs smart refactoring~~ | **RESOLVED S94** | 971L → `vfio/` directory (types.rs, ioctl.rs, dma.rs, mod.rs) |
@@ -188,16 +188,44 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | ✅ 0 warnings (S131+: `#[expect]` evolution) |
 | `cargo fmt --all -- --check` | ✅ 0 diffs |
 | `cargo doc --workspace --no-deps` | ✅ 0 warnings |
-| Workspace tests | ✅ 20,015 passed (S147) |
+| Workspace tests | ✅ 20,262 passed (S152) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |
 | God files refactored | 40+ (all production files < 1000 lines) |
-| Test coverage (llvm-cov) | ~86% lines (121K production lines, excl GPU SIGSEGV). Target: 90% |
+| Test coverage (llvm-cov) | ~86% lines (~150K production lines, excl GPU SIGSEGV). Target: 90% |
 | `unsafe` blocks | ~70+ — all `// SAFETY:` documented (S131+: full audit) |
 | File size limit | All < 1000 lines |
 
 ---
+
+### Session S153 (Mar 13, 2026)
+
+| Category | Change |
+|----------|--------|
+| IPC-first reconciliation | Absorbed barraCuda v0.35 IPC-first architecture (zero compile-time deps). Updated pipeline: barraCuda →[JSON-RPC] coralReef →[JSON-RPC] toadStool → GPU |
+| `compute.hardware.vfio_devices` | New JSON-RPC: discovers VFIO-bound GPUs. Sole VFIO detection source for barraCuda IPC-first |
+| `ecoprimals-mode` CLI | `toadstool mode science/gaming/status` — GPU mode switching (display ↔ vfio-pci) |
+| hotSpring VFIO absorption | 6/7 coralReef VFIO tests pass on Titan V (GV100). Dispatch blocked on coralReef USERD_TARGET encoding fix |
+| Spring pins | hotSpring v0.6.31, coralReef Iter 43, barraCuda v0.35 IPC-first |
+
+### Session S152 (Mar 13, 2026)
+
+| Category | Change |
+|----------|--------|
+| Sovereign infrastructure | compute.dispatch.*, SOVEREIGN_BINARY_PIPELINE, GpuGen, auto_init_all, huge page DMA, MSI-X/eventfd, GpuPowerController, extern "C" elimination |
+| OS keyring | D-Bus SecretService + macOS Keychain. Step 2.5 in resolve_credential chain |
+| Cross-gate pooling | RemoteDispatcher (Unix + TCP), GateGpuInfo.endpoint, auto-forward |
+| Mock hardware | MockV4l2Device + MockVfioDevice for headless CI |
+| Coverage | 20,262 tests, 0 failures. ~150K production lines |
+
+### Session S151 (Mar 12, 2026)
+
+| Category | Change |
+|----------|--------|
+| Error recovery | RegisterSnapshot + apply_with_recovery + PartialInit rollback |
+| DMA buffers | DmaAllocator + DmaBuffer (page-aligned, mlock, IOMMU-mapped) |
+| PCI discovery | Unified PciFilter + vendor constants. Thermal safety. VFIO bind/unbind automation |
 
 ### Session S145 (Mar 10, 2026)
 

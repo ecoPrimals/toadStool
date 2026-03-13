@@ -1,4 +1,4 @@
-# Status -- March 13, 2026 (S152 Sovereign Infrastructure Complete)
+# Status -- March 13, 2026 (S153 Sovereign Infrastructure + VFIO Validation Absorption)
 
 ## Quality Gates
 
@@ -95,6 +95,15 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S153: IPC-First Reconciliation + VFIO Validation Absorption (Mar 13, 2026)
+- **IPC-first reconciliation**: Absorbed barraCuda v0.35 IPC-first architecture. Updated pipeline: barraCuda →[JSON-RPC] coralReef →[JSON-RPC] toadStool → GPU. Zero compile-time cross-primal deps.
+- **`compute.hardware.vfio_devices`**: New JSON-RPC method — discovers VFIO-bound GPUs via sysfs class 0x03 + `vfio-pci` driver check. Exposes PCI address, IOMMU group, power state, reset support. Sole VFIO detection source for barraCuda IPC-first.
+- **`ecoprimals-mode` CLI**: `toadstool mode science/gaming/status` — GPU mode switching between display driver and `vfio-pci`. Auto-detects NVIDIA GPUs. Persists original driver for restoration.
+- **hotSpring VFIO validation absorption**: 6/7 coralReef VFIO tests pass on Titan V (GV100). BAR0 access, DMA, upload/readback all validated. Dispatch blocked on coralReef USERD_TARGET encoding fix (DW0 bits [3:2] = 0 VRAM → 2 SYS_MEM_COH). One-register fix in coralReef `channel.rs`.
+- **Cross-primal docs**: SOVEREIGN_COMPUTE_GAPS.md updated with validation status. wateringHole handoffs written.
+- **Spring pins**: hotSpring v0.6.31, coralReef Iteration 43, barraCuda v0.35 IPC-first.
+- 20,262 tests, 0 failures. 96+ JSON-RPC methods.
 
 ### S152: Sovereign Infrastructure Complete (Mar 13, 2026)
 - **compute.dispatch.*** — `submit`, `status`, `result`, `capabilities`, `forward` (Gap 1). `SOVEREIGN_BINARY_PIPELINE = true`.
