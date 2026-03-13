@@ -19,6 +19,8 @@
 
 // Hardware mocks for headless CI parity
 pub mod hardware;
+pub mod v4l2;
+pub mod vfio;
 
 // Resource monitors
 pub mod resource_monitors;
@@ -28,6 +30,12 @@ pub mod runtime_engines;
 
 // Export the successful mocks that compile
 pub use hardware::{MockGpuAdapter, MockHardwareFleet, MockNpuBackend, MockNpuInferenceResult};
+pub use v4l2::{
+    CaptureFormat, FramePattern, MockV4l2Config, MockV4l2Device, MockV4l2Error,
+};
+pub use vfio::{
+    AccessOp, MockVfioDevice, MockVfioError, RegisterAccessEntry,
+};
 pub use resource_monitors::MockResourceMonitor;
 pub use runtime_engines::MockRuntimeEngine;
 

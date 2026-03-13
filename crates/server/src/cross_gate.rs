@@ -7,14 +7,8 @@
 //!
 //! - Plasmodium knows all gates and their GPU capabilities
 //! - Job router selects gate by: VRAM available, model already loaded, queue depth
-//! - Jobs forwarded via Songbird mesh TCP relay
-//! - Results returned through the mesh
-//!
-//! ## Status: PENDING
-//!
-//! Requires Songbird mesh relay to be active. This module defines the types
-//! and routing interface. Implementation will be activated when mesh relay
-//! is available.
+//! - Jobs forwarded via Unix socket or TCP to remote toadStool instances
+//! - Results returned through the relay
 //!
 //! ## Example
 //!
@@ -23,6 +17,7 @@
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 
 fn serialize_arc_str<S>(v: &Arc<str>, s: S) -> Result<S::Ok, S::Error>
@@ -63,6 +58,10 @@ pub struct GateGpuInfo {
     pub queue_depth: usize,
     /// Whether this gate is reachable via mesh
     pub reachable: bool,
+    /// Remote endpoint for this gate (Unix socket path or host:port).
+    /// Only present for remote gates — local gate has `None`.
+    #[serde(default)]
+    pub endpoint: Option<String>,
 }
 
 /// Routing decision for a compute job
@@ -94,6 +93,102 @@ pub enum RoutingReason {
     OnlyOption,
     /// Local execution (no mesh hop needed)
     Local,
+}
+
+/// Error from remote dispatch.
+#[derive(Debug, thiserror::Error)]
+pub enum RemoteDispatchError {
+    #[error("transport error: {0}")]
+    Transport(String),
+    #[error("serialization error: {0}")]
+    Serialize(String),
+    #[error("remote error: {0}")]
+    Remote(String),
+}
+
+/// Dispatches a compute job to a remote toadStool gate via Unix socket or TCP.
+///
+/// Remote gates register their endpoint (socket path or host:port) via
+/// `gate.update`. When the router selects a remote gate, the dispatcher
+/// forwards the JSON-RPC `compute.submit` request.
+pub struct RemoteDispatcher;
+
+impl RemoteDispatcher {
+    /// Forward a compute job to a remote gate.
+    ///
+    /// Attempts Unix socket first (if endpoint looks like a path), then TCP.
+    pub async fn forward(
+        endpoint: &str,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, RemoteDispatchError> {
+        let path = Path::new(endpoint);
+        if path.exists() && (endpoint.contains('/') || endpoint.ends_with(".sock")) {
+            return Self::forward_unix(path, method, params).await;
+        }
+        Self::forward_tcp(endpoint, method, params).await
+    }
+
+    async fn forward_unix(
+        socket_path: &Path,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, RemoteDispatchError> {
+        let client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+        client
+            .call(method, params)
+            .await
+            .map_err(|e| RemoteDispatchError::Transport(e.to_string()))
+    }
+
+    async fn forward_tcp(
+        endpoint: &str,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, RemoteDispatchError> {
+        // Construct JSON-RPC request
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": 1
+        });
+        let body = serde_json::to_vec(&request)
+            .map_err(|e| RemoteDispatchError::Serialize(e.to_string()))?;
+
+        // TCP connection + send + receive
+        let mut stream = tokio::net::TcpStream::connect(endpoint)
+            .await
+            .map_err(|e| RemoteDispatchError::Transport(format!("TCP connect: {e}")))?;
+
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        stream
+            .write_all(&body)
+            .await
+            .map_err(|e| RemoteDispatchError::Transport(format!("TCP write: {e}")))?;
+        stream
+            .write_all(b"\n")
+            .await
+            .map_err(|_| RemoteDispatchError::Transport("newline".into()))?;
+        stream.shutdown().await.ok();
+
+        let mut response_buf = Vec::new();
+        stream
+            .read_to_end(&mut response_buf)
+            .await
+            .map_err(|e| RemoteDispatchError::Transport(format!("TCP read: {e}")))?;
+
+        let response: serde_json::Value = serde_json::from_slice(&response_buf)
+            .map_err(|e| RemoteDispatchError::Serialize(format!("response parse: {e}")))?;
+
+        if let Some(result) = response.get("result") {
+            Ok(result.clone())
+        } else if let Some(error) = response.get("error") {
+            Err(RemoteDispatchError::Remote(error.to_string()))
+        } else {
+            Err(RemoteDispatchError::Remote("unexpected response".into()))
+        }
+    }
 }
 
 /// Cross-gate job router
@@ -200,6 +295,18 @@ impl JobRouter {
     pub fn gates(&self) -> &HashMap<Arc<str>, GateGpuInfo> {
         &self.gates
     }
+
+    /// Whether the given gate_id is a remote gate (not the local one).
+    #[must_use]
+    pub fn is_remote_gate(&self, gate_id: &str) -> bool {
+        gate_id != self.local_gate_id.as_ref()
+    }
+
+    /// Get the endpoint for a remote gate.
+    #[must_use]
+    pub fn gate_endpoint(&self, gate_id: &str) -> Option<String> {
+        self.gates.get(gate_id).and_then(|g| g.endpoint.clone())
+    }
 }
 
 #[cfg(test)]
@@ -215,6 +322,7 @@ mod tests {
             loaded_models: vec!["tinyllama:latest".to_string()],
             queue_depth: 2,
             reachable: true,
+            endpoint: None,
         }
     }
 
@@ -227,6 +335,7 @@ mod tests {
             loaded_models: vec!["llama3:70b".to_string()],
             queue_depth: 0,
             reachable: true,
+            endpoint: None,
         }
     }
 
@@ -434,6 +543,7 @@ mod tests {
             loaded_models: vec!["model1".to_string()],
             queue_depth: 2,
             reachable: true,
+            endpoint: None,
         };
         let json = serde_json::to_string(&info).expect("serialize");
         let parsed: GateGpuInfo = serde_json::from_str(&json).expect("deserialize");
@@ -452,5 +562,90 @@ mod tests {
         let decision = router.route("any_model", 1000);
         assert_eq!(decision.gate_id.as_ref(), "local-gate");
         assert!(matches!(decision.reason, RoutingReason::OnlyOption));
+    }
+
+    #[test]
+    fn test_is_remote_gate_returns_true_for_non_local() {
+        let mut router = JobRouter::new("tower");
+        router.update_gate(tower_gpu());
+        router.update_gate(gate2_gpu());
+
+        assert!(!router.is_remote_gate("tower"));
+        assert!(router.is_remote_gate("gate2"));
+        assert!(router.is_remote_gate("unknown"));
+    }
+
+    #[test]
+    fn test_is_remote_gate_returns_false_for_local() {
+        let router = JobRouter::new("local");
+        assert!(!router.is_remote_gate("local"));
+    }
+
+    #[test]
+    fn test_gate_endpoint_returns_endpoint_for_known_gates() {
+        let mut router = JobRouter::new("tower");
+        let mut gate2 = gate2_gpu();
+        gate2.endpoint = Some("/tmp/gate2.sock".to_string());
+        router.update_gate(tower_gpu());
+        router.update_gate(gate2);
+
+        assert_eq!(router.gate_endpoint("tower"), None);
+        assert_eq!(
+            router.gate_endpoint("gate2"),
+            Some("/tmp/gate2.sock".to_string())
+        );
+        assert_eq!(router.gate_endpoint("unknown"), None);
+    }
+
+    #[test]
+    fn test_gate_gpu_info_endpoint_serializes() {
+        let info = GateGpuInfo {
+            gate_id: Arc::from("remote"),
+            gpu_model: "RTX 4090".to_string(),
+            vram_total_mb: 24576,
+            vram_available_mb: 20000,
+            loaded_models: vec![],
+            queue_depth: 0,
+            reachable: true,
+            endpoint: Some("127.0.0.1:9999".to_string()),
+        };
+        let json = serde_json::to_string(&info).expect("serialize");
+        assert!(json.contains("127.0.0.1:9999"));
+        let parsed: GateGpuInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(parsed.endpoint.as_deref(), Some("127.0.0.1:9999"));
+    }
+
+    #[tokio::test]
+    async fn test_remote_dispatcher_forward_unix_invalid_path_returns_transport_error() {
+        // /tmp exists but is a directory, not a socket — UnixStream::connect fails
+        let result = super::RemoteDispatcher::forward(
+            "/tmp",
+            "compute.submit",
+            serde_json::json!({}),
+        )
+        .await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, super::RemoteDispatchError::Transport(_)),
+            "expected Transport error, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_remote_dispatcher_forward_nonexistent_tcp_returns_transport_error() {
+        // Use localhost with port 1 — nothing listens, connection refused quickly
+        let result = super::RemoteDispatcher::forward(
+            "127.0.0.1:1",
+            "compute.submit",
+            serde_json::json!({}),
+        )
+        .await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, super::RemoteDispatchError::Transport(_)),
+            "expected Transport error, got {err:?}"
+        );
     }
 }

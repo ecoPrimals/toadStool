@@ -144,6 +144,7 @@ fn test_route_unreachable_gates_excluded() {
         loaded_models: vec!["model".to_string()],
         queue_depth: 0,
         reachable: false,
+        endpoint: None,
     };
     router.update_gate(gate);
 
@@ -163,6 +164,7 @@ fn test_route_local_fallback_when_no_vram_candidates() {
         loaded_models: vec![],
         queue_depth: 5,
         reachable: true,
+        endpoint: None,
     };
     router.update_gate(gate);
 

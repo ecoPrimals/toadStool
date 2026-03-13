@@ -213,6 +213,8 @@ impl VulkanBackend {
     /// Caller must ensure:
     /// - Device is valid for the lifetime of this backend
     /// - Memory properties match the device
+    ///
+    /// SAFETY: FFI boundary — caller guarantees valid Vulkan handles.
     #[allow(
         dead_code,
         reason = "Vulkan device constructor; used when Vulkan runtime is available"

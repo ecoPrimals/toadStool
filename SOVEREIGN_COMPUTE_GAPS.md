@@ -41,14 +41,14 @@ Three dispatch paths:
 |:-:|-----|--------|-------------|------------|
 | 5 | ~~Multi-arch register classification~~ | `hw-learn` | ✅ **Resolved S152**: `GpuGen` enum (Maxwell→Ampere), `classify_register_for_gen()` with per-generation register tables. GA102 + TU102 ranges from envytools. `classify_events` accepts chip hint. | — |
 | 6 | ~~Unified PCI discovery~~ | `toadstool-common` | ✅ **Resolved S151**: `pci_discovery::discover_pci_devices()` with `PciFilter` (vendor, class, device IDs). Vendor constants for NVIDIA, Brainchip, AMD, Intel. Shared scanner for GPU + NPU + any accelerator. | — |
-| 7 | **Test coverage → 90%** | Workspace | ~86% line coverage (121K production lines). Remaining ~7.4K lines in hardware-dependent code: V4L2/display (3.8K), neuromorphic/VFIO (2K), test infra (1K). Mock hardware layers or platform-specific harnesses. | D-COV |
-| 8 | **OS keyring integration** | `toadstool-common` | File-based credential resolution done (S149). Remaining: D-Bus SecretService (Linux) and macOS Keychain for full OS keyring chain. | D-KEYRING |
+| 7 | ~~Test coverage → 90%~~ | Workspace, `testing/mocks/` | ✅ **Resolved S152**: `MockV4l2Device` (synthetic frames, error injection, format switching) + `MockVfioDevice` (BAR0 register sim, access logging, `RegisterAccess` trait impl). Headless CI can now test V4L2 capture and VFIO paths. | — |
+| 8 | ~~OS keyring integration~~ | `toadstool-common` | ✅ **Resolved S152**: `os_keyring` module — `secret-tool` (D-Bus SecretService) on Linux, `security` (Keychain) on macOS. Step 2.5 in credential chain. `query`, `store`, `delete`, `available`. | — |
 
 ## Medium Priority (P2) — Required for fleet / multi-toadStool
 
 | # | Gap | Module | Description | Depends On |
 |:-:|-----|--------|-------------|------------|
-| 9 | **Cross-toadStool GPU pooling** | `server/`, `distributed/` | When local GPUs are busy, route dispatch to another toadStool instance via songBird. Needs: GPU availability broadcast, remote dispatch protocol, load-balanced routing. | songBird federation |
+| 9 | ~~Cross-toadStool GPU pooling~~ | `server/`, `cross_gate` | ✅ **Resolved S152**: `RemoteDispatcher` forwards jobs via Unix socket or TCP. `GateGpuInfo.endpoint` for remote gates. `compute_submit` auto-forwards when router selects remote gate, falls back to local on failure. `compute.dispatch.forward` for explicit relay. | — |
 | 10 | ~~Thermal safety enforcement~~ | `nvpmu`, `server/hw_learn` | ✅ **Resolved S151**: `check_thermal_for_bdf()` gates `apply` and `auto_init`. `gpu.telemetry` JSON-RPC method returns per-GPU temp/power/safety. `auto_init` captures `RegisterSnapshot` and rolls back on failure. | — |
 | 11 | ~~VFIO bind/unbind automation~~ | `nvpmu::vfio_bind` | ✅ **Resolved S151**: `bind_vfio()` / `unbind_vfio()` with safety checks (DRM consumers, IOMMU group). `current_binding()` queries state. `BindResult` tracks previous→current driver. | — |
 | 12 | ~~Multi-GPU init orchestration~~ | `nvpmu`, `server/handler/` | ✅ **Resolved S152**: `compute.hardware.auto_init_all` — parallel `spawn_blocking` per GPU, thermal checks, rollback, per-GPU succeeded/failed/skipped reporting. | — |
@@ -74,6 +74,10 @@ Three dispatch paths:
 | MSI-X / eventfd | `VfioMsixInterrupt::configure()` — wires eventfd to MSI-X vector via `VFIO_DEVICE_SET_IRQS`. `wait()` and `wait_timeout()` for completion |
 | GPU reset / power | `GpuPowerController` — `power_state()`, `reset()` (FLR), `power_on()`/`power_suspend()`, `available_reset_methods()`, `power_limit_uw()` |
 | `extern "C"` elimination | `nouveau_drm.rs` FFI ioctl replaced with rustix `DrmIoctl` + `ioctl_nr_to_opcode()`. Zero `extern "C"` in workspace |
+| Gap 8: OS keyring | `os_keyring` module — Linux D-Bus SecretService (`secret-tool`), macOS Keychain (`security`). Wired as step 2.5 in `resolve_credential` chain |
+| Gap 9: Cross-gate GPU pooling | `RemoteDispatcher` (Unix + TCP relay), `GateGpuInfo.endpoint`, auto-forward in `compute_submit`, `compute.dispatch.forward` JSON-RPC method |
+| Unsafe evolution (display) | `MmapBuffer::as_slice()` centralizes V4L2 mmap unsafe; `read_frame` no longer has inline unsafe |
+| Gap 7: Mock hardware layers | `MockV4l2Device` (4 frame patterns, error injection, capture lifecycle) + `MockVfioDevice` (register sim, access log, `RegisterAccess` impl, error injection) in `crates/testing/src/mocks/` |
 
 ## Previously Resolved (S151)
 

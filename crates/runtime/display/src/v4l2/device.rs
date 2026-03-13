@@ -4,7 +4,7 @@
 //! Wraps `/dev/video*` devices for reading video frames from HDMI capture cards.
 //! Uses `mmap` streaming I/O for zero-copy frame delivery.
 
-#![allow(unsafe_code)] // V4L2 ioctls require unsafe; all unsafety is isolated here.
+#![allow(unsafe_code)] // V4L2 ioctls/mmap require unsafe; each block has // SAFETY: comment.
 
 use crate::{DisplayError, Result};
 use rustix::fd::OwnedFd;
@@ -154,6 +154,22 @@ pub struct CaptureDevice {
 struct MmapBuffer {
     ptr: *mut u8,
     len: usize,
+}
+
+impl MmapBuffer {
+    /// Return a slice view of the mmap'd memory.
+    ///
+    /// SAFETY: ptr and len come from a successful mmap; we own this mapping exclusively.
+    /// The slice is valid for the lifetime of self. Callers must not hold the slice across
+    /// operations that could invalidate the buffer (e.g. stop_streaming).
+    fn as_slice(&self) -> &[u8] {
+        if self.ptr.is_null() || self.len == 0 {
+            return &[];
+        }
+        // SAFETY: ptr and len from mmap in request_buffers; valid for buffer lifetime.
+        // No safe way to create slice from mmap'd memory without unsafe.
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
 }
 
 // SAFETY: MmapBuffer is Send/Sync because: ptr/len are only accessed via &mut CaptureDevice
@@ -441,11 +457,7 @@ impl CaptureDevice {
         let copy_len = out.len().min(used);
 
         if idx < self.buffers.len() {
-            let mbuf = &self.buffers[idx];
-            // SAFETY: from_raw_parts is unsafe: invalid ptr/len causes UB. Invariants: ptr from
-            // mmap, len from kernel; buffer is valid and we read only up to copy_len. No safe way
-            // to create a slice from mmap'd memory without unsafe.
-            let src = unsafe { std::slice::from_raw_parts(mbuf.ptr, mbuf.len) };
+            let src = self.buffers[idx].as_slice();
             out[..copy_len].copy_from_slice(&src[..copy_len]);
         }
 

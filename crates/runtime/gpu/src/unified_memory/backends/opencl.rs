@@ -224,6 +224,8 @@ impl OpenClBackend {
     /// - Context is valid for the lifetime of this backend
     /// - Device matches the context
     /// - SVM flag is correct for the device
+    ///
+    /// SAFETY: FFI boundary — caller guarantees valid OpenCL handles.
     #[allow(
         dead_code,
         reason = "OpenCL context constructor; used when OpenCL runtime is available"

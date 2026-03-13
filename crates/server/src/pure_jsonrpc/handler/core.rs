@@ -93,6 +93,7 @@ pub(super) async fn discover_capabilities(
         "compute.dispatch.submit",
         "compute.dispatch.status",
         "compute.dispatch.result",
+        "compute.dispatch.forward",
         "compute.dispatch.capabilities",
         "ai.local_inference",
         "ai.local_execute",

@@ -180,6 +180,7 @@ impl JsonRpcHandler {
             "compute.dispatch.submit" => return self.dispatch.dispatch_submit(params).await,
             "compute.dispatch.status" => return self.dispatch.dispatch_status(params).await,
             "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,
+            "compute.dispatch.forward" => return self.dispatch.dispatch_forward(params).await,
             "compute.dispatch.capabilities" => return self.dispatch.dispatch_capabilities(params).await,
 
             "gpu.info" => return core::gpu_info().await,

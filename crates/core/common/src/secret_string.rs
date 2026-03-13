@@ -126,6 +126,7 @@ pub enum CredentialError {
 ///
 /// 1. **Environment variable** (`std::env::var(name)`)
 /// 2. **Credentials file** (`$XDG_CONFIG_HOME/toadstool/credentials`, 0600)
+/// 2.5. **OS keyring** (D-Bus SecretService on Linux, Keychain on macOS)
 /// 3. **Security provider** (capability `crypto` → `secret.resolve` JSON-RPC)
 ///
 /// Returns [`CredentialError::NotFound`] when all sources are exhausted.
@@ -146,6 +147,16 @@ pub async fn resolve_credential(name: &str) -> Result<SecretString, CredentialEr
         tracing::debug!(
             credential = name,
             source = "credentials_file",
+            "credential resolved"
+        );
+        return Ok(val);
+    }
+
+    // 2.5. OS keyring (D-Bus SecretService on Linux, Keychain on macOS)
+    if let Some(val) = crate::os_keyring::query_os_keyring(name) {
+        tracing::debug!(
+            credential = name,
+            source = "os_keyring",
             "credential resolved"
         );
         return Ok(val);
