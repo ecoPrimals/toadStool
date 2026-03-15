@@ -8,6 +8,7 @@ use super::StepResult;
 use crate::distiller::VerifyCheck;
 
 /// Run a verification check after recipe application.
+#[must_use]
 pub fn run_verification(step_index: usize, card_path: &str, check: &VerifyCheck) -> StepResult {
     match check {
         VerifyCheck::RegisterMatch {

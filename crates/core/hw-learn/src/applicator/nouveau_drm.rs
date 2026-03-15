@@ -17,6 +17,7 @@ use rustix::ioctl::{Ioctl, IoctlOutput, Opcode};
 use std::ffi::CString;
 
 /// Execute an ioctl step against a DRM device.
+#[must_use]
 pub fn execute_ioctl(step_index: usize, card_path: &str, ioctl_nr: u64, args: &[u8]) -> StepResult {
     let fd = match open_drm_device(card_path) {
         Ok(fd) => fd,
@@ -96,7 +97,7 @@ fn ioctl_nr_to_opcode(nr: u64) -> Opcode {
 
 /// Perform a DRM ioctl with a mutable buffer argument.
 ///
-/// Uses rustix::ioctl with a DrmIoctl wrapper for runtime opcodes from
+/// Uses `rustix::ioctl` with a `DrmIoctl` wrapper for runtime opcodes from
 /// init recipes. Eliminates the last `extern "C"` FFI in hw-learn.
 fn attempt_ioctl(fd: &OwnedFd, ioctl_nr: u64, args: &[u8]) -> Result<(), i32> {
     let mut buf = if args.is_empty() {
@@ -112,5 +113,5 @@ fn attempt_ioctl(fd: &OwnedFd, ioctl_nr: u64, args: &[u8]) -> Result<(), i32> {
 
     // SAFETY: fd is a valid DRM device from open_drm_device.
     // buf outlives the syscall. ioctl_nr encodes command per DRM convention.
-    unsafe { rustix::ioctl::ioctl(fd.as_fd(), ioctl) }.map_err(|e| e.raw_os_error())
+    unsafe { rustix::ioctl::ioctl(fd.as_fd(), ioctl) }.map_err(rustix::io::Errno::raw_os_error)
 }

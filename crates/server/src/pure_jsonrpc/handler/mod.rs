@@ -27,7 +27,7 @@ use tracing::{debug, error, info};
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JSONRPC_VERSION};
 
 use dispatch::DispatchHandler;
-use hw_learn::HwLearnHandler;
+pub use hw_learn::HwLearnHandler;
 use job::JobHandler;
 use ollama::OllamaHandler;
 use resources::ResourceHandler;

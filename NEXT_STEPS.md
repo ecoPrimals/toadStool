@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 14, 2026 -- S154 Deep Audit + Quality Gate Evolution
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,285 tests (0 failures, 222 ignored) | 83.09% line coverage (target 90%) | 96+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified (20 crates forbid) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **IPC-first pipeline + ecoprimals-mode CLI + VFIO 6/7 validated**
-**Latest**: S154 — Deep audit: hw_learn.rs (985→9 modules), wgpu_backend.rs (974→4 modules), 49 new tests, 5 examples capability-based, PRIMAL_CAPABILITY_SYSTEM REST→JSON-RPC 2.0, 20 crates deny→forbid(unsafe_code). S153: IPC-first reconciliation, compute.hardware.vfio_devices, ecoprimals-mode CLI.
+**Updated**: March 15, 2026 -- S155b Coverage Expansion + Quality Gate Evolution
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,843 tests (0 failures, 222 ignored) | ~83% line coverage (182K instrumented; target 90%) | 96+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified (20 crates forbid) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **IPC-first pipeline + ecoprimals-mode CLI + VFIO 6/7 validated**
+**Latest**: S155b — Coverage expansion in progress, clippy pedantic clean, dependency audit clean, unsafe audit clean. S154: Deep audit (hw_learn.rs, wgpu_backend.rs refactors), 20 crates deny→forbid(unsafe_code). S153: IPC-first reconciliation, compute.hardware.vfio_devices, ecoprimals-mode CLI.
 
 ---
 
@@ -26,9 +26,9 @@ adapter. Vendor-agnostic, capability-based, zero-copy input (`Cow`). Also added
 `NpuParameterController` trait (hotSpring absorption) for NPU-driven autonomous
 parameter tuning.
 
-### P1: Test Coverage → 90% (D-COV) — Ongoing (S154)
+### P1: Test Coverage → 90% (D-COV) — Ongoing (S155b)
 
-**83.09% line coverage** (~150K production lines). 20,285 tests (S154). Mock hardware layers for V4L2/VFIO available (`MockV4l2Device`, `MockVfioDevice`). Coverage push to 90% ongoing.
+**~83% line coverage** (182K lines instrumented). 20,843 tests (S155b). Mock hardware layers for V4L2/VFIO available (`MockV4l2Device`, `MockVfioDevice`). Coverage push to 90% ongoing — hardware mocks needed for remaining gaps.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -38,11 +38,13 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-### Key Remaining Items (S154)
+### Key Remaining Items (S155b)
 
 | Item | Status |
 |------|--------|
-| Coverage push to 90% | Ongoing — 83.09% line (S154) |
+| Coverage push 83%→90% | Ongoing — hardware mocks needed for remaining gaps |
+| Property-based testing for computation modules | Pending |
+| Multi-primal integration test infrastructure | Pending |
 | VFIO PBDMA dispatch | Blocked on coralReef (USERD_TARGET encoding fix) |
 | E2E sovereign pipeline test | Pending |
 | Glow plug / PowerManager absorption from hotSpring | Pending |
@@ -125,7 +127,12 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-154)
+## Completed This Session (S90-155b)
+
+### Session S155b: Coverage Expansion + Quality Gate Evolution (Mar 15, 2026)
+- **Tests**: 20,843 (was 20,285). Clippy pedantic clean. Dependency audit clean. Unsafe audit clean.
+- **Coverage**: ~83% line (182K lines instrumented). Target 90%.
+- **Next steps identified**: Push coverage 83%→90% (hardware mocks needed); property-based testing for computation modules; multi-primal integration test infrastructure.
 
 ### Session S154: Deep Audit + Quality Gate Evolution (Mar 14, 2026)
 - **Tests**: 20,285 (was 20,262), 222 ignored. 49 new targeted tests (templates, network_config, hardware, mdns_discovery).

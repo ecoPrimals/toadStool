@@ -101,6 +101,12 @@ impl HwLearnHandler {
     /// Params: `{ "bdf": "..." }` (optional, auto-detects if omitted)
     ///         `{ "dry_run": true }` (optional, default false)
     /// Returns: `{ "gpu": ..., "recipe_id": ..., "result": ... }`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if GPU discovery fails, no GPUs found, specified BDF
+    /// not found, no recipe for chip, recipe load fails, thermal check refuses
+    /// live apply, or BAR0 access fails.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"
@@ -180,8 +186,7 @@ impl HwLearnHandler {
         if let Some(ref status) = thermal {
             if !status.compute_safe() {
                 return Err(JsonRpcError::internal_error(format!(
-                    "GPU {bdf} thermal status {:?} — refusing auto_init",
-                    status
+                    "GPU {bdf} thermal status {status:?} — refusing auto_init"
                 )));
             }
         }
@@ -242,6 +247,10 @@ impl HwLearnHandler {
     /// Params: `{ "dry_run": true }` (optional, default false)
     ///         `{ "parallel": true }` (optional, default true)
     /// Returns: `{ "gpus": [...], "total": N, "succeeded": N }`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if GPU discovery fails or the recipe store fails to open.
     pub async fn hw_learn_auto_init_all(
         &self,
         params: Option<&serde_json::Value>,

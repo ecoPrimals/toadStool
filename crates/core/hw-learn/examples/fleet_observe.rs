@@ -4,7 +4,7 @@
 //! Run on any machine to:
 //! 1. Discover all GPUs via sysmon
 //! 2. Probe firmware inventory for each
-//! 3. Identify teacher/student pairs via LearningAdvisor
+//! 3. Identify teacher/student pairs via `LearningAdvisor`
 //! 4. Output a fleet report as JSON
 //!
 //! ## eastgate usage (RTX 4070 + Titan V)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! LearningAdvisor — identify teacher/student GPU pairs and learning opportunities.
+//! `LearningAdvisor` — identify teacher/student GPU pairs and learning opportunities.
 //!
 //! Given a fleet of GPUs (from sysmon discovery), the advisor determines which
 //! GPUs can teach others. The core insight: a GPU with working compute can
@@ -45,13 +45,14 @@ pub struct LearningOpportunity {
     pub rationale: String,
 }
 
-/// LearningAdvisor — reasons about what can be learned from the GPU fleet.
+/// `LearningAdvisor` — reasons about what can be learned from the GPU fleet.
 pub struct LearningAdvisor {
     fleet: Vec<FleetGpu>,
 }
 
 impl LearningAdvisor {
     /// Create an advisor from a fleet of discovered GPUs.
+    #[must_use]
     pub fn new(fleet: Vec<FleetGpu>) -> Self {
         Self { fleet }
     }
@@ -60,6 +61,7 @@ impl LearningAdvisor {
     ///
     /// For each blocked GPU, checks if any working GPU can serve as a teacher.
     /// Returns opportunities sorted by confidence (highest first).
+    #[must_use]
     pub fn opportunities(&self) -> Vec<LearningOpportunity> {
         let teachers: Vec<&FleetGpu> = self.fleet.iter().filter(|g| g.compute_works).collect();
         let students: Vec<&FleetGpu> = self.fleet.iter().filter(|g| !g.compute_works).collect();
@@ -113,6 +115,7 @@ impl LearningAdvisor {
     }
 
     /// Quick check: are there any learning opportunities?
+    #[must_use]
     pub fn has_opportunities(&self) -> bool {
         let has_teachers = self.fleet.iter().any(|g| g.compute_works);
         let has_students = self.fleet.iter().any(|g| !g.compute_works);
@@ -120,6 +123,7 @@ impl LearningAdvisor {
     }
 
     /// Get a summary of the fleet status.
+    #[must_use]
     pub fn fleet_summary(&self) -> FleetSummary {
         FleetSummary {
             total_gpus: self.fleet.len(),

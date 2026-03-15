@@ -9,6 +9,10 @@ impl HwLearnHandler {
     /// `gpu.telemetry` — Report thermal and power data for all detected GPUs.
     ///
     /// Returns per-GPU temperature, power, safety status.
+    ///
+    /// # Errors
+    ///
+    /// This function does not return errors.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"

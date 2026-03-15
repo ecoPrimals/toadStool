@@ -21,8 +21,10 @@
 set -euo pipefail
 
 OUTPUT_DIR="${1:-/tmp/hw-learn-captures}"
-TRACE_FILE="/sys/kernel/debug/tracing/trace"
-TRACER_FILE="/sys/kernel/debug/tracing/current_tracer"
+TRACE_DIR="/sys/kernel/tracing"
+[ -d "$TRACE_DIR" ] || TRACE_DIR="/sys/kernel/debug/tracing"
+TRACE_FILE="$TRACE_DIR/trace"
+TRACER_FILE="$TRACE_DIR/current_tracer"
 
 mkdir -p "$OUTPUT_DIR"
 

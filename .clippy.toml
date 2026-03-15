@@ -1,6 +1,5 @@
 # ToadStool Clippy Configuration
 # Aligned with BearDog ecosystem coding standards
-# See: ../beardog/BEARDOG_CODING_STANDARDS.md
 
 # Cognitive complexity threshold (lower = stricter)
 cognitive-complexity-threshold = 30

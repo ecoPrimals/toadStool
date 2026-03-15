@@ -9,7 +9,7 @@ use std::process::Command;
 use crate::types::{MonitoringConfig, ResourceMonitorError};
 
 /// Total system memory in bytes, discovered at runtime via `/proc/meminfo`.
-/// Falls back to 4 GiB if `/proc` is unavailable (macOS, Windows).
+/// Falls back to 4 `GiB` if `/proc` is unavailable (macOS, Windows).
 fn total_system_memory_bytes() -> f64 {
     toadstool_sysmon::memory_info()
         .map(|m| m.total as f64)

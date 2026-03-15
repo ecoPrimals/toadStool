@@ -27,6 +27,12 @@ pub struct HwLearnHandler {
     store_dir: PathBuf,
 }
 
+impl Default for HwLearnHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HwLearnHandler {
     #[must_use]
     pub fn new() -> Self {

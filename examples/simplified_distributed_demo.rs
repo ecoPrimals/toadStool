@@ -29,7 +29,7 @@ use toadstool_distributed::{
 };
 
 /// Resolve orchestration endpoint from config — no hardcoded ports.
-/// Uses TOADSTOOL_COORDINATION_URL or bind_host:capability_fallback::COORDINATION.
+/// Uses `TOADSTOOL_COORDINATION_URL` or `bind_host:capability_fallback::COORDINATION`.
 fn orchestration_endpoint_from_config() -> String {
     let bind_host = ConfigUtils::get_bind_address();
     std::env::var("TOADSTOOL_COORDINATION_URL")

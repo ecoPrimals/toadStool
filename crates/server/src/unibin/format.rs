@@ -11,6 +11,10 @@ use tracing::info;
 use crate::errors::{ServerError, ServerResult};
 
 /// Ensure biomeos directory exists with proper permissions
+///
+/// # Errors
+///
+/// Returns an error if directory creation or permission setting fails.
 pub fn ensure_biomeos_directory(runtime_dir: &Path) -> ServerResult<PathBuf> {
     let biomeos_dir = runtime_dir.join("biomeos");
 
@@ -43,6 +47,10 @@ pub fn socket_filename_for_family(family_id: &str) -> String {
 }
 
 /// Get socket path following biomeOS-standardized fallback
+///
+/// # Errors
+///
+/// Returns an error if biomeOS directory creation or permission setting fails.
 ///
 /// Priority order:
 /// 1. TOADSTOOL_SOCKET env var

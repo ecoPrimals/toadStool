@@ -56,6 +56,9 @@ pub struct RecipeEntry {
 
 impl KnowledgeStore {
     /// Open or create a knowledge store at the given directory.
+    ///
+    /// # Errors
+    /// Returns `Err` if the directory cannot be created or the index file cannot be read.
     pub fn open(store_dir: impl Into<PathBuf>) -> Result<Self, std::io::Error> {
         let store_dir = store_dir.into();
         std::fs::create_dir_all(&store_dir)?;
@@ -72,6 +75,9 @@ impl KnowledgeStore {
     }
 
     /// Store a new recipe, returning its ID.
+    ///
+    /// # Errors
+    /// Returns `Err` if the vendor directory cannot be created, the recipe JSON cannot be serialized, or the file cannot be written.
     pub fn store(&mut self, recipe: &InitRecipe) -> Result<RecipeId, std::io::Error> {
         let arch_id = arch_to_id(&recipe.target_arch);
         let vendor_dir = self
@@ -104,6 +110,7 @@ impl KnowledgeStore {
     }
 
     /// Look up recipes for a target architecture.
+    #[must_use]
     pub fn lookup(&self, target: &GpuArch) -> Vec<&RecipeEntry> {
         let arch_id = arch_to_id(target);
         self.index
@@ -114,6 +121,9 @@ impl KnowledgeStore {
     }
 
     /// Load a recipe by ID.
+    ///
+    /// # Errors
+    /// Returns `Err` if the recipe file cannot be read or the JSON cannot be parsed.
     pub fn load(&self, id: &str) -> Result<Option<InitRecipe>, std::io::Error> {
         for entries in self.index.recipes.values() {
             for entry in entries {
@@ -130,6 +140,7 @@ impl KnowledgeStore {
     }
 
     /// Get the best recipe for a target (highest confidence).
+    #[must_use]
     pub fn best_recipe(&self, target: &GpuArch) -> Option<RecipeId> {
         let entries = self.lookup(target);
         entries
@@ -143,6 +154,9 @@ impl KnowledgeStore {
     }
 
     /// Update confidence score after validation.
+    ///
+    /// # Errors
+    /// Returns `Err` if the index cannot be saved to disk.
     pub fn update_confidence(&mut self, id: &str, confidence: f64) -> Result<(), std::io::Error> {
         for entries in self.index.recipes.values_mut() {
             for entry in entries.iter_mut() {
@@ -155,11 +169,15 @@ impl KnowledgeStore {
     }
 
     /// List all stored architectures.
+    #[must_use]
     pub fn architectures(&self) -> Vec<&ArchId> {
         self.index.recipes.keys().collect()
     }
 
     /// Export the full index as JSON for Plasmodium federation sharing.
+    ///
+    /// # Errors
+    /// Returns `Err` if the index cannot be serialized to JSON.
     pub fn export_index(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(&self.index)
     }
@@ -182,6 +200,10 @@ fn vendor_dirname(vendor: Vendor) -> &'static str {
     }
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "hash truncated to 32 bits for short recipe ID"
+)]
 fn recipe_hash(recipe: &InitRecipe) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -192,11 +214,17 @@ fn recipe_hash(recipe: &InitRecipe) -> String {
 }
 
 /// Export a recipe to a portable format for cross-machine sharing.
+///
+/// # Errors
+/// Returns `Err` if the recipe cannot be serialized to JSON.
 pub fn export_recipe(recipe: &InitRecipe) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(recipe)
 }
 
 /// Import a recipe from portable JSON format.
+///
+/// # Errors
+/// Returns `Err` if the JSON cannot be parsed or does not represent a valid `InitRecipe`.
 pub fn import_recipe(json: &str) -> Result<InitRecipe, serde_json::Error> {
     serde_json::from_str(json)
 }

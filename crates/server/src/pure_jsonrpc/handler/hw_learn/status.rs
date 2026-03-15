@@ -9,6 +9,10 @@ impl HwLearnHandler {
     ///
     /// Params: `{ "chip": "gv100" }` (optional)
     /// Returns: `{ "pipeline": ..., "firmware": ..., "recipes": ... }`
+    ///
+    /// # Errors
+    ///
+    /// This function does not return errors.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"

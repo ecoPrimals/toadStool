@@ -5,8 +5,8 @@
 //!   nvpmu-apply \<bdf\> \<recipe.json\> [--dry-run]
 //!
 //! Example:
-//!   sudo nvpmu-apply 0000:65:00.0 gv100_recipe.json
-//!   nvpmu-apply 0000:65:00.0 gv100_recipe.json --dry-run
+//!   sudo nvpmu-apply 0000:65:00.0 `gv100_recipe.json`
+//!   nvpmu-apply 0000:65:00.0 `gv100_recipe.json` --dry-run
 
 use nvpmu::bar0::Bar0Access;
 use nvpmu::init::{apply_recipe, InitResult};
@@ -43,8 +43,14 @@ fn main() {
         });
         if let Some(steps) = recipe.get("steps").and_then(|s| s.as_array()) {
             for step in steps {
-                let offset = step.get("offset").and_then(|v| v.as_u64()).unwrap_or(0);
-                let value = step.get("value").and_then(|v| v.as_u64()).unwrap_or(0);
+                let offset = step
+                    .get("offset")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                let value = step
+                    .get("value")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
                 let class = step
                     .get("class")
                     .and_then(|v| v.as_str())

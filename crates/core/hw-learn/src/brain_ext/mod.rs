@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Extensions to toadStool's PrecisionBrain for hardware learning.
+//! Extensions to toadStool's `PrecisionBrain` for hardware learning.
 //!
-//! - **LearningAdvisor** — identifies teacher/student GPU pairs and
+//! - **`LearningAdvisor`** — identifies teacher/student GPU pairs and
 //!   learning opportunities across the fleet.
-//! - **FirmwareInventory** — probes firmware availability per GPU
-//!   (PMU, GSP, ACR, GR, GuC, HuC).
-//! - **CapabilityGap** — describes what's missing for compute to work.
+//! - **`FirmwareInventory`** — probes firmware availability per GPU
+//!   (PMU, GSP, ACR, GR, `GuC`, `HuC`).
+//! - **`CapabilityGap`** — describes what's missing for compute to work.
 
 pub mod capability_gap;
 pub mod firmware_probe;

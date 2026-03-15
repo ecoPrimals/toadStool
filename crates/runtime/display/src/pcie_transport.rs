@@ -197,16 +197,20 @@ pub fn discover_pcie_links() -> Vec<PcieLink> {
 
             let pair_topo = topo.pair(source.card_index, target.card_index);
 
-            let bandwidth = pair_topo
-                .map(|_| topo.effective_bandwidth_bps(source.card_index, target.card_index))
-                .unwrap_or_else(|| estimate_link_bandwidth(&src_ep, &tgt_ep));
+            let bandwidth = pair_topo.map_or_else(
+                || estimate_link_bandwidth(&src_ep, &tgt_ep),
+                |_| topo.effective_bandwidth_bps(source.card_index, target.card_index),
+            );
 
-            let same_numa = pair_topo.map(|p| p.same_numa).unwrap_or_else(|| {
-                matches!(
-                    (src_ep.numa_node, tgt_ep.numa_node),
-                    (Some(a), Some(b)) if a >= 0 && b >= 0 && a == b
-                )
-            });
+            let same_numa = pair_topo.map_or_else(
+                || {
+                    matches!(
+                        (src_ep.numa_node, tgt_ep.numa_node),
+                        (Some(a), Some(b)) if a >= 0 && b >= 0 && a == b
+                    )
+                },
+                |p| p.same_numa,
+            );
 
             let via_switch = pair_topo.and_then(|p| p.common_bridge.clone());
             let hops = pair_topo.map_or(u32::MAX, |p| p.hops);

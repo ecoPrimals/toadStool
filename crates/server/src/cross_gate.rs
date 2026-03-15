@@ -117,13 +117,23 @@ impl RemoteDispatcher {
     /// Forward a compute job to a remote gate.
     ///
     /// Attempts Unix socket first (if endpoint looks like a path), then TCP.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RemoteDispatchError`] if the remote gate is unreachable,
+    /// the JSON-RPC call fails, or the response cannot be parsed.
     pub async fn forward(
         endpoint: &str,
         method: &str,
         params: serde_json::Value,
     ) -> Result<serde_json::Value, RemoteDispatchError> {
         let path = Path::new(endpoint);
-        if path.exists() && (endpoint.contains('/') || endpoint.ends_with(".sock")) {
+        if path.exists()
+            && (endpoint.contains('/')
+                || path
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("sock")))
+        {
             return Self::forward_unix(path, method, params).await;
         }
         Self::forward_tcp(endpoint, method, params).await

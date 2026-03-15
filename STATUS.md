@@ -1,4 +1,4 @@
-# Status -- March 14, 2026 (S154 Deep Audit + Quality Gate Evolution)
+# Status -- March 15, 2026 (S155b Coverage Expansion + Dependency/Unsafe Audit)
 
 ## Quality Gates
 
@@ -6,17 +6,17 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
+| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 errors, 0 warnings workspace-wide** (S155b: +12 fixes in server hw_learn/unibin exports) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **20,285 tests, 0 failures** (S154) |
-| `cargo llvm-cov` | **83.09% line** | 171K lines instrumented. Target 90%. Mock hardware layers for V4L2/VFIO available (S152). |
+| `cargo test --workspace` | PASS | **20,843 tests, 0 failures** (S155b: +558 net new from 12 new integration test files) |
+| `cargo llvm-cov` | **~83% line** | 182K lines instrumented. Target 90%. S155b: +806 new test functions across 12 files covering hw_learn handlers, transport/dispatch, unibin/background, core common, config, distributed, CLI, GPU runtime, display, toadstool-core. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
-| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 1,733 .rs files have SPDX headers** |
-| Production panics | PASS | **0 production panic!()** — wgpu handler evolved to tracing::error |
-| Sovereignty | PASS | **Deprecated primal-name APIs migrated** — `primals::*` → `capabilities::*` across 20+ files (S144). All `#[allow(deprecated)]` removed from migrated sites. |
-| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route/open/stream/status. **PCIe switch topology** with shared-switch detection and contention-aware bandwidth (S144). |
+| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 1,759 .rs files have SPDX headers** |
+| Production panics | PASS | **0 production panic!()** — all `panic!`/`unwrap()`/`expect()` confirmed in test code, SAFETY-justified hardware drivers, or compile-time constants |
+| Sovereignty | PASS | **Deprecated primal-name APIs migrated** — `primals::*` → `capabilities::*` across 20+ files (S144). Capability bridges centralized in `capability_helpers.rs`. |
+| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route/open/stream/status. **PCIe switch topology** with shared-switch detection and contention-aware bandwidth (S144). **SerialTransport Sync fixed** (S155). |
 | Progressive showcase | PASS | **15 demos, 4 levels** — local primal, shader pipeline, compute triangle (toadStool/barraCuda/coralReef), ecosystem integration. All build standalone. |
 | Compute triangle discovery | PASS | **Dual-write announce** (ecoPrimals/discovery/ + ecoPrimals/ root), `gpu.dispatch` capability, GPU descriptors with render_node/driver/arch. coralReef-compatible. |
 | Spring absorption | PASS | **StreamingDispatch** (hotSpring v0.6.24), **PipelineGraph DAG** (neuralSpring S134) absorbed into `toadstool::universal`. |
@@ -30,6 +30,7 @@
 |--------|-------|
 | WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
 | Rust version | **1.82+** (is_some_and, div_ceil) |
+| `.rs` files | **1,759** files, **540,125** lines |
 | `unsafe` blocks | **~70+** (SAFETY audit complete S152; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
 | `#![deny(unsafe_code)]` / `#![forbid(unsafe_code)]` | **20 crates upgraded to forbid**; total 36+ deny/forbid (2 justified: gpu, secure_enclave) |
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify, zero sysinfo, zero caps**. `aes-gcm` optional (dev-crypto only). `toadstool-sysmon` (pure Rust /proc) replaces sysinfo. |

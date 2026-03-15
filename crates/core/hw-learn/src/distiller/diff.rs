@@ -10,17 +10,14 @@ use crate::observer::{TraceEvent, TraceEventKind};
 ///
 /// Returns events that appear in `compute` but not in `baseline`,
 /// matched by event kind (register offset, ioctl number).
+#[must_use]
 pub fn diff_traces(baseline: &[TraceEvent], compute: &[TraceEvent]) -> Vec<TraceEvent> {
     let baseline_keys: std::collections::HashSet<u64> =
         baseline.iter().filter_map(|e| event_key(&e.kind)).collect();
 
     compute
         .iter()
-        .filter(|e| {
-            event_key(&e.kind)
-                .map(|k| !baseline_keys.contains(&k))
-                .unwrap_or(true)
-        })
+        .filter(|e| event_key(&e.kind).is_none_or(|k| !baseline_keys.contains(&k)))
         .cloned()
         .collect()
 }

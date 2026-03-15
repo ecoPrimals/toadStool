@@ -41,7 +41,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 20,285 workspace tests (0 failures, 222 intentional ignores) |
+| `cargo test --workspace` | 20,843 workspace tests (0 failures, 222 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; 20 crates `#![forbid(unsafe_code)]` |
@@ -57,7 +57,7 @@ Nest    = Tower  + NestGate           <- storage
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | License | AGPL-3.0-only -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files under 1000 lines (largest: 451; hw_learn/wgpu_backend refactored S154) |
+| File size limit | All production files under 1000 lines (largest: 451; hw_learn/wgpu_backend refactored S155b) |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -241,7 +241,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 20,285 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Workspace tests | 20,843 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; 20 crates `#![forbid(unsafe_code)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -262,11 +262,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 20,285 tests (S154); 83.09% line; focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 20,843 tests (S155b); ~83% line (182K lines instrumented); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S155b (Mar 15, 2026)**: Coverage expansion, clippy pedantic clean, dependency audit clean, unsafe audit clean. 20,843 tests. ~83% line coverage (182K lines instrumented). Next: push 83%→90% (hardware mocks), property-based testing for computation modules, multi-primal integration test infrastructure.
 - **S147 (Mar 12, 2026)**: hw-learn wiring + sovereign compute hardening — 5 `compute.hardware.*` JSON-RPC methods (observe/distill/apply/share_recipe/status), nvpmu `Bar0Access` implements `RegisterAccess` trait (hw-learn→BAR0 bridge), `nvvm_safety.rs` renamed to `spirv_codegen_safety.rs` (naga root-cause per hotSpring v0.6.30), `FirmwareInventory` in `gpu.info` response (compute_viable/compute_blockers), PRIMAL_REGISTRY updated, genomeBin manifest enriched. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35. 20,015 tests.
 - **S146 (Mar 10, 2026)**: Deep evolution — nvvm_transcendental_risk in gpu.info, PrecisionBrain wired into compile_wgsl_multi, PcieTopologyGraph stable, SpringDomain +10 domains (SCREAMING_SNAKE_CASE), HealthSpring added, gpu_memory_estimate_bytes + route_with_vram, cross-spring provenance expanded. Spring pins: hotSpring v0.6.27, neuralSpring V96, wetSpring V109, healthSpring V19. 19,972 tests.
 - **S145 (Mar 10, 2026)**: Spring absorption execution — PrecisionBrain (hotSpring v0.6.25), NvkZeroGuard (airSpring v0.7.5), 8 new WorkloadPatterns (neuralSpring S140 + healthSpring V14.1), 5 new capability domains, capability.call format standardization (ISSUE-003), Spring-as-Provider ProviderRegistry (ISSUE-007), ServerConfig port hardcoding evolved. 19,965 tests.
@@ -286,7 +287,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 20,285 tests (S154); 83.09% line; focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 20,843 tests (S155b); ~83% line (182K instrumented); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -331,4 +332,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 14, 2026 — S154. 20,285 workspace tests. ~83% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V98/S145, wetSpring V109, airSpring v0.7.5, healthSpring V19, coralReef Iteration 43, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); 20 crates `#![forbid(unsafe_code)]`. Clippy pedantic zero. Rust 1.82+ (MSRV).
+**Last Updated**: March 15, 2026 — S155b. 20,843 workspace tests. ~83% line coverage (182K lines instrumented; target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V98/S145, wetSpring V109, airSpring v0.7.5, healthSpring V19, coralReef Iteration 43, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); 20 crates `#![forbid(unsafe_code)]`. Clippy pedantic zero. Rust 1.82+ (MSRV).

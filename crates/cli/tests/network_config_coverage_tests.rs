@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Coverage tests for CLI network_config module
-//! Exercises OrchestrationConfigurator, validation, and configuration summary.
+//! Coverage tests for CLI `network_config` module
+//! Exercises `OrchestrationConfigurator`, validation, and configuration summary.
 
 use toadstool_cli::network_config::OrchestrationConfigurator;
 

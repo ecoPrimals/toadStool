@@ -155,6 +155,7 @@ impl RecipeDistiller {
     ///
     /// When `baseline` is provided, the distiller diffs the two traces
     /// to isolate compute-specific operations.
+    #[must_use]
     pub fn distill(
         observation: &ObserveResult,
         baseline: Option<&ObserveResult>,

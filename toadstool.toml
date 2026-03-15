@@ -174,18 +174,6 @@ authentication_required = true
 refresh_interval_secs = 30
 
 [monitoring.external_integrations]
-# Prometheus removed from project (S87)
-# [monitoring.external_integrations.prometheus]
-# enabled = true
-# endpoint = "http://localhost:9090"
-# scrape_interval_secs = 60
-
-# External Grafana monitoring deprecated (S87)
-# [monitoring.external_integrations.grafana]
-# enabled = true
-# dashboard_url = "http://localhost:3000"
-# api_key = "admin"
-
 [monitoring.external_integrations.jaeger]
 enabled = true
 endpoint = "http://localhost:16686"

@@ -91,8 +91,7 @@ impl DispatchHandler {
         if let Some(ref status) = thermal {
             if !status.compute_safe() {
                 return Err(JsonRpcError::internal_error(format!(
-                    "GPU {bdf} thermal status {:?} — refusing dispatch",
-                    status
+                    "GPU {bdf} thermal status {status:?} — refusing dispatch"
                 )));
             }
         }

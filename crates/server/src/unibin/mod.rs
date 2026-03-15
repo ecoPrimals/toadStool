@@ -12,6 +12,7 @@ pub use execution::{
     create_executor, is_platform_constraint_str, is_selinux_enforcing, start_servers_with_fallback,
     write_tcp_discovery_file,
 };
+pub use format::{ensure_biomeos_directory, get_socket_path, socket_filename_for_family};
 
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;

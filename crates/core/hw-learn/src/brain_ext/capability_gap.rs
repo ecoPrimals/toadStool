@@ -35,6 +35,7 @@ pub enum GapSeverity {
 
 impl CapabilityGap {
     /// Diagnose the capability gap for a GPU.
+    #[must_use]
     pub fn diagnose(firmware: &FirmwareInventory, arch: &GpuArch) -> Self {
         let mut missing_firmware = Vec::new();
 

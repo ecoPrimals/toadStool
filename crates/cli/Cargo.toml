@@ -42,7 +42,7 @@ doc = false  # Avoid doc collision with toadstool lib (target/doc/toadstool/inde
 # The main.rs still detects legacy names (for symlinks) but we no longer
 # build multiple binaries. Users should migrate to the canonical UniBin interface.
 #
-# See: EVOLUTION_SESSION_JAN_27_2026.md for details.
+# See: wateringHole/UNIBIN_ARCHITECTURE_STANDARD.md for details.
 
 [dependencies]
 # Core ToadStool crates

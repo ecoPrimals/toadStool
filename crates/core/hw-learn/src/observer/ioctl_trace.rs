@@ -10,6 +10,10 @@
 use super::{ObserveConfig, ObserveError, ObserveResult, TraceEvent, TraceEventKind};
 use std::io::BufRead;
 
+/// Parse strace ioctl output into trace events.
+///
+/// # Errors
+/// Returns `Err` if the trace path is missing, the file cannot be read, or parsing fails.
 pub fn parse_ioctl_trace(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
     let path = config
         .trace_path

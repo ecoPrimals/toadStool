@@ -2,7 +2,7 @@
 //! OS-native keyring integration for credential resolution.
 //!
 //! Provides platform-specific secret storage access:
-//! - **Linux**: D-Bus SecretService API via `secret-tool` (GNOME Keyring, KWallet)
+//! - **Linux**: D-Bus `SecretService` API via `secret-tool` (GNOME Keyring, `KWallet`)
 //! - **macOS**: Security.framework Keychain via `security` CLI
 //! - **Other**: Falls back to `None`
 //!
@@ -20,6 +20,7 @@ const SERVICE_NAME: &str = "toadstool";
 /// - The keyring daemon is not running
 /// - The credential is not stored
 /// - Access was denied
+#[must_use]
 pub fn query_os_keyring(name: &str) -> Option<SecretString> {
     #[cfg(target_os = "linux")]
     {
@@ -39,6 +40,7 @@ pub fn query_os_keyring(name: &str) -> Option<SecretString> {
 /// Store a credential in the OS keyring.
 ///
 /// Returns `true` if storage succeeded.
+#[must_use]
 pub fn store_os_keyring(name: &str, value: &str) -> bool {
     #[cfg(target_os = "linux")]
     {
@@ -56,6 +58,7 @@ pub fn store_os_keyring(name: &str, value: &str) -> bool {
 }
 
 /// Delete a credential from the OS keyring.
+#[must_use]
 pub fn delete_os_keyring(name: &str) -> bool {
     #[cfg(target_os = "linux")]
     {
@@ -73,6 +76,7 @@ pub fn delete_os_keyring(name: &str) -> bool {
 }
 
 /// Whether the OS keyring backend is available on this platform.
+#[must_use]
 pub fn os_keyring_available() -> bool {
     #[cfg(target_os = "linux")]
     {
@@ -119,7 +123,7 @@ fn query_linux_secret_service(name: &str) -> Option<SecretString> {
 
 #[cfg(target_os = "linux")]
 fn store_linux_secret_service(name: &str, value: &str) -> bool {
-    let mut child = match std::process::Command::new("secret-tool")
+    let Ok(mut child) = std::process::Command::new("secret-tool")
         .args([
             "store",
             "--label",
@@ -133,9 +137,8 @@ fn store_linux_secret_service(name: &str, value: &str) -> bool {
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
-    {
-        Ok(c) => c,
-        Err(_) => return false,
+    else {
+        return false;
     };
 
     if let Some(ref mut stdin) = child.stdin {

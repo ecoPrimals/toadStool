@@ -126,7 +126,7 @@ pub enum CredentialError {
 ///
 /// 1. **Environment variable** (`std::env::var(name)`)
 /// 2. **Credentials file** (`$XDG_CONFIG_HOME/toadstool/credentials`, 0600)
-///    2.5. **OS keyring** (D-Bus SecretService on Linux, Keychain on macOS)
+///    2.5. **OS keyring** (D-Bus `SecretService` on Linux, Keychain on macOS)
 /// 3. **Security provider** (capability `crypto` → `secret.resolve` JSON-RPC)
 ///
 /// Returns [`CredentialError::NotFound`] when all sources are exhausted.

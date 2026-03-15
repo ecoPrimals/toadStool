@@ -16,6 +16,12 @@ impl HwLearnHandler {
     /// applicator performs a dry-run simulation.
     ///
     /// Returns: `{ "result": {...}, "mode": "live"|"dry_run" }`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if params are missing/invalid, recipe JSON is invalid,
+    /// recipe store fails to open/load, BAR0 access fails, or thermal check
+    /// refuses live apply.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"
@@ -72,8 +78,7 @@ impl HwLearnHandler {
             if let Some(ref status) = thermal {
                 if !status.compute_safe() {
                     return Err(JsonRpcError::internal_error(format!(
-                        "GPU {bdf} thermal status {:?} — refusing live apply",
-                        status
+                        "GPU {bdf} thermal status {status:?} — refusing live apply"
                     )));
                 }
             }

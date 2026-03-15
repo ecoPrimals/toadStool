@@ -37,7 +37,7 @@ primals:
       health: "http://toadstool:8080/health"
       metrics: "http://toadstool:8080/metrics"
       admin: "http://toadstool:8081/admin"
-      websocket: "ws://toadstool:8080/ws"
+      # WebSocket removed (S90). JSON-RPC 2.0 is the only API path.
     capabilities:
       - "workload_execution"
       - "runtime_orchestration"

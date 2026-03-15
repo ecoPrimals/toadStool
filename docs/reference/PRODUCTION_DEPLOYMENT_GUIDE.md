@@ -1,4 +1,4 @@
-> **Note**: This guide was written in November 2025. Test counts and grades are from that era. Current metrics: 20,285 tests, 83.09% line coverage, clippy pedantic clean. See [STATUS.md](../../STATUS.md) for current state.
+> **Note**: This guide was written in November 2025. Current metrics: 20,843 tests, ~83% coverage, clippy pedantic clean. JSON-RPC 2.0 is the only API path (WebSocket removed S90). See [STATUS.md](../../STATUS.md) for current state.
 
 # 🚀 ToadStool Production Deployment Guide
 **Date**: November 8, 2025  
@@ -300,18 +300,6 @@ sudo chmod 755 /opt/toadstool/bin/toadstool
 
 ## 📊 MONITORING SETUP
 
-### Prometheus Configuration
-
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'toadstool'
-    static_configs:
-      - targets: ['localhost:9090']
-    metrics_path: '/metrics'
-    scrape_interval: 15s
-```
-
 ### Key Metrics to Monitor
 
 ```
@@ -330,33 +318,7 @@ toadstool_build_info
 toadstool_uptime_seconds
 ```
 
-### Grafana Dashboard
-
-```json
-{
-  "dashboard": {
-    "title": "ToadStool Metrics",
-    "panels": [
-      {
-        "title": "Request Rate",
-        "targets": [
-          {
-            "expr": "rate(toadstool_executions_total[5m])"
-          }
-        ]
-      },
-      {
-        "title": "Error Rate",
-        "targets": [
-          {
-            "expr": "rate(toadstool_execution_errors_total[5m])"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+> **Note**: Prometheus/Grafana-specific integration was removed (S87). Use the `/metrics` endpoint with your preferred monitoring stack.
 
 ---
 
@@ -602,10 +564,9 @@ tar -czf toadstool-config-backup-$(date +%Y%m%d).tar.gz \
 ## 🎉 READY TO DEPLOY!
 
 Your ToadStool instance is ready for production:
-- ✅ Code is A+ quality (98/100)
-- ✅ All tests passing (97/97)
-- ✅ Zero deep technical debt
-- ✅ World-class architecture
+- ✅ All tests passing (20,843)
+- ✅ ~83% line coverage
+- ✅ JSON-RPC 2.0 only (WebSocket removed S90)
 
 **Choose your deployment method above and proceed!** 🚀
 

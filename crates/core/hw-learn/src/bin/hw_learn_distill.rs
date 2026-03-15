@@ -68,7 +68,7 @@ fn main() {
     let target_arch = GpuArch {
         vendor: infer_vendor(chip),
         generation: String::new(),
-        chip: chip.to_string(),
+        chip: chip.clone(),
         compute_class: String::new(),
     };
     let recipe = RecipeDistiller::distill(&compute, Some(&baseline), target_arch);

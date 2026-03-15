@@ -10,6 +10,10 @@
 use super::{ObserveConfig, ObserveError, ObserveResult, RpcDirection, TraceEvent, TraceEventKind};
 use std::io::BufRead;
 
+/// Parse nouveau GSP RPC debug log into trace events.
+///
+/// # Errors
+/// Returns `Err` if the trace path is missing, the file cannot be read, or parsing fails.
 pub fn parse_gsp_rpc(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
     let path = config.trace_path.as_ref().ok_or_else(|| {
         ObserveError::TraceUnavailable("GSP RPC trace requires trace_path (dmesg log)".into())
@@ -75,6 +79,11 @@ fn extract_field_u32(line: &str, prefix: &str) -> Option<u32> {
     }
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "dmesg timestamps are small positive floats; microseconds fit in u64"
+)]
 fn extract_dmesg_timestamp_us(line: &str) -> Option<u64> {
     let start = line.find('[')? + 1;
     let end = line.find(']')?;
@@ -93,7 +102,7 @@ mod tests {
         let evt = parse_gsp_line(line);
         assert!(evt.is_some());
         let evt = evt.unwrap();
-        assert_eq!(evt.timestamp_us, 123456789);
+        assert_eq!(evt.timestamp_us, 123_456_789);
         match evt.kind {
             TraceEventKind::GspRpc {
                 func_id,

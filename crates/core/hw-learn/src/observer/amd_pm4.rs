@@ -12,6 +12,10 @@
 use super::{ObserveConfig, ObserveError, ObserveResult, TraceEvent, TraceEventKind};
 use std::io::BufRead;
 
+/// Parse an AMD PM4 trace file into trace events.
+///
+/// # Errors
+/// Returns `Err` if the trace path is missing, the file cannot be read, or parsing fails.
 pub fn parse_pm4_trace(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
     let path = config
         .trace_path
@@ -54,10 +58,15 @@ fn parse_pm4_line(line: &str, seq: &mut u64) -> Option<TraceEvent> {
         let opcode = extract_hex_field(line, "OP=")?;
         let count = extract_dec_field(line, "COUNT=").unwrap_or(0);
         *seq += 1;
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "PM4 opcode is 16-bit per AMD spec"
+        )]
+        let opcode_u16 = opcode as u16;
         Some(TraceEvent {
             timestamp_us: *seq,
             kind: TraceEventKind::Pm4Packet {
-                opcode: opcode as u16,
+                opcode: opcode_u16,
                 count,
             },
             context: line.to_string(),

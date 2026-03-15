@@ -6,7 +6,7 @@
 
 pub use toadstool_sysmon::{FirmwareInventory, FwStatus};
 
-/// Extension trait for FirmwareInventory with learning-specific queries.
+/// Extension trait for `FirmwareInventory` with learning-specific queries.
 pub trait FirmwareInventoryExt {
     /// Whether this GPU can serve as a teacher (has working compute).
     fn can_teach(&self) -> bool;

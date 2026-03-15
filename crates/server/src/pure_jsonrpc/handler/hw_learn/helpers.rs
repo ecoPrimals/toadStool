@@ -54,21 +54,18 @@ pub fn check_thermal_for_bdf_pub(bdf: &str) -> Option<nvpmu::SafetyStatus> {
 pub(super) fn check_thermal_for_bdf(bdf: &str) -> Option<nvpmu::SafetyStatus> {
     let device_path = std::path::PathBuf::from(format!("/sys/bus/pci/devices/{bdf}"));
     let config = nvpmu::MonitorConfig::default();
-    match nvpmu::monitor::sample(&device_path, &config) {
-        Ok(sample) => {
-            if sample.status != nvpmu::SafetyStatus::Normal {
-                tracing::warn!(
-                    bdf,
-                    status = ?sample.status,
-                    "GPU thermal status is not Normal"
-                );
-            }
-            Some(sample.status)
+    if let Ok(sample) = nvpmu::monitor::sample(&device_path, &config) {
+        if sample.status != nvpmu::SafetyStatus::Normal {
+            tracing::warn!(
+                bdf,
+                status = ?sample.status,
+                "GPU thermal status is not Normal"
+            );
         }
-        Err(_) => {
-            tracing::debug!(bdf, "hwmon sensors unavailable — skipping thermal check");
-            None
-        }
+        Some(sample.status)
+    } else {
+        tracing::debug!(bdf, "hwmon sensors unavailable — skipping thermal check");
+        None
     }
 }
 

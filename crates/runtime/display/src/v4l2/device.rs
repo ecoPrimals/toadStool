@@ -161,7 +161,7 @@ impl MmapBuffer {
     ///
     /// SAFETY: ptr and len come from a successful mmap; we own this mapping exclusively.
     /// The slice is valid for the lifetime of self. Callers must not hold the slice across
-    /// operations that could invalidate the buffer (e.g. stop_streaming).
+    /// operations that could invalidate the buffer (e.g. `stop_streaming`).
     fn as_slice(&self) -> &[u8] {
         if self.ptr.is_null() || self.len == 0 {
             return &[];

@@ -2,7 +2,7 @@
 //! Parse Intel GPU batch buffer command dumps.
 //!
 //! Intel GPUs (i915, xe) submit work via batch buffers containing
-//! MI_* and COMPUTE_WALKER commands. The `intel_gpu_tools` suite
+//! MI_* and `COMPUTE_WALKER` commands. The `intel_gpu_tools` suite
 //! can dump these, as can i915 debugfs.
 //!
 //! Expected format:
@@ -14,6 +14,10 @@
 use super::{ObserveConfig, ObserveError, ObserveResult, TraceEvent, TraceEventKind};
 use std::io::BufRead;
 
+/// Parse Intel batch buffer trace into trace events.
+///
+/// # Errors
+/// Returns `Err` if the trace path is missing, the file cannot be read, or parsing fails.
 pub fn parse_batch_trace(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
     let path = config.trace_path.as_ref().ok_or_else(|| {
         ObserveError::TraceUnavailable("Intel batch trace requires trace_path".into())
@@ -50,10 +54,15 @@ fn parse_batch_line(line: &str, seq: &mut u64) -> Option<TraceEvent> {
     let dwords = extract_dec(line, "DWORDS=").unwrap_or(1);
     *seq += 1;
 
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "Intel batch opcode is 32-bit per spec"
+    )]
+    let opcode_u32 = opcode as u32;
     Some(TraceEvent {
         timestamp_us: *seq,
         kind: TraceEventKind::BatchCommand {
-            opcode: opcode as u32,
+            opcode: opcode_u32,
             dwords,
         },
         context: line.to_string(),
@@ -91,7 +100,7 @@ mod tests {
         assert!(evt.is_some());
         match evt.unwrap().kind {
             TraceEventKind::BatchCommand { opcode, dwords } => {
-                assert_eq!(opcode, 0x10000005);
+                assert_eq!(opcode, 0x1000_0005);
                 assert_eq!(dwords, 6);
             }
             _ => panic!("expected BatchCommand"),

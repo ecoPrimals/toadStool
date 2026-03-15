@@ -12,6 +12,10 @@ impl HwLearnHandler {
     /// `CoralReefDevice::from_vfio_device` or `GpuContext::from_vfio`.
     ///
     /// Response: `{ "devices": [{ "pci_address", "vendor_id", "device_id", "iommu_group", "driver", "power_state", "supports_reset" }] }`
+    ///
+    /// # Errors
+    ///
+    /// This function does not return errors.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"

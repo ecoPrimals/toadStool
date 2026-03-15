@@ -19,6 +19,7 @@ pub struct ArchMapping {
 
 impl ArchMapping {
     /// Create a new mapping between source and target architectures.
+    #[must_use]
     pub fn new(source: GpuArch, target: GpuArch) -> Self {
         Self {
             source,
@@ -34,15 +35,18 @@ impl ArchMapping {
     }
 
     /// Translate a register offset from source to target arch.
+    #[must_use]
     pub fn translate(&self, source_offset: u64) -> Option<u64> {
         self.translations.get(&source_offset).copied()
     }
 
     /// Whether this mapping has any translations.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.translations.is_empty()
     }
 
+    #[must_use]
     pub fn confidence(&self) -> f64 {
         self.confidence
     }
@@ -56,35 +60,37 @@ impl ArchMapping {
 ///
 /// These offsets tend to be at the same location regardless of generation,
 /// which is what makes cross-generation learning feasible.
+#[must_use]
 pub fn stable_registers(vendor: Vendor) -> Vec<(u64, RegFunction)> {
     match vendor {
         Vendor::Nvidia => vec![
             // PMC (Power Management Controller) — stable since Fermi
-            (0x00000000, RegFunction::PowerGate), // PMC_BOOT_0
-            (0x00000004, RegFunction::PowerGate), // PMC_BOOT_1
-            (0x00000200, RegFunction::InterruptEnable), // PMC_INTR_EN
+            (0x0000_0000, RegFunction::PowerGate), // PMC_BOOT_0
+            (0x0000_0004, RegFunction::PowerGate), // PMC_BOOT_1
+            (0x0000_0200, RegFunction::InterruptEnable), // PMC_INTR_EN
             // PTIMER — stable since NV04
-            (0x00009400, RegFunction::ClockEnable), // PTIMER_TIME_0
-            (0x00009410, RegFunction::ClockEnable), // PTIMER_TIME_1
+            (0x0000_9400, RegFunction::ClockEnable), // PTIMER_TIME_0
+            (0x0000_9410, RegFunction::ClockEnable), // PTIMER_TIME_1
         ],
         Vendor::Amd => vec![
             // GRBM (Graphics Register Bus Manager) — stable across GFX generations
-            (0x00008010, RegFunction::EngineReset), // GRBM_STATUS
-            (0x00008020, RegFunction::EngineReset), // GRBM_SOFT_RESET
+            (0x0000_8010, RegFunction::EngineReset), // GRBM_STATUS
+            (0x0000_8020, RegFunction::EngineReset), // GRBM_SOFT_RESET
             // SRBM (System Register Bus Manager)
-            (0x00000E60, RegFunction::PowerGate), // SRBM_STATUS
+            (0x0000_0E60, RegFunction::PowerGate), // SRBM_STATUS
         ],
         Vendor::Intel => vec![
             // Ring registers — stable across Gen9+
-            (0x00002030, RegFunction::EngineReset), // RING_HEAD (render)
-            (0x00002034, RegFunction::EngineReset), // RING_TAIL (render)
-            (0x0000A090, RegFunction::PowerGate),   // FORCEWAKE
+            (0x0000_2030, RegFunction::EngineReset), // RING_HEAD (render)
+            (0x0000_2034, RegFunction::EngineReset), // RING_TAIL (render)
+            (0x0000_A090, RegFunction::PowerGate),   // FORCEWAKE
         ],
     }
 }
 
 /// Check if two architectures are in the same vendor family
 /// and therefore likely to share register layout.
+#[must_use]
 pub fn architectures_compatible(source: &GpuArch, target: &GpuArch) -> bool {
     source.vendor == target.vendor
 }
@@ -92,6 +98,7 @@ pub fn architectures_compatible(source: &GpuArch, target: &GpuArch) -> bool {
 /// Estimate how similar two architectures are for learning purposes.
 ///
 /// Returns 0.0 (totally different) to 1.0 (same generation).
+#[must_use]
 pub fn architecture_similarity(source: &GpuArch, target: &GpuArch) -> f64 {
     if source == target {
         return 1.0;
@@ -139,6 +146,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp, reason = "test asserts exact constructed values")]
     fn same_arch_similarity_1() {
         assert_eq!(architecture_similarity(&volta(), &volta()), 1.0);
     }

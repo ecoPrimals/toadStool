@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::useless_format)]
 #![allow(clippy::redundant_pattern_matching)]
+#![allow(clippy::items_after_statements)]
 //! # Production Universal Architecture Demo
 //!
 //! This example demonstrates the complete ToadStool Universal Architecture
@@ -412,7 +413,7 @@ async fn demo_security_levels(platform: &UniversalComputePlatform) -> ToadStoolR
 /// Demonstrate ecosystem integration via capability-based discovery
 ///
 /// wateringHole standard: discover primals by capability at runtime.
-/// No hardcoded primal names or ports — use ipc.find_capability pattern.
+/// No hardcoded primal names or ports — use `ipc.find_capability` pattern.
 async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🌐 Ecosystem Integration Demo (Capability-Based Discovery)");
     println!("{}", "-".repeat(40));
@@ -531,11 +532,10 @@ async fn discover_compute_endpoint() -> String {
         fallbacks,
         ..Default::default()
     }) {
-        Ok(discovery) => discovery
-            .find_capability("compute")
-            .await
-            .map(|ep| ep.url().to_string())
-            .unwrap_or_else(|_| format!("http://{bind_host}:8084")),
+        Ok(discovery) => discovery.find_capability("compute").await.map_or_else(
+            |_| format!("http://{bind_host}:8084"),
+            |ep| ep.url().to_string(),
+        ),
         Err(_) => format!("http://{bind_host}:8084"),
     }
 }

@@ -10,6 +10,12 @@ impl HwLearnHandler {
     /// Save: `{ "action": "save", "recipe_json": "..." }`
     /// Load: `{ "action": "load", "recipe_id": "..." }`
     /// List: `{ "action": "list" }`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if params are missing/invalid, recipe JSON is invalid
+    /// (save), store fails to open/save/load, recipe not found (load), or
+    /// action is unknown.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"

@@ -97,25 +97,25 @@ fn demonstrate_old_hardcoded_approach() {
 
     // ❌ ANTI-PATTERN: Hardcoded primal names and ports (violates wateringHole standards)
     // Production code must NOT do this — use capability-based discovery instead.
-    let _orchestration_port = 8080u16; // HARDCODED — should discover "orchestration" capability
-    let _security_port = 8081u16; // HARDCODED — should discover "security" capability
-    let _storage_port = 8082u16; // HARDCODED — should discover "storage" capability
-    let localhost = "127.0.0.1"; // HARDCODED
-    let max_cpu = 90.0f64; // HARDCODED
-    let max_memory = 8 * 1024 * 1024 * 1024u64; // HARDCODED - 8GB
-    let request_timeout = Duration::from_secs(30); // HARDCODED
+    let orchestration_port = 8080u16;
+    let security_port = 8081u16;
+    let storage_port = 8082u16;
+    let localhost = "127.0.0.1";
+    let max_cpu = 90.0f64;
+    let max_memory = 8 * 1024 * 1024 * 1024u64;
+    let request_timeout = Duration::from_secs(30);
 
     info!(
         "❌ Hardcoded orchestration port (primal-name coupling): {}",
-        _orchestration_port
+        orchestration_port
     );
     info!(
         "❌ Hardcoded security port (primal-name coupling): {}",
-        _security_port
+        security_port
     );
     info!(
         "❌ Hardcoded storage port (primal-name coupling): {}",
-        _storage_port
+        storage_port
     );
     info!("❌ Hardcoded localhost: {}", localhost);
     info!("❌ Hardcoded max CPU: {}%", max_cpu);
@@ -199,8 +199,8 @@ async fn demonstrate_new_environment_aware_approach() -> Result<(), Box<dyn std:
 }
 
 /// Build capability fallbacks from env vars or config — no hardcoded primal names.
-/// Uses TOADSTOOL_COORDINATION_URL, TOADSTOOL_SECURITY_URL, TOADSTOOL_STORAGE_URL
-/// or capability_fallback ports with bind host.
+/// Uses `TOADSTOOL_COORDINATION_URL`, `TOADSTOOL_SECURITY_URL`, `TOADSTOOL_STORAGE_URL`
+/// or `capability_fallback` ports with bind host.
 fn build_capability_fallbacks_from_config(bind_host: &str) -> HashMap<String, String> {
     use toadstool_config::ports::capability_fallback;
     let mut fallbacks = HashMap::new();
@@ -522,8 +522,7 @@ mod tests {
                 assert!(
                     fallbacks
                         .get("orchestration")
-                        .map(|u| u.contains("9080"))
-                        .unwrap_or(false),
+                        .is_some_and(|u| u.contains("9080")),
                     "orchestration fallback should use TOADSTOOL_COORDINATION_URL"
                 );
 

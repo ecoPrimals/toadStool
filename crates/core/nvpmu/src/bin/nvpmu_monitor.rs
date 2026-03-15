@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "Temperature millidegree i64→f64 conversion; real values ≪ 2^52"
+)]
 //! CLI tool: monitor GPU sensors (sovereign nvidia-smi replacement).
 //!
 //! Supports multiple sensor backends:

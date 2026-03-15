@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Coverage tests for toadstool-core hardware module
-//! Exercises HardwareManager, HardwareDevice, HardwareType, enable_npu_userspace.
+//! Exercises `HardwareManager`, `HardwareDevice`, `HardwareType`, `enable_npu_userspace`.
 
 use toadstool_core::hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 

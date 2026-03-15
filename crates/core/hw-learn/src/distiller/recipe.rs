@@ -8,6 +8,7 @@ use crate::observer::TraceEventKind;
 /// Build a recipe from classified events.
 ///
 /// Ordering: power → clock → memory → engine reset → context → channel → verify.
+#[must_use]
 pub fn build_recipe(
     events: Vec<ClassifiedEvent>,
     target_arch: GpuArch,

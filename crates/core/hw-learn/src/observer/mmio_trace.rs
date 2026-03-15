@@ -12,6 +12,9 @@ use super::{ObserveConfig, ObserveError, ObserveResult, TraceEvent, TraceEventKi
 use std::io::BufRead;
 
 /// Parse an mmiotrace log file into trace events.
+///
+/// # Errors
+/// Returns `Err` if the trace path is missing, the file cannot be read, or parsing fails.
 pub fn parse_mmiotrace(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
     let path = config
         .trace_path
@@ -38,6 +41,11 @@ pub fn parse_mmiotrace(config: &ObserveConfig) -> Result<ObserveResult, ObserveE
     }
 
     let base_ts = first_ts.unwrap_or(0.0);
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "trace duration in seconds * 1e6 fits in u64"
+    )]
     let duration_us = ((last_ts - base_ts) * 1_000_000.0) as u64;
 
     Ok(ObserveResult {
@@ -67,6 +75,11 @@ fn parse_mmio_line(line: &str, first_ts: &mut Option<f64>) -> Option<TraceEvent>
     let value = u64::from_str_radix(parts[5].trim_start_matches("0x"), 16).ok()?;
 
     let base = *first_ts.get_or_insert(timestamp);
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "relative timestamp in seconds * 1e6 fits in u64"
+    )]
     let timestamp_us = ((timestamp - base) * 1_000_000.0) as u64;
 
     let kind = if is_write {
@@ -107,7 +120,7 @@ mod tests {
                 value,
                 width,
             } => {
-                assert_eq!(offset, 0xfee00000);
+                assert_eq!(offset, 0xfee0_0000);
                 assert_eq!(value, 1);
                 assert_eq!(width, 4);
             }
@@ -122,7 +135,7 @@ mod tests {
         assert!(evt.is_some());
         match evt.unwrap().kind {
             TraceEventKind::RegisterRead { offset, value, .. } => {
-                assert_eq!(offset, 0xfee00004);
+                assert_eq!(offset, 0xfee0_0004);
                 assert_eq!(value, 0x42);
             }
             _ => panic!("expected RegisterRead"),

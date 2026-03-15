@@ -71,7 +71,7 @@ pub struct StepResult {
 /// Recipe applicator — applies init recipes to target GPUs.
 ///
 /// Supports two modes:
-/// - **DRM-only** (`new(dry_run)`) — uses ioctl path via nouveau_drm.
+/// - **DRM-only** (`new(dry_run)`) — uses ioctl path via `nouveau_drm`.
 /// - **BAR0-backed** (`with_register_access`) — uses a `RegisterAccess`
 ///   implementation (e.g. `nvpmu::Bar0Access`) for direct register writes
 ///   and verification.

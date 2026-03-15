@@ -15,8 +15,8 @@ use toadstool_config::config_utils::ConfigUtils;
 use toadstool_config::ports::capability_fallback;
 
 /// Build discovery fallbacks from configuration — no hardcoded ports.
-/// Uses TOADSTOOL_COORDINATION_URL, TOADSTOOL_SECURITY_URL, TOADSTOOL_STORAGE_URL
-/// or capability_fallback ports with bind host.
+/// Uses `TOADSTOOL_COORDINATION_URL`, `TOADSTOOL_SECURITY_URL`, `TOADSTOOL_STORAGE_URL`
+/// or `capability_fallback` ports with bind host.
 fn build_fallbacks_from_config() -> HashMap<String, String> {
     let bind_host = ConfigUtils::get_bind_address();
     let specs: &[(&str, &[&str], u16)] = &[

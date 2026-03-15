@@ -10,7 +10,7 @@
 //! - **distiller** — Diff and classify traces into minimal init recipes
 //! - **knowledge** — Cross-vendor recipe store with arch-aware register mapping
 //! - **applicator** — Replay learned recipes on target hardware with verification
-//! - **brain_ext** — Extensions to toadStool's PrecisionBrain (LearningAdvisor, FirmwareInventory)
+//! - **`brain_ext`** — Extensions to toadStool's `PrecisionBrain` (`LearningAdvisor`, `FirmwareInventory`)
 //!
 //! ## Design Principles
 //!

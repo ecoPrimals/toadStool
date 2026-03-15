@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Coverage tests for CLI templates module
-//! Exercises TemplateGenerator, parse_template, list_templates, and template creation.
+//! Exercises `TemplateGenerator`, `parse_template`, `list_templates`, and template creation.
 
 use std::path::PathBuf;
 

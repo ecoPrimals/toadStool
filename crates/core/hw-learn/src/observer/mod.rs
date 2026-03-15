@@ -122,6 +122,9 @@ impl TraceObserver {
     /// Run an observation session on the specified GPU.
     ///
     /// Returns the raw trace events for distillation.
+    ///
+    /// # Errors
+    /// Returns `Err` if the trace path is missing, the trace file cannot be read, or parsing fails.
     pub fn observe(config: &ObserveConfig) -> Result<ObserveResult, ObserveError> {
         match &config.mode {
             TraceMode::MmioTrace => mmio_trace::parse_mmiotrace(config),

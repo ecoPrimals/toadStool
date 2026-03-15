@@ -8,6 +8,7 @@
 #[cfg(feature = "serial-transport")]
 mod inner {
     use std::io::{Read, Write};
+    use std::sync::Mutex;
     use std::time::Duration;
 
     use toadstool_core::{
@@ -20,9 +21,13 @@ mod inner {
     const DEFAULT_TIMEOUT: Duration = Duration::from_millis(500);
 
     /// A bidirectional hardware transport over a serial port.
+    ///
+    /// The inner `serialport::SerialPort` trait object is `!Sync`, so we wrap
+    /// it in a `Mutex` to satisfy `HardwareTransport: Send + Sync`. The mutex
+    /// is uncontended in practice — serial I/O is inherently sequential.
     pub struct SerialTransport {
         info: TransportInfo,
-        port: Box<dyn serialport::SerialPort>,
+        port: Mutex<Box<dyn serialport::SerialPort>>,
         baud: u32,
     }
 
@@ -43,7 +48,7 @@ mod inner {
                     medium: TransportMedium::Serial,
                     direction: TransportDirection::Bidirectional,
                 },
-                port,
+                port: Mutex::new(port),
                 baud,
             })
         }
@@ -70,13 +75,21 @@ mod inner {
         }
 
         fn send(&mut self, data: &[u8]) -> Result<usize, TransportError> {
-            self.port.write_all(data)?;
-            self.port.flush()?;
+            let mut port = self
+                .port
+                .lock()
+                .map_err(|e| TransportError::Unavailable(format!("serial lock poisoned: {e}")))?;
+            port.write_all(data)?;
+            port.flush()?;
             Ok(data.len())
         }
 
         fn recv(&mut self, buf: &mut [u8]) -> Result<usize, TransportError> {
-            let n = self.port.read(buf)?;
+            let mut port = self
+                .port
+                .lock()
+                .map_err(|e| TransportError::Unavailable(format!("serial lock poisoned: {e}")))?;
+            let n = port.read(buf)?;
             Ok(n)
         }
     }

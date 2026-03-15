@@ -105,7 +105,7 @@ async fn test_concurrent_resource_monitoring_events() {
         loop {
             match probe.recv().await {
                 Ok(ServerEvent::ResourceUsageUpdate { .. }) => return true,
-                Ok(_) => continue,
+                Ok(_) => {}
                 Err(_) => return false,
             }
         }
@@ -131,7 +131,7 @@ async fn test_concurrent_resource_monitoring_events() {
                 loop {
                     match rx.recv().await {
                         Ok(ServerEvent::ResourceUsageUpdate { .. }) => return true,
-                        Ok(_) => continue,
+                        Ok(_) => {}
                         Err(_) => return false,
                     }
                 }

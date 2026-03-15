@@ -82,8 +82,13 @@ pub mod gfx10_registers {
 /// This is the gold-standard reference: what a fully-working open-source
 /// driver does to initialize GPU compute. Every other vendor's recipe
 /// should follow this same abstract skeleton.
+#[must_use]
 pub fn amd_gfx10_compute_init() -> InitRecipe {
-    use gfx10_registers::*;
+    use gfx10_registers::{
+        CP_HQD_ACTIVE, CP_HQD_PQ_BASE, CP_HQD_PQ_BASE_HI, CP_HQD_PQ_CONTROL, CP_HQD_PQ_RPTR,
+        CP_HQD_PQ_WPTR, GRBM_GFX_CNTL, GRBM_SOFT_RESET, GRBM_STATUS, RLC_CNTL, RLC_CSIB_ADDR_HI,
+        RLC_CSIB_ADDR_LO, RLC_CSIB_LENGTH, SPI_CONFIG_CNTL,
+    };
 
     let steps = vec![
         // ── Step 1: Probe ──
@@ -92,7 +97,7 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
             check: VerifyCheck::RegisterMatch {
                 offset: GRBM_STATUS,
                 expected: 0,
-                mask: 0x80000000, // GUI_ACTIVE bit should be 0 (idle)
+                mask: 0x8000_0000, // GUI_ACTIVE bit should be 0 (idle)
             },
         },
         // ── Step 2: Firmware ──
@@ -144,7 +149,7 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
         // Select pipe 0, queue 0, ME 1 for compute (via GRBM_GFX_CNTL)
         InitStep::RegisterWrite {
             offset: GRBM_GFX_CNTL,
-            value: 0x01000000, // MEID=1, PIPEID=0, QUEUEID=0
+            value: 0x0100_0000, // MEID=1, PIPEID=0, QUEUEID=0
             function: RegFunction::ChannelBind,
         },
         // ── Step 6: Context ──
@@ -171,7 +176,7 @@ pub fn amd_gfx10_compute_init() -> InitRecipe {
         // [8] = rptr writeback enable
         InitStep::RegisterWrite {
             offset: CP_HQD_PQ_CONTROL,
-            value: 0x0000010C, // size=12 (4K entries), rptr_writeback=1
+            value: 0x0000_010C, // size=12 (4K entries), rptr_writeback=1
             function: RegFunction::ContextAlloc,
         },
         // Initialize read and write pointers to 0
@@ -249,17 +254,18 @@ pub enum UniversalInitPhase {
 }
 
 impl UniversalInitPhase {
-    /// Map a RegFunction to its universal init phase.
+    /// Map a `RegFunction` to its universal init phase.
+    #[must_use]
     pub fn from_reg_function(f: RegFunction) -> Self {
         match f {
-            RegFunction::ClockEnable => Self::Power,
-            RegFunction::PowerGate => Self::Power,
-            RegFunction::ThermalConfig => Self::Power,
+            RegFunction::ClockEnable | RegFunction::PowerGate | RegFunction::ThermalConfig => {
+                Self::Power
+            }
             RegFunction::MemoryConfig => Self::Memory,
             RegFunction::EngineReset => Self::Engine,
-            RegFunction::ContextAlloc => Self::Context,
-            RegFunction::ChannelBind => Self::Context,
-            RegFunction::InterruptEnable => Self::Context,
+            RegFunction::ContextAlloc | RegFunction::ChannelBind | RegFunction::InterruptEnable => {
+                Self::Context
+            }
             RegFunction::Unknown => Self::Probe,
         }
     }
@@ -295,6 +301,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::float_cmp, reason = "test asserts exact constructed values")]
     fn baseline_recipe_has_all_phases() {
         let recipe = amd_gfx10_compute_init();
         assert_eq!(recipe.confidence, 1.0);

@@ -10,6 +10,10 @@ impl HwLearnHandler {
     ///
     /// Params: `{ "trace_data": "<mmiotrace text>", "mode": "mmiotrace" }`
     /// Returns: `{ "events_count": N, "gpu_id": ..., "driver": ... }`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `trace_data` is missing or mmiotrace parsing fails.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"
@@ -42,6 +46,11 @@ impl HwLearnHandler {
     ///
     /// Params: `{ "baseline": "<mmiotrace>", "compute": "<mmiotrace>", "chip": "gv100" }`
     /// Returns: `{ "recipe": {...}, "diff_count": N }`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `baseline`, `compute`, or `chip` params are missing,
+    /// or if mmiotrace parsing fails for either trace.
     #[expect(
         clippy::unused_async,
         reason = "async for JSON-RPC handler trait consistency"

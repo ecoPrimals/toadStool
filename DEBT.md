@@ -75,7 +75,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **83.09% line coverage** (~150K production lines). 20,285 tests (S154). Mock hardware layers (MockV4l2Device, MockVfioDevice) for headless CI (S152). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Target 90%. |
+| D-COV | Test coverage → 90% | Medium | **~83% line coverage** (~182K production lines). 20,843 tests (S155b: +558 net new). Mock hardware layers for headless CI (S152). S155b: 12 new integration test files, 806 new test functions covering hw_learn handlers (0%→85%+), transport/dispatch, unibin/background, core common, config, distributed, CLI, GPU runtime, display, toadstool-core. Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Target 90%. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
 | D-KEYRING | ~~Credential resolution: OS keyring lookup~~ | **RESOLVED S152** | `os_keyring` module — D-Bus SecretService (`secret-tool`) on Linux, macOS Keychain (`security`). Wired as step 2.5 in `resolve_credential` chain (env → file → OS keyring → BearDog). |
@@ -128,6 +128,29 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Chaos framework exists (`testing/src/chaos/`). Integration tests: 10/11 pass (S138). Pure-Rust C-compiler validation is pre-existing failure (transitive deps). |
 
 ---
+
+## Recently Resolved (S155b — Coverage Expansion + Dependency/Unsafe Audit — Mar 15, 2026)
+
+- **D-COV progress**: +806 new test functions across 12 new integration test files, +558 net new tests reaching instrumented binary (20,285 → 20,843). Covered all previously-0% hw_learn handlers, expanded transport/dispatch/science_domains/shader/ollama handlers, added unibin/background tests, and comprehensive tests for core common (error, auth, discovery, platform_paths, infant_discovery, primal_discovery), config (validation, defaults, ports, env_overrides, profiler), distributed (federation, pricing, load_balancer, crypto, songbird, compliance), CLI (commands, monitoring, templates, zero_config, ecosystem, executor, daemon), GPU runtime (engine, scheduler, coordinator, strategy, memory, distributed), display (input, drm, ipc), hw-learn (distiller, knowledge, observer), and toadstool-core (hardware, npu_dispatch, transport_router).
+- **Dependency audit (Pure Rust)**: Confirmed workspace meets ecoBin v3.0 Pure Rust mandate for default builds. C FFI limited to optional features (jit, esp32, cuda, opencl, macos-sandbox) and kernel/platform interfaces. openssl/tungstenite banned in deny.toml. sysinfo→toadstool-sysmon, dirs→etcetera, zstd→ruzstd, lz4→lz4_flex already resolved.
+- **Unsafe code audit**: 22 crates `#![forbid(unsafe_code)]`, 15 crates `#![deny(unsafe_code)]`. All unsafe blocks (~150+) are in hardware drivers (DRM, V4L2, VFIO, MMIO, DMA, GPU FFI, secure enclave) with 100% SAFETY comment coverage. None can be evolved to safe Rust — all are kernel FFI, allocator API, volatile MMIO, or trait impls that inherently require unsafe.
+- **Clippy pedantic**: Fixed 12 new errors from hw_learn/unibin export (missing_errors_doc, new_without_default), long hex literals in tests, float_cmp in tests, approx_constant in tests.
+- **Env test race conditions**: Fixed config coverage tests to use ENV_LOCK serialization instead of temp_env::with_vars for all environment-mutating tests.
+
+## Recently Resolved (S155 — Deep Audit Execution + Clippy Pedantic Clean — Mar 15, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| `SerialTransport` `!Sync` build break | `Box<dyn SerialPort>` wrapped in `Mutex` — satisfies `HardwareTransport: Send + Sync`. Lock is uncontended (serial I/O is inherently sequential). Unblocks `--all-features` builds, doc, and clippy. |
+| Clippy pedantic (8 errors in `toadstool-common`) | `let...else` in `os_keyring`, `#[must_use]` on 4 public functions, doc backticks for `SecretService`/`KWallet`. |
+| Clippy pedantic (160+ errors in `hw-learn`) | 79 GPU register hex literals with underscore separators, 13 `# Errors` doc sections, 5 merged identical match arms, cast precision `#[expect]` annotations, float comparison `#[allow]` in tests. |
+| Clippy pedantic (`toadstool-display`) | `map().unwrap_or_else()` → `map_or_else()` in PCIe transport. Case-sensitive `.sock` extension → `Path::extension().eq_ignore_ascii_case()`. |
+| Clippy pedantic (`nvpmu-monitor`) | `#[expect(clippy::cast_precision_loss)]` for millidegree i64→f64 temperature conversion. |
+| Clippy pedantic (`toadstool-server`) | `RemoteDispatcher::forward` `# Errors` doc section. Needless `continue` in background test loops. |
+| Clippy pedantic (examples) | `config_management_demo` underscore-prefixed used bindings cleaned. `production_universal_demo` items-after-statements allowed. SPDX header fixed (`AGPL-3.0-or-later` → `AGPL-3.0-only`). |
+| Full codebase audit: production unwraps | **VERIFIED CLEAN**: all `unwrap()`/`expect()` confirmed in test code, SAFETY-justified hardware drivers, compile-time constants, or `Default` impls with intentional panics. DEBT.md claim accurate. |
+| Full codebase audit: production panics | **VERIFIED CLEAN**: all `panic!()` confirmed in `#[cfg(test)]` modules. CPU backend type-mismatch panics are test-only assertions. |
+| Full codebase audit: sovereignty | **VERIFIED**: capability-based architecture correct. `capability_helpers.rs` is intentional migration bridge. `SongbirdAdapter` uses `get_socket_path_for_capability(capabilities::COORDINATION)`. ~50 primal name strings are in test code, deprecated constants, or translation layers. |
 
 ## Recently Resolved (S154 — Deep Audit + Quality Gate Evolution — Mar 14, 2026)
 
