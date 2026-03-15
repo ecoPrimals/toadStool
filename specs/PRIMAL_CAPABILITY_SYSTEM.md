@@ -42,7 +42,8 @@ The **Primal-Agnostic Capability System** allows ToadStool to register its compu
 │  └── CustomAdapter        🔜 Extensible             │
 ├─────────────────────────────────────────────────────┤
 │  Workload Execution API                             │
-│  POST /api/v1/workload/execute                      │
+│  Method: compute.workload.execute (JSON-RPC 2.0)    │
+│  Transport: Unix socket or TCP (UNIVERSAL_IPC_V3)   │
 │  (Standard interface for all primals)               │
 └─────────────────────────────────────────────────────┘
 ```
@@ -151,15 +152,19 @@ impl PrimalAdapter for SquirrelAdapter {
 
 ---
 
-## 📡 **API ENDPOINTS**
+## 📡 **API INTERFACE**
 
 ### **1. Workload Execution** (For Primals)
 
-**Endpoint**: `POST /api/v1/workload/execute`
+**Method**: `compute.workload.execute` over JSON-RPC 2.0
+
+**Transport**: Unix socket or TCP (per UNIVERSAL_IPC_STANDARD_V3)
+
+**Error codes**: Standard JSON-RPC 2.0 error codes (-32700, -32600, -32601, -32602, -32603, -32000 to -32099)
 
 **Purpose**: Receive workload requests from any primal
 
-**Request**:
+**Request** (JSON-RPC 2.0 params):
 ```json
 {
   "request_id": "req-123",
@@ -188,7 +193,7 @@ impl PrimalAdapter for SquirrelAdapter {
 }
 ```
 
-**Response**:
+**Response** (JSON-RPC 2.0 result):
 ```json
 {
   "request_id": "req-123",
@@ -231,9 +236,9 @@ provider.register_with_primal("http://squirrel:8083").await?;
    - Queries: Which services have "compute_gpu"?
    - Finds: ToadStool at http://toadstool:8084
 
-4. Songbird → ToadStool Workload API
-   POST http://toadstool:8084/api/v1/workload/execute
-   {
+4. Songbird → ToadStool Workload API (JSON-RPC 2.0 over Unix socket/TCP)
+   Method: compute.workload.execute
+   Params: {
      "from_primal": "songbird",
      "required_capability": "compute_gpu",
      "workload_type": {...}
@@ -368,7 +373,7 @@ provider.add_capability(custom_cap).await?;
 | **PrimalAdapter Trait** | ✅ Implemented | `distributed/src/primal_capabilities/adapters.rs` |
 | **SongbirdAdapter** | ✅ Implemented | `distributed/src/primal_capabilities/adapters.rs` |
 | **WorkloadExecutor** | ✅ Implemented | `distributed/src/primal_capabilities/workload.rs` |
-| **API Endpoint** | 🔜 Next | `api/src/handlers.rs` |
+| **JSON-RPC Handler** | 🔜 Next | `api/src/handlers.rs` |
 | **Server Integration** | 🔜 Next | `server/src/main.rs` |
 | **SquirrelAdapter** | 🔜 Future | - |
 | **BearDogAdapter** | 🔜 Future | - |
@@ -431,18 +436,8 @@ compute_embedded = false   # When legacy runtime fixed
 # Start ToadStool
 SONGBIRD_ENDPOINT="http://localhost:8080" cargo run --bin toadstool-server
 
-# Submit GPU task to Songbird
-curl -X POST http://localhost:8080/api/v1/compute/task \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task": {
-      "task_type": "ml_training",
-      "resource_requirements": {
-        "gpu_required": true,
-        "memory_mb": 8192
-      }
-    }
-  }'
+# Submit GPU task via JSON-RPC 2.0 (compute.workload.execute over Unix socket/TCP)
+# Example: {"jsonrpc":"2.0","method":"compute.workload.execute","params":{"task_type":"ml_training","resource_requirements":{"gpu_required":true,"memory_mb":8192}},"id":1}
 
 # Expected flow:
 # 1. ToadStool registers with Songbird on startup ✅

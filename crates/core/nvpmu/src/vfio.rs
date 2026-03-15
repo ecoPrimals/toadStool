@@ -403,12 +403,20 @@ impl VfioMsixInterrupt {
     /// Creates an eventfd and wires it to the specified MSI-X vector
     /// on the VFIO device. The eventfd becomes readable when the GPU
     /// signals completion.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if eventfd creation or VFIO `SET_IRQS` ioctl fails.
     pub fn configure(device_fd: &OwnedFd, vector: u32) -> Result<Self> {
         let eventfd = create_eventfd()?;
 
         let fd_val = eventfd.as_raw_fd();
 
         // Build the VFIO_DEVICE_SET_IRQS payload: VfioIrqSet header + eventfd i32
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "compile-time struct sizes always fit u32"
+        )]
         let argsz = (std::mem::size_of::<VfioIrqSet>() + std::mem::size_of::<i32>()) as u32;
         let mut payload = Vec::with_capacity(argsz as usize);
 
@@ -450,6 +458,10 @@ impl VfioMsixInterrupt {
     }
 
     /// Wait for the next interrupt (blocks until GPU signals completion).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the eventfd read fails.
     pub fn wait(&self) -> Result<u64> {
         let mut buf = [0u8; 8];
         rustix::io::read(&self.eventfd, &mut buf)
@@ -458,8 +470,12 @@ impl VfioMsixInterrupt {
     }
 
     /// Wait for interrupt with timeout.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if timeout conversion, poll, or eventfd read fails.
     pub fn wait_timeout(&self, timeout: std::time::Duration) -> Result<Option<u64>> {
-        use rustix::event::{poll, PollFlags, PollFd};
+        use rustix::event::{poll, PollFd, PollFlags};
         use rustix::time::Timespec;
 
         let mut pollfd = [PollFd::new(&self.eventfd, PollFlags::IN)];
@@ -474,6 +490,7 @@ impl VfioMsixInterrupt {
     }
 
     /// The IRQ vector index this interrupt is configured for.
+    #[must_use]
     pub const fn vector(&self) -> u32 {
         self.irq_index
     }

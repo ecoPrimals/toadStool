@@ -1,3 +1,5 @@
+> **Note**: This guide was written in November 2025. Test counts and grades are from that era. Current metrics: 20,285 tests, 83.09% line coverage, clippy pedantic clean. See [STATUS.md](../../STATUS.md) for current state.
+
 # 🚀 ToadStool Production Deployment Guide
 **Date**: November 8, 2025  
 **Version**: 1.0  

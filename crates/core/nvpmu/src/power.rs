@@ -71,6 +71,7 @@ pub struct GpuPowerController {
 }
 
 impl GpuPowerController {
+    #[must_use]
     pub fn new(bdf: &str) -> Self {
         Self {
             bdf: bdf.to_string(),
@@ -79,6 +80,10 @@ impl GpuPowerController {
     }
 
     /// Query current PCI power state.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the sysfs `power_state` file cannot be read.
     pub fn power_state(&self) -> Result<PciPowerState> {
         let path = self.sysfs_path.join("power_state");
         read_sysfs_trimmed(&path)
@@ -87,11 +92,11 @@ impl GpuPowerController {
     }
 
     /// Query available reset methods.
+    #[must_use]
     pub fn available_reset_methods(&self) -> Vec<ResetMethod> {
         let path = self.sysfs_path.join("reset_method");
-        let content = match read_sysfs_trimmed(&path) {
-            Ok(s) => s,
-            Err(_) => return Vec::new(),
+        let Ok(content) = read_sysfs_trimmed(&path) else {
+            return Vec::new();
         };
 
         content
@@ -110,6 +115,10 @@ impl GpuPowerController {
     /// This resets the GPU to a clean state. The device must be unbound
     /// from its driver or bound to vfio-pci. Writing "1" to the `reset`
     /// sysfs file triggers the reset.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the reset sysfs write fails (likely not root or device busy).
     pub fn reset(&self) -> Result<()> {
         let path = self.sysfs_path.join("reset");
         std::fs::write(&path, "1")
@@ -119,11 +128,19 @@ impl GpuPowerController {
     }
 
     /// Transition GPU to D0 (full power) state.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the sysfs power control write fails.
     pub fn power_on(&self) -> Result<()> {
         self.set_power_state("D0")
     }
 
     /// Transition GPU to D3hot (low power) state.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the sysfs power control write fails.
     pub fn power_suspend(&self) -> Result<()> {
         self.set_power_state("D3hot")
     }
@@ -142,6 +159,7 @@ impl GpuPowerController {
     }
 
     /// Query the maximum power draw limit (in microwatts) if available.
+    #[must_use]
     pub fn power_limit_uw(&self) -> Option<u64> {
         let path = self.sysfs_path.join("hwmon");
         let hwmon_dir = std::fs::read_dir(&path).ok()?;
@@ -155,11 +173,13 @@ impl GpuPowerController {
     }
 
     /// Whether this device supports PCI reset.
+    #[must_use]
     pub fn supports_reset(&self) -> bool {
         self.sysfs_path.join("reset").exists()
     }
 
     /// The PCI BDF address.
+    #[must_use]
     pub fn bdf(&self) -> &str {
         &self.bdf
     }

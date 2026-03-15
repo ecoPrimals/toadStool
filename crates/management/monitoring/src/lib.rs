@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![allow(
     clippy::missing_errors_doc,
     clippy::cast_possible_truncation,

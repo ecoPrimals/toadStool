@@ -47,9 +47,11 @@ impl VolatileSlice {
             )));
         }
 
-        // SAFETY: Bounds validated above. ptr is valid (from constructor).
-        // offset + 4 <= size ensures valid pointer arithmetic.
-        // read_volatile required for MMIO (hardware may change value).
+        // SAFETY: Invariants: (1) ptr must be valid for reads of 4 bytes at offset;
+        // (2) ptr.add(offset).cast::<u32>() must be properly aligned for u32.
+        // Satisfied: bounds check ensures offset+4<=size; ptr from constructor (valid mmap);
+        // hardware MMIO registers are naturally aligned. Violation: unaligned read → UB;
+        // out-of-bounds → use-after-free or read of unmapped memory.
         #[allow(clippy::cast_ptr_alignment)]
         let value = unsafe {
             let ptr = self.ptr.as_ptr().add(offset).cast::<u32>();
@@ -71,8 +73,10 @@ impl VolatileSlice {
             )));
         }
 
-        // SAFETY: Bounds validated above. ptr is valid (from constructor).
-        // write_volatile required for MMIO (triggers hardware side effects).
+        // SAFETY: Invariants: (1) ptr valid for writes of 4 bytes at offset;
+        // (2) ptr.add(offset).cast::<u32>() properly aligned for u32.
+        // Satisfied: bounds check ensures offset+4<=size; ptr from constructor.
+        // Violation: unaligned write → UB; out-of-bounds → memory corruption.
         #[allow(clippy::cast_ptr_alignment)]
         unsafe {
             let ptr = self.ptr.as_ptr().add(offset).cast::<u32>();
@@ -94,8 +98,10 @@ impl VolatileSlice {
             )));
         }
 
-        // SAFETY: Bounds validated above. ptr is valid (from constructor).
-        // read_volatile required for MMIO.
+        // SAFETY: Invariants: (1) ptr valid for reads of 8 bytes at offset;
+        // (2) ptr.add(offset).cast::<u64>() properly aligned for u64.
+        // Satisfied: bounds check ensures offset+8<=size; ptr from constructor.
+        // Violation: unaligned read → UB; out-of-bounds → use-after-free.
         #[allow(clippy::cast_ptr_alignment)]
         let value = unsafe {
             let ptr = self.ptr.as_ptr().add(offset).cast::<u64>();
@@ -117,8 +123,10 @@ impl VolatileSlice {
             )));
         }
 
-        // SAFETY: Bounds validated above. ptr is valid (from constructor).
-        // write_volatile required for MMIO.
+        // SAFETY: Invariants: (1) ptr valid for writes of 8 bytes at offset;
+        // (2) ptr.add(offset).cast::<u64>() properly aligned for u64.
+        // Satisfied: bounds check ensures offset+8<=size; ptr from constructor.
+        // Violation: unaligned write → UB; out-of-bounds → memory corruption.
         #[allow(clippy::cast_ptr_alignment)]
         unsafe {
             let ptr = self.ptr.as_ptr().add(offset).cast::<u64>();
@@ -141,9 +149,9 @@ impl VolatileSlice {
             )));
         }
 
-        // SAFETY: Bounds validated above. src valid for buf.len() bytes.
-        // dst from buffer.as_mut_ptr(). No overlap (different regions).
-        // u8 has alignment 1.
+        // SAFETY: Invariants: (1) src valid for buf.len() bytes; (2) dst valid for buf.len();
+        // (3) src and dst do not overlap. Satisfied: bounds check; buf.as_mut_ptr() from &mut [u8];
+        // src is MMIO region, dst is heap — distinct. Violation: overlap → UB; invalid ptrs → UB.
         unsafe {
             let src = self.ptr.as_ptr().add(offset);
             std::ptr::copy_nonoverlapping(src, buf.as_mut_ptr(), buf.len());
@@ -165,8 +173,9 @@ impl VolatileSlice {
             )));
         }
 
-        // SAFETY: Bounds validated above. dst valid for data.len() bytes.
-        // src from data.as_ptr(). No overlap. u8 has alignment 1.
+        // SAFETY: Invariants: (1) dst valid for data.len() bytes; (2) src valid for data.len();
+        // (3) src and dst do not overlap. Satisfied: bounds check; data.as_ptr() from &[u8];
+        // dst is MMIO region, src is stack/heap — distinct. Violation: overlap → UB; invalid ptrs → UB.
         unsafe {
             let dst = self.ptr.as_ptr().add(offset);
             std::ptr::copy_nonoverlapping(data.as_ptr(), dst, data.len());

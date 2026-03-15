@@ -84,17 +84,10 @@ impl MmapRegion {
 
         tracing::debug!("BAR size: {size} bytes ({} MB)", size / (1024 * 1024));
 
-        // SAFETY: mmap is unsafe but we validate all preconditions:
-        // - File descriptor is valid (just opened via OpenOptions)
-        // - Size is non-zero (checked above, prevents zero-sized mapping)
-        // - Flags are valid: PROT_READ|PROT_WRITE for MMIO access, MAP_SHARED for device memory
-        // - Offset is 0 (start of BAR)
-        // - rustix returns Result, so we handle errors properly
-        // - We store file in struct to keep fd open for lifetime of mapping
-        // - We unmap in Drop impl to prevent memory leak
-        // - The mapped memory is process-private (no other references exist)
-        //
-        // EVOLVED: Using rustix instead of libc (better error handling, type safety)
+        // SAFETY: Invariants: fd valid; size>0; flags valid; offset within file.
+        // Satisfied: file from OpenOptions; size checked above; ProtFlags/MapFlags from rustix;
+        // offset 0. File stored in struct; munmap in Drop. Violation: invalid fd → kernel error;
+        // zero size → implementation-defined; leak if no munmap.
         let ptr = unsafe {
             let addr = mmap(
                 std::ptr::null_mut(),
@@ -131,8 +124,8 @@ impl MmapRegion {
     ///
     /// Returns error if offset is out of bounds
     pub fn read_u32(&self, offset: usize) -> Result<u32> {
-        // SAFETY: self.ptr is from a successful mmap in new(); self.size matches the mapping.
-        // The mapping is valid (file held open, not yet unmapped).
+        // SAFETY: Invariants: ptr valid for size bytes; from mmap; not yet unmapped.
+        // Satisfied: ptr/size from new(); _file keeps mapping alive. Violation: use-after-unmap → UB.
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         let value = slice.read_u32(offset)?;
         tracing::trace!("Read u32 @ {offset:#x} = {value:#x}");
@@ -146,7 +139,7 @@ impl MmapRegion {
     /// Returns error if offset is out of bounds
     pub fn write_u32(&mut self, offset: usize, value: u32) -> Result<()> {
         tracing::trace!("Write u32 @ {offset:#x} = {value:#x}");
-        // SAFETY: self.ptr/self.size invariants maintained by constructor and Drop.
+        // SAFETY: Invariants: ptr valid for size; mapping alive. Satisfied: from new(); _file held.
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice.write_u32(offset, value)
     }
@@ -157,7 +150,7 @@ impl MmapRegion {
     ///
     /// Returns error if read would exceed bounds
     pub fn read_bytes(&self, offset: usize, buffer: &mut [u8]) -> Result<()> {
-        // SAFETY: self.ptr/self.size invariants maintained by constructor and Drop.
+        // SAFETY: Invariants: ptr valid for size; mapping alive. Satisfied: from new(); _file held.
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice.read_region(offset, buffer)
     }
@@ -168,7 +161,7 @@ impl MmapRegion {
     ///
     /// Returns error if write would exceed bounds
     pub fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        // SAFETY: self.ptr/self.size invariants maintained by constructor and Drop.
+        // SAFETY: Invariants: ptr valid for size; mapping alive. Satisfied: from new(); _file held.
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice.write_region(offset, data)
     }
@@ -201,15 +194,8 @@ impl Drop for MmapRegion {
             self.size / (1024 * 1024)
         );
 
-        // SAFETY: munmap requires:
-        // - addr must be a pointer returned by mmap
-        // - length must match the length passed to mmap
-        // Invariants that hold:
-        // - self.ptr was created from successful mmap in new()
-        // - self.size matches the size passed to mmap in new()
-        // - The mapping is still valid (we're in Drop, so no use-after-free)
-        //
-        // EVOLVED: Using rustix instead of libc (better error handling)
+        // SAFETY: Invariants: addr from mmap; length matches original mmap; no refs to mapping.
+        // Satisfied: ptr/size from new(); Drop runs once; no outstanding slices. Violation: wrong ptr/size → UB.
         unsafe {
             if let Err(e) = munmap(self.ptr.as_ptr().cast(), self.size) {
                 tracing::error!("munmap failed during drop: {e}");

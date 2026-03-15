@@ -126,22 +126,43 @@ impl ServiceConfigBuilder {
     }
 }
 
-/// Modern async pattern with proper error handling
+/// Capability-based service discovery (wateringHole pattern)
 ///
 /// ✅ Demonstrates:
-/// - async/await
-/// - Error propagation with ?
-/// - Borrowing instead of cloning
-/// - Arc for shared ownership
+/// - Discover by capability, not by primal name
+/// - Endpoints resolved at runtime (config or mDNS)
+/// - No hardcoded primal names or ports
 pub async fn discover_service(capability: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    // Simulate async discovery
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    use std::collections::HashMap;
+    use toadstool_common::primal_discovery::{DiscoveryConfig, PrimalDiscovery};
+    use toadstool_config::config_utils::ConfigUtils;
+    use toadstool_config::ports::capability_fallback;
 
-    // ✅ Use pattern matching instead of unwrap
-    match capability {
-        "coordination" => Ok(vec!["songbird:8080".to_string()]),
-        "storage" => Ok(vec!["nestgate:8082".to_string()]),
-        _ => Ok(vec![]),
+    // Build fallbacks from config — no hardcoded ports
+    let bind_host = ConfigUtils::get_bind_address();
+    let mut fallbacks = HashMap::new();
+    fallbacks.insert(
+        "coordination".to_string(),
+        std::env::var("TOADSTOOL_COORDINATION_URL").unwrap_or_else(|_| {
+            format!("http://{bind_host}:{}", capability_fallback::COORDINATION)
+        }),
+    );
+    fallbacks.insert(
+        "storage".to_string(),
+        std::env::var("TOADSTOOL_STORAGE_URL")
+            .unwrap_or_else(|_| format!("http://{bind_host}:{}", capability_fallback::STORAGE)),
+    );
+
+    let discovery = PrimalDiscovery::with_config(DiscoveryConfig {
+        enable_mdns: true,
+        fallbacks,
+        ..Default::default()
+    })?;
+
+    // Discover by capability — returns URL from runtime resolution
+    match discovery.find_capability(capability).await {
+        Ok(endpoint) => Ok(vec![endpoint.url().to_string()]),
+        Err(_) => Ok(vec![]),
     }
 }
 

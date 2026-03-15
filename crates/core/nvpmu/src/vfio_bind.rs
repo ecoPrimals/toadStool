@@ -50,9 +50,8 @@ pub fn current_binding(bdf: &str) -> Result<BindingState> {
         return Ok(BindingState::Unbound);
     }
 
-    let target = fs::read_link(path).map_err(|e| {
-        NvPmuError::Hardware(format!("Cannot read driver symlink for {bdf}: {e}"))
-    })?;
+    let target = fs::read_link(path)
+        .map_err(|e| NvPmuError::Hardware(format!("Cannot read driver symlink for {bdf}: {e}")))?;
 
     let driver_name = target
         .file_name()
@@ -165,9 +164,8 @@ pub fn unbind_vfio(bdf: &str, original_driver: &str) -> Result<BindResult> {
     let device = read_sysfs_attr(bdf, "device")?;
 
     let unbind_path = "/sys/bus/pci/drivers/vfio-pci/unbind";
-    fs::write(unbind_path, bdf).map_err(|e| {
-        NvPmuError::Hardware(format!("Failed to unbind {bdf} from vfio-pci: {e}"))
-    })?;
+    fs::write(unbind_path, bdf)
+        .map_err(|e| NvPmuError::Hardware(format!("Failed to unbind {bdf} from vfio-pci: {e}")))?;
 
     let _ = fs::write(
         "/sys/bus/pci/drivers/vfio-pci/remove_id",

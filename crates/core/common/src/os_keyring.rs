@@ -209,13 +209,7 @@ fn store_macos_keychain(name: &str, value: &str) -> bool {
 #[cfg(target_os = "macos")]
 fn delete_macos_keychain(name: &str) -> bool {
     std::process::Command::new("security")
-        .args([
-            "delete-generic-password",
-            "-s",
-            SERVICE_NAME,
-            "-a",
-            name,
-        ])
+        .args(["delete-generic-password", "-s", SERVICE_NAME, "-a", name])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()

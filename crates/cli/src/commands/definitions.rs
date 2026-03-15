@@ -308,7 +308,7 @@ pub enum Commands {
     /// BYOB server - HTTP API for team biome deployments from Songbird
     ///
     /// **UniBin Standard Compliant**: Compute execution service for BYOB (Bring Your Own Biome)
-    /// deployments. Provides REST endpoints for deploy, list, stop, and resource usage.
+    /// deployments. Provides HTTP endpoints for deploy, list, stop, and resource usage.
     ByobServer {
         /// Server bind address (default from TOADSTOOL_BIND_ADDRESS or BIND_ADDRESS env)
         #[arg(short, long)]

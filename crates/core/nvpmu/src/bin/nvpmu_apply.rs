@@ -2,7 +2,7 @@
 //! CLI tool: apply a PMU init recipe to a GPU via BAR0 MMIO.
 //!
 //! Usage:
-//!   nvpmu-apply <bdf> <recipe.json> [--dry-run]
+//!   nvpmu-apply \<bdf\> \<recipe.json\> [--dry-run]
 //!
 //! Example:
 //!   sudo nvpmu-apply 0000:65:00.0 gv100_recipe.json

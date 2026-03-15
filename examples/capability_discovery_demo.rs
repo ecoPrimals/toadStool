@@ -1,58 +1,74 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Example: Migration from Hardcoded to Discovery
+//! Example: Capability-Based Discovery (wateringHole Standard)
 //!
-//! This example shows the evolution from hardcoded service addresses
-//! to runtime capability-based discovery.
+//! Demonstrates the correct pattern: discover primals by capability at runtime.
+//! No hardcoded primal names or ports — use `ipc.find_capability` / `find_capability`.
+//!
+//! ## Pattern
+//! - Use capability names: `orchestration`, `security`, `storage`, `compute_gpu`, etc.
+//! - Fallbacks come from env: `TOADSTOOL_COORDINATION_URL`, `TOADSTOOL_SECURITY_URL`, etc.
+//! - Resolve transport at runtime; no compile-time coupling to specific primals.
 
 use std::collections::HashMap;
 use toadstool_common::primal_discovery::{DiscoveryConfig, PrimalDiscovery};
+use toadstool_config::config_utils::ConfigUtils;
+use toadstool_config::ports::capability_fallback;
 
-/// OLD WAY: Hardcoded service addresses ❌
-#[allow(dead_code)]
-mod hardcoded_approach {
-    pub const SONGBIRD_PORT: u16 = 8080;
-    pub const BEARDOG_PORT: u16 = 8081;
-    pub const NESTGATE_PORT: u16 = 8082;
-
-    pub fn get_orchestration_url() -> String {
-        format!("http://localhost:{SONGBIRD_PORT}")
+/// Build discovery fallbacks from configuration — no hardcoded ports.
+/// Uses TOADSTOOL_COORDINATION_URL, TOADSTOOL_SECURITY_URL, TOADSTOOL_STORAGE_URL
+/// or capability_fallback ports with bind host.
+fn build_fallbacks_from_config() -> HashMap<String, String> {
+    let bind_host = ConfigUtils::get_bind_address();
+    let specs: &[(&str, &[&str], u16)] = &[
+        (
+            "TOADSTOOL_COORDINATION_URL",
+            &["orchestration", "coordination"][..],
+            capability_fallback::COORDINATION,
+        ),
+        (
+            "TOADSTOOL_SECURITY_URL",
+            &["security"][..],
+            capability_fallback::SECURITY,
+        ),
+        (
+            "TOADSTOOL_STORAGE_URL",
+            &["storage"][..],
+            capability_fallback::STORAGE,
+        ),
+        (
+            "TOADSTOOL_PLATFORM_URL",
+            &["ai_coordination", "platform"][..],
+            capability_fallback::PLATFORM,
+        ),
+    ];
+    let mut fallbacks = HashMap::new();
+    for (env_var, capability_keys, port) in specs {
+        let url = std::env::var(env_var).unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
+        for key in *capability_keys {
+            fallbacks.insert((*key).to_string(), url.clone());
+        }
     }
-
-    pub fn get_security_url() -> String {
-        format!("http://localhost:{BEARDOG_PORT}")
-    }
+    fallbacks
 }
 
-/// NEW WAY: Capability-based discovery ✅
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Set up discovery with fallbacks for development
+    // Capability-based discovery: fallbacks from config/env, not hardcoded constants
     let config = DiscoveryConfig {
-        enable_mdns: true, // Try mDNS first
-        fallbacks: HashMap::from([
-            (
-                "orchestration".to_string(),
-                "http://localhost:8080".to_string(),
-            ),
-            ("security".to_string(), "http://localhost:8081".to_string()),
-            ("storage".to_string(), "http://localhost:8082".to_string()),
-            (
-                "ai_coordination".to_string(),
-                "http://localhost:8083".to_string(),
-            ),
-        ]),
+        enable_mdns: true, // Try mDNS first; fall back to config
+        fallbacks: build_fallbacks_from_config(),
         ..Default::default()
     };
 
     let discovery = PrimalDiscovery::with_config(config)?;
 
-    // Discover services by capability, not by name!
-    println!("🔍 Discovering services by capability...\n");
+    // Discover by capability — no primal names! (ipc.find_capability pattern)
+    println!("🔍 Discovering primals by capability (no hardcoded names/ports)...\n");
 
-    // Orchestration (Songbird)
+    // Orchestration capability (discovered at runtime)
     match discovery.find_capability("orchestration").await {
         Ok(endpoint) => {
-            println!("✅ Found orchestration service:");
+            println!("✅ Found orchestration capability:");
             println!("   URL: {}", endpoint.url());
             println!("   Discovered via: {:?}", endpoint.discovered_via);
             println!("   Trust level: {:?}", endpoint.trust_level);
@@ -62,10 +78,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!();
 
-    // Security (BearDog)
+    // Security capability (discovered at runtime)
     match discovery.find_capability("security").await {
         Ok(endpoint) => {
-            println!("✅ Found security service:");
+            println!("✅ Found security capability:");
             println!("   URL: {}", endpoint.url());
             println!("   Discovered via: {:?}", endpoint.discovered_via);
         }
@@ -74,10 +90,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!();
 
-    // Storage (NestGate)
+    // Storage capability (discovered at runtime)
     match discovery.find_capability("storage").await {
         Ok(endpoint) => {
-            println!("✅ Found storage service:");
+            println!("✅ Found storage capability:");
             println!("   URL: {}", endpoint.url());
             println!("   Discovered via: {:?}", endpoint.discovered_via);
         }

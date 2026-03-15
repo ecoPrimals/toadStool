@@ -32,11 +32,11 @@ const HUGE_PAGE_1G: usize = 1024 * 1024 * 1024;
 /// Huge page size for DMA allocations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HugePageSize {
-    /// Standard 4KB pages (uses regular alloc, not mmap).
+    /// Standard 4KB pages (uses regular `alloc`, not `mmap`).
     Standard,
-    /// 2 MiB huge pages.
+    /// 2 `MiB` huge pages.
     Huge2M,
-    /// 1 GiB huge pages.
+    /// 1 `GiB` huge pages.
     Huge1G,
 }
 
@@ -114,8 +114,8 @@ pub struct DmaBuffer {
     iova: u64,
     size: usize,
     container_fd: RawFd,
-    /// When true, memory was allocated via mmap (huge pages); use munmap on drop.
-    /// When false, memory was allocated via alloc_zeroed; use dealloc on drop.
+    /// When true, memory was allocated via `mmap` (huge pages); use `munmap` on drop.
+    /// When false, memory was allocated via `alloc_zeroed`; use `dealloc` on drop.
     huge_page: bool,
 }
 
@@ -264,9 +264,7 @@ impl DmaAllocator {
                 let _ = munlock(vaddr.cast(), aligned_size);
                 std::alloc::dealloc(vaddr, layout);
             }
-            return Err(NvPmuError::Hardware(format!(
-                "VFIO DMA map failed: {e}"
-            )));
+            return Err(NvPmuError::Hardware(format!("VFIO DMA map failed: {e}")));
         }
 
         self.next_iova += aligned_size as u64;
@@ -340,7 +338,9 @@ impl DmaAllocator {
 
         // SAFETY: mlock prevents page-out; vaddr valid for aligned_size bytes.
         if let Err(e) = unsafe { mlock(vaddr.cast(), aligned_size) } {
-            unsafe { let _ = munmap(vaddr.cast(), aligned_size); }
+            unsafe {
+                let _ = munmap(vaddr.cast(), aligned_size);
+            }
             return Err(NvPmuError::Hardware(format!("mlock failed: {e}")));
         }
 
@@ -363,9 +363,7 @@ impl DmaAllocator {
                 let _ = munlock(vaddr.cast(), aligned_size);
                 let _ = munmap(vaddr.cast(), aligned_size);
             }
-            return Err(NvPmuError::Hardware(format!(
-                "VFIO DMA map failed: {e}"
-            )));
+            return Err(NvPmuError::Hardware(format!("VFIO DMA map failed: {e}")));
         }
 
         self.next_iova += aligned_size as u64;
@@ -397,7 +395,7 @@ pub fn supports_huge_pages() -> bool {
     let Ok(content) = std::fs::read_to_string(path) else {
         return false;
     };
-    content.trim().parse::<u32>().map_or(false, |n| n > 0)
+    content.trim().parse::<u32>().is_ok_and(|n| n > 0)
 }
 
 #[cfg(test)]

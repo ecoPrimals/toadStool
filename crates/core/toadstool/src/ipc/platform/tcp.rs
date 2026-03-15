@@ -38,7 +38,10 @@ use tokio::net::{TcpListener, TcpStream};
 /// let socket_path = primal_sockets::get_toadstool_socket_path();
 /// let listener = unix::bind(&socket_path).await?;
 /// ```
-#[deprecated(since = "0.2.0", note = "Use Unix sockets via platform::unix or capability-based discovery")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use Unix sockets via platform::unix or capability-based discovery"
+)]
 pub const DEFAULT_PORT: u16 = 8370;
 
 /// Bind TCP listener

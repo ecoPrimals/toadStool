@@ -114,11 +114,9 @@ impl CpuAllocation {
     /// the raw ptr+size returned by the allocator. CpuBackend uses AlignedBuffer
     /// which guarantees valid, aligned, exclusive allocation.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr valid for self.size bytes, properly aligned (64-byte from
-        // CpuBackend). &mut self gives exclusive access; no aliasing. CpuAllocation
-        // constructed by CpuBackend from AlignedBuffer::into_raw() — valid allocation.
-        // Invariants: ptr non-null; size matches allocation; exclusive borrow.
-        // Violation: invalid ptr/size or aliasing → UB.
+        // SAFETY: Invariants: ptr valid for size bytes; properly aligned; exclusive access.
+        // Satisfied: ptr from CpuBackend (AlignedBuffer::into_raw); size matches; &mut self
+        // guarantees no aliasing. Violation: invalid ptr/size → UB; aliasing → data race.
         unsafe { std::slice::from_raw_parts_mut(self.ptr, self.size) }
     }
 }

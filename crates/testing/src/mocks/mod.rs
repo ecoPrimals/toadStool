@@ -30,14 +30,10 @@ pub mod runtime_engines;
 
 // Export the successful mocks that compile
 pub use hardware::{MockGpuAdapter, MockHardwareFleet, MockNpuBackend, MockNpuInferenceResult};
-pub use v4l2::{
-    CaptureFormat, FramePattern, MockV4l2Config, MockV4l2Device, MockV4l2Error,
-};
-pub use vfio::{
-    AccessOp, MockVfioDevice, MockVfioError, RegisterAccessEntry,
-};
 pub use resource_monitors::MockResourceMonitor;
 pub use runtime_engines::MockRuntimeEngine;
+pub use v4l2::{CaptureFormat, FramePattern, MockV4l2Config, MockV4l2Device, MockV4l2Error};
+pub use vfio::{AccessOp, MockVfioDevice, MockVfioError, RegisterAccessEntry};
 
 // Export the enhanced stub implementations
 pub use stubs::{

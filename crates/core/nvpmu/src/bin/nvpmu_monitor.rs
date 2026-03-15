@@ -6,7 +6,7 @@
 //! - hwmon/sysfs for nouveau and AMD (amdgpu)
 //!
 //! Usage:
-//!   nvpmu-monitor [--interval <ms>] [--json] [--once]
+//!   nvpmu-monitor [--interval \<ms\>] [--json] [--once]
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 //! Burn-based ML inference for ToadStool
 //!

@@ -91,7 +91,10 @@ impl RegisterSnapshot {
             }
         }
         if all_ok {
-            tracing::info!(registers = self.entries.len(), "rollback completed successfully");
+            tracing::info!(
+                registers = self.entries.len(),
+                "rollback completed successfully"
+            );
         } else {
             tracing::error!("rollback partially failed — GPU may be in inconsistent state");
         }
@@ -419,8 +422,8 @@ mod tests {
     #[test]
     fn snapshot_captures_register_values() {
         let mut access = FakeRegAccess::new();
-        access.registers.insert(0x100, 0xAABBCCDD);
-        access.registers.insert(0x200, 0x11223344);
+        access.registers.insert(0x100, 0xAABB_CCDD);
+        access.registers.insert(0x200, 0x1122_3344);
 
         let recipe = InitRecipe {
             source_arch: GpuArch {
@@ -439,12 +442,12 @@ mod tests {
             steps: vec![
                 InitStep::RegisterWrite {
                     offset: 0x100,
-                    value: 0xFFFFFFFF,
+                    value: 0xFFFF_FFFF,
                     function: RegFunction::Unknown,
                 },
                 InitStep::RegisterWrite {
                     offset: 0x200,
-                    value: 0x00000000,
+                    value: 0x0000_0000,
                     function: RegFunction::Unknown,
                 },
             ],
@@ -455,13 +458,13 @@ mod tests {
         let snapshot = RegisterSnapshot::capture(&recipe, &access);
         assert_eq!(snapshot.len(), 2);
 
-        access.registers.insert(0x100, 0xFFFFFFFF);
-        access.registers.insert(0x200, 0x00000000);
+        access.registers.insert(0x100, 0xFFFF_FFFF);
+        access.registers.insert(0x200, 0x0000_0000);
 
         let ok = snapshot.rollback(&mut access);
         assert!(ok);
-        assert_eq!(access.registers[&0x100], 0xAABBCCDD);
-        assert_eq!(access.registers[&0x200], 0x11223344);
+        assert_eq!(access.registers[&0x100], 0xAABB_CCDD);
+        assert_eq!(access.registers[&0x200], 0x1122_3344);
     }
 
     #[test]

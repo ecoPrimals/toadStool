@@ -57,11 +57,9 @@ impl AlignedBuffer {
         let layout = Layout::from_size_align(size, align)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {e}")))?;
 
-        // SAFETY: Layout valid (from_size_align succeeded, align power-of-two). alloc_zeroed
-        // returns ptr valid for layout.size() bytes, or null on OOM. Memory zero-initialized.
-        // Pointer used for dealloc with same layout in Drop. Invariants: layout valid;
-        // dealloc matches alloc; no use-after-free. Violation: invalid layout → UB;
-        // mismatched dealloc → use-after-free.
+        // SAFETY: Invariants: layout valid (size, align power-of-two). Satisfied:
+        // from_size_align succeeded. alloc_zeroed returns ptr or null (checked).
+        // Dealloc in Drop with same layout. Violation: invalid layout → UB; mismatched dealloc → use-after-free.
         let raw = unsafe { std::alloc::alloc_zeroed(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
 
@@ -105,10 +103,8 @@ impl Drop for AlignedBuffer {
         // Drop cannot propagate errors, so expect is the correct choice.
         let layout = Layout::from_size_align(self.size, self.align)
             .expect("layout valid: matches original allocation");
-        // SAFETY: ptr from alloc_zeroed(layout) in new(); layout matches allocation.
-        // Drop runs exactly once; no references exist (self is being dropped).
-        // Invariants: layout.size/align match original alloc; single dealloc.
-        // Violation: mismatched layout or double-free → UB.
+        // SAFETY: Invariants: ptr and layout must match original alloc; no outstanding refs.
+        // Satisfied: ptr/layout from new(); Drop runs once. Violation: mismatched layout → UB; double-free → UB.
         unsafe { dealloc(self.ptr.as_ptr(), layout) };
     }
 }
@@ -175,10 +171,8 @@ impl CpuBackend {
     /// This function reconstructs the buffer and lets Drop handle deallocation.
     fn free_aligned_safe(ptr: *mut u8, size: usize, align: usize) {
         if !ptr.is_null() {
-            // SAFETY: ptr, size, align from allocate_aligned_safe; caller transfers ownership.
-            // from_raw takes ownership; Drop deallocates with matching layout.
-            // Invariants: ptr from our alloc; size/align match original allocation.
-            // Violation: wrong allocator or mismatched params → UB.
+            // SAFETY: Invariants: ptr from our alloc; size/align match. Caller transfers ownership.
+            // Satisfied: ptr/size/align from allocate_aligned_safe. Violation: wrong allocator or mismatched params → UB.
             if let Some(buffer) = unsafe { AlignedBuffer::from_raw(ptr, size, align) } {
                 drop(buffer); // Explicit drop for clarity (would happen anyway)
             }

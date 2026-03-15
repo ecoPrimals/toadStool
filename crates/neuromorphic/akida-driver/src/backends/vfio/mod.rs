@@ -212,7 +212,9 @@ impl NpuBackend for VfioBackend {
         let device_fd =
             ioctl::group_get_device_fd(group.as_fd(), pcie_address_cstr.as_ptr().cast())?;
 
-        // SAFETY: device_fd from successful VFIO_GROUP_GET_DEVICE_FD; kernel returns valid fd.
+        // SAFETY: Invariants: fd must be a valid, open fd; caller takes ownership (must not close).
+        // Satisfied: device_fd from VFIO_GROUP_GET_DEVICE_FD ioctl success; kernel returns valid fd.
+        // Violation: invalid fd → double-close on drop; already-closed fd → use-after-close.
         let device = unsafe { OwnedFd::from_raw_fd(device_fd) };
 
         let mut dev_info = types::VfioDeviceInfo {

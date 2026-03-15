@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 13, 2026 -- S153 Sovereign Infrastructure + VFIO Validation Absorption
-**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,262 tests (0 failures) | ~86% line coverage (~150K production lines) | 96+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **IPC-first pipeline + ecoprimals-mode CLI + VFIO 6/7 validated**
-**Latest**: S153 — IPC-first reconciliation (barraCuda v0.35 zero compile-time deps), compute.hardware.vfio_devices, ecoprimals-mode CLI, hotSpring VFIO validation absorption (6/7 tests pass on Titan V, dispatch blocked on coralReef USERD_TARGET one-register fix). S152: compute.dispatch.*, SOVEREIGN_BINARY_PIPELINE, GpuGen + auto_init_all, huge page DMA, MSI-X/eventfd, GpuPowerController, OS keyring, RemoteDispatcher, MockV4l2Device/MockVfioDevice.
+**Updated**: March 14, 2026 -- S154 Deep Audit + Quality Gate Evolution
+**Status**: Production-grade | AGPL-3.0-only | 0 clippy pedantic (all-targets) | 20,285 tests (0 failures, 222 ignored) | 83.09% line coverage (target 90%) | 96+ JSON-RPC methods | CI pedantic gate + secret scan | All unsafe justified (20 crates forbid) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | SecretString credential hardening | **IPC-first pipeline + ecoprimals-mode CLI + VFIO 6/7 validated**
+**Latest**: S154 — Deep audit: hw_learn.rs (985→9 modules), wgpu_backend.rs (974→4 modules), 49 new tests, 5 examples capability-based, PRIMAL_CAPABILITY_SYSTEM REST→JSON-RPC 2.0, 20 crates deny→forbid(unsafe_code). S153: IPC-first reconciliation, compute.hardware.vfio_devices, ecoprimals-mode CLI.
 
 ---
 
@@ -26,9 +26,9 @@ adapter. Vendor-agnostic, capability-based, zero-copy input (`Cow`). Also added
 `NpuParameterController` trait (hotSpring absorption) for NPU-driven autonomous
 parameter tuning.
 
-### ~~P1: Test Coverage → 90% (D-COV)~~ — Resolved (S152)
+### P1: Test Coverage → 90% (D-COV) — Ongoing (S154)
 
-**~86% line coverage** (~150K production lines). 20,262 tests pass (S152). Mock hardware layers for V4L2/VFIO now available (`MockV4l2Device`, `MockVfioDevice`). Software-only modules at ~90% coverage.
+**83.09% line coverage** (~150K production lines). 20,285 tests (S154). Mock hardware layers for V4L2/VFIO available (`MockV4l2Device`, `MockVfioDevice`). Coverage push to 90% ongoing.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -37,6 +37,15 @@ All 7 production callers of `get_socket_path_for_service` migrated to
 names directly. Deprecated API definitions retained for backward compatibility only.
 
 ---
+
+### Key Remaining Items (S154)
+
+| Item | Status |
+|------|--------|
+| Coverage push to 90% | Ongoing — 83.09% line (S154) |
+| VFIO PBDMA dispatch | Blocked on coralReef (USERD_TARGET encoding fix) |
+| E2E sovereign pipeline test | Pending |
+| Glow plug / PowerManager absorption from hotSpring | Pending |
 
 ### Transferred to Other Teams
 
@@ -86,7 +95,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [x] **Test coverage target 90%** -- 20,262 tests (S152); mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice)
+- [x] **Test coverage target 90%** -- 20,285 tests (S154); 83.09% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -116,7 +125,16 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-147)
+## Completed This Session (S90-154)
+
+### Session S154: Deep Audit + Quality Gate Evolution (Mar 14, 2026)
+- **Tests**: 20,285 (was 20,262), 222 ignored. 49 new targeted tests (templates, network_config, hardware, mdns_discovery).
+- **Coverage**: 83.09% line (target 90%). Clippy pedantic clean. Fmt 0 diffs. Doc warnings 0.
+- **Refactoring**: hw_learn.rs (985→9 modules), wgpu_backend.rs (974→4 modules). All files under 1000 lines (largest: 451).
+- **Examples**: 5 examples evolved to capability-based discovery.
+- **Specs**: PRIMAL_CAPABILITY_SYSTEM.md (REST→JSON-RPC 2.0).
+- **Unsafe**: 20 crates upgraded deny→forbid. SAFETY comments added to akida-driver + runtime/gpu.
+- **Mocks**: v4l2/vfio unwrap→expect with # Panics docs. Display: V4L2 struct initializers modernized.
 
 ### Session S144: Last Mile Deep Debt (Mar 10, 2026)
 - **PCIe switch topology**: `pcie_topology.rs` — `PciBridge`, `GpuPairTopology`, `PcieTopologyGraph` for sysfs-based bridge chain discovery, shared switch detection, contention-aware bandwidth estimation. Integrated into `PcieLink` (with `via_switch`, `hops`, `contention_factor`) and `WorkloadRouter` (topology-aware `route_multi_gpu`).

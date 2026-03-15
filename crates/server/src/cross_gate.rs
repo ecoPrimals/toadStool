@@ -618,12 +618,8 @@ mod tests {
     #[tokio::test]
     async fn test_remote_dispatcher_forward_unix_invalid_path_returns_transport_error() {
         // /tmp exists but is a directory, not a socket — UnixStream::connect fails
-        let result = super::RemoteDispatcher::forward(
-            "/tmp",
-            "compute.submit",
-            serde_json::json!({}),
-        )
-        .await;
+        let result =
+            super::RemoteDispatcher::forward("/tmp", "compute.submit", serde_json::json!({})).await;
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(

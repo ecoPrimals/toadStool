@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 13, 2026 — S153
+**Date**: March 14, 2026 — S154
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -75,7 +75,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~86% line coverage** (~150K production lines). 20,262 tests (S152). Mock hardware layers (MockV4l2Device, MockVfioDevice) for headless CI (S152). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Software-only coverage approaching 90%. |
+| D-COV | Test coverage → 90% | Medium | **83.09% line coverage** (~150K production lines). 20,285 tests (S154). Mock hardware layers (MockV4l2Device, MockVfioDevice) for headless CI (S152). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Target 90%. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
 | D-KEYRING | ~~Credential resolution: OS keyring lookup~~ | **RESOLVED S152** | `os_keyring` module — D-Bus SecretService (`secret-tool`) on Linux, macOS Keychain (`security`). Wired as step 2.5 in `resolve_credential` chain (env → file → OS keyring → BearDog). |
@@ -128,6 +128,20 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Chaos framework exists (`testing/src/chaos/`). Integration tests: 10/11 pass (S138). Pure-Rust C-compiler validation is pre-existing failure (transitive deps). |
 
 ---
+
+## Recently Resolved (S154 — Deep Audit + Quality Gate Evolution — Mar 14, 2026)
+
+| Item | Resolution |
+|------|-----------|
+| Clippy pedantic | V4L2 struct initializers modernized (display crate). nvpmu: hex literals, must_use, errors docs, let-else, try_from. Testing mocks: unwrap→expect with `# Panics` docs. |
+| Doc warnings | 0 (was 4). |
+| Examples | 5 examples evolved from hardcoded to capability-based discovery. |
+| hw_learn.rs god file | Smart-refactored 985→9 modules. |
+| wgpu_backend.rs god file | Smart-refactored 974→4 modules. |
+| File size limit | All under 1000 lines (largest: 451 after refactoring). |
+| `#![forbid(unsafe_code)]` | 20 crates upgraded from deny to forbid. |
+| SAFETY comments | Added to akida-driver + runtime/gpu. |
+| Stale REST spec | PRIMAL_CAPABILITY_SYSTEM.md updated (REST→JSON-RPC 2.0). |
 
 ## Recently Resolved (S144 — Last Mile Deep Debt — Mar 10, 2026)
 

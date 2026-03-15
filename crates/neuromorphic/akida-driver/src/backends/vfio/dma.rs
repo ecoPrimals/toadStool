@@ -38,15 +38,19 @@ impl DmaBuffer {
         let layout = std::alloc::Layout::from_size_align(size, 4096)
             .map_err(|e| AkidaError::transfer_failed(format!("Invalid DMA buffer layout: {e}")))?;
 
-        // SAFETY: Page-aligned allocation for DMA. Layout validated above (size>0, align 4096).
-        // Dealloc'd in Drop with same layout. Returns null on OOM (checked below).
+        // SAFETY: Invariants: layout must be valid (size>0, align power-of-two).
+        // Satisfied: Layout::from_size_align succeeded; align 4096 is valid.
+        // Dealloc'd in Drop with same layout. Violation: invalid layout → UB; mismatched dealloc → use-after-free.
         let vaddr = unsafe { std::alloc::alloc_zeroed(layout) };
         if vaddr.is_null() {
             return Err(AkidaError::transfer_failed("Failed to allocate DMA buffer"));
         }
 
-        // SAFETY: mlock prevents page-out, required by VFIO DMA. vaddr valid for `size` bytes.
+        // SAFETY: Invariants: ptr must point to valid, allocated memory for size bytes.
+        // Satisfied: vaddr from alloc_zeroed above; mlock requires mapped memory.
+        // Violation: invalid ptr → kernel panic or UB.
         if let Err(e) = unsafe { mlock(vaddr.cast(), size) } {
+            // SAFETY: vaddr from alloc_zeroed above; layout matches. Cleanup on mlock failure.
             unsafe { std::alloc::dealloc(vaddr, layout) };
             return Err(AkidaError::transfer_failed(format!(
                 "Failed to lock DMA memory: {e}"
@@ -70,12 +74,14 @@ impl DmaBuffer {
             dma_map_arg.flags
         );
 
-        // SAFETY: container_fd is valid from VFIO container open; borrow_raw requires valid fd.
-        // Caller guarantees: container_fd is an open VFIO container fd, valid for this call.
+        // SAFETY: Invariants: fd must be a valid, open file descriptor; must not be closed
+        // while BorrowedFd is used. Satisfied: container_fd from VFIO container open; used
+        // only for this ioctl call. Violation: invalid fd → UB; use-after-close → UB.
         let container_borrowed = unsafe { BorrowedFd::borrow_raw(container_fd) };
         if let Err(e) = ioctl::dma_map(container_borrowed, &dma_map_arg) {
             tracing::warn!("DMA map failed: {e}");
-            // SAFETY: Cleanup on failure — vaddr was allocated and mlock'd successfully above.
+            // SAFETY: Invariants: vaddr/size must match prior mlock; layout must match alloc.
+            // Satisfied: vaddr from alloc, mlock succeeded above. Violation: mismatched params → UB.
             unsafe {
                 let _ = munlock(vaddr.cast(), size);
                 std::alloc::dealloc(vaddr, layout);
@@ -99,7 +105,9 @@ impl DmaBuffer {
     pub fn as_slice(&self) -> &[u8] {
         debug_assert!(!self.vaddr.is_null(), "DmaBuffer vaddr is null");
         debug_assert!(self.size > 0, "DmaBuffer size is 0");
-        // SAFETY: vaddr from alloc in new(), valid for size; &self prevents concurrent mutation.
+        // SAFETY: Invariants: ptr valid for size bytes; properly aligned; no concurrent mutation.
+        // Satisfied: vaddr from alloc_zeroed; size matches; &self prevents mutation.
+        // Violation: invalid ptr/size → UB; concurrent mutation → data race.
         unsafe { std::slice::from_raw_parts(self.vaddr, self.size) }
     }
 
@@ -107,7 +115,9 @@ impl DmaBuffer {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         debug_assert!(!self.vaddr.is_null(), "DmaBuffer vaddr is null");
         debug_assert!(self.size > 0, "DmaBuffer size is 0");
-        // SAFETY: vaddr valid for size; &mut self guarantees exclusive access.
+        // SAFETY: Invariants: ptr valid for size bytes; properly aligned; exclusive access.
+        // Satisfied: vaddr from alloc_zeroed; &mut self guarantees no aliasing.
+        // Violation: invalid ptr/size → UB; aliasing → data race.
         unsafe { std::slice::from_raw_parts_mut(self.vaddr, self.size) }
     }
 
@@ -128,7 +138,8 @@ impl Drop for DmaBuffer {
         reason = "struct sizes always fit u32"
     )]
     fn drop(&mut self) {
-        // SAFETY: munlock matches mlock from new(); must unlock before dealloc.
+        // SAFETY: Invariants: ptr/size must match prior mlock. Satisfied: self.vaddr/self.size
+        // from new() where mlock succeeded. Violation: mismatched params → kernel UB.
         unsafe {
             let _ = munlock(self.vaddr.cast(), self.size);
         };
@@ -140,14 +151,16 @@ impl Drop for DmaBuffer {
             size: self.size as u64,
         };
 
-        // SAFETY: container_fd still valid — DmaBuffer is dropped before the VFIO container
-        // (Drop order: DmaBuffer fields, then parent VfioBackend). borrow_raw requires valid fd.
+        // SAFETY: Invariants: fd must be valid; not closed during borrow. Satisfied: DmaBuffer
+        // dropped before VfioBackend (parent); container fd still open. Violation: invalid fd → UB.
         let container_borrowed = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
         let _ = ioctl::dma_unmap(container_borrowed, &dma_unmap);
 
         let layout = std::alloc::Layout::from_size_align(self.size, 4096)
             .expect("Layout valid: matches alloc in new()");
-        // SAFETY: dealloc matches alloc_zeroed from new(); layout identical; no outstanding refs.
+        // SAFETY: Invariants: ptr and layout must match original alloc; no outstanding refs.
+        // Satisfied: vaddr/layout from new(); munlock above; no slices outstanding (Drop).
+        // Violation: mismatched layout → UB; use-after-free if refs exist.
         unsafe { std::alloc::dealloc(self.vaddr, layout) };
 
         tracing::debug!("Freed DMA buffer at iova={:#x}", self.iova);

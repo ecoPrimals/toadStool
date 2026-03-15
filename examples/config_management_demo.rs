@@ -41,9 +41,11 @@
 //! cargo run --example config_management_demo
 //! ```
 
+use std::collections::HashMap;
 use std::time::Duration;
 use tracing::{info, warn};
 
+use toadstool_common::primal_discovery::{DiscoveryConfig, PrimalDiscovery};
 use toadstool_config::{
     config_utils::ConfigUtils,
     env_config::{
@@ -85,79 +87,147 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Demonstrate the old hardcoded approach (what we're replacing)
+/// Demonstrate the old hardcoded approach (anti-pattern — what we're replacing)
+///
+/// wateringHole standards: No hardcoded primal names or ports in production.
+/// Primals discover each other at runtime via capabilities.
 fn demonstrate_old_hardcoded_approach() {
-    info!("📚 OLD APPROACH: Hardcoded Values");
-    info!("================================");
+    info!("📚 OLD APPROACH (Anti-Pattern): Hardcoded Primal Names & Ports");
+    info!("============================================================");
 
-    // This is what we used to do (hardcoded values)
-    let songbird_port = 8080u16; // HARDCODED
-    let beardog_port = 8081u16; // HARDCODED
-    let nestgate_port = 8082u16; // HARDCODED
+    // ❌ ANTI-PATTERN: Hardcoded primal names and ports (violates wateringHole standards)
+    // Production code must NOT do this — use capability-based discovery instead.
+    let _orchestration_port = 8080u16; // HARDCODED — should discover "orchestration" capability
+    let _security_port = 8081u16; // HARDCODED — should discover "security" capability
+    let _storage_port = 8082u16; // HARDCODED — should discover "storage" capability
     let localhost = "127.0.0.1"; // HARDCODED
     let max_cpu = 90.0f64; // HARDCODED
     let max_memory = 8 * 1024 * 1024 * 1024u64; // HARDCODED - 8GB
     let request_timeout = Duration::from_secs(30); // HARDCODED
 
-    info!("❌ Hardcoded Songbird port: {}", songbird_port);
-    info!("❌ Hardcoded BearDog port: {}", beardog_port);
-    info!("❌ Hardcoded NestGate port: {}", nestgate_port);
+    info!(
+        "❌ Hardcoded orchestration port (primal-name coupling): {}",
+        _orchestration_port
+    );
+    info!(
+        "❌ Hardcoded security port (primal-name coupling): {}",
+        _security_port
+    );
+    info!(
+        "❌ Hardcoded storage port (primal-name coupling): {}",
+        _storage_port
+    );
     info!("❌ Hardcoded localhost: {}", localhost);
     info!("❌ Hardcoded max CPU: {}%", max_cpu);
     info!("❌ Hardcoded max memory: {} bytes", max_memory);
     info!("❌ Hardcoded request timeout: {:?}", request_timeout);
 
-    warn!("🚨 Problems with hardcoded values:");
+    warn!("🚨 Problems with hardcoded primal names/ports:");
+    warn!("   - Violates capability-based discovery (wateringHole/UNIVERSAL_IPC)");
     warn!("   - Cannot adapt to different environments");
-    warn!("   - No runtime configuration changes");
+    warn!("   - No runtime discovery — compile-time coupling to specific primals");
     warn!("   - Port conflicts in deployments");
     warn!("   - Not suitable for production");
-    warn!("   - No environment-specific settings");
 
     println!();
 }
 
-/// Demonstrate the new environment-aware configuration approach
+/// Demonstrate the new capability-based discovery approach (wateringHole standard)
+///
+/// Uses `ipc.find_capability` pattern: discover primals by capability at runtime.
+/// Ports/endpoints come from configuration (env vars) or runtime discovery, never hardcoded.
 async fn demonstrate_new_environment_aware_approach() -> Result<(), Box<dyn std::error::Error>> {
-    info!("✨ NEW APPROACH: Environment-Aware Configuration");
-    info!("===============================================");
+    info!("✨ NEW APPROACH: Capability-Based Discovery");
+    info!("==========================================");
 
-    // This is the new way (environment-aware configuration)
-    let songbird_port = ConfigUtils::get_songbird_port();
-    let beardog_port = ConfigUtils::get_beardog_port();
-    let nestgate_port = ConfigUtils::get_nestgate_port();
+    // Build discovery fallbacks from env vars (TOADSTOOL_COORDINATION_URL, etc.)
+    // or capability_fallback ports — config-driven, not hardcoded primal names.
+    let bind_host = ConfigUtils::get_bind_address();
+    let fallbacks = build_capability_fallbacks_from_config(&bind_host);
+
+    let config = DiscoveryConfig {
+        enable_mdns: true,
+        fallbacks: fallbacks.clone(),
+        ..Default::default()
+    };
+    let discovery = PrimalDiscovery::with_config(config)?;
+
+    // Discover by capability — no primal names! Use capability names: orchestration, security, storage
+    info!("🔍 Discovering primals by capability (ipc.find_capability pattern):");
+
+    for capability in ["orchestration", "security", "storage"] {
+        match discovery.find_capability(capability).await {
+            Ok(endpoint) => {
+                info!(
+                    "   ✅ {} capability: {} (discovered via {:?})",
+                    capability,
+                    endpoint.url(),
+                    endpoint.discovered_via
+                );
+            }
+            Err(e) => {
+                info!("   ⚠️ {} capability: not found ({e})", capability);
+            }
+        }
+    }
+
     let bind_address = ConfigUtils::get_bind_address();
     let max_cpu = ConfigUtils::get_max_cpu_usage();
     let max_memory = ConfigUtils::get_max_memory_usage();
     let request_timeout = ConfigUtils::get_request_timeout();
 
-    info!("✅ Environment-aware Songbird port: {}", songbird_port);
-    info!("✅ Environment-aware BearDog port: {}", beardog_port);
-    info!("✅ Environment-aware NestGate port: {}", nestgate_port);
-    info!("✅ Environment-aware bind address: {}", bind_address);
-    info!("✅ Environment-aware max CPU: {}%", max_cpu);
-    info!("✅ Environment-aware max memory: {} bytes", max_memory);
-    info!(
-        "✅ Environment-aware request timeout: {:?}",
-        request_timeout
-    );
+    info!("✅ Config-driven bind address: {}", bind_address);
+    info!("✅ Config-driven max CPU: {}%", max_cpu);
+    info!("✅ Config-driven max memory: {} bytes", max_memory);
+    info!("✅ Config-driven request timeout: {:?}", request_timeout);
 
-    // Show service endpoints
+    // Self-knowledge: ToadStool's own endpoint (sovereignty)
     let endpoints = ConfigUtils::get_service_endpoints();
-    info!("🔗 Service endpoints:");
+    info!("🔗 Self-endpoints (toadstool only):");
     for (service, endpoint) in endpoints {
         info!("   {}: {}", service, endpoint);
     }
 
-    info!("🎯 Benefits of environment-aware configuration:");
-    info!("   ✅ Adapts to different environments (dev/staging/prod)");
-    info!("   ✅ No hardcoded values in source code");
-    info!("   ✅ Easy deployment configuration");
-    info!("   ✅ Runtime configuration changes via environment");
-    info!("   ✅ Proper fallback defaults");
+    info!("🎯 Benefits of capability-based discovery:");
+    info!("   ✅ Zero hardcoded primal names — discover by capability");
+    info!("   ✅ Ports from config/env or runtime discovery");
+    info!("   ✅ Adapts to different environments");
+    info!("   ✅ Resolves transport at runtime (wateringHole/UNIVERSAL_IPC)");
 
     println!();
     Ok(())
+}
+
+/// Build capability fallbacks from env vars or config — no hardcoded primal names.
+/// Uses TOADSTOOL_COORDINATION_URL, TOADSTOOL_SECURITY_URL, TOADSTOOL_STORAGE_URL
+/// or capability_fallback ports with bind host.
+fn build_capability_fallbacks_from_config(bind_host: &str) -> HashMap<String, String> {
+    use toadstool_config::ports::capability_fallback;
+    let mut fallbacks = HashMap::new();
+    let specs: &[(&str, &[&str], u16)] = &[
+        (
+            "TOADSTOOL_COORDINATION_URL",
+            &["orchestration", "coordination"][..],
+            capability_fallback::COORDINATION,
+        ),
+        (
+            "TOADSTOOL_SECURITY_URL",
+            &["security"][..],
+            capability_fallback::SECURITY,
+        ),
+        (
+            "TOADSTOOL_STORAGE_URL",
+            &["storage"][..],
+            capability_fallback::STORAGE,
+        ),
+    ];
+    for (env_var, capability_keys, port) in specs {
+        let url = std::env::var(env_var).unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
+        for key in *capability_keys {
+            fallbacks.insert((*key).to_string(), url.clone());
+        }
+    }
+    fallbacks
 }
 
 /// Demonstrate different environment-specific configurations
@@ -219,11 +289,20 @@ async fn demonstrate_configuration_validation() -> Result<(), Box<dyn std::error
     // Test various configuration scenarios
     info!("🧪 Testing configuration validation...");
 
-    // Test valid configuration
+    // Test valid configuration (legacy port fields deprecated — use capability discovery)
     let network_config = NetworkEnvConfig::from_env();
     info!("✅ Network configuration loaded successfully");
-    info!("   Songbird port: {}", network_config.songbird_port);
-    info!("   BearDog port: {}", network_config.beardog_port);
+    #[allow(deprecated)]
+    {
+        info!(
+            "   Legacy coordination port (deprecated): {}",
+            network_config.songbird_port
+        );
+        info!(
+            "   Legacy security port (deprecated): {}",
+            network_config.beardog_port
+        );
+    }
     info!("   TLS enabled: {}", network_config.tls_enabled);
 
     // Test resource configuration
@@ -267,36 +346,50 @@ async fn demonstrate_configuration_validation() -> Result<(), Box<dyn std::error
     Ok(())
 }
 
-/// Demonstrate service discovery with configurable endpoints
+/// Demonstrate capability-based service discovery (wateringHole pattern)
+///
+/// Primals discover each other by capability at runtime. Endpoints come from
+/// config/env or mDNS — never hardcoded.
 async fn demonstrate_service_discovery() -> Result<(), Box<dyn std::error::Error>> {
-    info!("🔍 Service Discovery with Configurable Endpoints");
-    info!("===============================================");
+    info!("🔍 Capability-Based Service Discovery");
+    info!("=====================================");
 
-    // Show how services can be discovered using configurable endpoints
-    let service_ports = ConfigUtils::get_service_ports();
-    let service_endpoints = ConfigUtils::get_service_endpoints();
+    let fallbacks = build_capability_fallbacks_from_config(&ConfigUtils::get_bind_address());
+    let config = DiscoveryConfig {
+        enable_mdns: true,
+        fallbacks,
+        ..Default::default()
+    };
+    let discovery = PrimalDiscovery::with_config(config)?;
 
-    info!("🔗 Available services:");
-    for (service_name, port) in &service_ports {
-        let default_endpoint = format!("http://localhost:{port}");
-        let endpoint = service_endpoints
-            .get(service_name)
-            .unwrap_or(&default_endpoint);
-        info!("   📡 {} service:", service_name);
-        info!("      Port: {}", port);
-        info!("      Endpoint: {}", endpoint);
-        info!("      Status: {}", simulate_service_check(endpoint).await);
+    let capabilities = ["orchestration", "security", "storage"];
+    info!("🔗 Discovering by capability (not by primal name):");
+    for cap in capabilities {
+        match discovery.find_capability(cap).await {
+            Ok(endpoint) => {
+                info!("   📡 {} capability:", cap);
+                info!("      Endpoint: {}", endpoint.url());
+                info!(
+                    "      Status: {}",
+                    simulate_service_check(endpoint.url()).await
+                );
+            }
+            Err(e) => info!("   ⚠️ {} capability: not found ({e})", cap),
+        }
     }
 
-    // Show port ranges for containers
+    // Port ranges from config (for container allocation)
     let (container_start, container_end) = ConfigUtils::get_container_port_range();
     let (port_start, port_end) = ConfigUtils::get_port_allocation_range();
 
     info!(
-        "🐳 Container port range: {} - {}",
+        "🐳 Container port range (config): {} - {}",
         container_start, container_end
     );
-    info!("⚙️  Port allocation range: {} - {}", port_start, port_end);
+    info!(
+        "⚙️  Port allocation range (config): {} - {}",
+        port_start, port_end
+    );
 
     println!();
     Ok(())
@@ -370,19 +463,11 @@ fn demonstrate_configuration_inspection() {
     println!();
 }
 
-/// Simulate a service health check
-async fn simulate_service_check(endpoint: &str) -> &'static str {
-    // In a real implementation, this would make an HTTP request
-    // For demo purposes, we'll just simulate different statuses
-    if endpoint.contains("8080") {
-        "🟢 Online"
-    } else if endpoint.contains("8081") {
-        "🟡 Degraded"
-    } else if endpoint.contains("8082") {
-        "🔴 Offline"
-    } else {
-        "⚪ Unknown"
-    }
+/// Simulate a service health check (endpoint from discovery — no hardcoded ports)
+async fn simulate_service_check(_endpoint: &str) -> &'static str {
+    // In production, this would make an HTTP request to the discovered endpoint.
+    // No hardcoded port checks — we use the URL resolved at runtime.
+    "🟢 Discovered"
 }
 
 /// Demonstrate configuration file loading (bonus feature)
@@ -397,11 +482,12 @@ fn demonstrate_configuration_file_loading() {
     info!("   3. Configuration files (.env, toadstool.toml)");
     info!("   4. Default values");
 
-    info!("📝 Example .env file:");
+    info!("📝 Example .env file (capability-based, no primal names):");
     info!("   TOADSTOOL_ENV=production");
     info!("   TOADSTOOL_DEBUG=false");
-    info!("   TOADSTOOL_SONGBIRD_PORT=8080");
-    info!("   TOADSTOOL_BEARDOG_PORT=8081");
+    info!("   TOADSTOOL_COORDINATION_URL=http://localhost:8080");
+    info!("   TOADSTOOL_SECURITY_URL=http://localhost:8081");
+    info!("   TOADSTOOL_STORAGE_URL=http://localhost:8082");
     info!("   TOADSTOOL_TLS_ENABLED=true");
 
     info!("📝 Example toadstool.toml file:");
@@ -424,16 +510,22 @@ mod tests {
         temp_env::with_vars(
             [
                 ("TOADSTOOL_ENV", Some("test")),
-                ("SONGBIRD_PORT", Some("9080")),
+                ("TOADSTOOL_COORDINATION_URL", Some("http://localhost:9080")),
                 ("TOADSTOOL_DEBUG", Some("true")),
             ],
             || {
                 assert_eq!(ConfigUtils::get_environment(), "test");
-                #[allow(deprecated)]
-                {
-                    assert_eq!(ConfigUtils::get_songbird_port(), 9080);
-                }
                 assert!(ConfigUtils::get_debug_mode());
+
+                // Capability-based discovery: find orchestration via config fallback
+                let fallbacks = build_capability_fallbacks_from_config("127.0.0.1");
+                assert!(
+                    fallbacks
+                        .get("orchestration")
+                        .map(|u| u.contains("9080"))
+                        .unwrap_or(false),
+                    "orchestration fallback should use TOADSTOOL_COORDINATION_URL"
+                );
 
                 // Sovereignty: get_service_endpoints only returns toadstool's own
                 let endpoints = ConfigUtils::get_service_endpoints();

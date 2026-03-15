@@ -4,7 +4,9 @@
 //! This module contains command definitions and implementations of CLI subcommands.
 
 mod definitions;
-pub use definitions::{Commands, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands};
+pub use definitions::{
+    Commands, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands,
+};
 
 pub mod dispatch;
 pub mod doctor;

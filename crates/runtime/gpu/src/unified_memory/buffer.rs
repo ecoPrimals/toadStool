@@ -145,10 +145,9 @@ impl UnifiedBuffer {
             self.size > 0,
             "Buffer size must be > 0 (validated by validate_cpu_ptr)"
         );
-        // SAFETY: cpu_ptr is NonNull and validated (alignment, allocation, not NULL page). Size
-        // validated at creation and in validate_cpu_ptr. Exclusive &mut self ensures no aliasing.
-        // ptr from backend allocation, valid for size bytes. u8 has alignment 1. Callers
-        // (write_async/read_async/fill) bounds-check before using subslice.
+        // SAFETY: Invariants: ptr valid for size; aligned; exclusive access; allocation exists.
+        // Satisfied: validate_cpu_ptr checked; NonNull; &mut self; allocation.is_some().
+        // Violation: invalid ptr/size → UB; aliasing → data race; use-after-free if freed.
         Ok(unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) })
     }
 
@@ -170,10 +169,9 @@ impl UnifiedBuffer {
             self.size > 0,
             "Buffer size must be > 0 (validated by validate_cpu_ptr)"
         );
-        // SAFETY: cpu_ptr is NonNull and validated (alignment, allocation, not NULL page). Size
-        // validated. &self gives shared access with no concurrent mutation. ptr from backend
-        // allocation, valid for size bytes. u8 has alignment 1. read_async bounds-checks
-        // offset+len before using subslice.
+        // SAFETY: Invariants: ptr valid for size; aligned; allocation exists; no concurrent mutation.
+        // Satisfied: validate_cpu_ptr checked; &self (Rust ensures no &mut); allocation.is_some().
+        // Violation: invalid ptr/size → UB; concurrent mutation → data race.
         Ok(unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) })
     }
 

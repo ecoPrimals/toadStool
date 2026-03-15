@@ -212,6 +212,9 @@ impl MappedRegion {
             _marker: std::marker::PhantomData,
         };
 
+        // SAFETY: Invariants: fd valid VFIO device; ioctl struct matches kernel ABI.
+        // Satisfied: device_fd from VFIO; RegionInfoIoctl has correct opcode and ptr.
+        // Violation: invalid fd → kernel error; layout mismatch → kernel corruption.
         if let Err(e) = unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) } {
             return Err(AkidaError::capability_query_failed(format!(
                 "Failed to get BAR{} info: {}",
@@ -227,10 +230,9 @@ impl MappedRegion {
             region_info.flags
         );
 
-        // SAFETY: mmap necessary for MMIO - maps BAR region into process address space.
-        // Invariants: (1) device_fd valid; (2) region_info.size/offset from successful ioctl;
-        // (3) mapping exclusive via VFIO/IOMMU; (4) ptr valid for size bytes or Err.
-        // Caller guarantees: region_info populated by kernel, device_fd open.
+        // SAFETY: Invariants: fd valid; size/offset from kernel; flags valid.
+        // Satisfied: device_fd from VFIO; region_info from successful ioctl; ProtFlags/MapFlags valid.
+        // Violation: invalid fd → kernel error; wrong size/offset → wrong mapping or UB.
         let ptr = unsafe {
             mmap(
                 std::ptr::null_mut(),
@@ -270,7 +272,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn read32(&self, offset: usize) -> u32 {
-        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
+        // SAFETY: Invariants: ptr valid for size; from mmap; not unmapped. Satisfied: from map().
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .read_u32(offset)
@@ -283,7 +285,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn write32(&self, offset: usize, value: u32) {
-        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
+        // SAFETY: Invariants: ptr valid for size; from mmap. Satisfied: from map().
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .write_u32(offset, value)
@@ -296,7 +298,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn read64(&self, offset: usize) -> u64 {
-        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
+        // SAFETY: Invariants: ptr valid for size; from mmap. Satisfied: from map().
         let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .read_u64(offset)
@@ -309,7 +311,7 @@ impl MappedRegion {
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn write64(&self, offset: usize, value: u64) {
-        // SAFETY: self.ptr/self.size invariants maintained by map() constructor and Drop.
+        // SAFETY: Invariants: ptr valid for size; from mmap. Satisfied: from map().
         let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
         slice
             .write_u64(offset, value)
@@ -329,9 +331,9 @@ impl MappedRegion {
 
 impl Drop for MappedRegion {
     fn drop(&mut self) {
-        // SAFETY: munmap necessary - must unmap region before process ends.
-        // Invariants: (1) ptr from mmap in map(), valid for self.size; (2) munmap with
-        // ptr+size that was previously mapped; (3) Drop runs at most once; (4) no refs.
+        // SAFETY: Invariants: ptr from mmap; size matches; no outstanding refs.
+        // Satisfied: ptr/size from map(); Drop runs once; no slices outlive self.
+        // Violation: wrong ptr/size → UB; use-after-free if refs exist.
         unsafe {
             // Ignore error in Drop (can't propagate, would need to log)
             let _ = munmap(self.ptr.as_ptr().cast(), self.size);

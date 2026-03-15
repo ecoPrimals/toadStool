@@ -237,12 +237,13 @@ async fn demo_primal_routing(platform: &UniversalComputePlatform) -> ToadStoolRe
     println!("  • Status: {:?}", response.status);
     println!("  • Response: {}", response.payload);
 
-    // Create primal job
+    // Create primal job — endpoint from capability discovery, not hardcoded
+    let compute_endpoint = discover_compute_endpoint().await;
     let job = UniversalJob {
         id: Uuid::new_v4(),
         job_type: UniversalJobType::Primal {
             primal_type: "compute".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint: compute_endpoint,
             payload: serde_json::json!({
                 "task": "process_data",
                 "data": "sample_data"
@@ -408,9 +409,12 @@ async fn demo_security_levels(platform: &UniversalComputePlatform) -> ToadStoolR
     Ok(())
 }
 
-/// Demonstrate ecosystem integration
+/// Demonstrate ecosystem integration via capability-based discovery
+///
+/// wateringHole standard: discover primals by capability at runtime.
+/// No hardcoded primal names or ports — use ipc.find_capability pattern.
 async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
-    println!("\n🌐 Ecosystem Integration Demo");
+    println!("\n🌐 Ecosystem Integration Demo (Capability-Based Discovery)");
     println!("{}", "-".repeat(40));
 
     // Discover ecosystem
@@ -418,26 +422,77 @@ async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> Toad
     platform.discover_ecosystem().await?;
     println!("✅ Ecosystem discovery completed");
 
-    // Test different primal types
-    let primal_types = vec![
-        ("compute", "ToadStool compute primal"),
-        ("security", "BearDog security primal"),
-        ("storage", "NestGate storage primal"),
-        ("ai", "Squirrel AI primal"),
-        ("network", "Songbird network primal"),
+    // Capabilities to test — discover by capability, not by primal name
+    let capabilities = vec![
+        ("compute", "compute capability (e.g. ToadStool)"),
+        ("security", "security capability (e.g. BearDog)"),
+        ("storage", "storage capability (e.g. NestGate)"),
+        ("ai", "AI capability (e.g. Squirrel)"),
+        ("orchestration", "orchestration capability (e.g. Songbird)"),
     ];
 
-    for (primal_type, description) in primal_types {
-        println!("🎯 Testing {description} integration...");
+    use std::collections::HashMap;
+    use toadstool_common::primal_discovery::{DiscoveryConfig, PrimalDiscovery};
+    use toadstool_config::config_utils::ConfigUtils;
+    use toadstool_config::ports::capability_fallback;
+
+    let bind_host = ConfigUtils::get_bind_address();
+    let mut fallbacks = HashMap::new();
+    let specs: &[(&str, &str, u16)] = &[
+        (
+            "TOADSTOOL_COORDINATION_URL",
+            "orchestration",
+            capability_fallback::COORDINATION,
+        ),
+        (
+            "TOADSTOOL_SECURITY_URL",
+            "security",
+            capability_fallback::SECURITY,
+        ),
+        (
+            "TOADSTOOL_STORAGE_URL",
+            "storage",
+            capability_fallback::STORAGE,
+        ),
+        (
+            "TOADSTOOL_PLATFORM_URL",
+            "ai",
+            capability_fallback::PLATFORM,
+        ),
+    ];
+    for (env_var, cap, port) in specs {
+        let url = std::env::var(env_var).unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
+        fallbacks.insert((*cap).to_string(), url);
+    }
+    fallbacks.insert(
+        "compute".to_string(),
+        std::env::var("TOADSTOOL_COMPUTE_URL")
+            .unwrap_or_else(|_| format!("http://{bind_host}:8084")),
+    );
+
+    let discovery = PrimalDiscovery::with_config(DiscoveryConfig {
+        enable_mdns: true,
+        fallbacks,
+        ..Default::default()
+    })
+    .map_err(|e| ToadStoolError::configuration(e.to_string()))?;
+
+    for (capability, description) in capabilities {
+        println!("🎯 Testing {description} (discovered via capability)...");
+
+        let endpoint = match discovery.find_capability(capability).await {
+            Ok(ep) => ep.url().to_string(),
+            Err(_) => format!("http://{bind_host}:8080/{capability}"), // fallback for demo
+        };
 
         let context =
-            create_demo_context(&format!("ecosystem_{primal_type}"), SecurityLevel::Standard);
+            create_demo_context(&format!("ecosystem_{capability}"), SecurityLevel::Standard);
 
         let job = UniversalJob {
             id: Uuid::new_v4(),
             job_type: UniversalJobType::Primal {
-                primal_type: primal_type.to_string(),
-                endpoint: format!("http://localhost:8080/{primal_type}"),
+                primal_type: capability.to_string(),
+                endpoint,
                 payload: serde_json::json!({
                     "operation": "health_check",
                     "timestamp": toadstool_common::system_time_serde::format_rfc3339(SystemTime::now())
@@ -455,6 +510,34 @@ async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> Toad
     }
 
     Ok(())
+}
+
+/// Discover compute endpoint via capability — no hardcoded URLs
+async fn discover_compute_endpoint() -> String {
+    use std::collections::HashMap;
+    use toadstool_common::primal_discovery::{DiscoveryConfig, PrimalDiscovery};
+    use toadstool_config::config_utils::ConfigUtils;
+
+    let bind_host = ConfigUtils::get_bind_address();
+    let mut fallbacks = HashMap::new();
+    fallbacks.insert(
+        "compute".to_string(),
+        std::env::var("TOADSTOOL_COMPUTE_URL")
+            .unwrap_or_else(|_| format!("http://{bind_host}:8084")),
+    );
+
+    match PrimalDiscovery::with_config(DiscoveryConfig {
+        enable_mdns: true,
+        fallbacks,
+        ..Default::default()
+    }) {
+        Ok(discovery) => discovery
+            .find_capability("compute")
+            .await
+            .map(|ep| ep.url().to_string())
+            .unwrap_or_else(|_| format!("http://{bind_host}:8084")),
+        Err(_) => format!("http://{bind_host}:8084"),
+    }
 }
 
 /// Create a demo context for testing

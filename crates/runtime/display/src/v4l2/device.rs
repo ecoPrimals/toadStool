@@ -278,8 +278,10 @@ impl CaptureDevice {
     ///
     /// Returns an error if the `VIDIOC_S_FMT` ioctl fails.
     pub fn set_format(&mut self, width: u32, height: u32, fourcc: u32) -> Result<CaptureFormat> {
-        let mut fmt: v4l2_format = v4l2_format::default();
-        fmt.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        let mut fmt = v4l2_format {
+            type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
+            ..v4l2_format::default()
+        };
         fmt.fmt.width = width;
         fmt.fmt.height = height;
         fmt.fmt.pixelformat = fourcc;
@@ -315,10 +317,12 @@ impl CaptureDevice {
     ///
     /// Returns an error if `VIDIOC_REQBUFS` or buffer mapping fails.
     pub fn request_buffers(&mut self, count: u32) -> Result<u32> {
-        let mut req: v4l2_requestbuffers = v4l2_requestbuffers::default();
-        req.count = count;
-        req.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        req.memory = V4L2_MEMORY_MMAP;
+        let mut req = v4l2_requestbuffers {
+            count,
+            type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
+            memory: V4L2_MEMORY_MMAP,
+            ..v4l2_requestbuffers::default()
+        };
 
         // VIDIOC_REQBUFS = _IOWR('V', 8, struct v4l2_requestbuffers)
         // SAFETY: ioctl FFI; kernel reads req and writes back. Invariants: fd valid, req initialized.
@@ -335,10 +339,12 @@ impl CaptureDevice {
 
         // mmap each buffer
         for i in 0..req.count {
-            let mut buf: v4l2_buffer = v4l2_buffer::default();
-            buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-            buf.memory = V4L2_MEMORY_MMAP;
-            buf.index = i;
+            let mut buf = v4l2_buffer {
+                type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                memory: V4L2_MEMORY_MMAP,
+                index: i,
+                ..v4l2_buffer::default()
+            };
 
             // VIDIOC_QUERYBUF = _IOWR('V', 9, struct v4l2_buffer)
             // SAFETY: ioctl FFI; kernel fills buf with buffer info. Invariants: fd valid, buf init'd.
@@ -388,10 +394,12 @@ impl CaptureDevice {
     )]
     pub fn start_streaming(&mut self) -> Result<()> {
         for i in 0..self.buffers.len() {
-            let mut buf: v4l2_buffer = v4l2_buffer::default();
-            buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-            buf.memory = V4L2_MEMORY_MMAP;
-            buf.index = i as u32;
+            let mut buf = v4l2_buffer {
+                type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                memory: V4L2_MEMORY_MMAP,
+                index: i as u32,
+                ..v4l2_buffer::default()
+            };
 
             // VIDIOC_QBUF = _IOWR('V', 15, struct v4l2_buffer)
             // SAFETY: ioctl FFI; kernel reads buf to queue. Invariants: fd valid, buf initialized.
@@ -435,9 +443,11 @@ impl CaptureDevice {
             return Err(DisplayError::IoctlFailed("not streaming".into()));
         }
 
-        let mut buf: v4l2_buffer = v4l2_buffer::default();
-        buf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_MMAP;
+        let mut buf = v4l2_buffer {
+            type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
+            memory: V4L2_MEMORY_MMAP,
+            ..v4l2_buffer::default()
+        };
 
         // VIDIOC_DQBUF = _IOWR('V', 17, struct v4l2_buffer)
         // SAFETY: ioctl FFI; kernel fills buf with dequeued buffer info. Invariants: fd valid.
@@ -462,10 +472,12 @@ impl CaptureDevice {
         }
 
         // Re-queue
-        let mut rebuf: v4l2_buffer = v4l2_buffer::default();
-        rebuf.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        rebuf.memory = V4L2_MEMORY_MMAP;
-        rebuf.index = buf.index;
+        let mut rebuf = v4l2_buffer {
+            type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
+            memory: V4L2_MEMORY_MMAP,
+            index: buf.index,
+            ..v4l2_buffer::default()
+        };
         // SAFETY: ioctl FFI; kernel reads rebuf to re-queue. Invariants: fd valid, rebuf init'd.
         unsafe {
             rustix::ioctl::ioctl(

@@ -42,7 +42,7 @@
     clippy::zero_sized_map_values
 )]
 #![cfg_attr(test, allow(deprecated))] // Allow deprecated items in tests during transition
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 // Core modules
 pub mod compatibility;

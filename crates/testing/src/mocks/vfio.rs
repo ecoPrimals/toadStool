@@ -3,6 +3,11 @@
 //!
 //! Simulates a VFIO-attached GPU's BAR0 register space with configurable
 //! register values, error injection, and access logging.
+//!
+//! All public methods that access internal mutexes will panic if a mutex is
+//! poisoned (another thread panicked while holding it). This is acceptable
+//! for test infrastructure — poisoned state means the test has already failed.
+#![allow(clippy::expect_used)]
 
 use hw_learn::applicator::RegisterAccess;
 use std::collections::HashMap;
@@ -44,6 +49,8 @@ pub enum MockVfioError {
     DeviceReset,
 }
 
+const POISONED: &str = "mock mutex poisoned";
+
 /// Mock VFIO device BAR0 register space for headless CI testing.
 pub struct MockVfioDevice {
     bdf: String,
@@ -73,25 +80,29 @@ impl MockVfioDevice {
     }
 
     /// Read a 32-bit register at the given offset.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     #[must_use]
     pub fn read_register(&self, offset: u64) -> u32 {
-        if let Some(err) = self.error_at.lock().unwrap().get(&offset) {
+        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset) {
             if *err == MockVfioError::ReadFault || *err == MockVfioError::DeviceReset {
-                return 0; // Callers using Result will get error; this returns value for non-Result path
+                return 0;
             }
         }
 
         let value = self
             .registers
             .lock()
-            .unwrap()
+            .expect(POISONED)
             .get(&offset)
             .copied()
-            .unwrap_or_else(|| *self.default_value.lock().unwrap());
+            .unwrap_or_else(|| *self.default_value.lock().expect(POISONED));
 
         self.access_log
             .lock()
-            .unwrap()
+            .expect(POISONED)
             .push(RegisterAccessEntry {
                 op: AccessOp::Read,
                 offset,
@@ -103,17 +114,21 @@ impl MockVfioDevice {
     }
 
     /// Write a 32-bit register at the given offset.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     pub fn write_register(&self, offset: u64, value: u32) {
-        if let Some(err) = self.error_at.lock().unwrap().get(&offset) {
+        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset) {
             if *err == MockVfioError::WriteFault || *err == MockVfioError::DeviceReset {
-                return; // Simulate write being dropped
+                return;
             }
         }
 
-        self.registers.lock().unwrap().insert(offset, value);
+        self.registers.lock().expect(POISONED).insert(offset, value);
         self.access_log
             .lock()
-            .unwrap()
+            .expect(POISONED)
             .push(RegisterAccessEntry {
                 op: AccessOp::Write,
                 offset,
@@ -123,34 +138,58 @@ impl MockVfioDevice {
     }
 
     /// Return all register accesses for verification.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     #[must_use]
     pub fn access_log(&self) -> Vec<RegisterAccessEntry> {
-        self.access_log.lock().unwrap().clone()
+        self.access_log.lock().expect(POISONED).clone()
     }
 
     /// Clear the access log.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     pub fn clear_access_log(&self) {
-        self.access_log.lock().unwrap().clear();
+        self.access_log.lock().expect(POISONED).clear();
     }
 
     /// Inject an error at the given offset for subsequent accesses.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     pub fn inject_error_at(&self, offset: u64, error: MockVfioError) {
-        self.error_at.lock().unwrap().insert(offset, error);
+        self.error_at.lock().expect(POISONED).insert(offset, error);
     }
 
     /// Clear all injected errors.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     pub fn clear_errors(&self) {
-        self.error_at.lock().unwrap().clear();
+        self.error_at.lock().expect(POISONED).clear();
     }
 
     /// Set default value returned for unset registers.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     pub fn set_default_value(&self, value: u32) {
-        *self.default_value.lock().unwrap() = value;
+        *self.default_value.lock().expect(POISONED) = value;
     }
 
     /// Bulk load register values from a dump.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal mutex is poisoned.
     pub fn load_register_dump(&self, dump: &[(u64, u32)]) {
-        let mut regs = self.registers.lock().unwrap();
+        let mut regs = self.registers.lock().expect(POISONED);
         for &(offset, value) in dump {
             regs.insert(offset, value);
         }
@@ -159,7 +198,7 @@ impl MockVfioDevice {
 
 impl RegisterAccess for MockVfioDevice {
     fn read_u32(&self, offset: u64) -> Result<u32, String> {
-        if let Some(err) = self.error_at.lock().unwrap().get(&offset) {
+        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset) {
             match err {
                 MockVfioError::ReadFault => return Err("read fault".to_string()),
                 MockVfioError::Timeout => return Err("timeout".to_string()),
@@ -173,7 +212,7 @@ impl RegisterAccess for MockVfioDevice {
     }
 
     fn write_u32(&mut self, offset: u64, value: u32) -> Result<(), String> {
-        if let Some(err) = self.error_at.lock().unwrap().get(&offset) {
+        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset) {
             match err {
                 MockVfioError::WriteFault => return Err("write fault".to_string()),
                 MockVfioError::Timeout => return Err("timeout".to_string()),
@@ -194,22 +233,22 @@ mod tests {
     #[test]
     fn register_read_write() {
         let dev = MockVfioDevice::new("0000:65:00.0");
-        dev.write_register(0x100, 0xDEADBEEF);
-        assert_eq!(dev.read_register(0x100), 0xDEADBEEF);
+        dev.write_register(0x100, 0xDEAD_BEEF);
+        assert_eq!(dev.read_register(0x100), 0xDEAD_BEEF);
     }
 
     #[test]
     fn access_logging() {
         let dev = MockVfioDevice::new("0000:01:00.0");
-        dev.write_register(0x200, 0x11111111);
+        dev.write_register(0x200, 0x1111_1111);
         let _ = dev.read_register(0x200);
         let log = dev.access_log();
         assert_eq!(log.len(), 2);
         assert_eq!(log[0].op, AccessOp::Write);
         assert_eq!(log[0].offset, 0x200);
-        assert_eq!(log[0].value, 0x11111111);
+        assert_eq!(log[0].value, 0x1111_1111);
         assert_eq!(log[1].op, AccessOp::Read);
-        assert_eq!(log[1].value, 0x11111111);
+        assert_eq!(log[1].value, 0x1111_1111);
     }
 
     #[test]
@@ -219,34 +258,34 @@ mod tests {
         dev.inject_error_at(0x300, MockVfioError::ReadFault);
         let result = dev.read_u32(0x300);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("read fault"));
+        assert!(result.expect_err("should be error").contains("read fault"));
     }
 
     #[test]
     fn error_injection_write_fault() {
         let mut dev = MockVfioDevice::new("0000:03:00.0");
         dev.inject_error_at(0x400, MockVfioError::WriteFault);
-        let result = dev.write_u32(0x400, 0x12345678);
+        let result = dev.write_u32(0x400, 0x1234_5678);
         assert!(result.is_err());
     }
 
     #[test]
     fn bulk_load_and_default_value() {
         let dev = MockVfioDevice::new("0000:04:00.0");
-        dev.set_default_value(0xAAAAAAAA);
-        dev.load_register_dump(&[(0x100, 0x11111111), (0x200, 0x22222222)]);
+        dev.set_default_value(0xAAAA_AAAA);
+        dev.load_register_dump(&[(0x100, 0x1111_1111), (0x200, 0x2222_2222)]);
 
-        assert_eq!(dev.read_register(0x100), 0x11111111);
-        assert_eq!(dev.read_register(0x200), 0x22222222);
-        assert_eq!(dev.read_register(0x999), 0xAAAAAAAA);
+        assert_eq!(dev.read_register(0x100), 0x1111_1111);
+        assert_eq!(dev.read_register(0x200), 0x2222_2222);
+        assert_eq!(dev.read_register(0x999), 0xAAAA_AAAA);
     }
 
     #[test]
     fn register_access_trait() {
         let mut dev = MockVfioDevice::new("0000:05:00.0");
-        dev.write_u32(0x500, 0x55555555).expect("write");
+        dev.write_u32(0x500, 0x5555_5555).expect("write");
         let val = dev.read_u32(0x500).expect("read");
-        assert_eq!(val, 0x55555555);
+        assert_eq!(val, 0x5555_5555);
     }
 
     #[test]

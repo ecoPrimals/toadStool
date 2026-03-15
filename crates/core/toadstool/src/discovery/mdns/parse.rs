@@ -54,7 +54,8 @@ pub fn parse_service_info(info: &ServiceInfo) -> ToadStoolResult<DiscoveredServi
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "unknown".to_string());
 
-                let features_key = format!("{CAPABILITY_PREFIX}{cap_name}{CAPABILITY_FEATURES_SUFFIX}");
+                let features_key =
+                    format!("{CAPABILITY_PREFIX}{cap_name}{CAPABILITY_FEATURES_SUFFIX}");
                 let features = info
                     .get_property_val_str(&features_key)
                     .map(|f| f.split(',').map(|s| s.to_string()).collect())

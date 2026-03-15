@@ -1,4 +1,4 @@
-# Status -- March 13, 2026 (S153 Sovereign Infrastructure + VFIO Validation Absorption)
+# Status -- March 14, 2026 (S154 Deep Audit + Quality Gate Evolution)
 
 ## Quality Gates
 
@@ -8,8 +8,8 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 warnings workspace-wide** (S141: +120 pedantic fixes across 10 crates; now passes `--all-targets` including test code) |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **20,262 tests, 0 failures** (S152) |
-| `cargo llvm-cov` | **83.04% line** | 171K lines instrumented. 85.88% function, 84.81% region. Software-only approaching 90%. Mock hardware layers for V4L2/VFIO now available (S152). |
+| `cargo test --workspace` | PASS | **20,285 tests, 0 failures** (S154) |
+| `cargo llvm-cov` | **83.09% line** | 171K lines instrumented. Target 90%. Mock hardware layers for V4L2/VFIO available (S152). |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
@@ -31,13 +31,13 @@
 | WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
 | Rust version | **1.82+** (is_some_and, div_ceil) |
 | `unsafe` blocks | **~70+** (SAFETY audit complete S152; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
-| `#![deny(unsafe_code)]` | **36 crates** (2 justified: gpu, secure_enclave) |
+| `#![deny(unsafe_code)]` / `#![forbid(unsafe_code)]` | **20 crates upgraded to forbid**; total 36+ deny/forbid (2 justified: gpu, secure_enclave) |
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify, zero sysinfo, zero caps**. `aes-gcm` optional (dev-crypto only). `toadstool-sysmon` (pure Rust /proc) replaces sysinfo. |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
 | Production mocks/stubs | **0** — all evolved to real implementations or proper errors. `SoftwareHsmProvider`/`LocalKeyringProvider` gated behind `dev-crypto` feature (S134). Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
 | Dead code | **~47 justified `#[allow(dead_code, reason = "...")]`** — all with explicit reason annotations (S144: upgraded from comment-only justification to first-class `reason` parameter) |
-| File size limit | **All < 1000 lines** (1,868 .rs files, ~150K production lines) |
+| File size limit | **All < 1000 lines** (largest: 451; hw_learn/wgpu_backend refactored S154) |
 | Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic --all-targets` across entire workspace including test code (S141). Production `#[allow]` evolved to `#[expect]` (S131+, S132, S141). 170+ stale suppressions discovered and removed total. |
 | Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
@@ -95,6 +95,17 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S154: Deep Audit + Quality Gate Evolution (Mar 14, 2026)
+- **Tests**: 20,285 (was 20,262) — 0 failures, 222 ignored. 49 new targeted tests (templates, network_config, hardware, mdns_discovery).
+- **Coverage**: 83.09% line (target 90%). Clippy pedantic clean workspace-wide. Fmt 0 diffs. Doc warnings 0.
+- **Unsafe**: ~70+ blocks, all SAFETY-documented. 20 crates upgraded from `#![deny(unsafe_code)]` to `#![forbid(unsafe_code)]`.
+- **Refactoring**: hw_learn.rs (985→9 modules), wgpu_backend.rs (974→4 modules). All files under 1000 lines (largest: 451).
+- **Examples**: 5 examples evolved from hardcoded to capability-based discovery.
+- **Specs**: PRIMAL_CAPABILITY_SYSTEM.md updated (REST→JSON-RPC 2.0).
+- **Testing mocks**: v4l2/vfio mocks evolved (unwrap→expect with # Panics docs). Display crate: V4L2 struct initializers modernized.
+- **Clippy pedantic**: V4L2 struct initializers, nvpmu hex literals/must_use/errors docs/let-else/try_from, testing mock unwraps. Doc warnings: 0 (was 4).
+- **SAFETY comments**: Added to akida-driver + runtime/gpu.
 
 ### S153: IPC-First Reconciliation + VFIO Validation Absorption (Mar 13, 2026)
 - **IPC-first reconciliation**: Absorbed barraCuda v0.35 IPC-first architecture. Updated pipeline: barraCuda →[JSON-RPC] coralReef →[JSON-RPC] toadStool → GPU. Zero compile-time cross-primal deps.

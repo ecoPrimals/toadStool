@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![allow(async_fn_in_trait)]
 #![allow(
     clippy::missing_errors_doc,

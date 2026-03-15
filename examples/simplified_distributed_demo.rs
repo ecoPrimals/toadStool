@@ -2,10 +2,14 @@
 #![allow(clippy::unused_async)]
 //! # Simplified Distributed Computing Demo
 //!
-//! Demonstrates the new Songbird-centric architecture where:
+//! Demonstrates capability-based discovery (wateringHole standard):
 //! - ToadStool provides standalone execution capabilities
-//! - Songbird handles service discovery, load balancing, and orchestration
-//! - ToadStool integrates with Songbird for ecosystem-wide coordination
+//! - Orchestration endpoint from config/discovery — no hardcoded ports
+//! - Integrates with coordination service (discovered by capability)
+//!
+//! ## Pattern
+//! - Use `TOADSTOOL_COORDINATION_URL` or capability discovery for orchestration
+//! - No hardcoded primal names or ports in production
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -18,9 +22,19 @@ use toadstool::workload::{ExecutableSource, WorkloadSpec};
 use toadstool::{
     ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType, SecurityContext,
 };
+use toadstool_config::config_utils::ConfigUtils;
+use toadstool_config::ports::capability_fallback;
 use toadstool_distributed::{
     DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
 };
+
+/// Resolve orchestration endpoint from config — no hardcoded ports.
+/// Uses TOADSTOOL_COORDINATION_URL or bind_host:capability_fallback::COORDINATION.
+fn orchestration_endpoint_from_config() -> String {
+    let bind_host = ConfigUtils::get_bind_address();
+    std::env::var("TOADSTOOL_COORDINATION_URL")
+        .unwrap_or_else(|_| format!("http://{bind_host}:{}", capability_fallback::COORDINATION))
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,8 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🔧 1. Standalone Operation");
     demonstrate_standalone_operation().await?;
 
-    // Demonstrate Songbird integration
-    println!("\n🎼 2. Songbird Integration");
+    // Demonstrate orchestration integration (capability-based)
+    println!("\n🎼 2. Orchestration Integration (Capability Discovery)");
     demonstrate_songbird_integration().await?;
 
     // Compare architectures
@@ -110,11 +124,14 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
 }
 
 async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Creating ToadStool instance with Songbird integration...");
+    println!("Creating ToadStool instance with orchestration integration...");
 
-    // Create configuration with Songbird integration
+    // Endpoint from config — TOADSTOOL_COORDINATION_URL or capability_fallback
+    let endpoint = orchestration_endpoint_from_config();
+
+    // Create configuration with orchestration integration (capability-based)
     let config = DistributedConfig {
-        instance_id: "toadstool-songbird-integrated".to_string(),
+        instance_id: "toadstool-orchestration-integrated".to_string(),
         standalone: StandaloneConfig {
             max_concurrent_executions: 10,
             default_timeout_secs: 120,
@@ -122,7 +139,7 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
             max_queue_size: 100,
         },
         songbird_integration: Some(SongbirdConfig {
-            endpoint: "http://localhost:8080".to_string(), // Songbird endpoint
+            endpoint: endpoint.clone(),
             auth_token: None,
             health_reporting_interval_secs: 30,
         }),
@@ -131,13 +148,12 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
     // Create and start coordinator
     let coordinator = Arc::new(DistributedCoordinator::new(config).await?);
 
-    println!("✓ Coordinator with Songbird integration created");
+    println!("✓ Coordinator with orchestration integration created");
 
-    // Note: In a real scenario, this would register with Songbird
-    // For demo purposes, we'll simulate the integration
-    println!("📡 Would register with Songbird at http://localhost:8080");
+    // Orchestration endpoint from config/discovery — no hardcoded ports
+    println!("📡 Would register with orchestration service at {endpoint}");
     println!("📡 Would report capabilities and health status");
-    println!("📡 Would receive execution requests routed by Songbird");
+    println!("📡 Would receive execution requests routed by orchestration");
 
     // Show the capabilities that would be reported
     // Note: Capabilities are detected during coordinator construction
@@ -153,8 +169,8 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
     );
     println!("   - CPU Cores: Available");
 
-    // Simulate receiving a request from Songbird
-    println!("\n🔄 Simulating request from Songbird...");
+    // Simulate receiving a request from orchestration
+    println!("\n🔄 Simulating request from orchestration...");
     let ml_request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Native {
@@ -180,10 +196,10 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
     };
 
     let execution_id = coordinator.submit_execution(ml_request).await?;
-    println!("✓ Processed Songbird-routed execution: {execution_id}");
+    println!("✓ Processed orchestration-routed execution: {execution_id}");
 
     tokio::time::sleep(Duration::from_secs(1)).await;
-    println!("✓ Songbird integration demonstration completed");
+    println!("✓ Orchestration integration demonstration completed");
 
     Ok(())
 }

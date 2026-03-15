@@ -25,15 +25,15 @@ fn resolve_bdf(bdf: Option<String>) -> Result<String> {
     if let Some(bdf) = bdf {
         return Ok(bdf);
     }
-    let filter = PciFilter::vendor(toadstool_common::pci_discovery::vendors::NVIDIA)
-        .with_class(|c| {
+    let filter =
+        PciFilter::vendor(toadstool_common::pci_discovery::vendors::NVIDIA).with_class(|c| {
             let masked = c & 0x00FF_FF00;
             masked == 0x0003_0000 || masked == 0x0003_0200
         });
     let devices = discover_pci_devices(&filter);
-    let gpu = devices
-        .first()
-        .ok_or_else(|| crate::CliError::Other("No NVIDIA GPU found. Specify --bdf manually.".into()))?;
+    let gpu = devices.first().ok_or_else(|| {
+        crate::CliError::Other("No NVIDIA GPU found. Specify --bdf manually.".into())
+    })?;
     Ok(gpu.bdf.clone())
 }
 

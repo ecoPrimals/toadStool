@@ -4,6 +4,7 @@
 //! Simulates a V4L2 camera device without requiring actual hardware or
 //! kernel interfaces. Generates synthetic frames with configurable
 //! formats, resolutions, and error injection.
+#![allow(clippy::expect_used)]
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -169,7 +170,12 @@ impl MockV4l2Device {
     ///
     /// Returns error if already streaming or error injected.
     pub fn start_capture(&mut self) -> Result<(), String> {
-        if let Some(err) = self.injected_error.lock().unwrap().as_ref() {
+        if let Some(err) = self
+            .injected_error
+            .lock()
+            .map_err(|e| format!("lock poisoned: {e}"))?
+            .as_ref()
+        {
             return Err(format!("{err:?}"));
         }
         if self.streaming {
@@ -185,7 +191,12 @@ impl MockV4l2Device {
     ///
     /// Returns error if not streaming or error injected.
     pub fn read_frame(&self) -> Result<Vec<u8>, String> {
-        if let Some(err) = self.injected_error.lock().unwrap().as_ref() {
+        if let Some(err) = self
+            .injected_error
+            .lock()
+            .map_err(|e| format!("lock poisoned: {e}"))?
+            .as_ref()
+        {
             match err {
                 MockV4l2Error::StreamOff => return Err("stream off".to_string()),
                 MockV4l2Error::BufferError => return Err("buffer error".to_string()),
@@ -207,7 +218,12 @@ impl MockV4l2Device {
     ///
     /// Returns error if error injected.
     pub fn stop_capture(&mut self) -> Result<(), String> {
-        if let Some(err) = self.injected_error.lock().unwrap().as_ref() {
+        if let Some(err) = self
+            .injected_error
+            .lock()
+            .map_err(|e| format!("lock poisoned: {e}"))?
+            .as_ref()
+        {
             return Err(format!("{err:?}"));
         }
         self.streaming = false;
@@ -220,7 +236,12 @@ impl MockV4l2Device {
     ///
     /// Returns error if format not supported or error injected.
     pub fn set_format(&mut self, width: u32, height: u32, pixfmt: u32) -> Result<(), String> {
-        if let Some(err) = self.injected_error.lock().unwrap().as_ref() {
+        if let Some(err) = self
+            .injected_error
+            .lock()
+            .map_err(|e| format!("lock poisoned: {e}"))?
+            .as_ref()
+        {
             return Err(format!("{err:?}"));
         }
         let fmt = self
@@ -230,7 +251,11 @@ impl MockV4l2Device {
             .find(|f| f.width == width && f.height == height && f.fourcc == pixfmt)
             .copied()
             .or_else(|| {
-                self.config.formats.iter().find(|f| f.width == width && f.height == height).copied()
+                self.config
+                    .formats
+                    .iter()
+                    .find(|f| f.width == width && f.height == height)
+                    .copied()
             })
             .ok_or_else(|| "unsupported format".to_string())?;
 
@@ -251,13 +276,20 @@ impl MockV4l2Device {
     }
 
     /// Inject an error for the next operation.
+    /// # Panics
+    ///
+    /// Panics if the internal mutex is poisoned.
     pub fn inject_error(&self, error: MockV4l2Error) {
-        *self.injected_error.lock().unwrap() = Some(error);
+        *self.injected_error.lock().expect("mock mutex poisoned") = Some(error);
     }
 
     /// Clear injected error.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex is poisoned.
     pub fn clear_error(&self) {
-        *self.injected_error.lock().unwrap() = None;
+        *self.injected_error.lock().expect("mock mutex poisoned") = None;
     }
 
     /// Current frame count (for Counter pattern verification).
@@ -413,7 +445,8 @@ mod tests {
     #[test]
     fn format_switching() {
         let mut dev = MockV4l2Device::new(MockV4l2Config::default());
-        dev.set_format(1920, 1080, 0x56_59_55_59).expect("set format");
+        dev.set_format(1920, 1080, 0x56_59_55_59)
+            .expect("set format");
         let fmt = dev.get_format();
         assert_eq!(fmt.width, 1920);
         assert_eq!(fmt.height, 1080);

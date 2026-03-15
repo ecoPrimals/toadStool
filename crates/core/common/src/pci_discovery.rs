@@ -48,6 +48,7 @@ pub struct PciDevice {
 /// Filter criteria for PCI discovery.
 ///
 /// All `Some` fields must match. `None` fields are ignored (wildcard).
+#[derive(Default)]
 pub struct PciFilter {
     /// Required vendor ID (None = any vendor).
     pub vendor_id: Option<u16>,
@@ -55,16 +56,6 @@ pub struct PciFilter {
     pub device_ids: Vec<u16>,
     /// Class code predicate (None = any class).
     pub class_match: Option<Box<dyn Fn(u32) -> bool>>,
-}
-
-impl Default for PciFilter {
-    fn default() -> Self {
-        Self {
-            vendor_id: None,
-            device_ids: Vec::new(),
-            class_match: None,
-        }
-    }
 }
 
 impl PciFilter {

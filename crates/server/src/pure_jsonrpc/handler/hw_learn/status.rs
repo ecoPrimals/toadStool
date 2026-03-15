@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//! Status handler — report hw-learn pipeline state and firmware inventory.
+
+use super::HwLearnHandler;
+use crate::pure_jsonrpc::types::JsonRpcError;
+
+impl HwLearnHandler {
+    /// `compute.hardware.status` — Report hw-learn pipeline state and firmware inventory.
+    ///
+    /// Params: `{ "chip": "gv100" }` (optional)
+    /// Returns: `{ "pipeline": ..., "firmware": ..., "recipes": ... }`
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
+    pub async fn hw_learn_status(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let store = self.open_store().ok();
+        let arch_count = store.as_ref().map(|s| s.architectures().len()).unwrap_or(0);
+
+        let chip = params
+            .and_then(|p| p.get("chip"))
+            .and_then(serde_json::Value::as_str);
+
+        let firmware = chip.map(|c| {
+            let inv = nvpmu::FirmwareInventory::probe(c);
+            serde_json::json!({
+                "chip": c,
+                "compute_viable": inv.compute_viable(),
+                "compute_blockers": inv.compute_blockers(),
+                "needs_software_pmu": inv.needs_software_pmu(),
+                "inventory": serde_json::to_value(&inv).unwrap_or_default(),
+            })
+        });
+
+        let sysmon_gpus = toadstool_sysmon::discover_gpus();
+        let gpu_count = sysmon_gpus.len();
+
+        Ok(serde_json::json!({
+            "domain": "compute.hardware",
+            "operation": "status",
+            "pipeline": {
+                "phase": "3 — BAR0 live apply available",
+                "stages": ["observe", "distill", "apply", "share_recipe"],
+                "bar0_live_apply": true,
+                "bar0_requires": "gpu-mmio group or root (run setup-gpu-sovereign.sh)",
+            },
+            "recipes": {
+                "stored_architectures": arch_count,
+            },
+            "firmware": firmware,
+            "gpus_detected": gpu_count,
+        }))
+    }
+}
