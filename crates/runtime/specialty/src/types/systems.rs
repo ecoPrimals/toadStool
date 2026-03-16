@@ -7,47 +7,67 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LegacySystemType {
     // Mainframe systems
-    IBM_System360,
-    IBM_System370,
-    IBM_zSeries,
-    VAX_VMS,
+    #[serde(rename = "IBM_System360")]
+    IbmSystem360,
+    #[serde(rename = "IBM_System370")]
+    IbmSystem370,
+    #[serde(rename = "IBM_zSeries")]
+    IbmZSeries,
+    #[serde(rename = "VAX_VMS")]
+    VaxVms,
     AS400,
-    Unisys_ClearPath,
-    
+    #[serde(rename = "Unisys_ClearPath")]
+    UnisysClearPath,
+
     // Early Unix systems
     PDP11,
     SunOS,
-    AIX_Legacy,
-    HPUX_Legacy,
-    Solaris_Legacy,
-    
+    #[serde(rename = "AIX_Legacy")]
+    AixLegacy,
+    #[serde(rename = "HPUX_Legacy")]
+    HpuxLegacy,
+    #[serde(rename = "Solaris_Legacy")]
+    SolarisLegacy,
+
     // Embedded legacy systems
     Intel8080,
     Intel8086,
     MOS6502,
-    Zilog_Z80,
+    #[serde(rename = "Zilog_Z80")]
+    ZilogZ80,
     Motorola68000,
     Intel8051,
-    PIC_Microcontroller,
-    
+    #[serde(rename = "PIC_Microcontroller")]
+    PicMicrocontroller,
+
     // Real-time systems
     VxWorks,
-    QNX_Legacy,
+    #[serde(rename = "QNX_Legacy")]
+    QnxLegacy,
     RT11,
     RTOS32,
-    
+
     // Industrial control
-    PLC_Ladder,
-    SCADA_System,
-    DCS_System,
-    HMI_System,
-    
+    #[serde(rename = "PLC_Ladder")]
+    PlcLadder,
+    #[serde(rename = "SCADA_System")]
+    ScadaSystem,
+    #[serde(rename = "DCS_System")]
+    DcsSystem,
+    #[serde(rename = "HMI_System")]
+    HmiSystem,
+
     // Special systems
-    DOS_16bit,
-    CPM_System,
-    Apple_II,
-    Commodore_64,
-    Atari_8bit,
+    #[serde(rename = "DOS_16bit")]
+    Dos16bit,
+    #[serde(rename = "CPM_System")]
+    CpmSystem,
+    #[serde(rename = "Apple_II")]
+    AppleIi,
+    #[serde(rename = "Commodore_64")]
+    Commodore64,
+    #[serde(rename = "Atari_8bit")]
+    Atari8bit,
 }
 
 /// Legacy computer architectures
@@ -56,26 +76,38 @@ pub enum LegacyArchitecture {
     Intel8080,
     Intel8086,
     MOS6502,
-    Zilog_Z80,
+    #[serde(rename = "Zilog_Z80")]
+    ZilogZ80,
     Motorola68000,
     PDP11,
-    IBM_System360,
+    #[serde(rename = "IBM_System360")]
+    IbmSystem360,
     VAX,
-    SPARC_v7,
-    MIPS_R2000,
+    #[serde(rename = "SPARC_v7")]
+    SparcV7,
+    #[serde(rename = "MIPS_R2000")]
+    MipsR2000,
     Alpha,
-    PowerPC_601,
-    ARM_v4,
-    Intel_i386,
-    Intel_i486,
-    Motorola_68HC11,
-    Intel_8051,
-    PIC_16bit,
-    AVR_8bit,
+    #[serde(rename = "PowerPC_601")]
+    PowerPc601,
+    #[serde(rename = "ARM_v4")]
+    ArmV4,
+    #[serde(rename = "Intel_i386")]
+    IntelI386,
+    #[serde(rename = "Intel_i486")]
+    IntelI486,
+    #[serde(rename = "Motorola_68HC11")]
+    Motorola68Hc11,
+    #[serde(rename = "Intel_8051")]
+    Intel8051,
+    #[serde(rename = "PIC_16bit")]
+    Pic16bit,
+    #[serde(rename = "AVR_8bit")]
+    Avr8bit,
 }
 
 /// System operational status
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SystemStatus {
     /// System is online and operational
     Online,
@@ -84,11 +116,6 @@ pub enum SystemStatus {
     /// System is in maintenance mode
     Maintenance,
     /// System status is unknown
+    #[default]
     Unknown,
-}
-
-impl Default for SystemStatus {
-    fn default() -> Self {
-        SystemStatus::Unknown
-    }
 }

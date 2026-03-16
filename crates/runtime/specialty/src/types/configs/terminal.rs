@@ -21,7 +21,10 @@ pub enum TerminalType {
     /// Dumb terminal
     Dumb,
     /// Custom terminal
-    Custom { name: String, capabilities: Vec<String> },
+    Custom {
+        name: String,
+        capabilities: Vec<String>,
+    },
 }
 
 /// Session configuration for interactive sessions

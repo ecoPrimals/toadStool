@@ -145,6 +145,16 @@ pub enum VerifyCheck {
     IoctlSucceeds { ioctl_nr: u64 },
     /// Submit a trivial compute dispatch and verify readback.
     ComputeReadback,
+    /// Verify a memory region is accessible via sentinel write/readback.
+    /// Used by the differential probe to confirm FB/HBM2 init steps.
+    MemoryAccessible {
+        /// Aperture name (e.g. "VRAM", "SysMem", "BAR2").
+        aperture: String,
+        /// Byte offset within the aperture to test.
+        offset: u64,
+        /// Sentinel value to write and expect back.
+        sentinel: u64,
+    },
 }
 
 /// Distiller — converts raw observations into recipes.

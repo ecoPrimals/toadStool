@@ -1,6 +1,6 @@
 # Sovereign Compute — Remaining Gaps
 
-**Date**: March 13, 2026 — S153
+**Date**: March 16, 2026 — S156
 **Purpose**: Single checklist of work remaining before toadStool's sovereign compute pipeline is complete.
 **Scope**: toadStool-owned gaps only. barraCuda and coralReef track their own.
 

@@ -485,8 +485,19 @@ mod tests {
     use std::collections::HashMap;
     use toadstool::resources::{CpuRequirements, MemoryRequirements};
 
+    fn wgpu_safe_or_skip() -> bool {
+        if toadstool_testing::gpu_guards::is_wgpu_safe() {
+            return true;
+        }
+        eprintln!("{}", toadstool_testing::gpu_guards::wgpu_skip_reason());
+        false
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn test_validate_small_graph() {
+        if !wgpu_safe_or_skip() {
+            return;
+        }
         let validator = ResourceValidator::new();
 
         let graph = ExecutionGraph {
@@ -522,6 +533,9 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_validate_large_graph() {
+        if !wgpu_safe_or_skip() {
+            return;
+        }
         let validator = ResourceValidator::new();
 
         // Create a graph that requires more resources than any system has

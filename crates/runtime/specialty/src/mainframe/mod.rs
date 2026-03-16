@@ -11,13 +11,13 @@
 //! - Dataset management
 //! - TSO/ISPF interface support
 
-mod types;
-mod ibm;
-mod vax;
 mod as400;
+mod ibm;
+mod types;
+mod vax;
 
 // Re-export public types
-pub use types::*;
-pub use ibm::IBMMainframeAdapter;
-pub use vax::VAXVMSAdapter;
 pub use as400::AS400Adapter;
+pub use ibm::IBMMainframeAdapter;
+pub use types::*;
+pub use vax::VAXVMSAdapter;

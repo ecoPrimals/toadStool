@@ -109,7 +109,9 @@ impl DispatchHandler {
 
         let buffer_descs = p.get("buffers").cloned().unwrap_or(serde_json::json!([]));
 
-        let timeout_ms = p.get("timeout_ms").and_then(|v| v.as_u64()).unwrap_or(5000);
+        let timeout_ms = p.get("timeout_ms").and_then(|v| v.as_u64()).unwrap_or(
+            toadstool_common::constants::timeouts::DISPATCH_DEFAULT_TIMEOUT.as_millis() as u64,
+        );
 
         let job_id = uuid::Uuid::new_v4().to_string();
         let job = DispatchJob {

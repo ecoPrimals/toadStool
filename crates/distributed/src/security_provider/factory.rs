@@ -174,7 +174,7 @@ impl SecurityProviderFactory {
 
             use crate::security_provider::software_hsm::SoftwareHsmProvider;
             tracing::info!("Using SoftwareHsmProvider (in-memory, ephemeral keys — dev/CI only)");
-            return Ok(Arc::new(SoftwareHsmProvider::new()) as Arc<dyn SecurityProvider>);
+            Ok(Arc::new(SoftwareHsmProvider::new()) as Arc<dyn SecurityProvider>)
         }
 
         #[cfg(not(feature = "dev-crypto"))]

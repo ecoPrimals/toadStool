@@ -1,4 +1,4 @@
-# Status -- March 15, 2026 (S155b Coverage Expansion + Dependency/Unsafe Audit)
+# Status -- March 16, 2026 (S156 Full Codebase Audit + Specialty Crate Resurrection)
 
 ## Quality Gates
 
@@ -6,10 +6,10 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 errors, 0 warnings workspace-wide** (S155b: +12 fixes in server hw_learn/unibin exports) |
-| `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **20,843 tests, 0 failures** (S155b: +558 net new from 12 new integration test files) |
-| `cargo llvm-cov` | **~83% line** | 182K lines instrumented. Target 90%. S155b: +806 new test functions across 12 files covering hw_learn handlers, transport/dispatch, unibin/background, core common, config, distributed, CLI, GPU runtime, display, toadstool-core. |
+| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 errors, 0 warnings across all 56 crates** (S156: runtime-specialty resurrected from 167 compile errors, distributed needless_return fixed) |
+| `cargo doc --workspace --no-deps` | PASS | 0 warnings (S156: nvpmu register doc-link escapes, specialty HTML tag fixes) |
+| `cargo test --workspace` | PASS | **21,156 tests, 0 failures, 222 ignored** (S156: +313 net new — specialty crate resurrected + test files rewritten) |
+| `cargo llvm-cov` | **~83% line** | 182K lines instrumented. Target 90%. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | All doctests | PASS | common, core, server, cli, testing, display |
 | Standalone clone test | PASS | GPU-optional, CPU fallback |
@@ -31,8 +31,8 @@
 | WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
 | Rust version | **1.82+** (is_some_and, div_ceil) |
 | `.rs` files | **1,759** files, **540,125** lines |
-| `unsafe` blocks | **~70+** (SAFETY audit complete S152; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives) |
-| `#![deny(unsafe_code)]` / `#![forbid(unsafe_code)]` | **20 crates upgraded to forbid**; total 36+ deny/forbid (2 justified: gpu, secure_enclave) |
+| `unsafe` blocks | **~70+** (SAFETY audit complete S152; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives). S156: `unreachable!()` in dma.rs evolved to safe `Err`. |
+| `#![deny(unsafe_code)]` / `#![forbid(unsafe_code)]` | **22 crates forbid, ~10 deny**; hardware crates (akida-driver, gpu, nvpmu, hw-learn) appropriately lack forbid. |
 | External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify, zero sysinfo, zero caps**. `aes-gcm` optional (dev-crypto only). `toadstool-sysmon` (pure Rust /proc) replaces sysinfo. |
 | Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
 | Production unwraps | **0 blind** — infallible `expect()` only |
@@ -42,7 +42,7 @@
 | Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic --all-targets` across entire workspace including test code (S141). Production `#[allow]` evolved to `#[expect]` (S131+, S132, S141). 170+ stale suppressions discovered and removed total. |
 | Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
 | External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
-| Hardcoded IPs/ports | **0** — config constants + capability-based discovery (ports evolved S94b; compute backends runtime-discovered S128) |
+| Hardcoded IPs/ports | **0** — config constants + capability-based discovery. S156: dispatch 5000ms timeout → `DISPATCH_DEFAULT_TIMEOUT` named constant. |
 | JSON-RPC methods | **96+** (includes `compute.dispatch.submit/status/result/capabilities`, `compute.dispatch.forward`, `compute.hardware.vfio_devices`; methods dynamically built from semantic registry) |
 | Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter + **PCIe P2P** with topology-aware routing |
 | REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |

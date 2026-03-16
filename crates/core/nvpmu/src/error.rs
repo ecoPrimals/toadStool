@@ -34,4 +34,21 @@ pub enum NvPmuError {
         total: usize,
         rollback_status: String,
     },
+
+    #[error("power transition {from} → {to} failed: {reason}")]
+    PowerTransition {
+        from: String,
+        to: String,
+        reason: String,
+    },
+
+    #[error("register timeout at {offset:#x}: expected {expected:#010x}, got {got:#010x}")]
+    RegisterTimeout {
+        offset: u64,
+        expected: u32,
+        got: u32,
+    },
+
+    #[error("framebuffer/HBM2 is not trained — D3cold recovery or nouveau warm cycle required")]
+    FbUntrained,
 }

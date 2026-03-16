@@ -4,20 +4,24 @@
 //! This module contains all type definitions used by the specialty runtime,
 //! organized into logical submodules for better maintainability.
 
-pub mod systems;
-pub mod jobs;
-pub mod requirements;
+#![allow(ambiguous_glob_reexports)]
+
 pub mod configs;
-pub mod traits;
 pub mod cross_compilation;
 pub mod emulation;
+pub mod jobs;
+pub mod requirements;
+pub mod systems;
+pub mod traits;
 
-// Re-export all types for convenient access
-pub use systems::*;
-pub use jobs::*;
-pub use requirements::*;
+// Re-export all types for convenient access.
+// TerminalType (configs vs jobs) and OptimizationLevel (jobs vs requirements) exist in multiple
+// submodules; lib.rs explicitly re-exports the canonical choices (jobs::TerminalType,
+// requirements::OptimizationLevel).
 pub use configs::*;
-pub use traits::*;
 pub use cross_compilation::*;
 pub use emulation::*;
-
+pub use jobs::*;
+pub use requirements::*;
+pub use systems::*;
+pub use traits::*;

@@ -5,7 +5,29 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 13, 2026 (Sessions 43-152)
+## [Unreleased] - March 16, 2026 (Sessions 43-156)
+
+### Session S156 (Mar 16, 2026) — Full Codebase Audit + Specialty Resurrection
+
+#### runtime-specialty Resurrected (167 compile errors → 0)
+- Aligned all core type usage (ExecutionResponse, ExecutionRequest, ExecutionStatus, WorkloadType, RuntimeCapabilities) with current toadstool-core definitions
+- Fixed `Arc<dyn>` vs `Box<dyn>` adapter maps, `execution_id` vs `workload_id`, `Failed { error: Cow }` semantics
+- Renamed 40+ enum variants to UpperCamelCase with `#[serde(rename)]` wire compatibility
+- Resolved glob re-export ambiguities in `types/` module tree
+- Made private mainframe fields `pub`, added Debug bounds to trait objects
+- Rewrote both integration test files (`legacy_config_tests.rs`, `legacy_types_tests.rs`) against current API
+
+#### Standards Compliance
+- Dispatch 5000ms magic number → `DISPATCH_DEFAULT_TIMEOUT` named constant
+- `unreachable!()` in `nvpmu/dma.rs` → `Err(NvPmuError::Hardware(...))`
+- 5 nvpmu register doc-link bracket escapes, 2 specialty HTML `dyn` tag escapes
+- `needless_return` in `distributed/security_provider/factory.rs`
+- Unused `CudaStream` import removed from GPU cuda_impl
+
+#### Cleanup
+- Deleted 5,950 `.profraw` files (2.2 GB) and stale `target/` (15.2 GB)
+- Removed 2 orphan CSV files at root
+- 21,156 tests (0 failures, 222 ignored) — all 56 crates green
 
 ### Session S144 (Mar 10, 2026) — Last Mile Deep Debt
 

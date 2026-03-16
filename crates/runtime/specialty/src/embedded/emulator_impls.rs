@@ -22,7 +22,7 @@ use crate::{EmbeddedConfig, LegacyArchitecture, ToadStoolResult};
 use toadstool::ToadStoolError;
 
 use super::emulators::{Emulator6502, EmulatorZ80};
-use super::types::{EmbeddedEmulator as EmulatorTrait, EmulationStatus};
+use super::types::{CpuRegisters, EmbeddedEmulator as EmulatorTrait, EmulationStatus};
 
 fn not_implemented(feature: &str) -> ToadStoolError {
     ToadStoolError::not_supported(format!(
@@ -47,7 +47,11 @@ macro_rules! impl_emulator_stub {
                 Err(not_implemented("Emulator initialization"))
             }
 
-            async fn load_rom(&mut self, _rom_data: &[u8], _load_address: u32) -> ToadStoolResult<()> {
+            async fn load_rom(
+                &mut self,
+                _rom_data: &[u8],
+                _load_address: u32,
+            ) -> ToadStoolResult<()> {
                 Err(not_implemented("ROM load"))
             }
 
@@ -59,20 +63,8 @@ macro_rules! impl_emulator_stub {
                 Ok(())
             }
 
-            async fn pause(&mut self) -> ToadStoolResult<()> {
-                Err(not_implemented("Emulator pause"))
-            }
-
-            async fn resume(&mut self) -> ToadStoolResult<()> {
-                Err(not_implemented("Emulator resume"))
-            }
-
             async fn step(&mut self) -> ToadStoolResult<()> {
                 Err(not_implemented("Emulator step"))
-            }
-
-            async fn reset(&mut self) -> ToadStoolResult<()> {
-                Err(not_implemented("Emulator reset"))
             }
 
             async fn get_status(&self) -> ToadStoolResult<EmulationStatus> {
@@ -87,11 +79,11 @@ macro_rules! impl_emulator_stub {
                 Err(not_implemented("Memory write"))
             }
 
-            async fn get_registers(&self) -> ToadStoolResult<Vec<(String, u32)>> {
+            async fn read_registers(&self) -> ToadStoolResult<CpuRegisters> {
                 Err(not_implemented("Register read"))
             }
 
-            async fn set_register(&mut self, _name: &str, _value: u32) -> ToadStoolResult<()> {
+            async fn write_registers(&mut self, _registers: &CpuRegisters) -> ToadStoolResult<()> {
                 Err(not_implemented("Register write"))
             }
 
@@ -107,5 +99,4 @@ macro_rules! impl_emulator_stub {
 }
 
 impl_emulator_stub!(Emulator6502, "6502 Emulator", LegacyArchitecture::MOS6502);
-impl_emulator_stub!(EmulatorZ80, "Z80 Emulator", LegacyArchitecture::Zilog_Z80);
-
+impl_emulator_stub!(EmulatorZ80, "Z80 Emulator", LegacyArchitecture::ZilogZ80);

@@ -19,9 +19,8 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::{
-    RealtimeConfig, JobOutput, JobStatus, LegacyAdapter, LegacyJob, 
-    SpecialtyRuntimeConfig, LegacySystemType, SystemInfo, ToadStoolResult, 
-    ToadStoolError, RealtimeOS, TaskConfig, InterruptConfig,
+    JobOutput, JobStatus, LegacyAdapter, LegacyJob, LegacySystemType, RealtimeConfig, RealtimeOS,
+    SpecialtyRuntimeConfig, SystemInfo, ToadStoolError, ToadStoolResult,
 };
 
 /// VxWorks Adapter
@@ -47,8 +46,23 @@ pub struct RealtimeJob {
     pub status: JobStatus,
 }
 
+impl Default for VxWorksAdapter {
+    fn default() -> Self {
+        Self {
+            config: None,
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
 impl VxWorksAdapter {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for QNXAdapter {
+    fn default() -> Self {
         Self {
             config: None,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
@@ -58,10 +72,7 @@ impl VxWorksAdapter {
 
 impl QNXAdapter {
     pub fn new() -> Self {
-        Self {
-            config: None,
-            active_jobs: Arc::new(RwLock::new(HashMap::new())),
-        }
+        Self::default()
     }
 }
 
@@ -70,11 +81,11 @@ impl LegacyAdapter for VxWorksAdapter {
     fn name(&self) -> &str {
         "VxWorks Adapter"
     }
-    
+
     fn supported_systems(&self) -> Vec<LegacySystemType> {
         vec![LegacySystemType::VxWorks]
     }
-    
+
     async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) -> ToadStoolResult<()> {
         info!("Initializing VxWorks adapter");
         for (name, realtime_config) in &config.realtime_configs {
@@ -86,12 +97,12 @@ impl LegacyAdapter for VxWorksAdapter {
         }
         Ok(())
     }
-    
+
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down VxWorks adapter");
         Ok(())
     }
-    
+
     async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         let rt_job = RealtimeJob {
             job_id: job.job_id,
@@ -99,20 +110,23 @@ impl LegacyAdapter for VxWorksAdapter {
             priority: 100,
             status: JobStatus::Queued,
         };
-        
+
         self.active_jobs.write().await.insert(job.job_id, rt_job);
         Ok(job.job_id)
     }
-    
+
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
         if let Some(job) = jobs.get(&job_id) {
             Ok(job.status.clone())
         } else {
-            Err(ToadStoolError::runtime(format!("Job not found: {}", job_id)))
+            Err(ToadStoolError::runtime(format!(
+                "Job not found: {}",
+                job_id
+            )))
         }
     }
-    
+
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
         let mut jobs = self.active_jobs.write().await;
         if let Some(job) = jobs.get_mut(&job_id) {
@@ -120,8 +134,8 @@ impl LegacyAdapter for VxWorksAdapter {
         }
         Ok(())
     }
-    
-    async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
+
+    async fn get_job_output(&self, _job_id: Uuid) -> ToadStoolResult<JobOutput> {
         Ok(JobOutput {
             stdout: "VxWorks execution output".to_string(),
             stderr: String::new(),
@@ -130,13 +144,13 @@ impl LegacyAdapter for VxWorksAdapter {
             binary_output: None,
         })
     }
-    
+
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {
         Ok(SystemInfo {
             system_name: "VxWorks".to_string(),
             system_type: LegacySystemType::VxWorks,
             version: "6.9".to_string(),
-            architecture: crate::LegacyArchitecture::Intel_i386,
+            architecture: crate::LegacyArchitecture::IntelI386,
             cpu_info: crate::CpuInfo {
                 model: "Real-time CPU".to_string(),
                 speed: 500_000_000, // 500 MHz
@@ -145,15 +159,15 @@ impl LegacyAdapter for VxWorksAdapter {
                 usage: 5.0,
             },
             memory_info: crate::MemoryInfo {
-                total: 64 * 1024 * 1024, // 64MB
+                total: 64 * 1024 * 1024,     // 64MB
                 available: 32 * 1024 * 1024, // 32MB
-                used: 32 * 1024 * 1024, // 32MB
+                used: 32 * 1024 * 1024,      // 32MB
                 memory_type: crate::MemoryType::RAM,
             },
             storage_info: crate::StorageInfo {
-                total: 512 * 1024 * 1024, // 512MB
+                total: 512 * 1024 * 1024,     // 512MB
                 available: 256 * 1024 * 1024, // 256MB
-                used: 256 * 1024 * 1024, // 256MB
+                used: 256 * 1024 * 1024,      // 256MB
                 storage_type: crate::StorageType::Flash,
             },
             network_info: crate::NetworkInfo {
@@ -164,7 +178,7 @@ impl LegacyAdapter for VxWorksAdapter {
             status: crate::SystemStatus::Online,
         })
     }
-    
+
     async fn test_connectivity(&self) -> ToadStoolResult<bool> {
         Ok(true)
     }
@@ -175,11 +189,11 @@ impl LegacyAdapter for QNXAdapter {
     fn name(&self) -> &str {
         "QNX Adapter"
     }
-    
+
     fn supported_systems(&self) -> Vec<LegacySystemType> {
-        vec![LegacySystemType::QNX_Legacy]
+        vec![LegacySystemType::QnxLegacy]
     }
-    
+
     async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) -> ToadStoolResult<()> {
         info!("Initializing QNX adapter");
         for (name, realtime_config) in &config.realtime_configs {
@@ -191,12 +205,12 @@ impl LegacyAdapter for QNXAdapter {
         }
         Ok(())
     }
-    
+
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down QNX adapter");
         Ok(())
     }
-    
+
     async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         let rt_job = RealtimeJob {
             job_id: job.job_id,
@@ -204,20 +218,23 @@ impl LegacyAdapter for QNXAdapter {
             priority: 10,
             status: JobStatus::Queued,
         };
-        
+
         self.active_jobs.write().await.insert(job.job_id, rt_job);
         Ok(job.job_id)
     }
-    
+
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
         if let Some(job) = jobs.get(&job_id) {
             Ok(job.status.clone())
         } else {
-            Err(ToadStoolError::runtime(format!("Job not found: {}", job_id)))
+            Err(ToadStoolError::runtime(format!(
+                "Job not found: {}",
+                job_id
+            )))
         }
     }
-    
+
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
         let mut jobs = self.active_jobs.write().await;
         if let Some(job) = jobs.get_mut(&job_id) {
@@ -225,8 +242,8 @@ impl LegacyAdapter for QNXAdapter {
         }
         Ok(())
     }
-    
-    async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
+
+    async fn get_job_output(&self, _job_id: Uuid) -> ToadStoolResult<JobOutput> {
         Ok(JobOutput {
             stdout: "QNX execution output".to_string(),
             stderr: String::new(),
@@ -235,13 +252,13 @@ impl LegacyAdapter for QNXAdapter {
             binary_output: None,
         })
     }
-    
+
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {
         Ok(SystemInfo {
             system_name: "QNX".to_string(),
-            system_type: LegacySystemType::QNX_Legacy,
+            system_type: LegacySystemType::QnxLegacy,
             version: "6.5".to_string(),
-            architecture: crate::LegacyArchitecture::Intel_i386,
+            architecture: crate::LegacyArchitecture::IntelI386,
             cpu_info: crate::CpuInfo {
                 model: "QNX Real-time CPU".to_string(),
                 speed: 400_000_000, // 400 MHz
@@ -250,15 +267,15 @@ impl LegacyAdapter for QNXAdapter {
                 usage: 8.0,
             },
             memory_info: crate::MemoryInfo {
-                total: 32 * 1024 * 1024, // 32MB
+                total: 32 * 1024 * 1024,     // 32MB
                 available: 16 * 1024 * 1024, // 16MB
-                used: 16 * 1024 * 1024, // 16MB
+                used: 16 * 1024 * 1024,      // 16MB
                 memory_type: crate::MemoryType::RAM,
             },
             storage_info: crate::StorageInfo {
-                total: 256 * 1024 * 1024, // 256MB
+                total: 256 * 1024 * 1024,     // 256MB
                 available: 128 * 1024 * 1024, // 128MB
-                used: 128 * 1024 * 1024, // 128MB
+                used: 128 * 1024 * 1024,      // 128MB
                 storage_type: crate::StorageType::Flash,
             },
             network_info: crate::NetworkInfo {
@@ -269,8 +286,8 @@ impl LegacyAdapter for QNXAdapter {
             status: crate::SystemStatus::Online,
         })
     }
-    
+
     async fn test_connectivity(&self) -> ToadStoolResult<bool> {
         Ok(true)
     }
-} 
+}

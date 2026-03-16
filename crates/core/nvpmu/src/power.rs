@@ -178,6 +178,30 @@ impl GpuPowerController {
         self.sysfs_path.join("reset").exists()
     }
 
+    /// Prevent Linux runtime PM from putting the device in D3hot.
+    ///
+    /// Writes "on" to `power/control`, holding the device in D0.
+    /// Used by `PowerManager::wake()` and the glow plug sequence.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the sysfs write fails.
+    pub fn prevent_d3hot(&self) -> Result<()> {
+        self.set_power_state("D0")
+    }
+
+    /// Allow Linux runtime PM to put the device in D3hot.
+    ///
+    /// Writes "auto" to `power/control`. The device will enter D3hot
+    /// when no process holds it open.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the sysfs write fails.
+    pub fn allow_d3hot(&self) -> Result<()> {
+        self.set_power_state("D3hot")
+    }
+
     /// The PCI BDF address.
     #[must_use]
     pub fn bdf(&self) -> &str {

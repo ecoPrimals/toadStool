@@ -34,7 +34,10 @@ pub enum MonitoringType {
     /// Process monitoring
     Process,
     /// Custom monitoring
-    Custom { name: String, parameters: HashMap<String, String> },
+    Custom {
+        name: String,
+        parameters: HashMap<String, String>,
+    },
 }
 
 /// System administration types
@@ -55,7 +58,7 @@ pub enum AdministrationType {
 }
 
 /// Legacy job priorities (for backward compatibility with legacy systems)
-/// 
+///
 /// Note: For new code, use `toadstool::JobPriority` (canonical definition)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum JobPriority {

@@ -38,6 +38,9 @@ pub const BIOME_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 /// Workload execution timeout (5 minutes)
 pub const WORKLOAD_EXECUTION_TIMEOUT: Duration = Duration::from_secs(300);
 
+/// GPU/compute dispatch default timeout (5 seconds)
+pub const DISPATCH_DEFAULT_TIMEOUT: Duration = Duration::from_millis(5000);
+
 /// Migration operation timeout (10 minutes)
 pub const MIGRATION_TIMEOUT: Duration = Duration::from_secs(600);
 

@@ -4,9 +4,9 @@
 //! This module provides DOS filesystem and interface support for 8086-based systems.
 
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 /// DOS Interface for 8086 systems
 #[derive(Debug)]
@@ -36,7 +36,7 @@ pub struct DOSFileSystem {
 #[derive(Debug)]
 pub struct FileAllocationTable {
     /// FAT entries
-    entries: Vec<u16>,
+    _entries: Vec<u16>,
     /// Cluster size
     cluster_size: u16,
     /// Root directory entries
@@ -153,7 +153,7 @@ impl FileAllocationTable {
     /// Create a new file allocation table
     pub fn new() -> Self {
         Self {
-            entries: Vec::new(),
+            _entries: Vec::new(),
             cluster_size: 512,
             root_entries: Vec::new(),
         }
@@ -202,4 +202,3 @@ impl Default for FileAllocationTable {
         Self::new()
     }
 }
-

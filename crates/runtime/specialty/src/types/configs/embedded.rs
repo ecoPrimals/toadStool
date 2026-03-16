@@ -4,8 +4,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::LegacyArchitecture;
 use super::communication::ProgrammingInterface;
+use crate::LegacyArchitecture;
 
 /// Embedded system configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

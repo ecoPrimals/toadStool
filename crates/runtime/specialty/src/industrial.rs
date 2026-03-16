@@ -17,9 +17,8 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::{
-    IndustrialConfig, JobOutput, JobStatus, LegacyAdapter, LegacyJob, 
-    SpecialtyRuntimeConfig, LegacySystemType, SystemInfo, ToadStoolResult, 
-    ToadStoolError, IndustrialProtocol, IndustrialDevice, SafetyConfig,
+    IndustrialConfig, JobOutput, JobStatus, LegacyAdapter, LegacyJob, LegacySystemType,
+    SpecialtyRuntimeConfig, SystemInfo, ToadStoolError, ToadStoolResult,
 };
 
 /// PLC Adapter
@@ -52,8 +51,23 @@ pub struct SCADAJob {
     pub status: JobStatus,
 }
 
+impl Default for PLCAdapter {
+    fn default() -> Self {
+        Self {
+            config: None,
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
 impl PLCAdapter {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for SCADAAdapter {
+    fn default() -> Self {
         Self {
             config: None,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
@@ -63,10 +77,7 @@ impl PLCAdapter {
 
 impl SCADAAdapter {
     pub fn new() -> Self {
-        Self {
-            config: None,
-            active_jobs: Arc::new(RwLock::new(HashMap::new())),
-        }
+        Self::default()
     }
 }
 
@@ -75,15 +86,18 @@ impl LegacyAdapter for PLCAdapter {
     fn name(&self) -> &str {
         "PLC Adapter"
     }
-    
+
     fn supported_systems(&self) -> Vec<LegacySystemType> {
-        vec![LegacySystemType::PLC_Ladder]
+        vec![LegacySystemType::PlcLadder]
     }
-    
+
     async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) -> ToadStoolResult<()> {
         info!("Initializing PLC adapter");
         for (name, industrial_config) in &config.industrial_configs {
-            if matches!(industrial_config.system_type, crate::IndustrialSystemType::PLC) {
+            if matches!(
+                industrial_config.system_type,
+                crate::IndustrialSystemType::PLC
+            ) {
                 self.config = Some(industrial_config.clone());
                 info!("Found PLC configuration: {}", name);
                 break;
@@ -91,32 +105,35 @@ impl LegacyAdapter for PLCAdapter {
         }
         Ok(())
     }
-    
+
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down PLC adapter");
         Ok(())
     }
-    
+
     async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         let plc_job = PLCJob {
             job_id: job.job_id,
             program: "PLC Program".to_string(),
             status: JobStatus::Queued,
         };
-        
+
         self.active_jobs.write().await.insert(job.job_id, plc_job);
         Ok(job.job_id)
     }
-    
+
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
         if let Some(job) = jobs.get(&job_id) {
             Ok(job.status.clone())
         } else {
-            Err(ToadStoolError::runtime(format!("Job not found: {}", job_id)))
+            Err(ToadStoolError::runtime(format!(
+                "Job not found: {}",
+                job_id
+            )))
         }
     }
-    
+
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
         let mut jobs = self.active_jobs.write().await;
         if let Some(job) = jobs.get_mut(&job_id) {
@@ -124,8 +141,8 @@ impl LegacyAdapter for PLCAdapter {
         }
         Ok(())
     }
-    
-    async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
+
+    async fn get_job_output(&self, _job_id: Uuid) -> ToadStoolResult<JobOutput> {
         Ok(JobOutput {
             stdout: "PLC execution output".to_string(),
             stderr: String::new(),
@@ -134,13 +151,13 @@ impl LegacyAdapter for PLCAdapter {
             binary_output: None,
         })
     }
-    
+
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {
         Ok(SystemInfo {
             system_name: "PLC System".to_string(),
-            system_type: LegacySystemType::PLC_Ladder,
+            system_type: LegacySystemType::PlcLadder,
             version: "1.0".to_string(),
-            architecture: crate::LegacyArchitecture::Intel_i386,
+            architecture: crate::LegacyArchitecture::IntelI386,
             cpu_info: crate::CpuInfo {
                 model: "Industrial CPU".to_string(),
                 speed: 100_000_000, // 100 MHz
@@ -149,15 +166,15 @@ impl LegacyAdapter for PLCAdapter {
                 usage: 10.0,
             },
             memory_info: crate::MemoryInfo {
-                total: 1024 * 1024, // 1MB
+                total: 1024 * 1024,    // 1MB
                 available: 512 * 1024, // 512KB
-                used: 512 * 1024, // 512KB
+                used: 512 * 1024,      // 512KB
                 memory_type: crate::MemoryType::RAM,
             },
             storage_info: crate::StorageInfo {
-                total: 16 * 1024 * 1024, // 16MB
+                total: 16 * 1024 * 1024,    // 16MB
                 available: 8 * 1024 * 1024, // 8MB
-                used: 8 * 1024 * 1024, // 8MB
+                used: 8 * 1024 * 1024,      // 8MB
                 storage_type: crate::StorageType::Flash,
             },
             network_info: crate::NetworkInfo {
@@ -168,7 +185,7 @@ impl LegacyAdapter for PLCAdapter {
             status: crate::SystemStatus::Online,
         })
     }
-    
+
     async fn test_connectivity(&self) -> ToadStoolResult<bool> {
         Ok(true)
     }
@@ -179,15 +196,18 @@ impl LegacyAdapter for SCADAAdapter {
     fn name(&self) -> &str {
         "SCADA Adapter"
     }
-    
+
     fn supported_systems(&self) -> Vec<LegacySystemType> {
-        vec![LegacySystemType::SCADA_System]
+        vec![LegacySystemType::ScadaSystem]
     }
-    
+
     async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) -> ToadStoolResult<()> {
         info!("Initializing SCADA adapter");
         for (name, industrial_config) in &config.industrial_configs {
-            if matches!(industrial_config.system_type, crate::IndustrialSystemType::SCADA) {
+            if matches!(
+                industrial_config.system_type,
+                crate::IndustrialSystemType::SCADA
+            ) {
                 self.config = Some(industrial_config.clone());
                 info!("Found SCADA configuration: {}", name);
                 break;
@@ -195,32 +215,35 @@ impl LegacyAdapter for SCADAAdapter {
         }
         Ok(())
     }
-    
+
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down SCADA adapter");
         Ok(())
     }
-    
+
     async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         let scada_job = SCADAJob {
             job_id: job.job_id,
             configuration: "SCADA Configuration".to_string(),
             status: JobStatus::Queued,
         };
-        
+
         self.active_jobs.write().await.insert(job.job_id, scada_job);
         Ok(job.job_id)
     }
-    
+
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
         if let Some(job) = jobs.get(&job_id) {
             Ok(job.status.clone())
         } else {
-            Err(ToadStoolError::runtime(format!("Job not found: {}", job_id)))
+            Err(ToadStoolError::runtime(format!(
+                "Job not found: {}",
+                job_id
+            )))
         }
     }
-    
+
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
         let mut jobs = self.active_jobs.write().await;
         if let Some(job) = jobs.get_mut(&job_id) {
@@ -228,8 +251,8 @@ impl LegacyAdapter for SCADAAdapter {
         }
         Ok(())
     }
-    
-    async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
+
+    async fn get_job_output(&self, _job_id: Uuid) -> ToadStoolResult<JobOutput> {
         Ok(JobOutput {
             stdout: "SCADA execution output".to_string(),
             stderr: String::new(),
@@ -238,13 +261,13 @@ impl LegacyAdapter for SCADAAdapter {
             binary_output: None,
         })
     }
-    
+
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {
         Ok(SystemInfo {
             system_name: "SCADA System".to_string(),
-            system_type: LegacySystemType::SCADA_System,
+            system_type: LegacySystemType::ScadaSystem,
             version: "1.0".to_string(),
-            architecture: crate::LegacyArchitecture::Intel_i386,
+            architecture: crate::LegacyArchitecture::IntelI386,
             cpu_info: crate::CpuInfo {
                 model: "Industrial Server CPU".to_string(),
                 speed: 1_000_000_000, // 1 GHz
@@ -253,15 +276,15 @@ impl LegacyAdapter for SCADAAdapter {
                 usage: 15.0,
             },
             memory_info: crate::MemoryInfo {
-                total: 256 * 1024 * 1024, // 256MB
+                total: 256 * 1024 * 1024,     // 256MB
                 available: 128 * 1024 * 1024, // 128MB
-                used: 128 * 1024 * 1024, // 128MB
+                used: 128 * 1024 * 1024,      // 128MB
                 memory_type: crate::MemoryType::RAM,
             },
             storage_info: crate::StorageInfo {
-                total: 1024 * 1024 * 1024, // 1GB
+                total: 1024 * 1024 * 1024,    // 1GB
                 available: 512 * 1024 * 1024, // 512MB
-                used: 512 * 1024 * 1024, // 512MB
+                used: 512 * 1024 * 1024,      // 512MB
                 storage_type: crate::StorageType::HardDisk,
             },
             network_info: crate::NetworkInfo {
@@ -272,8 +295,8 @@ impl LegacyAdapter for SCADAAdapter {
             status: crate::SystemStatus::Online,
         })
     }
-    
+
     async fn test_connectivity(&self) -> ToadStoolResult<bool> {
         Ok(true)
     }
-} 
+}

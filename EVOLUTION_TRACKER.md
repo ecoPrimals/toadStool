@@ -1,6 +1,6 @@
 # Evolution Tracker
 
-**Date**: March 13, 2026 — S153
+**Date**: March 16, 2026 — S156
 **Philosophy**: Deep debt solutions pay off. Modern idiomatic Rust. Capability-based discovery. Self-knowledge only. Zero-cost abstractions.
 
 ---
@@ -141,7 +141,7 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 
 | Dependency | Status | Path |
 |------------|--------|------|
-| `async-trait` | Required for dyn dispatch | ~75 uses; S87: TODO(afit)→NOTE(async-dyn) — reclassified as conscious architectural decision (Rust 1.92) |
+| `async-trait` | Required for dyn dispatch | ~102 uses across 53 files (S156 audit); NOTE(async-dyn) — conscious architectural decision (Rust dyn dispatch requires async-trait) |
 | `pollster` | ✅ Eliminated workspace-wide | — |
 | `serde_yaml` | ✅ Migrated to serde_yaml_ng | — |
 | `chrono` | ✅ Eliminated (std::time) | — |
@@ -188,16 +188,28 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | ✅ 0 warnings (S131+: `#[expect]` evolution) |
 | `cargo fmt --all -- --check` | ✅ 0 diffs |
 | `cargo doc --workspace --no-deps` | ✅ 0 warnings |
-| Workspace tests | ✅ 20,262 passed (S152) |
+| Workspace tests | ✅ **21,156 passed** (S156) |
 | `#[serial]` tests | ✅ 0 remaining |
 | Production sleeps (non-chaos) | ✅ 0 (documented exceptions: hardware polling, retry backoff) |
 | Production mocks/stubs | ✅ 0 — all evolved to real implementations or proper errors |
 | God files refactored | 40+ (all production files < 1000 lines) |
-| Test coverage (llvm-cov) | ~86% lines (~150K production lines, excl GPU SIGSEGV). Target: 90% |
-| `unsafe` blocks | ~70+ — all `// SAFETY:` documented (S131+: full audit) |
+| Test coverage (llvm-cov) | ~83% lines (~182K production lines). Target: 90% |
+| `unsafe` blocks | ~70+ — all `// SAFETY:` documented. 22 crates forbid, ~10 deny |
 | File size limit | All < 1000 lines |
 
 ---
+
+### Session S156 (Mar 16, 2026)
+
+| Category | Change |
+|----------|--------|
+| runtime-specialty resurrected | 167 compile errors → 0. Core type drift fixed across ExecutionResponse, ExecutionRequest, ExecutionStatus, WorkloadType, RuntimeCapabilities. All trait impls aligned. |
+| Hardcoding → constants | Dispatch 5000ms magic → `DISPATCH_DEFAULT_TIMEOUT` named constant |
+| Unsafe → safe | `unreachable!()` in nvpmu/dma.rs → `Err(NvPmuError::Hardware(...))` |
+| Doc warnings | 5 nvpmu bracket escapes, 2 specialty HTML tag fixes, unused CudaStream import removed |
+| Test evolution | +313 net new tests (21,156 total). Specialty integration tests fully rewritten |
+| Cleanup | 17.4 GB build garbage removed (profraw + target/), 2 orphan CSV files deleted |
+| `warn(missing_docs)` | 4 crates retain lint; 39 deferred for progressive rollout |
 
 ### Session S153 (Mar 13, 2026)
 

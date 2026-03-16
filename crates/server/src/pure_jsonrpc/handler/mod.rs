@@ -150,10 +150,12 @@ impl JsonRpcHandler {
             }
             "toadstool.version" => return core::version_info(&self.version).await,
 
-            "toadstool.resources.estimate" | "resources.estimate" | "ai.local_inference" => {
-                return self.resources.resources_estimate(params).await
-            }
+            "toadstool.resources.estimate"
+            | "toadstool.ai.local_inference"
+            | "resources.estimate"
+            | "ai.local_inference" => return self.resources.resources_estimate(params).await,
             "toadstool.resources.validate_availability"
+            | "toadstool.ai.local_execute"
             | "resources.validate_availability"
             | "ai.local_execute" => {
                 return self.resources.resources_validate_availability(params).await

@@ -97,14 +97,28 @@ pub async fn query_local_capabilities() -> Vec<Arc<str>> {
 mod tests {
     use super::*;
 
+    fn wgpu_safe_or_skip() -> bool {
+        if toadstool_testing::gpu_guards::is_wgpu_safe() {
+            return true;
+        }
+        eprintln!("{}", toadstool_testing::gpu_guards::wgpu_skip_reason());
+        false
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_returns_non_empty() {
+        if !wgpu_safe_or_skip() {
+            return;
+        }
         let caps = query_local_capabilities().await;
         assert!(!caps.is_empty(), "capabilities should never be empty");
     }
 
     #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_always_includes_compute_cpu_orchestration() {
+        if !wgpu_safe_or_skip() {
+            return;
+        }
         let caps = query_local_capabilities().await;
         assert!(
             caps.iter().any(|c| c.as_ref() == "compute"),
@@ -122,6 +136,9 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_no_duplicates() {
+        if !wgpu_safe_or_skip() {
+            return;
+        }
         let caps = query_local_capabilities().await;
         let mut seen = std::collections::HashSet::new();
         for c in &caps {
@@ -134,6 +151,9 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn query_local_capabilities_all_non_empty() {
+        if !wgpu_safe_or_skip() {
+            return;
+        }
         let caps = query_local_capabilities().await;
         for c in &caps {
             assert!(!c.is_empty(), "capability string should not be empty");

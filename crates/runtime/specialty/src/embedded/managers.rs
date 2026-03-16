@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::{LegacyArchitecture, MemoryLayout, PeripheralConfig};
+use crate::types::configs::embedded::PeripheralConfig;
+use crate::{LegacyArchitecture, MemoryLayout};
 
 use super::types::*;
 
@@ -24,7 +25,7 @@ pub struct PeripheralManager {
     /// Peripheral configurations
     peripherals: HashMap<String, PeripheralConfig>,
     /// Active peripheral instances
-    active_peripherals: Arc<RwLock<HashMap<String, Box<dyn PeripheralInterface>>>>,
+    _active_peripherals: Arc<RwLock<HashMap<String, Box<dyn PeripheralInterface>>>>,
 }
 
 impl MemoryLayoutManager {
@@ -61,7 +62,7 @@ impl PeripheralManager {
     pub fn new() -> Self {
         Self {
             peripherals: HashMap::new(),
-            active_peripherals: Arc::new(RwLock::new(HashMap::new())),
+            _active_peripherals: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -102,4 +103,3 @@ impl Default for PeripheralManager {
         Self::new()
     }
 }
-

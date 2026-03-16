@@ -27,7 +27,7 @@ members = [
     "crates/runtime/container",
     "crates/runtime/display",         # Display backend for petalTongue (drm/evdev use kernel FFI)
     "crates/runtime/gpu",
-    # "crates/runtime/specialty",  # Future feature (P3) - incomplete trait implementations
+    "crates/runtime/specialty",
     # "crates/runtime/edge",          # Excluded: serialport→libudev (C dep). Add to members + install libudev-dev to build.
     "crates/runtime/native",
     "crates/runtime/orchestration",   # NEW: Workload orchestration (Jan 31, 2026) 🎯

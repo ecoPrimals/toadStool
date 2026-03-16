@@ -78,7 +78,7 @@
 //! Built in collaboration with petalTongue team to enable 100% Pure Rust GUI!
 
 #![forbid(unsafe_op_in_unsafe_fn)]
-#![warn(missing_docs, rust_2018_idioms)]
+#![warn(rust_2018_idioms)]
 
 // Public modules
 pub mod capabilities;

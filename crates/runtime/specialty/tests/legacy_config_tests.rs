@@ -1,403 +1,382 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Comprehensive Tests for Legacy Runtime Configuration
+//! Tests for legacy runtime configuration types
 //!
-//! Tests cover:
-//! - Configuration creation and defaults
-//! - Serialization/deserialization
-//! - Base config pattern integration
-//! - Resource limits
-//! - Platform-specific settings
+//! Tests cover config types from `toadstool_runtime_specialty::types::configs::*`:
+//! - Config creation and defaults
+//! - Serialization/deserialization round-trips
+//! - Individual config struct construction
 
-use toadstool_runtime_legacy::types::configs::*;
-use toadstool_common::config_bases::{TimeoutConfig, RetryConfig};
+use std::path::PathBuf;
 use std::time::Duration;
+use toadstool_runtime_specialty::types::configs::*;
+use toadstool_runtime_specialty::{LegacyArchitecture, LegacySystemType};
 
 #[test]
-fn test_legacy_runtime_config_defaults() {
-    let config = LegacyRuntimeConfig::default();
-    
-    assert!(!config.supported_platforms.is_empty(), "Should have supported platforms");
-    assert!(config.emulation.is_some(), "Should have emulation settings");
-}
-
-#[test]
-fn test_legacy_runtime_config_serialization() {
-    let config = LegacyRuntimeConfig::default();
-    
-    let json = serde_json::to_string(&config);
-    assert!(json.is_ok(), "Config should serialize to JSON: {:?}", json.err());
-    
-    let json_str = json.unwrap();
-    let deserialized: Result<LegacyRuntimeConfig, _> = serde_json::from_str(&json_str);
-    assert!(
-        deserialized.is_ok(),
-        "Config should deserialize from JSON: {:?}",
-        deserialized.err()
-    );
-}
-
-#[test]
-fn test_emulation_settings_defaults() {
-    let settings = EmulationSettings::default();
-    
-    assert!(settings.enable_cycle_accurate, "Cycle accuracy should be enabled by default");
-    assert_eq!(settings.emulation_speed, EmulationSpeed::Normal);
-}
-
-#[test]
-fn test_emulation_speed_variants() {
-    assert_ne!(EmulationSpeed::Normal, EmulationSpeed::Fast);
-    assert_ne!(EmulationSpeed::Normal, EmulationSpeed::CycleAccurate);
-    assert_ne!(EmulationSpeed::Fast, EmulationSpeed::Turbo);
-}
-
-#[test]
-fn test_communication_settings_with_base_configs() {
+fn test_communication_settings_default() {
     let settings = CommunicationSettings::default();
-    
-    // Verify base configs are properly integrated via flatten
-    assert!(settings.timeouts.connection_timeout.as_secs() > 0, "Should have connection timeout");
-    assert!(settings.retries.max_attempts > 0, "Should have retry attempts");
-}
-
-#[test]
-fn test_communication_settings_custom() {
-    let mut settings = CommunicationSettings::default();
-    settings.timeouts.connection_timeout = Duration::from_secs(60);
-    settings.retries.max_attempts = 5;
-    
-    assert_eq!(settings.timeouts.connection_timeout, Duration::from_secs(60));
-    assert_eq!(settings.retries.max_attempts, 5);
+    assert!(matches!(
+        settings.connection_type,
+        ConnectionType::LocalEmulation
+    ));
+    assert!(settings.timeouts.connection_timeout.as_secs() > 0);
+    assert!(settings.retries.max_retries > 0);
+    assert!(settings.authentication.is_none());
 }
 
 #[test]
 fn test_communication_settings_serialization() {
     let settings = CommunicationSettings::default();
-    
-    let json = serde_json::to_string(&settings);
-    assert!(json.is_ok(), "Should serialize: {:?}", json.err());
-    
-    let deserialized: Result<CommunicationSettings, _> = 
-        serde_json::from_str(&json.unwrap());
-    assert!(deserialized.is_ok(), "Should deserialize: {:?}", deserialized.err());
+    let json = serde_json::to_string(&settings).unwrap();
+    let deserialized: CommunicationSettings = serde_json::from_str(&json).unwrap();
+    assert!(matches!(
+        deserialized.connection_type,
+        ConnectionType::LocalEmulation
+    ));
 }
 
 #[test]
-fn test_mainframe_connection_settings() {
-    let settings = MainframeConnectionSettings {
+fn test_connection_type_variants() {
+    let serial = ConnectionType::DirectSerial {
+        port: "/dev/ttyUSB0".to_string(),
+        baud_rate: 9600,
+    };
+    let json = serde_json::to_string(&serial).unwrap();
+    let round: ConnectionType = serde_json::from_str(&json).unwrap();
+    assert!(matches!(round, ConnectionType::DirectSerial { .. }));
+
+    let telnet = ConnectionType::Telnet {
         host: "localhost".to_string(),
         port: 23,
-        codepage: "IBM037".to_string(),
-        use_tls: false,
-        timeout_seconds: 30,
     };
-    
-    assert_eq!(settings.host, "localhost");
-    assert_eq!(settings.port, 23);
-    assert!(!settings.use_tls);
+    let json = serde_json::to_string(&telnet).unwrap();
+    let round: ConnectionType = serde_json::from_str(&json).unwrap();
+    assert!(matches!(round, ConnectionType::Telnet { .. }));
 }
 
 #[test]
-fn test_embedded_platform_config() {
-    let config = EmbeddedPlatformConfig {
-        architecture: "ARM Cortex-M".to_string(),
-        clock_speed_hz: 100_000_000, // 100 MHz
-        memory_size_bytes: 512 * 1024, // 512 KB
-        enable_debugging: true,
-        optimization_level: OptimizationLevel::Size,
+fn test_authentication_settings() {
+    use toadstool_runtime_specialty::types::configs::communication::{
+        AuthenticationSettings, AuthenticationType,
     };
-    
-    assert_eq!(config.architecture, "ARM Cortex-M");
-    assert_eq!(config.clock_speed_hz, 100_000_000);
-    assert!(config.enable_debugging);
+    let auth = AuthenticationSettings {
+        auth_type: AuthenticationType::UsernamePassword,
+        username: Some("admin".to_string()),
+        password: Some("secret".to_string()),
+        key_file: None,
+        certificate: None,
+    };
+    assert!(matches!(
+        auth.auth_type,
+        AuthenticationType::UsernamePassword
+    ));
+    assert_eq!(auth.username.as_deref(), Some("admin"));
 }
 
 #[test]
-fn test_optimization_level_variants() {
-    assert_ne!(OptimizationLevel::None, OptimizationLevel::Size);
-    assert_ne!(OptimizationLevel::Size, OptimizationLevel::Speed);
-    assert_ne!(OptimizationLevel::Speed, OptimizationLevel::Balanced);
+fn test_config_emulation_config_roundtrip() {
+    use std::collections::HashMap;
+    let config = ConfigEmulationConfig {
+        emulator_type: EmulatorType::SIMH,
+        emulator_path: PathBuf::from("/usr/bin/simh"),
+        parameters: HashMap::new(),
+        rom_files: vec![],
+        disk_images: vec![],
+    };
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: ConfigEmulationConfig = serde_json::from_str(&json).unwrap();
+    assert!(matches!(deserialized.emulator_type, EmulatorType::SIMH));
+}
+
+#[test]
+fn test_emulator_type_variants() {
+    assert!(matches!(EmulatorType::SIMH, EmulatorType::SIMH));
+    assert!(matches!(EmulatorType::MAME, EmulatorType::MAME));
+    let custom = EmulatorType::Custom {
+        name: "my-emu".to_string(),
+    };
+    let json = serde_json::to_string(&custom).unwrap();
+    let round: EmulatorType = serde_json::from_str(&json).unwrap();
+    assert!(matches!(round, EmulatorType::Custom { .. }));
+}
+
+#[test]
+fn test_compilation_target_format() {
+    let formats = [
+        CompilationTargetFormat::Executable,
+        CompilationTargetFormat::Object,
+        CompilationTargetFormat::ROMImage,
+    ];
+    for f in formats {
+        let json = serde_json::to_string(&f).unwrap();
+        let _round: CompilationTargetFormat = serde_json::from_str(&json).unwrap();
+    }
+}
+
+#[test]
+fn test_compilation_optimization_level() {
+    let levels = [
+        CompilationOptimizationLevel::None,
+        CompilationOptimizationLevel::Standard,
+        CompilationOptimizationLevel::Maximum,
+    ];
+    for l in levels {
+        let json = serde_json::to_string(&l).unwrap();
+        let _round: CompilationOptimizationLevel = serde_json::from_str(&json).unwrap();
+    }
+}
+
+#[test]
+fn test_toolchain_config() {
+    let config = CompilationToolchainConfig {
+        name: "gcc-arm".to_string(),
+        path: PathBuf::from("/usr/bin"),
+        compiler: "arm-gcc".to_string(),
+        linker: "arm-ld".to_string(),
+        assembler: "arm-as".to_string(),
+        archiver: "arm-ar".to_string(),
+        debugger: Some("arm-gdb".to_string()),
+        target: "arm-none-eabi".to_string(),
+        environment: std::collections::HashMap::new(),
+    };
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: CompilationToolchainConfig = serde_json::from_str(&json).unwrap();
+    assert_eq!(config.name, deserialized.name);
+}
+
+#[test]
+fn test_session_config() {
+    let config = SessionConfig {
+        width: 80,
+        height: 24,
+        line_ending: LineEnding::Unix,
+        encoding: CharacterEncoding::ASCII,
+        flow_control: FlowControl::None,
+    };
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: SessionConfig = serde_json::from_str(&json).unwrap();
+    assert_eq!(config.width, deserialized.width);
+    assert_eq!(config.height, deserialized.height);
+}
+
+#[test]
+fn test_terminal_type_variants() {
+    assert!(matches!(
+        ConfigTerminalType::VT100,
+        ConfigTerminalType::VT100
+    ));
+    assert!(matches!(
+        ConfigTerminalType::IBM3270,
+        ConfigTerminalType::IBM3270
+    ));
+}
+
+#[test]
+fn test_management_job_priority() {
+    use toadstool_runtime_specialty::types::configs::management::JobPriority as ManagementJobPriority;
+    let priorities = [
+        ManagementJobPriority::Low,
+        ManagementJobPriority::Normal,
+        ManagementJobPriority::High,
+        ManagementJobPriority::Critical,
+    ];
+    for p in priorities {
+        let json = serde_json::to_string(&p).unwrap();
+        let _round: ManagementJobPriority = serde_json::from_str(&json).unwrap();
+    }
+}
+
+#[test]
+fn test_transfer_type() {
+    use toadstool_runtime_specialty::types::configs::management::TransferType;
+    let json = serde_json::to_string(&TransferType::Upload).unwrap();
+    let round: TransferType = serde_json::from_str(&json).unwrap();
+    assert!(matches!(round, TransferType::Upload));
+}
+
+#[test]
+fn test_storage_disk_image() {
+    let disk = DiskImage {
+        name: "boot.img".to_string(),
+        path: PathBuf::from("/images/boot.img"),
+        image_type: DiskImageType::Raw,
+        size: 360 * 1024,
+        read_only: false,
+    };
+    let json = serde_json::to_string(&disk).unwrap();
+    let deserialized: DiskImage = serde_json::from_str(&json).unwrap();
+    assert_eq!(disk.name, deserialized.name);
+}
+
+#[test]
+fn test_storage_rom_file() {
+    let rom = ROMFile {
+        name: "bios.rom".to_string(),
+        path: PathBuf::from("/roms/bios.rom"),
+        load_address: 0xF000,
+        size: 8192,
+        checksum: "abc123".to_string(),
+    };
+    let json = serde_json::to_string(&rom).unwrap();
+    let deserialized: ROMFile = serde_json::from_str(&json).unwrap();
+    assert_eq!(rom.load_address, deserialized.load_address);
 }
 
 #[test]
 fn test_realtime_config() {
     let config = RealtimeConfig {
-        max_latency_us: 100, // 100 microseconds
-        scheduling_policy: SchedulingPolicy::FixedPriority,
-        enable_watchdog: true,
-        watchdog_timeout_ms: 1000,
+        rtos: RealtimeOS::VxWorks,
+        scheduling_policy: SchedulingPolicy::Preemptive,
+        tasks: vec![],
+        interrupts: vec![],
     };
-    
-    assert_eq!(config.max_latency_us, 100);
-    assert!(config.enable_watchdog);
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: RealtimeConfig = serde_json::from_str(&json).unwrap();
+    assert!(matches!(deserialized.rtos, RealtimeOS::VxWorks));
 }
 
 #[test]
-fn test_scheduling_policy_variants() {
-    assert_ne!(SchedulingPolicy::FixedPriority, SchedulingPolicy::RoundRobin);
-    assert_ne!(SchedulingPolicy::RoundRobin, SchedulingPolicy::EarliestDeadlineFirst);
-}
-
-#[test]
-fn test_industrial_protocol_config() {
-    let config = IndustrialProtocolConfig {
-        protocol_type: "EtherCAT".to_string(),
-        cycle_time_us: 1000, // 1ms cycle
-        enable_redundancy: true,
-        topology: NetworkTopology::Ring,
+fn test_task_config() {
+    let task = TaskConfig {
+        name: "main_task".to_string(),
+        priority: 10,
+        stack_size: 4096,
+        period: Duration::from_millis(100),
+        deadline: Duration::from_millis(100),
+        function: "main".to_string(),
     };
-    
-    assert_eq!(config.protocol_type, "EtherCAT");
-    assert_eq!(config.cycle_time_us, 1000);
-    assert!(config.enable_redundancy);
+    let json = serde_json::to_string(&task).unwrap();
+    let deserialized: TaskConfig = serde_json::from_str(&json).unwrap();
+    assert_eq!(task.name, deserialized.name);
 }
 
 #[test]
-fn test_network_topology_variants() {
-    assert_ne!(NetworkTopology::Ring, NetworkTopology::Star);
-    assert_ne!(NetworkTopology::Star, NetworkTopology::Bus);
-    assert_ne!(NetworkTopology::Bus, NetworkTopology::Mesh);
-}
-
-#[test]
-fn test_cross_compilation_config() {
-    let config = CrossCompilationConfig {
-        target_triple: "arm-unknown-linux-gnueabihf".to_string(),
-        sysroot: Some("/opt/arm-toolchain".to_string()),
-        additional_flags: vec!["-march=armv7".to_string()],
-        enable_lto: false,
+fn test_industrial_config() {
+    let config = IndustrialConfig {
+        system_type: IndustrialSystemType::PLC,
+        protocols: vec![IndustrialProtocol::ModbusTCP],
+        devices: vec![],
+        safety_config: SafetyConfig {
+            sil_level: SILLevel::SIL2,
+            safety_functions: vec![],
+            emergency_stop: EmergencyStopConfig {
+                devices: vec!["E-Stop-1".to_string()],
+                response_time: Duration::from_millis(50),
+                reset_procedure: ResetProcedure::Manual,
+            },
+        },
     };
-    
-    assert_eq!(config.target_triple, "arm-unknown-linux-gnueabihf");
-    assert!(config.sysroot.is_some());
-    assert_eq!(config.additional_flags.len(), 1);
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: IndustrialConfig = serde_json::from_str(&json).unwrap();
+    assert!(matches!(
+        deserialized.system_type,
+        IndustrialSystemType::PLC
+    ));
 }
 
 #[test]
-fn test_memory_model_config() {
-    let config = MemoryModelConfig {
-        address_space_bits: 32,
-        endianness: Endianness::Little,
-        page_size_bytes: 4096,
-        enable_mmu: true,
+fn test_embedded_config() {
+    use toadstool_runtime_specialty::types::configs::communication::{
+        ProgrammingInterface, ProgrammingInterfaceType,
     };
-    
-    assert_eq!(config.address_space_bits, 32);
-    assert_eq!(config.endianness, Endianness::Little);
-    assert!(config.enable_mmu);
-}
-
-#[test]
-fn test_endianness_variants() {
-    assert_ne!(Endianness::Little, Endianness::Big);
-}
-
-#[test]
-fn test_authentication_settings() {
-    let settings = AuthenticationSettings {
-        username: Some("admin".to_string()),
-        password: Some("secret".to_string()),
-        certificate_path: None,
-        use_kerberos: false,
+    let config = EmbeddedConfig {
+        architecture: LegacyArchitecture::Intel8086,
+        memory_layout: MemoryLayout {
+            rom_regions: vec![],
+            ram_regions: vec![],
+            io_regions: vec![],
+        },
+        peripherals: vec![],
+        programming_interface: ProgrammingInterface {
+            interface_type: ProgrammingInterfaceType::JTAG,
+            connection_params: std::collections::HashMap::new(),
+        },
     };
-    
-    assert_eq!(settings.username, Some("admin".to_string()));
-    assert!(!settings.use_kerberos);
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: EmbeddedConfig = serde_json::from_str(&json).unwrap();
+    assert!(matches!(
+        deserialized.architecture,
+        LegacyArchitecture::Intel8086
+    ));
 }
 
 #[test]
-fn test_connection_type_variants() {
-    assert_ne!(ConnectionType::LocalEmulation, ConnectionType::RemoteSSH);
-    assert_ne!(ConnectionType::RemoteSSH, ConnectionType::SerialPort);
-    assert_ne!(ConnectionType::SerialPort, ConnectionType::NetworkSocket);
+fn test_memory_region() {
+    let region = MemoryRegion {
+        name: "RAM".to_string(),
+        start_address: 0x0000,
+        end_address: 0xFFFF,
+        region_type: MemoryRegionType::RAM,
+        permissions: MemoryPermissions {
+            read: true,
+            write: true,
+            execute: true,
+        },
+    };
+    let json = serde_json::to_string(&region).unwrap();
+    let deserialized: MemoryRegion = serde_json::from_str(&json).unwrap();
+    assert_eq!(region.start_address, deserialized.start_address);
 }
 
 #[test]
-fn test_platform_type_variants() {
-    assert_ne!(PlatformType::Mainframe, PlatformType::Embedded);
-    assert_ne!(PlatformType::Embedded, PlatformType::Realtime);
-    assert_ne!(PlatformType::Realtime, PlatformType::Industrial);
+fn test_mainframe_config() {
+    use toadstool_runtime_specialty::types::configs::communication::MainframeConnectionType;
+    use toadstool_runtime_specialty::types::configs::communication::{
+        AuthenticationSettings, AuthenticationType, ConnectionSettings,
+    };
+    let config = MainframeConfig {
+        system_type: LegacySystemType::IbmSystem360,
+        connection: ConnectionSettings {
+            host: "mainframe.example.com".to_string(),
+            port: 23,
+            connection_type: MainframeConnectionType::IBM3270,
+            authentication: AuthenticationSettings {
+                auth_type: AuthenticationType::None,
+                username: None,
+                password: None,
+                key_file: None,
+                certificate: None,
+            },
+        },
+        datasets: std::collections::HashMap::new(),
+        jcl_settings: JCLSettings {
+            job_class: "A".to_string(),
+            message_class: "0".to_string(),
+            priority: 8,
+            time_limit: Duration::from_secs(3600),
+            region_size: 4 * 1024 * 1024,
+        },
+        cobol_settings: COBOLSettings {
+            compiler: "ibmcob".to_string(),
+            compile_options: vec![],
+            link_options: vec![],
+            runtime_options: vec![],
+        },
+    };
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: MainframeConfig = serde_json::from_str(&json).unwrap();
+    assert_eq!(config.connection.host, deserialized.connection.host);
 }
 
 #[test]
-fn test_config_clone() {
-    let config = LegacyRuntimeConfig::default();
-    let cloned = config.clone();
-    
-    assert_eq!(
-        config.supported_platforms,
-        cloned.supported_platforms,
-        "Cloned config should be equal"
-    );
-}
-
-#[test]
-fn test_emulation_settings_clone() {
-    let settings = EmulationSettings::default();
-    let cloned = settings.clone();
-    
-    assert_eq!(
-        settings.enable_cycle_accurate,
-        cloned.enable_cycle_accurate,
-        "Cloned settings should be equal"
-    );
-}
-
-#[test]
-fn test_communication_settings_timeout_config_flatten() {
-    // Test that TimeoutConfig is properly flattened
+fn test_communication_settings_flattened_json() {
     let json = r#"{
         "connection_type": "LocalEmulation",
-        "connection_timeout": 30,
-        "request_timeout": 60,
-        "read_timeout": 5,
-        "write_timeout": 5,
-        "max_attempts": 3,
-        "initial_backoff_ms": 100,
-        "max_backoff_ms": 5000,
+        "connection_timeout": "30s",
+        "request_timeout": "60s",
+        "read_timeout": "30s",
+        "write_timeout": "30s",
+        "max_retries": 3,
+        "base_delay": "100ms",
+        "max_delay": "30s",
         "backoff_multiplier": 2.0,
-        "jitter": true
+        "jitter_percent": 10.0
     }"#;
-    
     let result: Result<CommunicationSettings, _> = serde_json::from_str(json);
-    assert!(
-        result.is_ok(),
-        "Should deserialize with flattened base configs: {:?}",
-        result.err()
-    );
-    
+    assert!(result.is_ok(), "Should deserialize: {:?}", result.err());
     let settings = result.unwrap();
-    assert_eq!(settings.timeouts.connection_timeout, Duration::from_secs(30));
-    assert_eq!(settings.retries.max_attempts, 3);
+    assert_eq!(
+        settings.timeouts.connection_timeout,
+        Duration::from_secs(30)
+    );
+    assert_eq!(settings.retries.max_retries, 3);
 }
-
-#[test]
-fn test_legacy_config_with_custom_platforms() {
-    let mut config = LegacyRuntimeConfig::default();
-    config.supported_platforms = vec![
-        PlatformType::Mainframe,
-        PlatformType::Embedded,
-    ];
-    
-    assert_eq!(config.supported_platforms.len(), 2);
-    assert!(config.supported_platforms.contains(&PlatformType::Mainframe));
-}
-
-#[test]
-fn test_mainframe_settings_with_tls() {
-    let settings = MainframeConnectionSettings {
-        host: "mainframe.example.com".to_string(),
-        port: 992, // TLS port
-        codepage: "IBM037".to_string(),
-        use_tls: true,
-        timeout_seconds: 60,
-    };
-    
-    assert!(settings.use_tls);
-    assert_eq!(settings.port, 992);
-}
-
-#[test]
-fn test_embedded_config_low_power() {
-    let config = EmbeddedPlatformConfig {
-        architecture: "ARM Cortex-M0".to_string(),
-        clock_speed_hz: 16_000_000, // 16 MHz - low power
-        memory_size_bytes: 64 * 1024, // 64 KB
-        enable_debugging: false,
-        optimization_level: OptimizationLevel::Size,
-    };
-    
-    assert_eq!(config.optimization_level, OptimizationLevel::Size);
-    assert_eq!(config.clock_speed_hz, 16_000_000);
-}
-
-#[test]
-fn test_realtime_config_hard_realtime() {
-    let config = RealtimeConfig {
-        max_latency_us: 10, // 10 microseconds - hard realtime
-        scheduling_policy: SchedulingPolicy::EarliestDeadlineFirst,
-        enable_watchdog: true,
-        watchdog_timeout_ms: 100,
-    };
-    
-    assert_eq!(config.max_latency_us, 10);
-    assert_eq!(config.scheduling_policy, SchedulingPolicy::EarliestDeadlineFirst);
-}
-
-#[test]
-fn test_industrial_protocol_redundancy() {
-    let config = IndustrialProtocolConfig {
-        protocol_type: "PROFINET".to_string(),
-        cycle_time_us: 500, // 500 microseconds
-        enable_redundancy: true,
-        topology: NetworkTopology::Mesh,
-    };
-    
-    assert!(config.enable_redundancy);
-    assert_eq!(config.topology, NetworkTopology::Mesh);
-}
-
-#[test]
-fn test_cross_compilation_with_lto() {
-    let config = CrossCompilationConfig {
-        target_triple: "x86_64-unknown-linux-musl".to_string(),
-        sysroot: None,
-        additional_flags: vec!["-static".to_string()],
-        enable_lto: true,
-    };
-    
-    assert!(config.enable_lto);
-    assert!(config.sysroot.is_none());
-}
-
-#[test]
-fn test_memory_model_64bit() {
-    let config = MemoryModelConfig {
-        address_space_bits: 64,
-        endianness: Endianness::Little,
-        page_size_bytes: 4096,
-        enable_mmu: true,
-    };
-    
-    assert_eq!(config.address_space_bits, 64);
-}
-
-#[test]
-fn test_memory_model_big_endian() {
-    let config = MemoryModelConfig {
-        address_space_bits: 32,
-        endianness: Endianness::Big,
-        page_size_bytes: 4096,
-        enable_mmu: false,
-    };
-    
-    assert_eq!(config.endianness, Endianness::Big);
-    assert!(!config.enable_mmu);
-}
-
-#[test]
-fn test_authentication_with_certificate() {
-    let settings = AuthenticationSettings {
-        username: None,
-        password: None,
-        certificate_path: Some("/path/to/cert.pem".to_string()),
-        use_kerberos: false,
-    };
-    
-    assert!(settings.certificate_path.is_some());
-    assert!(settings.username.is_none());
-}
-
-#[test]
-fn test_authentication_with_kerberos() {
-    let settings = AuthenticationSettings {
-        username: Some("user@REALM".to_string()),
-        password: None,
-        certificate_path: None,
-        use_kerberos: true,
-    };
-    
-    assert!(settings.use_kerberos);
-    assert!(settings.username.is_some());
-}
-

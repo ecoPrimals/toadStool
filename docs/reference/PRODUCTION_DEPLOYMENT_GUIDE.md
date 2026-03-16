@@ -1,4 +1,4 @@
-> **Note**: This guide was written in November 2025. Current metrics: 20,843 tests, ~83% coverage, clippy pedantic clean. JSON-RPC 2.0 is the only API path (WebSocket removed S90). See [STATUS.md](../../STATUS.md) for current state.
+> **Note**: This guide was written in November 2025. Current metrics: 21,156 tests, ~83% coverage, clippy pedantic clean. JSON-RPC 2.0 is the only API path (WebSocket removed S90). See [STATUS.md](../../STATUS.md) for current state.
 
 # 🚀 ToadStool Production Deployment Guide
 **Date**: November 8, 2025  
@@ -564,7 +564,7 @@ tar -czf toadstool-config-backup-$(date +%Y%m%d).tar.gz \
 ## 🎉 READY TO DEPLOY!
 
 Your ToadStool instance is ready for production:
-- ✅ All tests passing (20,843)
+- ✅ All tests passing (21,156)
 - ✅ ~83% line coverage
 - ✅ JSON-RPC 2.0 only (WebSocket removed S90)
 

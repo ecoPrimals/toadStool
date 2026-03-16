@@ -5,16 +5,16 @@
 //! including job types, languages, debugging interfaces, and file representations.
 
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
+use std::time::SystemTime;
 use uuid::Uuid;
 
+use crate::types::configs::embedded::{PeripheralConfig, PeripheralType};
 use crate::{
-    JobStatus, LegacyArchitecture, MemoryLayout, MemoryRegionType, PeripheralConfig,
-    PeripheralType, ProgrammingInterface, ProgrammingInterfaceType, ToadStoolResult,
-    MemoryPermissions,
+    JobStatus, LegacyArchitecture, MemoryLayout, MemoryPermissions, MemoryRegionType,
+    ProgrammingInterface, ProgrammingInterfaceType, ToadStoolResult,
 };
 
 /// Embedded job representation
@@ -253,8 +253,7 @@ pub enum OutputFileType {
 
 /// Embedded toolchain trait
 #[async_trait::async_trait]
-#[async_trait::async_trait]
-pub trait EmbeddedToolchain: Send + Sync {
+pub trait EmbeddedToolchain: Send + Sync + std::fmt::Debug {
     /// Get toolchain name
     fn name(&self) -> &str;
 
@@ -268,21 +267,21 @@ pub trait EmbeddedToolchain: Send + Sync {
     async fn compile(
         &self,
         sources: &[SourceFile],
-        output_path: &PathBuf,
+        output_path: &Path,
     ) -> ToadStoolResult<CompilationResult>;
 
     /// Link object files
     async fn link(
         &self,
         objects: &[PathBuf],
-        output_path: &PathBuf,
+        output_path: &Path,
         memory_layout: &MemoryLayout,
     ) -> ToadStoolResult<LinkResult>;
 
     /// Generate ROM image
     async fn generate_rom_image(
         &self,
-        executable: &PathBuf,
+        executable: &Path,
         format: OutputFileType,
     ) -> ToadStoolResult<Vec<u8>>;
 
@@ -290,7 +289,7 @@ pub trait EmbeddedToolchain: Send + Sync {
     async fn disassemble(&self, binary: &[u8], start_address: u32) -> ToadStoolResult<String>;
 
     /// Create memory map
-    async fn create_memory_map(&self, executable: &PathBuf) -> ToadStoolResult<MemoryMap>;
+    async fn create_memory_map(&self, executable: &Path) -> ToadStoolResult<MemoryMap>;
 }
 
 /// Compilation result
@@ -365,7 +364,7 @@ pub enum MessageType {
 }
 
 /// Memory usage information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MemoryUsage {
     /// ROM/Flash usage
     pub rom_usage: RegionUsage,
@@ -373,16 +372,6 @@ pub struct MemoryUsage {
     pub ram_usage: RegionUsage,
     /// EEPROM usage
     pub eeprom_usage: Option<RegionUsage>,
-}
-
-impl Default for MemoryUsage {
-    fn default() -> Self {
-        Self {
-            rom_usage: RegionUsage::default(),
-            ram_usage: RegionUsage::default(),
-            eeprom_usage: None,
-        }
-    }
 }
 
 /// Memory region usage
@@ -500,7 +489,7 @@ pub enum SectionType {
 
 /// Programmer interface trait
 #[async_trait::async_trait]
-pub trait ProgrammerInterface: Send + Sync {
+pub trait ProgrammerInterface: Send + Sync + std::fmt::Debug {
     /// Get programmer name
     fn name(&self) -> &str;
 
@@ -526,11 +515,7 @@ pub trait ProgrammerInterface: Send + Sync {
     async fn erase_memory(&mut self, address: u32, length: u32) -> ToadStoolResult<()>;
 
     /// Verify memory
-    async fn verify_memory(
-        &mut self,
-        address: u32,
-        expected_data: &[u8],
-    ) -> ToadStoolResult<bool>;
+    async fn verify_memory(&mut self, address: u32, expected_data: &[u8]) -> ToadStoolResult<bool>;
 
     /// Get target information
     async fn get_target_info(&self) -> ToadStoolResult<TargetInfo>;
@@ -557,7 +542,7 @@ pub struct TargetInfo {
 
 /// Embedded emulator trait
 #[async_trait::async_trait]
-pub trait EmbeddedEmulator: Send + Sync {
+pub trait EmbeddedEmulator: Send + Sync + std::fmt::Debug {
     /// Get emulator name
     fn name(&self) -> &str;
 
@@ -631,7 +616,7 @@ pub enum EmulationStatus {
 
 /// Peripheral interface trait
 #[async_trait::async_trait]
-pub trait PeripheralInterface: Send + Sync {
+pub trait PeripheralInterface: Send + Sync + std::fmt::Debug {
     /// Get peripheral name
     fn name(&self) -> &str;
 

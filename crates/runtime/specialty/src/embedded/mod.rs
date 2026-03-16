@@ -14,11 +14,11 @@
 // Module declarations
 pub mod adapters;
 pub mod dos;
-pub mod emulators;
 pub mod emulator_impls;
+pub mod emulators;
 pub mod managers;
-pub mod programmers;
 pub mod programmer_impls;
+pub mod programmers;
 pub mod toolchains;
 pub mod types;
 
@@ -36,7 +36,10 @@ pub use types::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{JobStatus, LegacyAdapter, LegacyArchitecture, LegacySystemType, MemoryLayout, ProgrammingInterface, ProgrammingInterfaceType};
+    use crate::{
+        JobStatus, LegacyAdapter, LegacyArchitecture, LegacySystemType, MemoryLayout,
+        ProgrammingInterface, ProgrammingInterfaceType,
+    };
     use std::collections::HashMap;
     use uuid::Uuid;
 
@@ -90,4 +93,3 @@ mod tests {
         assert_eq!(job.status, JobStatus::Queued);
     }
 }
-

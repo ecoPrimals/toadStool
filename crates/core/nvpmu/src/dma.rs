@@ -315,7 +315,11 @@ impl DmaAllocator {
                 .ok_or_else(|| NvPmuError::Hardware("MAP_HUGETLB 2M flag unsupported".into()))?,
             HugePageSize::Huge1G => MapFlags::hugetlb_with_size_log2(30)
                 .ok_or_else(|| NvPmuError::Hardware("MAP_HUGETLB 1G flag unsupported".into()))?,
-            HugePageSize::Standard => unreachable!(),
+            HugePageSize::Standard => {
+                return Err(NvPmuError::Hardware(
+                    "Standard pages handled by allocate(), not allocate_huge()".into(),
+                ))
+            }
         };
 
         // SAFETY: mmap_anonymous creates a fresh mapping; we own the returned ptr.

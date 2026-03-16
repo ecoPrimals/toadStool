@@ -21,15 +21,14 @@
 //! linker scripts, and ROM image format generation (e.g., .nes, .sms, raw binary).
 
 use async_trait::async_trait;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use toadstool::ToadStoolError;
 
-use crate::{EmbeddedConfig, LegacyArchitecture, ToadStoolResult};
+use crate::{EmbeddedConfig, LegacyArchitecture, MemoryLayout, ToadStoolResult};
 
 use super::types::{
-    CompilationResult, EmbeddedToolchain, LinkResult, MemoryLayout, OutputFileType,
-    SourceFile,
+    CompilationResult, EmbeddedToolchain, LinkResult, MemoryMap, OutputFileType, SourceFile,
 };
 
 fn not_implemented(feature: impl Into<String>) -> ToadStoolError {
@@ -41,26 +40,32 @@ fn not_implemented(feature: impl Into<String>) -> ToadStoolError {
 
 /// Toolchain for 6502 (planned: cc65/wdc816 integration).
 /// Stub until cross-compilation toolchain is integrated.
+#[derive(Debug)]
 pub struct Toolchain6502;
 
 /// Toolchain for Z80 (planned: z88dk/SDCC integration).
 /// Stub until cross-compilation toolchain is integrated.
+#[derive(Debug)]
 pub struct ToolchainZ80;
 
 /// Toolchain for 8080 (planned: may share tooling with Z80).
 /// Stub until cross-compilation toolchain is integrated.
+#[derive(Debug)]
 pub struct Toolchain8080;
 
 /// Toolchain for 8051 (planned: SDCC integration).
 /// Stub until cross-compilation toolchain is integrated.
+#[derive(Debug)]
 pub struct Toolchain8051;
 
 /// Toolchain for 8086 (planned: NASM/MASM integration).
 /// Stub until cross-compilation toolchain is integrated.
+#[derive(Debug)]
 pub struct Toolchain8086;
 
 /// Toolchain for 68000 (planned: vasm/gcc-m68k integration).
 /// Stub until cross-compilation toolchain is integrated.
+#[derive(Debug)]
 pub struct Toolchain68000;
 
 impl Toolchain6502 {
@@ -87,7 +92,7 @@ impl EmbeddedToolchain for Toolchain6502 {
     async fn compile(
         &self,
         _sources: &[SourceFile],
-        _output_path: &PathBuf,
+        _output_path: &Path,
     ) -> ToadStoolResult<CompilationResult> {
         Err(not_implemented("6502 compilation"))
     }
@@ -95,7 +100,7 @@ impl EmbeddedToolchain for Toolchain6502 {
     async fn link(
         &self,
         _objects: &[PathBuf],
-        _output_path: &PathBuf,
+        _output_path: &Path,
         _memory_layout: &MemoryLayout,
     ) -> ToadStoolResult<LinkResult> {
         Err(not_implemented("6502 linking"))
@@ -103,7 +108,7 @@ impl EmbeddedToolchain for Toolchain6502 {
 
     async fn generate_rom_image(
         &self,
-        _executable: &PathBuf,
+        _executable: &Path,
         _format: OutputFileType,
     ) -> ToadStoolResult<Vec<u8>> {
         Err(not_implemented("ROM image generation"))
@@ -111,6 +116,10 @@ impl EmbeddedToolchain for Toolchain6502 {
 
     async fn disassemble(&self, _binary: &[u8], _start_address: u32) -> ToadStoolResult<String> {
         Err(not_implemented("6502 disassembly"))
+    }
+
+    async fn create_memory_map(&self, _executable: &Path) -> ToadStoolResult<MemoryMap> {
+        Err(not_implemented("Memory map creation"))
     }
 }
 
@@ -169,7 +178,7 @@ macro_rules! impl_toolchain_stub {
             async fn compile(
                 &self,
                 _sources: &[SourceFile],
-                _output_path: &PathBuf,
+                _output_path: &Path,
             ) -> ToadStoolResult<CompilationResult> {
                 Err(not_implemented(format!("{} compilation", $name)))
             }
@@ -177,7 +186,7 @@ macro_rules! impl_toolchain_stub {
             async fn link(
                 &self,
                 _objects: &[PathBuf],
-                _output_path: &PathBuf,
+                _output_path: &Path,
                 _memory_layout: &MemoryLayout,
             ) -> ToadStoolResult<LinkResult> {
                 Err(not_implemented(format!("{} linking", $name)))
@@ -185,24 +194,48 @@ macro_rules! impl_toolchain_stub {
 
             async fn generate_rom_image(
                 &self,
-                _executable: &PathBuf,
+                _executable: &Path,
                 _format: OutputFileType,
             ) -> ToadStoolResult<Vec<u8>> {
                 Err(not_implemented("ROM image generation"))
             }
 
-            async fn disassemble(&self, _binary: &[u8], _start_address: u32) -> ToadStoolResult<String> {
+            async fn disassemble(
+                &self,
+                _binary: &[u8],
+                _start_address: u32,
+            ) -> ToadStoolResult<String> {
                 Err(not_implemented(format!("{} disassembly", $name)))
+            }
+
+            async fn create_memory_map(&self, _executable: &Path) -> ToadStoolResult<MemoryMap> {
+                Err(not_implemented("Memory map creation"))
             }
         }
     };
 }
 
-impl_toolchain_stub!(ToolchainZ80, "Z80 Toolchain", LegacyArchitecture::Zilog_Z80);
-impl_toolchain_stub!(Toolchain8080, "8080 Toolchain", LegacyArchitecture::Intel_8080);
-impl_toolchain_stub!(Toolchain8051, "8051 Toolchain", LegacyArchitecture::Intel_8051);
-impl_toolchain_stub!(Toolchain8086, "8086 Toolchain", LegacyArchitecture::Intel_8086);
-impl_toolchain_stub!(Toolchain68000, "68000 Toolchain", LegacyArchitecture::Motorola_68000);
+impl_toolchain_stub!(ToolchainZ80, "Z80 Toolchain", LegacyArchitecture::ZilogZ80);
+impl_toolchain_stub!(
+    Toolchain8080,
+    "8080 Toolchain",
+    LegacyArchitecture::Intel8080
+);
+impl_toolchain_stub!(
+    Toolchain8051,
+    "8051 Toolchain",
+    LegacyArchitecture::Intel8051
+);
+impl_toolchain_stub!(
+    Toolchain8086,
+    "8086 Toolchain",
+    LegacyArchitecture::Intel8086
+);
+impl_toolchain_stub!(
+    Toolchain68000,
+    "68000 Toolchain",
+    LegacyArchitecture::Motorola68000
+);
 
 impl Default for Toolchain6502 {
     fn default() -> Self {
@@ -239,5 +272,3 @@ impl Default for Toolchain68000 {
         Self::new()
     }
 }
-
-

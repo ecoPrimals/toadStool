@@ -10,9 +10,11 @@
 //! **Priority**: P3 (Low) - Optional advanced feature
 
 /// Generic programmer for various devices
+#[derive(Debug)]
 pub struct GenericProgrammer;
 
 /// EPROM-specific programmer
+#[derive(Debug)]
 pub struct EPROMProgrammer;
 
 impl GenericProgrammer {
@@ -44,4 +46,3 @@ impl Default for EPROMProgrammer {
 // Future Enhancement: Implement ProgrammerInterface trait for each programmer
 // This will require full implementation of device communication, programming, and verification
 // Tracked as future feature - not required for current production deployment
-

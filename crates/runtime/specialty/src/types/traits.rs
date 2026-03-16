@@ -2,20 +2,20 @@
 //! Trait definitions for legacy runtime adapters and interfaces
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::future::Future;
 use std::path::PathBuf;
-use uuid::Uuid;
 use std::time::Duration;
+use uuid::Uuid;
 
 use crate::ToadStoolResult;
 
-// Import types from parent modules  
-use crate::{LegacySystemType, LegacyArchitecture, SystemStatus, MemoryType, StorageType, NetworkProtocol};
-use crate::{SpecialtyRuntimeConfig, LegacyJob};
+// Import types from parent modules
+use crate::{
+    LegacyArchitecture, LegacySystemType, MemoryType, NetworkProtocol, StorageType, SystemStatus,
+};
+use crate::{LegacyJob, SpecialtyRuntimeConfig};
 
 /// Runtime metrics for specialty hardware systems
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SpecialtyRuntimeMetrics {
     /// Total jobs executed
     pub total_jobs: u64,
@@ -42,52 +42,44 @@ pub struct SpecialtyRuntimeMetrics {
 /// Legacy adapter trait for different legacy systems
 ///
 /// **Uses async_trait for trait object compatibility**
-/// - Required for Box<dyn LegacyAdapter> and Arc<dyn LegacyAdapter>
+/// - Required for `Box<dyn LegacyAdapter>` and `Arc<dyn LegacyAdapter>`
 /// - Enables plugin-style architecture
 /// - Necessary for polymorphic legacy system support
 #[async_trait::async_trait]
 pub trait LegacyAdapter: Send + Sync {
     /// Get the adapter name
     fn name(&self) -> &str;
-    
+
     /// Get supported legacy system types
     fn supported_systems(&self) -> Vec<LegacySystemType>;
-    
+
     /// Initialize the adapter
-    async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) 
-        -> ToadStoolResult<()>;
-    
+    async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) -> ToadStoolResult<()>;
+
     /// Shutdown the adapter
-    async fn shutdown(&mut self) 
-        -> ToadStoolResult<()>;
-    
+    async fn shutdown(&mut self) -> ToadStoolResult<()>;
+
     /// Submit a legacy job
-    async fn submit_job(&self, job: LegacyJob) 
-        -> ToadStoolResult<Uuid>;
-    
+    async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid>;
+
     /// Get job status
-    async fn get_job_status(&self, job_id: Uuid) 
-        -> ToadStoolResult<JobStatus>;
-    
+    async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus>;
+
     /// Cancel a job
-    async fn cancel_job(&self, job_id: Uuid) 
-        -> ToadStoolResult<()>;
-    
+    async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()>;
+
     /// Get job output
-    async fn get_job_output(&self, job_id: Uuid) 
-        -> ToadStoolResult<JobOutput>;
-    
+    async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput>;
+
     /// Get system information
-    async fn get_system_info(&self) 
-        -> ToadStoolResult<SystemInfo>;
-    
+    async fn get_system_info(&self) -> ToadStoolResult<SystemInfo>;
+
     /// Test connectivity
-    async fn test_connectivity(&self) 
-        -> ToadStoolResult<bool>;
+    async fn test_connectivity(&self) -> ToadStoolResult<bool>;
 }
 
 /// Job status for legacy systems
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JobStatus {
     /// Job is queued
     Queued,
@@ -250,16 +242,16 @@ pub enum NetworkStatus {
 /// Communication session trait for legacy systems
 ///
 /// **Uses async_trait for trait object compatibility**
-/// - Required for Box<dyn LegacyCommunicationSession>
+/// - Required for `Box<dyn LegacyCommunicationSession>`
 /// - Enables polymorphic session management
 #[async_trait::async_trait]
 pub trait LegacyCommunicationSession: Send + Sync {
     /// Send a command to the legacy system
     async fn send_command(&mut self, command: &str) -> ToadStoolResult<String>;
-    
+
     /// Check if session is connected
     fn is_connected(&self) -> bool;
-    
+
     /// Close the session
     async fn close(&mut self) -> ToadStoolResult<()>;
 }

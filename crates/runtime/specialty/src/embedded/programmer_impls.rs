@@ -18,11 +18,11 @@
 
 use async_trait::async_trait;
 
-use crate::{LegacyArchitecture, ProgrammingInterface, ProgrammingInterfaceType, ToadStoolResult};
+use crate::{ProgrammingInterface, ProgrammingInterfaceType, ToadStoolResult};
 use toadstool::ToadStoolError;
 
 use super::programmers::{EPROMProgrammer, GenericProgrammer};
-use super::types::{ProgrammerInterface as ProgrammerTrait, VerificationResult};
+use super::types::{ProgrammerInterface as ProgrammerTrait, TargetInfo};
 
 fn not_implemented(feature: &str) -> ToadStoolError {
     ToadStoolError::not_supported(format!(
@@ -55,7 +55,11 @@ macro_rules! impl_programmer_stub {
                 Ok(())
             }
 
-            async fn read_memory(&mut self, _address: u32, _length: u32) -> ToadStoolResult<Vec<u8>> {
+            async fn read_memory(
+                &mut self,
+                _address: u32,
+                _length: u32,
+            ) -> ToadStoolResult<Vec<u8>> {
                 Err(not_implemented("Memory read"))
             }
 
@@ -71,19 +75,24 @@ macro_rules! impl_programmer_stub {
                 &mut self,
                 _address: u32,
                 _data: &[u8],
-            ) -> ToadStoolResult<VerificationResult> {
+            ) -> ToadStoolResult<bool> {
                 Err(not_implemented("Memory verify"))
             }
 
-            async fn get_target_info(
-                &mut self,
-            ) -> ToadStoolResult<crate::embedded::types::TargetInfo> {
+            async fn get_target_info(&self) -> ToadStoolResult<TargetInfo> {
                 Err(not_implemented("Target info"))
             }
         }
     };
 }
 
-impl_programmer_stub!(GenericProgrammer, "Generic Programmer", ProgrammingInterfaceType::ISP);
-impl_programmer_stub!(EPROMProgrammer, "EPROM Programmer", ProgrammingInterfaceType::ParallelPort);
-
+impl_programmer_stub!(
+    GenericProgrammer,
+    "Generic Programmer",
+    ProgrammingInterfaceType::ISP
+);
+impl_programmer_stub!(
+    EPROMProgrammer,
+    "EPROM Programmer",
+    ProgrammingInterfaceType::Parallel
+);

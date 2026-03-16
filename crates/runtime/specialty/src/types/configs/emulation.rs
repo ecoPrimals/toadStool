@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use super::storage::{ROMFile, DiskImage};
+use super::storage::{DiskImage, ROMFile};
 
 /// Emulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

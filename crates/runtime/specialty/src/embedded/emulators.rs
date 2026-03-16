@@ -10,9 +10,11 @@
 //! **Priority**: P3 (Low) - Optional advanced feature
 
 /// Placeholder emulator for 6502
+#[derive(Debug)]
 pub struct Emulator6502;
 
 /// Placeholder emulator for Z80
+#[derive(Debug)]
 pub struct EmulatorZ80;
 
 impl Emulator6502 {
@@ -44,4 +46,3 @@ impl Default for EmulatorZ80 {
 // Future Enhancement: Implement EmbeddedEmulator trait for each emulator
 // This will require full implementation of CPU emulation, memory management, and debugging
 // Tracked as future feature - not required for current production deployment
-

@@ -2,16 +2,16 @@
 //! Legacy job type definitions
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::time::Duration;
 use std::time::SystemTime;
 use uuid::Uuid;
-use std::time::Duration;
-use std::path::PathBuf;
-use std::collections::HashMap;
 
 // Import from other modules
-use super::systems::{LegacySystemType, LegacyArchitecture};
-use super::requirements::{CompilationRequirements, LegacyRuntimeRequirements};
 use super::configs::{CommunicationSettings, SessionConfig};
+use super::requirements::{CompilationRequirements, LegacyRuntimeRequirements};
+use super::systems::{LegacyArchitecture, LegacySystemType};
 use toadstool::JobPriority;
 
 /// Legacy job specification
@@ -154,30 +154,47 @@ pub enum LegacyJobType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LegacyLanguage {
     COBOL,
-    FORTRAN_77,
-    FORTRAN_IV,
+    #[serde(rename = "FORTRAN_77")]
+    Fortran77,
+    #[serde(rename = "FORTRAN_IV")]
+    FortranIv,
     PASCAL,
-    PL_I,
+    #[serde(rename = "PL_I")]
+    PlI,
     RPG,
     BASIC,
-    Assembly_6502,
-    Assembly_Z80,
-    Assembly_8080,
-    Assembly_8086,
-    Assembly_68000,
-    Assembly_PDP11,
-    Assembly_System360,
-    C_K_R,
+    #[serde(rename = "Assembly_6502")]
+    Assembly6502,
+    #[serde(rename = "Assembly_Z80")]
+    AssemblyZ80,
+    #[serde(rename = "Assembly_8080")]
+    Assembly8080,
+    #[serde(rename = "Assembly_8086")]
+    Assembly8086,
+    #[serde(rename = "Assembly_68000")]
+    Assembly68000,
+    #[serde(rename = "Assembly_PDP11")]
+    AssemblyPdp11,
+    #[serde(rename = "Assembly_System360")]
+    AssemblySystem360,
+    #[serde(rename = "C_K_R")]
+    Ckr,
     JCL,
     REXX,
     CLIST,
     DCL,
-    Shell_Bourne,
-    Shell_Csh,
-    Ladder_Logic,
-    Structured_Text,
-    Function_Block,
-    Instruction_List,
+    #[serde(rename = "Shell_Bourne")]
+    ShellBourne,
+    #[serde(rename = "Shell_Csh")]
+    ShellCsh,
+    #[serde(rename = "Ladder_Logic")]
+    LadderLogic,
+    #[serde(rename = "Structured_Text")]
+    StructuredText,
+    #[serde(rename = "Function_Block")]
+    FunctionBlock,
+    #[serde(rename = "Instruction_List")]
+    InstructionList,
 }
 
 /// Source code or program for legacy job
@@ -226,16 +243,19 @@ pub enum ProgramFormat {
     /// Binary executable
     Binary,
     /// CP/M COM file
-    CPM_COM,
+    #[serde(rename = "CPM_COM")]
+    CpmCom,
     /// DOS EXE file
-    DOS_EXE,
+    #[serde(rename = "DOS_EXE")]
+    DosExe,
     /// VAX executable
-    VAX_EXE,
+    #[serde(rename = "VAX_EXE")]
+    VaxExe,
     /// IBM load module
-    IBM_LoadModule,
+    #[serde(rename = "IBM_LoadModule")]
+    IbmLoadModule,
     /// Paper tape binary
     PaperTapeBinary,
     /// ROM/EPROM image
     ROMImage,
 }
-

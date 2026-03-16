@@ -4,22 +4,22 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use toadstool_common::config_bases::{TimeoutConfig, RetryConfig};
+use toadstool_common::config_bases::{RetryConfig, TimeoutConfig};
 
 /// Communication settings for legacy systems
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunicationSettings {
     /// Connection type
     pub connection_type: ConnectionType,
-    
+
     /// Timeout configuration (connection, request, read, write)
     #[serde(flatten)]
     pub timeouts: TimeoutConfig,
-    
+
     /// Retry configuration (max attempts, backoff, jitter)
     #[serde(flatten)]
     pub retries: RetryConfig,
-    
+
     /// Authentication settings
     pub authentication: Option<AuthenticationSettings>,
 }
@@ -49,7 +49,10 @@ pub enum ConnectionType {
     /// Local emulation
     LocalEmulation,
     /// Custom connection
-    Custom { name: String, parameters: HashMap<String, String> },
+    Custom {
+        name: String,
+        parameters: HashMap<String, String>,
+    },
 }
 
 /// Authentication settings for legacy systems

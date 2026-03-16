@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::LegacySystemType;
 
@@ -14,31 +14,31 @@ use crate::ToadStoolResult;
 pub trait LegacyEmulator: Send + Sync {
     /// Get emulator name
     fn name(&self) -> &str;
-    
+
     /// Get supported systems
     fn supported_systems(&self) -> Vec<LegacySystemType>;
-    
+
     /// Initialize the emulator
     async fn initialize(&mut self, config: &EmulationConfig) -> ToadStoolResult<()>;
-    
+
     /// Start the emulator
     async fn start(&mut self) -> ToadStoolResult<()>;
-    
+
     /// Stop the emulator
     async fn stop(&mut self) -> ToadStoolResult<()>;
-    
+
     /// Reset the emulator
     async fn reset(&mut self) -> ToadStoolResult<()>;
-    
+
     /// Load disk/ROM image
-    async fn load_image(&mut self, image: &PathBuf) -> ToadStoolResult<()>;
-    
+    async fn load_image(&mut self, image: &Path) -> ToadStoolResult<()>;
+
     /// Save emulator state
-    async fn save_state(&mut self, path: &PathBuf) -> ToadStoolResult<()>;
-    
+    async fn save_state(&mut self, path: &Path) -> ToadStoolResult<()>;
+
     /// Load emulator state
-    async fn load_state(&mut self, path: &PathBuf) -> ToadStoolResult<()>;
-    
+    async fn load_state(&mut self, path: &Path) -> ToadStoolResult<()>;
+
     /// Get emulator status
     async fn get_status(&self) -> ToadStoolResult<EmulationStatus>;
 }
@@ -80,9 +80,10 @@ pub struct PeripheralConfig {
 }
 
 /// Emulation status
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EmulationStatus {
     /// Emulator is not initialized
+    #[default]
     Uninitialized,
     /// Emulator is ready
     Ready,
@@ -95,10 +96,3 @@ pub enum EmulationStatus {
     /// Emulation encountered an error
     Error(String),
 }
-
-impl Default for EmulationStatus {
-    fn default() -> Self {
-        EmulationStatus::Uninitialized
-    }
-}
-

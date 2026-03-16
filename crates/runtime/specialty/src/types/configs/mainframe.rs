@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::LegacySystemType;
 use super::communication::ConnectionSettings;
+use crate::LegacySystemType;
 
 /// Mainframe configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

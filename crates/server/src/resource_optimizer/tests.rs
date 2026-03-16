@@ -10,8 +10,19 @@ use crate::graph_types::{EdgeType, GraphEdge, GraphNode, NodeResourceRequirement
 use crate::resource_estimator::{NodeEstimate, ResourceEstimate};
 use crate::resource_validator::SystemCapabilities;
 
+fn wgpu_safe_or_skip() -> bool {
+    if toadstool_testing::gpu_guards::is_wgpu_safe() {
+        return true;
+    }
+    eprintln!("{}", toadstool_testing::gpu_guards::wgpu_skip_reason());
+    false
+}
+
 #[tokio::test(flavor = "current_thread")]
 async fn test_suggest_optimizations_sequential_graph() {
+    if !wgpu_safe_or_skip() {
+        return;
+    }
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph {
         id: "sequential-graph".to_string(),
@@ -91,6 +102,9 @@ async fn test_optimization_error_estimation_failed_empty_graph() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn test_long_critical_path_bottleneck() {
+    if !wgpu_safe_or_skip() {
+        return;
+    }
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph::builder("long-path")
         .nodes([
@@ -118,6 +132,9 @@ async fn test_long_critical_path_bottleneck() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn test_caching_opportunity() {
+    if !wgpu_safe_or_skip() {
+        return;
+    }
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph::builder("caching")
         .nodes([
@@ -137,6 +154,9 @@ async fn test_caching_opportunity() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn test_batching_opportunity() {
+    if !wgpu_safe_or_skip() {
+        return;
+    }
     let optimizer = ResourceOptimizer::new();
     let graph = ExecutionGraph::builder("batch")
         .nodes([

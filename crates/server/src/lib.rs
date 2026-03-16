@@ -131,12 +131,11 @@ pub use tarpc_server::TestExecutor;
 #[cfg(test)]
 pub use mocks::{MockResourceMonitor, MockSystemResourcesWithUsage};
 
-// P0 TRACKING: SIGSEGV on process exit (Vulkan+Nvidia+Linux)
-// Root cause: wgpu adapter drops during process exit can segfault when Vulkan driver
-// cleanup races with other destructors. See gfx-rs/wgpu#4650, #8365.
-// Mitigation: Tests that use wgpu (capabilities, resource_validator, resource_optimizer)
-// use #[tokio::test(flavor = "current_thread")] to avoid multi-threaded drop races.
-// If segfault persists: run with RUST_TEST_THREADS=1 or disable gpu-discovery in tests.
+// RESOLVED (S155b): SIGSEGV on process exit (Vulkan+Nvidia+Linux)
+// Root cause: wgpu adapter drops during process exit segfault on NVIDIA proprietary
+// Vulkan driver. See gfx-rs/wgpu#4650, #8365.
+// Fix: All wgpu-touching tests guard on `gpu_guards::is_wgpu_safe()` and skip on
+// NVIDIA proprietary. Combined with `current_thread` tokio flavor to avoid drop races.
 
 // Module declarations
 pub mod background;

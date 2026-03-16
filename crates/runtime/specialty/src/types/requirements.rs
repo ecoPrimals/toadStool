@@ -2,7 +2,6 @@
 //! Resource requirement type definitions for legacy systems
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -34,33 +33,47 @@ pub struct CompilationRequirements {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CompilerType {
     /// IBM COBOL compiler
-    IBM_COBOL,
+    #[serde(rename = "IBM_COBOL")]
+    IbmCobol,
     /// Micro Focus COBOL
-    MicroFocus_COBOL,
+    #[serde(rename = "MicroFocus_COBOL")]
+    MicroFocusCobol,
     /// IBM FORTRAN compiler
-    IBM_FORTRAN,
+    #[serde(rename = "IBM_FORTRAN")]
+    IbmFortran,
     /// VAX FORTRAN
-    VAX_FORTRAN,
+    #[serde(rename = "VAX_FORTRAN")]
+    VaxFortran,
     /// Turbo Pascal
-    Turbo_Pascal,
+    #[serde(rename = "Turbo_Pascal")]
+    TurboPascal,
     /// Microsoft C 6.0
-    Microsoft_C_60,
+    #[serde(rename = "Microsoft_C_60")]
+    MicrosoftC60,
     /// Lattice C
-    Lattice_C,
+    #[serde(rename = "Lattice_C")]
+    LatticeC,
     /// PL/I compiler
-    PL_I_Compiler,
+    #[serde(rename = "PL_I_Compiler")]
+    PlICompiler,
     /// 6502 assembler
-    ASM_6502,
+    #[serde(rename = "ASM_6502")]
+    Asm6502,
     /// Z80 assembler
-    ASM_Z80,
+    #[serde(rename = "ASM_Z80")]
+    AsmZ80,
     /// 8080 assembler
-    ASM_8080,
+    #[serde(rename = "ASM_8080")]
+    Asm8080,
     /// 68000 assembler
-    ASM_68000,
+    #[serde(rename = "ASM_68000")]
+    Asm68000,
     /// PDP-11 assembler
-    ASM_PDP11,
+    #[serde(rename = "ASM_PDP11")]
+    AsmPdp11,
     /// System/360 assembler
-    ASM_System360,
+    #[serde(rename = "ASM_System360")]
+    AsmSystem360,
     /// Cross-compiler
     CrossCompiler {
         host_arch: String,
@@ -252,7 +265,8 @@ pub enum FileSystemType {
     /// VAX VMS file system
     VMS,
     /// IBM MVS dataset
-    MVS_Dataset,
+    #[serde(rename = "MVS_Dataset")]
+    MvsDataset,
     /// Unix file system
     Unix,
     /// RT-11 file system
@@ -265,7 +279,12 @@ pub enum FileSystemType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CommunicationProtocol {
     /// Serial communication
-    Serial { baud_rate: u32, data_bits: u8, stop_bits: u8, parity: Parity },
+    Serial {
+        baud_rate: u32,
+        data_bits: u8,
+        stop_bits: u8,
+        parity: Parity,
+    },
     /// Parallel communication
     Parallel,
     /// Telnet
@@ -375,4 +394,3 @@ pub enum OptimizationLevel {
     Size,
     Speed,
 }
-

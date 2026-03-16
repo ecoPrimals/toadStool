@@ -2,19 +2,19 @@
 //! Shared types for mainframe adapters
 
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{Mutex, RwLock};
+use std::time::SystemTime;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::{
-    AuthenticationSettings, COBOLSettings, CommunicationSettings, ConnectionSettings, 
-    ConnectionType, DatasetConfig, JCLSettings, JobOutput, JobPriority, JobStatus, 
-    SystemInfo, ToadStoolResult, ToadStoolError
+    COBOLSettings, ConnectionSettings, DatasetConfig, JCLSettings, JobStatus, SystemInfo,
+    ToadStoolResult,
 };
+use toadstool::JobPriority;
 
 /// Mainframe job representation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,61 +49,65 @@ pub struct MainframeJob {
 #[derive(Debug)]
 pub struct JCLGenerator {
     /// Template library
-    templates: HashMap<String, String>,
+    pub templates: HashMap<String, String>,
     /// JCL settings
-    settings: JCLSettings,
+    pub settings: JCLSettings,
 }
 
 /// COBOL Compiler Interface
 #[derive(Debug)]
 pub struct COBOLCompiler {
     /// Compiler settings
-    settings: COBOLSettings,
+    pub settings: COBOLSettings,
     /// Compiler executable path
-    compiler_path: PathBuf,
+    pub compiler_path: PathBuf,
     /// Library paths
-    library_paths: Vec<PathBuf>,
+    pub library_paths: Vec<PathBuf>,
 }
 
 /// 3270 Terminal Emulator
 #[derive(Debug)]
 pub struct Terminal3270 {
     /// Connection settings
-    connection: ConnectionSettings,
+    pub connection: ConnectionSettings,
     /// Terminal session
-    session: Option<Box<dyn Terminal3270Session>>,
+    pub session: Option<Box<dyn Terminal3270Session>>,
     /// Screen buffer
-    screen_buffer: Vec<Vec<char>>,
+    pub screen_buffer: Vec<Vec<char>>,
     /// Cursor position
-    cursor_position: (u16, u16),
+    pub cursor_position: (u16, u16),
     /// Terminal attributes
-    attributes: Terminal3270Attributes,
+    pub attributes: Terminal3270Attributes,
 }
 
 /// 3270 Terminal Session trait
 // Native async trait - no macro needed
 #[async_trait::async_trait]
-pub trait Terminal3270Session: Send + Sync {
+pub trait Terminal3270Session: Send + Sync + std::fmt::Debug {
     /// Connect to mainframe
     async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()>;
-    
+
     /// Disconnect from mainframe
     async fn disconnect(&mut self) -> ToadStoolResult<()>;
-    
+
     /// Send data to mainframe
     async fn send_data(&mut self, data: &[u8]) -> ToadStoolResult<()>;
-    
+
     /// Receive data from mainframe
     async fn receive_data(&mut self, timeout: Duration) -> ToadStoolResult<Vec<u8>>;
-    
+
     /// Send key sequence
     async fn send_key(&mut self, key: Terminal3270Key) -> ToadStoolResult<()>;
-    
+
     /// Get screen contents
     async fn get_screen(&self) -> ToadStoolResult<String>;
-    
+
     /// Wait for field
-    async fn wait_for_field(&mut self, field_name: &str, timeout: Duration) -> ToadStoolResult<String>;
+    async fn wait_for_field(
+        &mut self,
+        field_name: &str,
+        timeout: Duration,
+    ) -> ToadStoolResult<String>;
 }
 
 /// 3270 Terminal Attributes
@@ -151,9 +155,9 @@ pub enum Terminal3270Key {
 #[derive(Debug)]
 pub struct DatasetManager {
     /// Dataset configurations
-    datasets: HashMap<String, DatasetConfig>,
+    pub datasets: HashMap<String, DatasetConfig>,
     /// Active dataset handles
-    active_datasets: Arc<RwLock<HashMap<String, DatasetHandle>>>,
+    pub active_datasets: Arc<RwLock<HashMap<String, DatasetHandle>>>,
 }
 
 /// Dataset Handle
@@ -175,33 +179,33 @@ pub struct DatasetHandle {
 #[derive(Debug)]
 pub struct DCLProcessor {
     /// DCL command templates
-    templates: HashMap<String, String>,
+    pub templates: HashMap<String, String>,
     /// Environment variables
-    environment: HashMap<String, String>,
+    pub environment: HashMap<String, String>,
     /// Current directory
-    current_directory: PathBuf,
+    pub current_directory: PathBuf,
 }
 
 /// VAX FORTRAN Compiler
 #[derive(Debug)]
 pub struct VAXFortranCompiler {
     /// Compiler path
-    compiler_path: PathBuf,
+    pub compiler_path: PathBuf,
     /// Compiler options
-    compiler_options: Vec<String>,
+    pub compiler_options: Vec<String>,
     /// Library paths
-    library_paths: Vec<PathBuf>,
+    pub library_paths: Vec<PathBuf>,
 }
 
 /// VAX Terminal Interface
 #[derive(Debug)]
 pub struct VAXTerminal {
     /// Terminal type
-    terminal_type: String,
+    pub terminal_type: String,
     /// Terminal attributes
-    attributes: VAXTerminalAttributes,
+    pub attributes: VAXTerminalAttributes,
     /// Session handle
-    session: Option<Box<dyn VAXTerminalSession>>,
+    pub session: Option<Box<dyn VAXTerminalSession>>,
 }
 
 /// VAX Terminal Attributes
@@ -218,16 +222,16 @@ pub struct VAXTerminalAttributes {
 /// VAX Terminal Session trait
 // Native async trait - no macro needed
 #[async_trait::async_trait]
-pub trait VAXTerminalSession: Send + Sync {
+pub trait VAXTerminalSession: Send + Sync + std::fmt::Debug {
     /// Connect to VAX system
     async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()>;
-    
+
     /// Disconnect from VAX system
     async fn disconnect(&mut self) -> ToadStoolResult<()>;
-    
+
     /// Execute DCL command
     async fn execute_dcl(&mut self, command: &str) -> ToadStoolResult<String>;
-    
+
     /// Get system information
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo>;
 }
@@ -236,9 +240,9 @@ pub trait VAXTerminalSession: Send + Sync {
 #[derive(Debug)]
 pub struct VMSFileSystem {
     /// File specifications
-    file_specs: HashMap<String, VMSFileSpec>,
+    pub file_specs: HashMap<String, VMSFileSpec>,
     /// Directory cache
-    directory_cache: Arc<RwLock<HashMap<String, Vec<String>>>>,
+    pub directory_cache: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
 /// VMS File Specification
@@ -260,44 +264,44 @@ pub struct VMSFileSpec {
 #[derive(Debug)]
 pub struct RPGCompiler {
     /// Compiler path
-    compiler_path: PathBuf,
+    pub compiler_path: PathBuf,
     /// Compiler options
-    compiler_options: Vec<String>,
+    pub compiler_options: Vec<String>,
     /// Source member library
-    source_library: String,
+    pub source_library: String,
     /// Object library
-    object_library: String,
+    pub object_library: String,
 }
 
 /// 5250 Terminal Emulator for AS/400
 #[derive(Debug)]
 pub struct Terminal5250 {
     /// Connection settings
-    connection: ConnectionSettings,
+    pub connection: ConnectionSettings,
     /// Terminal session
-    session: Option<Box<dyn Terminal5250Session>>,
+    pub session: Option<Box<dyn Terminal5250Session>>,
     /// Screen buffer
-    screen_buffer: Vec<Vec<char>>,
+    pub screen_buffer: Vec<Vec<char>>,
     /// Field definitions
-    field_definitions: Vec<Field5250>,
+    pub field_definitions: Vec<Field5250>,
 }
 
 /// 5250 Terminal Session trait
 // Native async trait - no macro needed
 #[async_trait::async_trait]
-pub trait Terminal5250Session: Send + Sync {
+pub trait Terminal5250Session: Send + Sync + std::fmt::Debug {
     /// Connect to AS/400
     async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()>;
-    
+
     /// Disconnect from AS/400
     async fn disconnect(&mut self) -> ToadStoolResult<()>;
-    
+
     /// Execute command
     async fn execute_command(&mut self, command: &str) -> ToadStoolResult<String>;
-    
+
     /// Navigate to menu
     async fn navigate_menu(&mut self, menu_option: &str) -> ToadStoolResult<()>;
-    
+
     /// Get screen fields
     async fn get_screen_fields(&self) -> ToadStoolResult<Vec<Field5250>>;
 }
@@ -349,9 +353,9 @@ pub struct Field5250Attributes {
 #[derive(Debug)]
 pub struct IFSManager {
     /// IFS root paths
-    root_paths: Vec<PathBuf>,
+    pub root_paths: Vec<PathBuf>,
     /// File system cache
-    file_cache: Arc<RwLock<HashMap<String, IFSFile>>>,
+    pub file_cache: Arc<RwLock<HashMap<String, IFSFile>>>,
 }
 
 /// IFS File representation

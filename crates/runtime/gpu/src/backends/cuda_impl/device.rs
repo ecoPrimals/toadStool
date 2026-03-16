@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use cudarc::driver::safe::{CudaContext, CudaStream};
+use cudarc::driver::safe::CudaContext;
 use cudarc::driver::sys::CUdevice_attribute;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;

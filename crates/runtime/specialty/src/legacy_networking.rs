@@ -8,8 +8,8 @@
 //! - Token Ring
 //! - Legacy serial protocols
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Legacy network protocol support
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,23 +22,21 @@ pub enum LegacyNetworkProtocol {
 }
 
 /// Legacy networking manager
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LegacyNetworkManager {
     protocols: HashMap<String, LegacyNetworkProtocol>,
 }
 
 impl LegacyNetworkManager {
     pub fn new() -> Self {
-        Self {
-            protocols: HashMap::new(),
-        }
+        Self::default()
     }
-    
+
     pub fn add_protocol(&mut self, name: impl Into<String>, protocol: LegacyNetworkProtocol) {
         self.protocols.insert(name.into(), protocol);
     }
-    
+
     pub fn get_protocols(&self) -> &HashMap<String, LegacyNetworkProtocol> {
         &self.protocols
     }
-} 
+}

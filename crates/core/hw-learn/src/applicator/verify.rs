@@ -18,6 +18,11 @@ pub fn run_verification(step_index: usize, card_path: &str, check: &VerifyCheck)
         } => verify_register(step_index, card_path, *offset, *expected, *mask),
         VerifyCheck::IoctlSucceeds { ioctl_nr } => verify_ioctl(step_index, card_path, *ioctl_nr),
         VerifyCheck::ComputeReadback => verify_compute_readback(step_index),
+        VerifyCheck::MemoryAccessible {
+            aperture,
+            offset,
+            sentinel,
+        } => verify_memory_accessible(step_index, aperture, *offset, *sentinel),
     }
 }
 
@@ -85,6 +90,23 @@ fn verify_compute_readback(step_index: usize) -> StepResult {
         detail: "compute readback verify: requires dispatch pipeline integration \
                  via barraCuda/coralReef (tracked as Gap 3 — FECS GR context init)"
             .to_string(),
+    }
+}
+
+fn verify_memory_accessible(
+    step_index: usize,
+    aperture: &str,
+    offset: u64,
+    sentinel: u64,
+) -> StepResult {
+    StepResult {
+        step_index,
+        success: false,
+        detail: format!(
+            "memory accessible verify: {aperture} @ 0x{offset:x} sentinel 0x{sentinel:x} — \
+             requires VFIO MemoryRegion probe integration via coralReef \
+             (see coralReef::vfio::memory::PraminRegion for VRAM, DmaRegion for sysmem)"
+        ),
     }
 }
 

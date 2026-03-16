@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: March 14, 2026 — S154
+**Date**: March 16, 2026 — S156
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -75,7 +75,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~83% line coverage** (~182K production lines). 20,843 tests (S155b: +558 net new). Mock hardware layers for headless CI (S152). S155b: 12 new integration test files, 806 new test functions covering hw_learn handlers (0%→85%+), transport/dispatch, unibin/background, core common, config, distributed, CLI, GPU runtime, display, toadstool-core. Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM). Target 90%. |
+| D-COV | Test coverage → 90% | Medium | **~83% line coverage** (~182K production lines). **21,156 tests** (S156: +313 net new — specialty crate resurrected + test files rewritten). Remaining gap: hardware-dependent code (neuromorphic, V4L2, DRM, VFIO). Target 90%. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
 | D-KEYRING | ~~Credential resolution: OS keyring lookup~~ | **RESOLVED S152** | `os_keyring` module — D-Bus SecretService (`secret-tool`) on Linux, macOS Keychain (`security`). Wired as step 2.5 in `resolve_credential` chain (env → file → OS keyring → BearDog). |
@@ -128,6 +128,16 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | D-S18-003 | e2e, fhe, comprehensive pending integration tests | Chaos framework exists (`testing/src/chaos/`). Integration tests: 10/11 pass (S138). Pure-Rust C-compiler validation is pre-existing failure (transitive deps). |
 
 ---
+
+## Recently Resolved (S156 — Full Codebase Audit + Specialty Resurrection — Mar 16, 2026)
+
+- **runtime-specialty resurrected**: Fixed 167 compile errors from core type drift (ExecutionResponse, ExecutionRequest, ExecutionStatus, WorkloadType, RuntimeCapabilities fields all updated). Fixed 138 warnings (40+ enum variants renamed to UpperCamelCase with `#[serde(rename)]` wire compat, glob re-export ambiguities resolved). Fixed 47 clippy pedantic errors (Default impls, `&PathBuf`→`&Path`, dead field prefixing). Rewrote both integration test files against current types.
+- **Hardcoding evolved**: Dispatch 5000ms magic number → `DISPATCH_DEFAULT_TIMEOUT` named constant in `timeouts.rs`.
+- **Unsafe evolved**: `unreachable!()` in `nvpmu/dma.rs` → proper `Err(NvPmuError::Hardware(...))`.
+- **Doc warnings fixed**: 5 nvpmu register doc-link bracket escapes, 2 specialty HTML tag escapes, unused `CudaStream` import removed.
+- **distributed lint**: `needless_return` in `security_provider/factory.rs` fixed.
+- **`warn(missing_docs)` rollout**: 4 crates retain `warn(missing_docs)` (akida-driver, akida-models, akida-reservoir-research, secure_enclave). Remaining 39 crates deferred until documentation coverage complete.
+- **Build garbage**: Cleaned 5,950 profraw files (2.2 GB) and 15.2 GB stale target/ — 17.4 GB reclaimed. Removed 2 orphan CSV files at root.
 
 ## Recently Resolved (S155b — Coverage Expansion + Dependency/Unsafe Audit — Mar 15, 2026)
 

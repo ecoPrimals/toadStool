@@ -3,39 +3,50 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::LegacyArchitecture;
 use crate::ToadStoolResult;
-use std::future::Future;
 
 /// Cross-compilation toolchain trait for legacy architectures
 #[async_trait::async_trait]
 pub trait CrossCompilationToolchain: Send + Sync {
     /// Get the toolchain name
     fn name(&self) -> &str;
-    
+
     /// Get supported architectures
     fn supported_architectures(&self) -> Vec<LegacyArchitecture>;
-    
+
     /// Initialize the toolchain
     async fn initialize(&mut self, config: &ToolchainConfig) -> ToadStoolResult<()>;
-    
+
     /// Compile source code
-    async fn compile(&self, source: PathBuf, target: LegacyArchitecture) -> ToadStoolResult<CompilationResult>;
-    
+    async fn compile(
+        &self,
+        source: PathBuf,
+        target: LegacyArchitecture,
+    ) -> ToadStoolResult<CompilationResult>;
+
     /// Link object files
     async fn link(&self, objects: Vec<PathBuf>, output: PathBuf) -> ToadStoolResult<LinkResult>;
-    
+
     /// Create ROM image from executable
-    async fn create_rom_image(&self, executable: &PathBuf, format: &super::configs::ROMFormat) -> ToadStoolResult<Vec<u8>>;
-    
+    async fn create_rom_image(
+        &self,
+        executable: &Path,
+        format: &super::configs::storage::ROMFormat,
+    ) -> ToadStoolResult<Vec<u8>>;
+
     /// Disassemble binary
-    async fn disassemble(&self, binary: &[u8], architecture: &LegacyArchitecture) -> ToadStoolResult<String>;
+    async fn disassemble(
+        &self,
+        binary: &[u8],
+        architecture: &LegacyArchitecture,
+    ) -> ToadStoolResult<String>;
 }
 
 /// Toolchain configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ToolchainConfig {
     /// Compiler flags
     pub compiler_flags: Vec<String>,
@@ -47,18 +58,6 @@ pub struct ToolchainConfig {
     pub library_paths: Vec<PathBuf>,
     /// Environment variables
     pub environment: HashMap<String, String>,
-}
-
-impl Default for ToolchainConfig {
-    fn default() -> Self {
-        Self {
-            compiler_flags: Vec::new(),
-            linker_flags: Vec::new(),
-            include_paths: Vec::new(),
-            library_paths: Vec::new(),
-            environment: HashMap::new(),
-        }
-    }
 }
 
 /// Compilation result
@@ -92,4 +91,3 @@ pub struct LinkResult {
     /// Errors
     pub errors: Vec<String>,
 }
-

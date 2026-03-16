@@ -1,3 +1,0 @@
-Substrate,Hardware,Operation,Backend,TotalTimeUs,ThroughputOpsPerSec,AvgLatencyUs,PowerWatts,TotalEnergyJoules,OpsPerJoule,PolyDegree,Iterations
-GPU (BarraCUDA),NVIDIA RTX 3090,Polynomial Addition (degree=4096),wgpu (NVIDIA RTX 3090),968702,211416892.72,19.37,150.0,145.305313,1409446.0,4096,50000
-CPU (TFHE-rs),x86_64,FheUint8 Addition,N/A,127718123,7.83,127718.12,25.0,3192.953125,0.3,4096,1000

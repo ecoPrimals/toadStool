@@ -6,21 +6,20 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use tracing::{error, info};
+use tracing::info;
 use uuid::Uuid;
 
 use crate::{
-    EmbeddedConfig, JobOutput, JobStatus, LegacyAdapter, LegacyJob, LegacySystemType,
-    SpecialtyRuntimeConfig, SystemInfo, ToadStoolError, ToadStoolResult,
-    LegacyArchitecture,
+    EmbeddedConfig, JobOutput, JobStatus, LegacyAdapter, LegacyArchitecture, LegacyJob,
+    LegacySystemType, SpecialtyRuntimeConfig, SystemInfo, ToadStoolError, ToadStoolResult,
 };
 
-use super::types::*;
-use super::managers::{MemoryLayoutManager, PeripheralManager};
 use super::dos::DOSInterface;
-use super::toolchains::*;
 use super::emulators::*;
+use super::managers::{MemoryLayoutManager, PeripheralManager};
 use super::programmers::*;
+use super::toolchains::*;
+use super::types::*;
 
 /// 8-bit Microcontroller Adapter
 #[derive(Debug)]
@@ -36,9 +35,9 @@ pub struct Microcontroller8BitAdapter {
     /// Emulators
     emulators: Arc<RwLock<HashMap<LegacyArchitecture, Box<dyn EmbeddedEmulator>>>>,
     /// Memory layout manager
-    memory_manager: Arc<MemoryLayoutManager>,
+    _memory_manager: Arc<MemoryLayoutManager>,
     /// Peripheral manager
-    peripheral_manager: Arc<PeripheralManager>,
+    _peripheral_manager: Arc<PeripheralManager>,
 }
 
 /// 16-bit System Adapter
@@ -53,24 +52,30 @@ pub struct System16BitAdapter {
     /// System emulators
     emulators: Arc<RwLock<HashMap<LegacyArchitecture, Box<dyn EmbeddedEmulator>>>>,
     /// Memory layout manager
-    memory_manager: Arc<MemoryLayoutManager>,
+    _memory_manager: Arc<MemoryLayoutManager>,
     /// DOS interface (for 8086 systems)
     dos_interface: Arc<Mutex<Option<DOSInterface>>>,
 }
 
 // Implementation for 8-bit Microcontroller Adapter
-impl Microcontroller8BitAdapter {
-    /// Create a new 8-bit microcontroller adapter
-    pub fn new() -> Self {
+impl Default for Microcontroller8BitAdapter {
+    fn default() -> Self {
         Self {
             config: None,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
             toolchains: Arc::new(RwLock::new(HashMap::new())),
             programmers: Arc::new(RwLock::new(HashMap::new())),
             emulators: Arc::new(RwLock::new(HashMap::new())),
-            memory_manager: Arc::new(MemoryLayoutManager::new()),
-            peripheral_manager: Arc::new(PeripheralManager::new()),
+            _memory_manager: Arc::new(MemoryLayoutManager::new()),
+            _peripheral_manager: Arc::new(PeripheralManager::new()),
         }
+    }
+}
+
+impl Microcontroller8BitAdapter {
+    /// Create a new 8-bit microcontroller adapter
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Initialize toolchains for supported architectures
@@ -83,7 +88,7 @@ impl Microcontroller8BitAdapter {
 
         // Initialize Z80 toolchain
         let toolchain_z80 = Box::new(ToolchainZ80::new());
-        toolchains.insert(LegacyArchitecture::Zilog_Z80, toolchain_z80);
+        toolchains.insert(LegacyArchitecture::ZilogZ80, toolchain_z80);
 
         // Initialize 8080 toolchain
         let toolchain_8080 = Box::new(Toolchain8080::new());
@@ -91,7 +96,7 @@ impl Microcontroller8BitAdapter {
 
         // Initialize 8051 toolchain
         let toolchain_8051 = Box::new(Toolchain8051::new());
-        toolchains.insert(LegacyArchitecture::Intel_8051, toolchain_8051);
+        toolchains.insert(LegacyArchitecture::Intel8051, toolchain_8051);
 
         info!("Initialized toolchains for 8-bit microcontrollers");
         Ok(())
@@ -123,7 +128,7 @@ impl Microcontroller8BitAdapter {
 
         // Initialize Z80 emulator
         let emulator_z80 = Box::new(EmulatorZ80::new());
-        emulators.insert(LegacyArchitecture::Zilog_Z80, emulator_z80);
+        emulators.insert(LegacyArchitecture::ZilogZ80, emulator_z80);
 
         info!("Initialized emulators for 8-bit microcontrollers");
         Ok(())
@@ -140,7 +145,7 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
         vec![
             LegacySystemType::Intel8080,
             LegacySystemType::MOS6502,
-            LegacySystemType::Zilog_Z80,
+            LegacySystemType::ZilogZ80,
             LegacySystemType::Intel8051,
         ]
     }
@@ -154,8 +159,8 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
                 embedded_config.architecture,
                 LegacyArchitecture::Intel8080
                     | LegacyArchitecture::MOS6502
-                    | LegacyArchitecture::Zilog_Z80
-                    | LegacyArchitecture::Intel_8051
+                    | LegacyArchitecture::ZilogZ80
+                    | LegacyArchitecture::Intel8051
             ) {
                 self.config = Some(embedded_config.clone());
                 info!("Found 8-bit microcontroller configuration: {}", name);
@@ -284,9 +289,9 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
                 usage: 0.0,
             },
             memory_info: crate::MemoryInfo {
-                total: 64 * 1024,      // 64KB
-                available: 32 * 1024,  // 32KB
-                used: 32 * 1024,       // 32KB
+                total: 64 * 1024,     // 64KB
+                available: 32 * 1024, // 32KB
+                used: 32 * 1024,      // 32KB
                 memory_type: crate::MemoryType::RAM,
             },
             storage_info: crate::StorageInfo {
@@ -310,17 +315,23 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
 }
 
 // Implementation for 16-bit System Adapter
-impl System16BitAdapter {
-    /// Create a new 16-bit system adapter
-    pub fn new() -> Self {
+impl Default for System16BitAdapter {
+    fn default() -> Self {
         Self {
             config: None,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
             toolchains: Arc::new(RwLock::new(HashMap::new())),
             emulators: Arc::new(RwLock::new(HashMap::new())),
-            memory_manager: Arc::new(MemoryLayoutManager::new()),
+            _memory_manager: Arc::new(MemoryLayoutManager::new()),
             dos_interface: Arc::new(Mutex::new(None)),
         }
+    }
+}
+
+impl System16BitAdapter {
+    /// Create a new 16-bit system adapter
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Initialize toolchains for 16-bit systems
@@ -350,7 +361,7 @@ impl LegacyAdapter for System16BitAdapter {
         vec![
             LegacySystemType::Intel8086,
             LegacySystemType::Motorola68000,
-            LegacySystemType::DOS_16bit,
+            LegacySystemType::Dos16bit,
         ]
     }
 
@@ -522,4 +533,3 @@ impl LegacyAdapter for System16BitAdapter {
         Ok(true)
     }
 }
-
