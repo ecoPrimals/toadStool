@@ -460,9 +460,11 @@ fn test_service_capability_search() {
         .collect();
 
     assert_eq!(with_coordination.len(), 1);
-    assert!(with_coordination[0]
-        .capabilities
-        .contains(&"coordination".to_string()));
+    assert!(
+        with_coordination[0]
+            .capabilities
+            .contains(&"coordination".to_string())
+    );
 }
 
 /// Test discovery timestamp validation
@@ -642,9 +644,11 @@ fn test_service_pattern_creation() {
     };
     assert_eq!(pattern.name, "crypto");
     assert_eq!(pattern.default_ports.len(), 2);
-    assert!(pattern
-        .required_capabilities
-        .contains(&"security".to_string()));
+    assert!(
+        pattern
+            .required_capabilities
+            .contains(&"security".to_string())
+    );
 }
 
 /// Test `ServicePattern` clone
@@ -671,23 +675,26 @@ fn test_service_pattern_clone() {
 #[tokio::test]
 async fn test_discover_services_skip_discovery_env() {
     let old = std::env::var("TOADSTOOL_SKIP_DISCOVERY").ok();
-    std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
 
     let mut discoverer = EcosystemDiscoverer::new();
     let result = discoverer.discover_services().await;
 
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", v);
+        unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_SKIP_DISCOVERY");
+        unsafe { std::env::remove_var("TOADSTOOL_SKIP_DISCOVERY") };
     }
 
     assert!(result.is_ok());
     let services = result.unwrap();
-    assert!(services
-        .discovery_summary
-        .discovery_methods_used
-        .contains(&"fast_mode".to_string()));
+    assert!(
+        services
+            .discovery_summary
+            .discovery_methods_used
+            .contains(&"fast_mode".to_string())
+    );
 }
 
 /// Test `find_pattern_by_capability` returns correct pattern

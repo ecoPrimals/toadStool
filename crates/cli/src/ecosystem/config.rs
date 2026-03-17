@@ -46,13 +46,13 @@ pub struct ServiceConfig {
     pub metadata: HashMap<String, String>,
 }
 
-fn default_priority() -> u8 {
+const fn default_priority() -> u8 {
     50
 }
-fn default_enabled() -> bool {
+const fn default_enabled() -> bool {
     true
 }
-fn default_health_check_interval() -> u64 {
+const fn default_health_check_interval() -> u64 {
     30
 }
 
@@ -80,13 +80,13 @@ pub struct DiscoveryConfig {
     pub timeout_seconds: u64,
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
-fn default_false() -> bool {
+const fn default_false() -> bool {
     false
 }
-fn default_discovery_timeout() -> u64 {
+const fn default_discovery_timeout() -> u64 {
     10
 }
 
@@ -127,24 +127,27 @@ impl ServiceDiscoveryConfig {
     /// 2. `./.toadstool/config.toml`
     /// 3. `/etc/toadstool/services.toml`
     pub fn load_default() -> Self {
-        use etcetera::{choose_base_strategy, BaseStrategy};
+        use etcetera::{BaseStrategy, choose_base_strategy};
 
-        let paths = if let Ok(strategy) = choose_base_strategy() {
-            vec![
-                Some(strategy.home_dir().join(".toadstool/services.toml")),
-                Some(PathBuf::from(".toadstool/config.toml")),
-                Some(PathBuf::from(
-                    super::constants::paths::SYSTEM_SERVICES_CONFIG,
-                )),
-            ]
-        } else {
-            vec![
-                Some(PathBuf::from(".toadstool/config.toml")),
-                Some(PathBuf::from(
-                    super::constants::paths::SYSTEM_SERVICES_CONFIG,
-                )),
-            ]
-        };
+        let paths = choose_base_strategy().map_or_else(
+            |_| {
+                vec![
+                    Some(PathBuf::from(".toadstool/config.toml")),
+                    Some(PathBuf::from(
+                        super::constants::paths::SYSTEM_SERVICES_CONFIG,
+                    )),
+                ]
+            },
+            |strategy| {
+                vec![
+                    Some(strategy.home_dir().join(".toadstool/services.toml")),
+                    Some(PathBuf::from(".toadstool/config.toml")),
+                    Some(PathBuf::from(
+                        super::constants::paths::SYSTEM_SERVICES_CONFIG,
+                    )),
+                ]
+            },
+        );
 
         for path in paths.into_iter().flatten() {
             if let Ok(config) = Self::from_file(&path) {

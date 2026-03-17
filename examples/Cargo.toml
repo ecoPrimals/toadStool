@@ -79,7 +79,7 @@ path = "squirrel_mcp_coordination_demo.rs"
 
 [[bin]]
 name = "standalone_universal_compute"
-path = "standalone_universal_compute.rs"
+path = "standalone_universal_compute/main.rs"
 
 [[bin]]
 name = "universal_compute_demo"

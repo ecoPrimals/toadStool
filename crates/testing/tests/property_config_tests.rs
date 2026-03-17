@@ -242,8 +242,8 @@ fn test_integer_generator_mixed_range() {
 
 #[test]
 fn test_integer_generator_single_value() {
-    let mut gen = IntegerGenerator::new(42, 42);
-    let val = gen.generate(10);
+    let mut generator = IntegerGenerator::new(42, 42);
+    let val = generator.generate(10);
     assert_eq!(
         val, 42,
         "Single value range should always produce that value"
@@ -252,9 +252,9 @@ fn test_integer_generator_single_value() {
 
 #[test]
 fn test_integer_generator_generate_in_range() {
-    let mut gen = IntegerGenerator::new(10, 20);
+    let mut generator = IntegerGenerator::new(10, 20);
     for _ in 0..50 {
-        let val = gen.generate(10);
+        let val = generator.generate(10);
         assert!(
             (10..=20).contains(&val),
             "Generated value should be in range"
@@ -264,20 +264,20 @@ fn test_integer_generator_generate_in_range() {
 
 #[test]
 fn test_string_generator_creation() {
-    let gen = StringGenerator::new(0, 10);
-    drop(gen);
+    let generator = StringGenerator::new(0, 10);
+    drop(generator);
 }
 
 #[test]
 fn test_string_generator_with_custom_charset() {
-    let gen = StringGenerator::with_charset(5, 15, "abc123");
-    drop(gen);
+    let generator = StringGenerator::with_charset(5, 15, "abc123");
+    drop(generator);
 }
 
 #[test]
 fn test_string_generator_min_max_same() {
-    let mut gen = StringGenerator::new(5, 5);
-    let val = gen.generate(5);
+    let mut generator = StringGenerator::new(5, 5);
+    let val = generator.generate(5);
     assert_eq!(
         val.len(),
         5,
@@ -287,9 +287,9 @@ fn test_string_generator_min_max_same() {
 
 #[test]
 fn test_string_generator_length_range() {
-    let mut gen = StringGenerator::new(5, 10);
+    let mut generator = StringGenerator::new(5, 10);
     for _ in 0..50 {
-        let val = gen.generate(5);
+        let val = generator.generate(5);
         assert!(
             val.len() >= 5 && val.len() <= 10,
             "Generated string length should be in range"
@@ -299,8 +299,8 @@ fn test_string_generator_length_range() {
 
 #[test]
 fn test_string_generator_empty_allowed() {
-    let mut gen = StringGenerator::new(0, 5);
-    let _val = gen.generate(0);
+    let mut generator = StringGenerator::new(0, 5);
+    let _val = generator.generate(0);
     // Just verify it doesn't panic
 }
 

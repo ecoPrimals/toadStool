@@ -171,11 +171,10 @@ impl RecipeDistiller {
         baseline: Option<&ObserveResult>,
         target_arch: GpuArch,
     ) -> InitRecipe {
-        let compute_events = if let Some(base) = baseline {
-            diff::diff_traces(&base.events, &observation.events)
-        } else {
-            observation.events.clone()
-        };
+        let compute_events = baseline.map_or_else(
+            || observation.events.clone(),
+            |base| diff::diff_traces(&base.events, &observation.events),
+        );
 
         let classified = classify::classify_events(&compute_events, Some(&target_arch.chip));
         recipe::build_recipe(classified, target_arch, &observation.driver)

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! GPU telemetry handler — report thermal and power data for detected GPUs.
 
-use super::helpers::check_thermal_for_bdf;
 use super::HwLearnHandler;
+use super::helpers::check_thermal_for_bdf;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 impl HwLearnHandler {

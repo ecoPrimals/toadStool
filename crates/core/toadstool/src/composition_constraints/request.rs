@@ -56,7 +56,7 @@ impl CompositionRequest {
     }
 
     #[must_use]
-    pub fn with_priority(mut self, priority: ConstraintPriority) -> Self {
+    pub const fn with_priority(mut self, priority: ConstraintPriority) -> Self {
         self.priority = priority;
         self
     }

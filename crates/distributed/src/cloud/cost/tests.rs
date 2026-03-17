@@ -9,8 +9,8 @@
 )]
 mod tests {
     use super::super::optimizer::CloudCostOptimizer;
-    use super::super::pricing::{infer_pricing_tier, CloudCostModel, PricingTier};
-    use super::super::types::{CostError, CostEstimate, CostLineItem, BYTES_PER_GB};
+    use super::super::pricing::{CloudCostModel, PricingTier, infer_pricing_tier};
+    use super::super::types::{BYTES_PER_GB, CostError, CostEstimate, CostLineItem};
     use crate::cloud::types::{
         CloudCapabilities, ComputeType, CostConfig, NetworkingFeature, SecurityFeature, StorageType,
     };

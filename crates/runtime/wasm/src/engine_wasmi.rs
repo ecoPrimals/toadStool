@@ -23,13 +23,13 @@ use std::time::{Duration, SystemTime};
 use tracing::{debug, info};
 use wasmi::{Config, Engine};
 
+use toadstool::WorkloadType;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::execution::{
     ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine,
     RuntimeType,
 };
 use toadstool::resources::RuntimeMetrics;
-use toadstool::WorkloadType;
 
 use crate::cache_wasmi::ModuleCache;
 use crate::config::WasmRuntimeConfig;
@@ -156,7 +156,7 @@ impl WasmRuntimeEngine {
     }
 
     /// Get engine reference
-    pub fn engine(&self) -> &Engine {
+    pub const fn engine(&self) -> &Engine {
         &self.engine
     }
 
@@ -167,7 +167,9 @@ impl WasmRuntimeEngine {
 
     /// Get component registry (if component model is enabled)
     /// EVOLVED: Public accessor for component model support
-    pub fn component_registry(&self) -> Option<&Arc<crate::component_model::ComponentRegistry>> {
+    pub const fn component_registry(
+        &self,
+    ) -> Option<&Arc<crate::component_model::ComponentRegistry>> {
         self.component_registry.as_ref()
     }
 }

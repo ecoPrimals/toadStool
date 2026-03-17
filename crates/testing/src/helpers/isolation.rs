@@ -117,7 +117,7 @@ impl IsolatedRuntime {
         }
     }
 
-    pub fn handle(&self) -> &tokio::runtime::Handle {
+    pub const fn handle(&self) -> &tokio::runtime::Handle {
         &self.handle
     }
 

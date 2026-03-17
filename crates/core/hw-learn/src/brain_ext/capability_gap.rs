@@ -114,10 +114,10 @@ impl std::fmt::Display for CapabilityGap {
 mod tests {
     use super::*;
 
-    fn nvidia_arch(gen: &str, cc: &str) -> GpuArch {
+    fn nvidia_arch(generation: &str, cc: &str) -> GpuArch {
         GpuArch {
             vendor: Vendor::Nvidia,
-            generation: gen.into(),
+            generation: generation.into(),
             chip: "test".into(),
             compute_class: cc.into(),
         }

@@ -69,7 +69,7 @@ pub(super) fn execute_gelu(workload: Workload) -> Result<WorkloadData, ComputeEr
                     // GELU approximation
                     let sqrt_2_over_pi = 0.797_884_6_f32; // √(2/π)
                     let coeff = 0.044_715_f32;
-                    let inner = sqrt_2_over_pi * (x + coeff * x.powi(3));
+                    let inner = sqrt_2_over_pi * coeff.mul_add(x.powi(3), x);
                     0.5 * x * (1.0 + inner.tanh())
                 })
                 .collect();
@@ -81,7 +81,7 @@ pub(super) fn execute_gelu(workload: Workload) -> Result<WorkloadData, ComputeEr
                 .map(|&x| {
                     let sqrt_2_over_pi = 0.797_884_560_802_865_4_f64;
                     let coeff = 0.044_715_f64;
-                    let inner = sqrt_2_over_pi * (x + coeff * x.powi(3));
+                    let inner = sqrt_2_over_pi * coeff.mul_add(x.powi(3), x);
                     0.5 * x * (1.0 + inner.tanh())
                 })
                 .collect();

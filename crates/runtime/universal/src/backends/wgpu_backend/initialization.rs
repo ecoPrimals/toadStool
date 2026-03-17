@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! wgpu adapter initialization — device request, capability probing, GpuAdapterInfo construction.
 
-use super::types::{is_nvidia_ada_lovelace, GpuAdapterInfo, GpuDeviceType, HardwareFingerprint};
+use super::types::{GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, is_nvidia_ada_lovelace};
 use crate::types::*;
 use std::sync::Arc;
 

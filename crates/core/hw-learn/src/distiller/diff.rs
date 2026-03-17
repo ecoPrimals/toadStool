@@ -23,7 +23,7 @@ pub fn diff_traces(baseline: &[TraceEvent], compute: &[TraceEvent]) -> Vec<Trace
 }
 
 /// Extract a u64 key from an event for deduplication.
-fn event_key(kind: &TraceEventKind) -> Option<u64> {
+const fn event_key(kind: &TraceEventKind) -> Option<u64> {
     match kind {
         TraceEventKind::RegisterWrite { offset, .. } => Some(*offset),
         TraceEventKind::RegisterRead { offset, .. } => Some(*offset | (1 << 63)),

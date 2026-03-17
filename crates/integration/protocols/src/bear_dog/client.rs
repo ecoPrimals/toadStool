@@ -66,14 +66,19 @@ impl BearDogIntegration {
                     ToadStoolError::security(format!("Failed to parse auth response: {e}"))
                 })?;
 
-                let mut token = self.access_token.lock().await;
-                *token = Some(auth_response.access_token.clone());
-
-                let mut expires_at = self.token_expires_at.lock().await;
-                *expires_at = Some(Instant::now() + Duration::from_secs(auth_response.expires_in));
-
-                let mut policies = self.active_policies.write().await;
-                *policies = auth_response.policies.clone();
+                {
+                    let mut token = self.access_token.lock().await;
+                    *token = Some(auth_response.access_token.clone());
+                }
+                {
+                    let mut expires_at = self.token_expires_at.lock().await;
+                    *expires_at =
+                        Some(Instant::now() + Duration::from_secs(auth_response.expires_in));
+                }
+                {
+                    let mut policies = self.active_policies.write().await;
+                    *policies = auth_response.policies.clone();
+                }
 
                 info!("✅ Authenticated with PKI security service (Pure Rust)");
                 Ok(auth_response)
@@ -99,8 +104,10 @@ impl BearDogIntegration {
 
         self.ensure_valid_token().await?;
 
-        let token = self.access_token.lock().await;
-        let access_token = token
+        let access_token = self
+            .access_token
+            .lock()
+            .await
             .as_ref()
             .ok_or_else(|| ToadStoolError::security("No access token available"))?
             .clone();
@@ -182,8 +189,10 @@ impl BearDogIntegration {
                     ToadStoolError::security("Invalid validation response format")
                 })?;
 
-                let mut last_validation = self.last_validation.lock().await;
-                *last_validation = Instant::now();
+                {
+                    let mut last_validation = self.last_validation.lock().await;
+                    *last_validation = Instant::now();
+                }
 
                 if is_valid {
                     info!("✅ Zero-trust validation passed");
@@ -258,11 +267,11 @@ impl BearDogIntegration {
 
     async fn ensure_valid_token(&self) -> ToadStoolResult<()> {
         let expires_at = self.token_expires_at.lock().await;
-        if let Some(expiry) = *expires_at {
-            if Instant::now() + Duration::from_secs(60) > expiry {
-                drop(expires_at);
-                return self.refresh_token_if_needed().await;
-            }
+        if let Some(expiry) = *expires_at
+            && Instant::now() + Duration::from_secs(60) > expiry
+        {
+            drop(expires_at);
+            return self.refresh_token_if_needed().await;
         }
         Ok(())
     }
@@ -313,8 +322,7 @@ impl BearDogIntegration {
             timestamp: std::time::SystemTime::now(),
         };
 
-        let mut buffer = self.audit_buffer.lock().await;
-        buffer.push(audit_event);
+        self.audit_buffer.lock().await.push(audit_event);
 
         Ok(())
     }

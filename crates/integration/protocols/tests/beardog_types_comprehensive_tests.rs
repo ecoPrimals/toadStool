@@ -39,9 +39,11 @@ fn test_beardog_config_default_monitoring() {
 fn test_beardog_config_unix_socket_based() {
     // EVOLVED: No API tokens! Unix socket auth via file permissions
     let config = BearDogConfig::default();
-    assert!(std::path::Path::new(&config.socket_path)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("sock")));
+    assert!(
+        std::path::Path::new(&config.socket_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
+    );
 }
 
 #[test]

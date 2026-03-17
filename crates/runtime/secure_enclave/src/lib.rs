@@ -75,7 +75,7 @@ pub mod runtime;
 
 // Re-exports
 pub use audit::{AuditEvent, AuditEventType, AuditLogger};
-pub use decompression::{decompress_isolated, CompressionAlgorithm, DecompressionStats};
+pub use decompression::{CompressionAlgorithm, DecompressionStats, decompress_isolated};
 pub use error::{Error, Result};
 pub use isolated_memory::IsolatedMemoryRegion;
 pub use key_store::EphemeralKeyStore;

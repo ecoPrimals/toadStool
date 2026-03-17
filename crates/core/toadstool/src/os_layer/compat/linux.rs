@@ -64,7 +64,7 @@ impl LinuxCompatibilityLayer {
     }
 
     #[must_use]
-    pub fn get_config(&self) -> &LinuxCompatConfig {
+    pub const fn get_config(&self) -> &LinuxCompatConfig {
         &self.config
     }
 

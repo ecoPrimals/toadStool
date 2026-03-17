@@ -170,18 +170,18 @@ impl TouchTracker {
             if let Some(touch) = self.slots.get_mut(&slot) {
                 let mut moved = false;
 
-                if let Some(x) = update.x {
-                    if x != touch.x {
-                        touch.x = x;
-                        moved = true;
-                    }
+                if let Some(x) = update.x
+                    && x != touch.x
+                {
+                    touch.x = x;
+                    moved = true;
                 }
 
-                if let Some(y) = update.y {
-                    if y != touch.y {
-                        touch.y = y;
-                        moved = true;
-                    }
+                if let Some(y) = update.y
+                    && y != touch.y
+                {
+                    touch.y = y;
+                    moved = true;
                 }
 
                 if moved {

@@ -192,7 +192,7 @@ impl OptimizationCache {
     /// - macOS: ~/Library/Caches/toadstool-gpu/
     /// - Windows: %LOCALAPPDATA%\toadstool-gpu\
     fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf, AdaptiveError> {
-        use etcetera::{choose_base_strategy, BaseStrategy};
+        use etcetera::{BaseStrategy, choose_base_strategy};
         const GPU_CACHE_NAMESPACE: &str = "toadstool-gpu";
 
         let strategy = choose_base_strategy().map_err(|e| {

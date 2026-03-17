@@ -23,7 +23,7 @@ pub struct MetricsCollector {
 
 impl MetricsCollector {
     /// Create a new metrics collector
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),

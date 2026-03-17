@@ -169,14 +169,13 @@ impl UniversalComputeScheduler {
         let best_from_history = history
             .iter()
             .filter(|r| r.workload_signature == workload_sig)
-            .min_by_key(|r| r.execution_time);
+            .min_by_key(|r| r.execution_time)
+            .map(|r| (r.resource_id.clone(), r.execution_time));
+        drop(history);
 
-        if let Some(record) = best_from_history {
+        if let Some((resource_id, _execution_time)) = best_from_history {
             // Find resource with this ID
-            if let Some(resource) = resources
-                .iter()
-                .find(|r| r.resource_id() == record.resource_id)
-            {
+            if let Some(resource) = resources.iter().find(|r| r.resource_id() == resource_id) {
                 return Ok(resource);
             }
         }
@@ -279,10 +278,10 @@ impl UniversalComputeScheduler {
         // Check cache first, release lock before await
         {
             let cache = self.utilization_cache.read().await;
-            if let Some((utilization, timestamp)) = cache.get(&resource_id) {
-                if timestamp.elapsed() < Duration::from_secs(1) {
-                    return *utilization;
-                }
+            if let Some((utilization, timestamp)) = cache.get(&resource_id)
+                && timestamp.elapsed() < Duration::from_secs(1)
+            {
+                return *utilization;
             }
         }
 

@@ -99,20 +99,22 @@ impl CapabilityProvider {
         let adapter = self.create_adapter_for_endpoint(primal_endpoint).await?;
 
         // Get capabilities to register
-        let registry = self.registry.read().await;
-        let capabilities = registry.all_capabilities();
+        let capabilities = self.registry.read().await.all_capabilities();
 
         // Register with the primal
         adapter.register_capabilities(capabilities).await?;
 
         // Store adapter for future use
-        let mut adapters = self.adapters.write().await;
-        adapters.insert(primal_endpoint.to_string(), adapter);
+        self.adapters
+            .write()
+            .await
+            .insert(primal_endpoint.to_string(), adapter);
 
         Ok(())
     }
 
     /// Send heartbeat to all connected primals
+    #[allow(clippy::significant_drop_tightening)] // Must hold lock during iteration
     pub async fn send_heartbeats(&self) -> Result<(), DistributedError> {
         let adapters = self.adapters.read().await;
 
@@ -135,11 +137,11 @@ impl CapabilityProvider {
 
     /// Get current capability status
     pub async fn get_capabilities(&self) -> Vec<Capability> {
-        let registry = self.registry.read().await;
-        registry.all_capabilities()
+        self.registry.read().await.all_capabilities()
     }
 
     /// Update capabilities (e.g., when GPU becomes available/unavailable)
+    #[allow(clippy::significant_drop_tightening)] // Must hold adapters lock during notify loop
     pub async fn update_capability(
         &self,
         capability: Capability,
@@ -148,8 +150,10 @@ impl CapabilityProvider {
         // Clone for later notification
         let cap_for_notification = capability.clone();
 
-        let mut registry = self.registry.write().await;
-        registry.update_capability(capability, available)?;
+        {
+            let mut registry = self.registry.write().await;
+            registry.update_capability(capability, available)?;
+        }
 
         // Notify all connected primals of the change
         let adapters = self.adapters.read().await;

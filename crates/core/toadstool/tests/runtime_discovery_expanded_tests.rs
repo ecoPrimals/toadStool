@@ -84,10 +84,12 @@ async fn test_max_services_limit() {
 
     let result = discovery.register_service(service3).await;
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Maximum services limit"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Maximum services limit")
+    );
 }
 
 /// Test find by capability with no matches

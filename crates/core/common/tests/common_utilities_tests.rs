@@ -3,7 +3,7 @@
 
 use std::time::{Duration, SystemTime};
 use toadstool_common::{
-    format_bytes, format_duration, generate_id, StringExt, Timestamp, ToadStoolId,
+    StringExt, Timestamp, ToadStoolId, format_bytes, format_duration, generate_id,
 };
 
 // ============================================================================

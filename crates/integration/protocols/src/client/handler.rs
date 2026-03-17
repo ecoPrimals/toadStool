@@ -15,7 +15,7 @@ impl<F> SimpleMessageHandler<F>
 where
     F: Fn(ProtocolMessage) -> Result<Option<ProtocolMessage>, ProtocolError> + Send + Sync,
 {
-    pub fn new(handler_fn: F) -> Self {
+    pub const fn new(handler_fn: F) -> Self {
         Self { handler_fn }
     }
 }

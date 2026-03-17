@@ -113,6 +113,7 @@ pub struct AvailableDevice {
 impl AvailableDevice {
     /// VRAM remaining for new allocations.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // AvailableDevice fields may not be const in all contexts
     pub fn free_vram_bytes(&self) -> u64 {
         self.total_vram_bytes
             .saturating_sub(self.allocated_vram_bytes)
@@ -166,9 +167,11 @@ impl ResourceOrchestrator {
 
     /// Release a device allocation for a tenant.
     pub fn release(&self, tenant_id: &str, device_index: u32) {
-        let mut devices = self.devices.write();
-        if let Some(dev) = devices.iter_mut().find(|d| d.index == device_index) {
-            if dev.current_tenant.as_deref() == Some(tenant_id) {
+        {
+            let mut devices = self.devices.write();
+            if let Some(dev) = devices.iter_mut().find(|d| d.index == device_index)
+                && dev.current_tenant.as_deref() == Some(tenant_id)
+            {
                 dev.allocated_vram_bytes = 0;
                 dev.current_tenant = None;
             }
@@ -195,18 +198,20 @@ impl ResourceOrchestrator {
 
     /// Current deployment model.
     #[must_use]
-    pub fn deployment_model(&self) -> DeploymentModel {
+    pub const fn deployment_model(&self) -> DeploymentModel {
         self.model
     }
 
     /// Number of managed devices.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // Uses RwLock
     pub fn device_count(&self) -> usize {
         self.devices.read().len()
     }
 
     // --- allocation strategies ---
 
+    #[allow(clippy::significant_drop_tightening)] // device ref from devices lock
     fn allocate_local_direct(
         &self,
         request: &ResourceRequest,
@@ -220,9 +225,11 @@ impl ResourceOrchestrator {
                 .find(|d| request.preferred_devices.contains(&d.index))
         };
 
-        let device = device.ok_or(OrchestrationError::ResourceUnavailable(
-            "No GPU device available for allocation".into(),
-        ))?;
+        let device = device.ok_or_else(|| {
+            OrchestrationError::ResourceUnavailable(
+                "No GPU device available for allocation".to_string(),
+            )
+        })?;
 
         Ok(ResourceAllocation {
             device_index: device.index,
@@ -233,6 +240,7 @@ impl ResourceOrchestrator {
         })
     }
 
+    #[allow(clippy::significant_drop_tightening)] // device ref from devices, need for allocation
     fn allocate_local_multi(
         &self,
         request: &ResourceRequest,
@@ -284,6 +292,7 @@ impl ResourceOrchestrator {
         self.allocate_local_multi(request)
     }
 
+    #[allow(clippy::significant_drop_tightening)] // need both quotas and usage for check
     fn check_quota(&self, request: &ResourceRequest) -> Result<(), OrchestrationError> {
         let quotas = self.quotas.read();
         let Some(quota) = quotas.get(&request.tenant_id) else {

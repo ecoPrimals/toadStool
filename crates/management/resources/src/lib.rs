@@ -59,7 +59,7 @@ pub struct ResourceManager {
 impl ResourceManager {
     /// Creates a new resource manager with the given limits.
     #[must_use]
-    pub fn new(limits: ResourceLimit) -> Self {
+    pub const fn new(limits: ResourceLimit) -> Self {
         Self { limits }
     }
 

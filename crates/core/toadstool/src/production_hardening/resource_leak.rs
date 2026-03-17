@@ -90,7 +90,7 @@ impl ResourceLeakDetector {
             let mut interval = tokio::time::interval(cleanup_interval);
             loop {
                 interval.tick().await;
-                let detector = ResourceLeakDetector {
+                let detector = Self {
                     allocations: Arc::clone(&allocations),
                     leak_threshold,
                     cleanup_interval,

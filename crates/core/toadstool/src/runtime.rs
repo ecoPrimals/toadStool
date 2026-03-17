@@ -60,13 +60,13 @@ impl RuntimeOrchestrator {
     ) -> ToadStoolResult<()> {
         info!("Registering runtime engine: {:?}", runtime_type);
 
-        let mut engines = self.engines.write().await;
-        engines.insert(runtime_type, engine);
+        self.engines.write().await.insert(runtime_type, engine);
         info!("Successfully registered runtime engine");
         Ok(())
     }
 
     /// Execute a workload using the appropriate runtime
+    #[allow(clippy::significant_drop_tightening)] // engine borrows from guard; must hold lock across execute().await
     pub async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
         let execution_id = request.execution_id;
         info!("Starting execution: {}", execution_id);
@@ -81,13 +81,11 @@ impl RuntimeOrchestrator {
         let runtime_type = self.select_runtime(&request).await?;
         debug!("Selected runtime: {:?}", runtime_type);
 
-        // Get the runtime engine
         let engines = self.engines.read().await;
         let engine = engines.get(&runtime_type).ok_or_else(|| {
             ToadStoolError::not_found(format!("Runtime engine {runtime_type:?} not available"))
         })?;
 
-        // Execute the workload
         let result = engine.execute(request).await;
 
         match &result {
@@ -109,8 +107,7 @@ impl RuntimeOrchestrator {
     async fn select_runtime(&self, request: &ExecutionRequest) -> ToadStoolResult<RuntimeType> {
         // If a runtime hint is provided, try to use it
         if let Some(hint) = &request.runtime_hint {
-            let engines = self.engines.read().await;
-            if let Some(engine) = engines.get(hint) {
+            if let Some(engine) = self.engines.read().await.get(hint) {
                 if engine.supports_workload(&request.workload.workload_type()) {
                     return Ok(hint.clone());
                 }
@@ -163,8 +160,7 @@ impl RuntimeOrchestrator {
             // Map CUDA backend to runtime type
             // For now, all CUDA backends use the GPU runtime
             // In the future, we might have separate runtimes for CPU fallback
-            let engines = self.engines.read().await;
-            if engines.contains_key(&RuntimeType::Gpu) {
+            if self.engines.read().await.contains_key(&RuntimeType::Gpu) {
                 Ok(RuntimeType::Gpu)
             } else {
                 warn!("GPU runtime not available for CUDA workload, falling back to Native");
@@ -173,7 +169,7 @@ impl RuntimeOrchestrator {
         } else {
             // For AI/ML workloads, prefer GPU if available, otherwise use Native
             let engines = self.engines.read().await;
-            if engines.contains_key(&RuntimeType::Gpu) {
+            let result = if engines.contains_key(&RuntimeType::Gpu) {
                 info!("AI/ML workload: using GPU runtime");
                 Ok(RuntimeType::Gpu)
             } else if engines.contains_key(&RuntimeType::Python) {
@@ -182,7 +178,9 @@ impl RuntimeOrchestrator {
             } else {
                 info!("AI/ML workload: using Native runtime (fallback)");
                 Ok(RuntimeType::Native)
-            }
+            };
+            drop(engines);
+            result
         }
     }
 }
@@ -205,59 +203,33 @@ impl RuntimeSelectionStrategy {
         engines: &Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
     ) -> ToadStoolResult<RuntimeType> {
         let engines_guard = engines.read().await;
+        let workload_type = request.workload.workload_type();
 
-        match self {
-            RuntimeSelectionStrategy::FirstAvailable => {
-                // Try engines in a deterministic order for consistency
-                // First check if the workload type suggests a preferred runtime
-                let workload_type = request.workload.workload_type();
-
-                // Try to find an engine that supports the workload
-                for (runtime_type, engine) in engines_guard.iter() {
-                    if engine.supports_workload(&workload_type) {
-                        return Ok(runtime_type.clone());
-                    }
-                }
-
-                // If no engine explicitly supports it, return the first available
-                engines_guard
-                    .keys()
-                    .next()
-                    .cloned()
-                    .ok_or_else(|| ToadStoolError::not_found("No runtime engines available"))
-            }
-            RuntimeSelectionStrategy::LoadBalanced => {
-                // For now, just return the first available that supports the workload
-                // In a real implementation, this would check load metrics
-                let workload_type = request.workload.workload_type();
-
-                for (runtime_type, engine) in engines_guard.iter() {
-                    if engine.supports_workload(&workload_type) {
-                        return Ok(runtime_type.clone());
-                    }
-                }
-
-                engines_guard
-                    .keys()
-                    .next()
-                    .cloned()
-                    .ok_or_else(|| ToadStoolError::not_found("No runtime engines available"))
-            }
-            RuntimeSelectionStrategy::OptimalMatch => {
-                // Find the best runtime for the workload type
-                let workload_type = request.workload.workload_type();
-
-                for (runtime_type, engine) in engines_guard.iter() {
-                    if engine.supports_workload(&workload_type) {
-                        return Ok(runtime_type.clone());
-                    }
-                }
-
-                Err(ToadStoolError::not_found(format!(
-                    "No runtime engine supports workload type: {workload_type:?}"
-                )))
-            }
-        }
+        let result = match self {
+            Self::FirstAvailable => engines_guard
+                .iter()
+                .find(|(_, engine)| engine.supports_workload(&workload_type))
+                .map(|(rt, _)| rt.clone())
+                .or_else(|| engines_guard.keys().next().cloned())
+                .ok_or_else(|| ToadStoolError::not_found("No runtime engines available")),
+            Self::LoadBalanced => engines_guard
+                .iter()
+                .find(|(_, engine)| engine.supports_workload(&workload_type))
+                .map(|(rt, _)| rt.clone())
+                .or_else(|| engines_guard.keys().next().cloned())
+                .ok_or_else(|| ToadStoolError::not_found("No runtime engines available")),
+            Self::OptimalMatch => engines_guard
+                .iter()
+                .find(|(_, engine)| engine.supports_workload(&workload_type))
+                .map(|(rt, _)| rt.clone())
+                .ok_or_else(|| {
+                    ToadStoolError::not_found(format!(
+                        "No runtime engine supports workload type: {workload_type:?}"
+                    ))
+                }),
+        };
+        drop(engines_guard);
+        result
     }
 }
 
@@ -689,11 +661,13 @@ mod tests {
         };
         let result = orchestrator.execute(request).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .to_lowercase()
-            .contains("not found"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .to_lowercase()
+                .contains("not found")
+        );
     }
 
     #[tokio::test]
@@ -718,10 +692,12 @@ mod tests {
         };
         let result = orchestrator.execute(request).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .to_lowercase()
-            .contains("capability"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .to_lowercase()
+                .contains("capability")
+        );
     }
 }

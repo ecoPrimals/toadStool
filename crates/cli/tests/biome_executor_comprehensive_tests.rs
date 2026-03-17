@@ -511,9 +511,10 @@ async fn test_service_name_validation() {
     for name in valid_names {
         assert!(!name.is_empty());
         assert!(name.len() <= 50);
-        assert!(name
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
+        assert!(
+            name.chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+        );
     }
 }
 

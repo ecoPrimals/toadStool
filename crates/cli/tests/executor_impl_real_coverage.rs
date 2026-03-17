@@ -524,8 +524,8 @@ async fn test_timeout_duration_handling() {
 async fn test_interrupt_signal_concept() {
     // Test concept of waiting for interruption signal
     // (Actual implementation uses tokio::signal)
-    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     let interrupted = Arc::new(AtomicBool::new(false));
     let interrupted_clone = Arc::clone(&interrupted);

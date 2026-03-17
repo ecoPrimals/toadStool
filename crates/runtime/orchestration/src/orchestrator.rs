@@ -118,6 +118,7 @@ impl WorkloadOrchestrator {
     }
 
     /// Select optimal substrate for workload
+    #[allow(clippy::significant_drop_tightening)] // selected is from policy using substrates/history
     fn select_substrate(
         &self,
         request: &WorkloadRequest,
@@ -136,6 +137,7 @@ impl WorkloadOrchestrator {
     }
 
     /// Rank substrates by suitability
+    #[allow(clippy::significant_drop_tightening)] // ranked uses substrates and history
     fn rank_substrates(
         &self,
         request: &WorkloadRequest,
@@ -240,7 +242,7 @@ impl Default for WorkloadRequest {
 }
 
 /// Performance target for workload
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PerformanceTarget {
     /// Minimize latency
     Latency,
@@ -259,37 +261,37 @@ pub struct WorkloadRequestBuilder {
 }
 
 impl WorkloadRequestBuilder {
-    pub fn operation_count(mut self, count: usize) -> Self {
+    pub const fn operation_count(mut self, count: usize) -> Self {
         self.request.operation_count = count;
         self
     }
 
-    pub fn power_budget_watts(mut self, watts: f64) -> Self {
+    pub const fn power_budget_watts(mut self, watts: f64) -> Self {
         self.request.power_budget_watts = Some(watts);
         self
     }
 
-    pub fn target_latency(mut self) -> Self {
+    pub const fn target_latency(mut self) -> Self {
         self.request.target = PerformanceTarget::Latency;
         self
     }
 
-    pub fn target_throughput(mut self) -> Self {
+    pub const fn target_throughput(mut self) -> Self {
         self.request.target = PerformanceTarget::Throughput;
         self
     }
 
-    pub fn target_energy(mut self) -> Self {
+    pub const fn target_energy(mut self) -> Self {
         self.request.target = PerformanceTarget::Energy;
         self
     }
 
-    pub fn batch_size(mut self, size: usize) -> Self {
+    pub const fn batch_size(mut self, size: usize) -> Self {
         self.request.batch_size = Some(size);
         self
     }
 
-    pub fn build(self) -> Result<WorkloadRequest, OrchestrationError> {
+    pub const fn build(self) -> Result<WorkloadRequest, OrchestrationError> {
         if self.request.operation_count == 0 {
             return Err(OrchestrationError::InvalidOperationCount);
         }
@@ -325,7 +327,7 @@ pub struct PerformanceHistory {
 }
 
 impl PerformanceHistory {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             records: Vec::new(),
         }
@@ -351,7 +353,7 @@ impl PerformanceHistory {
         Some(total / durations.len() as u32)
     }
 
-    pub fn total_executions(&self) -> usize {
+    pub const fn total_executions(&self) -> usize {
         self.records.len()
     }
 

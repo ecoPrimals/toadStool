@@ -1,7 +1,7 @@
 [package]
 name = "toadstool-integration-primals"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 description = "Primal integration framework for biomeOS orchestration"
 authors = ["ToadStool Team <team@toadstool.io>"]
 license.workspace = true

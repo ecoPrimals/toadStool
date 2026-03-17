@@ -6,8 +6,8 @@
 
 use futures::StreamExt;
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 use tarpc::context::Context;
 use tokio::sync::RwLock;
@@ -68,16 +68,15 @@ impl ToadStoolTarpcServer {
     fn query_system_load() -> Option<f32> {
         #[cfg(unix)]
         {
-            if let Ok(loadavg) = std::fs::read_to_string("/proc/loadavg") {
-                if let Some(first) = loadavg.split_whitespace().next() {
-                    if let Ok(load) = first.parse::<f32>() {
-                        #[allow(clippy::cast_precision_loss)]
-                        let cpu_count = std::thread::available_parallelism()
-                            .map(|n| n.get() as f32)
-                            .unwrap_or(4.0);
-                        return Some((load / cpu_count).min(1.0));
-                    }
-                }
+            if let Ok(loadavg) = std::fs::read_to_string("/proc/loadavg")
+                && let Some(first) = loadavg.split_whitespace().next()
+                && let Ok(load) = first.parse::<f32>()
+            {
+                #[allow(clippy::cast_precision_loss)]
+                let cpu_count = std::thread::available_parallelism()
+                    .map(|n| n.get() as f32)
+                    .unwrap_or(4.0);
+                return Some((load / cpu_count).min(1.0));
             }
         }
         None
@@ -211,7 +210,9 @@ impl ToadStoolTarpcServer {
     pub async fn serve_tcp_debug(self, addr: SocketAddr) -> ServerResult<()> {
         warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
         warn!("⚠️  Use Unix sockets for production (serve_unix)");
-        info!("tarpc TCP debug endpoint requested on: {addr} — use serve_unix() or serve_tcp() instead");
+        info!(
+            "tarpc TCP debug endpoint requested on: {addr} — use serve_unix() or serve_tcp() instead"
+        );
 
         Err(ServerError::Execution(
             "serve_tcp_debug is deprecated — use serve_unix() or serve_tcp()".to_string(),

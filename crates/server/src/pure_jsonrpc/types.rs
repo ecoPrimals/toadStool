@@ -149,7 +149,7 @@ impl JsonWorkloadSubmission {
     ///
     /// Returns error if base64 data is invalid.
     pub fn into_tarpc(self) -> Result<TarpcWorkloadSubmission, String> {
-        use base64::{engine::general_purpose::STANDARD, Engine as _};
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
 
         let data = STANDARD
             .decode(&self.data)

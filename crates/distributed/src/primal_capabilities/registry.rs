@@ -28,7 +28,7 @@ pub struct Capability {
 }
 
 /// Resource requirements for a capability
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CapabilityResources {
     /// Minimum CPU cores
     pub min_cpu_cores: u32,
@@ -273,7 +273,7 @@ impl CapabilityRegistry {
 /// Part of the Spring-as-Provider pattern (ISSUE-007): Springs explicitly
 /// register with toadStool at startup rather than relying only on the
 /// filesystem convention `$XDG_RUNTIME_DIR/biomeos/{capability}.sock`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProviderRegistration {
     /// Capability domain this provider serves (e.g. "biology", "ecology").
     pub capability: String,
@@ -350,6 +350,7 @@ impl ProviderRegistry {
     }
 
     /// Prune registrations whose socket files no longer exist.
+    #[allow(clippy::needless_collect)] // Collect required: cannot mutate self.providers while iterating
     pub fn prune_stale(&mut self) -> Vec<ProviderRegistration> {
         let stale_keys: Vec<String> = self
             .providers
@@ -357,7 +358,6 @@ impl ProviderRegistry {
             .filter(|(_, reg)| !reg.socket_path.exists())
             .map(|(k, _)| k.clone())
             .collect();
-
         stale_keys
             .into_iter()
             .filter_map(|k| self.providers.remove(&k))

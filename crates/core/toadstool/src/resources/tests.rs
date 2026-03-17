@@ -333,11 +333,13 @@ fn test_resource_requirements_validate_zero_cpu() {
     req.cpu.min_cores = 0.0;
     let result = req.validate();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .to_lowercase()
-        .contains("cpu"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .to_lowercase()
+            .contains("cpu")
+    );
 }
 
 #[test]
@@ -346,11 +348,13 @@ fn test_resource_requirements_validate_zero_memory() {
     req.memory.min_bytes = 0;
     let result = req.validate();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .to_lowercase()
-        .contains("memory"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .to_lowercase()
+            .contains("memory")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

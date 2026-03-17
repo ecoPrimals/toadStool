@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 #![allow(
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
@@ -265,7 +265,7 @@ pub struct ConfigBuilder {
 impl ConfigBuilder {
     /// Create a new configuration builder with default settings
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             enable_hardware_detection: true,
             enable_ecosystem_discovery: true,
@@ -277,35 +277,35 @@ impl ConfigBuilder {
 
     /// Enable or disable hardware detection
     #[must_use]
-    pub fn with_hardware_detection(mut self, enable: bool) -> Self {
+    pub const fn with_hardware_detection(mut self, enable: bool) -> Self {
         self.enable_hardware_detection = enable;
         self
     }
 
     /// Enable or disable ecosystem service discovery
     #[must_use]
-    pub fn with_ecosystem_discovery(mut self, enable: bool) -> Self {
+    pub const fn with_ecosystem_discovery(mut self, enable: bool) -> Self {
         self.enable_ecosystem_discovery = enable;
         self
     }
 
     /// Enable or disable performance optimization
     #[must_use]
-    pub fn with_performance_optimization(mut self, enable: bool) -> Self {
+    pub const fn with_performance_optimization(mut self, enable: bool) -> Self {
         self.enable_performance_optimization = enable;
         self
     }
 
     /// Enable or disable usage pattern learning
     #[must_use]
-    pub fn with_usage_learning(mut self, enable: bool) -> Self {
+    pub const fn with_usage_learning(mut self, enable: bool) -> Self {
         self.enable_usage_learning = enable;
         self
     }
 
     /// Set the discovery timeout
     #[must_use]
-    pub fn with_discovery_timeout(mut self, timeout: std::time::Duration) -> Self {
+    pub const fn with_discovery_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.discovery_timeout = timeout;
         self
     }

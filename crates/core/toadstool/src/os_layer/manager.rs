@@ -150,6 +150,7 @@ impl OSLayerManager {
             let legacy_layer = LegacyCompatibilityLayer::new();
             layers.insert("legacy".to_string(), Box::new(legacy_layer));
         }
+        drop(layers);
 
         Ok(())
     }
@@ -160,10 +161,8 @@ impl OSLayerManager {
         _job: &UniversalJob,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
-        let layers = self.compatibility_layers.read().await;
-
         // Try to find a suitable compatibility layer
-        for (name, layer) in layers.iter() {
+        for (name, layer) in self.compatibility_layers.read().await.iter() {
             if layer.can_handle(&request) {
                 info!("Using compatibility layer: {}", name);
                 return layer.execute_with_compatibility(request).await;

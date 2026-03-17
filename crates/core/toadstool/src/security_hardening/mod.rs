@@ -382,9 +382,11 @@ mod tests {
     fn test_input_validator_rejects_xss() {
         let rules = ValidationRules::default();
         let validator = InputValidator::new(rules);
-        assert!(validator
-            .validate_input("<script>alert('xss')</script>")
-            .is_err());
+        assert!(
+            validator
+                .validate_input("<script>alert('xss')</script>")
+                .is_err()
+        );
     }
 
     #[test]

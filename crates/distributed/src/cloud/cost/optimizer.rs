@@ -4,9 +4,9 @@
 use std::collections::HashMap;
 use toadstool::error::ToadStoolResult;
 
-use super::pricing::{infer_pricing_tier, PricingTier};
-use super::types::{CostError, CostEstimate, CostLineItem};
+use super::pricing::{PricingTier, infer_pricing_tier};
 use super::types::{BYTES_PER_GB, DAYS_PER_MONTH, HOURS_PER_DAY, SPOT_DISCOUNT_FACTOR};
+use super::types::{CostError, CostEstimate, CostLineItem};
 use crate::cloud::types::{CloudCapabilities, CostConfig, CostModel};
 use crate::types::resources::ResourceRequirements;
 
@@ -67,7 +67,10 @@ impl CloudCostOptimizer {
             .map(infer_pricing_tier)
             .unwrap_or(PricingTier::StandardCompute);
 
-        let spot_factor = 1.0 - (self.config.spot_instance_preference * SPOT_DISCOUNT_FACTOR);
+        let spot_factor = self
+            .config
+            .spot_instance_preference
+            .mul_add(-SPOT_DISCOUNT_FACTOR, 1.0);
 
         let cpu_cores = requirements.cpu.min_cores;
         let memory_gb = requirements.memory.min_bytes as f64 / BYTES_PER_GB as f64;
@@ -130,14 +133,14 @@ impl CloudCostOptimizer {
 
         let total_cost = line_items.iter().map(|i| i.total).sum();
 
-        if let Some(limit) = self.config.budget_limit {
-            if total_cost > limit {
-                return Err(CostError::BudgetExceeded {
-                    estimate: total_cost,
-                    limit,
-                }
-                .into());
+        if let Some(limit) = self.config.budget_limit
+            && total_cost > limit
+        {
+            return Err(CostError::BudgetExceeded {
+                estimate: total_cost,
+                limit,
             }
+            .into());
         }
 
         Ok(CostEstimate {

@@ -28,7 +28,7 @@ impl ConfigManager {
 
     /// Create a `ConfigManager` with a custom path (for testing).
     #[must_use]
-    pub fn with_path(config_path: PathBuf) -> Self {
+    pub const fn with_path(config_path: PathBuf) -> Self {
         Self { config_path }
     }
 

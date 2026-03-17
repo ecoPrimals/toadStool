@@ -605,6 +605,8 @@ fn test_songbird_connection_constructor() {
                 routing_key: "default".to_string(),
             },
         },
+        #[cfg(feature = "channels")]
+        reply_channel: None,
     };
     assert_eq!(conn.endpoints.len(), 2);
     assert_eq!(conn.health_status, ConnectionHealth::Healthy);

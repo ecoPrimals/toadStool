@@ -46,7 +46,7 @@ impl<'de> Deserialize<'de> for CapabilityId {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Ok(CapabilityId(Arc::from(s.as_str())))
+        Ok(Self(Arc::from(s.as_str())))
     }
 }
 
@@ -77,11 +77,10 @@ impl CapabilityId {
     /// Check if this capability matches a pattern (with wildcards)
     pub fn matches(&self, pattern: &str) -> bool {
         // Support wildcards: "crypto.*" matches "crypto.signature.ed25519"
-        if let Some(prefix) = pattern.strip_suffix('*') {
-            self.0.starts_with(prefix)
-        } else {
-            self.0.as_ref() == pattern
-        }
+        pattern.strip_suffix('*').map_or_else(
+            || self.0.as_ref() == pattern,
+            |prefix| self.0.starts_with(prefix),
+        )
     }
 }
 
@@ -245,7 +244,7 @@ pub enum StandardCapability {
 
 impl StandardCapability {
     /// Get the capability ID as a string
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             // Crypto
             Self::CryptoSignatureEd25519 => "crypto.signature.ed25519",

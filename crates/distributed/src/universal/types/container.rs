@@ -100,7 +100,7 @@ pub enum ContainerPlatform {
 
 impl ContainerPlatform {
     /// Get the platform type name
-    pub fn platform_type(&self) -> &'static str {
+    pub const fn platform_type(&self) -> &'static str {
         match self {
             Self::Docker { .. } => "Docker",
             Self::Podman { .. } => "Podman",

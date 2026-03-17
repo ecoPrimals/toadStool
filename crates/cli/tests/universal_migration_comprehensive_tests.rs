@@ -15,8 +15,8 @@
 //! Coverage target: Get migration.rs from current low coverage to >80%
 
 use anyhow::Result;
-use toadstool_cli::universal::operations::MigrationOps;
 use toadstool_cli::universal::UniversalComputeManager;
+use toadstool_cli::universal::operations::MigrationOps;
 use uuid::Uuid;
 
 /// Helper to create a test manager

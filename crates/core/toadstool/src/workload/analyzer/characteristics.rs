@@ -4,7 +4,7 @@
 use std::fmt;
 
 /// Workload analysis result containing characteristics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkloadCharacteristics {
     pub compute_intensity: ComputeIntensity,
     pub memory_requirement: MemoryRequirement,
@@ -152,9 +152,11 @@ mod tests {
 
     #[test]
     fn test_parallelism_level_display() {
-        assert!(ParallelismLevel::Sequential
-            .to_string()
-            .contains("Sequential"));
+        assert!(
+            ParallelismLevel::Sequential
+                .to_string()
+                .contains("Sequential")
+        );
         assert!(ParallelismLevel::High.to_string().contains("High"));
         assert!(ParallelismLevel::VeryHigh.to_string().contains("Very High"));
     }

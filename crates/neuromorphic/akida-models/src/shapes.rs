@@ -72,11 +72,11 @@ pub fn extract_shapes(data: &[u8]) -> Result<Vec<Shape>> {
     let mut i = 0;
     while i + 8 < data.len() {
         // Look for potential shape sequences
-        if let Some(shape) = try_extract_shape_at(data, i) {
-            if is_valid_shape(&shape) {
-                tracing::debug!("Found shape: {}", shape);
-                shapes.push(shape);
-            }
+        if let Some(shape) = try_extract_shape_at(data, i)
+            && is_valid_shape(&shape)
+        {
+            tracing::debug!("Found shape: {}", shape);
+            shapes.push(shape);
         }
         i += 1;
     }

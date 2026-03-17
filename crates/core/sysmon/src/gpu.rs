@@ -416,7 +416,7 @@ fn check_firmware_glob(base: &Path, device_hint: &str, component: &str) -> FwSta
 #[derive(Debug, Clone)]
 pub struct PcieTopology {
     /// `PCIe` generation (3, 4, 5)
-    pub gen: Option<u32>,
+    pub generation: Option<u32>,
     /// Link width (x1, x4, x8, x16)
     pub width: Option<u32>,
     /// NUMA node (-1 if not applicable)
@@ -429,7 +429,7 @@ impl GpuDevice {
     /// Read `PCIe` topology information for this GPU.
     #[must_use]
     pub fn pcie_topology(&self) -> PcieTopology {
-        let gen = read_sysfs_string(&self.sysfs_device.join("current_link_speed"))
+        let generation = read_sysfs_string(&self.sysfs_device.join("current_link_speed"))
             .and_then(|s| parse_pcie_gen(&s));
         let width = read_sysfs_string(&self.sysfs_device.join("current_link_width"))
             .and_then(|s| s.trim().parse().ok());
@@ -438,7 +438,7 @@ impl GpuDevice {
         let iommu_group = find_iommu_group(&self.sysfs_device);
 
         PcieTopology {
-            gen,
+            generation,
             width,
             numa_node,
             iommu_group,
@@ -594,7 +594,7 @@ mod tests {
             let topo = gpu.pcie_topology();
             println!(
                 "  PCIe gen{:?} x{:?}, NUMA {:?}, IOMMU group {:?}",
-                topo.gen, topo.width, topo.numa_node, topo.iommu_group
+                topo.generation, topo.width, topo.numa_node, topo.iommu_group
             );
         }
     }

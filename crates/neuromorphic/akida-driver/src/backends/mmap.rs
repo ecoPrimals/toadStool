@@ -15,7 +15,7 @@
 
 use crate::backends::volatile_access::VolatileSlice;
 use crate::error::{AkidaError, Result};
-use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
+use rustix::mm::{MapFlags, ProtFlags, mmap, munmap};
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::AsFd;
 use std::ptr::NonNull;

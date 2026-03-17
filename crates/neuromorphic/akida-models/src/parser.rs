@@ -83,15 +83,13 @@ fn try_extract_version_at(data: &[u8], offset: usize) -> Option<String> {
     // Check for digit.digit pattern
     if slice[0].is_ascii_digit() && slice[1] == b'.' {
         // Find null terminator
-        if let Some(end) = slice.iter().position(|&b| b == 0) {
-            if end > 3 && end < 20 {
-                if let Ok(s) = std::str::from_utf8(&slice[..end]) {
-                    // Validate it looks like a version string
-                    if s.chars().filter(|&c| c == '.').count() >= 1 {
-                        return Some(s.to_string());
-                    }
-                }
-            }
+        if let Some(end) = slice.iter().position(|&b| b == 0)
+            && end > 3
+            && end < 20
+            && let Ok(s) = std::str::from_utf8(&slice[..end])
+            && s.chars().filter(|&c| c == '.').count() >= 1
+        {
+            return Some(s.to_string());
         }
     }
 
@@ -120,14 +118,14 @@ pub fn extract_layer_names(data: &[u8]) -> Vec<String> {
     let mut i = 0;
     while i + 20 < data.len() {
         // Look for potential string markers
-        if data[i].is_ascii_alphabetic() {
-            if let Some(name) = try_extract_string_at(data, i) {
-                if is_valid_layer_name(&name) && !seen.contains(&name) {
-                    tracing::debug!("Found layer name: {}", name);
-                    names.push(name.clone());
-                    seen.insert(name);
-                }
-            }
+        if data[i].is_ascii_alphabetic()
+            && let Some(name) = try_extract_string_at(data, i)
+            && is_valid_layer_name(&name)
+            && !seen.contains(&name)
+        {
+            tracing::debug!("Found layer name: {}", name);
+            names.push(name.clone());
+            seen.insert(name);
         }
         i += 1;
     }
@@ -140,15 +138,13 @@ fn try_extract_string_at(data: &[u8], offset: usize) -> Option<String> {
     let slice = &data[offset..];
 
     // Find null terminator within reasonable distance
-    if let Some(end) = slice.iter().take(32).position(|&b| b == 0) {
-        if end > 2 && end < 20 {
-            if let Ok(s) = std::str::from_utf8(&slice[..end]) {
-                // Check if it's ASCII and reasonable
-                if s.chars().all(|c| c.is_ascii() && !c.is_control()) {
-                    return Some(s.to_string());
-                }
-            }
-        }
+    if let Some(end) = slice.iter().take(32).position(|&b| b == 0)
+        && end > 2
+        && end < 20
+        && let Ok(s) = std::str::from_utf8(&slice[..end])
+        && s.chars().all(|c| c.is_ascii() && !c.is_control())
+    {
+        return Some(s.to_string());
     }
 
     None

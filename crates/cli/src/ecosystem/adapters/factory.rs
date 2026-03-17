@@ -8,7 +8,7 @@ use crate::Result;
 use std::sync::Arc;
 
 use super::{
-    universal::UniversalServiceAdapter, CoordinationAdapter, CryptoAdapter, StorageAdapter,
+    CoordinationAdapter, CryptoAdapter, StorageAdapter, universal::UniversalServiceAdapter,
 };
 use crate::ecosystem::capabilities::{CapabilityRegistry, CapabilityResolver};
 use toadstool_common::infant_discovery::DiscoveryEngine;

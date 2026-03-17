@@ -78,13 +78,13 @@ pub enum Spring {
 }
 
 impl Spring {
-    pub const ALL: &[Spring] = &[
-        Spring::HotSpring,
-        Spring::WetSpring,
-        Spring::NeuralSpring,
-        Spring::AirSpring,
-        Spring::GroundSpring,
-        Spring::HealthSpring,
+    pub const ALL: &[Self] = &[
+        Self::HotSpring,
+        Self::WetSpring,
+        Self::NeuralSpring,
+        Self::AirSpring,
+        Self::GroundSpring,
+        Self::HealthSpring,
     ];
 
     #[must_use]

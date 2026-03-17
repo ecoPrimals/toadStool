@@ -140,7 +140,7 @@ pub enum PolicyCondition {
     /// Composite condition (AND/OR/NOT)
     Composite {
         operator: LogicalOperator,
-        conditions: Vec<PolicyCondition>,
+        conditions: Vec<Self>,
     },
 }
 
@@ -225,7 +225,7 @@ pub struct PolicyEvaluationResult {
 }
 
 /// Policy evaluation result types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PolicyResult {
     Allow,
     Deny,

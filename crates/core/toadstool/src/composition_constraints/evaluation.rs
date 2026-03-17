@@ -16,15 +16,15 @@ pub enum ConstraintSatisfaction {
 }
 
 impl ConstraintSatisfaction {
-    pub fn is_satisfied(&self) -> bool {
+    pub const fn is_satisfied(&self) -> bool {
         matches!(self, Self::Satisfied | Self::Partial(_))
     }
 
-    pub fn is_fully_satisfied(&self) -> bool {
+    pub const fn is_fully_satisfied(&self) -> bool {
         matches!(self, Self::Satisfied)
     }
 
-    pub fn score(&self) -> f64 {
+    pub const fn score(&self) -> f64 {
         match self {
             Self::Satisfied => 1.0,
             Self::Partial(s) => *s,

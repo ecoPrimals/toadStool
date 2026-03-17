@@ -66,13 +66,14 @@ fn test_runtime_env_override_threads() {
     // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
 
-    env::set_var("TOADSTOOL_WORKER_THREADS", "16");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_WORKER_THREADS", "16") };
 
     let config = load_runtime_config();
 
     assert_eq!(config.worker_threads, 16);
 
-    env::remove_var("TOADSTOOL_WORKER_THREADS");
+    unsafe { env::remove_var("TOADSTOOL_WORKER_THREADS") };
 }
 
 #[test]
@@ -80,13 +81,14 @@ fn test_runtime_env_override_memory() {
     // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
 
-    env::set_var("TOADSTOOL_MAX_MEMORY_MB", "8192");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_MAX_MEMORY_MB", "8192") };
 
     let config = load_runtime_config();
 
     assert_eq!(config.max_memory_mb, 8192);
 
-    env::remove_var("TOADSTOOL_MAX_MEMORY_MB");
+    unsafe { env::remove_var("TOADSTOOL_MAX_MEMORY_MB") };
 }
 
 #[test]
@@ -94,13 +96,14 @@ fn test_runtime_env_override_timeout() {
     // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
 
-    env::set_var("TOADSTOOL_DEFAULT_TIMEOUT_SECS", "120");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_DEFAULT_TIMEOUT_SECS", "120") };
 
     let config = load_runtime_config();
 
     assert_eq!(config.default_timeout_secs, 120);
 
-    env::remove_var("TOADSTOOL_DEFAULT_TIMEOUT_SECS");
+    unsafe { env::remove_var("TOADSTOOL_DEFAULT_TIMEOUT_SECS") };
 }
 
 #[test]
@@ -108,14 +111,15 @@ fn test_runtime_env_override_invalid_falls_back() {
     // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
 
-    env::set_var("TOADSTOOL_WORKER_THREADS", "not-a-number");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_WORKER_THREADS", "not-a-number") };
 
     let config = load_runtime_config();
 
     // Should fall back to default
     assert!(config.worker_threads > 0);
 
-    env::remove_var("TOADSTOOL_WORKER_THREADS");
+    unsafe { env::remove_var("TOADSTOOL_WORKER_THREADS") };
 }
 
 // ============================================================================

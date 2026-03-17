@@ -44,7 +44,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tokio::sync::{broadcast, RwLock};
+    use tokio::sync::{RwLock, broadcast};
 
     use crate::config::ServerConfig;
     use crate::state::{ServerState, ServerStatistics};

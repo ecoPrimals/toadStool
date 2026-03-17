@@ -59,10 +59,10 @@ pub fn discover_via_smi() -> Result<Vec<NvidiaSmiSensors>> {
     let mut gpus = Vec::new();
     for line in stdout.lines() {
         let trimmed = line.trim();
-        if !trimmed.is_empty() {
-            if let Ok(sensors) = parse_smi_csv(trimmed) {
-                gpus.push(sensors);
-            }
+        if !trimmed.is_empty()
+            && let Ok(sensors) = parse_smi_csv(trimmed)
+        {
+            gpus.push(sensors);
         }
     }
     Ok(gpus)

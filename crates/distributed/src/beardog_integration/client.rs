@@ -22,13 +22,13 @@ use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_f
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
 
+use super::BearDogConfig;
 use super::discovery::BearDogDiscovery;
 use super::types::{
     BearDogEndpoint, EncryptionRequest, EncryptionResponse, KeyManagementRequest,
     KeyManagementResponse, PermissionResponse, RevocationRequest, SignatureRequest,
     SignatureResponse, ValidationResponse, VerificationRequest, VerificationResponse,
 };
-use super::BearDogConfig;
 
 /// BearDog Unix Socket Client (Pure Rust!)
 ///

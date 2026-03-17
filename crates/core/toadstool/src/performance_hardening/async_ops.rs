@@ -68,7 +68,7 @@ where
 
         // Process batch if threshold reached (spawn to avoid blocking)
         if should_process {
-            let self_clone = AsyncBatcher {
+            let self_clone = Self {
                 config: self.config.clone(),
                 pending: Arc::clone(&self.pending),
                 processor: Arc::clone(&self.processor),

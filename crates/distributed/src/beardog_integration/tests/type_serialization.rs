@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Serialization roundtrip tests for BearDog integration types
 
+use crate::beardog_integration::ServiceLocation;
 use crate::beardog_integration::types::{
     BearDogCapability, BearDogEndpoint, EncryptionOperation, EncryptionRequest, EncryptionResponse,
     KeyManagementRequest, KeyManagementResponse, KeyOperation, KeyOperationResult, SecurityLevel,
     SignatureRequest, VerificationRequest,
 };
-use crate::beardog_integration::ServiceLocation;
 
 #[test]
 fn test_encryption_request_serialization() {

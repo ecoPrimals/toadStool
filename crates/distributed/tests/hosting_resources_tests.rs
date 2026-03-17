@@ -194,10 +194,12 @@ fn test_hosting_resource_manager_deallocate_resources() {
     // Then deallocate by allocation ID
     let result = manager.deallocate_resources("test-alloc-1");
     assert!(result.is_ok());
-    assert!(manager
-        .allocated_resources
-        .get("cpu_cores")
-        .is_none_or(|&v| v == 0));
+    assert!(
+        manager
+            .allocated_resources
+            .get("cpu_cores")
+            .is_none_or(|&v| v == 0)
+    );
 }
 
 #[test]

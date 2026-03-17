@@ -22,7 +22,7 @@
 //! ```
 
 use crate::error::{NvPmuError, Result};
-use rustix::mm::{mlock, mmap_anonymous, munlock, munmap, MapFlags, ProtFlags};
+use rustix::mm::{MapFlags, ProtFlags, mlock, mmap_anonymous, munlock, munmap};
 use std::os::fd::{BorrowedFd, RawFd};
 
 const PAGE_SIZE: usize = 4096;
@@ -75,7 +75,7 @@ struct VfioDmaUnmap {
 const VFIO_DMA_MAP_FLAG_READ: u32 = 1;
 const VFIO_DMA_MAP_FLAG_WRITE: u32 = 2;
 
-use rustix::ioctl::{opcode, Ioctl, IoctlOutput, Opcode};
+use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
 
 const VFIO_TYPE: u8 = b';';
 const VFIO_BASE: u8 = 100;
@@ -203,7 +203,7 @@ pub struct DmaAllocator {
 impl DmaAllocator {
     /// Create a new allocator for the given VFIO container fd.
     #[must_use]
-    pub fn new(container_fd: RawFd) -> Self {
+    pub const fn new(container_fd: RawFd) -> Self {
         Self {
             container_fd,
             next_iova: IOVA_BASE,
@@ -318,7 +318,7 @@ impl DmaAllocator {
             HugePageSize::Standard => {
                 return Err(NvPmuError::Hardware(
                     "Standard pages handled by allocate(), not allocate_huge()".into(),
-                ))
+                ));
             }
         };
 

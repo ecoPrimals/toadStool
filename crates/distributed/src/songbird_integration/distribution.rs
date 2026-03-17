@@ -147,30 +147,31 @@ impl MassiveJobDistributor {
 
     fn determine_job_type(job: &UniversalJob) -> UniversalJobType {
         // Use the job type if available, otherwise analyze characteristics
-        if let Some(job_type) = &job.job_type {
-            job_type.clone()
-        } else {
-            // Analyze execution request to determine type
-            let request_str = format!("{:?}", job.execution_request);
-            if request_str.contains("ml")
-                || request_str.contains("ai")
-                || request_str.contains("neural")
-            {
-                UniversalJobType::MachineLearning
-            } else if request_str.contains("data")
-                || request_str.contains("process")
-                || request_str.contains("batch")
-            {
-                UniversalJobType::DataProcessing
-            } else if request_str.contains("simulation")
-                || request_str.contains("model")
-                || request_str.contains("physics")
-            {
-                UniversalJobType::Simulation
-            } else {
-                UniversalJobType::ComputeIntensive
-            }
-        }
+        job.job_type.as_ref().map_or_else(
+            || {
+                // Analyze execution request to determine type
+                let request_str = format!("{:?}", job.execution_request);
+                if request_str.contains("ml")
+                    || request_str.contains("ai")
+                    || request_str.contains("neural")
+                {
+                    UniversalJobType::MachineLearning
+                } else if request_str.contains("data")
+                    || request_str.contains("process")
+                    || request_str.contains("batch")
+                {
+                    UniversalJobType::DataProcessing
+                } else if request_str.contains("simulation")
+                    || request_str.contains("model")
+                    || request_str.contains("physics")
+                {
+                    UniversalJobType::Simulation
+                } else {
+                    UniversalJobType::ComputeIntensive
+                }
+            },
+            |job_type| job_type.clone(),
+        )
     }
 
     fn create_subtasks(
@@ -221,7 +222,7 @@ impl MassiveJobDistributor {
         Ok(subtasks)
     }
 
-    fn convert_priority(priority: JobPriority) -> u8 {
+    const fn convert_priority(priority: JobPriority) -> u8 {
         match priority {
             JobPriority::Background => 1,
             JobPriority::Low => 2,

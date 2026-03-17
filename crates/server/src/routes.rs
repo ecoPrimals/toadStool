@@ -3,7 +3,7 @@
 //!
 //! Builds the Axum router with health, API, and dashboard endpoints.
 
-use axum::{routing::delete, routing::get, routing::post, Router};
+use axum::{Router, routing::delete, routing::get, routing::post};
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
@@ -67,7 +67,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tokio::sync::{broadcast, RwLock};
+    use tokio::sync::{RwLock, broadcast};
 
     use crate::state::{ServerState, ServerStatistics};
     use toadstool::SystemResourceMonitor;

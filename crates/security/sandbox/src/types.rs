@@ -224,7 +224,7 @@ pub enum SandboxLifetime {
 }
 
 /// Sandbox status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SandboxStatus {
     /// Sandbox is being created
     Creating,

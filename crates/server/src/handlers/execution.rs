@@ -2,10 +2,10 @@
 //! Workload execution endpoint handlers
 
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde_json::json;
 use tracing::{debug, info};

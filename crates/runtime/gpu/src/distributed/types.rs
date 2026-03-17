@@ -68,7 +68,7 @@ pub struct DistributedStats {
 
 impl DistributedStats {
     /// Create empty statistics
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             total_towers: 0,
             active_towers: 0,

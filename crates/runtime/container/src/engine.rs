@@ -20,9 +20,9 @@ use toadstool::{
     ToadStoolResult, WorkloadType,
 };
 
+use crate::ContainerRuntimeEngine;
 use crate::docker;
 use crate::types::{ContainerExecutionConfig, ContainerResourceLimits, ContainerSecurityConfig};
-use crate::ContainerRuntimeEngine;
 
 impl ContainerRuntimeEngine {
     /// Validate resource requirements against configured limits.
@@ -30,13 +30,13 @@ impl ContainerRuntimeEngine {
         &self,
         request: &ExecutionRequest,
     ) -> ToadStoolResult<()> {
-        if let Some(memory_req) = request.resources.memory.max_bytes {
-            if memory_req > self.config.resource_limits.max_memory_bytes {
-                return Err(ToadStoolError::resource(format!(
-                    "Memory requirement {} exceeds limit {}",
-                    memory_req, self.config.resource_limits.max_memory_bytes
-                )));
-            }
+        if let Some(memory_req) = request.resources.memory.max_bytes
+            && memory_req > self.config.resource_limits.max_memory_bytes
+        {
+            return Err(ToadStoolError::resource(format!(
+                "Memory requirement {} exceeds limit {}",
+                memory_req, self.config.resource_limits.max_memory_bytes
+            )));
         }
 
         if let Some(cpu_req) = request.resources.cpu.max_cores {
@@ -147,20 +147,6 @@ impl RuntimeEngine for ContainerRuntimeEngine {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async {
             let start_time = SystemTime::now();
-
-            let mut custom_metrics = HashMap::new();
-            custom_metrics.insert(
-                "active_containers".to_string(),
-                serde_json::Value::Number(serde_json::Number::from(0)),
-            );
-            custom_metrics.insert(
-                "available_engines".to_string(),
-                serde_json::Value::Number(serde_json::Number::from(1)),
-            );
-            custom_metrics.insert(
-                "runtime_health".to_string(),
-                serde_json::Value::Number(serde_json::Number::from(1)),
-            );
 
             let cpu_metrics = CpuMetrics {
                 usage_percent: 0.0,

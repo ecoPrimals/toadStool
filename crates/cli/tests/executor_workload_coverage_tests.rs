@@ -466,9 +466,10 @@ mod path_handling_tests {
     fn test_pathbuf_creation() {
         let path = PathBuf::from("/tmp/workload.toml");
         assert!(path.to_str().is_some());
-        assert!(path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("toml")));
+        assert!(
+            path.extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("toml"))
+        );
     }
 
     #[test]

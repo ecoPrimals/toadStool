@@ -19,11 +19,11 @@ pub enum SecurityTier {
 
 impl SecurityTier {
     /// Required security features for this tier.
-    pub fn required_features(self) -> &'static [SecurityFeature] {
+    pub const fn required_features(self) -> &'static [SecurityFeature] {
         match self {
-            SecurityTier::Basic => &[SecurityFeature::Encryption],
-            SecurityTier::Standard => &[SecurityFeature::Encryption, SecurityFeature::Compliance],
-            SecurityTier::High => &[
+            Self::Basic => &[SecurityFeature::Encryption],
+            Self::Standard => &[SecurityFeature::Encryption, SecurityFeature::Compliance],
+            Self::High => &[
                 SecurityFeature::Encryption,
                 SecurityFeature::Compliance,
                 SecurityFeature::NetworkSecurity,

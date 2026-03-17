@@ -150,9 +150,10 @@ fn test_device_requirements_with_extensions() {
     reqs.required_extensions = vec!["compute_shader".to_string(), "double_precision".to_string()];
 
     assert_eq!(reqs.required_extensions.len(), 2);
-    assert!(reqs
-        .required_extensions
-        .contains(&"compute_shader".to_string()));
+    assert!(
+        reqs.required_extensions
+            .contains(&"compute_shader".to_string())
+    );
 }
 
 #[test]
@@ -190,10 +191,12 @@ fn test_universal_gpu_config_discovery() {
     config.discovery.enabled_frameworks = vec![GpuFramework::Vulkan, GpuFramework::OpenCl];
 
     assert_eq!(config.discovery.enabled_frameworks.len(), 2);
-    assert!(config
-        .discovery
-        .enabled_frameworks
-        .contains(&GpuFramework::Vulkan));
+    assert!(
+        config
+            .discovery
+            .enabled_frameworks
+            .contains(&GpuFramework::Vulkan)
+    );
 }
 
 #[test]

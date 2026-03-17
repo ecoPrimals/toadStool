@@ -191,7 +191,7 @@ impl StreamingDispatchContext {
 
     /// Whether a submission should be flushed based on the current mode.
     #[must_use]
-    pub fn should_submit(&self) -> bool {
+    pub const fn should_submit(&self) -> bool {
         match self.mode {
             DispatchMode::Single => true,
             DispatchMode::Streaming => false,
@@ -203,7 +203,7 @@ impl StreamingDispatchContext {
 
     /// Get current statistics (snapshot).
     #[must_use]
-    pub fn stats(&self) -> &DispatchStats {
+    pub const fn stats(&self) -> &DispatchStats {
         &self.stats
     }
 

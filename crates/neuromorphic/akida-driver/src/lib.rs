@@ -76,7 +76,7 @@ pub mod pcie_ids {
     }
 }
 
-pub use backend::{select_backend, BackendSelection, BackendType, ModelHandle, NpuBackend};
+pub use backend::{BackendSelection, BackendType, ModelHandle, NpuBackend, select_backend};
 pub use backends::UserspaceBackend;
 pub use capabilities::{
     BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, PcieConfig,

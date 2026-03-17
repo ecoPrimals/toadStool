@@ -56,7 +56,7 @@ impl LegacyCompatibilityLayer {
     }
 
     #[must_use]
-    pub fn get_config(&self) -> &LegacyCompatConfig {
+    pub const fn get_config(&self) -> &LegacyCompatConfig {
         &self.config
     }
 }

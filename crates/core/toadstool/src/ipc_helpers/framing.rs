@@ -9,10 +9,7 @@ use tokio::net::UnixStream;
 use crate::{ToadStoolError, ToadStoolResult};
 
 /// Write JSON-RPC message to stream
-pub(crate) async fn write_json_rpc(
-    stream: &mut UnixStream,
-    message: &Value,
-) -> ToadStoolResult<()> {
+pub async fn write_json_rpc(stream: &mut UnixStream, message: &Value) -> ToadStoolResult<()> {
     use tokio::io::AsyncWriteExt;
 
     let json_str = serde_json::to_string(message)
@@ -37,7 +34,7 @@ pub(crate) async fn write_json_rpc(
 }
 
 /// Read JSON-RPC message from stream
-pub(crate) async fn read_json_rpc(stream: &mut UnixStream) -> ToadStoolResult<Value> {
+pub async fn read_json_rpc(stream: &mut UnixStream) -> ToadStoolResult<Value> {
     use tokio::io::{AsyncBufReadExt, BufReader};
 
     let mut reader = BufReader::new(stream);

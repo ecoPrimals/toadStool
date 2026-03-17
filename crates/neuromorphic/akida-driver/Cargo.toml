@@ -1,7 +1,7 @@
 [package]
 name = "akida-driver"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors = ["ToadStool Team"]
 description = "Pure Rust driver for BrainChip Akida neuromorphic processors"
 license.workspace = true

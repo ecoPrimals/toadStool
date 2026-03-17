@@ -19,8 +19,8 @@
 use crate::backends::volatile_access::VolatileSlice;
 use crate::error::{AkidaError, Result};
 use rustix::io::Result as IoResult;
-use rustix::ioctl::{opcode, Ioctl, IoctlOutput, Opcode};
-use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
+use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
+use rustix::mm::{MapFlags, ProtFlags, mmap, munmap};
 use std::os::fd::AsFd;
 use std::ptr::NonNull;
 

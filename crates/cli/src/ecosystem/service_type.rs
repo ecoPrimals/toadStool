@@ -49,7 +49,7 @@ pub struct ServiceType {
 impl ServiceType {
     /// Create a service type from capabilities
     #[must_use]
-    pub fn from_capabilities(capabilities: HashSet<CapabilityId>) -> Self {
+    pub const fn from_capabilities(capabilities: HashSet<CapabilityId>) -> Self {
         Self {
             capabilities,
             legacy_name: None,
@@ -106,7 +106,7 @@ impl ServiceType {
 
     /// Get all capabilities
     #[must_use]
-    pub fn capabilities(&self) -> &HashSet<CapabilityId> {
+    pub const fn capabilities(&self) -> &HashSet<CapabilityId> {
         &self.capabilities
     }
 

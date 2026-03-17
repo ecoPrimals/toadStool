@@ -93,7 +93,7 @@ impl ClockGateConfig {
 
     /// Decode from a register readback value.
     #[must_use]
-    pub fn decode(val: u32) -> Self {
+    pub const fn decode(val: u32) -> Self {
         #[allow(
             clippy::cast_possible_truncation,
             reason = "masked to 4 bits, always fits u8"
@@ -452,17 +452,17 @@ impl<R: RegisterAccess> PowerManager<R> {
     }
 
     /// Access the underlying register interface.
-    pub fn registers(&self) -> &R {
+    pub const fn registers(&self) -> &R {
         &self.regs
     }
 
     /// Mutable access to the underlying register interface.
-    pub fn registers_mut(&mut self) -> &mut R {
+    pub const fn registers_mut(&mut self) -> &mut R {
         &mut self.regs
     }
 
     /// Access the PCI power controller.
-    pub fn pci(&self) -> &GpuPowerController {
+    pub const fn pci(&self) -> &GpuPowerController {
         &self.pci
     }
 }

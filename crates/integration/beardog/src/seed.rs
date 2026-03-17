@@ -89,11 +89,9 @@ impl EphemeralSeed {
     /// Check if seed is fresh within specified duration
     #[must_use]
     pub fn is_fresh_within(&self, duration: std::time::Duration) -> bool {
-        if let Ok(elapsed) = self.timestamp.elapsed() {
-            elapsed < duration
-        } else {
-            false
-        }
+        self.timestamp
+            .elapsed()
+            .is_ok_and(|elapsed| elapsed < duration)
     }
 
     /// Get seed as u64 for simple use cases

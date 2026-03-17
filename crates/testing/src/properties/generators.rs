@@ -28,7 +28,7 @@ pub struct IntegerGenerator {
 impl IntegerGenerator {
     /// Create a new integer generator with specified range
     #[must_use]
-    pub fn new(min: i64, max: i64) -> Self {
+    pub const fn new(min: i64, max: i64) -> Self {
         Self { min, max }
     }
 }

@@ -346,10 +346,12 @@ fn test_deployment_request_security_config() {
 
     assert_eq!(request.security_config.isolation_level, "high");
     assert_eq!(request.security_config.network_policies.len(), 1);
-    assert!(request
-        .security_config
-        .network_policies
-        .contains(&"default-deny".to_string()));
+    assert!(
+        request
+            .security_config
+            .network_policies
+            .contains(&"default-deny".to_string())
+    );
 }
 
 #[test]

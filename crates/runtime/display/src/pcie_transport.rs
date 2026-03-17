@@ -28,8 +28,8 @@ use std::path::PathBuf;
 use toadstool_core::{
     HardwareTransport, TransportDirection, TransportError, TransportInfo, TransportMedium,
 };
-use toadstool_sysmon::gpu::{discover_gpus, GpuDevice, GpuVendor};
-use toadstool_sysmon::pcie_topology::{discover_topology, PciBridge};
+use toadstool_sysmon::gpu::{GpuDevice, GpuVendor, discover_gpus};
+use toadstool_sysmon::pcie_topology::{PciBridge, discover_topology};
 
 /// A `PCIe` link between two GPU render nodes.
 ///
@@ -125,13 +125,13 @@ impl PcieTransport {
 
     /// Source endpoint.
     #[must_use]
-    pub fn source(&self) -> &PcieEndpoint {
+    pub const fn source(&self) -> &PcieEndpoint {
         &self.source
     }
 
     /// Target endpoint.
     #[must_use]
-    pub fn target(&self) -> &PcieEndpoint {
+    pub const fn target(&self) -> &PcieEndpoint {
         &self.target
     }
 }
@@ -260,7 +260,7 @@ fn endpoint_from_device(gpu: &GpuDevice) -> PcieEndpoint {
         vendor: gpu.vendor,
         render_node: gpu.render_node(),
         numa_node: topo.numa_node,
-        pcie_gen: topo.gen,
+        pcie_gen: topo.generation,
         pcie_width: topo.width,
     }
 }
@@ -290,8 +290,8 @@ fn estimate_link_bandwidth(source: &PcieEndpoint, target: &PcieEndpoint) -> u64 
 }
 
 /// Raw (theoretical) `PCIe` bandwidth for a given generation and lane width.
-fn raw_pcie_bandwidth_bps(gen: Option<u32>, width: Option<u32>) -> u64 {
-    let transfer_rate_gbps: f64 = match gen {
+fn raw_pcie_bandwidth_bps(generation: Option<u32>, width: Option<u32>) -> u64 {
+    let transfer_rate_gbps: f64 = match generation {
         Some(5) => 32.0,
         Some(4) => 16.0,
         Some(3) => 8.0,

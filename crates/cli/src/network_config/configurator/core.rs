@@ -18,6 +18,7 @@ use tracing::info;
 /// Core configurator trait
 ///
 /// Provides construction and main orchestration methods
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) trait ConfiguratorCore {
     /// Create a new configurator
     fn new() -> Self;

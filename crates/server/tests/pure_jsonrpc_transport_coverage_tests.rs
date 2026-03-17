@@ -11,8 +11,8 @@
 //! No real network I/O, no hardware probing.
 
 use std::borrow::Cow;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 use toadstool_server::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest};
 use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutor};

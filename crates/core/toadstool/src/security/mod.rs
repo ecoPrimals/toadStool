@@ -87,10 +87,12 @@ mod tests {
         ctx.capabilities.clear();
         let result = ctx.validate();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("at least one capability"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("at least one capability")
+        );
     }
 
     #[test]
@@ -106,10 +108,12 @@ mod tests {
         ctx.filesystem_security.read_only = true;
         let result = ctx.validate();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("read-only filesystem"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("read-only filesystem")
+        );
     }
 
     #[test]

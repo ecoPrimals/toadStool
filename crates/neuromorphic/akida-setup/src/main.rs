@@ -139,12 +139,12 @@ fn main() -> Result<()> {
         }
     );
 
-    if let Ok(device_nodes) = list_device_nodes() {
-        if !device_nodes.is_empty() {
-            tracing::info!("   Device nodes:");
-            for node in device_nodes {
-                tracing::info!("      - {}", node);
-            }
+    if let Ok(device_nodes) = list_device_nodes()
+        && !device_nodes.is_empty()
+    {
+        tracing::info!("   Device nodes:");
+        for node in device_nodes {
+            tracing::info!("      - {}", node);
         }
     }
 

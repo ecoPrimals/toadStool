@@ -5,8 +5,8 @@
 //! Target: 80%+ coverage
 #![allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use toadstool_testing::properties::{Generator, Property, PropertyTestConfig, PropertyTestRunner};
 

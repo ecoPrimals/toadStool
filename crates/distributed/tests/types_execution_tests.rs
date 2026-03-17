@@ -272,9 +272,11 @@ fn test_platform_resource_requirements_with_hardware() {
     };
 
     assert_eq!(requirements.specialized_hardware.len(), 2);
-    assert!(requirements
-        .specialized_hardware
-        .contains(&"GPU".to_string()));
+    assert!(
+        requirements
+            .specialized_hardware
+            .contains(&"GPU".to_string())
+    );
 }
 
 #[test]
@@ -436,9 +438,11 @@ fn test_optimized_execution_creation() {
     };
 
     assert_eq!(execution.optimizations_applied.len(), 2);
-    assert!(execution
-        .optimizations_applied
-        .contains(&"vectorization".to_string()));
+    assert!(
+        execution
+            .optimizations_applied
+            .contains(&"vectorization".to_string())
+    );
 }
 
 #[test]

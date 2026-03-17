@@ -373,10 +373,10 @@ impl WindowManager {
     /// Used for input event routing.
     pub fn set_focus(&mut self, id: WindowId) {
         // Unfocus old window
-        if let Some(old_id) = self.focused {
-            if let Some(window) = self.windows.get_mut(&old_id) {
-                window.set_focused(false);
-            }
+        if let Some(old_id) = self.focused
+            && let Some(window) = self.windows.get_mut(&old_id)
+        {
+            window.set_focused(false);
         }
 
         // Focus new window

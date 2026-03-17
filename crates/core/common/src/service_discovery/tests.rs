@@ -162,10 +162,12 @@ async fn test_config_file_discovery() {
     assert_eq!(compute_svc.metadata.get("region").unwrap(), "local");
 
     let storage_svc = all.iter().find(|s| s.name == "test-storage").unwrap();
-    assert!(storage_svc
-        .capabilities
-        .iter()
-        .any(|c| matches!(c, Capability::Storage(_))));
+    assert!(
+        storage_svc
+            .capabilities
+            .iter()
+            .any(|c| matches!(c, Capability::Storage(_)))
+    );
 }
 
 #[tokio::test]
@@ -201,9 +203,10 @@ async fn test_config_file_empty_services() {
 async fn test_parse_capabilities() {
     let caps = ServiceDiscovery::parse_capabilities("coordination,storage,compute");
     assert_eq!(caps.len(), 3);
-    assert!(caps
-        .iter()
-        .any(|c| matches!(c, Capability::Coordination(_))));
+    assert!(
+        caps.iter()
+            .any(|c| matches!(c, Capability::Coordination(_)))
+    );
     assert!(caps.iter().any(|c| matches!(c, Capability::Storage(_))));
     assert!(caps.iter().any(|c| matches!(c, Capability::Compute(_))));
 }
@@ -373,9 +376,10 @@ async fn test_config_skips_malformed_endpoint() {
 async fn test_parse_capabilities_unknown_filtered() {
     let caps = ServiceDiscovery::parse_capabilities("coordination,unknown_thing,storage,foo");
     assert_eq!(caps.len(), 2);
-    assert!(caps
-        .iter()
-        .any(|c| matches!(c, Capability::Coordination(_))));
+    assert!(
+        caps.iter()
+            .any(|c| matches!(c, Capability::Coordination(_)))
+    );
     assert!(caps.iter().any(|c| matches!(c, Capability::Storage(_))));
 }
 

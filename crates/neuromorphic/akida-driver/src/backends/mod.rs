@@ -29,12 +29,12 @@ pub(crate) fn read_hwmon_power(pcie_address: &str) -> Option<f32> {
     let hwmon_dir = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
     for entry in std::fs::read_dir(&hwmon_dir).ok()?.flatten() {
         let power_path = entry.path().join("power1_average");
-        if let Ok(content) = std::fs::read_to_string(&power_path) {
-            if let Ok(microwatts) = content.trim().parse::<u64>() {
-                #[allow(clippy::cast_precision_loss)]
-                let watts = microwatts as f32 / 1_000_000.0;
-                return Some(watts);
-            }
+        if let Ok(content) = std::fs::read_to_string(&power_path)
+            && let Ok(microwatts) = content.trim().parse::<u64>()
+        {
+            #[allow(clippy::cast_precision_loss)]
+            let watts = microwatts as f32 / 1_000_000.0;
+            return Some(watts);
         }
     }
     None

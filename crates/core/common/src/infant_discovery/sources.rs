@@ -52,22 +52,25 @@ impl EndpointSource for EnvironmentSource {
         let service = service.to_string();
 
         Box::pin(async move {
-            if let Ok(endpoint) = env::var(&env_var) {
-                tracing::debug!(
-                    service = service,
-                    env_var = env_var,
-                    endpoint = endpoint,
-                    "Found endpoint in environment"
-                );
-                Ok(Some(endpoint))
-            } else {
-                tracing::trace!(
-                    service = service,
-                    env_var = env_var,
-                    "No endpoint found in environment"
-                );
-                Ok(None)
-            }
+            env::var(&env_var).map_or_else(
+                |_| {
+                    tracing::trace!(
+                        service = service,
+                        env_var = env_var,
+                        "No endpoint found in environment"
+                    );
+                    Ok(None)
+                },
+                |endpoint| {
+                    tracing::debug!(
+                        service = service,
+                        env_var = env_var,
+                        endpoint = endpoint,
+                        "Found endpoint in environment"
+                    );
+                    Ok(Some(endpoint))
+                },
+            )
         })
     }
 
@@ -154,17 +157,20 @@ impl EndpointSource for FallbackSource {
         let result = self.fallbacks.get(&service).cloned();
 
         Box::pin(async move {
-            if let Some(endpoint) = result {
-                tracing::debug!(
-                    service = service,
-                    endpoint = endpoint,
-                    "Using fallback endpoint"
-                );
-                Ok(Some(endpoint))
-            } else {
-                tracing::trace!(service = service, "No fallback endpoint configured");
-                Ok(None)
-            }
+            result.map_or_else(
+                || {
+                    tracing::trace!(service = service, "No fallback endpoint configured");
+                    Ok(None)
+                },
+                |endpoint| {
+                    tracing::debug!(
+                        service = service,
+                        endpoint = endpoint,
+                        "Using fallback endpoint"
+                    );
+                    Ok(Some(endpoint))
+                },
+            )
         })
     }
 
@@ -439,45 +445,50 @@ impl EndpointSource for ConfigFileSource {
 
 /// Create standard production source chain
 #[must_use]
-pub fn production_sources() -> Vec<Box<dyn EndpointSource>> {
+pub fn production_sources() -> Vec<std::sync::Arc<dyn EndpointSource>> {
     vec![
-        Box::new(EnvironmentSource::default()),
-        Box::new(ServiceMeshSource::new()),
-        Box::new(MDNSSource::new()),
-        Box::new(FallbackSource::new()),
+        std::sync::Arc::new(EnvironmentSource::default()),
+        std::sync::Arc::new(ServiceMeshSource::new()),
+        std::sync::Arc::new(MDNSSource::new()),
+        std::sync::Arc::new(FallbackSource::new()),
     ]
 }
 
 /// Create development source chain (faster fallbacks)
 #[must_use]
-pub fn development_sources() -> Vec<Box<dyn EndpointSource>> {
+pub fn development_sources() -> Vec<std::sync::Arc<dyn EndpointSource>> {
     vec![
-        Box::new(EnvironmentSource::default()),
-        Box::new(FallbackSource::new()),
+        std::sync::Arc::new(EnvironmentSource::default()),
+        std::sync::Arc::new(FallbackSource::new()),
     ]
 }
 
 #[cfg(test)]
 mod tests {
+    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
+
     use super::*;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_environment_source() {
-        env::set_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT", "http://test:9999");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::set_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT", "http://test:9999") };
 
         let source = EnvironmentSource::default();
         let result = source.resolve("test_capability").await.unwrap();
 
         assert_eq!(result, Some("http://test:9999".to_string()));
 
-        env::remove_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT") };
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_fallback_source() {
         // EVOLVED: FallbackSource now requires environment variables
         // Set env var for test
-        env::set_var("SONGBIRD_URL", "http://test-songbird:8081");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::set_var("SONGBIRD_URL", "http://test-songbird:8081") };
         let source = FallbackSource::new();
         let result = source.resolve("ai_processing").await.unwrap();
 
@@ -486,7 +497,8 @@ mod tests {
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains("8081"));
 
-        env::remove_var("SONGBIRD_URL");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("SONGBIRD_URL") };
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -536,7 +548,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_source_no_env() {
-        env::remove_var("TOADSTOOL_NONEXISTENT_ENDPOINT");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("TOADSTOOL_NONEXISTENT_ENDPOINT") };
 
         let source = EnvironmentSource::default();
         let result = source.resolve("nonexistent").await.unwrap();
@@ -546,14 +559,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_source_custom_prefix() {
-        env::set_var("MYAPP_SERVICE_ENDPOINT", "http://custom:7777");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::set_var("MYAPP_SERVICE_ENDPOINT", "http://custom:7777") };
 
         let source = EnvironmentSource::new("MYAPP_");
         let result = source.resolve("service").await.unwrap();
 
         assert_eq!(result, Some("http://custom:7777".to_string()));
 
-        env::remove_var("MYAPP_SERVICE_ENDPOINT");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("MYAPP_SERVICE_ENDPOINT") };
     }
 
     #[test]
@@ -574,7 +589,8 @@ mod tests {
     #[tokio::test]
     async fn test_fallback_source_authentication() {
         // EVOLVED: FallbackSource requires env var
-        env::set_var("AUTHENTICATION_URL", "http://auth:9090");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::set_var("AUTHENTICATION_URL", "http://auth:9090") };
         let source = FallbackSource::new();
         let result = source.resolve("authentication").await.unwrap();
 
@@ -583,13 +599,15 @@ mod tests {
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains("9090"));
 
-        env::remove_var("AUTHENTICATION_URL");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("AUTHENTICATION_URL") };
     }
 
     #[tokio::test]
     async fn test_fallback_source_persistent_storage() {
         // EVOLVED: FallbackSource requires env var
-        env::set_var("STORAGE_URL", "http://storage:5432");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::set_var("STORAGE_URL", "http://storage:5432") };
         let source = FallbackSource::new();
         let result = source.resolve("persistent_storage").await.unwrap();
 
@@ -597,13 +615,15 @@ mod tests {
         let endpoint = result.unwrap();
         assert!(endpoint.contains("5432"));
 
-        env::remove_var("STORAGE_URL");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("STORAGE_URL") };
     }
 
     #[tokio::test]
     async fn test_fallback_source_nlp() {
         // EVOLVED: FallbackSource requires env var
-        env::set_var("NLP_URL", "http://nlp:7777");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::set_var("NLP_URL", "http://nlp:7777") };
         let source = FallbackSource::new();
         let result = source.resolve("natural_language_processing").await.unwrap();
 
@@ -611,13 +631,15 @@ mod tests {
         let endpoint = result.unwrap();
         assert!(endpoint.contains("7777"));
 
-        env::remove_var("NLP_URL");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("NLP_URL") };
     }
 
     #[tokio::test]
     async fn test_fallback_source_orchestration() {
         // EVOLVED: FallbackSource requires env var
-        env::set_var("BEARDOG_URL", "http://beardog:8082");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::set_var("BEARDOG_URL", "http://beardog:8082") };
         let source = FallbackSource::new();
         let result = source.resolve("service_orchestration").await.unwrap();
 
@@ -625,7 +647,8 @@ mod tests {
         let endpoint = result.unwrap();
         assert!(endpoint.starts_with("http://"));
 
-        env::remove_var("BEARDOG_URL");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { env::remove_var("BEARDOG_URL") };
     }
 
     #[tokio::test]

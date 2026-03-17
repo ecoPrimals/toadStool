@@ -42,7 +42,9 @@ impl CapabilityDiscovery {
             {
                 Ok(gpu_units) => units.extend(gpu_units),
                 Err(_) => {
-                    eprintln!("[toadstool-runtime-universal] wgpu discovery timed out — continuing with CPU only");
+                    eprintln!(
+                        "[toadstool-runtime-universal] wgpu discovery timed out — continuing with CPU only"
+                    );
                 }
             }
         }
@@ -110,7 +112,9 @@ impl CapabilityDiscovery {
         }) {
             Ok(a) => a,
             Err(_) => {
-                eprintln!("[toadstool-runtime-universal] wgpu adapter enumeration panicked — falling back to CPU only");
+                eprintln!(
+                    "[toadstool-runtime-universal] wgpu adapter enumeration panicked — falling back to CPU only"
+                );
                 return Vec::new();
             }
         };
@@ -151,7 +155,9 @@ impl CapabilityDiscovery {
                     .filter(|(_, _, f64_ok)| *f64_ok)
                     .min_by_key(|(idx, _, _)| *idx);
                 if let Some((idx, name, _)) = best {
-                    eprintln!("[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER=auto → selected [{idx}] {name}");
+                    eprintln!(
+                        "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER=auto → selected [{idx}] {name}"
+                    );
                     let unit = units.swap_remove(*idx);
                     return vec![unit];
                 }
@@ -170,7 +176,9 @@ impl CapabilityDiscovery {
                     .iter()
                     .find(|(_, n, _)| n.to_lowercase().contains(&lower))
                 {
-                    eprintln!("[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={token} → matched [{idx}] {name}");
+                    eprintln!(
+                        "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={token} → matched [{idx}] {name}"
+                    );
                     let unit = units.swap_remove(*idx);
                     return vec![unit];
                 }
@@ -234,6 +242,7 @@ pub enum ThroughputRequirement {
 
 impl WorkloadProfile {
     /// Analyze a workload and create a profile
+    #[allow(clippy::missing_const_for_fn)] // Workload has non-const fields
     pub fn from_workload(workload: &Workload) -> Self {
         let size = match workload.num_operations {
             0..=1_000 => WorkloadSize::Small,

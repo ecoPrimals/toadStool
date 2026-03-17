@@ -20,7 +20,7 @@ impl CapabilityRequestBuilder {
 
     /// Request security capability
     #[must_use]
-    pub fn security(self) -> SecurityRequestBuilder {
+    pub const fn security(self) -> SecurityRequestBuilder {
         SecurityRequestBuilder {
             features: vec![],
             min_trust_level: TrustLevel::Medium,
@@ -29,7 +29,7 @@ impl CapabilityRequestBuilder {
 
     /// Request storage capability
     #[must_use]
-    pub fn storage(self) -> StorageRequestBuilder {
+    pub const fn storage(self) -> StorageRequestBuilder {
         StorageRequestBuilder {
             features: vec![],
             min_throughput_mbps: None,
@@ -38,7 +38,7 @@ impl CapabilityRequestBuilder {
 
     /// Request coordination capability
     #[must_use]
-    pub fn coordination(self) -> CoordinationRequestBuilder {
+    pub const fn coordination(self) -> CoordinationRequestBuilder {
         CoordinationRequestBuilder {
             features: vec![],
             max_latency_ms: None,
@@ -47,7 +47,7 @@ impl CapabilityRequestBuilder {
 
     /// Request intelligence capability
     #[must_use]
-    pub fn intelligence(self) -> IntelligenceRequestBuilder {
+    pub const fn intelligence(self) -> IntelligenceRequestBuilder {
         IntelligenceRequestBuilder {
             features: vec![],
             model_types: vec![],

@@ -34,7 +34,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::gpu::{discover_gpus, GpuDevice};
+use crate::gpu::{GpuDevice, discover_gpus};
 
 /// A PCI bridge or switch in the bus hierarchy.
 #[derive(Debug, Clone)]
@@ -149,12 +149,12 @@ impl PcieTopologyGraph {
 
         let (gen_a, width_a) = dev_a.map_or((3, 16), |g: &GpuDevice| {
             let t = g.pcie_topology();
-            (t.gen.unwrap_or(3), t.width.unwrap_or(16))
+            (t.generation.unwrap_or(3), t.width.unwrap_or(16))
         });
 
         let (gen_b, width_b) = dev_b.map_or((3, 16), |g: &GpuDevice| {
             let t = g.pcie_topology();
-            (t.gen.unwrap_or(3), t.width.unwrap_or(16))
+            (t.generation.unwrap_or(3), t.width.unwrap_or(16))
         });
 
         let raw_a = raw_pcie_bandwidth_bps(gen_a, width_a);
@@ -325,8 +325,8 @@ fn find_common_bridge(
 
 /// Raw unidirectional `PCIe` bandwidth in bytes/sec for a given gen and width.
 #[must_use]
-pub const fn raw_pcie_bandwidth_bps(gen: u32, width: u32) -> u64 {
-    let lane_bps: u64 = match gen {
+pub const fn raw_pcie_bandwidth_bps(generation: u32, width: u32) -> u64 {
+    let lane_bps: u64 = match generation {
         1 => 250_000_000,
         2 => 500_000_000,
         4 => 1_969_000_000,
@@ -500,8 +500,12 @@ mod tests {
             let bw_gbps = bw as f64 / 1e9;
             println!(
                 "  card{} <-> card{}: hops={}, contention={:.2}, same_numa={}, same_iommu={}, bw={bw_gbps:.1} Gbps",
-                pair.gpu_a, pair.gpu_b, pair.hops, pair.contention_factor,
-                pair.same_numa, pair.same_iommu_group,
+                pair.gpu_a,
+                pair.gpu_b,
+                pair.hops,
+                pair.contention_factor,
+                pair.same_numa,
+                pair.same_iommu_group,
             );
         }
     }

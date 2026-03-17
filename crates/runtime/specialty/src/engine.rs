@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+//! Specialty runtime engine - orchestrates legacy adapters and job execution
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::config::SpecialtyRuntimeConfig;
@@ -12,8 +13,7 @@ use crate::types::systems::{LegacyArchitecture, LegacySystemType};
 use crate::types::emulation::LegacyEmulator;
 use crate::types::jobs::LegacyJob;
 use crate::types::traits::{
-    JobOutput, JobStatus, LegacyAdapter, LegacyCommunicationSession,
-    SpecialtyRuntimeMetrics,
+    JobOutput, JobStatus, LegacyAdapter, LegacyCommunicationSession, SpecialtyRuntimeMetrics,
 };
 use toadstool::{ToadStoolError, ToadStoolResult};
 
@@ -23,30 +23,53 @@ use super::industrial;
 use super::mainframe;
 use super::realtime;
 
-#[derive(Debug)]
+/// Specialty Hardware Runtime Engine for universal specialty system support
 pub struct SpecialtyRuntimeEngine {
-    pub(super) config: SpecialtyRuntimeConfig,
-    pub(super) adapters: Arc<RwLock<HashMap<LegacySystemType, Box<dyn LegacyAdapter>>>>,
-    pub(super) toolchains: Arc<RwLock<HashMap<LegacyArchitecture, ToolchainConfig>>>,
-    pub(super) active_jobs: Arc<RwLock<HashMap<Uuid, LegacyJob>>>,
-    pub(super) communication_sessions: Arc<RwLock<HashMap<Uuid, Box<dyn LegacyCommunicationSession>>>>,
-    pub(super) emulators: Arc<RwLock<HashMap<LegacySystemType, Box<dyn LegacyEmulator>>>>,
-    pub(super) metrics: Arc<Mutex<SpecialtyRuntimeMetrics>>,
+    /// Runtime configuration
+    pub(crate) config: SpecialtyRuntimeConfig,
+    /// Active specialty hardware adapters (Arc for concurrent access across awaits)
+    pub(crate) adapters: Arc<RwLock<HashMap<LegacySystemType, Arc<dyn LegacyAdapter>>>>,
+    /// Cross-compilation toolchains
+    pub(crate) toolchains: Arc<RwLock<HashMap<LegacyArchitecture, ToolchainConfig>>>,
+    /// Active specialty jobs
+    pub(crate) active_jobs: Arc<RwLock<HashMap<Uuid, LegacyJob>>>,
+    /// Communication sessions
+    pub(crate) _communication_sessions: Arc<RwLock<HashMap<Uuid, Box<dyn LegacyCommunicationSession>>>>,
+    /// System emulators
+    pub(crate) emulators: Arc<RwLock<HashMap<LegacySystemType, Box<dyn LegacyEmulator>>>>,
+    /// Runtime metrics
+    pub(crate) metrics: Arc<Mutex<SpecialtyRuntimeMetrics>>,
+}
+
+impl std::fmt::Debug for SpecialtyRuntimeEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpecialtyRuntimeEngine")
+            .field("config", &self.config)
+            .field("adapters", &"<Arc<dyn LegacyAdapter> map>")
+            .field("toolchains", &"<ToolchainConfig map>")
+            .field("active_jobs", &"<LegacyJob map>")
+            .field("communication_sessions", &"<sessions>")
+            .field("emulators", &"<emulators>")
+            .field("metrics", &"<SpecialtyRuntimeMetrics>")
+            .finish()
+    }
 }
 
 impl SpecialtyRuntimeEngine {
+    /// Create a new specialty hardware runtime engine
     pub fn new(config: SpecialtyRuntimeConfig) -> Self {
         Self {
             config,
             adapters: Arc::new(RwLock::new(HashMap::new())),
             toolchains: Arc::new(RwLock::new(HashMap::new())),
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
-            communication_sessions: Arc::new(RwLock::new(HashMap::new())),
+            _communication_sessions: Arc::new(RwLock::new(HashMap::new())),
             emulators: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(Mutex::new(SpecialtyRuntimeMetrics::default())),
         }
     }
 
+    /// Initialize the legacy runtime engine
     pub async fn initialize(&mut self) -> ToadStoolResult<()> {
         info!("Initializing Legacy Runtime Engine");
 
@@ -73,143 +96,253 @@ impl SpecialtyRuntimeEngine {
         Ok(())
     }
 
-    async fn initialize_mainframe_adapters(&mut self) -> ToadStoolResult<()> {
+    async fn initialize_mainframe_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing mainframe adapters");
-        let mut adapters = self.adapters.write().await;
-        adapters.insert(LegacySystemType::IbmSystem360, Box::new(mainframe::IBMMainframeAdapter::new()));
-        adapters.insert(LegacySystemType::VaxVms, Box::new(mainframe::VAXVMSAdapter::new()));
-        adapters.insert(LegacySystemType::AS400, Box::new(mainframe::AS400Adapter::new()));
+        let ibm_adapter = mainframe::IBMMainframeAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::IbmSystem360, Arc::new(ibm_adapter));
+
+        let vax_adapter = mainframe::VAXVMSAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::VaxVms, Arc::new(vax_adapter));
+
+        let as400_adapter = mainframe::AS400Adapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::AS400, Arc::new(as400_adapter));
+
         Ok(())
     }
 
-    async fn initialize_embedded_adapters(&mut self) -> ToadStoolResult<()> {
+    async fn initialize_embedded_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing embedded system adapters");
-        let mut adapters = self.adapters.write().await;
-        adapters.insert(LegacySystemType::Intel8080, Box::new(embedded::Microcontroller8BitAdapter::new()));
-        adapters.insert(LegacySystemType::Intel8086, Box::new(embedded::System16BitAdapter::new()));
+        let mcu_8bit_adapter = embedded::Microcontroller8BitAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::Intel8080, Arc::new(mcu_8bit_adapter));
+
+        let system_16bit_adapter = embedded::System16BitAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::Intel8086, Arc::new(system_16bit_adapter));
+
         Ok(())
     }
 
-    async fn initialize_industrial_adapters(&mut self) -> ToadStoolResult<()> {
+    async fn initialize_industrial_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing industrial system adapters");
-        let mut adapters = self.adapters.write().await;
-        adapters.insert(LegacySystemType::PlcLadder, Box::new(industrial::PLCAdapter::new()));
-        adapters.insert(LegacySystemType::ScadaSystem, Box::new(industrial::SCADAAdapter::new()));
+        let plc_adapter = industrial::PLCAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::PlcLadder, Arc::new(plc_adapter));
+
+        let scada_adapter = industrial::SCADAAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::ScadaSystem, Arc::new(scada_adapter));
+
         Ok(())
     }
 
-    async fn initialize_realtime_adapters(&mut self) -> ToadStoolResult<()> {
+    async fn initialize_realtime_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing real-time system adapters");
-        let mut adapters = self.adapters.write().await;
-        adapters.insert(LegacySystemType::VxWorks, Box::new(realtime::VxWorksAdapter::new()));
-        adapters.insert(LegacySystemType::QnxLegacy, Box::new(realtime::QNXAdapter::new()));
+        let vxworks_adapter = realtime::VxWorksAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::VxWorks, Arc::new(vxworks_adapter));
+
+        let qnx_adapter = realtime::QNXAdapter::new();
+        self.adapters
+            .write()
+            .await
+            .insert(LegacySystemType::QnxLegacy, Arc::new(qnx_adapter));
+
         Ok(())
     }
 
-    async fn initialize_cross_compilation_toolchains(&mut self) -> ToadStoolResult<()> {
+    async fn initialize_cross_compilation_toolchains(&self) -> ToadStoolResult<()> {
         info!("Initializing cross-compilation toolchains");
         let mut toolchains = self.toolchains.write().await;
         for (arch, config) in &self.config.toolchain_configs {
-            toolchains.insert(*arch, config.clone());
+            toolchains.insert(arch.clone(), config.clone());
         }
         Ok(())
     }
 
-    async fn initialize_emulators(&mut self) -> ToadStoolResult<()> {
+    async fn initialize_emulators(&self) -> ToadStoolResult<()> {
         info!("Initializing emulators");
-        let mut emulators = self.emulators.write().await;
-        emulators.insert(LegacySystemType::PDP11, Box::new(emulation::PDP11Emulator::new()));
-        emulators.insert(LegacySystemType::AppleIi, Box::new(emulation::Apple2Emulator::new()));
+        let pdp11_emulator = emulation::PDP11Emulator::new();
+        self.emulators
+            .write()
+            .await
+            .insert(LegacySystemType::PDP11, Box::new(pdp11_emulator));
+
+        let apple2_emulator = emulation::Apple2Emulator::new();
+        self.emulators
+            .write()
+            .await
+            .insert(LegacySystemType::AppleIi, Box::new(apple2_emulator));
+
         Ok(())
     }
 
+    /// Submit a legacy job for execution
     pub async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         info!("Submitting legacy job: {:?}", job.job_id);
+
         let adapters = self.adapters.read().await;
-        let adapter = adapters
-            .get(&job.target_system)
-            .ok_or_else(|| ToadStoolError::runtime(format!("No adapter found for system type: {:?}", job.target_system)))?;
-        let job_id = adapter.submit_job(job.clone()).await?;
+        let adapter = Arc::clone(adapters.get(&job.target_system).ok_or_else(|| {
+            ToadStoolError::runtime(format!(
+                "No adapter found for system type: {:?}",
+                job.target_system
+            ))
+        })?);
         drop(adapters);
+
+        let job_id = adapter.submit_job(job.clone()).await?;
         self.active_jobs.write().await.insert(job_id, job);
+
         let mut metrics = self.metrics.lock().await;
         metrics.total_jobs += 1;
         metrics.active_jobs += 1;
+
         Ok(job_id)
     }
 
+    /// Get the status of a legacy job
     pub async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
-        let job = jobs
+        let target_system = jobs
             .get(&job_id)
-            .ok_or_else(|| ToadStoolError::runtime(format!("Job not found: {}", job_id)))?;
+            .ok_or_else(|| ToadStoolError::runtime(format!("Job not found: {}", job_id)))?
+            .target_system
+            .clone();
+        drop(jobs);
+
         let adapters = self.adapters.read().await;
-        let adapter = adapters
-            .get(&job.target_system)
-            .ok_or_else(|| ToadStoolError::runtime(format!("No adapter found for system type: {:?}", job.target_system)))?;
+        let adapter = Arc::clone(adapters.get(&target_system).ok_or_else(|| {
+            ToadStoolError::runtime(format!(
+                "No adapter found for system type: {:?}",
+                target_system
+            ))
+        })?);
+        drop(adapters);
+
         adapter.get_job_status(job_id).await
     }
 
+    /// Cancel a legacy job
     pub async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
         let jobs = self.active_jobs.read().await;
-        let job = jobs
+        let target_system = jobs
             .get(&job_id)
-            .ok_or_else(|| ToadStoolError::runtime(format!("Job not found: {}", job_id)))?;
-        let adapters = self.adapters.read().await;
-        let adapter = adapters
-            .get(&job.target_system)
-            .ok_or_else(|| ToadStoolError::runtime(format!("No adapter found for system type: {:?}", job.target_system)))?;
-        adapter.cancel_job(job_id).await?;
+            .ok_or_else(|| ToadStoolError::runtime(format!("Job not found: {}", job_id)))?
+            .target_system
+            .clone();
         drop(jobs);
+
+        let adapters = self.adapters.read().await;
+        let adapter = Arc::clone(adapters.get(&target_system).ok_or_else(|| {
+            ToadStoolError::runtime(format!(
+                "No adapter found for system type: {:?}",
+                target_system
+            ))
+        })?);
+        drop(adapters);
+
+        adapter.cancel_job(job_id).await?;
         self.active_jobs.write().await.remove(&job_id);
+
         let mut metrics = self.metrics.lock().await;
         metrics.active_jobs = metrics.active_jobs.saturating_sub(1);
+
         Ok(())
     }
 
+    /// Get legacy job output
     pub async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
         let jobs = self.active_jobs.read().await;
-        let job = jobs
+        let target_system = jobs
             .get(&job_id)
-            .ok_or_else(|| ToadStoolError::runtime(format!("Job not found: {}", job_id)))?;
+            .ok_or_else(|| ToadStoolError::runtime(format!("Job not found: {}", job_id)))?
+            .target_system
+            .clone();
+        drop(jobs);
+
         let adapters = self.adapters.read().await;
-        let adapter = adapters
-            .get(&job.target_system)
-            .ok_or_else(|| ToadStoolError::runtime(format!("No adapter found for system type: {:?}", job.target_system)))?;
+        let adapter = Arc::clone(adapters.get(&target_system).ok_or_else(|| {
+            ToadStoolError::runtime(format!(
+                "No adapter found for system type: {:?}",
+                target_system
+            ))
+        })?);
+        drop(adapters);
+
         adapter.get_job_output(job_id).await
     }
 
+    /// Get runtime metrics
     pub async fn get_metrics(&self) -> ToadStoolResult<SpecialtyRuntimeMetrics> {
         let metrics = self.metrics.lock().await;
         Ok(metrics.clone())
     }
 
+    /// Get supported legacy systems
     pub fn get_supported_systems(&self) -> Vec<LegacySystemType> {
         self.config.supported_systems.clone()
     }
 
+    /// Test connectivity to a legacy system
     pub async fn test_connectivity(&self, system_type: LegacySystemType) -> ToadStoolResult<bool> {
         let adapters = self.adapters.read().await;
-        let adapter = adapters
-            .get(&system_type)
-            .ok_or_else(|| ToadStoolError::runtime(format!("No adapter found for system type: {:?}", system_type)))?;
+        let adapter = Arc::clone(adapters.get(&system_type).ok_or_else(|| {
+            ToadStoolError::runtime(format!(
+                "No adapter found for system type: {:?}",
+                system_type
+            ))
+        })?);
+        drop(adapters);
+
         adapter.test_connectivity().await
     }
 
+    /// Shutdown the specialty hardware runtime engine
     pub async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down Specialty Hardware Runtime Engine");
+
         let mut adapters = self.adapters.write().await;
-        for (_, adapter) in adapters.iter_mut() {
-            if let Err(e) = adapter.shutdown().await {
-                error!("Error shutting down adapter: {}", e);
+        for (name, adapter) in adapters.iter_mut() {
+            if let Some(inner) = Arc::get_mut(adapter) {
+                if let Err(e) = inner.shutdown().await {
+                    error!("Error shutting down adapter: {}", e);
+                }
+            } else {
+                warn!(
+                    "Cannot shutdown adapter {:?}: multiple references held",
+                    name
+                );
             }
         }
+        drop(adapters);
+
         let mut emulators = self.emulators.write().await;
         for (_, emulator) in emulators.iter_mut() {
             if let Err(e) = emulator.stop().await {
                 error!("Error stopping emulator: {}", e);
             }
         }
+        drop(emulators);
+
         info!("Specialty Hardware Runtime Engine shutdown complete");
         Ok(())
     }

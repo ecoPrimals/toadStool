@@ -318,9 +318,11 @@ fn test_string_contains_checks() {
 
     assert!(manifest_path.contains("biome.yaml"));
     assert!(manifest_path.starts_with("/path"));
-    assert!(std::path::Path::new(manifest_path)
-        .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("yaml")));
+    assert!(
+        std::path::Path::new(manifest_path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("yaml"))
+    );
 }
 
 #[test]

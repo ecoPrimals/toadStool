@@ -15,10 +15,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool_server::{
-    background::*, ActiveExecution, ClientInfo, HealthCheckConfig, ServerConfig, ServerEvent,
-    ServerState, ServerStatistics,
+    ActiveExecution, ClientInfo, HealthCheckConfig, ServerConfig, ServerEvent, ServerState,
+    ServerStatistics, background::*,
 };
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 fn create_test_state_with_config(config: ServerConfig) -> ServerState {
     let (event_broadcaster, _) = broadcast::channel(100);

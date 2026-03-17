@@ -58,7 +58,9 @@ impl BiomeExecutor {
         let mut log_files = HashMap::new();
 
         if manifest.security.beardog_required {
-            info!("🔐 Security provider required - use UniversalServiceAdapter.discover(\"security\")");
+            info!(
+                "🔐 Security provider required - use UniversalServiceAdapter.discover(\"security\")"
+            );
 
             if let Some(beardog_config) = manifest.primals.get(well_known::BEARDOG) {
                 let primal_name = "security-provider";

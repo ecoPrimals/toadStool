@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Tests for capability-based primal discovery.
-#![allow(deprecated, clippy::await_holding_lock)]
+#![allow(deprecated, clippy::await_holding_lock, unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024
 
 use super::*;
 use std::collections::HashMap;
@@ -22,12 +22,13 @@ where
     let discovery_base = base.join("ecoPrimals").join("discovery");
     std::fs::create_dir_all(&discovery_base).expect("create discovery dir");
     let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    std::env::set_var("XDG_RUNTIME_DIR", &base);
+    // SAFETY: Test-only; sequential test execution via ENV_MUTEX
+    unsafe { std::env::set_var("XDG_RUNTIME_DIR", &base) };
     let out = f(discovery_base).await;
     if let Some(p) = prev {
-        std::env::set_var("XDG_RUNTIME_DIR", p);
+        unsafe { std::env::set_var("XDG_RUNTIME_DIR", p) };
     } else {
-        std::env::remove_var("XDG_RUNTIME_DIR");
+        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
     }
     out
 }

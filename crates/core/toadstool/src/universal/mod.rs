@@ -37,8 +37,8 @@ pub use pipeline_graph::{
     PipelineExecution, PipelineGraph, StageNode, StageOutput, StageResult, Substrate,
 };
 pub use platform::{
-    get_platform_status, init_with_runtime_engines, PlatformStatus, UniversalComputePlatform,
-    UniversalPlatformConfig,
+    PlatformStatus, UniversalComputePlatform, UniversalPlatformConfig, get_platform_status,
+    init_with_runtime_engines,
 };
 pub use provider::ToadStoolPrimalProvider;
 pub use registry::UniversalPrimalRegistry;

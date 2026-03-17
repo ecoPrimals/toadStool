@@ -39,7 +39,7 @@ pub mod touch;
 pub use device::{Device, DeviceCapability, DeviceInfo, DeviceType};
 pub use events::{InputEvent, KeyCode, Modifiers, MouseButton, TouchPhase};
 pub use parser::EventParser;
-pub use touch::{touch_events_to_input_events, TouchTracker};
+pub use touch::{TouchTracker, touch_events_to_input_events};
 
 use crate::window::WindowId;
 use crate::{DisplayError, Result};
@@ -223,7 +223,7 @@ impl InputManager {
     /// # Errors
     ///
     /// Currently always returns `Ok`; reserved for future error cases.
-    pub fn poll_events(&mut self) -> Result<Vec<InputEvent>> {
+    pub const fn poll_events(&mut self) -> Result<Vec<InputEvent>> {
         // For now, return empty - real streaming happens via subscribe_events()
         // This is here for compatibility with the old API
         Ok(Vec::new())

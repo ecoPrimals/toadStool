@@ -63,7 +63,7 @@ pub enum ComplianceError {
 
 impl From<ComplianceError> for ToadStoolError {
     fn from(e: ComplianceError) -> Self {
-        ToadStoolError::security(e.to_string())
+        Self::security(e.to_string())
     }
 }
 
@@ -91,6 +91,7 @@ impl CloudComplianceEnforcer {
     }
 
     /// Create enforcer with explicit security tier.
+    #[allow(clippy::missing_const_for_fn)] // Mutates self; CloudComplianceEnforcer contains HashMap
     pub fn with_security_tier(mut self, tier: SecurityTier) -> Self {
         self.security_tier = tier;
         self
@@ -221,14 +222,11 @@ impl CloudComplianceEnforcer {
             .any(|r| provider_region_names.contains(r));
 
         if !has_required {
-            let sovereignty_reqs: Vec<String> = self
+            let all_required: HashSet<_> = self
                 .requirements
                 .data_sovereignty
                 .iter()
                 .flat_map(|ds| ds.allowed_regions.clone())
-                .collect();
-            let all_required: HashSet<_> = sovereignty_reqs
-                .into_iter()
                 .chain(required_regions)
                 .collect();
             let missing: Vec<_> = all_required

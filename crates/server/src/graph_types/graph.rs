@@ -84,10 +84,10 @@ impl ExecutionGraph {
         }
 
         for node in &self.nodes {
-            if color[node.id.as_str()] == Color::White {
-                if let Err(cycle_path) = self.dfs_visit(&node.id, &adj_list, &mut color) {
-                    return Err(GraphValidationError::CycleDetected(cycle_path));
-                }
+            if color[node.id.as_str()] == Color::White
+                && let Err(cycle_path) = self.dfs_visit(&node.id, &adj_list, &mut color)
+            {
+                return Err(GraphValidationError::CycleDetected(cycle_path));
             }
         }
 

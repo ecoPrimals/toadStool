@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-use crate::runtime_defaults::{ConfigError, ConfigResult};
 use crate::ToadStoolConfig;
+use crate::runtime_defaults::{ConfigError, ConfigResult};
 
 pub(super) fn validate(config: &ToadStoolConfig) -> ConfigResult<()> {
     if config.security.auth.enabled && config.security.auth.jwt_secret.is_none() {

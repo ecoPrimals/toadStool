@@ -252,10 +252,10 @@ impl DistributedGpuScheduler {
 
         // Wait for first successful result
         for handle in handles {
-            if let Ok(result) = handle.await {
-                if result.is_ok() {
-                    return result;
-                }
+            if let Ok(result) = handle.await
+                && result.is_ok()
+            {
+                return result;
             }
         }
 

@@ -48,8 +48,8 @@ pub mod zoo;
 
 pub use error::{AkidaModelError, Result};
 pub use model::{Layer, LayerType, Model};
-pub use shapes::{extract_shapes, Shape};
-pub use weights::{extract_weights, QuantizationConfig, WeightData};
+pub use shapes::{Shape, extract_shapes};
+pub use weights::{QuantizationConfig, WeightData, extract_weights};
 pub use zoo::{ModelTask, ModelZoo, ZooModel};
 
 /// Re-export commonly used types

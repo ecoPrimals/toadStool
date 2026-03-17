@@ -3,7 +3,7 @@
 //!
 //! These tests exercise job scheduling and coordination logic.
 
-use toadstool_testing::fixtures::{runtime::*, TestEnvironment};
+use toadstool_testing::fixtures::{TestEnvironment, runtime::*};
 
 #[tokio::test]
 async fn test_workload_can_be_scheduled() {

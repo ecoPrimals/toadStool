@@ -124,11 +124,11 @@ impl OllamaClient {
         });
 
         // Merge extra params if provided
-        if let Value::Object(extra) = params {
-            if let Value::Object(ref mut obj) = body {
-                for (k, v) in extra {
-                    obj.insert(k.clone(), v.clone());
-                }
+        if let Value::Object(extra) = params
+            && let Value::Object(ref mut obj) = body
+        {
+            for (k, v) in extra {
+                obj.insert(k.clone(), v.clone());
             }
         }
 

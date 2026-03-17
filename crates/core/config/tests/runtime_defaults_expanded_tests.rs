@@ -44,78 +44,89 @@ fn test_testing_preset() {
 #[test]
 fn test_for_current_environment_toadstool_environment() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::remove_var("TOADSTOOL_ENVIRONMENT");
-    std::env::remove_var("TOADSTOOL_ENV");
-    std::env::remove_var("ENVIRONMENT");
-    std::env::remove_var("ENV");
-
-    std::env::set_var("TOADSTOOL_ENVIRONMENT", "production");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::remove_var("TOADSTOOL_ENVIRONMENT");
+        std::env::remove_var("TOADSTOOL_ENV");
+        std::env::remove_var("ENVIRONMENT");
+        std::env::remove_var("ENV");
+        std::env::set_var("TOADSTOOL_ENVIRONMENT", "production");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "production");
 
-    std::env::remove_var("TOADSTOOL_ENVIRONMENT");
+    unsafe { std::env::remove_var("TOADSTOOL_ENVIRONMENT") };
 }
 
 /// Test `for_current_environment` with `TOADSTOOL_ENV` fallback
 #[test]
 fn test_for_current_environment_toadstool_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::remove_var("TOADSTOOL_ENVIRONMENT");
-    std::env::remove_var("TOADSTOOL_ENV");
-    std::env::remove_var("ENVIRONMENT");
-    std::env::remove_var("ENV");
-
-    std::env::set_var("TOADSTOOL_ENV", "staging");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::remove_var("TOADSTOOL_ENVIRONMENT");
+        std::env::remove_var("TOADSTOOL_ENV");
+        std::env::remove_var("ENVIRONMENT");
+        std::env::remove_var("ENV");
+        std::env::set_var("TOADSTOOL_ENV", "staging");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "staging");
 
-    std::env::remove_var("TOADSTOOL_ENV");
+    unsafe { std::env::remove_var("TOADSTOOL_ENV") };
 }
 
 /// Test `for_current_environment` with ENVIRONMENT fallback
 #[test]
 fn test_for_current_environment_environment() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::remove_var("TOADSTOOL_ENVIRONMENT");
-    std::env::remove_var("TOADSTOOL_ENV");
-    std::env::remove_var("ENVIRONMENT");
-    std::env::remove_var("ENV");
-
-    std::env::set_var("ENVIRONMENT", "test");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::remove_var("TOADSTOOL_ENVIRONMENT");
+        std::env::remove_var("TOADSTOOL_ENV");
+        std::env::remove_var("ENVIRONMENT");
+        std::env::remove_var("ENV");
+        std::env::set_var("ENVIRONMENT", "test");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "test");
 
-    std::env::remove_var("ENVIRONMENT");
+    unsafe { std::env::remove_var("ENVIRONMENT") };
 }
 
 /// Test `for_current_environment` with ENV fallback
 #[test]
 fn test_for_current_environment_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::remove_var("TOADSTOOL_ENVIRONMENT");
-    std::env::remove_var("TOADSTOOL_ENV");
-    std::env::remove_var("ENVIRONMENT");
-    std::env::remove_var("ENV");
-
-    std::env::set_var("ENV", "production");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::remove_var("TOADSTOOL_ENVIRONMENT");
+        std::env::remove_var("TOADSTOOL_ENV");
+        std::env::remove_var("ENVIRONMENT");
+        std::env::remove_var("ENV");
+        std::env::set_var("ENV", "production");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "production");
 
-    std::env::remove_var("ENV");
+    unsafe { std::env::remove_var("ENV") };
 }
 
 /// Test `for_current_environment` defaults to development
 #[test]
 fn test_for_current_environment_default() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::remove_var("TOADSTOOL_ENVIRONMENT");
-    std::env::remove_var("TOADSTOOL_ENV");
-    std::env::remove_var("ENVIRONMENT");
-    std::env::remove_var("ENV");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::remove_var("TOADSTOOL_ENVIRONMENT");
+        std::env::remove_var("TOADSTOOL_ENV");
+        std::env::remove_var("ENVIRONMENT");
+        std::env::remove_var("ENV");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "development");
@@ -128,17 +139,23 @@ fn test_for_current_environment_default() {
 #[test]
 fn test_load_from_env_only() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::remove_var("TOADSTOOL_ENV");
-    std::env::set_var("TOADSTOOL_ENV", "test");
-    std::env::set_var("TOADSTOOL_WORKER_THREADS", "8");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::remove_var("TOADSTOOL_ENV");
+        std::env::set_var("TOADSTOOL_ENV", "test");
+        std::env::set_var("TOADSTOOL_WORKER_THREADS", "8");
+    }
 
     let config = ToadStoolConfig::load_from_env_only().expect("Should load from env");
 
     assert_eq!(config.app.environment, "test");
     assert_eq!(config.app.worker_threads, 8);
 
-    std::env::remove_var("TOADSTOOL_ENV");
-    std::env::remove_var("TOADSTOOL_WORKER_THREADS");
+    // SAFETY: Test-only; sequential test execution via serial_test or similar
+    unsafe {
+        std::env::remove_var("TOADSTOOL_ENV");
+        std::env::remove_var("TOADSTOOL_WORKER_THREADS");
+    }
 }
 
 /// Test `to_json` serialization
@@ -190,7 +207,8 @@ fn test_load_with_overrides() {
     base.save_to_file(&config_path).expect("Should save");
 
     // Set an environment override
-    std::env::set_var("TOADSTOOL_WORKER_THREADS", "16");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { std::env::set_var("TOADSTOOL_WORKER_THREADS", "16") };
 
     let loaded = ToadStoolConfig::load_with_overrides(&config_path).expect("Should load");
 
@@ -200,7 +218,7 @@ fn test_load_with_overrides() {
     // Should have override from environment
     assert_eq!(loaded.app.worker_threads, 16);
 
-    std::env::remove_var("TOADSTOOL_WORKER_THREADS");
+    unsafe { std::env::remove_var("TOADSTOOL_WORKER_THREADS") };
 }
 
 /// Test load with overrides validates config
@@ -215,14 +233,15 @@ fn test_load_with_overrides_validates() {
     base.save_to_file(&config_path).expect("Should save");
 
     // Set invalid environment override (non-numeric port)
-    std::env::set_var("TOADSTOOL_PORT", "invalid");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { std::env::set_var("TOADSTOOL_PORT", "invalid") };
 
     let result = ToadStoolConfig::load_with_overrides(&config_path);
 
     // Should fail validation
     assert!(result.is_err());
 
-    std::env::remove_var("TOADSTOOL_PORT");
+    unsafe { std::env::remove_var("TOADSTOOL_PORT") };
 }
 
 /// Test `print_summary` doesn't panic

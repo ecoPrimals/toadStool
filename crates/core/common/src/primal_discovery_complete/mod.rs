@@ -336,22 +336,21 @@ impl PrimalDiscoveryEngine {
             if parts.len() == 2 {
                 let protocol = parts[0];
                 let remainder = parts[1];
-                let (host_port, path) = if let Some(idx) = remainder.find('/') {
+                let (host_port, path) = remainder.find('/').map_or((remainder, "/"), |idx| {
                     (&remainder[..idx], &remainder[idx..])
-                } else {
-                    (remainder, "/")
-                };
+                });
 
-                let (host, port) = if let Some(idx) = host_port.find(':') {
-                    (
-                        &host_port[..idx],
-                        host_port[idx + 1..]
-                            .parse::<u16>()
-                            .unwrap_or(crate::constants::network::DEFAULT_HTTP_PORT),
-                    )
-                } else {
-                    (host_port, if protocol == "https" { 443 } else { 80 })
-                };
+                let (host, port) = host_port.find(':').map_or_else(
+                    || (host_port, if protocol == "https" { 443 } else { 80 }),
+                    |idx| {
+                        (
+                            &host_port[..idx],
+                            host_port[idx + 1..]
+                                .parse::<u16>()
+                                .unwrap_or(crate::constants::network::DEFAULT_HTTP_PORT),
+                        )
+                    },
+                );
 
                 crate::primal_identity::ServiceEndpoint {
                     protocol: protocol.to_string(),
@@ -431,12 +430,16 @@ impl PrimalDiscoveryEngine {
 
     /// Get cache statistics
     pub async fn cache_stats(&self) -> CacheStats {
-        let cache = self.cache.read().await;
-        let total = cache.len();
-        let fresh = cache
-            .values()
-            .filter(|e| e.is_fresh(self.config.cache_ttl))
-            .count();
+        let (total, fresh) = {
+            let cache = self.cache.read().await;
+            let total = cache.len();
+            let fresh = cache
+                .values()
+                .filter(|e| e.is_fresh(self.config.cache_ttl))
+                .count();
+            drop(cache);
+            (total, fresh)
+        };
 
         CacheStats {
             total_entries: total,

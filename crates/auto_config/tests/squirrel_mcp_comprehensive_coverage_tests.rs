@@ -9,8 +9,8 @@
 
 use std::collections::HashMap;
 use std::time::SystemTime;
-use toadstool_auto_config::ai_mcp_interface::*;
 use toadstool_auto_config::ToadStoolResult;
+use toadstool_auto_config::ai_mcp_interface::*;
 
 // ============================================================================
 // UNIT TESTS - Construction & Basic Operations

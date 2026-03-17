@@ -121,9 +121,11 @@ mod tests {
     #[test]
     fn rules_file_path_is_valid() {
         assert!(RULES_FILE.starts_with("/etc/udev/rules.d/"));
-        assert!(std::path::Path::new(RULES_FILE)
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("rules")));
+        assert!(
+            std::path::Path::new(RULES_FILE)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("rules"))
+        );
     }
 
     #[test]

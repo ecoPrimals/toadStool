@@ -61,7 +61,7 @@ impl WindowsCompatibilityLayer {
     }
 
     #[must_use]
-    pub fn get_config(&self) -> &WindowsCompatConfig {
+    pub const fn get_config(&self) -> &WindowsCompatConfig {
         &self.config
     }
 }

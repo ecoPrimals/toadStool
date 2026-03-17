@@ -22,7 +22,7 @@ pub struct ModuleLoader {
 
 impl ModuleLoader {
     /// Create a new module loader
-    pub fn new(engine: Engine, config: WasmRuntimeConfig) -> Self {
+    pub const fn new(engine: Engine, config: WasmRuntimeConfig) -> Self {
         Self { engine, config }
     }
 
@@ -38,14 +38,11 @@ impl ModuleLoader {
             WasmModuleSource::File { path, .. } => {
                 hasher.update(path.to_string_lossy().as_bytes());
                 // Include file modification time if available
-                if let Ok(metadata) = std::fs::metadata(path) {
-                    if let Ok(modified) = metadata.modified() {
-                        if let Ok(duration) =
-                            modified.duration_since(std::time::SystemTime::UNIX_EPOCH)
-                        {
-                            hasher.update(duration.as_secs().to_le_bytes());
-                        }
-                    }
+                if let Ok(metadata) = std::fs::metadata(path)
+                    && let Ok(modified) = metadata.modified()
+                    && let Ok(duration) = modified.duration_since(std::time::SystemTime::UNIX_EPOCH)
+                {
+                    hasher.update(duration.as_secs().to_le_bytes());
                 }
             }
             WasmModuleSource::Url { url, .. } => {
@@ -125,7 +122,7 @@ impl ModuleLoader {
     }
 
     /// Get engine reference
-    pub fn engine(&self) -> &Engine {
+    pub const fn engine(&self) -> &Engine {
         &self.engine
     }
 }
@@ -226,10 +223,12 @@ mod tests {
         };
         let result = loader.load_module(&source).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .to_lowercase()
-            .contains("url"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .to_lowercase()
+                .contains("url")
+        );
     }
 }

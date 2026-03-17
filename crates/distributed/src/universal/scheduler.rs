@@ -176,8 +176,7 @@ impl UniversalScheduler {
 
     pub async fn schedule_job(&self, job: UniversalJob) -> ToadStoolResult<()> {
         // Add job to local queue
-        let mut queue = self.local_queue.write().await;
-        queue.add_job(job.clone()).await?;
+        self.local_queue.write().await.add_job(job.clone()).await?;
 
         // Process job based on target
         match &job.target {

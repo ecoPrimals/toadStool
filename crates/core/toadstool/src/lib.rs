@@ -147,8 +147,9 @@ pub use security::{
     SecurityContext, SecurityPolicy as ToadStoolSecurityPolicy, SecuritySettings,
 };
 pub use universal::{
-    init_with_runtime_engines, JobPriority, PlatformStatus, UniversalComputePlatform, UniversalJob,
-    UniversalJobType, UniversalPlatformConfig, UniversalScheduler, UniversalSystemResources,
+    JobPriority, PlatformStatus, UniversalComputePlatform, UniversalJob, UniversalJobType,
+    UniversalPlatformConfig, UniversalScheduler, UniversalSystemResources,
+    init_with_runtime_engines,
 };
 pub use workload::{
     ExecutableSource, GpuArgument, GpuProgramSource, PortMapping as WorkloadPortMapping,
@@ -161,10 +162,10 @@ pub use workload::{
 // Re-export common utilities (targeted, not wildcard — keeps downstream recompilation minimal)
 pub use toadstool_common as common;
 pub use toadstool_common::{
-    auth::{AuthCredentials, AuthType, ServiceAuthConfig},
-    error_codes::{self, codes, ErrorCategory, ErrorCode},
     ToadStoolError, ToadStoolErrorExt, ToadStoolErrorWithCode, ToadStoolResult,
     ToadStoolResultWithCode,
+    auth::{AuthCredentials, AuthType, ServiceAuthConfig},
+    error_codes::{self, ErrorCategory, ErrorCode, codes},
 };
 pub use toadstool_config as config;
 
@@ -254,11 +255,13 @@ mod tests {
     #[test]
     fn test_version_constant() {
         assert!(!VERSION.is_empty());
-        assert!(VERSION
-            .chars()
-            .next()
-            .expect("VERSION should have at least one char")
-            .is_ascii_digit());
+        assert!(
+            VERSION
+                .chars()
+                .next()
+                .expect("VERSION should have at least one char")
+                .is_ascii_digit()
+        );
     }
 
     #[test]

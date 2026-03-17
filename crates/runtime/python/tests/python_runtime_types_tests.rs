@@ -426,10 +426,12 @@ fn test_python_runtime_config_crypto() {
         ],
     };
 
-    assert!(config
-        .requirements
-        .iter()
-        .any(|r| r.contains("cryptography")));
+    assert!(
+        config
+            .requirements
+            .iter()
+            .any(|r| r.contains("cryptography"))
+    );
 }
 
 #[test]

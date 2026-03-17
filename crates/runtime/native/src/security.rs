@@ -5,7 +5,7 @@ use tracing::{debug, info};
 
 use toadstool::security::{IsolationLevel, SecurityContext};
 
-pub(crate) fn apply_security_context(
+pub fn apply_security_context(
     mut command: TokioCommand,
     security_context: &SecurityContext,
 ) -> TokioCommand {
@@ -29,10 +29,10 @@ pub(crate) fn apply_security_context(
             #[cfg(unix)]
             {
                 command.process_group(0);
-                if let Some(user_context) = &security_context.user_context {
-                    if let Some(username) = &user_context.username {
-                        info!("Setting user context to: {}", username);
-                    }
+                if let Some(user_context) = &security_context.user_context
+                    && let Some(username) = &user_context.username
+                {
+                    info!("Setting user context to: {}", username);
                 }
             }
         }

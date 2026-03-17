@@ -33,18 +33,22 @@ fn test_constraint_factory_methods() {
 fn test_constraint_is_hard_soft_all_variants() {
     assert!(Constraint::RequiresGPU.is_hard());
     assert!(Constraint::PrefersGPU.is_soft());
-    assert!(Constraint::Custom {
-        name: "x".into(),
-        hard: true,
-        value: "v".into(),
-    }
-    .is_hard());
-    assert!(Constraint::Custom {
-        name: "x".into(),
-        hard: false,
-        value: "v".into(),
-    }
-    .is_soft());
+    assert!(
+        Constraint::Custom {
+            name: "x".into(),
+            hard: true,
+            value: "v".into(),
+        }
+        .is_hard()
+    );
+    assert!(
+        Constraint::Custom {
+            name: "x".into(),
+            hard: false,
+            value: "v".into(),
+        }
+        .is_soft()
+    );
 }
 
 #[test]

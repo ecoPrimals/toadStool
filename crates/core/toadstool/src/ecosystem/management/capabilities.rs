@@ -39,11 +39,15 @@ impl ServiceManager {
         &self,
         service_id: &str,
     ) -> ToadStoolResult<Vec<Capability>> {
-        let services = self.services.read().await;
-        let service = services
+        let service = self
+            .services
+            .read()
+            .await
             .get(service_id)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?;
+            .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?
+            .capabilities
+            .clone();
 
-        Ok(service.capabilities.clone())
+        Ok(service)
     }
 }

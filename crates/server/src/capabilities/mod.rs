@@ -391,14 +391,11 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                         &device_id.to_string(),
                     ])
                     .output()
+                    && output.status.success()
+                    && let Ok(mem_str) = String::from_utf8(output.stdout)
+                    && let Ok(mem_mb) = mem_str.trim().parse::<u64>()
                 {
-                    if output.status.success() {
-                        if let Ok(mem_str) = String::from_utf8(output.stdout) {
-                            if let Ok(mem_mb) = mem_str.trim().parse::<u64>() {
-                                memory_bytes = mem_mb * 1024 * 1024;
-                            }
-                        }
-                    }
+                    memory_bytes = mem_mb * 1024 * 1024;
                 }
 
                 let render_node = find_render_node_for_pci(&pci_id);
@@ -462,10 +459,10 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
 
                     let mut memory_bytes = 0u64;
                     let mem_path = device_path.join("mem_info_vram_total");
-                    if let Ok(mem_str) = std::fs::read_to_string(&mem_path) {
-                        if let Ok(mem) = mem_str.trim().parse::<u64>() {
-                            memory_bytes = mem;
-                        }
+                    if let Ok(mem_str) = std::fs::read_to_string(&mem_path)
+                        && let Ok(mem) = mem_str.trim().parse::<u64>()
+                    {
+                        memory_bytes = mem;
                     }
 
                     let render_node = find_render_node_sibling(&card_path);
@@ -610,13 +607,11 @@ fn find_render_node_for_pci(pci_id: &str) -> Option<String> {
     if let Ok(entries) = std::fs::read_dir(drm_path) {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
-            if name.starts_with("renderD") {
-                let device_link = entry.path().join("device");
-                if let Ok(target) = std::fs::read_link(&device_link) {
-                    if target.to_string_lossy().contains(pci_id) {
-                        return Some(format!("/dev/dri/{name}"));
-                    }
-                }
+            if name.starts_with("renderD")
+                && let Ok(target) = std::fs::read_link(entry.path().join("device"))
+                && target.to_string_lossy().contains(pci_id)
+            {
+                return Some(format!("/dev/dri/{name}"));
             }
         }
     }

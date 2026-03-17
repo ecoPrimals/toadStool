@@ -5,7 +5,7 @@
 //! Unix sockets, abstract sockets (Linux), and TCP sockets.
 
 use tempfile::TempDir;
-use toadstool::ipc::platform::{bind_unix, connect_unix, Endpoint};
+use toadstool::ipc::platform::{Endpoint, bind_unix, connect_unix};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test]

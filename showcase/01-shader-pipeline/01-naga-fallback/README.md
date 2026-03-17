@@ -33,5 +33,5 @@ cargo run --release
 
 ## Prerequisites
 
-- Rust 1.82+
+- Rust 1.85+
 - toadStool server optional (demo works standalone with simulated responses)

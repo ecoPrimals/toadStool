@@ -49,8 +49,10 @@ impl ComputeResourceCoordinator {
             allocation_queue: Vec::new(),
         };
 
-        let mut pools = self.resource_pools.write().await;
-        pools.insert(device.id.clone(), pool);
+        self.resource_pools
+            .write()
+            .await
+            .insert(device.id.clone(), pool);
         Ok(())
     }
 
@@ -103,6 +105,7 @@ impl ComputeResourceCoordinator {
             priority: 1,
         };
 
+        drop(pools);
         Ok(allocation)
     }
 
@@ -124,6 +127,7 @@ impl ComputeResourceCoordinator {
             .allocated_compute_units
             .saturating_sub(allocation.compute_units);
 
+        drop(pools);
         Ok(())
     }
 
@@ -306,10 +310,12 @@ mod tests {
             .allocate_resources(&device.id, &requirements)
             .await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Insufficient memory"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Insufficient memory")
+        );
     }
 
     #[tokio::test]
@@ -325,10 +331,12 @@ mod tests {
             .allocate_resources(&device.id, &requirements)
             .await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Insufficient compute"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Insufficient compute")
+        );
     }
 
     #[tokio::test]

@@ -56,11 +56,13 @@ fn test_discovery_client_parse_node_data_missing_node_id() {
 
     let result = client.parse_node_data(&node_json);
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .to_lowercase()
-        .contains("node_id"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .to_lowercase()
+            .contains("node_id")
+    );
 }
 
 #[test]

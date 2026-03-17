@@ -123,7 +123,9 @@ impl DaemonServer {
                 self.config.port
             );
         } else {
-            info!("✨ Pure Unix socket mode - HTTP disabled (set TOADSTOOL_HTTP_COMPAT=1 for old clients)");
+            info!(
+                "✨ Pure Unix socket mode - HTTP disabled (set TOADSTOOL_HTTP_COMPAT=1 for old clients)"
+            );
         }
 
         // Wait for shutdown signal

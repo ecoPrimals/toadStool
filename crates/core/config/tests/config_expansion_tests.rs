@@ -62,13 +62,15 @@ fn test_env_config_loader_get_string_from_env() {
     // In a real migration, EnvConfigLoader would accept TestEnv
     // For now, test the pattern with actual env (but unique key per test)
     let unique_key = format!("TOADSTOOL_TEST_STRING_{}", std::process::id());
-    std::env::set_var(&unique_key, "test_value");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::env::set_var(&unique_key, "test_value") };
 
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_string(&unique_key.replace("TOADSTOOL_", ""), "default");
     assert_eq!(value, "test_value");
 
-    std::env::remove_var(&unique_key);
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::env::remove_var(&unique_key) };
     // No cleanup needed for TestEnv - it's dropped automatically
 }
 
@@ -89,31 +91,34 @@ fn test_env_config_loader_get_bool_default_true() {
 #[test]
 fn test_env_config_loader_get_bool_true_from_env() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    env::set_var("TOADSTOOL_TEST_BOOL_TRUE", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_TEST_BOOL_TRUE", "true") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_bool("TEST_BOOL_TRUE", false);
     assert!(value);
-    env::remove_var("TOADSTOOL_TEST_BOOL_TRUE");
+    unsafe { env::remove_var("TOADSTOOL_TEST_BOOL_TRUE") };
 }
 
 #[test]
 fn test_env_config_loader_get_bool_one_from_env() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    env::set_var("TOADSTOOL_TEST_BOOL_ONE", "1");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_TEST_BOOL_ONE", "1") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_bool("TEST_BOOL_ONE", false);
     assert!(value);
-    env::remove_var("TOADSTOOL_TEST_BOOL_ONE");
+    unsafe { env::remove_var("TOADSTOOL_TEST_BOOL_ONE") };
 }
 
 #[test]
 fn test_env_config_loader_get_bool_false_from_env() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    env::set_var("TOADSTOOL_TEST_BOOL_FALSE", "false");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_TEST_BOOL_FALSE", "false") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_bool("TEST_BOOL_FALSE", true);
     assert!(!value);
-    env::remove_var("TOADSTOOL_TEST_BOOL_FALSE");
+    unsafe { env::remove_var("TOADSTOOL_TEST_BOOL_FALSE") };
 }
 
 #[test]
@@ -125,20 +130,22 @@ fn test_env_config_loader_get_u16_default() {
 
 #[test]
 fn test_env_config_loader_get_u16_from_env() {
-    env::set_var("TOADSTOOL_TEST_U16", "9090");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_U16", "9090") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_u16("TEST_U16", 8080);
     assert_eq!(value, 9090);
-    env::remove_var("TOADSTOOL_TEST_U16");
+    unsafe { env::remove_var("TOADSTOOL_TEST_U16") };
 }
 
 #[test]
 fn test_env_config_loader_get_u16_invalid() {
-    env::set_var("TOADSTOOL_TEST_U16_INVALID", "invalid");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_U16_INVALID", "invalid") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_u16("TEST_U16_INVALID", 8080);
     assert_eq!(value, 8080); // Falls back to default
-    env::remove_var("TOADSTOOL_TEST_U16_INVALID");
+    unsafe { env::remove_var("TOADSTOOL_TEST_U16_INVALID") };
 }
 
 #[test]
@@ -150,11 +157,12 @@ fn test_env_config_loader_get_u32_default() {
 
 #[test]
 fn test_env_config_loader_get_u32_from_env() {
-    env::set_var("TOADSTOOL_TEST_U32", "2000");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_U32", "2000") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_u32("TEST_U32", 1000);
     assert_eq!(value, 2000);
-    env::remove_var("TOADSTOOL_TEST_U32");
+    unsafe { env::remove_var("TOADSTOOL_TEST_U32") };
 }
 
 #[test]
@@ -166,11 +174,12 @@ fn test_env_config_loader_get_u64_default() {
 
 #[test]
 fn test_env_config_loader_get_u64_from_env() {
-    env::set_var("TOADSTOOL_TEST_U64", "200000");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_U64", "200000") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_u64("TEST_U64", 100_000);
     assert_eq!(value, 200_000);
-    env::remove_var("TOADSTOOL_TEST_U64");
+    unsafe { env::remove_var("TOADSTOOL_TEST_U64") };
 }
 
 #[test]
@@ -183,12 +192,13 @@ fn test_env_config_loader_get_f64_default() {
 
 #[test]
 fn test_env_config_loader_get_f64_from_env() {
-    env::set_var("TOADSTOOL_TEST_F64", "2.71");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_F64", "2.71") };
     let loader = env_config::EnvConfigLoader::new();
     let default_val = std::f64::consts::PI;
     let value = loader.get_f64("TEST_F64", default_val);
     assert!((value - 2.71).abs() < 0.001);
-    env::remove_var("TOADSTOOL_TEST_F64");
+    unsafe { env::remove_var("TOADSTOOL_TEST_F64") };
 }
 
 #[test]
@@ -200,11 +210,12 @@ fn test_env_config_loader_get_duration_default() {
 
 #[test]
 fn test_env_config_loader_get_duration_from_env() {
-    env::set_var("TOADSTOOL_TEST_DURATION", "60");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_DURATION", "60") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_duration("TEST_DURATION", Duration::from_secs(30));
     assert_eq!(value, Duration::from_secs(60));
-    env::remove_var("TOADSTOOL_TEST_DURATION");
+    unsafe { env::remove_var("TOADSTOOL_TEST_DURATION") };
 }
 
 #[test]
@@ -216,17 +227,21 @@ fn test_env_config_loader_get_path_default() {
 
 #[test]
 fn test_env_config_loader_get_path_from_env() {
-    env::set_var("TOADSTOOL_TEST_PATH", "/custom/path");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_PATH", "/custom/path") };
     let loader = env_config::EnvConfigLoader::new();
     let value = loader.get_path("TEST_PATH", "/default/path");
     assert_eq!(value, PathBuf::from("/custom/path"));
-    env::remove_var("TOADSTOOL_TEST_PATH");
+    unsafe { env::remove_var("TOADSTOOL_TEST_PATH") };
 }
 
 #[test]
 fn test_env_config_loader_load_cache() {
-    env::set_var("TOADSTOOL_CACHE_TEST_1", "value1");
-    env::set_var("TOADSTOOL_CACHE_TEST_2", "value2");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::set_var("TOADSTOOL_CACHE_TEST_1", "value1");
+        env::set_var("TOADSTOOL_CACHE_TEST_2", "value2");
+    }
 
     let mut loader = env_config::EnvConfigLoader::new();
     loader.load_cache();
@@ -234,15 +249,20 @@ fn test_env_config_loader_load_cache() {
     // Cache should contain our test variables
     // (Can't directly check cache, but verify it doesn't panic)
 
-    env::remove_var("TOADSTOOL_CACHE_TEST_1");
-    env::remove_var("TOADSTOOL_CACHE_TEST_2");
+    unsafe {
+        env::remove_var("TOADSTOOL_CACHE_TEST_1");
+        env::remove_var("TOADSTOOL_CACHE_TEST_2");
+    }
 }
 
 #[test]
 fn test_env_config_loader_get_prefixed() {
-    env::set_var("TOADSTOOL_PREFIX_TEST_1", "value1");
-    env::set_var("TOADSTOOL_PREFIX_TEST_2", "value2");
-    env::set_var("TOADSTOOL_OTHER_TEST", "other");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::set_var("TOADSTOOL_PREFIX_TEST_1", "value1");
+        env::set_var("TOADSTOOL_PREFIX_TEST_2", "value2");
+        env::set_var("TOADSTOOL_OTHER_TEST", "other");
+    }
 
     let loader = env_config::EnvConfigLoader::new();
     let prefixed = loader.get_prefixed("PREFIX");
@@ -251,20 +271,23 @@ fn test_env_config_loader_get_prefixed() {
     assert!(prefixed.contains_key("TOADSTOOL_PREFIX_TEST_1"));
     assert!(prefixed.contains_key("TOADSTOOL_PREFIX_TEST_2"));
 
-    env::remove_var("TOADSTOOL_PREFIX_TEST_1");
-    env::remove_var("TOADSTOOL_PREFIX_TEST_2");
-    env::remove_var("TOADSTOOL_OTHER_TEST");
+    unsafe {
+        env::remove_var("TOADSTOOL_PREFIX_TEST_1");
+        env::remove_var("TOADSTOOL_PREFIX_TEST_2");
+        env::remove_var("TOADSTOOL_OTHER_TEST");
+    }
 }
 
 #[test]
 fn test_env_config_loader_custom_prefix() {
-    env::set_var("CUSTOM_MY_VAR", "custom_value");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("CUSTOM_MY_VAR", "custom_value") };
 
     let loader = env_config::EnvConfigLoader::with_prefix("CUSTOM");
     let value = loader.get_string("MY_VAR", "default");
 
     assert_eq!(value, "custom_value");
-    env::remove_var("CUSTOM_MY_VAR");
+    unsafe { env::remove_var("CUSTOM_MY_VAR") };
 }
 
 #[test]
@@ -305,7 +328,8 @@ fn test_network_default_max_connections_per_host() {
 
 #[test]
 fn test_get_songbird_port_default() {
-    env::remove_var("TOADSTOOL_SONGBIRD_PORT");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::remove_var("TOADSTOOL_SONGBIRD_PORT") };
     let port = network::get_songbird_port();
     assert_eq!(port, 8080); // Default SONGBIRD_PORT from defaults::network
 }
@@ -316,10 +340,11 @@ fn test_get_songbird_port_from_env() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    env::set_var("SONGBIRD_PORT", "9080");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("SONGBIRD_PORT", "9080") };
     let port = network::get_songbird_port();
     assert_eq!(port, 9080);
-    env::remove_var("SONGBIRD_PORT");
+    unsafe { env::remove_var("SONGBIRD_PORT") };
 }
 
 #[test]
@@ -328,7 +353,8 @@ fn test_get_beardog_port_default() {
     let _lock = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    env::remove_var("BEARDOG_PORT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::remove_var("BEARDOG_PORT") };
     let port = network::get_beardog_port();
     assert_eq!(port, 8081);
 }
@@ -339,10 +365,11 @@ fn test_get_beardog_port_from_env() {
     let _lock = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    env::set_var("BEARDOG_PORT", "9081");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("BEARDOG_PORT", "9081") };
     let port = network::get_beardog_port();
     assert_eq!(port, 9081);
-    env::remove_var("BEARDOG_PORT");
+    unsafe { env::remove_var("BEARDOG_PORT") };
 }
 
 // ===== TESTS ALREADY USE TestEnv - NO GLOBAL ENV POLLUTION =====
@@ -355,8 +382,11 @@ fn test_get_toadstool_port_default() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    env::remove_var("TOADSTOOL_PORT");
-    env::remove_var("TOADSTOOL_API_PORT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_PORT");
+        env::remove_var("TOADSTOOL_API_PORT");
+    }
     let port = network::get_toadstool_port();
     assert_eq!(port, 0); // OS-assigned default
 }
@@ -367,10 +397,11 @@ fn test_get_toadstool_port_from_env() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    env::set_var("TOADSTOOL_PORT", "9084");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("TOADSTOOL_PORT", "9084") };
     let port = network::get_toadstool_port();
     assert_eq!(port, 9084);
-    env::remove_var("TOADSTOOL_PORT");
+    unsafe { env::remove_var("TOADSTOOL_PORT") };
 }
 
 #[test]
@@ -379,7 +410,8 @@ fn test_get_bind_host_default() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    env::remove_var("BIND_ADDRESS");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::remove_var("BIND_ADDRESS") };
     let host = network::get_bind_host();
     assert_eq!(host, "127.0.0.1");
 }
@@ -390,10 +422,11 @@ fn test_get_bind_host_from_env() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    env::set_var("BIND_ADDRESS", "0.0.0.0");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::set_var("BIND_ADDRESS", "0.0.0.0") };
     let host = network::get_bind_host();
     assert_eq!(host, "0.0.0.0");
-    env::remove_var("BIND_ADDRESS");
+    unsafe { env::remove_var("BIND_ADDRESS") };
 }
 
 // Deprecated endpoint tests - maintained for backward compatibility validation
@@ -403,8 +436,11 @@ fn test_get_bind_host_from_env() {
 #[test]
 #[allow(deprecated)]
 fn test_get_songbird_endpoint_format() {
-    env::remove_var("TOADSTOOL_BIND_HOST");
-    env::remove_var("TOADSTOOL_SONGBIRD_PORT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_BIND_HOST");
+        env::remove_var("TOADSTOOL_SONGBIRD_PORT");
+    }
     let endpoint = network::get_songbird_endpoint();
     assert!(endpoint.starts_with("http://"));
     assert!(endpoint.contains(':'));
@@ -413,8 +449,11 @@ fn test_get_songbird_endpoint_format() {
 #[test]
 #[allow(deprecated)]
 fn test_get_beardog_endpoint_format() {
-    env::remove_var("TOADSTOOL_BIND_HOST");
-    env::remove_var("TOADSTOOL_BEARDOG_PORT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_BIND_HOST");
+        env::remove_var("TOADSTOOL_BEARDOG_PORT");
+    }
     let endpoint = network::get_beardog_endpoint();
     assert!(endpoint.starts_with("http://"));
     assert!(endpoint.contains(':'));
@@ -423,8 +462,11 @@ fn test_get_beardog_endpoint_format() {
 #[test]
 #[allow(deprecated)]
 fn test_get_nestgate_endpoint_format() {
-    env::remove_var("TOADSTOOL_BIND_HOST");
-    env::remove_var("TOADSTOOL_NESTGATE_PORT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_BIND_HOST");
+        env::remove_var("TOADSTOOL_NESTGATE_PORT");
+    }
     let endpoint = network::get_nestgate_endpoint();
     assert!(endpoint.starts_with("http://"));
     assert!(endpoint.contains(':'));
@@ -433,8 +475,11 @@ fn test_get_nestgate_endpoint_format() {
 #[test]
 #[allow(deprecated)]
 fn test_get_squirrel_endpoint_format() {
-    env::remove_var("TOADSTOOL_BIND_HOST");
-    env::remove_var("TOADSTOOL_SQUIRREL_PORT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_BIND_HOST");
+        env::remove_var("TOADSTOOL_SQUIRREL_PORT");
+    }
     let endpoint = network::get_squirrel_endpoint();
     assert!(endpoint.starts_with("http://"));
     assert!(endpoint.contains(':'));
@@ -443,8 +488,11 @@ fn test_get_squirrel_endpoint_format() {
 #[test]
 #[allow(deprecated)]
 fn test_get_toadstool_endpoint_format() {
-    env::remove_var("TOADSTOOL_BIND_HOST");
-    env::remove_var("TOADSTOOL_API_PORT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_BIND_HOST");
+        env::remove_var("TOADSTOOL_API_PORT");
+    }
     let endpoint = network::get_toadstool_endpoint();
     assert!(endpoint.starts_with("http://"));
     assert!(endpoint.contains(':'));

@@ -264,7 +264,7 @@ async fn test_server_graceful_shutdown() {
     // - Process may ignore it, but that's tested behavior
     #[cfg(unix)]
     {
-        use rustix::process::{kill_process, Pid, Signal};
+        use rustix::process::{Pid, Signal, kill_process};
         if let Some(pid) = cmd.id() {
             // SAFETY: Pid::from_raw requires non-zero pid (we check via cmd.id())
             if let Some(pid) = Pid::from_raw(pid as i32) {

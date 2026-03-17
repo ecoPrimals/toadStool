@@ -58,6 +58,7 @@ impl SongbirdBroadcastMessage {
     /// Derive a routing channel name from the message variant.
     ///
     /// Used by `SongbirdBroadcaster::broadcast()` to route to the correct channel.
+    #[allow(clippy::missing_const_for_fn)] // CustomMessage uses message_type.as_str()
     pub fn channel_name(&self) -> &str {
         match self {
             Self::CapabilityUpdate { .. } => "capability-updates",

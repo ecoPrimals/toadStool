@@ -10,6 +10,8 @@
 
 use std::path::PathBuf;
 use std::time::Duration;
+use toadstool_runtime_specialty::LegacyArchitecture;
+use toadstool_runtime_specialty::LegacySystemType;
 use toadstool_runtime_specialty::types::configs::CommunicationSettings;
 use toadstool_runtime_specialty::types::jobs::*;
 use toadstool_runtime_specialty::types::requirements::{
@@ -17,8 +19,6 @@ use toadstool_runtime_specialty::types::requirements::{
 };
 use toadstool_runtime_specialty::types::systems::*;
 use toadstool_runtime_specialty::types::traits::*;
-use toadstool_runtime_specialty::LegacyArchitecture;
-use toadstool_runtime_specialty::LegacySystemType;
 use uuid::Uuid;
 
 fn minimal_compilation_requirements() -> CompilationRequirements {

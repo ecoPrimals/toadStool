@@ -1,9 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: March 16, 2026 — S156
+**Date**: March 16, 2026 — S157
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S157 Resolved Debt
+
+- **D-EDITION**: Rust edition 2021 → **2024**. MSRV 1.82 → **1.85**. `gen` keyword migration complete.
+- **D-NURSERY**: `clippy::nursery` now enabled workspace-wide (~500+ violations fixed).
+- **D-GPU-COMPILE**: `toadstool-runtime-gpu` compile errors resolved (Vec<u8>→Bytes, CUDA WorkloadResult, integer overflow, cudarc 0.19 API).
+- **D-DISTRIBUTED-COMPILE**: Missing `reply_channel` in `SongbirdConnection` test constructors.
+- **D-CLI-NPU**: `akida-driver` dependency wired for `npu` feature. `ChipVersion` Display impl added.
+- **D-OPENCL-DEPRECATED**: Deprecated OpenCL module properly `#[allow(deprecated)]` gated.
+- **D-PROFRAW**: 271 stale `.profraw` files cleaned from crate directories.
+- **D-LARGE-FILES**: 8 files (900+ lines) smart-refactored into coherent submodules. All production < 500 lines.
+- **D-ZERO-COPY**: OpenCL/CUDA backends fully migrated to `bytes::Bytes`.
 
 ---
 

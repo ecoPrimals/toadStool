@@ -168,16 +168,15 @@ impl ConditionEvaluator {
                 Ok(hour_match && day_match)
             }
 
-            PolicyCondition::UserContext { users, groups } => {
-                if let Some(user_info) = &context.user_info {
+            PolicyCondition::UserContext { users, groups } => context.user_info.as_ref().map_or(
+                Ok(users.is_empty() && groups.is_empty()),
+                |user_info| {
                     let user_match = users.is_empty() || users.contains(&user_info.username);
                     let group_match =
                         groups.is_empty() || groups.iter().any(|g| user_info.groups.contains(g));
                     Ok(user_match && group_match)
-                } else {
-                    Ok(users.is_empty() && groups.is_empty())
-                }
-            }
+                },
+            ),
 
             PolicyCondition::Composite {
                 operator,

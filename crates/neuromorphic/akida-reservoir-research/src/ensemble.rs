@@ -10,7 +10,7 @@ use crate::error::Result;
 use ndarray::Array1;
 use tracing::{debug, info};
 
-use crate::state_extraction::{concatenate_states, inference_to_state, StateExtractor};
+use crate::state_extraction::{StateExtractor, concatenate_states, inference_to_state};
 
 /// Configuration for ensemble
 #[derive(Debug, Clone)]
@@ -226,12 +226,12 @@ impl DualChipEnsemble {
     }
 
     /// Get configuration
-    pub fn config(&self) -> &EnsembleConfig {
+    pub const fn config(&self) -> &EnsembleConfig {
         &self.config
     }
 
     /// Get device references
-    pub fn devices(&mut self) -> (&mut AkidaDevice, &mut AkidaDevice) {
+    pub const fn devices(&mut self) -> (&mut AkidaDevice, &mut AkidaDevice) {
         (&mut self.device1, &mut self.device2)
     }
 }

@@ -127,16 +127,15 @@ impl ShaderHandler {
             arr.iter()
                 .filter_map(|v| v.as_u64().map(|n| n as u32))
                 .collect::<Vec<u32>>()
-        }) {
-            if let Some(result) = self.coral_reef.compile_spirv(&words, arch).await {
-                return Ok(serde_json::json!({
-                    "status": "compiled",
-                    "pipeline": capabilities::SHADER_COMPILE_NATIVE,
-                    "source_language": "spirv",
-                    "native_compiler_available": true,
-                    "result": result
-                }));
-            }
+        }) && let Some(result) = self.coral_reef.compile_spirv(&words, arch).await
+        {
+            return Ok(serde_json::json!({
+                "status": "compiled",
+                "pipeline": capabilities::SHADER_COMPILE_NATIVE,
+                "source_language": "spirv",
+                "native_compiler_available": true,
+                "result": result
+            }));
         }
 
         Ok(serde_json::json!({

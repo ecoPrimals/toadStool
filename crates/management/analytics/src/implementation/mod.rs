@@ -16,7 +16,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
@@ -94,7 +94,9 @@ impl IntelligentAnalyticsEngine {
 
     async fn process_buffered_data(&self) -> ToadStoolResult<()> {
         let buf = self.data_buffer.read().await;
-        debug!("Processing buffered data: {} points in memory", buf.len());
+        let len = buf.len();
+        drop(buf);
+        debug!("Processing buffered data: {} points in memory", len);
         Ok(())
     }
 }
@@ -112,10 +114,12 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         if buf.len() > buffer::MAX_BUFFER_SIZE {
             buf.pop_front();
         }
+        drop(buf);
 
         Ok(())
     }
 
+    #[allow(clippy::significant_drop_tightening)] // matching holds refs from buf
     async fn analyze_trends(
         &self,
         metric_name: &str,
@@ -175,6 +179,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         })
     }
 
+    #[allow(clippy::significant_drop_tightening)] // matching holds refs from buf
     async fn predict_values(
         &self,
         metric_name: &str,
@@ -196,17 +201,16 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         Ok(statistics::generate_predictions(&values, hours_ahead))
     }
 
+    #[allow(clippy::significant_drop_tightening)] // recent_points holds refs from buf
     async fn evaluate_alerts(&self) -> ToadStoolResult<Vec<Alert>> {
         debug!("Evaluating alert conditions");
 
         let recent_time = SystemTime::now() - Duration::from_secs(5 * 60);
         let buf = self.data_buffer.read().await;
-
         let recent_points: Vec<&AnalyticsDataPoint> = buf
             .iter()
             .filter(|dp| dp.timestamp >= recent_time)
             .collect();
-
         let triggered_alerts = alerts::compute_triggered_alerts(&recent_points, &self.config);
 
         for alert in &triggered_alerts {
@@ -220,12 +224,15 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         debug!("Creating dashboard: {}", dashboard.name);
 
         let dashboard_id = dashboard.id;
-        let mut dashboards = self.dashboards.write().await;
-        dashboards.insert(dashboard_id, dashboard);
+        self.dashboards
+            .write()
+            .await
+            .insert(dashboard_id, dashboard);
 
         Ok(dashboard_id)
     }
 
+    #[allow(clippy::significant_drop_tightening)] // dashboard and buffer refs needed for build
     async fn get_dashboard_data(&self, dashboard_id: Uuid) -> ToadStoolResult<serde_json::Value> {
         debug!("Getting dashboard data for: {}", dashboard_id);
 
@@ -233,7 +240,6 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         let dashboard = dashboards.get(&dashboard_id).ok_or_else(|| {
             ToadStoolError::not_found(format!("Dashboard not found: {dashboard_id}"))
         })?;
-
         let buffer = self.data_buffer.read().await;
         dashboards::build_dashboard_json(dashboard, &buffer)
     }

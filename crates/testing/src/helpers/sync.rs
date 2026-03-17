@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 use toadstool::{ToadStoolError, ToadStoolResult as Result};
-use tokio::sync::{broadcast, mpsc, oneshot, Barrier};
+use tokio::sync::{Barrier, broadcast, mpsc, oneshot};
 use uuid::Uuid;
 
 /// Wait for a condition to become true with exponential backoff
@@ -184,7 +184,7 @@ impl TestIsolation {
     }
 
     /// Get a unique port for this test (offset from base)
-    pub fn get_port(&self, offset: u16) -> u16 {
+    pub const fn get_port(&self, offset: u16) -> u16 {
         self.port_base.saturating_add(offset)
     }
 
@@ -312,7 +312,7 @@ pub struct TestChannels {
 
 impl TestChannels {
     /// Create new test channel set
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             oneshot: vec![],
             mpsc: vec![],
@@ -350,8 +350,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_wait_for_condition_success() {
-        use std::sync::atomic::{AtomicU32, Ordering};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicU32, Ordering};
 
         let counter = Arc::new(AtomicU32::new(0));
         let counter_clone = Arc::clone(&counter);

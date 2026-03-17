@@ -73,11 +73,10 @@ pub fn parse_service_info(info: &ServiceInfo) -> ToadStoolResult<DiscoveredServi
 
     // Build endpoint
     let addresses = info.get_addresses();
-    let endpoint = if let Some(addr) = addresses.iter().next() {
-        format!("{}:{}", addr, info.get_port())
-    } else {
-        format!("{}:{}", info.get_hostname(), info.get_port())
-    };
+    let endpoint = addresses.iter().next().map_or_else(
+        || format!("{}:{}", info.get_hostname(), info.get_port()),
+        |addr| format!("{}:{}", addr, info.get_port()),
+    );
 
     // Build metadata map from properties
     let mut metadata = HashMap::new();
@@ -144,8 +143,12 @@ mod tests {
         assert!(service.has_capability("compute"));
         assert_eq!(service.capability_version("storage"), Some("1.0"));
         assert!(service.has_capability_features("storage", &["object".to_string()]));
-        assert!(service
-            .has_capability_features("storage", &["object".to_string(), "metadata".to_string()]));
+        assert!(
+            service.has_capability_features(
+                "storage",
+                &["object".to_string(), "metadata".to_string()]
+            )
+        );
     }
 
     #[test]
@@ -283,10 +286,12 @@ mod tests {
 
         let service = parse_service_info(&info).expect("parse should succeed");
 
-        assert!(!service
-            .capabilities
-            .iter()
-            .any(|c| c.name == "storage_features"));
+        assert!(
+            !service
+                .capabilities
+                .iter()
+                .any(|c| c.name == "storage_features")
+        );
         assert!(service.has_capability("storage"));
     }
 

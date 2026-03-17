@@ -8,9 +8,9 @@
 
 use std::path::PathBuf;
 
-use toadstool_core::{decode_frame, encode_frame, FRAME_HEADER_SIZE};
-use toadstool_display::v4l2::{CaptureDevice, CaptureFormat, V4l2Capability};
+use toadstool_core::{FRAME_HEADER_SIZE, decode_frame, encode_frame};
 use toadstool_display::DisplayError;
+use toadstool_display::v4l2::{CaptureDevice, CaptureFormat, V4l2Capability};
 
 // -----------------------------------------------------------------------------
 // Frame protocol encoding/decoding (software-only)

@@ -78,17 +78,18 @@ impl CapabilityProvider {
     ///
     /// Returns error if provider is unreachable or call fails
     pub async fn call(&self, method: &str, params: Value) -> Result<Value> {
-        let mut client_lock = self.client.write().await;
+        let client = {
+            let mut client_lock = self.client.write().await;
 
-        if client_lock.is_none() {
-            let new_client = UnixJsonRpcClient::new(&self.socket_path);
-            *client_lock = Some(new_client);
-        }
-
-        let Some(client) = client_lock.as_mut() else {
-            return Err(CapabilityError::ProviderUnreachable(
-                "Client initialization failed unexpectedly".to_string(),
-            ));
+            #[allow(clippy::option_if_let_else)]
+            // map_or_else would cause borrow conflict with mutation
+            if let Some(c) = client_lock.as_ref() {
+                c.clone()
+            } else {
+                let new_client = UnixJsonRpcClient::new(&self.socket_path);
+                *client_lock = Some(new_client.clone());
+                new_client
+            }
         };
 
         client

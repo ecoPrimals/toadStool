@@ -91,8 +91,10 @@ impl RecursiveHostingManager {
             started_at: SystemTime::now(),
         };
 
-        let mut instances = self.child_instances.write().await;
-        instances.insert(instance_id, instance.clone());
+        {
+            let mut instances = self.child_instances.write().await;
+            instances.insert(instance_id.clone(), instance.clone());
+        }
 
         Ok(instance)
     }
@@ -131,6 +133,8 @@ impl Default for InterInstanceCommunication {
 
 #[cfg(test)]
 mod tests {
+    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
+
     use super::*;
     use std::collections::HashMap;
 
@@ -231,7 +235,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_recursive_hosting_manager_create_child_with_custom_port() {
-        std::env::set_var("TOADSTOOL_API_PORT", "9999");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::set_var("TOADSTOOL_API_PORT", "9999") };
         let config = RecursiveHostingConfig {
             enabled: true,
             current_depth: 0,
@@ -256,6 +261,7 @@ mod tests {
         assert!(result.is_ok());
         let instance = result.expect("instance");
         assert!(instance.endpoint.contains("9999"));
-        std::env::remove_var("TOADSTOOL_API_PORT");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::remove_var("TOADSTOOL_API_PORT") };
     }
 }

@@ -48,34 +48,30 @@ pub enum ClientError {
 impl From<ClientError> for ToadStoolError {
     fn from(error: ClientError) -> Self {
         match error {
-            ClientError::Http(e) => ToadStoolError::Network(NetworkError::ConnectionFailed {
+            ClientError::Http(e) => Self::Network(NetworkError::ConnectionFailed {
                 endpoint: "json-rpc".to_string(),
                 reason: e,
             }),
             ClientError::Authentication(msg) => {
-                ToadStoolError::Security(SecurityError::AuthenticationFailed { reason: msg })
+                Self::Security(SecurityError::AuthenticationFailed { reason: msg })
             }
             ClientError::Configuration(msg) => {
-                ToadStoolError::Configuration(ConfigError::ValidationError { reason: msg })
+                Self::Configuration(ConfigError::ValidationError { reason: msg })
             }
-            ClientError::Server(msg) => {
-                ToadStoolError::System(SystemError::Internal { reason: msg })
-            }
+            ClientError::Server(msg) => Self::System(SystemError::Internal { reason: msg }),
             ClientError::Timeout(msg) => {
-                ToadStoolError::Execution(ExecutionError::Timeout {
+                Self::Execution(ExecutionError::Timeout {
                     duration: std::time::Duration::from_secs(0), // Unknown duration
                     operation: msg,
                 })
             }
-            ClientError::Serialization(e) => ToadStoolError::System(SystemError::Serialization {
+            ClientError::Serialization(e) => Self::System(SystemError::Serialization {
                 reason: e.to_string(),
             }),
-            ClientError::UrlParse(e) => {
-                ToadStoolError::Configuration(ConfigError::ValidationError {
-                    reason: format!("Invalid URL: {e}"),
-                })
-            }
-            ClientError::Io(e) => ToadStoolError::Network(NetworkError::ConnectionFailed {
+            ClientError::UrlParse(e) => Self::Configuration(ConfigError::ValidationError {
+                reason: format!("Invalid URL: {e}"),
+            }),
+            ClientError::Io(e) => Self::Network(NetworkError::ConnectionFailed {
                 endpoint: "unix-socket".to_string(),
                 reason: e.to_string(),
             }),
@@ -90,12 +86,12 @@ impl From<ClientError> for ToadStoolError {
 impl From<ToadStoolError> for ClientError {
     fn from(error: ToadStoolError) -> Self {
         match error {
-            ToadStoolError::Security(_) => ClientError::Authentication(error.to_string()),
-            ToadStoolError::Configuration(_) => ClientError::Configuration(error.to_string()),
+            ToadStoolError::Security(_) => Self::Authentication(error.to_string()),
+            ToadStoolError::Configuration(_) => Self::Configuration(error.to_string()),
             ToadStoolError::Execution(ExecutionError::Timeout { .. }) => {
-                ClientError::Timeout(error.to_string())
+                Self::Timeout(error.to_string())
             }
-            _ => ClientError::Server(error.to_string()),
+            _ => Self::Server(error.to_string()),
         }
     }
 }

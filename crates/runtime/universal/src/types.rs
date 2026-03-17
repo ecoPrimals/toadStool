@@ -424,7 +424,7 @@ impl WorkloadBuilder {
         }
     }
 
-    pub fn operation(mut self, op: OperationType) -> Self {
+    pub const fn operation(mut self, op: OperationType) -> Self {
         self.operation = Some(op);
         self
     }

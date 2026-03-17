@@ -13,8 +13,8 @@ use crate::{CliContextExt, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
-use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::ToadStoolError;
+use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use tokio::time::Duration;
 
 use crate::ecosystem::capabilities::{CapabilityId, CapabilityResolver, ServiceProvider};
@@ -59,7 +59,7 @@ pub struct UniversalServiceAdapter {
 
 impl UniversalServiceAdapter {
     /// Create a new universal service adapter
-    pub fn new(resolver: Arc<CapabilityResolver>) -> Self {
+    pub const fn new(resolver: Arc<CapabilityResolver>) -> Self {
         Self {
             resolver,
             timeout: Duration::from_secs(30),
@@ -68,13 +68,13 @@ impl UniversalServiceAdapter {
     }
 
     /// Configure request timeout
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
     /// Enable request/response logging
-    pub fn with_logging(mut self, enabled: bool) -> Self {
+    pub const fn with_logging(mut self, enabled: bool) -> Self {
         self.enable_logging = enabled;
         self
     }
@@ -306,7 +306,7 @@ pub struct Response {
 
 impl Response {
     /// Check if response was successful
-    pub fn is_success(&self) -> bool {
+    pub const fn is_success(&self) -> bool {
         matches!(self.status, ResponseStatus::Success)
     }
 

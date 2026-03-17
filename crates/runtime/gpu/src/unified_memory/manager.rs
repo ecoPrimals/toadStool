@@ -8,8 +8,8 @@ use crate::unified_memory::{
 };
 use std::collections::HashMap;
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
     Arc, RwLock,
+    atomic::{AtomicU64, Ordering},
 };
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 

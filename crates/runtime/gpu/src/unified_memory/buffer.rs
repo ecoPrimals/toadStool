@@ -9,8 +9,8 @@ use bytes::Bytes;
 use std::collections::HashMap;
 use std::ptr::NonNull;
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
     Arc, RwLock,
+    atomic::{AtomicU64, Ordering},
 };
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -228,19 +228,19 @@ impl UnifiedBuffer {
     }
 
     /// Get buffer ID
-    pub fn id(&self) -> BufferId {
+    pub const fn id(&self) -> BufferId {
         self.id
     }
 
     /// Get buffer size in bytes
-    pub fn size(&self) -> usize {
+    pub const fn size(&self) -> usize {
         self.size
     }
 
     /// Get device pointer (for GPU kernel execution)
     ///
     /// This pointer is opaque and backend-specific. Pass it to GPU kernels.
-    pub fn device_ptr(&self) -> *const u8 {
+    pub const fn device_ptr(&self) -> *const u8 {
         self.device_ptr
     }
 
@@ -451,6 +451,7 @@ impl UnifiedBuffer {
                         .unwrap_or_else(std::sync::PoisonError::into_inner);
                     metrics.cpu_to_gpu_syncs += 1;
                     metrics.bytes_synced += self.size as u64;
+                    drop(metrics);
                     tracing::trace!("Synced buffer {} to device", self.id);
                 }
                 Ok(())
@@ -494,6 +495,7 @@ impl UnifiedBuffer {
                         .unwrap_or_else(std::sync::PoisonError::into_inner);
                     metrics.gpu_to_cpu_syncs += 1;
                     metrics.bytes_synced += self.size as u64;
+                    drop(metrics);
                     tracing::trace!("Synced buffer {} to CPU", self.id);
                 }
                 Ok(())

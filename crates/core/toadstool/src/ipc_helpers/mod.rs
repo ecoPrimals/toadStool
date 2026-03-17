@@ -40,12 +40,16 @@ fn get_registry() -> &'static SemanticMethodRegistry {
 pub fn resolve_method_name(method: &str) -> String {
     let registry = get_registry();
     if registry.is_semantic(method) {
-        if let Some(impl_name) = registry.resolve(method) {
-            debug!("Resolved semantic method '{}' → '{}'", method, impl_name);
-            return String::from(impl_name);
-        }
-        debug!("Unknown semantic method '{}', passing through", method);
-        String::from(method)
+        registry.resolve(method).map_or_else(
+            || {
+                debug!("Unknown semantic method '{}', passing through", method);
+                String::from(method)
+            },
+            |impl_name| {
+                debug!("Resolved semantic method '{}' → '{}'", method, impl_name);
+                String::from(impl_name)
+            },
+        )
     } else {
         String::from(method)
     }

@@ -147,10 +147,10 @@ pub(super) fn execute_scatter(workload: Workload) -> Result<WorkloadData, Comput
                 .max(data.len());
             let mut output = vec![0.0f32; size];
             for (i, &idx) in indices.iter().enumerate() {
-                if let Some(val) = data.get(i) {
-                    if idx < output.len() {
-                        output[idx] = *val;
-                    }
+                if let Some(val) = data.get(i)
+                    && idx < output.len()
+                {
+                    output[idx] = *val;
                 }
             }
             Ok(WorkloadData::F32Vec(output))
@@ -165,10 +165,10 @@ pub(super) fn execute_scatter(workload: Workload) -> Result<WorkloadData, Comput
                 .max(data.len());
             let mut output = vec![0.0f64; size];
             for (i, &idx) in indices.iter().enumerate() {
-                if let Some(val) = data.get(i) {
-                    if idx < output.len() {
-                        output[idx] = *val;
-                    }
+                if let Some(val) = data.get(i)
+                    && idx < output.len()
+                {
+                    output[idx] = *val;
                 }
             }
             Ok(WorkloadData::F64Vec(output))
@@ -183,10 +183,10 @@ pub(super) fn execute_scatter(workload: Workload) -> Result<WorkloadData, Comput
                 .max(data.len());
             let mut output = vec![0i32; size];
             for (i, &idx) in indices.iter().enumerate() {
-                if let Some(val) = data.get(i) {
-                    if idx < output.len() {
-                        output[idx] = *val;
-                    }
+                if let Some(val) = data.get(i)
+                    && idx < output.len()
+                {
+                    output[idx] = *val;
                 }
             }
             Ok(WorkloadData::I32Vec(output))

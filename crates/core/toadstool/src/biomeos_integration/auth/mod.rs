@@ -9,7 +9,7 @@ use std::time::{Duration, SystemTime};
 
 use serde::{Deserialize, Serialize};
 
-use toadstool_common::constants::primal_identity::{audience, PRIMAL_NAME};
+use toadstool_common::constants::primal_identity::{PRIMAL_NAME, audience};
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 use super::auth_backend::AuthBackend;
@@ -254,7 +254,7 @@ impl AuthenticationManager {
     }
 
     fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
         use ed25519_dalek::Signer;
 
         if let Some(ref seed_b64) = self.config.signing_key_seed {
@@ -308,7 +308,7 @@ impl AuthenticationManager {
 
     #[must_use]
     pub fn get_public_key(&self) -> Option<String> {
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
         let seed_b64 = self.config.signing_key_seed.as_ref()?;
         let seed_bytes = general_purpose::STANDARD.decode(seed_b64).ok()?;
         if seed_bytes.len() != 32 {

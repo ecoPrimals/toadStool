@@ -7,8 +7,8 @@
 //! This test suite targets the most critical, high-value paths through the
 //! intelligent auto-configuration system that are currently untested.
 
-use toadstool_auto_config::ecosystem::DiscoverySummary;
 use toadstool_auto_config::IntelligentAutoConfig;
+use toadstool_auto_config::ecosystem::DiscoverySummary;
 
 // ==================== Core Entry Point Tests ====================
 

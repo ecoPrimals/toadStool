@@ -12,11 +12,11 @@
 //! `MatMul` is THE most important operation in deep learning - used everywhere!
 
 use std::collections::HashMap;
+use toadstool_runtime_universal::ComputeError;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
     DataType, OperationType, Workload, WorkloadData, WorkloadParams,
 };
-use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
 async fn main() -> Result<(), ComputeError> {

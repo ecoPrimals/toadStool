@@ -357,8 +357,8 @@ fn test_task_scheduling() {
 #[test]
 fn test_concurrent_task_execution() {
     // Test concurrent task execution tracking
-    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     let active_tasks = Arc::new(AtomicU64::new(0));
 
@@ -526,11 +526,13 @@ fn test_background_service_health() {
     assert!(health.is_running);
     assert_eq!(health.error_count, 0);
     assert!(!health.service_name.is_empty());
-    assert!(health
-        .last_run
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() > 0)
-        .unwrap_or(false));
+    assert!(
+        health
+            .last_run
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() > 0)
+            .unwrap_or(false)
+    );
 }
 
 #[test]

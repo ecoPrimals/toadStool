@@ -52,12 +52,10 @@ impl WeightData {
     /// Get total number of weights
     #[must_use]
     pub fn weight_count(&self) -> usize {
-        if let Some(shape) = &self.shape {
-            shape.iter().product()
-        } else {
-            // Estimate from data size
-            self.data.len() * 8 / self.quantization.bits as usize
-        }
+        self.shape.as_ref().map_or_else(
+            || self.data.len() * 8 / self.quantization.bits as usize,
+            |shape| shape.iter().product(),
+        )
     }
 
     /// Decode quantized weights to f32

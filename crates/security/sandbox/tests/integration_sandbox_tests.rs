@@ -3,7 +3,7 @@
 //!
 //! These tests verify sandbox creation, resource limits, and isolation.
 
-use toadstool_testing::fixtures::{runtime::*, TestEnvironment};
+use toadstool_testing::fixtures::{TestEnvironment, runtime::*};
 
 #[tokio::test]
 async fn test_sandbox_test_environment_isolation() {

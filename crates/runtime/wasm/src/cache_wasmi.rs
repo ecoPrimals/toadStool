@@ -106,8 +106,9 @@ impl ModuleCache {
 
         let cached = CachedModule::new(module);
         cache.insert(key.clone(), cached);
-
-        debug!("Cached module with key: {} (total: {})", key, cache.len());
+        let len = cache.len();
+        drop(cache);
+        debug!("Cached module with key: {} (total: {})", key, len);
     }
 
     /// Evict least recently used entry

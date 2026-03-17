@@ -213,7 +213,7 @@ impl Device {
     /// The returned Arc is safe to clone and share.
     /// The underlying file descriptor is automatically managed.
     #[must_use]
-    pub fn fd(&self) -> &Arc<OwnedFd> {
+    pub const fn fd(&self) -> &Arc<OwnedFd> {
         &self.fd
     }
 
@@ -269,11 +269,11 @@ impl Device {
             let path = entry.path();
 
             // Only card* devices (not renderD* or controlD*)
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with("card") {
-                    tracing::debug!("  Found: {}", path.display());
-                    devices.push(path);
-                }
+            if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && name.starts_with("card")
+            {
+                tracing::debug!("  Found: {}", path.display());
+                devices.push(path);
             }
         }
 

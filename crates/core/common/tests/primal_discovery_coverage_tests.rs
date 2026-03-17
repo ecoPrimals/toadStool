@@ -10,9 +10,9 @@ use std::time::SystemTime;
 
 use temp_env::with_vars;
 use toadstool_common::primal_integration::{
-    discover_cache_service, discover_coordination_service, discover_database_service,
-    discover_encryption_service, discover_mcp_service, discover_object_storage,
-    discover_service_by_capability, discover_storage_service, DiscoveryError, PrimalEndpoint,
+    DiscoveryError, PrimalEndpoint, discover_cache_service, discover_coordination_service,
+    discover_database_service, discover_encryption_service, discover_mcp_service,
+    discover_object_storage, discover_service_by_capability, discover_storage_service,
 };
 
 // ─── PrimalEndpoint struct ─────────────────────────────────────────────────

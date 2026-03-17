@@ -315,10 +315,12 @@ fn test_sovereign_template_crypto_policies() {
 
     assert!(!security.crypto_policies.is_empty());
     // Should have post-quantum crypto
-    assert!(security
-        .crypto_policies
-        .iter()
-        .any(|p| p.contains("quantum")));
+    assert!(
+        security
+            .crypto_policies
+            .iter()
+            .any(|p| p.contains("quantum"))
+    );
 }
 
 #[test]

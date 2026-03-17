@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
 use toadstool::{ExecutionStatus, RuntimeType};
@@ -174,11 +174,13 @@ mod background_services_tests {
         // 3. Use a shorter timeout for testing
 
         // For now, we verify the execution was added successfully
-        assert!(state
-            .active_executions
-            .read()
-            .await
-            .contains_key(&execution_id));
+        assert!(
+            state
+                .active_executions
+                .read()
+                .await
+                .contains_key(&execution_id)
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

@@ -86,7 +86,7 @@ pub enum DeviceHealthStatus {
 ///
 /// Call when NVVM compilation fails — probing risks poisoning.
 #[must_use]
-pub fn check_device_health(
+pub const fn check_device_health(
     nvvm_compilation_failed: bool,
     all_operations_failing: bool,
 ) -> DeviceHealthStatus {

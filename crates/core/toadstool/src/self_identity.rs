@@ -216,6 +216,7 @@ impl SelfIdentity {
     /// **Modern Pattern**: Uses a dedicated thread for GPU detection to avoid blocking.
     /// GPU detection is inherently blocking (hardware enumeration), but we isolate it
     /// from the async runtime.
+    #[allow(clippy::missing_const_for_fn)] // Cannot be const: uses thread::scope, block_on, wgpu
     fn detect_gpu() -> bool {
         // EVOLVED: Use wgpu to actually detect GPU availability
         #[cfg(feature = "wgpu")]
@@ -271,11 +272,7 @@ impl SelfIdentity {
         protocols: Vec<String>,
     ) -> Self {
         self.network = Some(NetworkIdentity {
-            endpoint: if let Some(p) = port {
-                format!("{hostname}:{p}")
-            } else {
-                hostname.clone()
-            },
+            endpoint: port.map_or_else(|| hostname.clone(), |p| format!("{hostname}:{p}")),
             hostname,
             port,
             protocols,
@@ -388,10 +385,12 @@ mod tests {
         assert!(identity.capabilities.iter().any(|c| c.name == "compute"));
 
         // We should have orchestration capability
-        assert!(identity
-            .capabilities
-            .iter()
-            .any(|c| c.name == "orchestration"));
+        assert!(
+            identity
+                .capabilities
+                .iter()
+                .any(|c| c.name == "orchestration")
+        );
     }
 
     #[test]

@@ -137,47 +137,47 @@ impl HardwareManager {
                     .and_then(|s| s.trim().strip_prefix("0x").map(String::from));
 
                 // Check if Akida (0x1e7c)
-                if let Some(ref vid) = vendor_id {
-                    if vid == "1e7c" {
-                        let device_id = fs::read_to_string(device_path.join("device"))
-                            .ok()
-                            .and_then(|s| s.trim().strip_prefix("0x").map(String::from));
+                if let Some(ref vid) = vendor_id
+                    && vid == "1e7c"
+                {
+                    let device_id = fs::read_to_string(device_path.join("device"))
+                        .ok()
+                        .and_then(|s| s.trim().strip_prefix("0x").map(String::from));
 
-                        let pcie_address = device_path
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .map(String::from);
+                    let pcie_address = device_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(String::from);
 
-                        let name = match device_id.as_deref() {
-                            Some("bca1") => "Akida AKD1000",
-                            Some("bca2") => "Akida AKD1500",
-                            _ => "Akida NPU",
-                        }
-                        .to_string();
-
-                        // Check if kernel driver available (/dev/akida*)
-                        let driver_available = fs::read_dir("/dev").ok().is_some_and(|entries| {
-                            entries
-                                .flatten()
-                                .any(|e| e.file_name().to_string_lossy().starts_with("akida"))
-                        });
-
-                        // Check if userspace access available (resource files readable)
-                        let userspace_capable = device_path.join("resource0").exists()
-                            && fs::metadata(device_path.join("resource0"))
-                                .map(|m| !m.permissions().readonly())
-                                .unwrap_or(false);
-
-                        npus.push(HardwareDevice {
-                            hardware_type: HardwareType::Npu,
-                            name,
-                            pcie_address,
-                            vendor_id,
-                            device_id,
-                            driver_available,
-                            userspace_capable,
-                        });
+                    let name = match device_id.as_deref() {
+                        Some("bca1") => "Akida AKD1000",
+                        Some("bca2") => "Akida AKD1500",
+                        _ => "Akida NPU",
                     }
+                    .to_string();
+
+                    // Check if kernel driver available (/dev/akida*)
+                    let driver_available = fs::read_dir("/dev").ok().is_some_and(|entries| {
+                        entries
+                            .flatten()
+                            .any(|e| e.file_name().to_string_lossy().starts_with("akida"))
+                    });
+
+                    // Check if userspace access available (resource files readable)
+                    let userspace_capable = device_path.join("resource0").exists()
+                        && fs::metadata(device_path.join("resource0"))
+                            .map(|m| !m.permissions().readonly())
+                            .unwrap_or(false);
+
+                    npus.push(HardwareDevice {
+                        hardware_type: HardwareType::Npu,
+                        name,
+                        pcie_address,
+                        vendor_id,
+                        device_id,
+                        driver_available,
+                        userspace_capable,
+                    });
                 }
             }
         }
@@ -252,14 +252,13 @@ impl HardwareManager {
 
         // Enable PCIe device
         let enable_path = device_path.join("enable");
-        if enable_path.exists() {
-            if let Ok(content) = fs::read_to_string(&enable_path) {
-                if content.trim() == "0" {
-                    // Device disabled, try to enable
-                    if let Err(e) = fs::write(&enable_path, "1") {
-                        warn!("Could not enable PCIe device (may need root): {}", e);
-                    }
-                }
+        if enable_path.exists()
+            && let Ok(content) = fs::read_to_string(&enable_path)
+            && content.trim() == "0"
+        {
+            // Device disabled, try to enable
+            if let Err(e) = fs::write(&enable_path, "1") {
+                warn!("Could not enable PCIe device (may need root): {}", e);
             }
         }
 
@@ -277,10 +276,12 @@ mod tests {
         let manager = HardwareManager::discover().expect("Discovery failed");
 
         // CPU should always be available
-        assert!(manager
-            .devices()
-            .iter()
-            .any(|d| d.hardware_type == HardwareType::Cpu));
+        assert!(
+            manager
+                .devices()
+                .iter()
+                .any(|d| d.hardware_type == HardwareType::Cpu)
+        );
     }
 
     #[test]

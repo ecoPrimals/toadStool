@@ -128,8 +128,10 @@ impl MdnsDiscoveryService {
                         );
 
                         // Update cache
-                        let mut services = self.services.write().await;
-                        services.insert(service.instance_id, service.clone());
+                        self.services
+                            .write()
+                            .await
+                            .insert(service.instance_id, service.clone());
 
                         discovered.push(service);
                     }

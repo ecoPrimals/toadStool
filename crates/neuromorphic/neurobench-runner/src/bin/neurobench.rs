@@ -23,7 +23,7 @@ use neurobench_runner::{
     Benchmark, BenchmarkConfig, BenchmarkResult, Harness, HarnessConfig, Result,
 };
 use std::env;
-use tracing::{error, info, Level};
+use tracing::{Level, error, info};
 use tracing_subscriber::FmtSubscriber;
 
 fn main() {
@@ -223,7 +223,7 @@ fn print_summary_table(results: &[BenchmarkResult]) {
     for result in results {
         let power = result
             .mean_power_mw
-            .map_or("-".to_string(), |p| format!("{p:.1}"));
+            .map_or_else(|| "-".to_string(), |p| format!("{p:.1}"));
 
         println!(
             "{:<20} {:>9.1}% {:>10.1}/s {:>10.3}ms {:>12}",

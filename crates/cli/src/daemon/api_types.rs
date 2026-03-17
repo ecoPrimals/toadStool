@@ -150,11 +150,11 @@ pub enum WorkloadStatus {
 impl std::fmt::Display for WorkloadStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WorkloadStatus::Queued => write!(f, "queued"),
-            WorkloadStatus::Running => write!(f, "running"),
-            WorkloadStatus::Completed => write!(f, "completed"),
-            WorkloadStatus::Failed => write!(f, "failed"),
-            WorkloadStatus::Cancelled => write!(f, "cancelled"),
+            Self::Queued => write!(f, "queued"),
+            Self::Running => write!(f, "running"),
+            Self::Completed => write!(f, "completed"),
+            Self::Failed => write!(f, "failed"),
+            Self::Cancelled => write!(f, "cancelled"),
         }
     }
 }

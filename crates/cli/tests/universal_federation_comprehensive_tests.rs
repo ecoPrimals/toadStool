@@ -8,8 +8,8 @@
 
 use anyhow::Result;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use toadstool_cli::universal::operations::FederationOps;
 use toadstool_cli::universal::UniversalComputeManager;
+use toadstool_cli::universal::operations::FederationOps;
 use url::Url;
 
 /// Helper to create a test manager
@@ -40,9 +40,11 @@ async fn test_get_local_capabilities_contains_expected() -> Result<()> {
     let cap_strs: Vec<String> = caps.iter().map(std::string::ToString::to_string).collect();
 
     // Should contain key capabilities
-    assert!(cap_strs
-        .iter()
-        .any(|c| c.contains("compute") || c.contains("COMPUTE")));
+    assert!(
+        cap_strs
+            .iter()
+            .any(|c| c.contains("compute") || c.contains("COMPUTE"))
+    );
 
     Ok(())
 }

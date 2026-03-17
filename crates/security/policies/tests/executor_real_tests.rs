@@ -273,7 +273,7 @@ fn execute_policy_check(action: &PolicyAction) -> PolicyResult {
                 audit_log: None,
                 within_limits: true,
                 completed_in_time: true,
-            }
+            };
         }
         _ => false,
     };

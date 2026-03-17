@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use toadstool_config::defaults;
 
-use crate::{execution::RuntimeEngine, execution::RuntimeType, ToadStoolResult};
+use crate::{ToadStoolResult, execution::RuntimeEngine, execution::RuntimeType};
 
 use super::jobs::UniversalJob;
 use super::provider::ToadStoolPrimalProvider;
@@ -199,19 +199,19 @@ impl UniversalComputePlatform {
 
     /// Get platform configuration
     #[must_use]
-    pub fn get_config(&self) -> &UniversalPlatformConfig {
+    pub const fn get_config(&self) -> &UniversalPlatformConfig {
         &self.config
     }
 
     /// Check if recursive hosting is enabled
     #[must_use]
-    pub fn is_recursive_hosting_enabled(&self) -> bool {
+    pub const fn is_recursive_hosting_enabled(&self) -> bool {
         self.config.recursive_hosting
     }
 
     /// Check if `BiomeOS` integration is enabled
     #[must_use]
-    pub fn is_biomeos_integration_enabled(&self) -> bool {
+    pub const fn is_biomeos_integration_enabled(&self) -> bool {
         self.config.biomeos_integration
     }
 }

@@ -42,7 +42,8 @@ async fn test_scan_system_handles_partial_failure_gracefully() {
 #[tokio::test]
 async fn test_discover_services_timeout_handling() {
     // ✅ ROBUST TEST: Skip slow network I/O - tests should be fast and deterministic
-    std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
 
     // Test that service discovery respects timeouts and doesn't hang
     let mut config = IntelligentAutoConfig::new();
@@ -123,12 +124,16 @@ fn test_usage_hints_with_very_long_workload_list() {
 
     // Should handle large lists
     assert_eq!(hints.predicted_workload_types.len(), 1000);
-    assert!(hints
-        .predicted_workload_types
-        .contains(&"workload_type_42".to_string()));
-    assert!(hints
-        .predicted_workload_types
-        .contains(&"workload_type_999".to_string()));
+    assert!(
+        hints
+            .predicted_workload_types
+            .contains(&"workload_type_42".to_string())
+    );
+    assert!(
+        hints
+            .predicted_workload_types
+            .contains(&"workload_type_999".to_string())
+    );
 }
 
 #[test]
@@ -286,7 +291,8 @@ async fn test_repeated_configuration_generation() {
 #[tokio::test]
 async fn test_config_generation_completes_in_reasonable_time() {
     // ✅ ROBUST TEST: Skip slow network I/O - tests should be fast and deterministic
-    std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
 
     // Test that config generation doesn't take unreasonably long
     let mut config = IntelligentAutoConfig::new();
@@ -441,7 +447,8 @@ fn test_usage_hints_intensive_classification_consistency() {
 #[tokio::test]
 async fn test_config_generation_doesnt_hang_on_network_unavailable() {
     // ✅ ROBUST TEST: Skip slow network I/O - tests should be fast and deterministic
-    std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
 
     // Regression: Ensure we don't hang if network services are unavailable
     let mut config = IntelligentAutoConfig::new();
@@ -515,8 +522,9 @@ async fn test_documentation_example_component_access() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
 async fn test_stress_many_concurrent_configs() {
-    // Skip slow network I/O - tests should be fast and deterministic
-    std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1");
+   // Skip slow network I/O - tests should be fast and deterministic
+   // SAFETY: Test-only; no other threads access env vars during this test
+   unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
 
     // Concurrent stress test: create many configs concurrently.
     // Under workspace-wide test runs the system is already under heavy load,

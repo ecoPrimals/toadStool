@@ -70,6 +70,6 @@ pub struct BackendConfig {
     pub health_check: Option<HttpHealthCheckConfig>,
 }
 
-fn default_weight() -> u32 {
+const fn default_weight() -> u32 {
     100
 }

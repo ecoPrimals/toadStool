@@ -31,12 +31,12 @@ impl TestServerConfigBuilder {
         self
     }
 
-    pub fn with_port(mut self, port: u16) -> Self {
+    pub const fn with_port(mut self, port: u16) -> Self {
         self.port = port;
         self
     }
 
-    pub fn with_metrics(mut self, enabled: bool) -> Self {
+    pub const fn with_metrics(mut self, enabled: bool) -> Self {
         self.enable_metrics = enabled;
         self
     }

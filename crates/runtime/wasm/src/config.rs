@@ -139,49 +139,49 @@ pub struct WasmRuntimeConfigBuilder {
 impl WasmRuntimeConfigBuilder {
     /// Set cache configuration
     #[must_use]
-    pub fn cache(mut self, cache: CacheConfig) -> Self {
+    pub const fn cache(mut self, cache: CacheConfig) -> Self {
         self.cache = Some(cache);
         self
     }
 
     /// Set security level
     #[must_use]
-    pub fn security_level(mut self, level: SecurityLevel) -> Self {
+    pub const fn security_level(mut self, level: SecurityLevel) -> Self {
         self.security_level = Some(level);
         self
     }
 
     /// Set maximum memory in megabytes
     #[must_use]
-    pub fn max_memory_mb(mut self, mb: u64) -> Self {
+    pub const fn max_memory_mb(mut self, mb: u64) -> Self {
         self.max_memory_mb = Some(mb);
         self
     }
 
     /// Set maximum memory pages
     #[must_use]
-    pub fn max_pages(mut self, pages: u32) -> Self {
+    pub const fn max_pages(mut self, pages: u32) -> Self {
         self.max_pages = Some(pages);
         self
     }
 
     /// Set execution timeout in milliseconds
     #[must_use]
-    pub fn execution_timeout_ms(mut self, ms: u64) -> Self {
+    pub const fn execution_timeout_ms(mut self, ms: u64) -> Self {
         self.execution_timeout_ms = Some(ms);
         self
     }
 
     /// Set module load timeout in milliseconds
     #[must_use]
-    pub fn module_load_timeout_ms(mut self, ms: u64) -> Self {
+    pub const fn module_load_timeout_ms(mut self, ms: u64) -> Self {
         self.module_load_timeout_ms = Some(ms);
         self
     }
 
     /// Set fuel limit (None = unlimited)
     #[must_use]
-    pub fn fuel_limit(mut self, limit: Option<u64>) -> Self {
+    pub const fn fuel_limit(mut self, limit: Option<u64>) -> Self {
         self.fuel_limit = Some(limit);
         self
     }
@@ -189,7 +189,7 @@ impl WasmRuntimeConfigBuilder {
     /// Enable component model support
     /// EVOLVED: Complete component model integration
     #[must_use]
-    pub fn with_component_model(
+    pub const fn with_component_model(
         mut self,
         config: crate::component_model::ComponentModelConfig,
     ) -> Self {

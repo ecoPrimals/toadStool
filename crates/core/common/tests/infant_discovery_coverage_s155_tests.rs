@@ -10,17 +10,18 @@
 //! - detectors.rs: `BareMetalDetector`, `HardwareEnvironment`, `standard_detectors`
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use temp_env::with_vars;
 
 use toadstool_common::infant_discovery::capabilities::capabilities;
 use toadstool_common::infant_discovery::detectors::{
-    standard_detectors, BareMetalDetector, HardwareEnvironment,
+    BareMetalDetector, HardwareEnvironment, standard_detectors,
 };
 use toadstool_common::infant_discovery::sources::{
-    development_sources, production_sources, ConfigFileSource, EnvironmentSource, FallbackSource,
-    MDNSSource, ServiceMeshSource,
+    ConfigFileSource, EnvironmentSource, FallbackSource, MDNSSource, ServiceMeshSource,
+    development_sources, production_sources,
 };
 use toadstool_common::infant_discovery::{
     CapabilityDiscovery, DetectedSubstrate, DiscoveredService, DiscoveryEngine,
@@ -124,7 +125,7 @@ fn test_discovery_engine_default_impl() {
 async fn test_discovery_engine_register_source_and_discover() {
     let engine = DiscoveryEngine::new();
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "mock".to_string(),
             endpoint: Some("http://localhost:9090".to_string()),
         }))
@@ -139,13 +140,13 @@ async fn test_discovery_engine_register_source_and_discover() {
 async fn test_discovery_engine_source_fallback_order() {
     let engine = DiscoveryEngine::new();
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "first".to_string(),
             endpoint: None,
         }))
         .await;
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "second".to_string(),
             endpoint: Some("http://fallback:8080".to_string()),
         }))
@@ -181,7 +182,7 @@ async fn test_discovery_engine_builder_fluent_api() {
         .cache_ttl(Duration::from_secs(120))
         .timeout(Duration::from_secs(15))
         .disable_cache()
-        .with_source(Box::new(MockEndpointSource {
+        .with_source(Arc::new(MockEndpointSource {
             name: "builder_source".to_string(),
             endpoint: Some("http://builder:8080".to_string()),
         }))
@@ -204,7 +205,7 @@ async fn test_discovery_engine_builder_default() {
 async fn test_capability_discovery_trait_discover() {
     let engine = DiscoveryEngine::new();
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "trait_test".to_string(),
             endpoint: Some("http://localhost:7777".to_string()),
         }))
@@ -223,7 +224,7 @@ async fn test_capability_discovery_trait_discover() {
 async fn test_capability_discovery_trait_is_available() {
     let engine = DiscoveryEngine::new();
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "avail".to_string(),
             endpoint: Some("http://avail:8080".to_string()),
         }))
@@ -242,7 +243,7 @@ async fn test_capability_discovery_trait_is_available_false() {
 async fn test_discover_with_preferences() {
     let engine = DiscoveryEngine::new();
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "prefs".to_string(),
             endpoint: Some("http://127.0.0.1:8888".to_string()),
         }))
@@ -267,13 +268,13 @@ async fn test_discover_with_preferences() {
 async fn test_discover_all_returns_multiple_sources() {
     let engine = DiscoveryEngine::new();
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "s1".to_string(),
             endpoint: Some("http://s1:8080".to_string()),
         }))
         .await;
     engine
-        .register_source(Box::new(MockEndpointSource {
+        .register_source(Arc::new(MockEndpointSource {
             name: "s2".to_string(),
             endpoint: Some("http://s2:8080".to_string()),
         }))
@@ -281,9 +282,11 @@ async fn test_discover_all_returns_multiple_sources() {
 
     let services = engine.discover_all("cap").await.expect("Should discover");
     assert!(!services.is_empty());
-    assert!(services
-        .iter()
-        .any(|s| s.endpoint.contains("s1") || s.endpoint.contains("s2")));
+    assert!(
+        services
+            .iter()
+            .any(|s| s.endpoint.contains("s1") || s.endpoint.contains("s2"))
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -310,7 +313,7 @@ async fn test_detect_substrate_with_mock_detector() {
         metadata: HashMap::new(),
     };
     engine
-        .register_detector(Box::new(MockSubstrateDetector {
+        .register_detector(Arc::new(MockSubstrateDetector {
             name: "mock_detector".to_string(),
             result: Some(substrate.clone()),
         }))
@@ -669,7 +672,7 @@ fn test_hardware_environment_from_env() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_with_standard_detectors() {
     let engine = DiscoveryEngineBuilder::new()
-        .with_detector(Box::new(BareMetalDetector::new()))
+        .with_detector(Arc::new(BareMetalDetector::new()))
         .build()
         .await;
 

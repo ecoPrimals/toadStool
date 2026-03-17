@@ -102,10 +102,12 @@ impl MonitoringSystem {
     pub async fn stop_monitoring(&self, session_id: Uuid) -> Result<()> {
         info!("⏹️  Stopping monitoring session: {}", session_id);
 
-        let mut sessions = self.sessions.write().await;
-        if let Some(session) = sessions.get_mut(&session_id.to_string()) {
-            session.status = SessionStatus::Stopped;
-            session.last_update = std::time::SystemTime::now();
+        {
+            let mut sessions = self.sessions.write().await;
+            if let Some(session) = sessions.get_mut(&session_id.to_string()) {
+                session.status = SessionStatus::Stopped;
+                session.last_update = std::time::SystemTime::now();
+            }
         }
 
         Ok(())
@@ -144,18 +146,18 @@ impl MonitoringSystem {
     ) -> Result<Vec<DataPoint>> {
         let metrics_store = self.metrics_store.read().await;
 
-        if let Some(series) = metrics_store.series.get(&metric_name) {
-            let filtered_points: Vec<DataPoint> = series
-                .data_points
-                .iter()
-                .filter(|point| point.timestamp >= start_time && point.timestamp <= end_time)
-                .cloned()
-                .collect();
-
-            Ok(filtered_points)
-        } else {
-            Ok(Vec::new())
-        }
+        metrics_store.series.get(&metric_name).map_or_else(
+            || Ok(Vec::new()),
+            |series| {
+                let filtered_points: Vec<DataPoint> = series
+                    .data_points
+                    .iter()
+                    .filter(|point| point.timestamp >= start_time && point.timestamp <= end_time)
+                    .cloned()
+                    .collect();
+                Ok(filtered_points)
+            },
+        )
     }
 
     pub async fn get_metric_stats(&self, metric_name: &str) -> Result<Option<MetricStats>> {
@@ -166,8 +168,10 @@ impl MonitoringSystem {
     pub async fn add_alert_rule(&self, rule: AlertRule) -> Result<()> {
         info!("🚨 Adding alert rule: {}", rule.name);
 
-        let mut alert_rules = self.alert_rules.write().await;
-        alert_rules.push(rule);
+        {
+            let mut alert_rules = self.alert_rules.write().await;
+            alert_rules.push(rule);
+        }
 
         Ok(())
     }
@@ -178,29 +182,35 @@ impl MonitoringSystem {
     }
 
     async fn register_default_collectors(&self) -> Result<()> {
-        let mut collectors = self.collectors.write().await;
+        {
+            let mut collectors = self.collectors.write().await;
+            collectors.insert(
+                "system".to_string(),
+                Arc::new(SystemMetricsCollector::new()),
+            );
+            collectors.insert(
+                "process".to_string(),
+                Arc::new(ProcessMetricsCollector::new()),
+            );
+            collectors.insert(
+                "network".to_string(),
+                Arc::new(NetworkMetricsCollector::new()),
+            );
+            info!("📊 Registered {} default collectors", collectors.len());
+            drop(collectors);
+        }
 
-        collectors.insert(
-            "system".to_string(),
-            Arc::new(SystemMetricsCollector::new()),
-        );
-        collectors.insert(
-            "process".to_string(),
-            Arc::new(ProcessMetricsCollector::new()),
-        );
-        collectors.insert(
-            "network".to_string(),
-            Arc::new(NetworkMetricsCollector::new()),
-        );
-
-        info!("📊 Registered {} default collectors", collectors.len());
         Ok(())
     }
 
     async fn load_default_alert_rules(&self) -> Result<()> {
-        let mut rules = self.alert_rules.write().await;
-        rules.extend(load_default_alert_rules());
-        info!("🚨 Loaded {} default alert rules", rules.len());
+        {
+            let mut rules = self.alert_rules.write().await;
+            rules.extend(load_default_alert_rules());
+            info!("🚨 Loaded {} default alert rules", rules.len());
+            drop(rules);
+        }
+
         Ok(())
     }
 
@@ -239,6 +249,7 @@ impl MonitoringSystem {
                     if let Ok(batch) = collector.collect() {
                         let mut store = metrics_store.write().await;
                         store.store_batch(batch).await;
+                        drop(store);
                     }
                 }
             }
@@ -257,6 +268,7 @@ impl MonitoringSystem {
                 debug!("Evaluating alert rule: {}", rule.name);
             }
         }
+        drop(rules);
 
         Ok(alerts)
     }

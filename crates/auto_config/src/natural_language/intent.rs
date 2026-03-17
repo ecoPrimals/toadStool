@@ -153,7 +153,7 @@ pub fn analyze_intent(
     // ✅ FIXED: Use total_cmp to handle NaN gracefully (treats NaN as less than all values)
     let (primary_intent, (confidence, matched_keywords)) = intent_scores
         .iter()
-        .max_by(|a, b| a.1 .0.total_cmp(&b.1 .0))
+        .max_by(|a, b| a.1.0.total_cmp(&b.1.0))
         .map_or_else(
             || ("general_purpose".to_string(), (0.0, Vec::new())),
             |(name, (score, keywords))| (name.clone(), (*score, keywords.clone())),

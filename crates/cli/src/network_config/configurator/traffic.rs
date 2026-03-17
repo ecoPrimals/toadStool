@@ -7,6 +7,7 @@ use toadstool::error::ToadStoolResult;
 use tracing::{debug, info};
 
 /// Traffic management extension trait
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) trait TrafficExt {
     /// Apply traffic management configuration
     async fn apply_traffic_management_config(&self) -> ToadStoolResult<()>;
@@ -60,7 +61,7 @@ impl TrafficExt for super::SongbirdNetworkConfigurator {
                     return Err(toadstool::error::ToadStoolError::configuration(format!(
                         "Invalid load balancing algorithm: {}",
                         config.algorithm
-                    )))
+                    )));
                 }
             }
 

@@ -48,25 +48,22 @@ impl BearDogDiscovery {
         if matches!(
             self.config.preferred_location,
             ServiceLocation::Local | ServiceLocation::Any
-        ) {
-            if let Ok(local_endpoints) = self.discover_via_mdns().await {
-                endpoints.extend(local_endpoints);
-            }
+        ) && let Ok(local_endpoints) = self.discover_via_mdns().await
+        {
+            endpoints.extend(local_endpoints);
         }
 
         // Strategy 2: Songbird primal registry
         if matches!(
             self.config.preferred_location,
             ServiceLocation::Network | ServiceLocation::Any
-        ) {
-            if let Ok(network_endpoints) = self.discover_via_songbird().await {
-                endpoints.extend(network_endpoints);
-            }
+        ) && let Ok(network_endpoints) = self.discover_via_songbird().await
+        {
+            endpoints.extend(network_endpoints);
         }
 
         // Cache discovered endpoints
-        let mut cache = self.discovered_endpoints.write().await;
-        *cache = endpoints.clone();
+        *self.discovered_endpoints.write().await = endpoints.clone();
 
         Ok(endpoints)
     }
@@ -158,6 +155,7 @@ impl BearDogDiscovery {
     }
 
     /// Get best endpoint based on location preference and health
+    #[allow(clippy::significant_drop_tightening)] // healthy_endpoints are refs from endpoints
     pub async fn get_best_endpoint(&self) -> ToadStoolResult<BearDogEndpoint> {
         let endpoints = self.discovered_endpoints.read().await;
 

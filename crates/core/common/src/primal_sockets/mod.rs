@@ -32,8 +32,8 @@ pub use api::{
     get_squirrel_socket_path, get_toadstool_socket_path,
 };
 pub use discovery::{
-    discover_coordination_socket, discover_crypto_socket, discover_socket_for_capability,
-    discover_storage_socket, SocketDiscoveryError,
+    SocketDiscoveryError, discover_coordination_socket, discover_crypto_socket,
+    discover_socket_for_capability, discover_storage_socket,
 };
 pub use env::SocketPathEnv;
 pub use paths::{

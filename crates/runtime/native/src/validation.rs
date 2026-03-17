@@ -8,7 +8,7 @@ use toadstool::{
     workload::ExecutableSource,
 };
 
-pub(crate) fn resolve_executable(
+pub fn resolve_executable(
     _config: &RuntimeConfig,
     source: &ExecutableSource,
 ) -> ToadStoolResult<PathBuf> {
@@ -46,7 +46,7 @@ pub(crate) fn resolve_executable(
     }
 }
 
-pub(crate) fn validate_resource_requirements(request: &ExecutionRequest) -> ToadStoolResult<()> {
+pub fn validate_resource_requirements(request: &ExecutionRequest) -> ToadStoolResult<()> {
     let requirements = &request.resources;
 
     if requirements.cpu.min_cores > 32.0 {

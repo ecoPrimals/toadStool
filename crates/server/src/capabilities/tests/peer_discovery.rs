@@ -106,11 +106,13 @@ async fn test_find_peer_with_partial_match() {
 
         let found = PrimalCapabilities::find_peer_with_in("nvidia", &discovery_base).await;
         assert!(found.is_ok());
-        assert!(found
-            .unwrap()
-            .capabilities
-            .iter()
-            .any(|c| c.contains("nvidia")));
+        assert!(
+            found
+                .unwrap()
+                .capabilities
+                .iter()
+                .any(|c| c.contains("nvidia"))
+        );
     })
     .await;
 }
@@ -145,14 +147,15 @@ async fn test_find_peer_with_nonexistent_discovery_dir() {
     let base = temp.path().to_path_buf();
     // Set XDG_RUNTIME_DIR but do NOT create ecoPrimals/discovery
     let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    std::env::set_var("XDG_RUNTIME_DIR", &base);
+    // SAFETY: Test-only; sequential test execution via ENV_MUTEX
+    unsafe { std::env::set_var("XDG_RUNTIME_DIR", &base) };
 
     let result = PrimalCapabilities::find_peer_with("compute").await;
 
     if let Some(p) = prev {
-        std::env::set_var("XDG_RUNTIME_DIR", p);
+        unsafe { std::env::set_var("XDG_RUNTIME_DIR", p) };
     } else {
-        std::env::remove_var("XDG_RUNTIME_DIR");
+        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
     }
 
     assert!(result.is_err());
@@ -171,14 +174,15 @@ async fn test_find_all_peers_nonexistent_discovery_dir() {
     let temp = TempDir::new().expect("temp dir");
     let base = temp.path().to_path_buf();
     let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    std::env::set_var("XDG_RUNTIME_DIR", &base);
+    // SAFETY: Test-only; sequential test execution via ENV_MUTEX
+    unsafe { std::env::set_var("XDG_RUNTIME_DIR", &base) };
 
     let result = PrimalCapabilities::find_all_peers().await;
 
     if let Some(p) = prev {
-        std::env::set_var("XDG_RUNTIME_DIR", p);
+        unsafe { std::env::set_var("XDG_RUNTIME_DIR", p) };
     } else {
-        std::env::remove_var("XDG_RUNTIME_DIR");
+        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
     }
 
     assert!(result.is_err());
@@ -341,7 +345,8 @@ async fn test_announce_creates_discovery_dir() {
     let base = temp.path().to_path_buf();
     let discovery_base = base.join("ecoPrimals").join("discovery");
     let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    std::env::set_var("XDG_RUNTIME_DIR", &base);
+    // SAFETY: Test-only; sequential test execution via ENV_MUTEX
+    unsafe { std::env::set_var("XDG_RUNTIME_DIR", &base) };
 
     let caps = PrimalCapabilities {
         primal_id: "dir-create-test".to_string(),
@@ -362,9 +367,9 @@ async fn test_announce_creates_discovery_dir() {
     let result = caps.announce().await;
 
     if let Some(p) = prev {
-        std::env::set_var("XDG_RUNTIME_DIR", p);
+        unsafe { std::env::set_var("XDG_RUNTIME_DIR", p) };
     } else {
-        std::env::remove_var("XDG_RUNTIME_DIR");
+        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
     }
 
     assert!(result.is_ok());

@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::{resources::ResourceRequirements, ToadStoolResult};
+use crate::{ToadStoolResult, resources::ResourceRequirements};
 
 /// Universal system resources (used by universal scheduler/coordinator)
 #[derive(Debug, Clone, Serialize, Deserialize)]

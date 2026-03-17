@@ -46,7 +46,7 @@ fn test_error_response() {
 
 #[test]
 fn test_json_workload_submission() {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
 
     let data = vec![1, 2, 3, 4];
     let encoded = STANDARD.encode(&data);
@@ -222,7 +222,7 @@ async fn test_submit_workload_missing_params() {
 
 #[tokio::test]
 async fn test_submit_workload_success() {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
     let handler = test_handler();
     let params = serde_json::json!({
         "workload_id": "work-submit-1",
@@ -499,7 +499,7 @@ fn test_jsonrpc_error_serialization_roundtrip() {
 
 #[test]
 fn test_json_workload_submission_serialization_roundtrip() {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
     let sub = JsonWorkloadSubmission {
         workload_id: "w-1".to_string(),
         workload_type: "cpu_compute".to_string(),
@@ -522,7 +522,7 @@ fn test_json_workload_submission_serialization_roundtrip() {
 /// Semantic method names registered in SemanticMethodRegistry must route correctly.
 #[tokio::test]
 async fn test_semantic_method_dispatch_runtime_workload_submit() {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
     let handler = test_handler();
     let params = serde_json::json!({
         "workload_id": "sem-1",

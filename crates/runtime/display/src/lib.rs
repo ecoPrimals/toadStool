@@ -94,12 +94,12 @@ pub mod window;
 
 // Re-exports
 pub use capabilities::DisplayCapabilities;
-pub use capture_transport::{discover_capture_transports, CaptureTransport};
+pub use capture_transport::{CaptureTransport, discover_capture_transports};
 pub use drm::DrmBackend;
 pub use input::{InputEvent, InputManager};
 pub use ipc::{DisplayClient, DisplayServer};
-pub use pcie_transport::{discover_pcie_transports, PcieTransport};
-pub use transport::{discover_display_transports, DisplayTransport};
+pub use pcie_transport::{PcieTransport, discover_pcie_transports};
+pub use transport::{DisplayTransport, discover_display_transports};
 pub use window::{Window, WindowId, WindowManager};
 
 /// Display backend errors

@@ -46,8 +46,8 @@ impl NetworkLoadBalancer {
             .filter(|(_, h)| h.healthy)
             .min_by(|(_, a), (_, b)| {
                 // Combined load score: 60 % CPU + 40 % memory pressure
-                let score_a = 0.6 * a.cpu_usage + 0.4 * a.memory_usage;
-                let score_b = 0.6 * b.cpu_usage + 0.4 * b.memory_usage;
+                let score_a = 0.6f64.mul_add(a.cpu_usage, 0.4 * a.memory_usage);
+                let score_b = 0.6f64.mul_add(b.cpu_usage, 0.4 * b.memory_usage);
                 score_a
                     .partial_cmp(&score_b)
                     .unwrap_or(std::cmp::Ordering::Equal)

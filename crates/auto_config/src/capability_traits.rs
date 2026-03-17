@@ -6,9 +6,9 @@
 
 use async_trait::async_trait;
 
+use crate::ToadStoolResult;
 use crate::ecosystem::DiscoveredServices;
 use crate::hardware::SystemCapabilities;
-use crate::ToadStoolResult;
 
 /// Trait for hardware capability detection
 ///
@@ -41,7 +41,7 @@ pub trait EcosystemServiceDiscoverer: Send + Sync {
 #[async_trait]
 impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
-        crate::hardware::HardwareDetector::scan_system(self).await
+        Self::scan_system(self).await
     }
 }
 
@@ -50,7 +50,7 @@ impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
 #[async_trait]
 impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
-        crate::ecosystem::EcosystemDiscoverer::discover_services(self).await
+        Self::discover_services(self).await
     }
 }
 
@@ -97,7 +97,7 @@ impl MockHardwareDetector {
 
     /// Create a mock detector with custom capabilities
     #[must_use]
-    pub fn with_capabilities(capabilities: SystemCapabilities) -> Self {
+    pub const fn with_capabilities(capabilities: SystemCapabilities) -> Self {
         Self { capabilities }
     }
 }
@@ -150,7 +150,7 @@ impl MockEcosystemDiscoverer {
 
     /// Create a mock discoverer with custom services
     #[must_use]
-    pub fn with_services(services: DiscoveredServices) -> Self {
+    pub const fn with_services(services: DiscoveredServices) -> Self {
         Self { services }
     }
 }
@@ -315,8 +315,10 @@ mod tests {
         assert!(result.is_ok());
         let discovered_result = result.unwrap();
         assert_eq!(discovered_result.discovered_services.len(), 1);
-        assert!(discovered_result
-            .discovered_services
-            .contains_key("test-svc"));
+        assert!(
+            discovered_result
+                .discovered_services
+                .contains_key("test-svc")
+        );
     }
 }

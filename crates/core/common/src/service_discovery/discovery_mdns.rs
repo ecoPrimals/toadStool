@@ -12,7 +12,7 @@ use super::config::capability_from_str;
 use super::types::{DiscoveredService, DiscoveryError, DiscoveryResult};
 
 /// Convert a primal discovery endpoint to `DiscoveredService` (pure, testable).
-pub(crate) fn primal_endpoint_to_discovered_service(
+pub fn primal_endpoint_to_discovered_service(
     service_id: &str,
     url: &str,
     capabilities: &[String],

@@ -4,7 +4,7 @@
 [package]
 name = "toadstool-client"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 description = "ToadStool universal compute client library (tarpc evolved to Unix sockets)"
 license.workspace = true
 repository.workspace = true

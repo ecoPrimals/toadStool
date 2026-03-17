@@ -119,7 +119,7 @@ impl<R: RegisterAccess> PolicyEngine<R> {
 
     /// Get the current policy.
     #[must_use]
-    pub fn policy(&self) -> &PowerPolicy {
+    pub const fn policy(&self) -> &PowerPolicy {
         &self.policy
     }
 
@@ -152,7 +152,7 @@ impl<R: RegisterAccess> PolicyEngine<R> {
 
     /// Number of outstanding warm requests.
     #[must_use]
-    pub fn warm_requests(&self) -> u32 {
+    pub const fn warm_requests(&self) -> u32 {
         self.warm_requests
     }
 
@@ -237,12 +237,12 @@ impl<R: RegisterAccess> PolicyEngine<R> {
     }
 
     /// Access the underlying power manager.
-    pub fn manager(&self) -> &PowerManager<R> {
+    pub const fn manager(&self) -> &PowerManager<R> {
         &self.manager
     }
 
     /// Mutable access to the underlying power manager.
-    pub fn manager_mut(&mut self) -> &mut PowerManager<R> {
+    pub const fn manager_mut(&mut self) -> &mut PowerManager<R> {
         &mut self.manager
     }
 }

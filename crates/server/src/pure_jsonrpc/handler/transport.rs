@@ -258,26 +258,26 @@ impl TransportHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let streams = self.active_streams.lock().await;
 
-        if let Some(params) = params {
-            if let Some(stream_id) = params.get("stream_id").and_then(|v| v.as_str()) {
-                let stream = streams.get(stream_id).ok_or_else(|| {
-                    JsonRpcError::invalid_params(format!("Unknown stream: {stream_id}"))
-                })?;
+        if let Some(params) = params
+            && let Some(stream_id) = params.get("stream_id").and_then(|v| v.as_str())
+        {
+            let stream = streams.get(stream_id).ok_or_else(|| {
+                JsonRpcError::invalid_params(format!("Unknown stream: {stream_id}"))
+            })?;
 
-                let bytes = stream
-                    .bytes_transferred
-                    .load(std::sync::atomic::Ordering::Relaxed);
-                let elapsed = stream.started_at.elapsed();
+            let bytes = stream
+                .bytes_transferred
+                .load(std::sync::atomic::Ordering::Relaxed);
+            let elapsed = stream.started_at.elapsed();
 
-                return Ok(serde_json::json!({
-                    "stream_id": stream_id,
-                    "rx_id": stream.rx_id,
-                    "tx_id": stream.tx_id,
-                    "bytes_transferred": bytes,
-                    "elapsed_seconds": elapsed.as_secs_f64(),
-                    "active": !stream.cancel.is_cancelled(),
-                }));
-            }
+            return Ok(serde_json::json!({
+                "stream_id": stream_id,
+                "rx_id": stream.rx_id,
+                "tx_id": stream.tx_id,
+                "bytes_transferred": bytes,
+                "elapsed_seconds": elapsed.as_secs_f64(),
+                "active": !stream.cancel.is_cancelled(),
+            }));
         }
 
         let all: Vec<_> = streams

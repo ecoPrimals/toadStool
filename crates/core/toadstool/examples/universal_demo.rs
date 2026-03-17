@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 use toadstool::universal::{
-    get_platform_status, NetworkLocation, PrimalCapability, PrimalContext, PrimalRequest,
-    SecurityLevel,
+    NetworkLocation, PrimalCapability, PrimalContext, PrimalRequest, SecurityLevel,
+    get_platform_status,
 };
 use uuid::Uuid;
 

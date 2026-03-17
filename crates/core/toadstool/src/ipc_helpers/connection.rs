@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Connection establishment and Unix socket helpers for primal-to-primal IPC
 
-use serde_json::json;
 use serde_json::Value;
+use serde_json::json;
 use std::time::Duration;
 use toadstool_common::uid_detector;
 use tokio::net::UnixStream;
@@ -10,27 +10,28 @@ use tokio::time::timeout;
 use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
-use toadstool_common::constants::timeouts;
 use toadstool_common::constants::PRIMAL_NAME;
+use toadstool_common::constants::timeouts;
 
 use super::framing;
 
 /// Request timeout for IPC operations (from config defaults)
-pub(crate) const IPC_TIMEOUT: Duration = timeouts::TCP_CONNECT_TIMEOUT;
+pub const IPC_TIMEOUT: Duration = timeouts::TCP_CONNECT_TIMEOUT;
 
 /// Get runtime directory: `$XDG_RUNTIME_DIR` → `$BIOMEOS_RUNTIME_DIR` → `/run/user/$UID` → temp dir.
 fn get_runtime_dir() -> String {
     std::env::var("XDG_RUNTIME_DIR")
         .or_else(|_| std::env::var("BIOMEOS_RUNTIME_DIR"))
         .unwrap_or_else(|_| {
-            if let Ok(uid) = uid_detector::get_user_id() {
-                format!("/run/user/{uid}")
-            } else {
-                std::env::temp_dir()
-                    .join("biomeos-runtime")
-                    .to_string_lossy()
-                    .to_string()
-            }
+            uid_detector::get_user_id().map_or_else(
+                |_| {
+                    std::env::temp_dir()
+                        .join("biomeos-runtime")
+                        .to_string_lossy()
+                        .to_string()
+                },
+                |uid| format!("/run/user/{uid}"),
+            )
         })
 }
 

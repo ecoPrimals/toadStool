@@ -23,7 +23,7 @@
 //! ```
 
 use crate::error::{NvPmuError, Result};
-use rustix::ioctl::{opcode, Ioctl, IoctlOutput, Opcode};
+use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd};
 
@@ -293,7 +293,7 @@ impl VfioBar0Access {
 
     /// The VFIO device file descriptor for MSI-X configuration.
     #[must_use]
-    pub fn device_fd(&self) -> &OwnedFd {
+    pub const fn device_fd(&self) -> &OwnedFd {
         &self.device
     }
 
@@ -475,7 +475,7 @@ impl VfioMsixInterrupt {
     ///
     /// Returns error if timeout conversion, poll, or eventfd read fails.
     pub fn wait_timeout(&self, timeout: std::time::Duration) -> Result<Option<u64>> {
-        use rustix::event::{poll, PollFd, PollFlags};
+        use rustix::event::{PollFd, PollFlags, poll};
         use rustix::time::Timespec;
 
         let mut pollfd = [PollFd::new(&self.eventfd, PollFlags::IN)];
@@ -498,7 +498,7 @@ impl VfioMsixInterrupt {
 
 /// Create an eventfd for interrupt notification.
 fn create_eventfd() -> Result<OwnedFd> {
-    use rustix::event::{eventfd, EventfdFlags};
+    use rustix::event::{EventfdFlags, eventfd};
     eventfd(0, EventfdFlags::CLOEXEC | EventfdFlags::NONBLOCK)
         .map_err(|e| NvPmuError::Hardware(format!("eventfd create: {e}")))
 }

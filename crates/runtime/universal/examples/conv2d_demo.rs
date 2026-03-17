@@ -16,11 +16,11 @@
 //! `Conv2D` is THE operation for computer vision and image processing!
 
 use std::collections::HashMap;
+use toadstool_runtime_universal::ComputeError;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
     DataType, OperationType, Workload, WorkloadData, WorkloadParams,
 };
-use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
 async fn main() -> Result<(), ComputeError> {

@@ -40,25 +40,24 @@ pub async fn detect_storage(_detector: &HardwareDetector) -> ToadStoolResult<Sto
     let mut storage_info = StorageInfo::default();
 
     // Linux storage detection
-    if cfg!(target_os = "linux") {
-        if let Ok(output) = tokio::process::Command::new("df")
+    if cfg!(target_os = "linux")
+        && let Ok(output) = tokio::process::Command::new("df")
             .arg("-BG")
             .arg("/")
             .output()
             .await
-        {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            for line in output_str.lines().skip(1) {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 4 {
-                    if let Ok(total_gb) = parts[1].trim_end_matches('G').parse::<f64>() {
-                        storage_info.total_gb = total_gb;
-                    }
-                    if let Ok(available_gb) = parts[3].trim_end_matches('G').parse::<f64>() {
-                        storage_info.available_gb = available_gb;
-                    }
-                    break;
+    {
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        for line in output_str.lines().skip(1) {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 4 {
+                if let Ok(total_gb) = parts[1].trim_end_matches('G').parse::<f64>() {
+                    storage_info.total_gb = total_gb;
                 }
+                if let Ok(available_gb) = parts[3].trim_end_matches('G').parse::<f64>() {
+                    storage_info.available_gb = available_gb;
+                }
+                break;
             }
         }
     }
@@ -77,13 +76,13 @@ pub async fn detect_storage(_detector: &HardwareDetector) -> ToadStoolResult<Sto
 /// Detect storage type (SSD vs HDD)
 async fn detect_storage_type() -> ToadStoolResult<StorageType> {
     // Linux: check rotational attribute
-    if cfg!(target_os = "linux") {
-        if let Ok(rotational) = tokio::fs::read_to_string("/sys/block/sda/queue/rotational").await {
-            if rotational.trim() == "0" {
-                return Ok(StorageType::SSD);
-            }
-            return Ok(StorageType::HDD);
+    if cfg!(target_os = "linux")
+        && let Ok(rotational) = tokio::fs::read_to_string("/sys/block/sda/queue/rotational").await
+    {
+        if rotational.trim() == "0" {
+            return Ok(StorageType::SSD);
         }
+        return Ok(StorageType::HDD);
     }
 
     // Default assumption: SSD for modern systems

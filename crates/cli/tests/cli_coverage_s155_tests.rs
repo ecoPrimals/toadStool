@@ -393,10 +393,10 @@ mod monitoring_tests {
     use super::*;
     use std::collections::HashMap;
     use toadstool_cli::monitoring::{
-        collect_performance_metrics, collect_resource_usage, collect_system_health,
-        evaluate_health_alerts, load_default_alert_rules, AlertCondition, AlertRule, AlertSeverity,
-        BiomeStatusSummary, ComparisonOperator, HealthStatus, Metric, MetricBatch, MetricValue,
-        MonitoringSession, SessionStatus, SystemHealth,
+        AlertCondition, AlertRule, AlertSeverity, BiomeStatusSummary, ComparisonOperator,
+        HealthStatus, Metric, MetricBatch, MetricValue, MonitoringSession, SessionStatus,
+        SystemHealth, collect_performance_metrics, collect_resource_usage, collect_system_health,
+        evaluate_health_alerts, load_default_alert_rules,
     };
     use toadstool_cli::monitoring::{
         MetricsCollector, MetricsStore, NetworkMetricsCollector, ProcessMetricsCollector,
@@ -594,8 +594,8 @@ mod monitoring_tests {
 mod template_tests {
     use super::*;
     use toadstool_cli::templates::{
-        basic_templates::{create_basic_template, create_development_template},
         BiomeTemplate, CustomTemplateSpec, TemplateGenerator,
+        basic_templates::{create_basic_template, create_development_template},
     };
 
     #[test]
@@ -619,8 +619,8 @@ mod template_tests {
 
     #[test]
     fn test_template_generator_new() {
-        let gen = TemplateGenerator::new(PathBuf::from("/tmp"), false);
-        drop(gen);
+        let generator = TemplateGenerator::new(PathBuf::from("/tmp"), false);
+        drop(generator);
     }
 
     #[test]
@@ -661,8 +661,11 @@ mod template_tests {
     #[tokio::test]
     async fn test_template_generator_generate_basic() {
         let temp = tempfile::tempdir().expect("tempdir");
-        let gen = TemplateGenerator::new(temp.path().to_path_buf(), true);
-        let path = gen.generate(BiomeTemplate::Basic).await.expect("generate");
+        let generator = TemplateGenerator::new(temp.path().to_path_buf(), true);
+        let path = generator
+            .generate(BiomeTemplate::Basic)
+            .await
+            .expect("generate");
         assert!(path.exists());
         assert!(
             path.extension().is_some_and(|e| e == "yaml")

@@ -39,12 +39,11 @@ impl ConfigValidator {
             warn!("WASM runtime has no memory limit set");
         }
 
-        if config.runtime.gpu.is_some() {
-            if let Some(gpu_config) = &config.runtime.gpu {
-                if gpu_config.max_memory_per_device == 0 {
-                    warn!("GPU runtime enabled but no memory limit set");
-                }
-            }
+        if config.runtime.gpu.is_some()
+            && let Some(gpu_config) = &config.runtime.gpu
+            && gpu_config.max_memory_per_device == 0
+        {
+            warn!("GPU runtime enabled but no memory limit set");
         }
 
         Ok(())

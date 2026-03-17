@@ -62,20 +62,20 @@ pub fn generate_predictions(data: &[f64], hours_ahead: u32) -> Vec<PredictionPoi
     let sum_x_times_y: f64 = x.iter().zip(data.iter()).map(|(xi, yi)| xi * yi).sum();
     let sum_x2: f64 = x.iter().map(|xi| xi * xi).sum();
 
-    let denominator = n * sum_x2 - sum_x * sum_x;
+    let denominator = n.mul_add(sum_x2, -(sum_x * sum_x));
     if denominator.abs() < f64::EPSILON {
         return Vec::new();
     }
 
-    let slope = (n * sum_x_times_y - sum_x * sum_y) / denominator;
-    let intercept = (sum_y - slope * sum_x) / n;
+    let slope = (n.mul_add(sum_x_times_y, -(sum_x * sum_y))) / denominator;
+    let intercept = slope.mul_add(-sum_x, sum_y) / n;
 
     let current_time = SystemTime::now();
 
     (1..=hours_ahead)
         .map(|i| {
             let future_x = data.len() as f64 + f64::from(i);
-            let predicted_value = slope * future_x + intercept;
+            let predicted_value = slope.mul_add(future_x, intercept);
 
             let std_error = (data
                 .iter()
@@ -85,8 +85,8 @@ pub fn generate_predictions(data: &[f64], hours_ahead: u32) -> Vec<PredictionPoi
                 / n)
                 .sqrt();
             let confidence_interval = (
-                predicted_value - 1.96 * std_error,
-                predicted_value + 1.96 * std_error,
+                1.96f64.mul_add(-std_error, predicted_value),
+                1.96f64.mul_add(std_error, predicted_value),
             );
 
             PredictionPoint {

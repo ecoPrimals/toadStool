@@ -162,7 +162,7 @@ impl MmapBuffer {
     /// SAFETY: ptr and len come from a successful mmap; we own this mapping exclusively.
     /// The slice is valid for the lifetime of self. Callers must not hold the slice across
     /// operations that could invalidate the buffer (e.g. `stop_streaming`).
-    fn as_slice(&self) -> &[u8] {
+    const fn as_slice(&self) -> &[u8] {
         if self.ptr.is_null() || self.len == 0 {
             return &[];
         }
@@ -529,7 +529,7 @@ impl CaptureDevice {
 
     /// Current negotiated format (after `set_format`).
     #[must_use]
-    pub fn format(&self) -> Option<&CaptureFormat> {
+    pub const fn format(&self) -> Option<&CaptureFormat> {
         self.format.as_ref()
     }
 
@@ -545,10 +545,10 @@ impl CaptureDevice {
         if let Ok(entries) = std::fs::read_dir(dev_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with("video") {
-                        devices.push(path);
-                    }
+                if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                    && name.starts_with("video")
+                {
+                    devices.push(path);
                 }
             }
         }

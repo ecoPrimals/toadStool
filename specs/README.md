@@ -9,7 +9,7 @@
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
 
 **Key Numbers:**
-- **20,262 workspace tests** (0 failures, all concurrent)
+- **21,156+ workspace tests** (0 failures, all concurrent)
 - **96+ JSON-RPC methods** (dynamically built from semantic registry)
 - **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport (PCIe P2P implemented S142)
 - **coralReef shader proxy** — capability-based discovery, naga fallback
@@ -19,7 +19,7 @@
 - **Zero-copy** — `bytes::Bytes` in 6 GPU/runtime types
 - **Capability-based discovery** — sovereignty: all production callers migrated
 - **ecoBin pure-rust verified** — zero C FFI deps
-- **Rust 1.82+** — `is_some_and`, `div_ceil`, modern idiomatic patterns
+- **Rust 1.85+ (edition 2024)** — `is_some_and`, `div_ceil`, modern idiomatic patterns
 
 **Architecture:**
 ```

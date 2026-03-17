@@ -34,7 +34,7 @@ pub struct CoordinationAdapter {
 
 impl CoordinationAdapter {
     /// Create a new coordination adapter
-    pub fn new(universal: Arc<UniversalServiceAdapter>) -> Self {
+    pub const fn new(universal: Arc<UniversalServiceAdapter>) -> Self {
         Self { universal }
     }
 

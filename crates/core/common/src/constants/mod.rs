@@ -20,6 +20,6 @@ pub mod versions;
 
 // Re-export commonly used constants (narrowed from wildcards; submodules remain for full access)
 pub use network::{
-    http_url, DEFAULT_HOSTNAME, DEFAULT_HTTP_PORT, DEFAULT_WS_PORT, LOCALHOST_IPV4, LOCALHOST_IPV6,
+    DEFAULT_HOSTNAME, DEFAULT_HTTP_PORT, DEFAULT_WS_PORT, LOCALHOST_IPV4, LOCALHOST_IPV6, http_url,
 };
 pub use primal_identity::PRIMAL_NAME;

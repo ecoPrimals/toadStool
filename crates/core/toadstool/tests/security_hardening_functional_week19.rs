@@ -183,9 +183,11 @@ fn test_input_validator_blocks_xss_script() {
     let rules = ValidationRules::default();
     let validator = InputValidator::new(rules);
 
-    assert!(validator
-        .validate_input("<script>alert('XSS')</script>")
-        .is_err());
+    assert!(
+        validator
+            .validate_input("<script>alert('XSS')</script>")
+            .is_err()
+    );
 }
 
 #[test]
@@ -390,9 +392,11 @@ async fn test_manager_blocks_malicious_input() {
     let config = SecurityHardeningConfig::default();
     let manager = SecurityHardeningManager::new(config);
 
-    assert!(manager
-        .validate_input("<script>alert('xss')</script>")
-        .is_err());
+    assert!(
+        manager
+            .validate_input("<script>alert('xss')</script>")
+            .is_err()
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

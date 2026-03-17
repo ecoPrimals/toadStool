@@ -1,7 +1,7 @@
 [package]
 name = "cross-substrate-validation"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors = ["ToadStool Contributors"]
 description = "Cross-substrate validation benchmark: CPU vs GPU vs Neuromorphic"
 license.workspace = true

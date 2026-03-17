@@ -32,7 +32,7 @@
 use hw_learn::brain_ext::learning_advisor::{FleetGpu, LearningAdvisor};
 use hw_learn::distiller::{GpuArch, Vendor};
 use hw_learn::observer::{GpuSelector, ObserveConfig, TraceMode, TraceObserver};
-use toadstool_sysmon::{discover_gpus, GpuVendor};
+use toadstool_sysmon::{GpuVendor, discover_gpus};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -65,7 +65,7 @@ fn main() {
         );
         println!("    driver: {}", gpu.driver);
         println!("    PCI: {}", gpu.pci_slot);
-        println!("    PCIe: gen{:?} x{:?}", topo.gen, topo.width);
+        println!("    PCIe: gen{:?} x{:?}", topo.generation, topo.width);
         println!("    firmware:");
         println!("      PMU: {}", fw.pmu);
         println!("      GSP: {}", fw.gsp);

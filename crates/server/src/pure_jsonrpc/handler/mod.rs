@@ -19,12 +19,12 @@ mod transport;
 mod workload;
 
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use toadstool::semantic_methods::SemanticMethodRegistry;
 use tracing::{debug, error, info};
 
-use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JSONRPC_VERSION};
+use super::types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 
 use dispatch::DispatchHandler;
 pub use hw_learn::HwLearnHandler;
@@ -146,7 +146,7 @@ impl JsonRpcHandler {
             "toadstool.list_workloads" => return self.job.list_workloads(params).await,
             "toadstool.query_capabilities" => return self.workload.query_capabilities().await,
             "toadstool.health" => {
-                return core::health(&self.version, self.start_time, &self.error_count).await
+                return core::health(&self.version, self.start_time, &self.error_count).await;
             }
             "toadstool.version" => return core::version_info(&self.version).await,
 
@@ -158,19 +158,19 @@ impl JsonRpcHandler {
             | "toadstool.ai.local_execute"
             | "resources.validate_availability"
             | "ai.local_execute" => {
-                return self.resources.resources_validate_availability(params).await
+                return self.resources.resources_validate_availability(params).await;
             }
             "toadstool.resources.suggest_optimizations" | "resources.suggest_optimizations" => {
-                return self.resources.resources_suggest_optimizations(params).await
+                return self.resources.resources_suggest_optimizations(params).await;
             }
 
             "compute.health" => {
-                return core::health(&self.version, self.start_time, &self.error_count).await
+                return core::health(&self.version, self.start_time, &self.error_count).await;
             }
             "compute.version" => return core::version_info(&self.version).await,
             "compute.capabilities" => return self.workload.query_capabilities().await,
             "compute.discover_capabilities" => {
-                return core::discover_capabilities(&self.semantic_registry, &self.version).await
+                return core::discover_capabilities(&self.semantic_registry, &self.version).await;
             }
 
             "compute.submit" => return self.job.compute_submit(params).await,
@@ -184,7 +184,7 @@ impl JsonRpcHandler {
             "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,
             "compute.dispatch.forward" => return self.dispatch.dispatch_forward(params).await,
             "compute.dispatch.capabilities" => {
-                return self.dispatch.dispatch_capabilities(params).await
+                return self.dispatch.dispatch_capabilities(params).await;
             }
 
             "gpu.info" => return core::gpu_info().await,
@@ -209,23 +209,23 @@ impl JsonRpcHandler {
             "transport.status" => return self.transport.transport_status(params).await,
 
             "science.compute.submit" => {
-                return science::science_compute_submit(&self.job, params).await
+                return science::science_compute_submit(&self.job, params).await;
             }
             "science.compute.status" => {
-                return science::science_compute_status(&self.job, params).await
+                return science::science_compute_status(&self.job, params).await;
             }
             "science.compute.result" => {
-                return science::science_compute_result(&self.job, params).await
+                return science::science_compute_result(&self.job, params).await;
             }
             "science.compute.cancel" => {
-                return science::science_compute_cancel(&self.job, params).await
+                return science::science_compute_cancel(&self.job, params).await;
             }
             "science.gpu.dispatch" => {
-                return science::science_gpu_dispatch(&self.job, params).await
+                return science::science_gpu_dispatch(&self.job, params).await;
             }
             "science.gpu.capabilities" => return science::science_gpu_capabilities().await,
             "science.npu.dispatch" => {
-                return science::science_npu_dispatch(&self.job, params).await
+                return science::science_npu_dispatch(&self.job, params).await;
             }
             "science.npu.capabilities" => return science::science_npu_capabilities().await,
             "science.substrate.discover" => return science::science_substrate_discover().await,
@@ -254,15 +254,15 @@ impl JsonRpcHandler {
             "compute.hardware.distill" => return self.hw_learn.hw_learn_distill(params).await,
             "compute.hardware.apply" => return self.hw_learn.hw_learn_apply(params).await,
             "compute.hardware.share_recipe" => {
-                return self.hw_learn.hw_learn_share_recipe(params).await
+                return self.hw_learn.hw_learn_share_recipe(params).await;
             }
             "compute.hardware.auto_init" => return self.hw_learn.hw_learn_auto_init(params).await,
             "compute.hardware.auto_init_all" => {
-                return self.hw_learn.hw_learn_auto_init_all(params).await
+                return self.hw_learn.hw_learn_auto_init_all(params).await;
             }
             "compute.hardware.status" => return self.hw_learn.hw_learn_status(params).await,
             "compute.hardware.vfio_devices" => {
-                return self.hw_learn.hw_learn_vfio_devices(params).await
+                return self.hw_learn.hw_learn_vfio_devices(params).await;
             }
 
             "shader.compile.wgsl" => return self.shader.compile_wgsl(params).await,

@@ -5,7 +5,7 @@
 //! Service discovery types use `Arc<str>` for frequently-cloned string fields.
 
 use crate::Result;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashMap};
@@ -71,7 +71,7 @@ impl<'de> Deserialize<'de> for ServiceEndpoint {
         }
 
         let helper = ServiceEndpointHelper::deserialize(deserializer)?;
-        Ok(ServiceEndpoint {
+        Ok(Self {
             service_type: helper.service_type,
             address: helper.address,
             version: Arc::from(helper.version.as_str()),
@@ -109,10 +109,10 @@ impl EcosystemService {
     /// Capability string for this service type
     pub(super) fn name(&self) -> &str {
         match self {
-            EcosystemService::Discovery => "discovery",
-            EcosystemService::Crypto => "crypto",
-            EcosystemService::Storage => "storage",
-            EcosystemService::Unknown(name) => name,
+            Self::Discovery => "discovery",
+            Self::Crypto => "crypto",
+            Self::Storage => "storage",
+            Self::Unknown(name) => name,
         }
     }
 }
@@ -211,24 +211,24 @@ pub enum ServiceType {
 #[allow(deprecated)] // ServiceType impl; deprecated during migration to capability-based discovery
 impl ServiceType {
     /// Map to capability name
-    pub fn to_capability(&self) -> &'static str {
+    pub const fn to_capability(&self) -> &'static str {
         match self {
-            ServiceType::Discovery => "discovery",
-            ServiceType::Crypto => "crypto",
-            ServiceType::Storage => "storage",
-            ServiceType::Compute => "compute",
-            ServiceType::Generic => "generic",
+            Self::Discovery => "discovery",
+            Self::Crypto => "crypto",
+            Self::Storage => "storage",
+            Self::Compute => "compute",
+            Self::Generic => "generic",
         }
     }
 
     /// Create from capability (capability-based discovery)
     pub fn from_capability(capability: &str) -> Self {
         match capability {
-            "discovery" | "orchestration" | "coordination" => ServiceType::Discovery,
-            "crypto" | "pki" | "security" => ServiceType::Crypto,
-            "storage" => ServiceType::Storage,
-            "compute" | "compute:execution" | "intelligence" => ServiceType::Compute,
-            _ => ServiceType::Generic,
+            "discovery" | "orchestration" | "coordination" => Self::Discovery,
+            "crypto" | "pki" | "security" => Self::Crypto,
+            "storage" => Self::Storage,
+            "compute" | "compute:execution" | "intelligence" => Self::Compute,
+            _ => Self::Generic,
         }
     }
 
@@ -459,10 +459,12 @@ mod tests {
             b"msg", &[0u8; 64], &[0u8; 16], // Wrong length - should be 32
         );
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid public key"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid public key")
+        );
     }
 
     #[test]
@@ -473,10 +475,12 @@ mod tests {
             &[0u8; 32],
         );
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid signature"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid signature")
+        );
     }
 
     #[test]

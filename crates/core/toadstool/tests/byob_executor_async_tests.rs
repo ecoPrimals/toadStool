@@ -10,9 +10,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::byob::{
-    create_byob_executor, ByobComputeExecutor, ByobDeploymentRequest, ByobExecutorConfig,
-    HealthCheck, PortMapping, ServiceResourceRequirements, ServiceSpec, TeamNetworkConfig,
-    TeamResourceQuotas, TeamSecurityConfig,
+    ByobComputeExecutor, ByobDeploymentRequest, ByobExecutorConfig, HealthCheck, PortMapping,
+    ServiceResourceRequirements, ServiceSpec, TeamNetworkConfig, TeamResourceQuotas,
+    TeamSecurityConfig, create_byob_executor,
 };
 use toadstool::execution::RuntimeConfig;
 use toadstool::{
@@ -465,14 +465,18 @@ fn test_security_config_network_policies() {
     let complex = create_complex_deployment_request();
 
     assert_eq!(complex.security_config.network_policies.len(), 2);
-    assert!(complex
-        .security_config
-        .network_policies
-        .contains(&"default-deny".to_string()));
-    assert!(complex
-        .security_config
-        .network_policies
-        .contains(&"allow-internal".to_string()));
+    assert!(
+        complex
+            .security_config
+            .network_policies
+            .contains(&"default-deny".to_string())
+    );
+    assert!(
+        complex
+            .security_config
+            .network_policies
+            .contains(&"allow-internal".to_string())
+    );
 }
 
 #[test]

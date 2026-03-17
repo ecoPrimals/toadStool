@@ -14,8 +14,8 @@ pub use execution::{
     cancel_execution_handler, get_execution_status_handler, submit_execution_handler,
 };
 pub use health::{
-    dashboard_handler, health_check_handler, metrics_handler, readiness_check_handler,
-    DASHBOARD_HTML,
+    DASHBOARD_HTML, dashboard_handler, health_check_handler, metrics_handler,
+    readiness_check_handler,
 };
 
 #[cfg(test)]

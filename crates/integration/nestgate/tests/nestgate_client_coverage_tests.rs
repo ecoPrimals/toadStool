@@ -8,10 +8,10 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use toadstool_integration_nestgate::StorageClient;
 use toadstool_integration_nestgate::config::{CacheConfig, NestGateConfig};
 use toadstool_integration_nestgate::pipeline::PipelineConfig;
 use toadstool_integration_nestgate::types::{ArtifactFilters, ArtifactType, StorageStatus};
-use toadstool_integration_nestgate::StorageClient;
 
 // ============================================================================
 // Test client helper

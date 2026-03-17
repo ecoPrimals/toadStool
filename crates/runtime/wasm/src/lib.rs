@@ -71,7 +71,7 @@ pub use config::{SecurityLevel, WasmRuntimeConfig, WasmRuntimeConfigBuilder};
 pub use engine_wasmi::WasmRuntimeEngine;
 pub use execution_wasmi::ModuleExecutor;
 pub use module_loader::ModuleLoader;
-pub use wasi_context::{create_wasi_context, WasiConfig};
+pub use wasi_context::{WasiConfig, create_wasi_context};
 
 // EVOLVED: Component model always exported, capability detected at runtime
 pub use component_model::{

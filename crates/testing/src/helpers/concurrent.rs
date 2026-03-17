@@ -15,7 +15,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, Barrier, Mutex, Notify, RwLock};
+use tokio::sync::{Barrier, Mutex, Notify, RwLock, mpsc};
 use tokio::time::timeout;
 
 /// Test barrier for coordinating multiple concurrent test tasks
@@ -130,7 +130,8 @@ impl<T> TestState<T> {
 
     pub async fn read<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&T) -> R,
+        F: FnOnce(&T) -> R + Send,
+        T: Send + Sync,
     {
         let guard = self.state.read().await;
         f(&guard)
@@ -138,7 +139,8 @@ impl<T> TestState<T> {
 
     pub async fn write<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&mut T) -> R,
+        F: FnOnce(&mut T) -> R + Send,
+        T: Send + Sync,
     {
         let mut guard = self.state.write().await;
         f(&mut guard)
@@ -150,7 +152,8 @@ impl<T> TestState<T> {
         f: F,
     ) -> Result<R, tokio::time::error::Elapsed>
     where
-        F: FnOnce(&T) -> R,
+        F: FnOnce(&T) -> R + Send,
+        T: Send + Sync,
     {
         let guard = timeout(duration, self.state.read()).await?;
         Ok(f(&guard))
@@ -162,7 +165,8 @@ impl<T> TestState<T> {
         f: F,
     ) -> Result<R, tokio::time::error::Elapsed>
     where
-        F: FnOnce(&mut T) -> R,
+        F: FnOnce(&mut T) -> R + Send,
+        T: Send + Sync,
     {
         let mut guard = timeout(duration, self.state.write()).await?;
         Ok(f(&mut guard))
@@ -260,7 +264,7 @@ pub enum WaitError {
 impl std::fmt::Display for WaitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WaitError::Timeout => write!(f, "condition did not become true within timeout"),
+            Self::Timeout => write!(f, "condition did not become true within timeout"),
         }
     }
 }

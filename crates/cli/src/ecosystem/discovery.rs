@@ -69,25 +69,28 @@ pub fn discover_from_environment(capability_category: &str) -> Option<String> {
 /// priority = 80
 /// ```
 pub fn discover_from_config(capability_category: &str) -> Option<String> {
-    use etcetera::{choose_base_strategy, BaseStrategy};
+    use etcetera::{BaseStrategy, choose_base_strategy};
 
     // Try multiple config locations (user home first, system config last-resort fallback)
-    let config_paths = if let Ok(strategy) = choose_base_strategy() {
-        vec![
-            Some(strategy.home_dir().join(".toadstool/services.toml")),
-            Some(std::path::PathBuf::from(".toadstool/config.toml")),
-            Some(std::path::PathBuf::from(
-                crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
-            )),
-        ]
-    } else {
-        vec![
-            Some(std::path::PathBuf::from(".toadstool/config.toml")),
-            Some(std::path::PathBuf::from(
-                crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
-            )),
-        ]
-    };
+    let config_paths = choose_base_strategy().map_or_else(
+        |_| {
+            vec![
+                Some(std::path::PathBuf::from(".toadstool/config.toml")),
+                Some(std::path::PathBuf::from(
+                    crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
+                )),
+            ]
+        },
+        |strategy| {
+            vec![
+                Some(strategy.home_dir().join(".toadstool/services.toml")),
+                Some(std::path::PathBuf::from(".toadstool/config.toml")),
+                Some(std::path::PathBuf::from(
+                    crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
+                )),
+            ]
+        },
+    );
 
     for path in config_paths.into_iter().flatten() {
         if let Ok(contents) = std::fs::read_to_string(&path) {

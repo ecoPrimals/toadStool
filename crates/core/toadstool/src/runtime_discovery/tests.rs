@@ -200,10 +200,12 @@ async fn test_register_service_max_limit() {
 
     let result = discovery.register_service(third).await;
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Maximum services limit"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Maximum services limit")
+    );
 }
 
 #[tokio::test]

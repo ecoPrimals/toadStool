@@ -6,10 +6,10 @@ use crate::songbird_integration::types::{
     CoordinationStrategy, DistributionPlan, NetworkCapacity, NodeRegistration, NodeType,
     RegistrationResponse, SubTask, SubTaskPlan,
 };
+use crate::types::ResourceRequirements;
 use crate::types::resources::{
     CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
 };
-use crate::types::ResourceRequirements;
 
 use super::{make_discovery, make_node_registration};
 

@@ -10,7 +10,7 @@ use toadstool::error::ToadStoolResult;
 use crate::{UniversalJob, UniversalJobType};
 
 #[derive(Default)]
-pub(crate) struct CloudCostTracker {
+pub struct CloudCostTracker {
     _cost_models: HashMap<String, super::types::CostModel>,
     _usage_metrics: HashMap<String, f64>,
     _alerts: Vec<super::types::CostAlert>,
@@ -23,7 +23,7 @@ impl CloudCostTracker {
 }
 
 #[derive(Default)]
-pub(crate) struct CloudPerformanceTracker {
+pub struct CloudPerformanceTracker {
     _performance_metrics: HashMap<String, super::types::PerformanceMetric>,
     _baseline_metrics: HashMap<String, f64>,
 }

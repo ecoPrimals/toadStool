@@ -320,9 +320,11 @@ mod signal_handling_tests {
 
         for signal in signals {
             assert!(!signal.is_empty());
-            assert!(signal
-                .chars()
-                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
+            assert!(
+                signal
+                    .chars()
+                    .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+            );
         }
     }
 

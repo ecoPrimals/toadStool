@@ -21,10 +21,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool_server::{
-    background::*, ActiveExecution, ClientInfo, ServerConfig, ServerEvent, ServerState,
-    ServerStatistics,
+    ActiveExecution, ClientInfo, ServerConfig, ServerEvent, ServerState, ServerStatistics,
+    background::*,
 };
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 /// Helper to create test server state
 fn create_test_state_with_config(config: ServerConfig) -> ServerState {

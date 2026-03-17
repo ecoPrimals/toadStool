@@ -47,13 +47,13 @@ pub struct DefaultRng {
 impl DefaultRng {
     /// Create a new RNG with default seed
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { state: 42 }
     }
 
     /// Create a new RNG with specified seed
     #[must_use]
-    pub fn with_seed(seed: u64) -> Self {
+    pub const fn with_seed(seed: u64) -> Self {
         Self { state: seed }
     }
 }

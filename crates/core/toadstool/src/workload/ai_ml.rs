@@ -242,7 +242,7 @@ impl AiMlWorkload {
 
     /// Estimate total memory required (model + batch)
     #[must_use]
-    pub fn estimate_total_memory_bytes(&self) -> u64 {
+    pub const fn estimate_total_memory_bytes(&self) -> u64 {
         let model_memory = self.model_size.estimate_memory_bytes();
 
         // Estimate batch memory (rough approximation)

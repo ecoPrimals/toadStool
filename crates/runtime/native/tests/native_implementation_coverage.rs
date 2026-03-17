@@ -7,10 +7,10 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use toadstool::{
+    WorkloadType,
     execution::{RuntimeConfig, RuntimeEngine, RuntimeType},
     security::{Capability, IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
-    WorkloadType,
 };
 use toadstool_runtime_native::NativeRuntimeEngine;
 

@@ -321,6 +321,7 @@ impl SecurityProvider for SoftwareHsmProvider {
         let mut revoked = self.revoked.write().await;
         if !revoked.contains(permission_id) {
             revoked.push(*permission_id);
+            drop(revoked);
         }
         Ok(())
     }

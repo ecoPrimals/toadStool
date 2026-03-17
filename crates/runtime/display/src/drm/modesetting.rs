@@ -42,12 +42,11 @@ fn find_crtc_for_connector(
         .map_err(|e| DisplayError::IoctlFailed(format!("resource_handles: {e}")))?;
 
     // If the connector already has an encoder, try its CRTC first.
-    if let Some(enc_handle) = connector.encoder {
-        if let Ok(encoder) = device.get_encoder(enc_handle) {
-            if let Some(crtc) = encoder.crtc() {
-                return Ok(crtc);
-            }
-        }
+    if let Some(enc_handle) = connector.encoder
+        && let Ok(encoder) = device.get_encoder(enc_handle)
+        && let Some(crtc) = encoder.crtc()
+    {
+        return Ok(crtc);
     }
 
     // Walk all encoders that can serve this connector and find a usable CRTC.
@@ -56,11 +55,10 @@ fn find_crtc_for_connector(
         .map_err(|e| DisplayError::IoctlFailed(format!("get_connector: {e}")))?;
 
     for &enc_handle in conn_info.encoders() {
-        if let Ok(encoder) = device.get_encoder(enc_handle) {
-            let possible = resources.filter_crtcs(encoder.possible_crtcs());
-            if let Some(&crtc) = possible.first() {
-                return Ok(crtc);
-            }
+        if let Ok(encoder) = device.get_encoder(enc_handle)
+            && let Some(&crtc) = resources.filter_crtcs(encoder.possible_crtcs()).first()
+        {
+            return Ok(crtc);
         }
     }
 

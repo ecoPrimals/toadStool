@@ -525,16 +525,20 @@ async fn test_schedule_job_native_stdout_and_stderr() {
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.status, ExecutionStatus::Success);
-    assert!(response
-        .output
-        .stdout
-        .unwrap_or_default()
-        .contains("stdout_line"));
-    assert!(response
-        .output
-        .stderr
-        .unwrap_or_default()
-        .contains("stderr_line"));
+    assert!(
+        response
+            .output
+            .stdout
+            .unwrap_or_default()
+            .contains("stdout_line")
+    );
+    assert!(
+        response
+            .output
+            .stderr
+            .unwrap_or_default()
+            .contains("stderr_line")
+    );
 }
 
 #[tokio::test]
@@ -552,11 +556,13 @@ async fn test_schedule_job_native_with_args() {
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.status, ExecutionStatus::Success);
-    assert!(response
-        .output
-        .stdout
-        .unwrap_or_default()
-        .contains("arg1 arg2 arg3"));
+    assert!(
+        response
+            .output
+            .stdout
+            .unwrap_or_default()
+            .contains("arg1 arg2 arg3")
+    );
 }
 
 #[tokio::test]

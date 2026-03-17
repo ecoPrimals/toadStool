@@ -125,11 +125,11 @@ impl CoralReefClient {
             let manifest = PathBuf::from(&runtime_dir)
                 .join("ecoPrimals")
                 .join("coralreef-core.json");
-            if let Some(socket) = read_socket_from_manifest(&manifest) {
-                if socket.exists() {
-                    debug!(path = %socket.display(), "coralReef discovered via XDG manifest");
-                    return Some(UnixJsonRpcClient::new(socket));
-                }
+            if let Some(socket) = read_socket_from_manifest(&manifest)
+                && socket.exists()
+            {
+                debug!(path = %socket.display(), "coralReef discovered via XDG manifest");
+                return Some(UnixJsonRpcClient::new(socket));
             }
 
             // Direct socket path

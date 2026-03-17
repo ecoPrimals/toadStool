@@ -8,9 +8,9 @@ use toadstool_cli::templates::{BiomeTemplate, CustomTemplateSpec, TemplateGenera
 
 #[test]
 fn test_template_generator_new() {
-    let gen = TemplateGenerator::new(PathBuf::from("/tmp"), false);
+    let generator = TemplateGenerator::new(PathBuf::from("/tmp"), false);
     // Constructor doesn't panic
-    drop(gen);
+    drop(generator);
 }
 
 #[test]
@@ -193,9 +193,9 @@ async fn test_generate_basic_template() {
     let temp_dir =
         std::env::temp_dir().join(format!("toadstool_template_test_{}", std::process::id()));
     std::fs::create_dir_all(&temp_dir).unwrap();
-    let gen = TemplateGenerator::new(temp_dir.clone(), true);
+    let generator = TemplateGenerator::new(temp_dir.clone(), true);
 
-    let path = gen.generate(BiomeTemplate::Basic).await.unwrap();
+    let path = generator.generate(BiomeTemplate::Basic).await.unwrap();
     assert!(path.exists());
     assert!(path.ends_with("biome.yaml"));
 
@@ -217,8 +217,8 @@ async fn test_generate_without_force_fails_if_exists() {
     let existing = temp_dir.join("biome.yaml");
     std::fs::write(&existing, "# existing").unwrap();
 
-    let gen = TemplateGenerator::new(temp_dir.clone(), false);
-    let result = gen.generate(BiomeTemplate::Basic).await;
+    let generator = TemplateGenerator::new(temp_dir.clone(), false);
+    let result = generator.generate(BiomeTemplate::Basic).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.to_string().contains("already exists") || err.to_string().contains("overwrite"));
@@ -232,9 +232,9 @@ async fn test_generate_science_template() {
     let temp_dir =
         std::env::temp_dir().join(format!("toadstool_science_test_{}", std::process::id()));
     std::fs::create_dir_all(&temp_dir).unwrap();
-    let gen = TemplateGenerator::new(temp_dir.clone(), true);
+    let generator = TemplateGenerator::new(temp_dir.clone(), true);
 
-    let path = gen.generate(BiomeTemplate::Science).await.unwrap();
+    let path = generator.generate(BiomeTemplate::Science).await.unwrap();
     assert!(path.exists());
     let content = std::fs::read_to_string(&path).unwrap();
     assert!(!content.is_empty());
@@ -246,9 +246,12 @@ async fn test_generate_science_template() {
 async fn test_generate_development_template() {
     let temp_dir = std::env::temp_dir().join(format!("toadstool_dev_test_{}", std::process::id()));
     std::fs::create_dir_all(&temp_dir).unwrap();
-    let gen = TemplateGenerator::new(temp_dir.clone(), true);
+    let generator = TemplateGenerator::new(temp_dir.clone(), true);
 
-    let path = gen.generate(BiomeTemplate::Development).await.unwrap();
+    let path = generator
+        .generate(BiomeTemplate::Development)
+        .await
+        .unwrap();
     assert!(path.exists());
 
     std::fs::remove_dir_all(temp_dir).ok();

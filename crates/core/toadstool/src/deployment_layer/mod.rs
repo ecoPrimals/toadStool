@@ -66,7 +66,7 @@ pub enum DeploymentLayer {
 
 impl DeploymentLayer {
     /// Get a human-readable description of this layer
-    pub fn description(&self) -> &'static str {
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::BareMetalOS => "Base OS on bare metal",
             Self::MiddlewareLayer { .. } => "Middleware on host OS",
@@ -94,7 +94,7 @@ impl DeploymentLayer {
     }
 
     /// Check if running in a virtualized environment
-    pub fn is_virtualized(&self) -> bool {
+    pub const fn is_virtualized(&self) -> bool {
         matches!(
             self,
             Self::ContainerLayer { .. } | Self::VMLayer { .. } | Self::CloudLayer { .. }
@@ -102,7 +102,7 @@ impl DeploymentLayer {
     }
 
     /// Check if we have direct hardware access
-    pub fn has_direct_hardware_access(&self) -> bool {
+    pub const fn has_direct_hardware_access(&self) -> bool {
         matches!(self, Self::BareMetalOS)
             || matches!(
                 self,

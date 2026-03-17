@@ -4,8 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::types::configs::{CompilationToolchainConfig as ToolchainConfig, EmbeddedConfig, IndustrialConfig, MainframeConfig, RealtimeConfig};
-use crate::types::emulation::EmulationConfig;
+use crate::types::configs::{
+    CompilationToolchainConfig as ToolchainConfig, ConfigEmulationConfig, EmbeddedConfig,
+    IndustrialConfig, MainframeConfig, RealtimeConfig,
+};
 use crate::types::systems::{LegacyArchitecture, LegacySystemType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,7 +28,7 @@ pub struct SpecialtyRuntimeConfig {
     pub embedded_configs: HashMap<String, EmbeddedConfig>,
     pub industrial_configs: HashMap<String, IndustrialConfig>,
     pub realtime_configs: HashMap<String, RealtimeConfig>,
-    pub emulation_configs: HashMap<LegacySystemType, EmulationConfig>,
+    pub emulation_configs: HashMap<LegacySystemType, ConfigEmulationConfig>,
 }
 
 impl Default for SpecialtyRuntimeConfig {

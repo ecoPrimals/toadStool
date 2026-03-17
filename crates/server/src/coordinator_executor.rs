@@ -20,8 +20,8 @@ use std::time::Duration;
 use tracing::info;
 
 use toadstool::{
-    execution::ExecutionInput, resources::ResourceRequirements, ExecutionRequest, RuntimeType,
-    SecurityContext, WorkloadSpec,
+    ExecutionRequest, RuntimeType, SecurityContext, WorkloadSpec, execution::ExecutionInput,
+    resources::ResourceRequirements,
 };
 use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
 

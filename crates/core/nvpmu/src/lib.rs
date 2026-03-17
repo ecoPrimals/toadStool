@@ -61,7 +61,7 @@ pub mod vfio_bind;
 pub mod watchdog;
 
 pub use bar0::Bar0Access;
-pub use dma::{supports_huge_pages, DmaAllocator, DmaBuffer, HugePageSize};
+pub use dma::{DmaAllocator, DmaBuffer, HugePageSize, supports_huge_pages};
 pub use error::{NvPmuError, Result};
 pub use fb::{FbPartitionReport, FbStatus};
 pub use firmware::FirmwareInventory;

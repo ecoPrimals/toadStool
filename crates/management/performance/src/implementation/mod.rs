@@ -28,7 +28,7 @@ use crate::types::{
 };
 
 use internal::{
-    update_prediction_models_from_history, BaselineMetrics, PredictionModel, RuntimeSelector,
+    BaselineMetrics, PredictionModel, RuntimeSelector, update_prediction_models_from_history,
 };
 use recommendations::generate_recommendations;
 use selection::select_runtime_by_strategy;
@@ -65,6 +65,7 @@ impl IntelligentPerformanceOptimizer {
 }
 
 impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
+    #[allow(clippy::significant_drop_tightening)] // guard must outlive select_runtime_by_strategy call
     async fn select_runtime(
         &self,
         request: &ExecutionRequest,
@@ -108,6 +109,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
             let mut history = self.metrics_history.write().await;
             history.push_back(metrics);
             cleanup_old_metrics(&mut history, self.config.history_retention_hours);
+            drop(history);
         }
 
         Ok(())
@@ -127,14 +129,14 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         _workload: &WorkloadSpec,
     ) -> ToadStoolResult<ResourcePrediction> {
         let models = self.prediction_models.read().await;
-        let stats = self.runtime_stats.read().await;
-
-        if let Some((_, model)) = models.iter().max_by_key(|(_, m)| m.sample_count()) {
-            if model.sample_count() > 0 {
-                return Ok(model.predict());
-            }
+        if let Some((_, model)) = models.iter().max_by_key(|(_, m)| m.sample_count())
+            && model.sample_count() > 0
+        {
+            return Ok(model.predict());
         }
+        drop(models);
 
+        let stats = self.runtime_stats.read().await;
         if let Some((_, runtime_stats)) = stats.iter().next() {
             return Ok(ResourcePrediction {
                 timestamp: SystemTime::now(),
@@ -145,6 +147,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                 model_type: "runtime_stats_fallback".to_string(),
             });
         }
+        drop(stats);
 
         Ok(ResourcePrediction {
             timestamp: SystemTime::now(),

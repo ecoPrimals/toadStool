@@ -11,9 +11,10 @@ fn test_service_with_compute_capability() {
         true,
         vec![Capability::Compute(ComputeCapability::NativeExecution)],
     );
-    assert!(svc
-        .capabilities
-        .contains(&Capability::Compute(ComputeCapability::NativeExecution)));
+    assert!(
+        svc.capabilities
+            .contains(&Capability::Compute(ComputeCapability::NativeExecution))
+    );
     assert!(svc.healthy);
 }
 

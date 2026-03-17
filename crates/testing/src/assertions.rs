@@ -272,14 +272,14 @@ pub fn assert_memory_metrics_reasonable(metrics: &RuntimeMetrics) {
 }
 
 /// Assert that network metrics are reasonable
-pub fn assert_network_metrics_reasonable(metrics: &RuntimeMetrics) {
+pub const fn assert_network_metrics_reasonable(metrics: &RuntimeMetrics) {
     // Network metrics are u64 values, always non-negative - no need to check >= 0
     // This function exists for potential future validations
     let _ = metrics; // Suppress unused variable warning
 }
 
 /// Assert that storage metrics are reasonable
-pub fn assert_storage_metrics_reasonable(metrics: &RuntimeMetrics) {
+pub const fn assert_storage_metrics_reasonable(metrics: &RuntimeMetrics) {
     // Storage metrics are u64 values, always non-negative - no need to check >= 0
     // This function exists for potential future validations
     let _ = metrics; // Suppress unused variable warning

@@ -93,21 +93,24 @@ fn engine_get_capabilities() {
 fn engine_capabilities_platform_features() {
     let engine = UniversalGpuEngine::default();
     let caps = engine.get_capabilities();
-    assert!(caps
-        .platform_features
-        .get("parallel_compute")
-        .copied()
-        .unwrap_or(false));
-    assert!(caps
-        .platform_features
-        .get("recursive_execution")
-        .copied()
-        .unwrap_or(false));
-    assert!(caps
-        .platform_features
-        .get("multi_framework")
-        .copied()
-        .unwrap_or(false));
+    assert!(
+        caps.platform_features
+            .get("parallel_compute")
+            .copied()
+            .unwrap_or(false)
+    );
+    assert!(
+        caps.platform_features
+            .get("recursive_execution")
+            .copied()
+            .unwrap_or(false)
+    );
+    assert!(
+        caps.platform_features
+            .get("multi_framework")
+            .copied()
+            .unwrap_or(false)
+    );
     assert!(caps.supported_architectures.contains(&"x86_64".to_string()));
 }
 

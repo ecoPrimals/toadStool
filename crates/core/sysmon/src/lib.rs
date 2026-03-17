@@ -43,15 +43,15 @@ pub mod pcie_topology;
 pub mod process;
 
 pub use cpu::{cpu_brand, cpu_count, cpu_usage, per_cpu_usage};
-pub use disk::{disk_usage, DiskInfo};
+pub use disk::{DiskInfo, disk_usage};
 pub use error::SysmonError;
 pub use gpu::{
-    discover_gpus, FirmwareInventory, FwStatus, GpuDevice, GpuTelemetry, GpuVendor, PcieTopology,
+    FirmwareInventory, FwStatus, GpuDevice, GpuTelemetry, GpuVendor, PcieTopology, discover_gpus,
 };
-pub use loadavg::{load_average, LoadAverage};
-pub use memory::{memory_info, MemoryInfo};
-pub use network::{network_stats, NetworkInterface};
+pub use loadavg::{LoadAverage, load_average};
+pub use memory::{MemoryInfo, memory_info};
+pub use network::{NetworkInterface, network_stats};
 pub use pcie_topology::{
-    discover_topology, raw_pcie_bandwidth_bps, GpuPairTopology, PciBridge, PcieTopologyGraph,
+    GpuPairTopology, PciBridge, PcieTopologyGraph, discover_topology, raw_pcie_bandwidth_bps,
 };
-pub use process::{all_processes, process_count, process_info, ProcessInfo};
+pub use process::{ProcessInfo, all_processes, process_count, process_info};

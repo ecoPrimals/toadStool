@@ -16,7 +16,7 @@ use sha2::{Digest, Sha256};
 /// Verify SHA-256 checksum of data against an expected hex string.
 ///
 /// Returns `Ok(())` when no checksum is supplied or when the data matches.
-pub(crate) fn verify_sha256(data: &[u8], expected: &Option<String>) -> Result<()> {
+pub fn verify_sha256(data: &[u8], expected: &Option<String>) -> Result<()> {
     if let Some(expected) = expected {
         let mut hasher = Sha256::new();
         hasher.update(data);

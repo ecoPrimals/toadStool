@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 
-use toadstool_common::capability_provider::{discover_all, CapabilityError, CapabilityProvider};
+use toadstool_common::capability_provider::{CapabilityError, CapabilityProvider, discover_all};
 use toadstool_common::primal_discovery::{
     DiscoveryConfig, DiscoveryError, DiscoveryMethod, PrimalDiscovery, PrimalEndpoint, TrustLevel,
 };
@@ -15,10 +15,10 @@ use toadstool_common::primal_identity::{
     DiscoveryCapability, ServiceEndpoint, StorageCapability,
 };
 use toadstool_common::primal_sockets::{
-    resolve_beardog_socket_fallback, resolve_biomeos_dir, resolve_family_id,
-    resolve_nestgate_socket_fallback, resolve_nucleus_socket, resolve_runtime_dir,
-    resolve_socket_path_for_service, resolve_songbird_socket_fallback, resolve_squirrel_socket,
-    resolve_toadstool_socket, SocketDiscoveryError, SocketPathEnv,
+    SocketDiscoveryError, SocketPathEnv, resolve_beardog_socket_fallback, resolve_biomeos_dir,
+    resolve_family_id, resolve_nestgate_socket_fallback, resolve_nucleus_socket,
+    resolve_runtime_dir, resolve_socket_path_for_service, resolve_songbird_socket_fallback,
+    resolve_squirrel_socket, resolve_toadstool_socket,
 };
 use toadstool_common::service_discovery::{
     DiscoveredService, DiscoveryMethod as SvcDiscoveryMethod,

@@ -405,30 +405,46 @@ mod tests {
 
     #[test]
     fn test_cloud_error_all_variants() {
-        assert!(CloudError::RegionUnsupported("eu-west".to_string())
-            .to_string()
-            .contains("eu-west"));
-        assert!(CloudError::InsufficientCapacity("no GPU".to_string())
-            .to_string()
-            .contains("no GPU"));
-        assert!(CloudError::DeploymentFailed("timeout".to_string())
-            .to_string()
-            .contains("timeout"));
-        assert!(CloudError::MigrationFailed("network".to_string())
-            .to_string()
-            .contains("network"));
-        assert!(CloudError::AuthenticationFailed("invalid key".to_string())
-            .to_string()
-            .contains("invalid key"));
-        assert!(CloudError::NetworkError("refused".to_string())
-            .to_string()
-            .contains("refused"));
-        assert!(CloudError::InvalidConfiguration("missing".to_string())
-            .to_string()
-            .contains("missing"));
-        assert!(CloudError::Unknown("mystery".to_string())
-            .to_string()
-            .contains("mystery"));
+        assert!(
+            CloudError::RegionUnsupported("eu-west".to_string())
+                .to_string()
+                .contains("eu-west")
+        );
+        assert!(
+            CloudError::InsufficientCapacity("no GPU".to_string())
+                .to_string()
+                .contains("no GPU")
+        );
+        assert!(
+            CloudError::DeploymentFailed("timeout".to_string())
+                .to_string()
+                .contains("timeout")
+        );
+        assert!(
+            CloudError::MigrationFailed("network".to_string())
+                .to_string()
+                .contains("network")
+        );
+        assert!(
+            CloudError::AuthenticationFailed("invalid key".to_string())
+                .to_string()
+                .contains("invalid key")
+        );
+        assert!(
+            CloudError::NetworkError("refused".to_string())
+                .to_string()
+                .contains("refused")
+        );
+        assert!(
+            CloudError::InvalidConfiguration("missing".to_string())
+                .to_string()
+                .contains("missing")
+        );
+        assert!(
+            CloudError::Unknown("mystery".to_string())
+                .to_string()
+                .contains("mystery")
+        );
     }
 
     #[test]

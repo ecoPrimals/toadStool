@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::interned_strings::capabilities;
 
-use crate::security_provider::{provider::*, types::*, EncryptionOptions, SigningOptions};
+use crate::security_provider::{EncryptionOptions, SigningOptions, provider::*, types::*};
 
 use crate::beardog_integration::{BearDogClient, BearDogConfig, BearDogDiscovery};
 
@@ -108,8 +108,10 @@ impl BearDogSecurityProvider {
             ));
         }
 
-        let mut client_lock = self.client.write().await;
-        *client_lock = Some(Arc::clone(&client));
+        {
+            let mut client_lock = self.client.write().await;
+            *client_lock = Some(Arc::clone(&client));
+        }
 
         Ok(client)
     }

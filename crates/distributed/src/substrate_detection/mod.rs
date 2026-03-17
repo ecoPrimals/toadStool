@@ -273,24 +273,32 @@ mod tests {
         let os = std::env::consts::OS;
         match os {
             "linux" => {
-                assert!(platforms
-                    .iter()
-                    .any(|p| matches!(p, PlatformType::Linux { .. })));
+                assert!(
+                    platforms
+                        .iter()
+                        .any(|p| matches!(p, PlatformType::Linux { .. }))
+                );
             }
             "windows" => {
-                assert!(platforms
-                    .iter()
-                    .any(|p| matches!(p, PlatformType::Windows { .. })));
+                assert!(
+                    platforms
+                        .iter()
+                        .any(|p| matches!(p, PlatformType::Windows { .. }))
+                );
             }
             "macos" => {
-                assert!(platforms
-                    .iter()
-                    .any(|p| matches!(p, PlatformType::MacOS { .. })));
+                assert!(
+                    platforms
+                        .iter()
+                        .any(|p| matches!(p, PlatformType::MacOS { .. }))
+                );
             }
             _ => {
-                assert!(platforms
-                    .iter()
-                    .any(|p| matches!(p, PlatformType::Other { .. })));
+                assert!(
+                    platforms
+                        .iter()
+                        .any(|p| matches!(p, PlatformType::Other { .. }))
+                );
             }
         }
     }

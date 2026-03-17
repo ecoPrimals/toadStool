@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 
-use toadstool_common::constants::network::{http_url, HEALTH_CHECK_PORT};
+use toadstool_common::constants::network::{HEALTH_CHECK_PORT, http_url};
 
 use crate::types::{CompressionType, EncryptionType, StorageTier};
 

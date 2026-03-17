@@ -7,8 +7,8 @@
 //! Target: Bring universal.rs from 44% → 60%+
 
 use std::collections::HashMap;
-use toadstool::universal::*;
 use toadstool::SystemResources;
+use toadstool::universal::*;
 use uuid::Uuid;
 
 // ============================================================================

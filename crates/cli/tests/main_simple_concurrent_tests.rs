@@ -21,7 +21,7 @@ use anyhow::Result;
 use clap::Parser;
 use toadstool_cli::{Cli, Commands};
 use tokio::sync::broadcast;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 // =============================================================================
 // Test Group 1: CLI Parsing (Concurrent)

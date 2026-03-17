@@ -4,8 +4,8 @@
 //! Updated November 21, 2025 - Using current `DistributedCoordinator` API
 
 use anyhow::Result;
-use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
+use std::collections::hash_map::RandomState;
 use std::hash::BuildHasher;
 use std::path::PathBuf;
 use std::sync::Arc;

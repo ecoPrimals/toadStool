@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 13, 2026 -- S152
+**Last Updated**: March 16, 2026 — S157
 
 ---
 
@@ -48,7 +48,7 @@
 - **Capability-based discovery** — Primals discover each other by capability, not name. Edge platforms probe real hardware. All primal names via `interned_strings::primals::*`.
 - **coralReef shader proxy** — `shader.compile.*` handlers proxy to coralReef with capability-based discovery and graceful naga fallback.
 - **Cross-spring provenance** — `toadstool.provenance` JSON-RPC method exposes 17+ documented cross-spring flows for ecosystem introspection.
-- **20,262 workspace tests** (S152) | ~86% line coverage (llvm-cov verified) | all quality gates green (0 warnings, clippy pedantic clean)
+- **21,156+ tests** (S157) | ~86% line coverage (llvm-cov verified) | all quality gates green (0 warnings, clippy pedantic clean)
 - **95+ JSON-RPC methods** (dynamically built from semantic registry)
 - **JSON-RPC only** — REST API + middleware removed (S90/S92). All IPC via JSON-RPC 2.0.
 

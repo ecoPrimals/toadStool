@@ -20,6 +20,7 @@ pub mod spirv_codegen_safety;
 pub use cpu::CpuComputeUnit;
 
 #[cfg(feature = "opencl")]
+#[allow(deprecated)]
 pub use opencl::OpenClComputeUnit;
 
 #[cfg(feature = "wgpu-backend")]
@@ -30,9 +31,9 @@ pub use wgpu_backend::{
 
 #[cfg(feature = "wgpu-backend")]
 pub use spirv_codegen_safety::{
-    check_device_health, nvk_zero_guard_check, nvk_zero_guard_check_f32, DeviceHealthStatus,
-    HardwareCalibration, NvvmPoisoningRisk, PrecisionBrain, PrecisionHint, PrecisionTier,
-    TierCapability, ZeroGuardVerdict,
+    DeviceHealthStatus, HardwareCalibration, NvvmPoisoningRisk, PrecisionBrain, PrecisionHint,
+    PrecisionTier, TierCapability, ZeroGuardVerdict, check_device_health, nvk_zero_guard_check,
+    nvk_zero_guard_check_f32,
 };
 
 /// Type alias for forward compatibility after root-cause rename.

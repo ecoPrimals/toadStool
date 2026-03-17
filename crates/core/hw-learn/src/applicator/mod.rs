@@ -191,8 +191,16 @@ impl<'a> RecipeApplicator<'a> {
                 function,
             } => {
                 tracing::info!(offset, value, ?function, "register write");
-                if let Some(ref mut access) = self.register_access {
-                    match access.write_u32(*offset, *value as u32) {
+                self.register_access.as_mut().map_or_else(
+                    || StepResult {
+                        step_index: index,
+                        success: false,
+                        detail: format!(
+                            "register write 0x{offset:08x}: no RegisterAccess attached \
+                             (attach Bar0Access via with_register_access())"
+                        ),
+                    },
+                    |access| match access.write_u32(*offset, *value as u32) {
                         Ok(()) => StepResult {
                             step_index: index,
                             success: true,
@@ -205,17 +213,8 @@ impl<'a> RecipeApplicator<'a> {
                             success: false,
                             detail: format!("BAR0 write 0x{offset:08x} failed: {e}"),
                         },
-                    }
-                } else {
-                    StepResult {
-                        step_index: index,
-                        success: false,
-                        detail: format!(
-                            "register write 0x{offset:08x}: no RegisterAccess attached \
-                             (attach Bar0Access via with_register_access())"
-                        ),
-                    }
-                }
+                    },
+                )
             }
             InitStep::IoctlCall { ioctl_nr, args } => {
                 nouveau_drm::execute_ioctl(index, card_path, *ioctl_nr, args)
@@ -242,12 +241,11 @@ impl<'a> RecipeApplicator<'a> {
                     expected,
                     mask,
                 } = check
+                    && let Some(ref access) = self.register_access
                 {
-                    if let Some(ref access) = self.register_access {
-                        return verify::verify_register_via_access(
-                            index, *access, *offset, *expected, *mask,
-                        );
-                    }
+                    return verify::verify_register_via_access(
+                        index, *access, *offset, *expected, *mask,
+                    );
                 }
                 verify::run_verification(index, card_path, check)
             }

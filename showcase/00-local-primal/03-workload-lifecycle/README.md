@@ -35,7 +35,7 @@ cargo run --release
 
 ## Prerequisites
 
-- Rust 1.82+ (or 1.80+ per workspace)
+- Rust 1.85+
 
 ## ToadStool Capabilities Shown
 

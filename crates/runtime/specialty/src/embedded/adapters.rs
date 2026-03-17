@@ -98,6 +98,7 @@ impl Microcontroller8BitAdapter {
         let toolchain_8051 = Box::new(Toolchain8051::new());
         toolchains.insert(LegacyArchitecture::Intel8051, toolchain_8051);
 
+        drop(toolchains);
         info!("Initialized toolchains for 8-bit microcontrollers");
         Ok(())
     }
@@ -114,6 +115,7 @@ impl Microcontroller8BitAdapter {
         let eprom_programmer = Box::new(EPROMProgrammer::new());
         programmers.insert("eprom".to_string(), eprom_programmer);
 
+        drop(programmers);
         info!("Initialized programmers for 8-bit microcontrollers");
         Ok(())
     }
@@ -130,6 +132,7 @@ impl Microcontroller8BitAdapter {
         let emulator_z80 = Box::new(EmulatorZ80::new());
         emulators.insert(LegacyArchitecture::ZilogZ80, emulator_z80);
 
+        drop(emulators);
         info!("Initialized emulators for 8-bit microcontrollers");
         Ok(())
     }
@@ -233,14 +236,15 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
 
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(job.status.clone())
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| Ok(job.status.clone()),
+        )
     }
 
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
@@ -259,20 +263,23 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
 
     async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(JobOutput {
-                stdout: job.compilation_log.clone(),
-                stderr: job.programming_log.clone(),
-                return_code: Some(0),
-                output_files: vec![],
-                binary_output: None,
-            })
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| {
+                Ok(JobOutput {
+                    stdout: job.compilation_log.clone(),
+                    stderr: job.programming_log.clone(),
+                    return_code: Some(0),
+                    output_files: vec![],
+                    binary_output: None,
+                })
+            },
+        )
     }
 
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {
@@ -346,6 +353,7 @@ impl System16BitAdapter {
         let toolchain_68000 = Box::new(Toolchain68000::new());
         toolchains.insert(LegacyArchitecture::Motorola68000, toolchain_68000);
 
+        drop(toolchains);
         info!("Initialized toolchains for 16-bit systems");
         Ok(())
     }
@@ -453,19 +461,20 @@ impl LegacyAdapter for System16BitAdapter {
 
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(job.status.clone())
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| Ok(job.status.clone()),
+        )
     }
 
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
         let mut jobs = self.active_jobs.write().await;
-        if let Some(job) = jobs.get_mut(&job_id) {
+        let result = if let Some(job) = jobs.get_mut(&job_id) {
             job.status = JobStatus::Cancelled;
             info!("Cancelled 16-bit system job: {}", job_id);
             Ok(())
@@ -474,25 +483,30 @@ impl LegacyAdapter for System16BitAdapter {
                 "Job not found: {}",
                 job_id
             )))
-        }
+        };
+        drop(jobs);
+        result
     }
 
     async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(JobOutput {
-                stdout: job.compilation_log.clone(),
-                stderr: job.programming_log.clone(),
-                return_code: Some(0),
-                output_files: vec![],
-                binary_output: None,
-            })
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| {
+                Ok(JobOutput {
+                    stdout: job.compilation_log.clone(),
+                    stderr: job.programming_log.clone(),
+                    return_code: Some(0),
+                    output_files: vec![],
+                    binary_output: None,
+                })
+            },
+        )
     }
 
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {

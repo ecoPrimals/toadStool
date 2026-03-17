@@ -3,7 +3,6 @@
 //!
 //! This module is compiled only when the `opencl` feature is enabled.
 
-#![cfg(feature = "opencl")]
 //!
 //! **STATUS**: ⚠️ **DEPRECATED** - Use `wgpu` backend instead
 //!
@@ -60,6 +59,7 @@ pub struct OpenClComputeUnit {
     _device: ocl::Device,
 }
 
+#[allow(deprecated)]
 impl OpenClComputeUnit {
     /// Create from an OpenCL device (DEPRECATED)
     ///
@@ -89,6 +89,7 @@ impl OpenClComputeUnit {
     }
 }
 
+#[allow(deprecated)]
 #[async_trait::async_trait]
 impl ComputeUnit for OpenClComputeUnit {
     fn capabilities(&self) -> &Capabilities {

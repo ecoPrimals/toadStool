@@ -10,8 +10,8 @@ use tracing::info;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::resources::RuntimeMetrics;
 
-use crate::types::ResourceMonitorError;
 use crate::SystemResourceMonitor;
+use crate::types::ResourceMonitorError;
 
 /// Internal process information for monitoring
 #[derive(Clone, Debug)]
@@ -31,7 +31,6 @@ impl SystemResourceMonitor {
         process_handle: u32,
         executable_path: &Path,
     ) -> Result<(), ToadStoolError> {
-        let mut process_map = self.process_map.write().await;
         let process_info = ProcessInfo {
             pid: process_handle,
             name: executable_path
@@ -44,7 +43,10 @@ impl SystemResourceMonitor {
             start_time: Instant::now().elapsed().as_secs(),
         };
 
-        process_map.insert(workload_id.to_string(), process_info);
+        self.process_map
+            .write()
+            .await
+            .insert(workload_id.to_string(), process_info);
         info!(
             "Registered process {} with PID {} for monitoring",
             workload_id, process_handle
@@ -54,13 +56,10 @@ impl SystemResourceMonitor {
 
     /// Unregisters a process from monitoring
     pub async fn unregister_process(&self, workload_id: &str) -> Result<(), ToadStoolError> {
-        let mut process_map = self.process_map.write().await;
-        let mut usage_data = self.usage_data.write().await;
-        let mut threshold_data = self.threshold_data.write().await;
-
-        if process_map.remove(workload_id).is_some() {
-            usage_data.remove(workload_id);
-            threshold_data.remove(workload_id);
+        let was_registered = self.process_map.write().await.remove(workload_id).is_some();
+        if was_registered {
+            self.usage_data.write().await.remove(workload_id);
+            self.threshold_data.write().await.remove(workload_id);
             info!("Unregistered process {} from monitoring", workload_id);
             Ok(())
         } else {

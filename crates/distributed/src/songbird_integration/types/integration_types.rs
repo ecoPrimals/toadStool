@@ -6,6 +6,8 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
+use super::CapabilityTracker;
+use super::NetworkHealthMonitor;
 use super::broadcast_types::{BroadcastChannel, MessageTypeRegistry, SubscriptionManager};
 use super::capacity_types::LocalCapacityManager;
 use super::discovery::{DiscoveryClient, NodeRegistry};
@@ -13,10 +15,8 @@ use super::distribution_types::{JobCoordinator, JobSplittingStrategy, LoadEstima
 use super::load_balancing_types::{
     NodeCapacityTracker, PerformanceMetrics, SongbirdFeedbackSender,
 };
-use super::CapabilityTracker;
-use super::NetworkHealthMonitor;
-use crate::common::distribution::DistributionAlgorithm;
 use crate::UniversalJobType;
+use crate::common::distribution::DistributionAlgorithm;
 
 // ============================================================================
 // Core Integration Types

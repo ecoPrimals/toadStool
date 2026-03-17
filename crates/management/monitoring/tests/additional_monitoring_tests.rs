@@ -194,19 +194,23 @@ async fn test_register_unregister_reregister_cycle() {
     let wl_id = "cycling-workload";
 
     // Register
-    assert!(monitor
-        .register_process(wl_id, 1000, Path::new("/bin/test"))
-        .await
-        .is_ok());
+    assert!(
+        monitor
+            .register_process(wl_id, 1000, Path::new("/bin/test"))
+            .await
+            .is_ok()
+    );
 
     // Unregister
     assert!(monitor.unregister_process(wl_id).await.is_ok());
 
     // Re-register with different PID
-    assert!(monitor
-        .register_process(wl_id, 2000, Path::new("/bin/test2"))
-        .await
-        .is_ok());
+    assert!(
+        monitor
+            .register_process(wl_id, 2000, Path::new("/bin/test2"))
+            .await
+            .is_ok()
+    );
 }
 
 // ============================================================================

@@ -242,17 +242,19 @@ impl WorkloadManager {
     pub async fn get_workload_status(&self, workload_id: &str) -> Option<WorkloadStatusResponse> {
         let workloads = self.workloads.read().await;
         let workload = workloads.get(workload_id)?;
-
         let status = *workload.status.read().await;
         let exit_code = *workload.exit_code.read().await;
         let error = workload.error.read().await.clone();
         let resource_usage = workload.resource_usage.read().await.clone();
+        let started_at = workload.metadata.started_at;
+        let workload_id = workload_id.to_string();
+        drop(workloads);
 
         Some(WorkloadStatusResponse {
-            workload_id: workload_id.to_string(),
+            workload_id,
             status,
             started_at: Some(toadstool_common::system_time_serde::format_rfc3339(
-                workload.metadata.started_at,
+                started_at,
             )),
             completed_at: if status == WorkloadStatus::Completed || status == WorkloadStatus::Failed
             {
@@ -271,14 +273,14 @@ impl WorkloadManager {
     /// Get workload metadata (requester, persistent) for display
     pub async fn get_workload_metadata(&self, workload_id: &str) -> (Option<String>, Option<bool>) {
         let workloads = self.workloads.read().await;
-        let workload = match workloads.get(workload_id) {
-            Some(w) => w,
-            None => return (None, None),
-        };
-        (
-            Some(workload.metadata.requester.clone()),
-            Some(workload.metadata.persistent),
-        )
+        let result = workloads.get(workload_id).map_or((None, None), |w| {
+            (
+                Some(w.metadata.requester.clone()),
+                Some(w.metadata.persistent),
+            )
+        });
+        drop(workloads);
+        result
     }
 
     /// List all workloads
@@ -297,6 +299,7 @@ impl WorkloadManager {
             *workload.status.write().await = WorkloadStatus::Cancelled;
             // Task will be aborted when dropped
             workloads.remove(workload_id);
+            drop(workloads);
             info!("✅ Workload cancelled: {}", workload_id);
             Ok(())
         } else {

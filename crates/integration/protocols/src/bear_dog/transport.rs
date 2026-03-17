@@ -7,15 +7,12 @@ use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-pub async fn make_jsonrpc_request<T: Serialize>(
+pub async fn make_jsonrpc_request<T: Serialize + Sync>(
     socket_path: &str,
     method: &str,
     params: &T,
 ) -> ToadStoolResult<serde_json::Value> {
-    let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
-        ToadStoolError::security(format!("Failed to connect to PKI security service: {e}"))
-    })?;
-
+    // Serialize before await so params is not held across await (Send requirement)
     let request = serde_json::json!({
         "jsonrpc": "2.0",
         "method": method,
@@ -25,6 +22,10 @@ pub async fn make_jsonrpc_request<T: Serialize>(
 
     let request_str = serde_json::to_string(&request)
         .map_err(|e| ToadStoolError::security(format!("Failed to serialize request: {e}")))?;
+
+    let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
+        ToadStoolError::security(format!("Failed to connect to PKI security service: {e}"))
+    })?;
 
     stream
         .write_all(request_str.as_bytes())

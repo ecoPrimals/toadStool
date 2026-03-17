@@ -4,7 +4,7 @@
 //! Tests the Deep Debt compliant port discovery system in realistic scenarios
 
 use toadstool_common::runtime_ports::{
-    discover_available_port, discover_port_with_preference, RuntimePortDiscovery,
+    RuntimePortDiscovery, discover_available_port, discover_port_with_preference,
 };
 
 #[test]

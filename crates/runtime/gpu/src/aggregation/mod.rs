@@ -49,12 +49,12 @@ pub struct AggregationMetadata {
 
 impl AggregatedResult {
     /// Check if aggregation was fully successful
-    pub fn is_complete(&self) -> bool {
+    pub const fn is_complete(&self) -> bool {
         self.metadata.failed_count == 0
     }
 
     /// Check if aggregation used recovery
-    pub fn used_recovery(&self) -> bool {
+    pub const fn used_recovery(&self) -> bool {
         self.metadata.recovery_strategy.is_some()
     }
 

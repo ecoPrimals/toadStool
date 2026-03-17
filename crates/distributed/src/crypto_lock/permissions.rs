@@ -50,7 +50,7 @@ pub enum PermissionHolder {
     },
     /// Delegated permission (someone lending access)
     Delegated {
-        original_holder: Box<PermissionHolder>,
+        original_holder: Box<Self>,
         delegated_to: String,
         delegation_scope: DelegationScope,
     },

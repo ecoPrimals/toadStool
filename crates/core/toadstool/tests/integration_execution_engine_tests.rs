@@ -3,7 +3,7 @@
 //!
 //! These tests exercise actual execution engine logic with real implementations.
 
-use toadstool_testing::fixtures::{runtime::*, TestEnvironment};
+use toadstool_testing::fixtures::{TestEnvironment, runtime::*};
 
 #[tokio::test]
 async fn test_execution_request_creation_with_wasm_workload() {

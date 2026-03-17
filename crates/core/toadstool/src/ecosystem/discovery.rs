@@ -189,18 +189,17 @@ impl DiscoveryManager {
 
     /// Clear the discovery cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
-        let mut cap_cache = self.capability_cache.write().await;
-        cache.clear();
-        cap_cache.clear();
+        self.cache.write().await.clear();
+        self.capability_cache.write().await.clear();
         info!("🗑️  Discovery cache cleared");
     }
 
     /// Add a service to the cache
     async fn add_to_cache(&self, service: DiscoveredService, capability_key: Option<String>) {
-        let mut cache = self.cache.write().await;
         // ✅ OPTIMIZED: Use Entry API - only clone if not already cached
-        cache
+        self.cache
+            .write()
+            .await
             .entry(service.id.clone())
             .or_insert_with(|| service.clone());
 
@@ -365,10 +364,12 @@ mod tests {
 
         let result = manager.refresh_service("refresh-me").await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Service refresh requires capability-based rediscovery"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Service refresh requires capability-based rediscovery")
+        );
     }
 
     #[tokio::test]

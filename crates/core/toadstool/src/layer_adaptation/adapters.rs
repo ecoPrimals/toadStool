@@ -28,7 +28,7 @@ pub struct LayerCapabilityAdapter {
 
 impl LayerCapabilityAdapter {
     /// Create a new adapter for a deployment layer
-    pub fn new(layer: DeploymentLayer) -> Self {
+    pub const fn new(layer: DeploymentLayer) -> Self {
         Self { layer }
     }
 
@@ -296,8 +296,8 @@ mod tests {
     use super::*;
     use crate::deployment_layer::{CloudProvider, ContainerRuntime, DeploymentLayer};
     use crate::layer_adaptation::{
-        compute_capabilities, network_capabilities, storage_capabilities, GpuAccess, NetworkAccess,
-        StorageType,
+        GpuAccess, NetworkAccess, StorageType, compute_capabilities, network_capabilities,
+        storage_capabilities,
     };
 
     #[test]

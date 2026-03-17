@@ -5,8 +5,8 @@
 //! Tier 1 tests: Coverage-measured integration tests
 //! Focus: Cross-module interactions, command execution, state management
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::RwLock;
 
 // ============================================================================

@@ -1,7 +1,7 @@
 [package]
 name = "toadstool-security-policies"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 description = "Advanced security policy management for ToadStool"
 authors = ["ToadStool Project"]
 license.workspace = true

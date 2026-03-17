@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use cudarc::driver::safe::{CudaModule, CudaSlice, LaunchConfig};
-use cudarc::driver::DeviceRepr;
+use cudarc::driver::{DeviceRepr, PushKernelArg, ValidAsZeroBits};
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 use super::CudaBackend;
@@ -29,8 +29,10 @@ impl CudaBackend {
             ToadStoolError::runtime(format!("Failed to load CUDA PTX module: {}", e))
         })?;
 
-        let mut cache = self.module_cache.write().await;
-        cache.insert(module_name.to_string(), Arc::clone(&module));
+        self.module_cache
+            .write()
+            .await
+            .insert(module_name.to_string(), Arc::clone(&module));
 
         tracing::info!("✅ Loaded CUDA module: {}", module_name);
         Ok(module)
@@ -47,7 +49,7 @@ impl CudaBackend {
         block_dim: (u32, u32, u32),
     ) -> ToadStoolResult<Vec<T>>
     where
-        T: DeviceRepr + Default + Clone + Unpin,
+        T: DeviceRepr + Default + Clone + Unpin + ValidAsZeroBits + Sync,
     {
         let start_time = std::time::Instant::now();
 
@@ -70,7 +72,7 @@ impl CudaBackend {
 
         let mut input_buffers: Vec<CudaSlice<T>> = Vec::new();
         for (idx, input) in inputs.iter().enumerate() {
-            let buffer = self.stream.clone_htod(input).map_err(|e| {
+            let buffer = self.stream.clone_htod(*input).map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to upload input {}: {}", idx, e))
             })?;
             input_buffers.push(buffer);

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! VFIO devices handler — discover GPUs bound to vfio-pci.
 
-use super::helpers::vendor_name;
 use super::HwLearnHandler;
+use super::helpers::vendor_name;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 impl HwLearnHandler {

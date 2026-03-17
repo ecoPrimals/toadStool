@@ -193,14 +193,18 @@ async fn test_register_multiple_runtimes() {
     let native = MockRuntimeEngine::new();
     let wasm = MockRuntimeEngine::new();
 
-    assert!(server
-        .register_runtime_engine("native", Box::new(native))
-        .await
-        .is_ok());
-    assert!(server
-        .register_runtime_engine("wasm", Box::new(wasm))
-        .await
-        .is_ok());
+    assert!(
+        server
+            .register_runtime_engine("native", Box::new(native))
+            .await
+            .is_ok()
+    );
+    assert!(
+        server
+            .register_runtime_engine("wasm", Box::new(wasm))
+            .await
+            .is_ok()
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -275,14 +279,18 @@ async fn test_server_builder_pattern_complete() {
     let mock_native = MockRuntimeEngine::new();
     let mock_wasm = MockRuntimeEngine::new();
 
-    assert!(server
-        .register_runtime_engine("native", Box::new(mock_native))
-        .await
-        .is_ok());
-    assert!(server
-        .register_runtime_engine("wasm", Box::new(mock_wasm))
-        .await
-        .is_ok());
+    assert!(
+        server
+            .register_runtime_engine("native", Box::new(mock_native))
+            .await
+            .is_ok()
+    );
+    assert!(
+        server
+            .register_runtime_engine("wasm", Box::new(mock_wasm))
+            .await
+            .is_ok()
+    );
 }
 
 // ============================================================================

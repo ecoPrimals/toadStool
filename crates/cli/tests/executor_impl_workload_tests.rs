@@ -69,10 +69,11 @@ mod workload_execution_tests {
         for name in valid_names {
             assert!(!name.is_empty());
             assert!(name.len() <= 64); // Reasonable length limit
-                                       // Should only contain alphanumeric, dash, underscore, dot
-            assert!(name
-                .chars()
-                .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.'));
+            // Should only contain alphanumeric, dash, underscore, dot
+            assert!(
+                name.chars()
+                    .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+            );
         }
     }
 

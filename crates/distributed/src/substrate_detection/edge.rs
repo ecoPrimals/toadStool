@@ -21,15 +21,17 @@ pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let arch = std::env::consts::ARCH.to_string();
 
     if let Ok(model) = fs::read_to_string("/proc/device-tree/model") {
-        if model.contains("Raspberry Pi") {
-            platforms.push(PlatformType::EdgeDevice {
-                device_type: "Raspberry Pi".to_string(),
-                architecture: arch.clone(),
-            });
+        let device_type = if model.contains("Raspberry Pi") {
+            Some("Raspberry Pi")
         } else if model.contains("BeagleBone") {
+            Some("BeagleBone")
+        } else {
+            None
+        };
+        if let Some(dt) = device_type {
             platforms.push(PlatformType::EdgeDevice {
-                device_type: "BeagleBone".to_string(),
-                architecture: arch.clone(),
+                device_type: dt.to_string(),
+                architecture: arch,
             });
         }
     }

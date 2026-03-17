@@ -8,7 +8,7 @@ use toadstool::universal::{
     JobPriority, PrimalCapability, UniversalPrimalRegistry, UniversalScheduler,
 };
 
-use super::helpers::{create_test_context, FailingMockProvider};
+use super::helpers::{FailingMockProvider, create_test_context};
 
 // ── Capability discovery ─────────────────────────────────────────────────────
 

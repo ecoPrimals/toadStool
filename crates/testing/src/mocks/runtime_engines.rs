@@ -27,13 +27,13 @@ use std::time::Duration;
 use mockall::mock;
 
 use toadstool::{
+    WorkloadType,
     error::ToadStoolResult,
     execution::{
         ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities, RuntimeConfig,
         RuntimeEngine, RuntimeType,
     },
     resources::RuntimeMetrics,
-    WorkloadType,
 };
 
 use crate::fixtures::{create_test_execution_output, create_test_runtime_metrics};
@@ -63,7 +63,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine that always succeeds
     #[must_use]
     pub fn new_successful() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -114,7 +114,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine that always fails initialization
     #[must_use]
     pub fn new_init_failure() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize().returning(|_| {
             Box::pin(async {
@@ -130,7 +130,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine that fails execution
     #[must_use]
     pub fn new_execution_failure() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -175,7 +175,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine that fails get_metrics (for health check testing)
     #[must_use]
     pub fn new_metrics_failure() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -223,7 +223,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine that times out
     #[must_use]
     pub fn new_timeout() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -266,7 +266,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine with resource limit exceeded
     #[must_use]
     pub fn new_resource_limit_exceeded() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -313,7 +313,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine with security violation
     #[must_use]
     pub fn new_security_violation() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -360,7 +360,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine that was cancelled
     #[must_use]
     pub fn new_cancelled() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -403,7 +403,7 @@ impl MockRuntimeEngine {
     /// Create a mock runtime engine with limited workload support
     #[must_use]
     pub fn new_limited_support() -> Self {
-        let mut mock = MockRuntimeEngine::new();
+        let mut mock = Self::new();
 
         mock.expect_initialize()
             .returning(|_| Box::pin(async { Ok(()) }));
@@ -459,10 +459,11 @@ mod tests {
         let mut mock = MockRuntimeEngine::new_successful();
 
         // Test initialization
-        assert!(mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_ok());
+        assert!(
+            mock.initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_ok()
+        );
 
         // Test execution
         let request = create_test_execution_request();
@@ -489,17 +490,21 @@ mod tests {
     async fn test_failure_mocks() {
         // Test initialization failure
         let mut init_fail_mock = MockRuntimeEngine::new_init_failure();
-        assert!(init_fail_mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_err());
+        assert!(
+            init_fail_mock
+                .initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_err()
+        );
 
         // Test execution failure
         let mut exec_fail_mock = MockRuntimeEngine::new_execution_failure();
-        assert!(exec_fail_mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_ok());
+        assert!(
+            exec_fail_mock
+                .initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_ok()
+        );
 
         let request = create_test_execution_request();
         let response = exec_fail_mock.execute(request).await.unwrap();
@@ -509,10 +514,11 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn test_timeout_mock() {
         let mut mock = MockRuntimeEngine::new_timeout();
-        assert!(mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_ok());
+        assert!(
+            mock.initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_ok()
+        );
 
         let request = create_test_execution_request();
         let response = mock.execute(request).await.unwrap();
@@ -523,10 +529,11 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn test_resource_limit_mock() {
         let mut mock = MockRuntimeEngine::new_resource_limit_exceeded();
-        assert!(mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_ok());
+        assert!(
+            mock.initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_ok()
+        );
 
         let request = create_test_execution_request();
         let response = mock.execute(request).await.unwrap();
@@ -536,10 +543,11 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn test_security_violation_mock() {
         let mut mock = MockRuntimeEngine::new_security_violation();
-        assert!(mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_ok());
+        assert!(
+            mock.initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_ok()
+        );
 
         let request = create_test_execution_request();
         let response = mock.execute(request).await.unwrap();
@@ -549,10 +557,11 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn test_cancelled_mock() {
         let mut mock = MockRuntimeEngine::new_cancelled();
-        assert!(mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_ok());
+        assert!(
+            mock.initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_ok()
+        );
 
         let request = create_test_execution_request();
         let response = mock.execute(request).await.unwrap();
@@ -562,10 +571,11 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn test_limited_support_mock() {
         let mut mock = MockRuntimeEngine::new_limited_support();
-        assert!(mock
-            .initialize(crate::fixtures::create_test_runtime_config())
-            .await
-            .is_ok());
+        assert!(
+            mock.initialize(crate::fixtures::create_test_runtime_config())
+                .await
+                .is_ok()
+        );
 
         // Should support WASM
         assert!(mock.supports_workload(&WorkloadType::Wasm));

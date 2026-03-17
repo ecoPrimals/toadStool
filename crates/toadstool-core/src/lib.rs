@@ -16,8 +16,8 @@ pub mod transport_router;
 
 pub use hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 pub use hardware_transport::{
-    decode_frame, encode_frame, HardwareTransport, TransportDirection, TransportError,
-    TransportInfo, TransportMedium, FRAME_HEADER_SIZE,
+    FRAME_HEADER_SIZE, HardwareTransport, TransportDirection, TransportError, TransportInfo,
+    TransportMedium, decode_frame, encode_frame,
 };
 pub use npu_controller::{
     AdaptiveSimulationController, ControllerError, NpuParameterController, ParameterSuggestion,

@@ -50,10 +50,10 @@
 //! # }
 //! ```
 
+use crate::ToadStoolResult;
 use crate::composition_constraints::*;
 use crate::composition_engine::{CompositionEngine, EngineStats};
 use crate::layer_adaptation::GpuAccess;
-use crate::ToadStoolResult;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
@@ -76,7 +76,7 @@ impl MultiWorkloadCompositor {
     }
 
     /// Create compositor with specific engine
-    pub fn new(engine: Arc<CompositionEngine>) -> ToadStoolResult<Self> {
+    pub const fn new(engine: Arc<CompositionEngine>) -> ToadStoolResult<Self> {
         Ok(Self {
             engine,
             requests: Vec::new(),
@@ -248,18 +248,13 @@ impl MultiWorkloadCompositor {
 
     /// Check if two workloads would conflict for resources
     fn would_conflict(&self, req1: &CompositionRequest, req2: &CompositionRequest) -> bool {
-        // Both require GPU
-        let both_need_gpu = req1
-            .constraints
+        req1.constraints
             .iter()
             .any(|c| matches!(c, Constraint::RequiresGPU))
             && req2
                 .constraints
                 .iter()
-                .any(|c| matches!(c, Constraint::RequiresGPU));
-
-        // Add more conflict checks as needed
-        both_need_gpu
+                .any(|c| matches!(c, Constraint::RequiresGPU))
     }
 
     /// Calculate overall resource utilization

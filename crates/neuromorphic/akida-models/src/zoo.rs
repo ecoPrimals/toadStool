@@ -295,14 +295,15 @@ impl ModelZoo {
     ///
     /// Returns error if model is not available locally.
     pub fn model_path(&self, model: ZooModel) -> Result<PathBuf> {
-        if let Some(meta) = self.metadata.get(&model) {
-            Ok(meta.path.clone())
-        } else {
-            Err(AkidaModelError::loading_failed(format!(
-                "Model {} not available. Use download() first.",
-                model.filename()
-            )))
-        }
+        self.metadata.get(&model).map_or_else(
+            || {
+                Err(AkidaModelError::loading_failed(format!(
+                    "Model {} not available. Use download() first.",
+                    model.filename()
+                )))
+            },
+            |meta| Ok(meta.path.clone()),
+        )
     }
 
     /// Get model metadata
@@ -408,15 +409,16 @@ impl ModelZoo {
         println!();
 
         for model in ZooModel::all() {
-            let status = if let Some(meta) = self.metadata.get(model) {
-                format!(
-                    "✓ {:>8} bytes (valid: {})",
-                    meta.size_bytes,
-                    if meta.is_valid { "yes" } else { "no" }
-                )
-            } else {
-                "✗ not downloaded".to_string()
-            };
+            let status = self.metadata.get(model).map_or_else(
+                || "✗ not downloaded".to_string(),
+                |meta| {
+                    format!(
+                        "✓ {:>8} bytes (valid: {})",
+                        meta.size_bytes,
+                        if meta.is_valid { "yes" } else { "no" }
+                    )
+                },
+            );
 
             println!("  {:20} {}", model.filename(), status);
         }

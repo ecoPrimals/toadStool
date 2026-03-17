@@ -103,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         inputs: vec![ComputeBuffer {
             name: "input".to_string(),
-            data: input_data.clone(),
+            data: input_data.clone().into(),
             element_type: DataType::UInt8,
         }],
         output_size: 1024,
@@ -163,7 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         inputs: vec![ComputeBuffer {
             name: "input".to_string(),
-            data: input_data2,
+            data: input_data2.into(),
             element_type: DataType::UInt8,
         }],
         output_size: 256 * 8, // One u64 per work group

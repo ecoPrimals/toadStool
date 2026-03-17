@@ -6,8 +6,8 @@
 
 use std::time::Duration;
 
-use toadstool_runtime_universal::error::SubstrateError;
 use toadstool_runtime_universal::ComputeSubstrate;
+use toadstool_runtime_universal::error::SubstrateError;
 use toadstool_runtime_universal::{
     BufferMetadata, BufferOperation, BufferOutput, ComputeUnit, ComputeUnitType, DataType,
     OperationType, PowerMeasurement, SubstrateAdapter, SubstrateCapabilities, SubstrateType,

@@ -64,11 +64,11 @@ pub struct ClassifiedEvent {
 /// When `chip` is provided, uses architecture-specific register ranges
 /// for better classification. Otherwise falls back to common NVIDIA ranges.
 pub fn classify_events(events: &[TraceEvent], chip: Option<&str>) -> Vec<ClassifiedEvent> {
-    let gen = chip.map_or(GpuGen::Unknown, GpuGen::from_chip);
+    let gpu_gen = chip.map_or(GpuGen::Unknown, GpuGen::from_chip);
     events
         .iter()
         .map(|e| {
-            let function = classify_single(e, gen);
+            let function = classify_single(e, gpu_gen);
             ClassifiedEvent {
                 event: e.clone(),
                 function,
@@ -77,9 +77,9 @@ pub fn classify_events(events: &[TraceEvent], chip: Option<&str>) -> Vec<Classif
         .collect()
 }
 
-fn classify_single(event: &TraceEvent, gen: GpuGen) -> RegFunction {
+fn classify_single(event: &TraceEvent, gpu_gen: GpuGen) -> RegFunction {
     match &event.kind {
-        TraceEventKind::RegisterWrite { offset, .. } => classify_register_for_gen(*offset, gen),
+        TraceEventKind::RegisterWrite { offset, .. } => classify_register_for_gen(*offset, gpu_gen),
         TraceEventKind::FirmwareLoad { .. } => RegFunction::PowerGate,
         TraceEventKind::IoctlCall { ioctl_nr, .. } => classify_ioctl(*ioctl_nr),
         _ => RegFunction::Unknown,
@@ -91,9 +91,9 @@ fn classify_single(event: &TraceEvent, gen: GpuGen) -> RegFunction {
 /// When generation is `Unknown`, falls back to common ranges shared
 /// across all NVIDIA architectures.
 #[must_use]
-pub fn classify_register_for_gen(offset: u64, gen: GpuGen) -> RegFunction {
+pub fn classify_register_for_gen(offset: u64, gpu_gen: GpuGen) -> RegFunction {
     // Try generation-specific ranges first
-    if let Some(func) = classify_gen_specific(offset, gen) {
+    if let Some(func) = classify_gen_specific(offset, gpu_gen) {
         return func;
     }
     // Fall back to common NVIDIA ranges
@@ -108,8 +108,8 @@ pub fn classify_register(offset: u64) -> RegFunction {
     classify_register_for_gen(offset, GpuGen::Unknown)
 }
 
-fn classify_gen_specific(offset: u64, gen: GpuGen) -> Option<RegFunction> {
-    match gen {
+fn classify_gen_specific(offset: u64, gpu_gen: GpuGen) -> Option<RegFunction> {
+    match gpu_gen {
         GpuGen::Volta => classify_volta(offset),
         GpuGen::Turing => classify_turing(offset),
         GpuGen::Ampere => classify_ampere(offset),
@@ -118,7 +118,7 @@ fn classify_gen_specific(offset: u64, gen: GpuGen) -> Option<RegFunction> {
 }
 
 /// Volta (GV100) register ranges.
-fn classify_volta(offset: u64) -> Option<RegFunction> {
+const fn classify_volta(offset: u64) -> Option<RegFunction> {
     match offset {
         // NV_PMC (Master Control), NV_PBUS, NV_PUNITS, NV_PMU
         0x0000_0000..=0x0000_0FFF
@@ -176,7 +176,7 @@ fn classify_ampere(offset: u64) -> Option<RegFunction> {
 }
 
 /// Common NVIDIA ranges shared across all architectures.
-fn classify_common_nvidia(offset: u64) -> Option<RegFunction> {
+const fn classify_common_nvidia(offset: u64) -> Option<RegFunction> {
     match offset {
         // NVIDIA PMC / power management
         0x0002_0000..=0x0002_0FFF => Some(RegFunction::PowerGate),
@@ -193,7 +193,7 @@ fn classify_common_nvidia(offset: u64) -> Option<RegFunction> {
 }
 
 /// AMD register ranges (from amdgpu headers).
-fn classify_amd(offset: u64) -> Option<RegFunction> {
+const fn classify_amd(offset: u64) -> Option<RegFunction> {
     match offset {
         // AMD GC (graphics compute) register range
         0x0000_2000..=0x0000_2FFF => Some(RegFunction::EngineReset),
@@ -205,7 +205,7 @@ fn classify_amd(offset: u64) -> Option<RegFunction> {
     }
 }
 
-fn classify_ioctl(ioctl_nr: u64) -> RegFunction {
+const fn classify_ioctl(ioctl_nr: u64) -> RegFunction {
     // nouveau new UAPI ioctl numbers (from drm/nouveau_drm.h)
     let cmd = (ioctl_nr & 0xFF) as u8;
     match cmd {

@@ -686,8 +686,8 @@ async fn create_mock_coordinator() -> toadstool::ToadStoolResult<MockEcosystemCo
     })
 }
 
-async fn create_mock_coordinator_with_endpoints(
-) -> toadstool::ToadStoolResult<MockEcosystemCoordinator> {
+async fn create_mock_coordinator_with_endpoints()
+-> toadstool::ToadStoolResult<MockEcosystemCoordinator> {
     let mut endpoints = HashMap::new();
     endpoints.insert("songbird".to_string(), "http://localhost:8080".to_string());
     endpoints.insert("nestgate".to_string(), "http://localhost:9000".to_string());

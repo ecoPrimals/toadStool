@@ -151,7 +151,7 @@ pub enum OperatingSystemSupport {
 
 impl OperatingSystemSupport {
     /// Get the OS name
-    pub fn os_name(&self) -> &'static str {
+    pub const fn os_name(&self) -> &'static str {
         match self {
             Self::Linux { .. } => "Linux",
             Self::BSD { .. } => "BSD",

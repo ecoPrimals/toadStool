@@ -179,9 +179,7 @@ impl CapabilityDiscovery {
                 // Then by freshness (more recent is better)
                 a.last_seen.cmp(&b.last_seen)
             })
-            .ok_or(DiscoveryError::NoServicesFound(
-                "No services available".to_string(),
-            ))
+            .ok_or_else(|| DiscoveryError::NoServicesFound("No services available".to_string()))
     }
 
     /// Detect available discovery backend
@@ -231,7 +229,7 @@ impl CapabilityDiscovery {
     }
 
     /// Try localhost fallback for development
-    fn try_localhost_fallback(_capability: &Capability) -> Vec<DiscoveredService> {
+    const fn try_localhost_fallback(_capability: &Capability) -> Vec<DiscoveredService> {
         // Return empty for now - localhost fallback should use environment variables
         vec![]
     }

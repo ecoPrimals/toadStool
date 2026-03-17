@@ -297,7 +297,7 @@ impl Device {
 
     /// Get device type
     #[must_use]
-    pub fn device_type(&self) -> DeviceType {
+    pub const fn device_type(&self) -> DeviceType {
         self.device_type
     }
 
@@ -349,17 +349,17 @@ impl Device {
             let path = entry.path();
 
             // Only event* devices (not mice, mouse*, js*, etc.)
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with("event") {
-                    tracing::trace!("  Found: {}", path.display());
+            if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && name.starts_with("event")
+            {
+                tracing::trace!("  Found: {}", path.display());
 
-                    match Self::open(&path) {
-                        Ok(device) => {
-                            devices.push(device.info());
-                        }
-                        Err(e) => {
-                            tracing::debug!("  Skipped {} ({})", path.display(), e);
-                        }
+                match Self::open(&path) {
+                    Ok(device) => {
+                        devices.push(device.info());
+                    }
+                    Err(e) => {
+                        tracing::debug!("  Skipped {} ({})", path.display(), e);
                     }
                 }
             }
@@ -393,7 +393,7 @@ impl Device {
     /// Get underlying evdev device (mutable)
     ///
     /// Provides mutable access to raw evdev device for event streaming.
-    pub fn evdev_device_mut(&mut self) -> &mut evdev::Device {
+    pub const fn evdev_device_mut(&mut self) -> &mut evdev::Device {
         &mut self.evdev_device
     }
 
@@ -487,8 +487,10 @@ mod tests {
         let result = Device::discover_all();
         assert!(result.is_ok());
         let devices = result.unwrap();
-        assert!(devices
-            .iter()
-            .all(|d| d.path.to_string_lossy().starts_with("/dev/input/")));
+        assert!(
+            devices
+                .iter()
+                .all(|d| d.path.to_string_lossy().starts_with("/dev/input/"))
+        );
     }
 }

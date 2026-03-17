@@ -13,7 +13,7 @@ use std::time::{Duration, SystemTime};
 use tokio::sync::Mutex;
 
 use toadstool_common::constants::ecosystem::well_known;
-use toadstool_common::constants::primal_identity::{audience, PRIMAL_NAME};
+use toadstool_common::constants::primal_identity::{PRIMAL_NAME, audience};
 
 use crate::{ToadStoolError, ToadStoolResult};
 
@@ -245,8 +245,10 @@ impl AuthBackend for InMemoryAuthBackend {
         let token = Self::generate_test_token(&request.requesting_primal);
 
         // Store token for potential refresh
-        let mut tokens = self.tokens.lock().await;
-        tokens.insert(token.id.clone(), token.clone());
+        self.tokens
+            .lock()
+            .await
+            .insert(token.id.clone(), token.clone());
 
         tracing::debug!("Generated test token for {}", request.requesting_primal);
         Ok(token)
@@ -274,8 +276,10 @@ impl AuthBackend for InMemoryAuthBackend {
         };
 
         // Store refreshed token
-        let mut tokens = self.tokens.lock().await;
-        tokens.insert(token.id.clone(), token.clone());
+        self.tokens
+            .lock()
+            .await
+            .insert(token.id.clone(), token.clone());
 
         tracing::debug!("Refreshed test token for {}", request.requesting_primal);
         Ok(token)

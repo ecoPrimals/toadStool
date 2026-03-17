@@ -118,14 +118,14 @@ pub fn decompress_isolated(
     };
 
     // Validate expected size if provided
-    if let Some(expected) = expected_size {
-        if decompressed.len() != expected {
-            return Err(Error::decompression(format!(
-                "Size mismatch: expected {}, got {}",
-                expected,
-                decompressed.len()
-            )));
-        }
+    if let Some(expected) = expected_size
+        && decompressed.len() != expected
+    {
+        return Err(Error::decompression(format!(
+            "Size mismatch: expected {}, got {}",
+            expected,
+            decompressed.len()
+        )));
     }
 
     // Allocate isolated memory for decompressed data

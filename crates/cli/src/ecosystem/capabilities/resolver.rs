@@ -24,7 +24,7 @@ pub struct CapabilityResolver {
 
 impl CapabilityResolver {
     /// Create a new capability resolver
-    pub fn new(discovery: Arc<DiscoveryEngine>, registry: Arc<CapabilityRegistry>) -> Self {
+    pub const fn new(discovery: Arc<DiscoveryEngine>, registry: Arc<CapabilityRegistry>) -> Self {
         Self {
             discovery,
             registry,

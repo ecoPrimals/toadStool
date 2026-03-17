@@ -55,7 +55,7 @@ mod inner {
 
         /// Current baud rate.
         #[must_use]
-        pub fn baud(&self) -> u32 {
+        pub const fn baud(&self) -> u32 {
             self.baud
         }
     }
@@ -81,15 +81,16 @@ mod inner {
                 .map_err(|e| TransportError::Unavailable(format!("serial lock poisoned: {e}")))?;
             port.write_all(data)?;
             port.flush()?;
+            drop(port);
             Ok(data.len())
         }
 
         fn recv(&mut self, buf: &mut [u8]) -> Result<usize, TransportError> {
-            let mut port = self
+            let n = self
                 .port
                 .lock()
-                .map_err(|e| TransportError::Unavailable(format!("serial lock poisoned: {e}")))?;
-            let n = port.read(buf)?;
+                .map_err(|e| TransportError::Unavailable(format!("serial lock poisoned: {e}")))?
+                .read(buf)?;
             Ok(n)
         }
     }
@@ -115,7 +116,7 @@ mod inner {
 }
 
 #[cfg(feature = "serial-transport")]
-pub use inner::{discover_serial_transports, SerialTransport};
+pub use inner::{SerialTransport, discover_serial_transports};
 
 #[cfg(not(feature = "serial-transport"))]
 pub use stub::discover_serial_transports;
@@ -126,7 +127,7 @@ mod stub {
 
     /// Stub when `serial-transport` feature is disabled.
     #[must_use]
-    pub fn discover_serial_transports() -> Vec<TransportInfo> {
+    pub const fn discover_serial_transports() -> Vec<TransportInfo> {
         Vec::new()
     }
 }

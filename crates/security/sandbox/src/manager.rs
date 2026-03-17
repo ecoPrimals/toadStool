@@ -265,10 +265,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
         }
 
         // Stop execution if running
-        if let Ok(info) = self.get_sandbox_info(sandbox_id).await {
-            if info.status == SandboxStatus::Running {
-                let _ = self.stop_execution(sandbox_id).await;
-            }
+        if let Ok(info) = self.get_sandbox_info(sandbox_id).await
+            && info.status == SandboxStatus::Running
+        {
+            let _ = self.stop_execution(sandbox_id).await;
         }
 
         // Platform-specific cleanup

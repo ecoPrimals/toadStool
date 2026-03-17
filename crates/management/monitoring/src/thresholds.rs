@@ -19,8 +19,10 @@ impl SystemResourceMonitor {
         workload_id: &str,
         requirements: ResourceRequirements,
     ) -> ToadStoolResult<()> {
-        let mut threshold_data = self.threshold_data.write().await;
-        threshold_data.insert(workload_id.to_string(), requirements);
+        self.threshold_data
+            .write()
+            .await
+            .insert(workload_id.to_string(), requirements);
         tracing::debug!("Set thresholds for workload: {}", workload_id);
         Ok(())
     }
@@ -48,15 +50,15 @@ impl SystemResourceMonitor {
         }
 
         // Check memory threshold
-        if let Some(max_memory) = requirements.memory.max_bytes {
-            if metrics.memory.used_bytes > max_memory {
-                violations.push(ResourceMonitorError::ThresholdViolation {
-                    workload_id: workload_id.to_string(),
-                    resource_type: "Memory".to_string(),
-                    current_value: metrics.memory.used_bytes as f64,
-                    threshold: max_memory as f64,
-                });
-            }
+        if let Some(max_memory) = requirements.memory.max_bytes
+            && metrics.memory.used_bytes > max_memory
+        {
+            violations.push(ResourceMonitorError::ThresholdViolation {
+                workload_id: workload_id.to_string(),
+                resource_type: "Memory".to_string(),
+                current_value: metrics.memory.used_bytes as f64,
+                threshold: max_memory as f64,
+            });
         }
 
         // Check storage threshold

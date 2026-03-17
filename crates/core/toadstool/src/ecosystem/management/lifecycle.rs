@@ -14,17 +14,20 @@ impl ServiceManager {
         info!("📋 Registering service: {} ({})", service.name, service.id);
 
         let service_id = service.id.clone();
-
-        let mut services = self.services.write().await;
-        services.insert(service_id.clone(), service.clone());
-
-        let mut statuses = self.statuses.write().await;
         let initial_status = if service.healthy {
             ServiceStatus::Discovered
         } else {
             ServiceStatus::Failed("Service reported unhealthy".to_string())
         };
-        statuses.insert(service_id.clone(), initial_status);
+
+        self.services
+            .write()
+            .await
+            .insert(service_id.clone(), service.clone());
+        self.statuses
+            .write()
+            .await
+            .insert(service_id.clone(), initial_status);
 
         info!("✅ Service registered: {}", service_id);
         Ok(())
@@ -34,14 +37,13 @@ impl ServiceManager {
     pub async fn unregister_service(&self, service_id: &str) -> ToadStoolResult<()> {
         info!("🗑️  Unregistering service: {}", service_id);
 
-        let mut services = self.services.write().await;
-        let mut statuses = self.statuses.write().await;
-
-        services
+        self.services
+            .write()
+            .await
             .remove(service_id)
             .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?;
 
-        statuses.remove(service_id);
+        self.statuses.write().await.remove(service_id);
 
         info!("✅ Service unregistered: {}", service_id);
         Ok(())
@@ -62,10 +64,8 @@ impl ServiceManager {
     /// Clear all services
     pub async fn clear_all(&self) {
         info!("🗑️  Clearing all services");
-        let mut services = self.services.write().await;
-        let mut statuses = self.statuses.write().await;
-        services.clear();
-        statuses.clear();
+        self.services.write().await.clear();
+        self.statuses.write().await.clear();
     }
 
     /// Get service count

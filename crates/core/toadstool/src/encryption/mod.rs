@@ -285,17 +285,17 @@ impl EncryptionContextBuilder {
         }
     }
 
-    pub fn required(mut self, required: bool) -> Self {
+    pub const fn required(mut self, required: bool) -> Self {
         self.config.required = required;
         self
     }
 
-    pub fn encrypt_results(mut self, encrypt: bool) -> Self {
+    pub const fn encrypt_results(mut self, encrypt: bool) -> Self {
         self.config.encrypt_results = encrypt;
         self
     }
 
-    pub fn security_level(mut self, level: SecurityLevel) -> Self {
+    pub const fn security_level(mut self, level: SecurityLevel) -> Self {
         self.config.min_security_level = level;
         self
     }
@@ -647,10 +647,12 @@ mod tests {
 
         let result = ctx.decrypt_input(&encrypted).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No crypto provider"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No crypto provider")
+        );
     }
 
     #[tokio::test]
@@ -689,9 +691,11 @@ mod tests {
 
         let result = ctx.encrypt_output(b"hello").await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No crypto provider"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No crypto provider")
+        );
     }
 }

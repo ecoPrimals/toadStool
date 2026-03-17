@@ -113,6 +113,7 @@ impl IntrusionDetectionSystem {
     }
 
     /// Check if client is banned
+    #[allow(clippy::option_if_let_else)] // need mutable borrow for remove(); map_or closure can't mutate
     pub async fn is_banned(&self, client_id: &str) -> bool {
         let mut banned = self.banned_clients.write().await;
         let now = Instant::now();
@@ -132,10 +133,9 @@ impl IntrusionDetectionSystem {
 
     /// Ban client
     pub async fn ban_client(&self, client_id: &str, duration: Duration, reason: &str) {
-        let mut banned = self.banned_clients.write().await;
         let now = Instant::now();
 
-        banned.insert(
+        self.banned_clients.write().await.insert(
             client_id.to_string(),
             BanInfo {
                 ban_start: now,

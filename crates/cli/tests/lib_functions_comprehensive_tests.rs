@@ -17,9 +17,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::TempDir;
 use toadstool_cli::{
-    load_biome_manifest, validate_manifest, BiomeManifest, BiomeMetadata, BiomeNetworking,
-    BiomeResources, BiomeSecurity, BiomeStorage, Cli, CliContext, Commands, PrimalConfig,
-    ServiceConfig, WorkloadSource,
+    BiomeManifest, BiomeMetadata, BiomeNetworking, BiomeResources, BiomeSecurity, BiomeStorage,
+    Cli, CliContext, Commands, PrimalConfig, ServiceConfig, WorkloadSource, load_biome_manifest,
+    validate_manifest,
 };
 use tokio::fs;
 
@@ -236,10 +236,12 @@ async fn test_load_biome_manifest_nonexistent_file() {
     let result = load_biome_manifest(&PathBuf::from("/nonexistent/manifest.yaml")).await;
 
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Failed to read manifest file"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to read manifest file")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -406,9 +408,11 @@ fn test_validate_manifest_missing_cpu_limit() {
 
     let warnings = validate_manifest(&manifest).unwrap();
 
-    assert!(warnings
-        .iter()
-        .any(|w| w.contains("No CPU limit specified")));
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("No CPU limit specified"))
+    );
 }
 
 #[test]
@@ -419,9 +423,11 @@ fn test_validate_manifest_beardog_required_but_not_configured() {
 
     let warnings = validate_manifest(&manifest).unwrap();
 
-    assert!(warnings
-        .iter()
-        .any(|w| w.contains("BearDog is required but not configured")));
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("BearDog is required but not configured"))
+    );
 }
 
 #[test]
@@ -448,9 +454,11 @@ fn test_validate_manifest_beardog_configured() {
     let warnings = validate_manifest(&manifest).unwrap();
 
     // Should NOT warn about missing beardog
-    assert!(!warnings
-        .iter()
-        .any(|w| w.contains("BearDog is required but not configured")));
+    assert!(
+        !warnings
+            .iter()
+            .any(|w| w.contains("BearDog is required but not configured"))
+    );
 }
 
 #[test]
@@ -484,9 +492,11 @@ fn test_validate_manifest_undefined_service_dependency() {
 
     let warnings = validate_manifest(&manifest).unwrap();
 
-    assert!(warnings
-        .iter()
-        .any(|w| w.contains("depends on undefined service 'database'")));
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("depends on undefined service 'database'"))
+    );
 }
 
 #[test]
@@ -546,9 +556,11 @@ fn test_validate_manifest_valid_service_dependency() {
     let warnings = validate_manifest(&manifest).unwrap();
 
     // Should NOT warn about undefined dependency
-    assert!(!warnings
-        .iter()
-        .any(|w| w.contains("depends on undefined service")));
+    assert!(
+        !warnings
+            .iter()
+            .any(|w| w.contains("depends on undefined service"))
+    );
 }
 
 #[test]
@@ -639,15 +651,21 @@ fn test_validate_manifest_multiple_issues() {
 
     // Should have at least 3 warnings
     assert!(warnings.len() >= 3);
-    assert!(warnings
-        .iter()
-        .any(|w| w.contains("No CPU limit specified")));
-    assert!(warnings
-        .iter()
-        .any(|w| w.contains("BearDog is required but not configured")));
-    assert!(warnings
-        .iter()
-        .any(|w| w.contains("depends on undefined service")));
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("No CPU limit specified"))
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("BearDog is required but not configured"))
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("depends on undefined service"))
+    );
 }
 
 #[test]

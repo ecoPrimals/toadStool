@@ -39,7 +39,7 @@ use toadstool::universal::{
     JobPriority, NetworkLocation, PrimalCapability, PrimalContext, SecurityLevel,
     UniversalComputePlatform, UniversalJob, UniversalJobType,
 };
-use toadstool::{init, ResourceRequirements, ToadStoolError, ToadStoolResult};
+use toadstool::{ResourceRequirements, ToadStoolError, ToadStoolResult, init};
 
 /// Benchmark configuration
 #[derive(Debug, Clone)]

@@ -117,14 +117,15 @@ impl LegacyAdapter for VxWorksAdapter {
 
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(job.status.clone())
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| Ok(job.status.clone()),
+        )
     }
 
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
@@ -132,6 +133,7 @@ impl LegacyAdapter for VxWorksAdapter {
         if let Some(job) = jobs.get_mut(&job_id) {
             job.status = JobStatus::Cancelled;
         }
+        drop(jobs);
         Ok(())
     }
 
@@ -225,14 +227,15 @@ impl LegacyAdapter for QNXAdapter {
 
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(job.status.clone())
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| Ok(job.status.clone()),
+        )
     }
 
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
@@ -240,6 +243,7 @@ impl LegacyAdapter for QNXAdapter {
         if let Some(job) = jobs.get_mut(&job_id) {
             job.status = JobStatus::Cancelled;
         }
+        drop(jobs);
         Ok(())
     }
 

@@ -49,11 +49,10 @@ impl SongbirdBroadcaster {
         }
 
         // Deliver to pre-configured BroadcastChannel if present
-        let channel_subscribers = if let Some(ch) = self.channels.get(channel_name) {
-            ch.publish(message.clone()).unwrap_or(0)
-        } else {
-            0
-        };
+        let channel_subscribers = self
+            .channels
+            .get(channel_name)
+            .map_or(0, |ch| ch.publish(message.clone()).unwrap_or(0));
 
         // Also deliver through SubscriptionManager (dynamic subscriptions)
         let dynamic_subscribers = self

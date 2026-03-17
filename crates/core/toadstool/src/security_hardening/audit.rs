@@ -86,8 +86,7 @@ impl SecurityAuditLogger {
 
     /// Log security event
     pub async fn log_event(&self, event: SecurityAuditEvent) {
-        let mut events = self.events.write().await;
-        events.push(event.clone());
+        self.events.write().await.push(event.clone());
 
         // Log to tracing
         match event.severity {

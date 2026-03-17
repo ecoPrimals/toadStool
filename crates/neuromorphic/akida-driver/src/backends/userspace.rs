@@ -205,11 +205,9 @@ impl NpuBackend for UserspaceBackend {
 
     fn is_ready(&self) -> bool {
         // Check status register
-        if let Ok(status) = self.bar0.read_u32(REG_STATUS) {
-            status & STATUS_READY != 0
-        } else {
-            false
-        }
+        self.bar0
+            .read_u32(REG_STATUS)
+            .is_ok_and(|status| status & STATUS_READY != 0)
     }
 }
 

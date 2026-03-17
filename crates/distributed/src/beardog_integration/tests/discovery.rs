@@ -35,10 +35,12 @@ async fn test_beardog_discovery_get_best_endpoint_empty() {
     let discovery = BearDogDiscovery::new(config);
     let result = discovery.get_best_endpoint().await;
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("No BearDog endpoints"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("No BearDog endpoints")
+    );
 }
 
 #[tokio::test]
@@ -135,11 +137,13 @@ async fn test_beardog_discovery_get_best_endpoint_all_unhealthy_returns_error() 
     let discovery = BearDogDiscovery::with_endpoints(config, endpoints);
     let result = discovery.get_best_endpoint().await;
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .to_lowercase()
-        .contains("healthy"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .to_lowercase()
+            .contains("healthy")
+    );
 }
 
 #[tokio::test]

@@ -6,8 +6,8 @@
 #![allow(deprecated)]
 
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use toadstool::ExecutionStatus;
 use toadstool::RuntimeType;

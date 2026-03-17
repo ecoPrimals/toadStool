@@ -48,9 +48,11 @@ mod tests {
     async fn test_capabilities() {
         if let Ok(engine) = ContainerRuntimeEngine::new() {
             let capabilities = engine.get_capabilities();
-            assert!(capabilities
-                .supported_workloads
-                .contains(&WorkloadType::Container));
+            assert!(
+                capabilities
+                    .supported_workloads
+                    .contains(&WorkloadType::Container)
+            );
         }
     }
 

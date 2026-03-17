@@ -175,13 +175,17 @@ fn test_python_runtime_engine_get_capabilities() {
     let engine = PythonRuntimeEngine::new().unwrap();
     let capabilities = engine.get_capabilities();
 
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Python));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Python)
+    );
     assert_eq!(capabilities.max_concurrent_executions, Some(10));
-    assert!(capabilities
-        .supported_architectures
-        .contains(&"x86_64".to_string()));
+    assert!(
+        capabilities
+            .supported_architectures
+            .contains(&"x86_64".to_string())
+    );
 }
 
 #[test]
@@ -190,12 +194,16 @@ fn test_python_runtime_engine_capabilities_architectures() {
     let capabilities = engine.get_capabilities();
 
     assert!(capabilities.supported_architectures.len() >= 2);
-    assert!(capabilities
-        .supported_architectures
-        .contains(&"x86_64".to_string()));
-    assert!(capabilities
-        .supported_architectures
-        .contains(&"aarch64".to_string()));
+    assert!(
+        capabilities
+            .supported_architectures
+            .contains(&"x86_64".to_string())
+    );
+    assert!(
+        capabilities
+            .supported_architectures
+            .contains(&"aarch64".to_string())
+    );
 }
 
 #[test]
@@ -460,9 +468,11 @@ fn test_python_capabilities_workload_type() {
     let capabilities = engine.get_capabilities();
 
     assert_eq!(capabilities.supported_workloads.len(), 1);
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Python));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Python)
+    );
 }
 
 #[test]

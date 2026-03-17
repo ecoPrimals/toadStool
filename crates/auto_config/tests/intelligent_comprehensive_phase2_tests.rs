@@ -85,7 +85,7 @@ async fn test_scan_system_completes() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_services_completes() {
     // Test: discover_services runs without panic and completes within timeout
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     let mut config = IntelligentAutoConfig::new();
 
@@ -112,7 +112,7 @@ async fn test_discover_services_completes() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_generate_intelligent_config_completes() {
     // Test: generate_intelligent_config runs without panic and completes within timeout
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     let mut config = IntelligentAutoConfig::new();
 
@@ -142,7 +142,7 @@ async fn test_generate_intelligent_config_completes() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_configure_static_method() {
     // Test: auto_configure static method completes within timeout
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     // Use timeout to prevent hanging - auto-configure should complete in 10s for tests
     let result = timeout(

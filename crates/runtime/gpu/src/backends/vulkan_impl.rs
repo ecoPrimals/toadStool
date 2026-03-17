@@ -52,6 +52,7 @@ impl Default for VulkanConfig {
 ///
 /// For most use cases, prefer the `wgpu` backend which automatically
 /// uses Vulkan on supported platforms.
+#[derive(Debug, Default)]
 pub struct VulkanBackend {
     config: VulkanConfig,
 }
@@ -81,27 +82,21 @@ impl VulkanBackend {
     }
 
     /// Get the backend configuration
-    pub fn config(&self) -> &VulkanConfig {
+    pub const fn config(&self) -> &VulkanConfig {
         &self.config
     }
 
     /// Check if direct Vulkan is available on this system
     ///
     /// This checks for the Vulkan loader without initializing it.
-    pub fn is_available() -> bool {
+    pub const fn is_available() -> bool {
         // In a full implementation, this would check for libvulkan.so/vulkan-1.dll
         // For now, we assume wgpu handles availability detection
         false
     }
 }
 
-impl Default for VulkanBackend {
-    fn default() -> Self {
-        Self {
-            config: VulkanConfig::default(),
-        }
-    }
-}
+
 
 /// Vulkan compute resource handle
 #[derive(Debug)]
@@ -116,7 +111,7 @@ pub struct VulkanComputeResource {
 
 impl VulkanComputeResource {
     /// Create a new resource handle
-    pub fn new(id: u64, size: usize, device_local: bool) -> Self {
+    pub const fn new(id: u64, size: usize, device_local: bool) -> Self {
         Self {
             id,
             size,

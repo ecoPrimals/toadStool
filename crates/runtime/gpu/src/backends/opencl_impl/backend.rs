@@ -278,8 +278,10 @@ impl OpenClBackend {
             .map_err(|e| ToadStoolError::runtime(format!("Failed to compile program: {}", e)))?;
 
         // Cache it
-        let mut cache = self.program_cache.write().await;
-        cache.insert(cache_key, program.clone());
+        self.program_cache
+            .write()
+            .await
+            .insert(cache_key, program.clone());
 
         Ok(program)
     }
@@ -313,7 +315,7 @@ impl OpenClBackend {
                 })?;
 
             // Upload host → device
-            buffer.write(&input.data).enq().map_err(|e| {
+            buffer.write(&input.data[..]).enq().map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to upload input {}: {}", idx, e))
             })?;
 
@@ -411,24 +413,23 @@ impl OpenClBackend {
         // Query global memory cache (L2 on most GPUs)
         if let Ok(DeviceInfoResult::GlobalMemCacheSize(cache_size)) =
             self.device.info(OclDeviceInfo::GlobalMemCacheSize)
+            && cache_size > 0
         {
-            if cache_size > 0 {
-                // Query cache line size
-                let line_size = if let Ok(DeviceInfoResult::GlobalMemCachelineSize(line)) =
-                    self.device.info(OclDeviceInfo::GlobalMemCachelineSize)
-                {
-                    line
-                } else {
-                    128 // Default
-                };
+            // Query cache line size
+            let line_size = if let Ok(DeviceInfoResult::GlobalMemCachelineSize(line)) =
+                self.device.info(OclDeviceInfo::GlobalMemCachelineSize)
+            {
+                line
+            } else {
+                128 // Default
+            };
 
-                cache_levels.push(CacheLevel {
-                    level: 2,
-                    size_bytes: cache_size,
-                    line_size_bytes: line_size,
-                    associativity: 0, // Not exposed by OpenCL
-                });
-            }
+            cache_levels.push(CacheLevel {
+                level: 2,
+                size_bytes: cache_size,
+                line_size_bytes: line_size,
+                associativity: 0, // Not exposed by OpenCL
+            });
         }
 
         cache_levels

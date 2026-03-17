@@ -173,10 +173,12 @@ async fn test_songbird_connection_empty_endpoints_fails() {
     let config = make_connection_config(vec![], SongbirdProtocol::GRPC);
     let result: Result<_, _> = SongbirdConnection::new(config).await;
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("No Songbird endpoints"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("No Songbird endpoints")
+    );
 }
 
 #[tokio::test]

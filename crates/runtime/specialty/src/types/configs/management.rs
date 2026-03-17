@@ -77,11 +77,11 @@ pub enum JobPriority {
 impl From<JobPriority> for CanonicalJobPriority {
     fn from(legacy: JobPriority) -> Self {
         match legacy {
-            JobPriority::Low => CanonicalJobPriority::Low,
-            JobPriority::Normal => CanonicalJobPriority::Normal,
-            JobPriority::High => CanonicalJobPriority::High,
-            JobPriority::Critical => CanonicalJobPriority::Critical,
-            JobPriority::RealTime => CanonicalJobPriority::Emergency,
+            JobPriority::Low => Self::Low,
+            JobPriority::Normal => Self::Normal,
+            JobPriority::High => Self::High,
+            JobPriority::Critical => Self::Critical,
+            JobPriority::RealTime => Self::Emergency,
         }
     }
 }
@@ -89,12 +89,12 @@ impl From<JobPriority> for CanonicalJobPriority {
 impl From<CanonicalJobPriority> for JobPriority {
     fn from(canonical: CanonicalJobPriority) -> Self {
         match canonical {
-            CanonicalJobPriority::Emergency => JobPriority::RealTime,
-            CanonicalJobPriority::Critical => JobPriority::Critical,
-            CanonicalJobPriority::High => JobPriority::High,
-            CanonicalJobPriority::Normal => JobPriority::Normal,
-            CanonicalJobPriority::Low => JobPriority::Low,
-            CanonicalJobPriority::Background => JobPriority::Low, // Map Background to Low
+            CanonicalJobPriority::Emergency => Self::RealTime,
+            CanonicalJobPriority::Critical => Self::Critical,
+            CanonicalJobPriority::High => Self::High,
+            CanonicalJobPriority::Normal => Self::Normal,
+            CanonicalJobPriority::Low => Self::Low,
+            CanonicalJobPriority::Background => Self::Low, // Map Background to Low
         }
     }
 }

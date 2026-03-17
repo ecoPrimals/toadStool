@@ -9,8 +9,8 @@ use toadstool::error::ToadStoolResult;
 use toadstool_common::interned_strings::capabilities;
 
 use crate::beardog_integration::types::*;
-use crate::security_provider::types::*;
 use crate::security_provider::EncryptionOptions;
+use crate::security_provider::types::*;
 
 /// Convert generic PermissionRequest to BearDog-specific request
 pub fn to_beardog_permission_request(_request: &PermissionRequest) -> KeyManagementRequest {

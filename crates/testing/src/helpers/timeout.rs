@@ -30,8 +30,8 @@ pub enum TimeoutError {
 impl std::fmt::Display for TimeoutError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TimeoutError::Elapsed => write!(f, "operation timed out"),
-            TimeoutError::OperationFailed => write!(f, "operation failed"),
+            Self::Elapsed => write!(f, "operation timed out"),
+            Self::OperationFailed => write!(f, "operation failed"),
         }
     }
 }
@@ -154,9 +154,9 @@ pub enum RetryError<E> {
 impl<E: std::fmt::Display> std::fmt::Display for RetryError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RetryError::Timeout => write!(f, "operation timed out"),
-            RetryError::Failed(e) => write!(f, "operation failed: {e}"),
-            RetryError::MaxAttemptsExceeded => write!(f, "max retry attempts exceeded"),
+            Self::Timeout => write!(f, "operation timed out"),
+            Self::Failed(e) => write!(f, "operation failed: {e}"),
+            Self::MaxAttemptsExceeded => write!(f, "max retry attempts exceeded"),
         }
     }
 }
@@ -164,7 +164,7 @@ impl<E: std::fmt::Display> std::fmt::Display for RetryError<E> {
 impl<E: std::error::Error + 'static> std::error::Error for RetryError<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            RetryError::Failed(e) => Some(e),
+            Self::Failed(e) => Some(e),
             _ => None,
         }
     }
@@ -215,13 +215,7 @@ mod tests {
         let result = retry_with_timeout(
             move || {
                 let current = attempts_clone.fetch_add(1, Ordering::SeqCst);
-                Box::pin(async move {
-                    if current < 2 {
-                        Err("not yet")
-                    } else {
-                        Ok(42)
-                    }
-                })
+                Box::pin(async move { if current < 2 { Err("not yet") } else { Ok(42) } })
             },
             5,
             Duration::from_millis(100),

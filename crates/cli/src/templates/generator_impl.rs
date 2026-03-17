@@ -10,7 +10,7 @@ use tracing::info;
 
 impl TemplateGenerator {
     #[must_use]
-    pub fn new(output_dir: PathBuf, force_overwrite: bool) -> Self {
+    pub const fn new(output_dir: PathBuf, force_overwrite: bool) -> Self {
         Self {
             output_dir,
             force_overwrite,

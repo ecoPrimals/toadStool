@@ -93,7 +93,7 @@ pub enum TraditionalPlatform {
 
 impl TraditionalPlatform {
     /// Get the architecture name
-    pub fn architecture_name(&self) -> &'static str {
+    pub const fn architecture_name(&self) -> &'static str {
         match self {
             Self::X86_64 { .. } => "x86_64",
             Self::ARM64 { .. } => "ARM64",

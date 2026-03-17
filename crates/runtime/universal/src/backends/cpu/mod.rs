@@ -126,12 +126,11 @@ impl CpuComputeUnit {
             // Read from /proc/meminfo
             if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
                 for line in meminfo.lines() {
-                    if line.starts_with("MemTotal:") {
-                        if let Some(kb_str) = line.split_whitespace().nth(1) {
-                            if let Ok(kb) = kb_str.parse::<usize>() {
-                                return kb * 1024; // Convert KB to bytes
-                            }
-                        }
+                    if line.starts_with("MemTotal:")
+                        && let Some(kb_str) = line.split_whitespace().nth(1)
+                        && let Ok(kb) = kb_str.parse::<usize>()
+                    {
+                        return kb * 1024; // Convert KB to bytes
                     }
                 }
             }
@@ -199,7 +198,7 @@ impl ComputeUnit for CpuComputeUnit {
             OperationType::Custom => {
                 return Err(ComputeError::ExecutionFailed(
                     "Custom operations not yet implemented".to_string(),
-                ))
+                ));
             }
         };
 

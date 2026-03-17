@@ -3,12 +3,12 @@
 //!
 //! Focus: Increase coverage of discovery/orchestration.rs
 
-use toadstool::discovery::{discover_orchestration, OrchestrationClient};
+use toadstool::discovery::{OrchestrationClient, discover_orchestration};
 
 #[tokio::test]
 async fn test_discover_orchestration_with_env_var() {
     // Set environment variable
-    std::env::set_var("SONGBIRD_ENDPOINT", "http://localhost:8082");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://localhost:8082") };
 
     let result = discover_orchestration().await;
 
@@ -24,13 +24,13 @@ async fn test_discover_orchestration_with_env_var() {
         }
     }
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }
 
 #[tokio::test]
 async fn test_discover_orchestration_without_env() {
     // Ensure no environment variable
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 
     let result = discover_orchestration().await;
 
@@ -58,7 +58,7 @@ async fn test_orchestration_client_creation() {
 async fn test_orchestration_client_service_discovery() {
     let client = OrchestrationClient::new();
 
-    std::env::set_var("SONGBIRD_ENDPOINT", "http://test-service:8082");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://test-service:8082") };
 
     let result = client.discover_service_discovery().await;
 
@@ -68,14 +68,14 @@ async fn test_orchestration_client_service_discovery() {
         // Expected when service not running
     }
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }
 
 #[tokio::test]
 async fn test_orchestration_client_load_balancing() {
     let client = OrchestrationClient::new();
 
-    std::env::set_var("SONGBIRD_ENDPOINT", "http://load-balancer:8082");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://load-balancer:8082") };
 
     let result = client.discover_load_balancing().await;
 
@@ -85,7 +85,7 @@ async fn test_orchestration_client_load_balancing() {
         // Expected when service not running
     }
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }
 
 #[tokio::test]
@@ -115,9 +115,9 @@ async fn test_concurrent_discovery_calls() {
         let handle = tokio::spawn(async move {
             let _permit = permit;
 
-            std::env::set_var("SONGBIRD_ENDPOINT", format!("http://service-{i}:8082"));
+            unsafe { std::env::set_var("SONGBIRD_ENDPOINT", format!("http://service-{i}:8082")) };
             let _ = discover_orchestration().await;
-            std::env::remove_var("SONGBIRD_ENDPOINT");
+            unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
         });
         handles.push(handle);
     }
@@ -130,7 +130,7 @@ async fn test_concurrent_discovery_calls() {
 #[tokio::test]
 async fn test_discovery_error_handling() {
     // Test with invalid endpoint
-    std::env::set_var("SONGBIRD_ENDPOINT", "invalid://not-a-real-url");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "invalid://not-a-real-url") };
 
     let result = discover_orchestration().await;
 
@@ -145,7 +145,7 @@ async fn test_discovery_error_handling() {
         }
     }
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }
 
 #[test]
@@ -161,7 +161,7 @@ fn test_orchestration_client_size() {
 #[tokio::test]
 async fn test_discovery_with_multiple_endpoints() {
     // Test fallback behavior with multiple endpoints
-    std::env::set_var("SONGBIRD_ENDPOINT", "http://primary:8082");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://primary:8082") };
 
     let client = OrchestrationClient::new();
 
@@ -182,14 +182,14 @@ async fn test_discovery_with_multiple_endpoints() {
 
     assert_eq!(attempted_count, 3);
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }
 
 #[tokio::test]
 async fn test_discovery_timeout_behavior() {
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
-    std::env::set_var("SONGBIRD_ENDPOINT", "http://slow-service:8082");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://slow-service:8082") };
 
     let result = timeout(Duration::from_secs(5), discover_orchestration()).await;
 
@@ -207,12 +207,12 @@ async fn test_discovery_timeout_behavior() {
         }
     }
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }
 
 #[tokio::test]
 async fn test_discovery_with_empty_endpoint() {
-    std::env::set_var("SONGBIRD_ENDPOINT", "");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "") };
 
     let result = discover_orchestration().await;
 
@@ -227,7 +227,7 @@ async fn test_discovery_with_empty_endpoint() {
         }
     }
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }
 
 #[tokio::test]
@@ -235,7 +235,7 @@ async fn test_orchestration_client_reuse() {
     // Test that client can be reused multiple times
     let client = OrchestrationClient::new();
 
-    std::env::set_var("SONGBIRD_ENDPOINT", "http://reusable:8082");
+    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://reusable:8082") };
 
     // Make multiple calls
     for _ in 0..5 {
@@ -246,5 +246,5 @@ async fn test_orchestration_client_reuse() {
     let final_result = client.discover_service_discovery().await;
     assert!(final_result.is_ok() || final_result.is_err());
 
-    std::env::remove_var("SONGBIRD_ENDPOINT");
+    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
 }

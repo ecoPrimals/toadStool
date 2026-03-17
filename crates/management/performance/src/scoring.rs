@@ -22,7 +22,9 @@ pub fn calculate_performance_score(metrics: &RuntimeMetrics, duration: Duration)
     let cpu_score = calculate_cpu_score(metrics);
 
     // Weighted average
-    (execution_score * 0.4 + memory_score * 0.3 + cpu_score * 0.3).min(100.0)
+    execution_score
+        .mul_add(0.4, memory_score.mul_add(0.3, cpu_score * 0.3))
+        .min(100.0)
 }
 
 /// Calculate resource efficiency score
@@ -37,7 +39,9 @@ pub fn calculate_efficiency_score(metrics: &RuntimeMetrics, duration: Duration) 
     let time_efficiency = calculate_time_efficiency(duration);
 
     // Weighted average
-    (memory_efficiency * 0.4 + cpu_efficiency * 0.3 + time_efficiency * 0.3).min(100.0)
+    memory_efficiency
+        .mul_add(0.4, cpu_efficiency.mul_add(0.3, time_efficiency * 0.3))
+        .min(100.0)
 }
 
 /// Calculate execution time score (faster = higher score)
@@ -112,11 +116,19 @@ pub fn calculate_weighted_score(
     let availability_score = 100.0 - current_load;
     let success_score = success_rate;
 
-    weights.execution_time * execution_score
-        + weights.memory_usage * memory_score
-        + weights.cpu_usage * cpu_score
-        + weights.resource_availability * availability_score
-        + weights.historical_success_rate * success_score
+    weights.execution_time.mul_add(
+        execution_score,
+        weights.memory_usage.mul_add(
+            memory_score,
+            weights.cpu_usage.mul_add(
+                cpu_score,
+                weights.resource_availability.mul_add(
+                    availability_score,
+                    weights.historical_success_rate * success_score,
+                ),
+            ),
+        ),
+    )
 }
 
 #[cfg(test)]

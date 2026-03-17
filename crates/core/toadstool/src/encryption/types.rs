@@ -29,7 +29,7 @@ pub struct EncryptedPayload {
 
 impl EncryptedPayload {
     /// Create new encrypted payload
-    pub fn new(ciphertext: Vec<u8>) -> Self {
+    pub const fn new(ciphertext: Vec<u8>) -> Self {
         Self {
             ciphertext,
             auth_tag: None,
@@ -172,7 +172,7 @@ impl EncryptionKey {
 
     /// Set expiration time
     #[must_use]
-    pub fn with_expiration(mut self, expires_at: i64) -> Self {
+    pub const fn with_expiration(mut self, expires_at: i64) -> Self {
         self.expires_at = Some(expires_at);
         self
     }
@@ -238,7 +238,7 @@ impl Default for KeyRotationPolicy {
 
 impl KeyRotationPolicy {
     /// Check if key should be rotated
-    pub fn should_rotate(&self, uses: u64, age_seconds: u64, data_bytes: u64) -> bool {
+    pub const fn should_rotate(&self, uses: u64, age_seconds: u64, data_bytes: u64) -> bool {
         if let Some(max_uses) = self.max_uses {
             if uses >= max_uses {
                 return true;

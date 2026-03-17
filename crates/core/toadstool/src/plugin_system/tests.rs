@@ -673,9 +673,11 @@ mod plugin_system_tests {
         let manager = PluginManager::new();
         let paths = manager.search_paths();
         assert!(!paths.is_empty());
-        assert!(paths
-            .iter()
-            .any(|p| p.to_string_lossy().contains("plugins")));
+        assert!(
+            paths
+                .iter()
+                .any(|p| p.to_string_lossy().contains("plugins"))
+        );
     }
 
     #[test]

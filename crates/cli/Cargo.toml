@@ -98,6 +98,9 @@ etcetera = { workspace = true }
 # System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
 toadstool-sysmon = { workspace = true }
 
+# Neuromorphic hardware
+akida-driver = { path = "../neuromorphic/akida-driver", optional = true }
+
 # Terminal UI and formatting
 # EVOLVED: console removed (Mar 9, 2026) - unused import, libc dep eliminated (indicatif provides it transitively)
 indicatif = "0.17"
@@ -160,7 +163,7 @@ gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # Add CUDA for Python AI
 gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility
 
 # NPU FEATURES: Neuromorphic accelerator support
-npu = []  # Enables Akida NPU commands
+npu = ["dep:akida-driver"]
 
 # Nautilus: proxied to barraCuda via capability-based IPC (zero library dep)
 nautilus = []

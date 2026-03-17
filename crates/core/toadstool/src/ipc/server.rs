@@ -122,7 +122,7 @@ impl IpcServer {
     }
 
     /// Create server with custom endpoints
-    pub fn with_endpoints(endpoints: Vec<Endpoint>) -> Self {
+    pub const fn with_endpoints(endpoints: Vec<Endpoint>) -> Self {
         Self {
             endpoints,
             shutdown_tx: None,

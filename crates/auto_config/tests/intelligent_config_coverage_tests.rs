@@ -5,9 +5,9 @@
 
 use toadstool_auto_config::hardware::{PerformanceClass, SystemCapabilities};
 use toadstool_auto_config::intelligent::{
-    classify_performance, ConfigGenerator, ConfigSnapshot, ConfigValidator, EnvironmentHint,
-    IntelligentAutoConfig, PerformanceMetrics, PlatformConfig, PlatformInfo, PlatformOptimization,
-    PlatformOptimizer, PlatformSupport, UsageHints, UsageLearner,
+    ConfigGenerator, ConfigSnapshot, ConfigValidator, EnvironmentHint, IntelligentAutoConfig,
+    PerformanceMetrics, PlatformConfig, PlatformInfo, PlatformOptimization, PlatformOptimizer,
+    PlatformSupport, UsageHints, UsageLearner, classify_performance,
 };
 
 #[test]
@@ -185,8 +185,8 @@ fn test_intelligent_performance_metrics_structure() {
 
 #[test]
 fn test_intelligent_config_generator_new() {
-    let gen = ConfigGenerator::new();
-    let _ = gen;
+    let generator = ConfigGenerator::new();
+    let _ = generator;
 }
 
 #[test]

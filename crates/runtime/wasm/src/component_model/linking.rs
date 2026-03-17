@@ -20,7 +20,7 @@ pub struct ComponentLinker {
 impl ComponentLinker {
     /// Create a new component linker
     #[must_use]
-    pub fn new(config: ComponentModelConfig, registry: Arc<ComponentRegistry>) -> Self {
+    pub const fn new(config: ComponentModelConfig, registry: Arc<ComponentRegistry>) -> Self {
         Self {
             _config: config,
             registry,
@@ -156,10 +156,12 @@ mod tests {
             .link_components(&consumer_id, &provider_id, "nonexistent")
             .await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("does not have interface"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("does not have interface")
+        );
     }
 
     #[tokio::test]

@@ -9,7 +9,7 @@
 use colored::Colorize;
 use tracing::info;
 
-use crate::{ecosystem::EcosystemIntegrator, Result};
+use crate::{Result, ecosystem::EcosystemIntegrator};
 
 use super::super::definitions::EcosystemCommands;
 

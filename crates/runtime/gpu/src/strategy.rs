@@ -79,13 +79,14 @@ impl BackendSelectionStrategy {
         }
 
         // PRIORITY 2: Check if workload needs vendor-specific backend
-        if let Some(workload_type) = workload {
-            if Self::workload_needs_cuda(workload_type) && available.contains(&GpuFramework::Cuda) {
-                info!("⚠️  Selected CUDA (vendor-specific, temporary)");
-                info!("   Evolution status: Using CUDA for Python AI compatibility");
-                info!("   Future: Will migrate to WebGPU when ecosystem ready");
-                return Some(GpuFramework::Cuda);
-            }
+        if let Some(workload_type) = workload
+            && Self::workload_needs_cuda(workload_type)
+            && available.contains(&GpuFramework::Cuda)
+        {
+            info!("⚠️  Selected CUDA (vendor-specific, temporary)");
+            info!("   Evolution status: Using CUDA for Python AI compatibility");
+            info!("   Future: Will migrate to WebGPU when ecosystem ready");
+            return Some(GpuFramework::Cuda);
         }
 
         // PRIORITY 3: CUDA as general fallback (if available)
@@ -135,12 +136,12 @@ impl BackendSelectionStrategy {
         available: &[GpuFramework],
     ) -> Option<GpuFramework> {
         // PRIORITY 1: CUDA for best performance (if suitable)
-        if let Some(workload_type) = workload {
-            if Self::workload_prefers_cuda(workload_type) && available.contains(&GpuFramework::Cuda)
-            {
-                info!("🚀 Selected CUDA (pragmatic mode, maximum performance)");
-                return Some(GpuFramework::Cuda);
-            }
+        if let Some(workload_type) = workload
+            && Self::workload_prefers_cuda(workload_type)
+            && available.contains(&GpuFramework::Cuda)
+        {
+            info!("🚀 Selected CUDA (pragmatic mode, maximum performance)");
+            return Some(GpuFramework::Cuda);
         }
 
         // PRIORITY 2: Metal on Apple platforms
@@ -177,7 +178,7 @@ impl BackendSelectionStrategy {
     }
 
     /// Check if workload REQUIRES CUDA (Python AI in 2025)
-    fn workload_needs_cuda(workload: &WorkloadType) -> bool {
+    const fn workload_needs_cuda(workload: &WorkloadType) -> bool {
         matches!(
             workload,
             WorkloadType::Python | WorkloadType::AiMl | WorkloadType::Cuda
@@ -185,7 +186,7 @@ impl BackendSelectionStrategy {
     }
 
     /// Check if workload PREFERS CUDA (but can work without it)
-    fn workload_prefers_cuda(workload: &WorkloadType) -> bool {
+    const fn workload_prefers_cuda(workload: &WorkloadType) -> bool {
         matches!(
             workload,
             WorkloadType::Python | WorkloadType::AiMl | WorkloadType::Cuda | WorkloadType::Gpu

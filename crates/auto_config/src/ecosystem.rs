@@ -354,7 +354,7 @@ impl EcosystemDiscoverer {
 
     /// Get the last discovery results (cached)
     #[must_use]
-    pub fn get_last_discovery(&self) -> Option<&DiscoveredServices> {
+    pub const fn get_last_discovery(&self) -> Option<&DiscoveredServices> {
         self.last_discovery.as_ref()
     }
 
@@ -497,10 +497,12 @@ mod tests {
         assert!(result.is_ok());
         let services = result.unwrap();
         assert_eq!(services.discovered_services.len(), 0);
-        assert!(services
-            .discovery_summary
-            .discovery_methods_used
-            .contains(&"fast_mode".to_string()));
+        assert!(
+            services
+                .discovery_summary
+                .discovery_methods_used
+                .contains(&"fast_mode".to_string())
+        );
     }
 
     #[tokio::test]
@@ -523,17 +525,23 @@ mod tests {
     fn test_service_pattern_required_capabilities() {
         let discoverer = EcosystemDiscoverer::new();
         let discovery = discoverer.service_patterns.get("discovery").unwrap();
-        assert!(discovery
-            .required_capabilities
-            .contains(&"network".to_string()));
-        assert!(discovery
-            .required_capabilities
-            .contains(&"coordination".to_string()));
+        assert!(
+            discovery
+                .required_capabilities
+                .contains(&"network".to_string())
+        );
+        assert!(
+            discovery
+                .required_capabilities
+                .contains(&"coordination".to_string())
+        );
 
         let storage = discoverer.service_patterns.get("storage").unwrap();
-        assert!(storage
-            .required_capabilities
-            .contains(&"storage".to_string()));
+        assert!(
+            storage
+                .required_capabilities
+                .contains(&"storage".to_string())
+        );
     }
 
     #[test]
@@ -552,9 +560,11 @@ mod tests {
     fn test_service_pattern_health_endpoints() {
         let discoverer = EcosystemDiscoverer::new();
         let discovery = discoverer.service_patterns.get("discovery").unwrap();
-        assert!(discovery
-            .health_endpoints
-            .iter()
-            .any(|e| e.contains("health")));
+        assert!(
+            discovery
+                .health_endpoints
+                .iter()
+                .any(|e| e.contains("health"))
+        );
     }
 }

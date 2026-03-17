@@ -7,7 +7,7 @@
 ## Step 1: Verify Rust toolchain
 
 ```bash
-rustc --version    # Need 1.82+
+rustc --version    # Need 1.85+
 cargo --version
 ```
 

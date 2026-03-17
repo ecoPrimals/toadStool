@@ -771,20 +771,28 @@ mod tests {
 
         // Verify results
         assert_eq!(results.len(), 9); // Updated to 9 for the new test
-        assert!(results
-            .iter()
-            .any(|r| r.test_name == "os_layer_compatibility"));
+        assert!(
+            results
+                .iter()
+                .any(|r| r.test_name == "os_layer_compatibility")
+        );
         assert!(results.iter().any(|r| r.test_name == "biomeos_integration"));
         assert!(results.iter().any(|r| r.test_name == "security_sandboxing"));
-        assert!(results
-            .iter()
-            .any(|r| r.test_name == "cross_component_integration"));
-        assert!(results
-            .iter()
-            .any(|r| r.test_name == "performance_under_load"));
-        assert!(results
-            .iter()
-            .any(|r| r.test_name == "large_biome_performance"));
+        assert!(
+            results
+                .iter()
+                .any(|r| r.test_name == "cross_component_integration")
+        );
+        assert!(
+            results
+                .iter()
+                .any(|r| r.test_name == "performance_under_load")
+        );
+        assert!(
+            results
+                .iter()
+                .any(|r| r.test_name == "large_biome_performance")
+        );
 
         // Check that all tests passed
         let passed_count = results

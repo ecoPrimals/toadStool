@@ -139,7 +139,7 @@ pub struct SystemState {
 
 impl SystemState {
     /// Check if cluster has recovered
-    pub fn cluster_recovered(&self) -> bool {
+    pub const fn cluster_recovered(&self) -> bool {
         self.failed_nodes == 0 && self.active_nodes > 0
     }
 
@@ -196,14 +196,14 @@ impl ChaosScenario {
     }
 
     /// Set scenario timeout
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
     /// Set delay after fault injection for system stabilization.
     /// Use longer values (e.g. 2s) for real distributed systems; 200ms default for fast tests.
-    pub fn with_stabilization_delay(mut self, delay: Duration) -> Self {
+    pub const fn with_stabilization_delay(mut self, delay: Duration) -> Self {
         self.stabilization_delay = delay;
         self
     }
@@ -354,9 +354,9 @@ pub enum ChaosError {
 impl std::fmt::Display for ChaosError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChaosError::ValidationFailed(msg) => write!(f, "Validation failed: {msg}"),
-            ChaosError::InjectionFailed(msg) => write!(f, "Fault injection failed: {msg}"),
-            ChaosError::Timeout => write!(f, "Scenario timeout"),
+            Self::ValidationFailed(msg) => write!(f, "Validation failed: {msg}"),
+            Self::InjectionFailed(msg) => write!(f, "Fault injection failed: {msg}"),
+            Self::Timeout => write!(f, "Scenario timeout"),
         }
     }
 }

@@ -6,12 +6,12 @@
 //! and returns the data payload.
 
 use toadstool_core::{
-    decode_frame, HardwareTransport, TransportDirection, TransportError, TransportInfo,
-    TransportMedium,
+    HardwareTransport, TransportDirection, TransportError, TransportInfo, TransportMedium,
+    decode_frame,
 };
 
-use crate::v4l2::CaptureDevice;
 use crate::Result as DisplayResult;
+use crate::v4l2::CaptureDevice;
 
 /// Default RGBA8888 fourcc (`AR24` / Argb8888) — matches `DisplayTransport` output.
 const FOURCC_AR24: u32 = u32::from_le_bytes(*b"AR24");
@@ -72,11 +72,9 @@ impl HardwareTransport for CaptureTransport {
 
     fn bandwidth_bps(&self) -> u64 {
         // Estimated from the negotiated format; exact value depends on the source.
-        if let Some(fmt) = self.device.format() {
-            u64::from(fmt.image_size) * 60 * 8 // assume 60 fps
-        } else {
-            0
-        }
+        self.device
+            .format()
+            .map_or(0, |fmt| u64::from(fmt.image_size) * 60 * 8) // assume 60 fps
     }
 
     fn is_available(&self) -> bool {
@@ -113,15 +111,15 @@ pub fn discover_capture_transports() -> Vec<TransportInfo> {
     let mut transports = Vec::new();
 
     for dev_path in &devices {
-        if let Ok(dev) = CaptureDevice::open(dev_path) {
-            if dev.supports_capture_streaming().unwrap_or(false) {
-                transports.push(TransportInfo {
-                    id: dev_path.display().to_string(),
-                    label: format!("V4L2:{}", dev_path.display()),
-                    medium: TransportMedium::Capture,
-                    direction: TransportDirection::Rx,
-                });
-            }
+        if let Ok(dev) = CaptureDevice::open(dev_path)
+            && dev.supports_capture_streaming().unwrap_or(false)
+        {
+            transports.push(TransportInfo {
+                id: dev_path.display().to_string(),
+                label: format!("V4L2:{}", dev_path.display()),
+                medium: TransportMedium::Capture,
+                direction: TransportDirection::Rx,
+            });
         }
     }
 

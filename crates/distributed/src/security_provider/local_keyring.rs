@@ -55,7 +55,7 @@ impl LocalKeyringProvider {
 
     /// Return the backend currently in use.
     #[must_use]
-    pub fn backend(&self) -> &KeyringBackend {
+    pub const fn backend(&self) -> &KeyringBackend {
         &self.backend
     }
 
@@ -79,6 +79,7 @@ impl LocalKeyringProvider {
         let mut keys = self.known_keys.write().await;
         if !keys.contains(&key_id.to_string()) {
             keys.push(key_id.to_string());
+            drop(keys);
             debug!(backend = ?self.backend, key_id, "LocalKeyring: tracking new key");
         }
     }
@@ -110,10 +111,10 @@ impl SecurityProvider for LocalKeyringProvider {
         data: &[u8],
         options: Option<EncryptionOptions>,
     ) -> ToadStoolResult<EncryptionResult> {
-        if let Some(ref o) = options {
-            if let Some(ref id) = o.key_id {
-                self.track_key(id).await;
-            }
+        if let Some(ref o) = options
+            && let Some(ref id) = o.key_id
+        {
+            self.track_key(id).await;
         }
         self.inner.encrypt(data, options).await
     }
@@ -131,10 +132,10 @@ impl SecurityProvider for LocalKeyringProvider {
         data: &[u8],
         options: Option<SigningOptions>,
     ) -> ToadStoolResult<SignatureResult> {
-        if let Some(ref o) = options {
-            if let Some(ref id) = o.key_id {
-                self.track_key(id).await;
-            }
+        if let Some(ref o) = options
+            && let Some(ref id) = o.key_id
+        {
+            self.track_key(id).await;
         }
         self.inner.sign(data, options).await
     }

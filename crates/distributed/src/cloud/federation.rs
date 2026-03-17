@@ -52,7 +52,7 @@ pub enum FederationError {
 
 impl From<FederationError> for ToadStoolError {
     fn from(e: FederationError) -> Self {
-        ToadStoolError::Integration(toadstool::error::IntegrationError::OperationFailed {
+        Self::Integration(toadstool::error::IntegrationError::OperationFailed {
             service: "federation".into(),
             operation: "coordinate".into(),
             reason: e.to_string(),
@@ -119,10 +119,7 @@ impl CloudFederationManager {
             return Err(FederationError::InvalidNode("node id cannot be empty".to_string()).into());
         }
         if self.members.contains_key(&node.id) {
-            return Err(FederationError::AlreadyMember {
-                node_id: node.id.clone(),
-            }
-            .into());
+            return Err(FederationError::AlreadyMember { node_id: node.id }.into());
         }
 
         let member = FederationMember::new(node.clone());
@@ -307,17 +304,17 @@ impl CloudFederationManager {
     }
 
     /// Return the federation topology type
-    pub fn topology_type(&self) -> &TopologyType {
+    pub const fn topology_type(&self) -> &TopologyType {
         self.topology.topology_type()
     }
 
     /// Return whether inter-node links use encryption
-    pub fn is_network_encrypted(&self) -> bool {
+    pub const fn is_network_encrypted(&self) -> bool {
         self.network.is_encrypted()
     }
 
     /// Return the replication factor configured for this federation
-    pub fn replication_factor(&self) -> u32 {
+    pub const fn replication_factor(&self) -> u32 {
         self.replication.replication_factor()
     }
 
@@ -327,6 +324,7 @@ impl CloudFederationManager {
     }
 
     /// Set heartbeat timeout in seconds.
+    #[allow(clippy::missing_const_for_fn)] // Mutates self
     pub fn set_heartbeat_timeout(&mut self, secs: u64) {
         self.heartbeat_timeout_secs = secs;
     }
@@ -344,7 +342,7 @@ struct CloudFederationTopology {
 }
 
 impl CloudFederationTopology {
-    fn new(topology_type: TopologyType) -> Self {
+    const fn new(topology_type: TopologyType) -> Self {
         Self {
             topology_type,
             nodes: Vec::new(),
@@ -352,7 +350,7 @@ impl CloudFederationTopology {
         }
     }
 
-    fn topology_type(&self) -> &TopologyType {
+    const fn topology_type(&self) -> &TopologyType {
         &self.topology_type
     }
 }
@@ -370,7 +368,7 @@ impl InterCloudNetworkManager {
         }
     }
 
-    fn is_encrypted(&self) -> bool {
+    const fn is_encrypted(&self) -> bool {
         self.network_config.encryption
     }
 }
@@ -388,7 +386,7 @@ impl CloudDataReplicationManager {
         }
     }
 
-    fn replication_factor(&self) -> u32 {
+    const fn replication_factor(&self) -> u32 {
         self.replication_config.factor
     }
 }

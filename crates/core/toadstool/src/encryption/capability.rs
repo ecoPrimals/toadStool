@@ -28,7 +28,7 @@ pub struct CryptoCapability {
 
 impl CryptoCapability {
     /// Check if this capability matches required features
-    pub fn matches(&self, required: &CryptoCapability) -> bool {
+    pub fn matches(&self, required: &Self) -> bool {
         // Check security level
         if self.security_level < required.security_level {
             return false;
@@ -49,7 +49,7 @@ impl CryptoCapability {
     /// Score this capability match (higher = better match)
     ///
     /// **Design**: Allows prioritizing better matches
-    pub fn match_score(&self, required: &CryptoCapability) -> u32 {
+    pub fn match_score(&self, required: &Self) -> u32 {
         let mut score = 0u32;
 
         // Security level match (exact match = higher score)
@@ -95,7 +95,7 @@ pub struct CryptoServiceQuery {
 
 impl CryptoServiceQuery {
     /// Create query for specific capability
-    pub fn for_capability(capability: CryptoCapability) -> Self {
+    pub const fn for_capability(capability: CryptoCapability) -> Self {
         Self {
             capability,
             preferred_location: None,
@@ -104,19 +104,19 @@ impl CryptoServiceQuery {
     }
 
     /// Prefer local services
-    pub fn prefer_local(mut self) -> Self {
+    pub const fn prefer_local(mut self) -> Self {
         self.preferred_location = Some(ServiceLocation::Local);
         self
     }
 
     /// Prefer network services (distributed)
-    pub fn prefer_network(mut self) -> Self {
+    pub const fn prefer_network(mut self) -> Self {
         self.preferred_location = Some(ServiceLocation::Network);
         self
     }
 
     /// Set maximum acceptable latency
-    pub fn max_latency(mut self, ms: u64) -> Self {
+    pub const fn max_latency(mut self, ms: u64) -> Self {
         self.max_latency_ms = Some(ms);
         self
     }

@@ -255,7 +255,10 @@ fn test_network_config_has_discovery_endpoints() {
     // Deep Debt Principle: No hardcoded endpoints
     // Discovery endpoints are populated at runtime via capability discovery
     // This test validates that the config structure is correct, not that endpoints are hardcoded
-    assert!(config.discovery_endpoints.is_empty(), "Discovery endpoints should be empty by default - populated at runtime via capability discovery");
+    assert!(
+        config.discovery_endpoints.is_empty(),
+        "Discovery endpoints should be empty by default - populated at runtime via capability discovery"
+    );
 }
 
 #[test]

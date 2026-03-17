@@ -16,8 +16,8 @@ use std::sync::Arc;
 use tokio::sync::Barrier;
 
 use toadstool_runtime_gpu::{
-    config::ResourceConfig, ComputeResourceCoordinator, DeviceRequirements, GpuFramework,
-    UniversalGpuEngine, UniversalKernelCompiler,
+    ComputeResourceCoordinator, DeviceRequirements, GpuFramework, UniversalGpuEngine,
+    UniversalKernelCompiler, config::ResourceConfig,
 };
 
 // ============================================================================

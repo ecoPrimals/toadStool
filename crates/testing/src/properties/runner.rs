@@ -111,7 +111,7 @@ impl PropertyTestRunner {
         size.min(max_size)
     }
 
-    fn shrink_input<T, G, P>(&mut self, generator: &G, property: &P, input: &T) -> T
+    fn shrink_input<T, G, P>(&self, generator: &G, property: &P, input: &T) -> T
     where
         T: Debug + Clone,
         G: Generator<T>,

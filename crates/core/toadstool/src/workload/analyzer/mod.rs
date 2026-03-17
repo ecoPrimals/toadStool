@@ -35,7 +35,7 @@ impl WorkloadAnalyzer {
         }
     }
 
-    fn analyze_gpu(&self) -> WorkloadCharacteristics {
+    const fn analyze_gpu(&self) -> WorkloadCharacteristics {
         use characteristics::{
             ComputeIntensity, GpuAdvantage, MemoryRequirement, ParallelismLevel,
         };
@@ -50,7 +50,7 @@ impl WorkloadAnalyzer {
         }
     }
 
-    pub fn classify_memory(bytes: u64) -> characteristics::MemoryRequirement {
+    pub const fn classify_memory(bytes: u64) -> characteristics::MemoryRequirement {
         use characteristics::MemoryRequirement;
         match bytes {
             0..=99_999_999 => MemoryRequirement::Tiny,

@@ -26,7 +26,7 @@ pub struct CaptureFormat {
 impl CaptureFormat {
     /// Bytes per pixel (approximate for common formats).
     #[must_use]
-    pub fn bytes_per_pixel(&self) -> usize {
+    pub const fn bytes_per_pixel(&self) -> usize {
         if self.image_size > 0 && self.width > 0 && self.height > 0 {
             (self.image_size / (self.width * self.height)) as usize
         } else {
@@ -142,7 +142,7 @@ impl MockV4l2Device {
             });
 
         Self {
-            config: config.clone(),
+            config,
             format: default_fmt,
             streaming: false,
             frame_count: AtomicU64::new(0),
@@ -265,7 +265,7 @@ impl MockV4l2Device {
 
     /// Get current capture format.
     #[must_use]
-    pub fn get_format(&self) -> CaptureFormat {
+    pub const fn get_format(&self) -> CaptureFormat {
         self.format
     }
 

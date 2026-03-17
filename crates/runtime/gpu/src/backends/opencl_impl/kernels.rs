@@ -30,7 +30,7 @@ pub(super) fn get_builtin_kernel(
 /// Calculate optimal work size based on data size
 ///
 /// Capability-aware: adjusts to data size, not hardcoded
-pub(super) fn calculate_work_size(total_elements: usize) -> [usize; 3] {
+pub(super) const fn calculate_work_size(total_elements: usize) -> [usize; 3] {
     // Simple 1D work size for now
     // Future: capability-based optimization
     [total_elements, 1, 1]

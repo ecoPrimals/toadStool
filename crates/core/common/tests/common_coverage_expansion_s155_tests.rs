@@ -22,8 +22,8 @@ use toadstool_common::error::{
 };
 use toadstool_common::error_codes::codes;
 use toadstool_common::modern_utils::{
-    batch_process, clamp, in_range, lerp, maybe_clone_str, normalize, retry_with_backoff,
-    safe_divide, safe_percentage, with_timeout, UtilError,
+    UtilError, batch_process, clamp, in_range, lerp, maybe_clone_str, normalize,
+    retry_with_backoff, safe_divide, safe_percentage, with_timeout,
 };
 use toadstool_common::platform_paths::{PathEnv, Platform, PlatformPaths};
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
@@ -273,10 +273,12 @@ fn test_platform_paths_discovery_dir() {
         ..Default::default()
     };
     let paths = PlatformPaths::new(&env);
-    assert!(paths
-        .discovery_dir()
-        .to_string_lossy()
-        .contains("ecoPrimals"));
+    assert!(
+        paths
+            .discovery_dir()
+            .to_string_lossy()
+            .contains("ecoPrimals")
+    );
 }
 
 #[test]
@@ -286,10 +288,12 @@ fn test_platform_paths_jsonrpc_port_file() {
         ..Default::default()
     };
     let paths = PlatformPaths::new(&env);
-    assert!(paths
-        .jsonrpc_port_file()
-        .to_string_lossy()
-        .contains("toadstool-jsonrpc-port"));
+    assert!(
+        paths
+            .jsonrpc_port_file()
+            .to_string_lossy()
+            .contains("toadstool-jsonrpc-port")
+    );
 }
 
 #[test]

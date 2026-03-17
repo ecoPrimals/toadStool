@@ -13,12 +13,12 @@
 use std::path::{Path, PathBuf};
 use tracing::info;
 
+use crate::ToadStoolResult;
 use crate::types::configs::StorageROMFormat as ROMFormat;
 use crate::types::cross_compilation::{
     CompilationResult, CrossCompilationToolchain, LinkResult, ToolchainConfig,
 };
 use crate::types::systems::LegacyArchitecture;
-use crate::ToadStoolResult;
 
 /// 6502 Toolchain
 #[derive(Debug)]

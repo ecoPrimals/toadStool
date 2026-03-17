@@ -37,39 +37,39 @@ pub enum Constraint {
 }
 
 impl Constraint {
-    pub fn requires_gpu() -> Self {
+    pub const fn requires_gpu() -> Self {
         Self::RequiresGPU
     }
 
-    pub fn prefers_gpu() -> Self {
+    pub const fn prefers_gpu() -> Self {
         Self::PrefersGPU
     }
 
-    pub fn max_latency_ms(ms: u64) -> Self {
+    pub const fn max_latency_ms(ms: u64) -> Self {
         Self::MaxLatencyMs(ms)
     }
 
-    pub fn preferred_latency_ms(ms: u64) -> Self {
+    pub const fn preferred_latency_ms(ms: u64) -> Self {
         Self::PreferredLatencyMs(ms)
     }
 
-    pub fn min_bandwidth_gbps(gbps: f64) -> Self {
+    pub const fn min_bandwidth_gbps(gbps: f64) -> Self {
         Self::MinBandwidthGbps(gbps)
     }
 
-    pub fn min_memory_gb(gb: f64) -> Self {
+    pub const fn min_memory_gb(gb: f64) -> Self {
         Self::MinMemoryGB(gb)
     }
 
-    pub fn min_cpu_cores(cores: usize) -> Self {
+    pub const fn min_cpu_cores(cores: usize) -> Self {
         Self::MinCPUCores(cores)
     }
 
-    pub fn must_be_local() -> Self {
+    pub const fn must_be_local() -> Self {
         Self::MustBeLocal
     }
 
-    pub fn prefer_local() -> Self {
+    pub const fn prefer_local() -> Self {
         Self::PreferLocal
     }
 
@@ -81,7 +81,7 @@ impl Constraint {
         Self::PrefersCapability(cap.into())
     }
 
-    pub fn is_hard(&self) -> bool {
+    pub const fn is_hard(&self) -> bool {
         matches!(
             self,
             Self::RequiresGPU
@@ -98,7 +98,7 @@ impl Constraint {
         )
     }
 
-    pub fn is_soft(&self) -> bool {
+    pub const fn is_soft(&self) -> bool {
         !self.is_hard()
     }
 
@@ -177,12 +177,14 @@ mod tests {
         assert!(Constraint::RequiresLayer("gpu".to_string()).is_hard());
         assert!(Constraint::RequiresPersistentStorage.is_hard());
         assert!(Constraint::MaxCostPerHour(10.0).is_hard());
-        assert!(Constraint::Custom {
-            name: "test".to_string(),
-            hard: true,
-            value: "v".to_string(),
-        }
-        .is_hard());
+        assert!(
+            Constraint::Custom {
+                name: "test".to_string(),
+                hard: true,
+                value: "v".to_string(),
+            }
+            .is_hard()
+        );
     }
 
     #[test]
@@ -194,12 +196,14 @@ mod tests {
         assert!(Constraint::PreferLocal.is_soft());
         assert!(Constraint::PrefersLayer("cache".to_string()).is_soft());
         assert!(Constraint::MinimizeCost.is_soft());
-        assert!(Constraint::Custom {
-            name: "test".to_string(),
-            hard: false,
-            value: "v".to_string(),
-        }
-        .is_soft());
+        assert!(
+            Constraint::Custom {
+                name: "test".to_string(),
+                hard: false,
+                value: "v".to_string(),
+            }
+            .is_soft()
+        );
     }
 
     #[test]

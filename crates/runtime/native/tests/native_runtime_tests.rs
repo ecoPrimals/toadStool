@@ -42,9 +42,11 @@ fn test_native_capabilities_workload_type() {
     let engine = NativeRuntimeEngine::new();
     let capabilities = engine.get_capabilities();
 
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Native));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Native)
+    );
 }
 
 #[test]
@@ -65,9 +67,11 @@ fn test_native_capabilities_architecture() {
     assert!(!capabilities.supported_architectures.is_empty());
     // Should match current system architecture
     let arch = std::env::consts::ARCH;
-    assert!(capabilities
-        .supported_architectures
-        .contains(&arch.to_string()));
+    assert!(
+        capabilities
+            .supported_architectures
+            .contains(&arch.to_string())
+    );
 }
 
 #[test]
@@ -75,9 +79,11 @@ fn test_native_capabilities_platform_features() {
     let engine = NativeRuntimeEngine::new();
     let capabilities = engine.get_capabilities();
 
-    assert!(capabilities
-        .platform_features
-        .contains_key("process_isolation"));
+    assert!(
+        capabilities
+            .platform_features
+            .contains_key("process_isolation")
+    );
     assert_eq!(
         capabilities.platform_features.get("process_isolation"),
         Some(&true)
@@ -156,9 +162,11 @@ fn test_native_supported_workloads_only_native() {
     let capabilities = engine.get_capabilities();
 
     assert_eq!(capabilities.supported_workloads.len(), 1);
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Native));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Native)
+    );
 }
 
 #[test]
@@ -182,9 +190,11 @@ fn test_native_supported_architectures_current_platform() {
 
     // Current platform should be supported
     let current_arch = std::env::consts::ARCH;
-    assert!(capabilities
-        .supported_architectures
-        .contains(&current_arch.to_string()));
+    assert!(
+        capabilities
+            .supported_architectures
+            .contains(&current_arch.to_string())
+    );
 }
 
 // ============================================================================
@@ -196,9 +206,11 @@ fn test_native_process_isolation_feature() {
     let engine = NativeRuntimeEngine::new();
     let capabilities = engine.get_capabilities();
 
-    assert!(capabilities
-        .platform_features
-        .contains_key("process_isolation"));
+    assert!(
+        capabilities
+            .platform_features
+            .contains_key("process_isolation")
+    );
 }
 
 #[test]
@@ -356,15 +368,19 @@ fn test_native_engine_scenario_simple_process() {
     let capabilities = engine.get_capabilities();
 
     // Should support native workloads
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Native));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Native)
+    );
 
     // Should support current architecture
     let arch = std::env::consts::ARCH;
-    assert!(capabilities
-        .supported_architectures
-        .contains(&arch.to_string()));
+    assert!(
+        capabilities
+            .supported_architectures
+            .contains(&arch.to_string())
+    );
 }
 
 #[test]
@@ -400,9 +416,11 @@ fn test_native_vs_other_runtime_types() {
     let capabilities = engine.get_capabilities();
 
     // Should only support Native workloads
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Native));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Native)
+    );
     assert_eq!(capabilities.supported_workloads.len(), 1);
 }
 
@@ -412,10 +430,14 @@ fn test_native_workload_type_exclusive() {
     let capabilities = engine.get_capabilities();
 
     // Should only support Native workload type
-    assert!(!capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Wasm));
-    assert!(!capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Container));
+    assert!(
+        !capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Wasm)
+    );
+    assert!(
+        !capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Container)
+    );
 }

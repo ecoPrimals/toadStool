@@ -20,11 +20,14 @@ fn get_env_lock() -> &'static Mutex<()> {
 #[test]
 fn test_for_current_environment_defaults_to_development() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                 // Clear all env vars
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
+    // Clear all env vars
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "development");
@@ -33,72 +36,87 @@ fn test_for_current_environment_defaults_to_development() {
 #[test]
 fn test_for_current_environment_toadstool_environment_only() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                 // Clean slate first
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
-
-    // Test TOADSTOOL_ENVIRONMENT alone (no conflicting vars)
-    env::set_var("TOADSTOOL_ENVIRONMENT", "production");
+    // Clean slate first
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+        env::set_var("TOADSTOOL_ENVIRONMENT", "production");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "production");
 
     // Cleanup
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::remove_var("TOADSTOOL_ENVIRONMENT") };
 }
 
 #[test]
 fn test_for_current_environment_toadstool_env_only() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                 // Clean slate first
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
-
-    // Test TOADSTOOL_ENV alone
-    env::set_var("TOADSTOOL_ENV", "staging");
+    // Clean slate first
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+        env::set_var("TOADSTOOL_ENV", "staging");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "staging");
 
     // Cleanup
-    env::remove_var("TOADSTOOL_ENV");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { env::remove_var("TOADSTOOL_ENV") };
 }
 
 #[test]
 fn test_for_current_environment_fallback_chain() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                 // Test fallback: TOADSTOOL_ENV
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::set_var("TOADSTOOL_ENV", "staging");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::set_var("TOADSTOOL_ENV", "staging");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "staging");
 
     // Test fallback: ENVIRONMENT
-    env::remove_var("TOADSTOOL_ENV");
-    env::set_var("ENVIRONMENT", "test");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENV");
+        env::set_var("ENVIRONMENT", "test");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "test");
 
     // Test fallback: ENV
-    env::remove_var("ENVIRONMENT");
-    env::set_var("ENV", "production");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("ENVIRONMENT");
+        env::set_var("ENV", "production");
+    }
 
     let config = ToadStoolConfig::for_current_environment();
     assert_eq!(config.app.environment, "production");
 
     // Complete cleanup of ALL env vars
-    env::remove_var("ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+    }
 }
 
 // ==================== Load Functions Tests ====================
@@ -106,11 +124,14 @@ fn test_for_current_environment_fallback_chain() {
 #[test]
 fn test_load_with_overrides_success() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                 // Clean slate first
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
+    // Clean slate first
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+    }
 
     let config = ToadStoolConfig::development();
     let temp_file = NamedTempFile::new().unwrap();
@@ -126,10 +147,13 @@ fn test_load_with_overrides_success() {
     assert_eq!(loaded_config.app.environment, "development");
 
     // Cleanup
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+    }
 }
 
 #[test]
@@ -141,16 +165,17 @@ fn test_load_with_overrides_nonexistent_file() {
 #[test]
 fn test_load_from_env_only_success() {
     let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                 // Clean slate first
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
-    env::remove_var("TOADSTOOL_LOG_LEVEL");
-
-    // Set minimal env vars
-    env::set_var("TOADSTOOL_ENVIRONMENT", "test");
-    env::set_var("TOADSTOOL_LOG_LEVEL", "info");
+    // Clean slate first
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+        env::remove_var("TOADSTOOL_LOG_LEVEL");
+        env::set_var("TOADSTOOL_ENVIRONMENT", "test");
+        env::set_var("TOADSTOOL_LOG_LEVEL", "info");
+    }
 
     let result = ToadStoolConfig::load_from_env_only();
     assert!(result.is_ok());
@@ -158,11 +183,14 @@ fn test_load_from_env_only_success() {
     assert_eq!(config.app.environment, "test");
 
     // Cleanup
-    env::remove_var("TOADSTOOL_ENVIRONMENT");
-    env::remove_var("TOADSTOOL_ENV");
-    env::remove_var("ENVIRONMENT");
-    env::remove_var("ENV");
-    env::remove_var("TOADSTOOL_LOG_LEVEL");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+        env::remove_var("TOADSTOOL_LOG_LEVEL");
+    }
 }
 
 // ==================== Save/Load Round-Trip Tests ====================

@@ -43,12 +43,16 @@ fn test_usage_hints_multiple_workload_types() {
     };
 
     assert_eq!(hints.predicted_workload_types.len(), 4);
-    assert!(hints
-        .predicted_workload_types
-        .contains(&"compute".to_string()));
-    assert!(hints
-        .predicted_workload_types
-        .contains(&"ml_training".to_string()));
+    assert!(
+        hints
+            .predicted_workload_types
+            .contains(&"compute".to_string())
+    );
+    assert!(
+        hints
+            .predicted_workload_types
+            .contains(&"ml_training".to_string())
+    );
 }
 
 #[test]

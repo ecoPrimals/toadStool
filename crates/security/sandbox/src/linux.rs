@@ -71,7 +71,7 @@ impl LinuxSandboxManager {
 
     /// Return the detected kernel capabilities for this node.
     #[must_use]
-    pub fn capabilities(&self) -> &LinuxPlatformCaps {
+    pub const fn capabilities(&self) -> &LinuxPlatformCaps {
         &self.platform_caps
     }
 

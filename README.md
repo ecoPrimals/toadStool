@@ -262,7 +262,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,156 tests (S156); ~83% line (182K lines instrumented); focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 21,156 tests (S157); ~83% line (182K lines instrumented); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
@@ -287,7 +287,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,156 tests (S156); ~83% line (182K instrumented); focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 21,156 tests (S157); ~83% line (182K instrumented); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -332,4 +332,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 16, 2026 — S156. 21,156 workspace tests. ~83% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V107/S156, wetSpring V109, airSpring v0.8.3, healthSpring V28, coralReef Phase 10 Iteration 47, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); 22 crates `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 56 crates. Rust 1.82+ (MSRV).
+**Last Updated**: March 16, 2026 — S157. 21,156 workspace tests. ~83% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V107/S156, wetSpring V109, airSpring v0.8.3, healthSpring V28, coralReef Phase 10 Iteration 47, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); 22 crates `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 56 crates. Rust 1.85+ (edition 2024, MSRV).

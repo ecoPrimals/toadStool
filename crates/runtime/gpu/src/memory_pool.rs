@@ -88,21 +88,21 @@ impl MemoryPool {
             if let Some(bucket) = buffers
                 .iter_mut()
                 .find(|b| b.size >= size && b.size < size * 2)
+                && let Some(buffer) = bucket.buffers.pop_front()
             {
-                if let Some(buffer) = bucket.buffers.pop_front() {
-                    // Cache hit!
-                    let mut stats = self.stats.write().await;
-                    stats.cache_hits += 1;
-                    stats.total_bytes_reused += size as u64;
+                // Cache hit!
+                let mut stats = self.stats.write().await;
+                stats.cache_hits += 1;
+                stats.total_bytes_reused += size as u64;
+                drop(stats);
 
-                    tracing::debug!(
-                        "Memory pool cache hit: {} bytes (pool size: {})",
-                        size,
-                        bucket.buffers.len()
-                    );
+                tracing::debug!(
+                    "Memory pool cache hit: {} bytes (pool size: {})",
+                    size,
+                    bucket.buffers.len()
+                );
 
-                    return Ok(buffer);
-                }
+                return Ok(buffer);
             }
         }
 
@@ -111,6 +111,7 @@ impl MemoryPool {
         stats.cache_misses += 1;
         stats.allocations += 1;
         stats.total_bytes_allocated += size as u64;
+        drop(stats);
 
         tracing::debug!("Memory pool cache miss: allocating {} bytes", size);
 
@@ -139,6 +140,7 @@ impl MemoryPool {
 
                 let mut stats = self.stats.write().await;
                 stats.deallocations += 1;
+                drop(stats);
 
                 tracing::debug!(
                     "Buffer returned to pool: {} bytes (pool size: {})",
@@ -162,9 +164,12 @@ impl MemoryPool {
 
             let mut stats = self.stats.write().await;
             stats.deallocations += 1;
+            drop(stats);
 
             tracing::debug!("New buffer bucket created: {} bytes", size);
         }
+
+        drop(buffers);
     }
 
     /// Get pool statistics

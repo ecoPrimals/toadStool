@@ -164,23 +164,20 @@ impl SelectionPolicy {
         let energy_score = 1000.0 / (caps.power_watts + 1.0);
 
         // Historical performance bonus
-        let history_bonus =
-            if let Some(avg_duration) = history.average_duration_for(substrate.substrate_type()) {
+        let history_bonus = history
+            .average_duration_for(substrate.substrate_type())
+            .map_or(1.0, |avg_duration| {
                 1.0 / (avg_duration.as_secs_f64() + 0.001)
-            } else {
-                1.0 // No history, neutral
-            };
+            });
 
         // Power budget constraint
-        let power_penalty = if let Some(budget) = request.power_budget_watts {
+        let power_penalty = request.power_budget_watts.map_or(1.0, |budget| {
             if caps.power_watts > budget {
                 0.1 // Heavy penalty for exceeding budget
             } else {
                 1.0
             }
-        } else {
-            1.0 // No budget constraint
-        };
+        });
 
         // Weight based on target
         let score = match request.target {
@@ -207,8 +204,8 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
     use std::sync::Arc;
-    use toadstool_runtime_universal::substrate::*;
     use toadstool_runtime_universal::SubstrateError;
+    use toadstool_runtime_universal::substrate::*;
 
     struct MockSubstrate {
         name: String,

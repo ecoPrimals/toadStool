@@ -192,6 +192,7 @@ impl AiMcpInterface {
             let avg_secs = total_secs / sessions.len() as u64;
             let mins = avg_secs / 60;
             let secs = avg_secs % 60;
+            drop(sessions);
             format!("{mins}m {secs}s")
         };
         stats.insert(

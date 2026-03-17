@@ -79,8 +79,9 @@ impl CommunicationManager {
             status: ServiceStatus::Discovered,
         };
 
-        let mut channels = self.channels.write().await;
-        channels
+        self.channels
+            .write()
+            .await
             .entry(service.id.clone())
             .or_insert_with(|| channel.clone());
 
@@ -88,7 +89,7 @@ impl CommunicationManager {
         Ok(channel)
     }
 
-    #[allow(clippy::unused_async)] // Conditional async: has await when networking enabled
+    #[allow(clippy::unused_async, clippy::significant_drop_tightening)] // Conditional async; Tarpc fallback_client() borrows from guard
     pub async fn send_message(
         &self,
         channel: &ServiceChannel,
@@ -124,7 +125,7 @@ impl CommunicationManager {
         }
     }
 
-    #[allow(clippy::unused_async)] // Conditional async: has await when networking enabled
+    #[allow(clippy::unused_async, clippy::significant_drop_tightening)] // Conditional async; Tarpc fallback_client() borrows from guard
     pub async fn check_health(&self, channel: &ServiceChannel) -> ToadStoolResult<()> {
         debug!("🔍 Checking health of service: {}", channel.service_name);
 
@@ -174,8 +175,7 @@ impl CommunicationManager {
         self.send_message(channel, heartbeat_msg).await?;
 
         drop(channels);
-        let mut channels = self.channels.write().await;
-        if let Some(channel) = channels.get_mut(service_id) {
+        if let Some(channel) = self.channels.write().await.get_mut(service_id) {
             channel.last_heartbeat = std::time::SystemTime::now();
         }
 
@@ -248,7 +248,7 @@ impl CommunicationManager {
     }
 
     #[cfg(not(feature = "networking"))]
-    fn create_client_for_service(
+    const fn create_client_for_service(
         &self,
         _service: &DiscoveredService,
     ) -> ToadStoolResult<ServiceClient> {

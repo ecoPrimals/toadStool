@@ -7,7 +7,7 @@ use tracing::{info, warn};
 
 use crate::primal_identity::ServiceEndpoint;
 
-use super::config::{capability_from_str, ConfigFile};
+use super::config::{ConfigFile, capability_from_str};
 use super::types::{DiscoveredService, DiscoveryError, DiscoveryResult};
 
 /// Resolve config path: explicit arg → env var → default locations.

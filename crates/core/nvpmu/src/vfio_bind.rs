@@ -73,16 +73,16 @@ pub fn current_binding(bdf: &str) -> Result<BindingState> {
 /// Returns error if the device has active consumers.
 pub fn check_unbind_safe(bdf: &str) -> Result<()> {
     let drm_path = format!("/sys/bus/pci/devices/{bdf}/drm");
-    if Path::new(&drm_path).exists() {
-        if let Ok(entries) = fs::read_dir(&drm_path) {
-            for entry in entries.flatten() {
-                let name = entry.file_name();
-                let name_str = name.to_string_lossy();
-                if name_str.starts_with("card") {
-                    let fb_path = entry.path().join("device/graphics");
-                    if fb_path.exists() {
-                        tracing::warn!(bdf, card = %name_str, "DRM device present — check for active consumers");
-                    }
+    if Path::new(&drm_path).exists()
+        && let Ok(entries) = fs::read_dir(&drm_path)
+    {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("card") {
+                let fb_path = entry.path().join("device/graphics");
+                if fb_path.exists() {
+                    tracing::warn!(bdf, card = %name_str, "DRM device present — check for active consumers");
                 }
             }
         }

@@ -19,14 +19,14 @@ pub struct EmulatorZ80;
 
 impl Emulator6502 {
     /// Create a new 6502 emulator
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl EmulatorZ80 {
     /// Create a new Z80 emulator
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

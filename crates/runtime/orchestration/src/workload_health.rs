@@ -88,13 +88,13 @@ pub struct WorkloadHealthMonitor {
 impl WorkloadHealthMonitor {
     /// Create a new monitor with default thresholds (yellow=3, red=5).
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self::with_thresholds(3, 5)
     }
 
     /// Create a monitor with custom escalation thresholds.
     #[must_use]
-    pub fn with_thresholds(yellow_threshold: u32, red_threshold: u32) -> Self {
+    pub const fn with_thresholds(yellow_threshold: u32, red_threshold: u32) -> Self {
         Self {
             state: AttentionState::Green,
             interrupts: Vec::new(),
@@ -107,6 +107,7 @@ impl WorkloadHealthMonitor {
 
     /// Record a healthy interval. May de-escalate if `healthy_streak` >= `yellow_threshold`.
     /// Red never auto-de-escalates; use `reset()` for that.
+    #[allow(clippy::missing_const_for_fn)] // Mutates self
     pub fn report_healthy(&mut self) {
         self.healthy_streak += 1;
         self.anomaly_streak = 0;
@@ -153,13 +154,13 @@ impl WorkloadHealthMonitor {
         let interrupt = WorkloadInterrupt {
             anomaly,
             severity: self.state,
-            action: action.clone(),
+            action,
             context,
             timestamp_ms,
         };
 
-        self.interrupts.push(interrupt.clone());
-        interrupt
+        self.interrupts.push(interrupt);
+        self.interrupts.last().cloned().unwrap()
     }
 
     fn select_action(&self, anomaly: WorkloadAnomaly) -> InterruptAction {
@@ -195,11 +196,12 @@ impl WorkloadHealthMonitor {
 
     /// Current attention state.
     #[must_use]
-    pub fn state(&self) -> AttentionState {
+    pub const fn state(&self) -> AttentionState {
         self.state
     }
 
     /// Reset to Green and clear streaks. Use when starting a new workload or after manual recovery.
+    #[allow(clippy::missing_const_for_fn)] // Mutates self
     pub fn reset(&mut self) {
         self.state = AttentionState::Green;
         self.healthy_streak = 0;
@@ -366,9 +368,11 @@ mod tests {
 
         let interrupts = m.interrupts();
         assert_eq!(interrupts.len(), 3);
-        assert!(interrupts
-            .iter()
-            .all(|i| i.anomaly == WorkloadAnomaly::Stalled));
+        assert!(
+            interrupts
+                .iter()
+                .all(|i| i.anomaly == WorkloadAnomaly::Stalled)
+        );
         assert!(interrupts.iter().all(|i| i.timestamp_ms > 0));
     }
 

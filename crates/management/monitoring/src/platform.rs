@@ -17,7 +17,7 @@ fn total_system_memory_bytes() -> f64 {
 }
 
 /// Gets platform-specific metrics for a process
-pub(crate) async fn get_platform_metrics(
+pub async fn get_platform_metrics(
     pid: u32,
     config: &MonitoringConfig,
 ) -> Result<toadstool::resources::RuntimeMetrics, ResourceMonitorError> {

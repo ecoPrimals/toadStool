@@ -160,12 +160,12 @@ impl FractalRuntime {
     }
 
     /// Get deployment layer
-    pub fn deployment_layer(&self) -> &DeploymentLayer {
+    pub const fn deployment_layer(&self) -> &DeploymentLayer {
         &self.layer
     }
 
     /// Get adapted capabilities
-    pub fn capabilities(&self) -> &AdaptedCapabilities {
+    pub const fn capabilities(&self) -> &AdaptedCapabilities {
         &self.capabilities
     }
 
@@ -245,7 +245,7 @@ impl BarracudaIntegration {
     }
 
     /// Check if GPU is available
-    pub fn has_gpu(&self) -> bool {
+    pub const fn has_gpu(&self) -> bool {
         !matches!(self, Self::None { .. })
     }
 }
@@ -259,7 +259,7 @@ pub struct FractalServiceAdvertiser {
 
 impl FractalServiceAdvertiser {
     /// Create a new advertiser for a fractal runtime
-    pub fn new(runtime: Arc<FractalRuntime>) -> Self {
+    pub const fn new(runtime: Arc<FractalRuntime>) -> Self {
         Self { runtime }
     }
 

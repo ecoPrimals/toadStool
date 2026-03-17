@@ -37,7 +37,7 @@ impl WgpuComputeUnit {
     /// barraCuda reads this to build its `GpuDriverProfile` (NVK detection,
     /// f64 workarounds, workgroup tuning) without depending on wgpu.
     #[must_use]
-    pub fn adapter_info(&self) -> &GpuAdapterInfo {
+    pub const fn adapter_info(&self) -> &GpuAdapterInfo {
         &self.adapter_info
     }
 }

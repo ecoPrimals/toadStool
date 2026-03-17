@@ -7,11 +7,11 @@
 //! - Sparse operations (sparse matrix operations)
 //! - Graph algorithms (neighbor access)
 
+use toadstool_runtime_universal::ComputeError;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
     DataType, OperationType, Workload, WorkloadData, WorkloadParams,
 };
-use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
 async fn main() -> Result<(), ComputeError> {

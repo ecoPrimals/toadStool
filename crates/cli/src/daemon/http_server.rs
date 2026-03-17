@@ -5,11 +5,11 @@
 
 #[cfg(feature = "daemon")]
 use axum::{
+    Router,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Json, Response},
     routing::{delete, get, post},
-    Router,
 };
 #[cfg(feature = "daemon")]
 use std::net::SocketAddr;
@@ -73,7 +73,7 @@ pub async fn start_http_server(
 
 /// Create the axum router with all routes
 #[cfg(feature = "daemon")]
-pub(crate) fn create_router(state: ServerState) -> Router {
+pub fn create_router(state: ServerState) -> Router {
     Router::new()
         // Health and metrics
         .route("/health", get(health_handler))
@@ -262,11 +262,9 @@ enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, error, message) = match self {
-            ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, "not_found", msg),
-            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg),
-            ApiError::InternalError(msg) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", msg)
-            }
+            Self::NotFound(msg) => (StatusCode::NOT_FOUND, "not_found", msg),
+            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg),
+            Self::InternalError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", msg),
         };
 
         let body = Json(ErrorResponse {
@@ -283,7 +281,7 @@ impl IntoResponse for ApiError {
 impl From<crate::CliError> for ApiError {
     fn from(err: crate::CliError) -> Self {
         error!("Internal error: {}", err);
-        ApiError::InternalError(err.to_string())
+        Self::InternalError(err.to_string())
     }
 }
 

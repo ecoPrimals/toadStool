@@ -801,11 +801,13 @@ async fn test_execute_biome_os_with_provider_success() {
     assert!(result.is_ok());
     let response = result.unwrap();
     assert!(matches!(response.status, ExecutionStatus::Success));
-    assert!(response
-        .output
-        .stdout
-        .as_ref()
-        .is_some_and(|s| s.contains("BiomeOS")));
+    assert!(
+        response
+            .output
+            .stdout
+            .as_ref()
+            .is_some_and(|s| s.contains("BiomeOS"))
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

@@ -57,10 +57,10 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
     let mut cpu_info = CpuInfo::default();
 
     // Try to read CPU info from /proc/cpuinfo on Linux
-    if cfg!(target_os = "linux") {
-        if let Ok(cpuinfo) = tokio::fs::read_to_string("/proc/cpuinfo").await {
-            cpu_info = parse_linux_cpuinfo(&cpuinfo);
-        }
+    if cfg!(target_os = "linux")
+        && let Ok(cpuinfo) = tokio::fs::read_to_string("/proc/cpuinfo").await
+    {
+        cpu_info = parse_linux_cpuinfo(&cpuinfo);
     }
 
     // Try to get CPU info from sysctl on macOS
@@ -128,10 +128,10 @@ fn parse_linux_cpuinfo(cpuinfo: &str) -> CpuInfo {
                     }
                 }
                 "cache size" => {
-                    if value.contains("KB") {
-                        if let Ok(kb) = value.replace(" KB", "").parse::<u32>() {
-                            parsed.cache_size_kb = kb;
-                        }
+                    if value.contains("KB")
+                        && let Ok(kb) = value.replace(" KB", "").parse::<u32>()
+                    {
+                        parsed.cache_size_kb = kb;
                     }
                 }
                 "flags" | "Features" => {

@@ -9,8 +9,8 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    use crate::workload::*;
     use crate::WorkloadSpec;
+    use crate::workload::*;
 
     #[test]
     fn test_aiml_workload_analysis_training_large() {

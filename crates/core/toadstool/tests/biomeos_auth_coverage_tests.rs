@@ -16,8 +16,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use toadstool::biomeos_integration::auth::{AuthManagerConfig, AuthenticationManager};
 use toadstool::biomeos_integration::InMemoryAuthBackend;
+use toadstool::biomeos_integration::auth::{AuthManagerConfig, AuthenticationManager};
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 fn base_config() -> AuthManagerConfig {

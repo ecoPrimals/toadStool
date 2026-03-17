@@ -12,7 +12,7 @@ use tracing::info;
 
 use toadstool::error::ToadStoolResult;
 use toadstool_distributed::{
-    substrate_detection::SubstrateDetector, DistributedConfig, DistributedCoordinator,
+    DistributedConfig, DistributedCoordinator, substrate_detection::SubstrateDetector,
 };
 
 #[tokio::main]

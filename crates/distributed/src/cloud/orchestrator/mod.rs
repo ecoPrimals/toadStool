@@ -57,8 +57,10 @@ impl UniversalCloudOrchestrator {
         info!("Provider {} capabilities: {:?}", name, capabilities);
         info!("Provider {} metadata: {:?}", name, metadata);
 
-        let mut providers = self.providers.write().await;
-        providers.insert(name.clone(), provider);
+        {
+            let mut providers = self.providers.write().await;
+            providers.insert(name.clone(), provider);
+        }
 
         self.cost_optimizer
             .add_provider_cost_model(&name, &capabilities)
@@ -126,6 +128,7 @@ impl UniversalCloudOrchestrator {
 
         let providers = self.providers.read().await;
         let available_providers: Vec<String> = providers.keys().cloned().collect();
+        drop(providers);
 
         let selected_providers = self
             .hybrid_scheduler
@@ -169,6 +172,7 @@ impl UniversalCloudOrchestrator {
         })?;
 
         let handle = provider.deploy_job(job).await?;
+        drop(providers);
 
         Ok(CloudDeploymentResult::Single {
             provider: provider_name.to_string(),
@@ -194,6 +198,7 @@ impl UniversalCloudOrchestrator {
             })?;
 
             let handle = provider.deploy_job(&job_part).await?;
+            drop(providers_guard);
             handles.insert(provider_name, handle);
         }
 
@@ -201,6 +206,7 @@ impl UniversalCloudOrchestrator {
     }
 
     /// Deploy with cloud bursting capability
+    #[allow(clippy::significant_drop_tightening)] // Must hold lock - primary ref is from providers
     async fn deploy_with_cloud_burst(
         &self,
         job: &UniversalJob,
@@ -257,6 +263,7 @@ impl UniversalCloudOrchestrator {
     }
 
     /// Get availability across all clouds
+    #[allow(clippy::significant_drop_tightening)] // Must hold lock during iteration - provider refs are from lock
     async fn get_multi_cloud_availability(&self) -> ToadStoolResult<MultiCloudAvailability> {
         let mut availability = MultiCloudAvailability::new();
         let providers = self.providers.read().await;

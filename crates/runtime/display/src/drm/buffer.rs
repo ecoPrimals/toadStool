@@ -257,7 +257,7 @@ impl DumbBuffer {
     }
 
     /// Borrow the underlying `drm::control::DumbBuffer` for framebuffer attachment.
-    pub(crate) fn inner(&self) -> &drm::control::dumbbuffer::DumbBuffer {
+    pub(crate) const fn inner(&self) -> &drm::control::dumbbuffer::DumbBuffer {
         &self.inner
     }
 }

@@ -156,10 +156,12 @@ mod tests {
         let creds = GCPCredentials {
             service_account_key: SecretString::from(r#"{"type":"service_account"}"#),
         };
-        assert!(creds
-            .service_account_key
-            .expose_secret()
-            .contains("service_account"));
+        assert!(
+            creds
+                .service_account_key
+                .expose_secret()
+                .contains("service_account")
+        );
     }
 
     #[test]

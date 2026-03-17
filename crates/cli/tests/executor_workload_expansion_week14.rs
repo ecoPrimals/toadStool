@@ -161,10 +161,12 @@ fn test_environment_variable_parsing_with_equals() {
     }
 
     assert_eq!(env_map.len(), 2);
-    assert!(env_map
-        .get("CONNECTION_STRING")
-        .unwrap()
-        .contains("host=localhost"));
+    assert!(
+        env_map
+            .get("CONNECTION_STRING")
+            .unwrap()
+            .contains("host=localhost")
+    );
     assert!(env_map.get("JSON_CONFIG").unwrap().contains("\"key\""));
 }
 
@@ -360,9 +362,10 @@ fn test_workload_metadata_validation() {
         assert!(!name.is_empty());
         assert!(name.len() < 100);
         // Verify it contains only valid characters
-        assert!(name
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
+        assert!(
+            name.chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+        );
     }
 }
 

@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use colored::Colorize;
 use tracing::info;
 
-use crate::{load_biome_manifest, validate_manifest, CliContextExt, Result};
+use crate::{CliContextExt, Result, load_biome_manifest, validate_manifest};
 
 /// Validate biome manifest
 pub async fn execute_validate(

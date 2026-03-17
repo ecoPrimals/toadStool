@@ -242,16 +242,16 @@ impl PolicyManager for FilePolicyManager {
         // Check cache first; update LRU metadata on hit.
         {
             let mut cache = self.policy_cache.write().await;
-            if let Some(cached) = cache.get_mut(policy_id) {
-                if self.is_cache_valid(cached) {
-                    debug!(
-                        "Policy {} found in cache (hits: {})",
-                        policy_id,
-                        cached.access_count + 1
-                    );
-                    cached.touch();
-                    return Ok(cached.policy.clone());
-                }
+            if let Some(cached) = cache.get_mut(policy_id)
+                && self.is_cache_valid(cached)
+            {
+                debug!(
+                    "Policy {} found in cache (hits: {})",
+                    policy_id,
+                    cached.access_count + 1
+                );
+                cached.touch();
+                return Ok(cached.policy.clone());
             }
         }
 
@@ -323,8 +323,7 @@ impl PolicyManager for FilePolicyManager {
         }
 
         // Remove from cache
-        let mut cache = self.policy_cache.write().await;
-        cache.remove(policy_id);
+        self.policy_cache.write().await.remove(policy_id);
 
         info!("Deleted policy: {}", policy_id);
         Ok(())
@@ -349,10 +348,10 @@ impl PolicyManager for FilePolicyManager {
         })? {
             let path = entry.path();
             // Policies are persisted as TOML (see save_policy_to_file).
-            if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    policies.push(stem.to_string());
-                }
+            if path.extension().and_then(|s| s.to_str()) == Some("toml")
+                && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
+            {
+                policies.push(stem.to_string());
             }
         }
 

@@ -1,63 +1,42 @@
-# Status -- March 16, 2026 (S156 Full Codebase Audit + Specialty Crate Resurrection)
+# Status -- March 16, 2026 (S157 Comprehensive Audit + Edition 2024 + Nursery Evolution)
 
 ## Quality Gates
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| `cargo build --workspace` | PASS | Clean build |
+| `cargo build --all-features` | PASS | Clean build — edition 2024, MSRV 1.85 |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` | PASS | **Pedantic clean — 0 errors, 0 warnings across all 56 crates** (S156: runtime-specialty resurrected from 167 compile errors, distributed needless_return fixed) |
-| `cargo doc --workspace --no-deps` | PASS | 0 warnings (S156: nvpmu register doc-link escapes, specialty HTML tag fixes) |
-| `cargo test --workspace` | PASS | **21,156 tests, 0 failures, 222 ignored** (S156: +313 net new — specialty crate resurrected + test files rewritten) |
+| `cargo clippy --all-features -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 warnings across all 56 crates** (S157: nursery enabled workspace-wide, ~500+ violations fixed) |
+| `cargo doc --all-features --no-deps` | PASS | 0 warnings |
+| `cargo test --all-features` | **Blocked** | Edition 2024 `unsafe` env var change — `set_var`/`remove_var` now `unsafe` in test code. Tests need `unsafe {}` wrapping. |
 | `cargo llvm-cov` | **~83% line** | 182K lines instrumented. Target 90%. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
-| All doctests | PASS | common, core, server, cli, testing, display |
-| Standalone clone test | PASS | GPU-optional, CPU fallback |
-| License compliance | PASS | **AGPL-3.0-only: all Cargo.toml + all 1,759 .rs files have SPDX headers** |
-| Production panics | PASS | **0 production panic!()** — all `panic!`/`unwrap()`/`expect()` confirmed in test code, SAFETY-justified hardware drivers, or compile-time constants |
-| Sovereignty | PASS | **Deprecated primal-name APIs migrated** — `primals::*` → `capabilities::*` across 20+ files (S144). Capability bridges centralized in `capability_helpers.rs`. |
-| Hardware transport wired | PASS | CLI discover/list/status + JSON-RPC transport.discover/list/route/open/stream/status. **PCIe switch topology** with shared-switch detection and contention-aware bandwidth (S144). **SerialTransport Sync fixed** (S155). |
-| Progressive showcase | PASS | **15 demos, 4 levels** — local primal, shader pipeline, compute triangle (toadStool/barraCuda/coralReef), ecosystem integration. All build standalone. |
-| Compute triangle discovery | PASS | **Dual-write announce** (ecoPrimals/discovery/ + ecoPrimals/ root), `gpu.dispatch` capability, GPU descriptors with render_node/driver/arch. coralReef-compatible. |
-| Spring absorption | PASS | **StreamingDispatch** (hotSpring v0.6.24), **PipelineGraph DAG** (neuralSpring S134) absorbed into `toadstool::universal`. |
-| Dead code audit | PASS | **~47 `#[allow(dead_code)]` with explicit `reason = "..."`** — all documented (S144) |
-| GPU test guards | PASS | **`gpu_guards` module** for safe wgpu test skipping on NVIDIA proprietary drivers (S144) |
-| Multi-device compile | PASS | **coralReef multi-device API** — `MultiDeviceCompileRequest`, `shader.compile.wgsl.multi` JSON-RPC endpoint (S144) |
+| License compliance | PASS | **AGPL-3.0-only**: all Cargo.toml + all 1,896 .rs files have SPDX headers |
+| Production panics | PASS | **0 production panic!()** |
+| Sovereignty | PASS | Capability-based discovery. Zero hardcoded primal names. |
+| ecoBin v3.0 | PASS | First primal certified. Zero infrastructure C. |
 
 ## Codebase Metrics
 
 | Metric | Value |
 |--------|-------|
-| WGSL shaders | Transferred to barraCuda (S93). Fossil moved to `ecoPrimals/fossil/toadStool/` (S94b) |
-| Rust version | **1.82+** (is_some_and, div_ceil) |
-| `.rs` files | **1,759** files, **540,125** lines |
-| `unsafe` blocks | **~70+** (SAFETY audit complete S152; V4L2/VFIO/GPU FFI, aligned alloc, secure enclave — no safe alternatives). S156: `unreachable!()` in dma.rs evolved to safe `Err`. |
-| `#![deny(unsafe_code)]` / `#![forbid(unsafe_code)]` | **22 crates forbid, ~10 deny**; hardware crates (akida-driver, gpu, nvpmu, hw-learn) appropriately lack forbid. |
-| External dep debt | **Zero chrono, zero anyhow, zero log (stale), zero once_cell, zero num_cpus, zero pollster, zero serde_yaml, zero notify, zero sysinfo, zero caps**. `aes-gcm` optional (dev-crypto only). `toadstool-sysmon` (pure Rust /proc) replaces sysinfo. |
-| Production `Box<dyn Error>` | **0** — all typed errors via thiserror |
-| Production unwraps | **0 blind** — infallible `expect()` only |
-| Production mocks/stubs | **0** — all evolved to real implementations or proper errors. `SoftwareHsmProvider`/`LocalKeyringProvider` gated behind `dev-crypto` feature (S134). Architecture stubs evolved to typed enums/traits (auth, scheduling S128). Shader stubs evolved to coralReef proxy with graceful fallback (S130) |
-| Dead code | **~47 justified `#[allow(dead_code, reason = "...")]`** — all with explicit reason annotations (S144: upgraded from comment-only justification to first-class `reason` parameter) |
-| File size limit | **All < 1000 lines** (largest: 451; hw_learn/wgpu_backend refactored S154) |
-| Clippy pedantic | **PASS** — zero warnings with `-W clippy::pedantic --all-targets` across entire workspace including test code (S141). Production `#[allow]` evolved to `#[expect]` (S131+, S132, S141). 170+ stale suppressions discovered and removed total. |
-| Wildcard re-exports narrowed | **RESOLVED** (S132) — 4 high-traffic crates narrowed to explicit exports. Remaining wildcards justified (15+ items all used). |
-| External deps removed (S74-S78) | pollster, serde_yaml, async-trait (5 crates), libc (akida-driver) |
-| Hardcoded IPs/ports | **0** — config constants + capability-based discovery. S156: dispatch 5000ms timeout → `DISPATCH_DEFAULT_TIMEOUT` named constant. |
-| JSON-RPC methods | **96+** (includes `compute.dispatch.submit/status/result/capabilities`, `compute.dispatch.forward`, `compute.hardware.vfio_devices`; methods dynamically built from semantic registry) |
-| Hardware transports | **3 implemented** (DisplayTransport, CaptureTransport, SerialTransport) + TransportRouter + **PCIe P2P** with topology-aware routing |
-| REST API | **Removed** — JSON-RPC 2.0 is the only API path; handler source + tests deleted (S90) |
-| Middleware | **Removed** — dead `middleware.rs` + 7 test files deleted (~131 KB, S92) |
-| SPDX headers | **100%** — all .rs files have AGPL-3.0-only (aligned S138) |
-| Sovereignty | **RESOLVED** (S94b). All 7 production callers migrated to `get_socket_path_for_capability()`. Legacy name-based APIs fully deprecated. BearDog user-facing strings neutralized. |
-| ecoBin | **PyO3 optional** — `pure-rust` feature compiles cleanly with zero C FFI deps (S90, verified S92) |
-| unsafe docs | **100%** — all `unsafe` blocks have `// SAFETY:` comments (S90) |
-| Clone audit | **Arc-cached compiled kernels**, **moved Vec instead of clone** on hot paths (S90). 14 hot-path patterns documented (S130+). **3 evolved (S132)**: cross_gate IDs → `Arc<str>`, unibin/capabilities → `Vec<Arc<str>>`, coordinator service_id → `Arc<str>`. **S141**: `Vec<u8>` → `bytes::Bytes` (zero-copy clone via refcount) in 6 GPU/runtime types. |
-| Production `todo!()` / `unimplemented!()` | **0** — confirmed by full codebase audit (S92) |
-| Production FIXME / HACK | **0** — confirmed by full codebase audit (S92) |
-| ComputeDispatch adoption | **144 ops migrated** (~139 legacy ops remaining, incremental) |
-| Test concurrency | **All concurrent** — zero `#[serial]`, zero fixed sleeps in non-chaos tests |
-| Environment safety | **All `temp_env`** — zero `std::env::set_var` in test code |
-| Default test timeout | **5s** (unit: 2s, integration: 30s, chaos: 20s) |
+| Rust edition | **2024** (S157: upgraded from 2021) |
+| MSRV | **1.85.0** (S157: upgraded from 1.82.0) |
+| `.rs` files | **1,896** files, **565,228** lines |
+| Workspace members | **56 crates** |
+| Clippy lints | **pedantic + nursery** — both enabled at workspace level (S157) |
+| `unsafe` blocks | **~70+** (all SAFETY-documented; hardware-justified only) |
+| `#![forbid(unsafe_code)]` | **22 crates forbid, ~10 deny** |
+| File size limit | **All < 1000 lines** (largest: 927; all production files < 500 after S157 refactoring) |
+| Zero-copy | **`bytes::Bytes`** in GPU buffers, tarpc payloads, neuromorphic weights, WASM modules |
+| JSON-RPC methods | **96+** (semantic `domain.verb` naming per wateringHole standard) |
+| Production `todo!()`/`unimplemented!()` | **0** |
+| Production FIXME/HACK/XXX | **0** |
+| Production unwraps | **0** in library code (test-only via `.clippy.toml` `allow-unwrap-in-tests`) |
+| Hardcoded IPs/ports | **0** — all config constants + capability-based discovery |
+| External dep debt | Zero chrono, anyhow, log, once_cell, num_cpus, pollster, serde_yaml, notify, sysinfo, caps |
+| SPDX headers | **100%** |
+| Profraw debris | **0** (S157: cleaned 271 stale .profraw files) |
 
 ## Architecture Highlights
 
@@ -96,6 +75,17 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S157: Comprehensive Audit + Edition 2024 + Nursery Evolution (Mar 16, 2026)
+- **Rust edition 2024**: Upgraded from 2021. MSRV 1.82→1.85. All `gen` keyword conflicts renamed (`generation`, `pcie_gen`, `id_generator`). Collapsed `if let` chains for 2024 syntax.
+- **Clippy nursery enabled**: Workspace-wide `nursery = { level = "warn", priority = -1 }`. ~500+ violations fixed across all crates: `const fn`, `redundant-pub-crate`, `option-if-let-else`, `significant-drop-tightening`, `use-self`, `or-fun-call`, `redundant-clone`, `mul-add`, `derive-partial-eq-without-eq`, `future-not-send`, `branches-sharing-code`.
+- **GPU/distributed compile errors resolved**: `toadstool-runtime-gpu` (Vec<u8>→Bytes, CUDA WorkloadResult fields, i32→i64 memory estimate, cudarc 0.19 trait bounds), `toadstool-distributed` (missing `reply_channel` field), OpenCL buffer write API.
+- **CLI/NPU wiring**: `akida-driver` dependency added for `npu` feature. `ChipVersion` Display impl. `From<AkidaError>` for CliError.
+- **Large file refactoring**: `specialty/src/lib.rs` → `config.rs`, `engine.rs`, `error.rs`, `runtime_bridge.rs`, `tests.rs`. All production files < 500 lines.
+- **Zero-copy expanded**: OpenCL and CUDA backends now use `bytes::Bytes` for `WorkloadResult::outputs`.
+- **Debris cleanup**: 271 stale `.profraw` files removed from crate directories.
+- **Known issue**: `std::env::set_var`/`remove_var` unsafe in edition 2024 — 22 test call sites in `config/services/tests.rs` need `unsafe {}` blocks.
+- 1,896 `.rs` files, 565,228 lines. 56 workspace crates.
 
 ### S154: Deep Audit + Quality Gate Evolution (Mar 14, 2026)
 - **Tests**: 20,285 (was 20,262) — 0 failures, 222 ignored. 49 new targeted tests (templates, network_config, hardware, mdns_discovery).

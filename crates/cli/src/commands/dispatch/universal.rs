@@ -6,7 +6,7 @@
 
 use tracing::info;
 
-use crate::{universal::UniversalComputeManager, Result};
+use crate::{Result, universal::UniversalComputeManager};
 
 use super::super::definitions::UniversalCommands;
 

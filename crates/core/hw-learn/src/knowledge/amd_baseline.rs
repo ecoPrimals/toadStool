@@ -256,7 +256,7 @@ pub enum UniversalInitPhase {
 impl UniversalInitPhase {
     /// Map a `RegFunction` to its universal init phase.
     #[must_use]
-    pub fn from_reg_function(f: RegFunction) -> Self {
+    pub const fn from_reg_function(f: RegFunction) -> Self {
         match f {
             RegFunction::ClockEnable | RegFunction::PowerGate | RegFunction::ThermalConfig => {
                 Self::Power

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Modern Rust Patterns Showcase
 
-#![allow(clippy::missing_errors_doc, clippy::needless_pass_by_value)]
+#![allow(
+    clippy::nursery,
+    clippy::missing_errors_doc,
+    clippy::needless_pass_by_value
+)]
 //!
 //! This example demonstrates the modern, idiomatic patterns we're evolving toward
 //! in the ToadStool codebase. Use this as a reference for refactoring.

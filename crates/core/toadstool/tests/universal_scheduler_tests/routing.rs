@@ -16,7 +16,7 @@ use toadstool::universal::{
 use uuid::Uuid;
 
 use super::helpers::{
-    create_test_context, make_test_context, FailingMockProvider, SucceedingMockProvider,
+    FailingMockProvider, SucceedingMockProvider, create_test_context, make_test_context,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -157,12 +157,14 @@ async fn test_scheduler_primal_job_no_provider_returns_error_response() {
         response.status,
         toadstool::execution::ExecutionStatus::Failed { .. }
     ));
-    assert!(response
-        .output
-        .stderr
-        .as_ref()
-        .unwrap()
-        .contains("nonexistent_primal"));
+    assert!(
+        response
+            .output
+            .stderr
+            .as_ref()
+            .unwrap()
+            .contains("nonexistent_primal")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

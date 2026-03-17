@@ -61,7 +61,7 @@ impl MetricsStore {
         stats.count += 1;
         stats.min = stats.min.min(value);
         stats.max = stats.max.max(value);
-        stats.avg = (stats.avg * (stats.count - 1) as f64 + value) / stats.count as f64;
+        stats.avg = stats.avg.mul_add((stats.count - 1) as f64, value) / stats.count as f64;
     }
 
     #[allow(clippy::unused_async)]

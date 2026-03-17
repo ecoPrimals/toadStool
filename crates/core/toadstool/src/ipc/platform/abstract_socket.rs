@@ -119,7 +119,7 @@ pub fn default_name() -> String {
 /// Check if abstract sockets are supported
 ///
 /// **Deep Debt**: Runtime capability detection
-pub fn is_supported() -> bool {
+pub const fn is_supported() -> bool {
     cfg!(target_os = "linux")
 }
 

@@ -7,10 +7,10 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use toadstool::{ToadStoolError, ToadStoolResult};
 
+use crate::PrimalIntegration;
 use crate::health::{HealthCheck, HealthCheckStatus, HealthStatus};
 use crate::integration_manifest::BiomeManifest;
 use crate::service::StartupStatus;
-use crate::PrimalIntegration;
 
 /// Primal Integration Manager
 pub struct PrimalIntegrationManager {
@@ -76,28 +76,28 @@ impl PrimalIntegrationManager {
 
         // Phase 1: Validate all Primal configurations
         for name in manifest.primals.keys() {
-            if let Some(primal) = self.primals.get(name) {
-                if let Err(e) = primal.validate_dependencies(manifest).await {
-                    results.insert(name.clone(), PrimalBootstrapResult::Failed(e.to_string()));
-                }
+            if let Some(primal) = self.primals.get(name)
+                && let Err(e) = primal.validate_dependencies(manifest).await
+            {
+                results.insert(name.clone(), PrimalBootstrapResult::Failed(e.to_string()));
             }
         }
 
         // Phase 2: Initialize Primals in dependency order
         let startup_order = self.calculate_startup_order(manifest)?;
         for primal_name in &startup_order {
-            if let Some(primal) = self.primals.get(primal_name as &str) {
-                if let Some(config) = manifest.primals.get(primal_name as &str) {
-                    match primal.initialize_from_manifest(config).await {
-                        Ok(()) => {
-                            results.insert(primal_name.clone(), PrimalBootstrapResult::Success);
-                        }
-                        Err(e) => {
-                            results.insert(
-                                primal_name.clone(),
-                                PrimalBootstrapResult::Failed(e.to_string()),
-                            );
-                        }
+            if let Some(primal) = self.primals.get(primal_name as &str)
+                && let Some(config) = manifest.primals.get(primal_name as &str)
+            {
+                match primal.initialize_from_manifest(config).await {
+                    Ok(()) => {
+                        results.insert(primal_name.clone(), PrimalBootstrapResult::Success);
+                    }
+                    Err(e) => {
+                        results.insert(
+                            primal_name.clone(),
+                            PrimalBootstrapResult::Failed(e.to_string()),
+                        );
                     }
                 }
             }
@@ -105,27 +105,25 @@ impl PrimalIntegrationManager {
 
         // Phase 3: Start services
         for primal_name in &startup_order {
-            if let Some(primal) = self.primals.get(primal_name as &str) {
-                if results.get(primal_name as &str) == Some(&PrimalBootstrapResult::Success) {
-                    match primal.start_services().await {
-                        Ok(startup_result) => {
-                            if startup_result.status == StartupStatus::Success {
-                                results.insert(primal_name.clone(), PrimalBootstrapResult::Running);
-                            } else {
-                                results.insert(
-                                    primal_name.clone(),
-                                    PrimalBootstrapResult::Failed(
-                                        "Service startup failed".to_string(),
-                                    ),
-                                );
-                            }
-                        }
-                        Err(e) => {
+            if let Some(primal) = self.primals.get(primal_name as &str)
+                && results.get(primal_name as &str) == Some(&PrimalBootstrapResult::Success)
+            {
+                match primal.start_services().await {
+                    Ok(startup_result) => {
+                        if startup_result.status == StartupStatus::Success {
+                            results.insert(primal_name.clone(), PrimalBootstrapResult::Running);
+                        } else {
                             results.insert(
                                 primal_name.clone(),
-                                PrimalBootstrapResult::Failed(e.to_string()),
+                                PrimalBootstrapResult::Failed("Service startup failed".to_string()),
                             );
                         }
+                    }
+                    Err(e) => {
+                        results.insert(
+                            primal_name.clone(),
+                            PrimalBootstrapResult::Failed(e.to_string()),
+                        );
                     }
                 }
             }

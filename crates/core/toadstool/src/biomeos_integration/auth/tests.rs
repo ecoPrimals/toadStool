@@ -29,7 +29,7 @@ fn test_config() -> AuthManagerConfig {
 }
 
 fn test_config_with_signing_key() -> AuthManagerConfig {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     let seed = [0u8; 32];
     AuthManagerConfig {
         beardog_endpoint: "http://localhost:9090".to_string(),
@@ -118,7 +118,7 @@ fn test_get_public_key_with_signing_key() {
     let manager = AuthenticationManager::with_inmemory(config);
     let public_key = manager.get_public_key();
     assert!(public_key.is_some());
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     let pk_bytes = general_purpose::STANDARD
         .decode(public_key.unwrap())
         .expect("Valid base64");
@@ -192,7 +192,7 @@ fn test_get_public_key_invalid_base64_returns_none() {
 
 #[test]
 fn test_get_public_key_wrong_length_returns_none() {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     let short = general_purpose::STANDARD.encode([1u8; 16]);
     let config = AuthManagerConfig {
         beardog_endpoint: String::new(),
@@ -226,7 +226,7 @@ async fn test_sign_payload_invalid_base64_returns_error() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn test_sign_payload_wrong_key_length_returns_error() {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     let bad_len = general_purpose::STANDARD.encode([0u8; 64]);
     let config = AuthManagerConfig {
         beardog_endpoint: String::new(),
@@ -258,9 +258,11 @@ fn test_default_token_audience_self_and_platform_when_no_env() {
     temp_env::with_var("TOADSTOOL_AUTH_AUDIENCE", None::<&str>, || {
         let config = AuthManagerConfig::default();
         assert!(!config.token_audience.is_empty());
-        assert!(config
-            .token_audience
-            .contains(&audience::PLATFORM_AUDIENCE.to_string()));
+        assert!(
+            config
+                .token_audience
+                .contains(&audience::PLATFORM_AUDIENCE.to_string())
+        );
     });
 }
 

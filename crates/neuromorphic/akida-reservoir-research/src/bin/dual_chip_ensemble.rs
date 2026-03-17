@@ -3,8 +3,8 @@
 //!
 //! Runs two reservoirs in parallel and concatenates their states.
 
-use akida_reservoir_research::ensemble::{DualChipEnsemble, EnsembleConfig};
 use akida_reservoir_research::ReservoirResult as Result;
+use akida_reservoir_research::ensemble::{DualChipEnsemble, EnsembleConfig};
 use tracing::info;
 
 #[tokio::main]
@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
     // Create ensemble
     println!("\n2️⃣  Creating ensemble...\n");
 
-    match DualChipEnsemble::discover_and_create(config.clone()) {
+    match DualChipEnsemble::discover_and_create(config) {
         Ok(mut ensemble) => {
             info!("Ensemble created successfully");
 

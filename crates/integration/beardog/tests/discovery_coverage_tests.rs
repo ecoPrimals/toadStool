@@ -5,7 +5,7 @@
 //! Focus: service discovery, capability registration, lookup, error paths
 
 use toadstool_integration_beardog::{
-    discover_entropy, EntropyClient, EntropyMixing, EntropySource, SeedQuality, SeedRequest,
+    EntropyClient, EntropyMixing, EntropySource, SeedQuality, SeedRequest, discover_entropy,
 };
 
 // ============================================================================

@@ -147,7 +147,7 @@ impl StateExtractor {
     /// - `BrainChip` SDK already exposes this functionality
     /// - Akida hardware maintains layer states in NPU SRAM
     /// - We just need to add the correct ioctl interface
-    pub fn research_notes() -> &'static str {
+    pub const fn research_notes() -> &'static str {
         r"
 RESEARCH STATUS: State Extraction
 

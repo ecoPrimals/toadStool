@@ -8,8 +8,8 @@ use super::capability_types::{
     CapabilityHandle, CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint,
 };
 use crate::{
-    platform_paths::{PathEnv, PlatformPaths},
     ToadStoolError, ToadStoolResult,
+    platform_paths::{PathEnv, PlatformPaths},
 };
 use std::collections::HashMap;
 

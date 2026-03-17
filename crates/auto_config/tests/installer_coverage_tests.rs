@@ -5,10 +5,10 @@
 
 use std::path::PathBuf;
 
+use toadstool_auto_config::ToadStoolError;
 use toadstool_auto_config::installer::{
     ConfigManager, InstallationConfig, InstallationResult, SmartInstaller,
 };
-use toadstool_auto_config::ToadStoolError;
 use toadstool_common::platform_paths::Platform;
 
 #[test]

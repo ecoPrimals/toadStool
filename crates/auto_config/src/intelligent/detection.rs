@@ -3,8 +3,8 @@
 
 use tracing::debug;
 
-use crate::hardware::SystemCapabilities;
 use crate::ToadStoolResult;
+use crate::hardware::SystemCapabilities;
 
 /// Platform-specific optimization engine
 pub struct PlatformOptimizer {

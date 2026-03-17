@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Apply handler — apply recipes (dry-run or live BAR0).
 
-use super::helpers::{check_thermal_for_bdf, resolve_bdf};
 use super::HwLearnHandler;
+use super::helpers::{check_thermal_for_bdf, resolve_bdf};
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 impl HwLearnHandler {
@@ -75,22 +75,22 @@ impl HwLearnHandler {
             })?;
 
             let thermal = check_thermal_for_bdf(&bdf);
-            if let Some(ref status) = thermal {
-                if !status.compute_safe() {
-                    return Err(JsonRpcError::internal_error(format!(
-                        "GPU {bdf} thermal status {status:?} — refusing live apply"
-                    )));
-                }
+            if let Some(ref status) = thermal
+                && !status.compute_safe()
+            {
+                return Err(JsonRpcError::internal_error(format!(
+                    "GPU {bdf} thermal status {status:?} — refusing live apply"
+                )));
             }
 
             let mut applicator =
                 hw_learn::RecipeApplicator::new(false).with_register_access(&mut bar0);
             let result = applicator.apply(&recipe, card_path);
 
-            if result.verdict == hw_learn::applicator::ApplyVerdict::Success {
-                if let Ok(mut store) = self.open_store() {
-                    let _ = store.store(&recipe);
-                }
+            if result.verdict == hw_learn::applicator::ApplyVerdict::Success
+                && let Ok(mut store) = self.open_store()
+            {
+                let _ = store.store(&recipe);
             }
 
             Ok(serde_json::json!({

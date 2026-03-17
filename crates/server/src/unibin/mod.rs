@@ -14,8 +14,8 @@ pub use execution::{
 };
 pub use format::{ensure_biomeos_directory, get_socket_path, socket_filename_for_family};
 
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use tracing::{error, info, warn};
 
 /// Exit codes following uniBin/ecoBin standard
@@ -139,10 +139,10 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
         if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().and_then(|e| e.to_str()) == Some("sock") {
-                    if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                        discovered.push(name.to_string());
-                    }
+                if path.extension().and_then(|e| e.to_str()) == Some("sock")
+                    && let Some(name) = path.file_stem().and_then(|s| s.to_str())
+                {
+                    discovered.push(name.to_string());
                 }
             }
         }
@@ -197,15 +197,15 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
     info!("Shutting down ToadStool server...");
     server_handle.abort();
 
-    if socket_path.exists() {
-        if let Err(e) = tokio::fs::remove_file(&socket_path).await {
-            warn!("Failed to remove tarpc socket: {}", e);
-        }
+    if socket_path.exists()
+        && let Err(e) = tokio::fs::remove_file(&socket_path).await
+    {
+        warn!("Failed to remove tarpc socket: {}", e);
     }
-    if jsonrpc_socket.exists() {
-        if let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await {
-            warn!("Failed to remove JSON-RPC socket: {}", e);
-        }
+    if jsonrpc_socket.exists()
+        && let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await
+    {
+        warn!("Failed to remove JSON-RPC socket: {}", e);
     }
 
     info!("ToadStool server stopped");

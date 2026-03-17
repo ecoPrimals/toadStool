@@ -26,8 +26,8 @@ use tokio::sync::RwLock;
 use tracing::info;
 use uuid::Uuid;
 
-use crate::execution::{ExecutionResponse, RuntimeEngine, RuntimeType};
 use crate::ToadStoolResult;
+use crate::execution::{ExecutionResponse, RuntimeEngine, RuntimeType};
 
 use super::jobs::{UniversalJob, UniversalJobType};
 use super::registry::UniversalPrimalRegistry;
@@ -168,7 +168,7 @@ impl UniversalScheduler {
     }
 
     /// Access primal registry (for execution submodule)
-    pub(crate) fn primal_registry(&self) -> &Arc<UniversalPrimalRegistry> {
+    pub(crate) const fn primal_registry(&self) -> &Arc<UniversalPrimalRegistry> {
         &self.primal_registry
     }
 

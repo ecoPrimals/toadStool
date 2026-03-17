@@ -35,5 +35,5 @@ cargo run --release
 
 ## Prerequisites
 
-- Rust 1.82+
+- Rust 1.85+
 - coralReef optional (demo shows fallback when absent)

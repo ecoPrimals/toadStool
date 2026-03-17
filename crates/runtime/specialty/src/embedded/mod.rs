@@ -29,7 +29,7 @@ pub use emulators::{Emulator6502, EmulatorZ80};
 pub use managers::{MemoryLayoutManager, PeripheralManager};
 pub use programmers::{EPROMProgrammer, GenericProgrammer};
 pub use toolchains::{
-    Toolchain6502, Toolchain68000, Toolchain8051, Toolchain8080, Toolchain8086, ToolchainZ80,
+    Toolchain6502, Toolchain8051, Toolchain8080, Toolchain8086, Toolchain68000, ToolchainZ80,
 };
 pub use types::*;
 
@@ -47,18 +47,22 @@ mod tests {
     async fn test_8bit_microcontroller_adapter_creation() {
         let adapter = Microcontroller8BitAdapter::new();
         assert_eq!(adapter.name(), "8-bit Microcontroller Adapter");
-        assert!(adapter
-            .supported_systems()
-            .contains(&LegacySystemType::MOS6502));
+        assert!(
+            adapter
+                .supported_systems()
+                .contains(&LegacySystemType::MOS6502)
+        );
     }
 
     #[tokio::test]
     async fn test_16bit_system_adapter_creation() {
         let adapter = System16BitAdapter::new();
         assert_eq!(adapter.name(), "16-bit System Adapter");
-        assert!(adapter
-            .supported_systems()
-            .contains(&LegacySystemType::Intel8086));
+        assert!(
+            adapter
+                .supported_systems()
+                .contains(&LegacySystemType::Intel8086)
+        );
     }
 
     #[tokio::test]

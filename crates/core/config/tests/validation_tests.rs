@@ -34,10 +34,12 @@ fn test_validation_empty_songbird_endpoint() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Songbird endpoint cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Songbird endpoint cannot be empty")
+    );
 }
 
 /// Test CPU usage range validation
@@ -48,10 +50,12 @@ fn test_validation_cpu_usage_range() {
     config.runtime.resource_limits.max_cpu_usage = -1.0;
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("between 0 and 100"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("between 0 and 100")
+    );
 
     // Test zero CPU
     let mut config2 = ToadStoolConfig::default();
@@ -80,10 +84,12 @@ fn test_validation_memory_usage_range() {
     config.runtime.resource_limits.max_memory_usage = -1.0;
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max memory usage must be between 0 and 100"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max memory usage must be between 0 and 100")
+    );
 
     // Test memory > 100
     let mut config2 = ToadStoolConfig::default();
@@ -100,10 +106,12 @@ fn test_validation_disk_usage_range() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max disk usage must be between 0 and 100"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max disk usage must be between 0 and 100")
+    );
 }
 
 /// Test app name validation
@@ -114,10 +122,12 @@ fn test_validation_app_name_empty() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Application name cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Application name cannot be empty")
+    );
 }
 
 /// Test worker threads validation
@@ -128,10 +138,12 @@ fn test_validation_worker_threads_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Worker threads must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Worker threads must be greater than 0")
+    );
 }
 
 /// Test queue size validation
@@ -142,10 +154,12 @@ fn test_validation_queue_size_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Queue size must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Queue size must be greater than 0")
+    );
 }
 
 /// Test batch size validation
@@ -156,10 +170,12 @@ fn test_validation_batch_size_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Batch size must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Batch size must be greater than 0")
+    );
 }
 
 /// Test max concurrent executions validation
@@ -170,10 +186,12 @@ fn test_validation_max_concurrent_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max concurrent executions must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max concurrent executions must be greater than 0")
+    );
 }
 
 /// Test execution timeout validation
@@ -184,10 +202,12 @@ fn test_validation_execution_timeout_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Execution timeout must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Execution timeout must be greater than 0")
+    );
 }
 
 /// Test request timeout validation
@@ -198,10 +218,12 @@ fn test_validation_request_timeout_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Request timeout must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Request timeout must be greater than 0")
+    );
 }
 
 /// Test connection timeout validation
@@ -212,10 +234,12 @@ fn test_validation_connection_timeout_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Connection timeout must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Connection timeout must be greater than 0")
+    );
 }
 
 /// Test max retries validation
@@ -226,10 +250,12 @@ fn test_validation_max_retries_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max retries must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max retries must be greater than 0")
+    );
 }
 
 /// Test max connections per host validation
@@ -240,10 +266,12 @@ fn test_validation_max_connections_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max connections per host must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max connections per host must be greater than 0")
+    );
 }
 
 /// Test container runtime validation
@@ -254,10 +282,12 @@ fn test_validation_container_runtime_empty() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Container runtime cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Container runtime cannot be empty")
+    );
 }
 
 /// Test default registry validation
@@ -268,10 +298,12 @@ fn test_validation_default_registry_empty() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Default registry cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Default registry cannot be empty")
+    );
 }
 
 /// Test port range validation
@@ -283,10 +315,12 @@ fn test_validation_port_range_invalid() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("port range start must be less than end"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("port range start must be less than end")
+    );
 
     // Start > End
     let mut config2 = ToadStoolConfig::default();
@@ -303,10 +337,12 @@ fn test_validation_wasm_engine_empty() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("WASM engine cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("WASM engine cannot be empty")
+    );
 }
 
 /// Test WASM max memory validation
@@ -317,10 +353,12 @@ fn test_validation_wasm_max_memory_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("WASM max memory must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("WASM max memory must be greater than 0")
+    );
 }
 
 /// Test WASM execution time validation
@@ -331,10 +369,12 @@ fn test_validation_wasm_execution_time_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("WASM max execution time must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("WASM max execution time must be greater than 0")
+    );
 }
 
 /// Test Python executable validation
@@ -345,10 +385,12 @@ fn test_validation_python_executable_empty() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Python executable cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Python executable cannot be empty")
+    );
 }
 
 /// Test Python index URL: empty allowed (discovered at runtime)
@@ -372,10 +414,12 @@ fn test_validation_python_max_memory_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Python max memory must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Python max memory must be greater than 0")
+    );
 }
 
 /// Test Python execution time validation
@@ -386,10 +430,12 @@ fn test_validation_python_execution_time_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Python max execution time must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Python max execution time must be greater than 0")
+    );
 }
 
 /// Test log level validation
@@ -400,10 +446,12 @@ fn test_validation_log_level_empty() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Log level cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Log level cannot be empty")
+    );
 }
 
 /// Test log format validation
@@ -414,10 +462,12 @@ fn test_validation_log_format_empty() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Log format cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Log format cannot be empty")
+    );
 }
 
 /// Test max log size validation
@@ -428,10 +478,12 @@ fn test_validation_max_log_size_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max log size must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max log size must be greater than 0")
+    );
 }
 
 /// Test max log files validation
@@ -442,10 +494,12 @@ fn test_validation_max_log_files_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max log files must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max log files must be greater than 0")
+    );
 }
 
 /// Test JWT secret required when auth enabled
@@ -457,10 +511,12 @@ fn test_validation_jwt_secret_required_when_auth_enabled() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("JWT secret is required when authentication is enabled"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("JWT secret is required when authentication is enabled")
+    );
 }
 
 /// Test JWT secret not required when auth disabled
@@ -483,10 +539,12 @@ fn test_validation_session_timeout_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Session timeout must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Session timeout must be greater than 0")
+    );
 }
 
 /// Test max login attempts validation
@@ -497,10 +555,12 @@ fn test_validation_max_login_attempts_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Max login attempts must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Max login attempts must be greater than 0")
+    );
 }
 
 /// Test lockout duration validation
@@ -511,10 +571,12 @@ fn test_validation_lockout_duration_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Lockout duration must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Lockout duration must be greater than 0")
+    );
 }
 
 /// Test encryption algorithm required when encryption enabled
@@ -526,10 +588,12 @@ fn test_validation_encryption_algorithm_required() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Encryption algorithm is required when encryption is enabled"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Encryption algorithm is required when encryption is enabled")
+    );
 }
 
 /// Test encryption key length validation
@@ -540,10 +604,12 @@ fn test_validation_encryption_key_length_zero() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Encryption key length must be greater than 0"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Encryption key length must be greater than 0")
+    );
 }
 
 /// Test sandbox type required when sandbox enabled
@@ -555,10 +621,12 @@ fn test_validation_sandbox_type_required() {
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Sandbox type is required when sandboxing is enabled"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Sandbox type is required when sandboxing is enabled")
+    );
 }
 
 /// Test cache configuration validation
@@ -573,10 +641,12 @@ fn test_validation_cache_config() {
     config.cache = Some(cache_config.clone());
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Cache type cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Cache type cannot be empty")
+    );
 
     // Test zero max size
     let cache_config2 = BackendCacheConfig {
@@ -586,10 +656,12 @@ fn test_validation_cache_config() {
     config.cache = Some(cache_config2);
     let result2 = config.validate_runtime_config();
     assert!(result2.is_err());
-    assert!(result2
-        .unwrap_err()
-        .to_string()
-        .contains("Cache max size must be greater than 0"));
+    assert!(
+        result2
+            .unwrap_err()
+            .to_string()
+            .contains("Cache max size must be greater than 0")
+    );
 
     // Test zero TTL
     let cache_config3 = BackendCacheConfig {
@@ -599,10 +671,12 @@ fn test_validation_cache_config() {
     config.cache = Some(cache_config3);
     let result3 = config.validate_runtime_config();
     assert!(result3.is_err());
-    assert!(result3
-        .unwrap_err()
-        .to_string()
-        .contains("Cache TTL must be greater than 0"));
+    assert!(
+        result3
+            .unwrap_err()
+            .to_string()
+            .contains("Cache TTL must be greater than 0")
+    );
 }
 
 /// Test metrics configuration validation
@@ -617,10 +691,12 @@ fn test_validation_metrics_config() {
     config.metrics = Some(metrics_config.clone());
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Metrics endpoint cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Metrics endpoint cannot be empty")
+    );
 
     // Test empty format
     let metrics_config2 = MetricsConfig {
@@ -630,10 +706,12 @@ fn test_validation_metrics_config() {
     config.metrics = Some(metrics_config2);
     let result2 = config.validate_runtime_config();
     assert!(result2.is_err());
-    assert!(result2
-        .unwrap_err()
-        .to_string()
-        .contains("Metrics format cannot be empty"));
+    assert!(
+        result2
+            .unwrap_err()
+            .to_string()
+            .contains("Metrics format cannot be empty")
+    );
 
     // Test zero collection interval
     let metrics_config3 = MetricsConfig {
@@ -643,10 +721,12 @@ fn test_validation_metrics_config() {
     config.metrics = Some(metrics_config3);
     let result3 = config.validate_runtime_config();
     assert!(result3.is_err());
-    assert!(result3
-        .unwrap_err()
-        .to_string()
-        .contains("Metrics collection interval must be greater than 0"));
+    assert!(
+        result3
+            .unwrap_err()
+            .to_string()
+            .contains("Metrics collection interval must be greater than 0")
+    );
 }
 
 /// Test database configuration validation
@@ -668,10 +748,12 @@ fn test_validation_database_config() {
     config.database = Some(db_config);
     let result = config.validate_runtime_config();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Database URL cannot be empty"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Database URL cannot be empty")
+    );
 
     // Test empty database type
     let db_config2 = DatabaseConfig {
@@ -686,10 +768,12 @@ fn test_validation_database_config() {
     config.database = Some(db_config2);
     let result2 = config.validate_runtime_config();
     assert!(result2.is_err());
-    assert!(result2
-        .unwrap_err()
-        .to_string()
-        .contains("Database type cannot be empty"));
+    assert!(
+        result2
+            .unwrap_err()
+            .to_string()
+            .contains("Database type cannot be empty")
+    );
 
     // Test zero max connections
     let db_config3 = DatabaseConfig {
@@ -704,10 +788,12 @@ fn test_validation_database_config() {
     config.database = Some(db_config3);
     let result3 = config.validate_runtime_config();
     assert!(result3.is_err());
-    assert!(result3
-        .unwrap_err()
-        .to_string()
-        .contains("Database max connections must be greater than 0"));
+    assert!(
+        result3
+            .unwrap_err()
+            .to_string()
+            .contains("Database max connections must be greater than 0")
+    );
 
     // Test zero connection timeout
     let db_config4 = DatabaseConfig {
@@ -722,10 +808,12 @@ fn test_validation_database_config() {
     config.database = Some(db_config4);
     let result4 = config.validate_runtime_config();
     assert!(result4.is_err());
-    assert!(result4
-        .unwrap_err()
-        .to_string()
-        .contains("Database connection timeout must be greater than 0"));
+    assert!(
+        result4
+            .unwrap_err()
+            .to_string()
+            .contains("Database connection timeout must be greater than 0")
+    );
 
     // Test zero query timeout
     let db_config5 = DatabaseConfig {
@@ -740,10 +828,12 @@ fn test_validation_database_config() {
     config.database = Some(db_config5);
     let result5 = config.validate_runtime_config();
     assert!(result5.is_err());
-    assert!(result5
-        .unwrap_err()
-        .to_string()
-        .contains("Database query timeout must be greater than 0"));
+    assert!(
+        result5
+            .unwrap_err()
+            .to_string()
+            .contains("Database query timeout must be greater than 0")
+    );
 }
 
 /// Test multiple validation failures return first error

@@ -133,10 +133,10 @@ impl Dataset {
             let entry = entry.map_err(|e| Error::DataLoad(e.to_string()))?;
             let file_path = entry.path();
 
-            if file_path.extension().is_some_and(|ext| ext == "npy") {
-                if let Some(sample) = Self::load_npy_sample(&file_path, &label_map)? {
-                    samples.push(sample);
-                }
+            if file_path.extension().is_some_and(|ext| ext == "npy")
+                && let Some(sample) = Self::load_npy_sample(&file_path, &label_map)?
+            {
+                samples.push(sample);
             }
         }
 
@@ -306,16 +306,18 @@ impl Dataset {
         let filename = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
         // Try to extract gesture class from filename
-        let label =
-            if let Some(gesture_part) = filename.split('_').find(|p| p.starts_with("gesture")) {
-                gesture_part
-                    .strip_prefix("gesture")
-                    .and_then(|n| n.parse::<usize>().ok())
-                    .unwrap_or(0)
-            } else {
-                // Try label map
-                label_map.get(filename).copied().unwrap_or(0)
-            };
+        let label = filename
+            .split('_')
+            .find(|p| p.starts_with("gesture"))
+            .map_or_else(
+                || label_map.get(filename).copied().unwrap_or(0),
+                |gesture_part| {
+                    gesture_part
+                        .strip_prefix("gesture")
+                        .and_then(|n| n.parse::<usize>().ok())
+                        .unwrap_or(0)
+                },
+            );
 
         // Read NPY file (simplified - real impl would parse NPY header)
         let data = std::fs::read(path)

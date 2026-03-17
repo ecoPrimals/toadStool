@@ -88,15 +88,12 @@ impl IBMMainframeAdapter {
 
     /// Connect to mainframe via 3270 terminal
     async fn connect_3270(&self) -> ToadStoolResult<()> {
-        let mut terminal = self.terminal_emulator.lock().await;
-
         if let Some(ref config) = self.config {
             let mut term_3270 = Terminal3270::new();
             term_3270.connect(&config.connection).await?;
-            *terminal = Some(term_3270);
+            *self.terminal_emulator.lock().await = Some(term_3270);
 
-            let mut connected = self.connected.lock().await;
-            *connected = true;
+            *self.connected.lock().await = true;
 
             info!("Connected to IBM mainframe via 3270 terminal");
         }
@@ -177,9 +174,9 @@ impl LegacyAdapter for IBMMainframeAdapter {
             term.disconnect().await?;
         }
         *terminal = None;
+        drop(terminal);
 
-        let mut connected = self.connected.lock().await;
-        *connected = false;
+        *self.connected.lock().await = false;
 
         info!("IBM Mainframe adapter shutdown complete");
         Ok(())
@@ -200,14 +197,15 @@ impl LegacyAdapter for IBMMainframeAdapter {
 
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(job.status.clone())
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| Ok(job.status.clone()),
+        )
     }
 
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
@@ -226,20 +224,23 @@ impl LegacyAdapter for IBMMainframeAdapter {
 
     async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(JobOutput {
-                stdout: job.job_log.clone(),
-                stderr: String::new(),
-                return_code: job.return_code,
-                output_files: vec![],
-                binary_output: None,
-            })
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| {
+                Ok(JobOutput {
+                    stdout: job.job_log.clone(),
+                    stderr: String::new(),
+                    return_code: job.return_code,
+                    output_files: vec![],
+                    binary_output: None,
+                })
+            },
+        )
     }
 
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {

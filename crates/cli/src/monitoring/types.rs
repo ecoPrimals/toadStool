@@ -94,7 +94,7 @@ pub enum AlertCondition {
         window: Duration,
     },
     Composite {
-        conditions: Vec<AlertCondition>,
+        conditions: Vec<Self>,
         operator: LogicalOperator,
     },
 }

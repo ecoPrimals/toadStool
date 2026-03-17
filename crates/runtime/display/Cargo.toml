@@ -1,7 +1,7 @@
 [package]
 name = "toadstool-display"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 repository.workspace = true
 authors = ["Toadstool Team"]
 description = "Display and input backend for ecoPrimals (drm/evdev use kernel FFI via libc)"

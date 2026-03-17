@@ -13,10 +13,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool_server::{
-    background::start_background_services, ServerConfig, ServerState, ServerStatistics,
+    ServerConfig, ServerState, ServerStatistics, background::start_background_services,
 };
 use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 /// Helper to create test server state
 fn create_test_state() -> ServerState {

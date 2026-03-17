@@ -5,8 +5,8 @@
 use super::super::*;
 use super::common::*;
 use crate::byob::{
-    validation::DeploymentValidator, PortMapping, ServiceResourceRequirements, TeamNetworkConfig,
-    TeamResourceQuotas, TeamSecurityConfig,
+    PortMapping, ServiceResourceRequirements, TeamNetworkConfig, TeamResourceQuotas,
+    TeamSecurityConfig, validation::DeploymentValidator,
 };
 use std::collections::HashMap;
 use std::time::SystemTime;

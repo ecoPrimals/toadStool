@@ -161,7 +161,7 @@ async fn test_constraint_evaluation_metadata() {
 #[tokio::test]
 async fn test_composition_respects_timeout() {
     // E2E: Verify composition evaluation respects timeout
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     let engine = CompositionEngine::from_runtime().await.unwrap();
 

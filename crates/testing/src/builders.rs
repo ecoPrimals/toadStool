@@ -63,7 +63,7 @@ impl ExecutionRequestBuilder {
 
     /// Set execution ID
     #[must_use]
-    pub fn execution_id(mut self, id: Uuid) -> Self {
+    pub const fn execution_id(mut self, id: Uuid) -> Self {
         self.execution_id = Some(id);
         self
     }
@@ -143,7 +143,7 @@ impl ExecutionRequestBuilder {
 
     /// Set timeout
     #[must_use]
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
@@ -223,7 +223,7 @@ impl ExecutionResponseBuilder {
 
     /// Set execution ID
     #[must_use]
-    pub fn execution_id(mut self, id: Uuid) -> Self {
+    pub const fn execution_id(mut self, id: Uuid) -> Self {
         self.execution_id = Some(id);
         self
     }
@@ -288,14 +288,14 @@ impl ExecutionResponseBuilder {
 
     /// Set runtime metrics
     #[must_use]
-    pub fn metrics(mut self, metrics: RuntimeMetrics) -> Self {
+    pub const fn metrics(mut self, metrics: RuntimeMetrics) -> Self {
         self.metrics = Some(metrics);
         self
     }
 
     /// Set execution duration
     #[must_use]
-    pub fn duration(mut self, duration: Duration) -> Self {
+    pub const fn duration(mut self, duration: Duration) -> Self {
         self.duration = Some(duration);
         self
     }
@@ -366,7 +366,7 @@ impl SecurityContextBuilder {
     }
 
     #[must_use]
-    pub fn with_isolation_level(mut self, level: IsolationLevel) -> Self {
+    pub const fn with_isolation_level(mut self, level: IsolationLevel) -> Self {
         self.isolation_level = level;
         self
     }
@@ -427,35 +427,35 @@ impl RuntimeMetricsBuilder {
 
     /// Set CPU metrics
     #[must_use]
-    pub fn cpu_metrics(mut self, cpu: CpuMetrics) -> Self {
+    pub const fn cpu_metrics(mut self, cpu: CpuMetrics) -> Self {
         self.cpu = Some(cpu);
         self
     }
 
     /// Set memory metrics
     #[must_use]
-    pub fn memory_metrics(mut self, memory: MemoryMetrics) -> Self {
+    pub const fn memory_metrics(mut self, memory: MemoryMetrics) -> Self {
         self.memory = Some(memory);
         self
     }
 
     /// Set storage metrics
     #[must_use]
-    pub fn storage_metrics(mut self, storage: StorageMetrics) -> Self {
+    pub const fn storage_metrics(mut self, storage: StorageMetrics) -> Self {
         self.storage = Some(storage);
         self
     }
 
     /// Set network metrics
     #[must_use]
-    pub fn network_metrics(mut self, network: NetworkMetrics) -> Self {
+    pub const fn network_metrics(mut self, network: NetworkMetrics) -> Self {
         self.network = Some(network);
         self
     }
 
     /// Set timing metrics
     #[must_use]
-    pub fn timing_metrics(mut self, timing: TimingMetrics) -> Self {
+    pub const fn timing_metrics(mut self, timing: TimingMetrics) -> Self {
         self.timing = Some(timing);
         self
     }
@@ -494,7 +494,7 @@ impl RuntimeMetricsBuilder {
                 packets_received: 16,
             }),
             gpu: None,
-            timing: self.timing.unwrap_or(TimingMetrics {
+            timing: self.timing.unwrap_or_else(|| TimingMetrics {
                 start_time: std::time::SystemTime::now(),
                 end_time: Some(std::time::SystemTime::now()),
                 duration: std::time::Duration::from_secs(5),

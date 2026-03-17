@@ -37,5 +37,5 @@ cargo run --release
 
 ## Prerequisites
 
-- Rust 1.82+
+- Rust 1.85+
 - bearDog optional (demo shows simulated responses when socket unavailable)

@@ -95,6 +95,7 @@ impl CudaBackend {
             context,
             CUdevice_attribute::CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY,
         )
+        .map(i64::from)
         .or_else(|| Some(Self::estimate_memory_from_cc(major, minor)))?;
 
         let multiprocessor_count = Self::query_attribute(
@@ -130,11 +131,12 @@ impl CudaBackend {
         )
         .unwrap_or(256);
 
+        #[allow(clippy::cast_sign_loss)]
         Some(DeviceInfo {
             name,
             ordinal,
             compute_capability: (major as usize, minor as usize),
-            total_memory: total_memory as usize,
+            total_memory: total_memory.max(0) as usize,
             multiprocessor_count: multiprocessor_count as usize,
             max_threads_per_block: max_threads_per_block as usize,
             max_threads_per_multiprocessor: max_threads_per_sm as usize,
@@ -148,15 +150,15 @@ impl CudaBackend {
         context.attribute(attrib).ok()
     }
 
-    fn estimate_memory_from_cc(major: i32, minor: i32) -> i32 {
+    const fn estimate_memory_from_cc(major: i32, minor: i32) -> i64 {
         match (major, minor) {
-            (9, _) => 80 * 1024 * 1024 * 1024,
-            (8, 9) => 24 * 1024 * 1024 * 1024,
-            (8, 6) => 24 * 1024 * 1024 * 1024,
-            (8, 0) => 40 * 1024 * 1024 * 1024,
-            (7, _) => 16 * 1024 * 1024 * 1024,
-            (6, _) => 12 * 1024 * 1024 * 1024,
-            _ => 8 * 1024 * 1024 * 1024,
+            (9, _) => 80_i64 * 1024 * 1024 * 1024,
+            (8, 9) => 24_i64 * 1024 * 1024 * 1024,
+            (8, 6) => 24_i64 * 1024 * 1024 * 1024,
+            (8, 0) => 40_i64 * 1024 * 1024 * 1024,
+            (7, _) => 16_i64 * 1024 * 1024 * 1024,
+            (6, _) => 12_i64 * 1024 * 1024 * 1024,
+            _ => 8_i64 * 1024 * 1024 * 1024,
         }
     }
 
@@ -252,7 +254,7 @@ impl CudaBackend {
         cache_levels
     }
 
-    fn calculate_memory_bandwidth(&self) -> u64 {
+    const fn calculate_memory_bandwidth(&self) -> u64 {
         let clock_hz = (self.device_info.memory_clock_rate_khz * 1000) as u64;
         let bus_bits = self.device_info.memory_bus_width as u64;
         (clock_hz * bus_bits * 2) / 8
@@ -271,7 +273,7 @@ impl CudaBackend {
         sm_count * clock_hz * ops_per_clock_per_sm
     }
 
-    fn estimate_tdp(&self) -> f64 {
+    const fn estimate_tdp(&self) -> f64 {
         match self.device_info.compute_capability {
             (8, _) => 300.0,
             (7, _) => 250.0,

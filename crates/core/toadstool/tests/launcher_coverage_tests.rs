@@ -5,8 +5,8 @@
 
 use std::path::PathBuf;
 use toadstool::launcher::{
-    check_toadstool_health, discover_toadstool_endpoint, verify_endpoint_exists, Endpoint,
-    LaunchConfig,
+    Endpoint, LaunchConfig, check_toadstool_health, discover_toadstool_endpoint,
+    verify_endpoint_exists,
 };
 
 #[tokio::test]

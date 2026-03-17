@@ -36,7 +36,7 @@ pub struct StorageAdapter {
 
 impl StorageAdapter {
     /// Create a new storage adapter
-    pub fn new(universal: Arc<UniversalServiceAdapter>) -> Self {
+    pub const fn new(universal: Arc<UniversalServiceAdapter>) -> Self {
         Self { universal }
     }
 
@@ -276,7 +276,7 @@ pub struct ObjectStorageConnection {
 }
 
 mod base64 {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
 
     pub fn encode(data: &[u8]) -> String {
         STANDARD.encode(data)

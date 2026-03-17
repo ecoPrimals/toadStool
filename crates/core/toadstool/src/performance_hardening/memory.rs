@@ -60,7 +60,7 @@ impl<T> MemoryPool<T> {
         let object = if let Some(obj) = available.pop() {
             let total = stats.total_allocations;
             #[allow(clippy::cast_precision_loss)]
-            let rate = (stats.hit_rate * total as f64 + 1.0) / (total as f64 + 1.0);
+            let rate = stats.hit_rate.mul_add(total as f64, 1.0) / (total as f64 + 1.0);
             stats.hit_rate = rate;
             obj
         } else {
@@ -74,8 +74,11 @@ impl<T> MemoryPool<T> {
         };
 
         stats.total_allocations += 1;
-        stats.in_use = stats.current_size - available.len();
-        stats.available = available.len();
+        let available_len = available.len();
+        drop(available);
+        stats.in_use = stats.current_size - available_len;
+        stats.available = available_len;
+        drop(stats);
 
         PooledObject {
             object: Some(object),
@@ -86,6 +89,7 @@ impl<T> MemoryPool<T> {
     }
 
     /// Get pool statistics
+    #[allow(clippy::future_not_send)] // MemoryPool<T> not Sync when T: !Send; design constraint
     pub async fn get_stats(&self) -> PoolStats {
         self.stats.read().await.clone()
     }
@@ -105,7 +109,7 @@ pub struct PooledObject<T: Send + Sync + 'static> {
 
 impl<T: Send + Sync + 'static> PooledObject<T> {
     /// Get reference to the object
-    pub fn get(&self) -> Option<&T> {
+    pub const fn get(&self) -> Option<&T> {
         self.object.as_ref()
     }
 

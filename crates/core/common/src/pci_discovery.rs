@@ -151,13 +151,13 @@ pub fn discover_pci_devices(filter: &PciFilter) -> Vec<PciDevice> {
 
 fn read_hex_u16(path: &Path) -> Option<u16> {
     let s = std::fs::read_to_string(path).ok()?;
-    let s = s.trim().strip_prefix("0x").unwrap_or(s.trim());
+    let s = s.trim().strip_prefix("0x").unwrap_or_else(|| s.trim());
     u16::from_str_radix(s, 16).ok()
 }
 
 fn read_hex_u32(path: &Path) -> Option<u32> {
     let s = std::fs::read_to_string(path).ok()?;
-    let s = s.trim().strip_prefix("0x").unwrap_or(s.trim());
+    let s = s.trim().strip_prefix("0x").unwrap_or_else(|| s.trim());
     u32::from_str_radix(s, 16).ok()
 }
 

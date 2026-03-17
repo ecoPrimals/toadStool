@@ -47,8 +47,8 @@ impl NodeCapacityTracker {
             guard
                 .iter()
                 .min_by(|a, b| {
-                    a.1 .0
-                        .partial_cmp(&b.1 .0)
+                    a.1.0
+                        .partial_cmp(&b.1.0)
                         .unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .map(|(id, _)| id.clone())

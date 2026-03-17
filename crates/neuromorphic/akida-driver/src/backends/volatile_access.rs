@@ -30,7 +30,7 @@ impl VolatileSlice {
     /// - The memory is from a successful mmap (or equivalent)
     /// - The region is not deallocated while the slice is used
     #[must_use]
-    pub unsafe fn from_raw_parts(ptr: NonNull<u8>, size: usize) -> Self {
+    pub const unsafe fn from_raw_parts(ptr: NonNull<u8>, size: usize) -> Self {
         Self { ptr, size }
     }
 

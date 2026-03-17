@@ -3,7 +3,7 @@
 //!
 //! These tests exercise WASM workload execution with real runtime logic.
 
-use toadstool_testing::fixtures::{runtime::*, TestEnvironment};
+use toadstool_testing::fixtures::{TestEnvironment, runtime::*};
 
 #[tokio::test]
 async fn test_wasm_workload_creation() {

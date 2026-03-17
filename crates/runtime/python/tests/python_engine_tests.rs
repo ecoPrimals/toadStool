@@ -146,9 +146,10 @@ fn test_python_engine_capabilities_aarch64_support() {
     let engine = PythonRuntimeEngine::new().unwrap();
     let caps = engine.get_capabilities();
 
-    assert!(caps
-        .supported_architectures
-        .contains(&"aarch64".to_string()));
+    assert!(
+        caps.supported_architectures
+            .contains(&"aarch64".to_string())
+    );
 }
 
 // ============================================================================

@@ -85,14 +85,14 @@ pub(super) async fn discovery_primals() -> JsonRpcResult {
     if let Ok(entries) = std::fs::read_dir(&socket_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("sock") {
-                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                    primals.push(serde_json::json!({
-                        "name": name,
-                        "socket": path.display().to_string(),
-                        "reachable": path.exists(),
-                    }));
-                }
+            if path.extension().and_then(|e| e.to_str()) == Some("sock")
+                && let Some(name) = path.file_stem().and_then(|s| s.to_str())
+            {
+                primals.push(serde_json::json!({
+                    "name": name,
+                    "socket": path.display().to_string(),
+                    "reachable": path.exists(),
+                }));
             }
         }
     }
@@ -181,10 +181,10 @@ pub(super) async fn discovery_topology() -> JsonRpcResult {
     if let Ok(entries) = std::fs::read_dir(&socket_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("sock") {
-                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                    nodes.push(name.to_string());
-                }
+            if path.extension().and_then(|e| e.to_str()) == Some("sock")
+                && let Some(name) = path.file_stem().and_then(|s| s.to_str())
+            {
+                nodes.push(name.to_string());
             }
         }
     }
@@ -278,14 +278,14 @@ pub(super) async fn deploy_graph_status() -> JsonRpcResult {
     if let Ok(entries) = std::fs::read_dir(&socket_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("sock") {
-                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                    graphs.push(serde_json::json!({
-                        "primal": name,
-                        "socket_exists": path.exists(),
-                        "socket_path": path.display().to_string(),
-                    }));
-                }
+            if path.extension().and_then(|e| e.to_str()) == Some("sock")
+                && let Some(name) = path.file_stem().and_then(|s| s.to_str())
+            {
+                graphs.push(serde_json::json!({
+                    "primal": name,
+                    "socket_exists": path.exists(),
+                    "socket_path": path.display().to_string(),
+                }));
             }
         }
     }

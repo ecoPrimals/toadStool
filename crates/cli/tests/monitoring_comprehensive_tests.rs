@@ -247,7 +247,7 @@ async fn test_metric_aggregation() {
     ignore = "Stress test - slow (>60s with coverage), run manually"
 )]
 async fn test_stress_500_concurrent_monitor_operations() {
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     // ✅ STRESS TEST: 500 concurrent monitoring operations
     // ✅ DEEP DEBT FIX: Added timeout and ignore attribute for stress tests

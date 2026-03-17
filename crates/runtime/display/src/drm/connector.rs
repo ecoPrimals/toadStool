@@ -27,7 +27,7 @@ pub enum ConnectorType {
 }
 
 impl ConnectorType {
-    fn from_drm(interface: drm::control::connector::Interface) -> Self {
+    const fn from_drm(interface: drm::control::connector::Interface) -> Self {
         use drm::control::connector::Interface;
         match interface {
             Interface::HDMIA | Interface::HDMIB => Self::Hdmi,
@@ -59,7 +59,7 @@ pub enum ConnectionStatus {
 }
 
 impl ConnectionStatus {
-    fn from_drm(state: drm::control::connector::State) -> Self {
+    const fn from_drm(state: drm::control::connector::State) -> Self {
         use drm::control::connector::State;
         match state {
             State::Connected => Self::Connected,

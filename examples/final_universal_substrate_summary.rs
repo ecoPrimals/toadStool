@@ -3,6 +3,8 @@
 // ==================================================
 // "If it has a chip and memory, ToadStool runs on it"
 
+#![allow(clippy::nursery)]
+
 fn main() {
     println!("🍄 ToadStool Universal Substrate Achievement");
     println!("===========================================");

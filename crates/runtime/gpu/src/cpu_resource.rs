@@ -99,9 +99,9 @@ impl CpuComputeResource {
             performance: PerformanceCapabilities {
                 peak_flops: (num_cores as f64) * 10_000_000_000.0, // ~10 GFLOPS/core
                 peak_iops: (num_cores as f64) * 20_000_000_000.0,
-                power_watts: 65.0 + (num_cores as f32 * 5.0), // TDP estimate
-                startup_latency_us: 10,                       // Very low latency (no GPU transfer)
-                sustained_performance_percent: 90.0,          // CPUs sustain well
+                power_watts: (num_cores as f32).mul_add(5.0, 65.0), // TDP estimate
+                startup_latency_us: 10, // Very low latency (no GPU transfer)
+                sustained_performance_percent: 90.0, // CPUs sustain well
             },
             resource_type: format!("CPU ({num_cores} cores)"),
         }
@@ -337,7 +337,7 @@ impl ComputeContext for CpuComputeContext {
 /// Mix a byte through a deterministic, CPU-intensive transform.
 /// Uses multiplication and XOR for diffusion (similar to hash finalizers).
 #[inline(always)]
-fn mix_byte(b: u8) -> u8 {
+const fn mix_byte(b: u8) -> u8 {
     let x = b as u32;
     let mixed = x.wrapping_mul(0x85ebca6b).wrapping_add(0xc2b2ae35) ^ (x << 8) ^ (x >> 4);
     (mixed & 0xff) as u8

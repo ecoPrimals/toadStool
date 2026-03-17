@@ -43,11 +43,11 @@ pub struct HostingResourceConfig {
     pub reservation_buffer: f64,
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
-fn default_buffer() -> f64 {
+const fn default_buffer() -> f64 {
     0.1 // 10% buffer by default
 }
 
@@ -154,14 +154,14 @@ impl HostingResourceManager {
             }
 
             // Check against limits
-            if let Some(limit) = self.config.limits.get(resource) {
-                if *amount > *limit {
-                    debug!(
-                        "Allocation {} of {} exceeds limit {}",
-                        amount, resource, limit
-                    );
-                    return false;
-                }
+            if let Some(limit) = self.config.limits.get(resource)
+                && *amount > *limit
+            {
+                debug!(
+                    "Allocation {} of {} exceeds limit {}",
+                    amount, resource, limit
+                );
+                return false;
             }
         }
         true

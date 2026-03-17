@@ -47,13 +47,14 @@ pub enum ClientEndpoint {
 impl std::fmt::Display for ClientEndpoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ClientEndpoint::UnixSocket(path) => write!(f, "unix://{}", path.display()),
-            ClientEndpoint::Tcp(addr) => write!(f, "tcp://{}", addr),
+            Self::UnixSocket(path) => write!(f, "unix://{}", path.display()),
+            Self::Tcp(addr) => write!(f, "tcp://{}", addr),
         }
     }
 }
 
 /// ToadStool tarpc client for primal-to-primal communication
+#[derive(Debug)]
 pub struct ToadStoolTarpcClient {
     /// Inner tarpc client
     client: ToadStoolComputeRpcClient,
@@ -271,13 +272,13 @@ impl ToadStoolTarpcClient {
     }
 
     /// Get connected endpoint
-    pub fn endpoint(&self) -> &ClientEndpoint {
+    pub const fn endpoint(&self) -> &ClientEndpoint {
         &self.endpoint
     }
 
     /// Get connected address (deprecated - use endpoint() instead)
     #[deprecated(since = "0.2.0", note = "Use endpoint() for Unix socket support")]
-    pub fn address(&self) -> Option<SocketAddr> {
+    pub const fn address(&self) -> Option<SocketAddr> {
         match &self.endpoint {
             ClientEndpoint::Tcp(addr) => Some(*addr),
             ClientEndpoint::UnixSocket(_) => None,

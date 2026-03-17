@@ -52,11 +52,11 @@ pub fn enable_pcie_device(pcie_address: &str) -> Result<()> {
     let enable_path = format!("/sys/bus/pci/devices/{pcie_address}/enable");
 
     // Check if already enabled
-    if let Ok(content) = fs::read_to_string(&enable_path) {
-        if content.trim() == "1" {
-            tracing::debug!("Device {} already enabled", pcie_address);
-            return Ok(());
-        }
+    if let Ok(content) = fs::read_to_string(&enable_path)
+        && content.trim() == "1"
+    {
+        tracing::debug!("Device {} already enabled", pcie_address);
+        return Ok(());
     }
 
     // Enable device

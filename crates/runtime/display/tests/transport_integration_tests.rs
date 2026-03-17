@@ -5,8 +5,8 @@
 //! with `encode_frame/decode_frame`.
 
 use toadstool_core::{
-    decode_frame, encode_frame, HardwareTransport, TransportDirection, TransportError,
-    TransportFilter, TransportInfo, TransportMedium, TransportRouter, FRAME_HEADER_SIZE,
+    FRAME_HEADER_SIZE, HardwareTransport, TransportDirection, TransportError, TransportFilter,
+    TransportInfo, TransportMedium, TransportRouter, decode_frame, encode_frame,
 };
 
 /// Loopback transport with proper framing support for testing.

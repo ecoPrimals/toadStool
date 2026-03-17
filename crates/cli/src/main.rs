@@ -70,7 +70,9 @@ async fn main() -> Result<()> {
 
     // SECURITY WARNING: Alert users about incomplete security implementations
     if std::env::var("TOADSTOOL_SECURITY_WARNING_ACKNOWLEDGED").is_err() {
-        warn!("🚨 SECURITY WARNING: This ToadStool instance has incomplete cryptographic verification");
+        warn!(
+            "🚨 SECURITY WARNING: This ToadStool instance has incomplete cryptographic verification"
+        );
         warn!("🚨 Service discovery and permission validation are not fully implemented");
         warn!("🚨 Do NOT use in production environments without proper security audit");
         warn!("🚨 Set TOADSTOOL_SECURITY_WARNING_ACKNOWLEDGED=1 to suppress this warning");

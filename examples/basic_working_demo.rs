@@ -4,15 +4,15 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tracing::{info, Level};
+use tracing::{Level, info};
 use uuid::Uuid;
 
 use toadstool::{
+    WorkloadType,
     execution::{ExecutionInput, ExecutionRequest, RuntimeConfig, RuntimeEngine, RuntimeType},
     resources::{ResourceMonitor, ResourceRequirements},
     security::{Capability, IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
-    WorkloadType,
 };
 
 use toadstool_management_monitoring::SystemResourceMonitor;

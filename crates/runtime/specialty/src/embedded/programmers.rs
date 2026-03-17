@@ -19,14 +19,14 @@ pub struct EPROMProgrammer;
 
 impl GenericProgrammer {
     /// Create a new generic programmer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl EPROMProgrammer {
     /// Create a new EPROM programmer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

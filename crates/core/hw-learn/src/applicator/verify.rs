@@ -69,7 +69,7 @@ fn verify_register(
 ///
 /// The nouveau new UAPI (kernel 6.6+) uses `DRM_IOCTL_NOUVEAU_GETPARAM`
 /// with NV-specific param types for register queries.
-fn build_register_query_ioctl(offset: u64) -> u64 {
+const fn build_register_query_ioctl(offset: u64) -> u64 {
     const DRM_IOCTL_BASE: u64 = 0xC010_6400;
     DRM_IOCTL_BASE | (offset & 0xFFFF)
 }

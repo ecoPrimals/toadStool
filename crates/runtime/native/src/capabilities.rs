@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
-use toadstool::execution::RuntimeCapabilities;
 use toadstool::WorkloadType;
+use toadstool::execution::RuntimeCapabilities;
 
-pub(crate) fn default_capabilities() -> RuntimeCapabilities {
+pub fn default_capabilities() -> RuntimeCapabilities {
     RuntimeCapabilities {
         supported_workloads: vec![WorkloadType::Native],
         max_concurrent_executions: Some(100),

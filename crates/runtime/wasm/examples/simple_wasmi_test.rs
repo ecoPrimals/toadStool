@@ -4,12 +4,12 @@
 //! Tests basic WASM module loading and execution with wasmi runtime.
 
 use std::time::Duration;
+use toadstool::SecurityContext;
 use toadstool::error::ToadStoolResult;
 use toadstool::execution::RuntimeEngine;
 use toadstool::execution::{ExecutionRequest, RuntimeType};
 use toadstool::resources::ResourceRequirements;
 use toadstool::workload::{WasmModuleSource, WorkloadSpec};
-use toadstool::SecurityContext;
 use toadstool_runtime_wasm::{WasmRuntimeConfig, WasmRuntimeEngine};
 use uuid::Uuid;
 

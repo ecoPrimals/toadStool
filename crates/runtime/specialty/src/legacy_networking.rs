@@ -36,7 +36,7 @@ impl LegacyNetworkManager {
         self.protocols.insert(name.into(), protocol);
     }
 
-    pub fn get_protocols(&self) -> &HashMap<String, LegacyNetworkProtocol> {
+    pub const fn get_protocols(&self) -> &HashMap<String, LegacyNetworkProtocol> {
         &self.protocols
     }
 }

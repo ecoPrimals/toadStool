@@ -417,9 +417,11 @@ async fn test_execute_require_authentication() {
     assert!(matches!(result.result, PolicyResult::RequiresAuth));
     assert_eq!(result.warnings.len(), 1);
     assert_eq!(result.warnings[0].level, "info");
-    assert!(result.warnings[0]
-        .message
-        .contains("Additional authentication required"));
+    assert!(
+        result.warnings[0]
+            .message
+            .contains("Additional authentication required")
+    );
     assert!(result.warnings[0].message.contains("2FA"));
 }
 
@@ -470,9 +472,11 @@ async fn test_execute_custom_action() {
     assert!(exec_result.is_ok());
     assert_eq!(result.warnings.len(), 1);
     assert_eq!(result.warnings[0].level, "info");
-    assert!(result.warnings[0]
-        .message
-        .contains("Custom action executed: custom_security_check"));
+    assert!(
+        result.warnings[0]
+            .message
+            .contains("Custom action executed: custom_security_check")
+    );
 }
 
 // ============================================================================

@@ -304,9 +304,9 @@ pub fn create_test_runtime_metrics() -> RuntimeMetrics {
 /// Generate random test data using the Faker library
 pub mod random {
     use super::{
-        create_test_security_context, CpuRequirements, Duration, ExecutableSource, ExecutionInput,
-        ExecutionRequest, Fake, Faker, HashMap, MemoryRequirements, NetworkRequirements, PathBuf,
-        ResourceRequirements, StorageRequirements, Uuid, WasmModuleSource, WorkloadSpec,
+        CpuRequirements, Duration, ExecutableSource, ExecutionInput, ExecutionRequest, Fake, Faker,
+        HashMap, MemoryRequirements, NetworkRequirements, PathBuf, ResourceRequirements,
+        StorageRequirements, Uuid, WasmModuleSource, WorkloadSpec, create_test_security_context,
     };
 
     /// Generate a random execution request

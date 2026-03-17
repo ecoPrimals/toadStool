@@ -46,13 +46,13 @@ pub enum ServiceType {
 impl std::fmt::Display for ServiceType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ServiceType::NetworkCoordination => write!(f, "Network Coordination"),
-            ServiceType::Security => write!(f, "Security"),
-            ServiceType::Storage => write!(f, "Storage"),
-            ServiceType::AI => write!(f, "AI"),
-            ServiceType::OperatingSystem => write!(f, "Operating System"),
-            ServiceType::Compute => write!(f, "Compute"),
-            ServiceType::Unknown => write!(f, "Unknown"),
+            Self::NetworkCoordination => write!(f, "Network Coordination"),
+            Self::Security => write!(f, "Security"),
+            Self::Storage => write!(f, "Storage"),
+            Self::AI => write!(f, "AI"),
+            Self::OperatingSystem => write!(f, "Operating System"),
+            Self::Compute => write!(f, "Compute"),
+            Self::Unknown => write!(f, "Unknown"),
         }
     }
 }

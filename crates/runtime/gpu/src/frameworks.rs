@@ -26,7 +26,7 @@ pub struct WebGPUAdapter {
 pub struct WebGpuFramework;
 
 impl WebGpuFramework {
-    pub fn new() -> ToadStoolResult<Self> {
+    pub const fn new() -> ToadStoolResult<Self> {
         // Initialize WebGPU adapter with proper error handling
         // Note: WebGPU initialization is async, so we defer to first usage
         Ok(Self)
@@ -90,6 +90,8 @@ impl ParallelComputeFramework for WebGpuFramework {
                         _ => (100.0, 1_000.0),
                     };
 
+                    let device_name = info.name;
+                    let handle_name = device_name.clone();
                     let device = UniversalComputeDevice {
                         id: DeviceId {
                             framework: GpuFramework::WebGpu,
@@ -97,7 +99,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                             uuid: Uuid::new_v4().to_string(),
                         },
                         info: DeviceInfo {
-                            name: info.name.clone(),
+                            name: device_name,
                             vendor: info.vendor.to_string(),
                             device_type: match info.device_type {
                                 wgpu::DeviceType::DiscreteGpu => DeviceType::DiscreteGpu,
@@ -106,7 +108,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                                 wgpu::DeviceType::Cpu => DeviceType::Other("CPU".to_string()),
                                 _ => DeviceType::Other("Unknown".to_string()),
                             },
-                            driver_version: info.driver_info.clone(),
+                            driver_version: info.driver_info,
                             architecture: "WebGPU".to_string(),
                             physical_location: None,
                         },
@@ -138,7 +140,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                         },
                         usage: Arc::new(RwLock::new(DeviceUsage::default())),
                         framework_handle: Some(FrameworkHandle::Unavailable {
-                            name: info.name.clone(),
+                            name: handle_name,
                             reason: "wgpu::Device handle deferred until create_session".to_string(),
                         }),
                     };

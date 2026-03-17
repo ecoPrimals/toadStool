@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-use crate::runtime_defaults::{ConfigError, ConfigResult};
 use crate::ToadStoolConfig;
+use crate::runtime_defaults::{ConfigError, ConfigResult};
 
 pub(super) fn validate(config: &ToadStoolConfig) -> ConfigResult<()> {
     if config.logging.level.is_empty() {

@@ -59,15 +59,16 @@ pub enum PrimalType {
 impl PrimalType {
     /// Convert `PrimalType` to its capability string representation
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // Custom(s) => s.as_str() is not const
     pub fn as_str(&self) -> &str {
         match self {
-            PrimalType::Crypto => "crypto",
-            PrimalType::Storage => "storage",
-            PrimalType::Discovery => "discovery",
-            PrimalType::Orchestration => "orchestration",
-            PrimalType::Compute => "compute",
-            PrimalType::SelfIdentity => "self",
-            PrimalType::Custom(s) => s.as_str(),
+            Self::Crypto => "crypto",
+            Self::Storage => "storage",
+            Self::Discovery => "discovery",
+            Self::Orchestration => "orchestration",
+            Self::Compute => "compute",
+            Self::SelfIdentity => "self",
+            Self::Custom(s) => s.as_str(),
         }
     }
 
@@ -78,33 +79,33 @@ impl PrimalType {
     /// "nestgate"). Legacy names map to their capability category.
     pub fn parse_type(s: &str) -> Result<Self, String> {
         match s.to_lowercase().as_str() {
-            "crypto" | "beardog" | "pki" | "security" => Ok(PrimalType::Crypto),
-            "storage" | "nestgate" => Ok(PrimalType::Storage),
-            "discovery" | "songbird" | "coordination" => Ok(PrimalType::Discovery),
-            "orchestration" | "biomeos" | "network" => Ok(PrimalType::Orchestration),
-            "compute" | "squirrel" | "ai" | "ml" => Ok(PrimalType::Compute),
-            "self" | "self_identity" | "toadstool" => Ok(PrimalType::SelfIdentity),
-            other => Ok(PrimalType::Custom(other.to_string())),
+            "crypto" | "beardog" | "pki" | "security" => Ok(Self::Crypto),
+            "storage" | "nestgate" => Ok(Self::Storage),
+            "discovery" | "songbird" | "coordination" => Ok(Self::Discovery),
+            "orchestration" | "biomeos" | "network" => Ok(Self::Orchestration),
+            "compute" | "squirrel" | "ai" | "ml" => Ok(Self::Compute),
+            "self" | "self_identity" | "toadstool" => Ok(Self::SelfIdentity),
+            other => Ok(Self::Custom(other.to_string())),
         }
     }
 
     /// Get all standard capability categories (excluding Custom)
     #[must_use]
-    pub fn standard_variants() -> &'static [PrimalType] {
+    pub const fn standard_variants() -> &'static [Self] {
         &[
-            PrimalType::Crypto,
-            PrimalType::Storage,
-            PrimalType::Discovery,
-            PrimalType::Orchestration,
-            PrimalType::Compute,
-            PrimalType::SelfIdentity,
+            Self::Crypto,
+            Self::Storage,
+            Self::Discovery,
+            Self::Orchestration,
+            Self::Compute,
+            Self::SelfIdentity,
         ]
     }
 
     /// Check if this is a standard capability category
     #[must_use]
-    pub fn is_standard(&self) -> bool {
-        !matches!(self, PrimalType::Custom(_))
+    pub const fn is_standard(&self) -> bool {
+        !matches!(self, Self::Custom(_))
     }
 }
 
@@ -118,7 +119,7 @@ impl std::str::FromStr for PrimalType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        PrimalType::parse_type(s)
+        Self::parse_type(s)
     }
 }
 

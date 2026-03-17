@@ -268,9 +268,11 @@ mod tests {
     fn test_container_config_defaults() {
         let config = ContainerConfig::default();
         assert_eq!(config.runtime, "docker");
-        assert!(config
-            .security_opts
-            .contains(&"no-new-privileges".to_string()));
+        assert!(
+            config
+                .security_opts
+                .contains(&"no-new-privileges".to_string())
+        );
     }
 
     #[test]

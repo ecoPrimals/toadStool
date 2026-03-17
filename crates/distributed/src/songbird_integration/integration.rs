@@ -458,6 +458,8 @@ mod tests {
                     routing_key: "compute".to_string(),
                 },
             },
+            #[cfg(feature = "channels")]
+            reply_channel: None,
         }
     }
 
@@ -512,9 +514,11 @@ mod tests {
         let cap = LocalCapacityManager::new(capacity_config()).await.unwrap();
         let node_caps = cap.get_current_capabilities().await.unwrap();
         assert!(node_caps.cpu_cores > 0.0);
-        assert!(node_caps
-            .software_capabilities
-            .contains(&"rust".to_string()));
+        assert!(
+            node_caps
+                .software_capabilities
+                .contains(&"rust".to_string())
+        );
     }
 
     #[tokio::test]
@@ -633,10 +637,12 @@ mod tests {
         job.resource_requirements.cpu.min_cores = 8.0;
         let result = integration.submit_job(job).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("HTTP job submission removed"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("HTTP job submission removed")
+        );
     }
 
     #[test]

@@ -21,7 +21,7 @@ use anyhow::Result;
 use std::sync::Arc;
 use toadstool_cli::universal::UniversalComputeManager;
 use tokio::sync::broadcast;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 // =============================================================================
 // Test Group 1: Manager Creation (Concurrent & Stress)

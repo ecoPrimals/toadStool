@@ -60,26 +60,29 @@ impl UniversalPrimalRegistry {
             .insert(instance_id.clone(), provider);
 
         // Index capabilities
-        let mut capability_index = self.capability_index.write().await;
         for capability in capabilities {
             let cap_key = format!("{capability:?}");
-            capability_index
+            self.capability_index
+                .write()
+                .await
                 .entry(cap_key)
                 .or_insert_with(Vec::new)
                 .push(instance_id.clone());
         }
 
         // Index context
-        let mut context_index = self.context_index.write().await;
-        context_index
+        self.context_index
+            .write()
+            .await
             .entry(context.user_id.clone())
             .or_insert_with(Vec::new)
             .push(instance_id.clone());
 
         // Index type
-        let mut type_index = self.type_index.write().await;
         let type_key = format!("{primal_type:?}");
-        type_index
+        self.type_index
+            .write()
+            .await
             .entry(type_key)
             .or_insert_with(Vec::new)
             .push(instance_id.clone());
@@ -97,15 +100,15 @@ impl UniversalPrimalRegistry {
         let capability_index = self.capability_index.read().await;
         let providers = self.providers.read().await;
 
-        if let Some(instance_ids) = capability_index.get(&cap_key) {
-            instance_ids
-                .iter()
-                .filter_map(|id| providers.get(id))
-                .cloned()
-                .collect()
-        } else {
-            Vec::new()
-        }
+        capability_index
+            .get(&cap_key)
+            .map_or_else(Vec::new, |instance_ids| {
+                instance_ids
+                    .iter()
+                    .filter_map(|id| providers.get(id))
+                    .cloned()
+                    .collect()
+            })
     }
 
     /// Find providers by context
@@ -116,16 +119,16 @@ impl UniversalPrimalRegistry {
         let context_index = self.context_index.read().await;
         let providers = self.providers.read().await;
 
-        if let Some(instance_ids) = context_index.get(&context.user_id) {
-            instance_ids
-                .iter()
-                .filter_map(|id| providers.get(id))
-                .filter(|provider| provider.can_serve_context(context))
-                .cloned()
-                .collect()
-        } else {
-            Vec::new()
-        }
+        context_index
+            .get(&context.user_id)
+            .map_or_else(Vec::new, |instance_ids| {
+                instance_ids
+                    .iter()
+                    .filter_map(|id| providers.get(id))
+                    .filter(|provider| provider.can_serve_context(context))
+                    .cloned()
+                    .collect()
+            })
     }
 
     /// Route a request to appropriate provider

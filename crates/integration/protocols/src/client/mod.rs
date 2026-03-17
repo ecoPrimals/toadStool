@@ -15,7 +15,7 @@ mod routing;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tracing::{debug, info};
 
 use crate::config::ProtocolConfig;
@@ -74,10 +74,10 @@ impl ProtocolClient {
                 .or_insert_with(|| service_info.clone());
         }
 
-        if let Some(ref discovery_config) = self.config.discovery_config {
-            if discovery_config.auto_register {
-                discovery::register_with_discovery(&service_info, discovery_config).await?;
-            }
+        if let Some(ref discovery_config) = self.config.discovery_config
+            && discovery_config.auto_register
+        {
+            discovery::register_with_discovery(&service_info, discovery_config).await?;
         }
 
         if let Err(e) = self.event_bus.send(ProtocolEvent::ServiceRegistered {
@@ -95,8 +95,10 @@ impl ProtocolClient {
         info!("Discovering services: {}", service_name);
 
         {
-            let services = self.services.read().await;
-            let cached_services: Vec<ServiceInfo> = services
+            let cached_services: Vec<ServiceInfo> = self
+                .services
+                .read()
+                .await
                 .values()
                 .filter(|s| s.name == service_name)
                 .cloned()
@@ -207,8 +209,10 @@ impl ProtocolClient {
 
     /// Register message handler for a specific message type
     pub async fn register_handler(&self, message_type: &str, handler: Box<dyn MessageHandler>) {
-        let mut handlers = self.message_handlers.write().await;
-        handlers.insert(message_type.to_string(), handler);
+        self.message_handlers
+            .write()
+            .await
+            .insert(message_type.to_string(), handler);
         debug!("Registered handler for message type: {}", message_type);
     }
 
@@ -222,18 +226,20 @@ impl ProtocolClient {
             message.id, message.message_type
         );
 
-        let handlers = self.message_handlers.read().await;
-        if let Some(handler) = handlers.get(message.message_type.as_str()) {
-            let result = handler.handle_message(message.clone())?;
+        {
+            let handlers = self.message_handlers.read().await;
+            if let Some(handler) = handlers.get(message.message_type.as_str()) {
+                let result = handler.handle_message(message.clone())?;
 
-            if let Err(e) = self.event_bus.send(ProtocolEvent::MessageReceived {
-                message_id: message.id,
-                source: message.source,
-            }) {
-                tracing::debug!("Event bus send failed (no listeners): {e}");
+                if let Err(e) = self.event_bus.send(ProtocolEvent::MessageReceived {
+                    message_id: message.id,
+                    source: message.source,
+                }) {
+                    tracing::debug!("Event bus send failed (no listeners): {e}");
+                }
+
+                return Ok(result);
             }
-
-            return Ok(result);
         }
 
         debug!(
@@ -249,12 +255,13 @@ impl ProtocolClient {
 
     /// Get service health status
     pub async fn get_service_health(&self, service_id: &str) -> ProtocolResult<HealthStatus> {
-        let services = self.services.read().await;
-        if let Some(service) = services.get(service_id) {
-            Ok(service.health_status.clone())
-        } else {
-            Ok(HealthStatus::Unknown)
-        }
+        self.services
+            .read()
+            .await
+            .get(service_id)
+            .map_or(Ok(HealthStatus::Unknown), |service| {
+                Ok(service.health_status.clone())
+            })
     }
 
     /// Subscribe to protocol events

@@ -6,8 +6,8 @@
 //! - **Weighted**: proportional to declared capacity
 //! - **Dynamic**: least-loaded substrate based on sampled utilisation
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// A compute substrate that can receive workloads.
 #[derive(Debug, Clone)]
@@ -129,13 +129,13 @@ impl LoadBalancer {
 
     /// Return the current strategy.
     #[must_use]
-    pub fn strategy(&self) -> BalancingStrategy {
+    pub const fn strategy(&self) -> BalancingStrategy {
         self.strategy
     }
 
     /// Return the number of registered substrates.
     #[must_use]
-    pub fn substrate_count(&self) -> usize {
+    pub const fn substrate_count(&self) -> usize {
         self.substrates.len()
     }
 }

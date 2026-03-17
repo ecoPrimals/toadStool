@@ -8,7 +8,7 @@
 use super::super::*;
 use super::common::*;
 use crate::byob::{
-    validation::DeploymentValidator, PortMapping, ServiceResourceRequirements, VolumeMount,
+    PortMapping, ServiceResourceRequirements, VolumeMount, validation::DeploymentValidator,
 };
 use std::collections::HashMap;
 use std::time::Duration;

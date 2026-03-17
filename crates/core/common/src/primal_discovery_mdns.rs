@@ -132,11 +132,10 @@ impl MdnsAdapter {
                     if capabilities.iter().any(|c| c == capability) {
                         // Build endpoint URL
                         let addresses = info.get_addresses();
-                        let host = if let Some(addr) = addresses.iter().next() {
-                            addr.to_string()
-                        } else {
-                            info.get_hostname().to_string()
-                        };
+                        let host = addresses.iter().next().map_or_else(
+                            || info.get_hostname().to_string(),
+                            |addr| addr.to_string(),
+                        );
                         let port = info.get_port();
                         let url = format!("http://{host}:{port}");
 
@@ -215,11 +214,10 @@ impl MdnsAdapter {
                     }
 
                     let addresses = info.get_addresses();
-                    let host = if let Some(addr) = addresses.iter().next() {
-                        addr.to_string()
-                    } else {
-                        info.get_hostname().to_string()
-                    };
+                    let host = addresses
+                        .iter()
+                        .next()
+                        .map_or_else(|| info.get_hostname().to_string(), |addr| addr.to_string());
                     let port = info.get_port();
                     let url = format!("http://{host}:{port}");
 

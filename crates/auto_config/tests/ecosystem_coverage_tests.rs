@@ -169,10 +169,12 @@ async fn test_ecosystem_discover_services_fast_mode_in_ci() {
     let result = discoverer.discover_services().await;
     assert!(result.is_ok());
     let services = result.unwrap();
-    assert!(services
-        .discovery_summary
-        .discovery_methods_used
-        .contains(&"fast_mode".to_string()));
+    assert!(
+        services
+            .discovery_summary
+            .discovery_methods_used
+            .contains(&"fast_mode".to_string())
+    );
 }
 
 #[tokio::test]

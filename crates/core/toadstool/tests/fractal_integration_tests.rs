@@ -196,21 +196,27 @@ async fn test_capability_list_comprehensive() {
     match layer {
         DeploymentLayer::BareMetalOS => {
             // Bare metal should have direct capabilities
-            assert!(cap_list
-                .iter()
-                .any(|c| c.contains("direct") || c.contains("cpu")));
+            assert!(
+                cap_list
+                    .iter()
+                    .any(|c| c.contains("direct") || c.contains("cpu"))
+            );
         }
         DeploymentLayer::ContainerLayer { .. } => {
             // Container should have host or container capabilities
-            assert!(cap_list
-                .iter()
-                .any(|c| c.contains("host") || c.contains("cpu")));
+            assert!(
+                cap_list
+                    .iter()
+                    .any(|c| c.contains("host") || c.contains("cpu"))
+            );
         }
         DeploymentLayer::CloudLayer { .. } => {
             // Cloud should have cloud capabilities
-            assert!(cap_list
-                .iter()
-                .any(|c| c.contains("cloud") || c.contains("cpu")));
+            assert!(
+                cap_list
+                    .iter()
+                    .any(|c| c.contains("cloud") || c.contains("cpu"))
+            );
         }
         _ => {
             // All layers should have at least CPU compute

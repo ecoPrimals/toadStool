@@ -22,6 +22,7 @@ impl WorkloadScheduler {
     }
 
     /// Get scheduling strategy
+    #[allow(clippy::missing_const_for_fn)] // Returns reference, Deref not const
     pub fn strategy(&self) -> &SchedulingStrategy {
         &self.strategy
     }

@@ -43,29 +43,30 @@ impl TransportFilter {
 
     /// Require a specific medium.
     #[must_use]
-    pub fn with_medium(mut self, medium: TransportMedium) -> Self {
+    pub const fn with_medium(mut self, medium: TransportMedium) -> Self {
         self.medium = Some(medium);
         self
     }
 
     /// Require at least this bandwidth.
     #[must_use]
-    pub fn with_min_bandwidth(mut self, bps: u64) -> Self {
+    pub const fn with_min_bandwidth(mut self, bps: u64) -> Self {
         self.min_bandwidth_bps = bps;
         self
     }
 
     fn matches(&self, transport: &dyn HardwareTransport) -> bool {
         let info = transport.info();
-        if let Some(dir) = self.direction {
-            if info.direction != dir && info.direction != TransportDirection::Bidirectional {
-                return false;
-            }
+        if let Some(dir) = self.direction
+            && info.direction != dir
+            && info.direction != TransportDirection::Bidirectional
+        {
+            return false;
         }
-        if let Some(med) = self.medium {
-            if info.medium != med {
-                return false;
-            }
+        if let Some(med) = self.medium
+            && info.medium != med
+        {
+            return false;
         }
         if self.min_bandwidth_bps > 0 && transport.bandwidth_bps() < self.min_bandwidth_bps {
             return false;

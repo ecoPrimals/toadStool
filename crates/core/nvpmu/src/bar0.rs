@@ -178,11 +178,11 @@ unsafe impl Send for Bar0Access {}
 
 impl hw_learn::applicator::RegisterAccess for Bar0Access {
     fn read_u32(&self, offset: u64) -> std::result::Result<u32, String> {
-        Bar0Access::read_u32(self, offset).map_err(|e| e.to_string())
+        Self::read_u32(self, offset).map_err(|e| e.to_string())
     }
 
     fn write_u32(&mut self, offset: u64, value: u32) -> std::result::Result<(), String> {
-        Bar0Access::write_u32(self, offset, value).map_err(|e| e.to_string())
+        Self::write_u32(self, offset, value).map_err(|e| e.to_string())
     }
 }
 

@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::Router;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tracing::info;
 
 use toadstool::{RuntimeEngine, RuntimeType};
@@ -116,7 +116,7 @@ impl ToadStoolServer {
             _ => {
                 return Err(ServerError::Configuration(format!(
                     "Unknown runtime type: {runtime_type}"
-                )))
+                )));
             }
         };
 

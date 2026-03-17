@@ -2,7 +2,7 @@
 //! Integration tests for cross-spring provenance tracking.
 
 use toadstool::cross_spring_provenance::{
-    cross_spring_flows, cross_spring_matrix, provenance_json, Spring, SpringDomain,
+    Spring, SpringDomain, cross_spring_flows, cross_spring_matrix, provenance_json,
 };
 
 #[test]

@@ -119,15 +119,19 @@ impl CryptoProviderRegistry {
         }
 
         providers.insert(provider_id, provider);
+        drop(providers);
         Ok(())
     }
 
     /// Unregister a provider
     pub async fn unregister(&self, provider_id: &str) -> ToadStoolResult<()> {
-        let mut providers = self.providers.write().await;
-        providers.remove(provider_id).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Provider {provider_id} not found"))
-        })?;
+        self.providers
+            .write()
+            .await
+            .remove(provider_id)
+            .ok_or_else(|| {
+                ToadStoolError::not_found(format!("Provider {provider_id} not found"))
+            })?;
         Ok(())
     }
 
@@ -138,10 +142,11 @@ impl CryptoProviderRegistry {
         &self,
         capability: &CryptoCapability,
     ) -> ToadStoolResult<Option<Arc<dyn CryptoProvider>>> {
-        let providers = self.providers.read().await;
-
         // Find all matching providers
-        let mut matches: Vec<(u32, Arc<dyn CryptoProvider>)> = providers
+        let mut matches: Vec<(u32, Arc<dyn CryptoProvider>)> = self
+            .providers
+            .read()
+            .await
             .values()
             .filter(|p| p.capabilities().matches(capability))
             .map(|p| {
@@ -166,9 +171,10 @@ impl CryptoProviderRegistry {
         &self,
         capability: &CryptoCapability,
     ) -> ToadStoolResult<Vec<Arc<dyn CryptoProvider>>> {
-        let providers = self.providers.read().await;
-
-        let matches: Vec<Arc<dyn CryptoProvider>> = providers
+        let matches: Vec<Arc<dyn CryptoProvider>> = self
+            .providers
+            .read()
+            .await
             .values()
             .filter(|p| p.capabilities().matches(capability))
             .map(Arc::clone)
@@ -182,8 +188,9 @@ impl CryptoProviderRegistry {
         &self,
         provider_id: &str,
     ) -> ToadStoolResult<Arc<dyn CryptoProvider>> {
-        let providers = self.providers.read().await;
-        providers
+        self.providers
+            .read()
+            .await
             .get(provider_id)
             .map(Arc::clone)
             .ok_or_else(|| ToadStoolError::not_found(format!("Provider {provider_id} not found")))
@@ -191,21 +198,26 @@ impl CryptoProviderRegistry {
 
     /// List all registered providers
     pub async fn list_providers(&self) -> Vec<String> {
-        let providers = self.providers.read().await;
-        providers.keys().cloned().collect()
+        self.providers.read().await.keys().cloned().collect()
     }
 
     /// Check health of all providers
     pub async fn health_check_all(&self) -> HashMap<String, ProviderHealth> {
-        let providers = self.providers.read().await;
-        let mut health_map = HashMap::new();
+        let to_check: Vec<(String, Arc<dyn CryptoProvider>)> = self
+            .providers
+            .read()
+            .await
+            .iter()
+            .map(|(id, p)| (id.clone(), Arc::clone(p)))
+            .collect();
 
-        for (id, provider) in providers.iter() {
+        let mut health_map = HashMap::new();
+        for (id, provider) in to_check {
             let health = provider
                 .health_check()
                 .await
                 .unwrap_or_else(|e| ProviderHealth::unhealthy(e.to_string()));
-            health_map.insert(id.clone(), health);
+            health_map.insert(id, health);
         }
 
         health_map
@@ -373,10 +385,12 @@ mod tests {
         assert!(registry.register(provider.clone()).await.is_ok());
         let result = registry.register(provider).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("already registered"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("already registered")
+        );
     }
 
     #[tokio::test]

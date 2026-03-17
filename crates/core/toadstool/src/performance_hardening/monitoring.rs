@@ -40,12 +40,14 @@ impl OptimizedResourceMonitor {
 
     /// Add metrics sample
     pub async fn add_sample(&self, workload_id: &str, metrics: RuntimeMetrics) {
-        let mut buffer = self.metrics_buffer.write().await;
-        buffer.push_back(metrics.clone());
+        {
+            let mut buffer = self.metrics_buffer.write().await;
+            buffer.push_back(metrics.clone());
 
-        // Keep buffer size manageable
-        if buffer.len() > self.config.batch_size * 2 {
-            buffer.pop_front();
+            // Keep buffer size manageable
+            if buffer.len() > self.config.batch_size * 2 {
+                buffer.pop_front();
+            }
         }
 
         // Update aggregated metrics
@@ -58,9 +60,9 @@ impl OptimizedResourceMonitor {
     }
 
     /// Update aggregated metrics
+    #[allow(clippy::significant_drop_tightening)] // agg_metrics borrows from guard for two field updates
     async fn update_aggregated_metrics(&self, workload_id: &str, metrics: &RuntimeMetrics) {
         let mut aggregated = self.aggregated_metrics.write().await;
-
         let agg_metrics = aggregated
             .entry(workload_id.to_string())
             .or_insert_with(|| AggregatedMetrics {
@@ -80,8 +82,7 @@ impl OptimizedResourceMonitor {
     async fn adjust_sampling_interval(&self, metrics: &RuntimeMetrics) {
         let load = (metrics.cpu.usage_percent + metrics.memory.usage_percent) / 200.0;
 
-        let mut current_load = self.current_load.write().await;
-        *current_load = load;
+        *self.current_load.write().await = load;
 
         let mut sampling_interval = self.current_sampling_interval.write().await;
 

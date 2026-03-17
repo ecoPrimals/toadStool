@@ -151,72 +151,72 @@ mod tests {
 
     #[test]
     fn test_integer_generator_new() {
-        let gen = IntegerGenerator::new(0, 100);
+        let generator = IntegerGenerator::new(0, 100);
         // Just verify creation succeeds
-        let _ = gen; // Automatic cleanup
+        let _ = generator; // Automatic cleanup
     }
 
     #[test]
     fn test_integer_generator_generate() {
-        let mut gen = IntegerGenerator::new(0, 100);
-        let value = gen.generate(10);
+        let mut generator = IntegerGenerator::new(0, 100);
+        let value = generator.generate(10);
         assert!((0..=100).contains(&value));
     }
 
     #[test]
     fn test_integer_generator_shrink_positive() {
-        let gen = IntegerGenerator::new(0, 100);
-        let shrunk = gen.shrink(&10);
+        let generator = IntegerGenerator::new(0, 100);
+        let shrunk = generator.shrink(&10);
         assert!(!shrunk.is_empty());
         assert!(shrunk.contains(&5) || shrunk.contains(&9) || shrunk.contains(&0));
     }
 
     #[test]
     fn test_integer_generator_shrink_negative() {
-        let gen = IntegerGenerator::new(-100, 0);
-        let shrunk = gen.shrink(&-10);
+        let generator = IntegerGenerator::new(-100, 0);
+        let shrunk = generator.shrink(&-10);
         assert!(!shrunk.is_empty());
     }
 
     #[test]
     fn test_integer_generator_shrink_zero() {
-        let gen = IntegerGenerator::new(-10, 10);
-        let shrunk = gen.shrink(&0);
+        let generator = IntegerGenerator::new(-10, 10);
+        let shrunk = generator.shrink(&0);
         assert!(shrunk.is_empty());
     }
 
     #[test]
     fn test_string_generator_new() {
-        let gen = StringGenerator::new(0, 10);
-        drop(gen);
+        let generator = StringGenerator::new(0, 10);
+        drop(generator);
     }
 
     #[test]
     fn test_string_generator_with_charset() {
-        let gen = StringGenerator::with_charset(0, 10, "abc");
-        drop(gen);
+        let generator = StringGenerator::with_charset(0, 10, "abc");
+        drop(generator);
     }
 
     #[test]
     fn test_string_generator_generate() {
-        let mut gen = StringGenerator::new(5, 10);
-        let value = gen.generate(5);
+        let mut generator = StringGenerator::new(5, 10);
+        let value = generator.generate(5);
         assert!(value.len() >= 5 && value.len() <= 10);
     }
 
     #[test]
     fn test_string_generator_shrink() {
-        let gen = StringGenerator::new(0, 100);
+        let generator = StringGenerator::new(0, 100);
         let input = "hello".to_string();
-        let shrunk = gen.shrink(&input);
+        let shrunk = generator.shrink(&input);
         assert!(!shrunk.is_empty());
     }
 
     #[test]
     fn test_string_generator_shrink_empty() {
-        let gen = StringGenerator::new(0, 100);
+        let generator = StringGenerator::new(0, 100);
         let input = String::new();
-        let shrunk = gen.shrink(&input);
+        let shrunk = generator.shrink(&input);
         assert!(shrunk.is_empty());
     }
 

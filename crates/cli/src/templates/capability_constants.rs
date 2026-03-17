@@ -88,7 +88,7 @@ impl CapabilityDependency {
     }
 
     /// Get human-readable description
-    pub fn description(&self) -> &'static str {
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::Security => "Security and cryptography services",
             Self::Storage => "Persistent storage and data management",

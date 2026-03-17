@@ -45,7 +45,7 @@ pub(super) struct PredictionModel {
 
 impl PredictionModel {
     /// Create a new model with default values (used when no history yet).
-    pub(super) fn new() -> Self {
+    pub(super) const fn new() -> Self {
         Self {
             ema_execution_secs: 10.0,
             ema_memory_mb: 256.0,
@@ -66,10 +66,15 @@ impl PredictionModel {
             self.ema_memory_mb = mem_mb;
             self.ema_cpu_percent = cpu;
         } else {
-            self.ema_execution_secs =
-                self.alpha * exec_secs + (1.0 - self.alpha) * self.ema_execution_secs;
-            self.ema_memory_mb = self.alpha * mem_mb + (1.0 - self.alpha) * self.ema_memory_mb;
-            self.ema_cpu_percent = self.alpha * cpu + (1.0 - self.alpha) * self.ema_cpu_percent;
+            self.ema_execution_secs = self
+                .alpha
+                .mul_add(exec_secs, (1.0 - self.alpha) * self.ema_execution_secs);
+            self.ema_memory_mb = self
+                .alpha
+                .mul_add(mem_mb, (1.0 - self.alpha) * self.ema_memory_mb);
+            self.ema_cpu_percent = self
+                .alpha
+                .mul_add(cpu, (1.0 - self.alpha) * self.ema_cpu_percent);
         }
         self.sample_count += 1;
     }
@@ -95,7 +100,7 @@ impl PredictionModel {
         }
     }
 
-    pub(super) fn sample_count(&self) -> usize {
+    pub(super) const fn sample_count(&self) -> usize {
         self.sample_count
     }
 }

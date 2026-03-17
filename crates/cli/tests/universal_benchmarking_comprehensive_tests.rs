@@ -15,8 +15,8 @@
 //! Coverage target: Get benchmarking.rs from current low coverage to >80%
 
 use anyhow::Result;
-use toadstool_cli::universal::operations::BenchmarkingOps;
 use toadstool_cli::universal::UniversalComputeManager;
+use toadstool_cli::universal::operations::BenchmarkingOps;
 
 /// Helper to create a test manager
 async fn create_manager() -> Result<UniversalComputeManager> {

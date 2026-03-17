@@ -11,7 +11,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool_server::{ServerConfig, ServerState, ServerStatistics};
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 // Helper function to create test server state
 fn create_test_state() -> ServerState {

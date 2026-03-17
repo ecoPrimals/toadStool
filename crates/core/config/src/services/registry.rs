@@ -63,7 +63,7 @@ impl<'de> Deserialize<'de> for ServiceRegistry {
         }
         let helper = Helper::deserialize(deserializer)?;
         let by_type = build_by_type_index(&helper.services);
-        Ok(ServiceRegistry {
+        Ok(Self {
             services: helper.services,
             by_type,
         })

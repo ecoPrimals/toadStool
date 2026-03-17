@@ -504,9 +504,11 @@ mod tests {
         };
         let paths = PlatformPaths::new(&env);
         let runtime = paths.runtime_dir();
-        assert!(runtime
-            .to_string_lossy()
-            .contains("toadstool-runtime-testuser"));
+        assert!(
+            runtime
+                .to_string_lossy()
+                .contains("toadstool-runtime-testuser")
+        );
     }
 
     #[test]
@@ -587,9 +589,11 @@ mod tests {
         };
         let paths = PlatformPaths::new(&env);
         let runtime = paths.runtime_dir();
-        assert!(runtime
-            .to_string_lossy()
-            .contains("toadstool-runtime-android_user"));
+        assert!(
+            runtime
+                .to_string_lossy()
+                .contains("toadstool-runtime-android_user")
+        );
     }
 
     #[test]

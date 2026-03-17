@@ -244,22 +244,22 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         &self,
         capability: &Capability,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
-        {
+        let cached: Vec<DiscoveredService> = {
             let cache = self.cache.read().await;
-            let cached: Vec<DiscoveredService> = cache
+            cache
                 .values()
                 .filter(|s| s.has_capability(capability))
                 .filter(|s| s.is_fresh(self.config.cache_ttl))
                 .cloned()
-                .collect();
-            if !cached.is_empty() {
-                debug!(
-                    "Found {} services in cache for capability: {:?}",
-                    cached.len(),
-                    capability
-                );
-                return Ok(cached);
-            }
+                .collect()
+        };
+        if !cached.is_empty() {
+            debug!(
+                "Found {} services in cache for capability: {:?}",
+                cached.len(),
+                capability
+            );
+            return Ok(cached);
         }
         let services = self.discover_via_method().await?;
         {
@@ -292,12 +292,15 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
 
     async fn refresh(&self) -> DiscoveryResult<()> {
         let services = self.discover_via_method().await?;
-        let mut cache = self.cache.write().await;
-        cache.clear();
-        for service in services {
-            cache.insert(service.id.clone(), service);
-        }
-        info!("Discovery cache refreshed: {} services", cache.len());
+        let count = {
+            let mut cache = self.cache.write().await;
+            cache.clear();
+            for service in services {
+                cache.insert(service.id.clone(), service);
+            }
+            cache.len()
+        };
+        info!("Discovery cache refreshed: {count} services");
         Ok(())
     }
 }

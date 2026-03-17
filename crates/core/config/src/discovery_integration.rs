@@ -31,9 +31,9 @@
 //! ```
 
 use std::sync::Arc;
+use toadstool_common::ToadStoolResult;
 use toadstool_common::primal_identity::{Capability, DiscoveredService};
 use toadstool_common::runtime_discovery::RuntimeDiscovery;
-use toadstool_common::ToadStoolResult;
 
 /// Discover a service by capability with fallback to legacy endpoint
 ///
@@ -83,21 +83,24 @@ pub async fn discover_or_fallback(
     match discovery.discover_capability(capability).await {
         Ok(services) if !services.is_empty() => {
             // Use the first available service with a valid endpoint
-            if let Some(endpoint) = services[0].endpoints.first() {
-                let url = format!(
-                    "{}://{}:{}",
-                    endpoint.protocol, endpoint.address, endpoint.port
-                );
-                Ok(url)
-            } else {
-                // No endpoints available, use fallback
-                tracing::warn!(
-                    "Service found for capability {:?} but has no endpoints, using fallback: {}",
-                    capability,
-                    fallback_endpoint
-                );
-                Ok(fallback_endpoint.to_string())
-            }
+            services[0].endpoints.first().map_or_else(
+                || {
+                    // No endpoints available, use fallback
+                    tracing::warn!(
+                        "Service found for capability {:?} but has no endpoints, using fallback: {}",
+                        capability,
+                        fallback_endpoint
+                    );
+                    Ok(fallback_endpoint.to_string())
+                },
+                |endpoint| {
+                    let url = format!(
+                        "{}://{}:{}",
+                        endpoint.protocol, endpoint.address, endpoint.port
+                    );
+                    Ok(url)
+                },
+            )
         }
         Ok(_) => {
             // No services found, use fallback
@@ -180,21 +183,24 @@ pub async fn discover_with_load_balancing(
                 .as_secs()
                 % services.len() as u64) as usize; // fits: index < services.len()
 
-            if let Some(endpoint) = services[index].endpoints.first() {
-                let url = format!(
-                    "{}://{}:{}",
-                    endpoint.protocol, endpoint.address, endpoint.port
-                );
-                Ok(url)
-            } else {
-                // No endpoints available, use fallback
-                tracing::warn!(
-                    "Service found for capability {:?} but has no endpoints, using fallback: {}",
-                    capability,
-                    fallback_endpoint
-                );
-                Ok(fallback_endpoint.to_string())
-            }
+            services[index].endpoints.first().map_or_else(
+                || {
+                    // No endpoints available, use fallback
+                    tracing::warn!(
+                        "Service found for capability {:?} but has no endpoints, using fallback: {}",
+                        capability,
+                        fallback_endpoint
+                    );
+                    Ok(fallback_endpoint.to_string())
+                },
+                |endpoint| {
+                    let url = format!(
+                        "{}://{}:{}",
+                        endpoint.protocol, endpoint.address, endpoint.port
+                    );
+                    Ok(url)
+                },
+            )
         }
         Ok(_) => {
             tracing::debug!(

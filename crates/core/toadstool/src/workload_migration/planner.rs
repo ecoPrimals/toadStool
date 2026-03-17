@@ -61,8 +61,7 @@ impl MigrationCoordinator {
         constraints: &[Constraint],
         current_location: Option<&WorkloadLocation>,
     ) -> ToadStoolResult<MigrationRecommendation> {
-        let providers = self.providers.read().await;
-        let available = providers.available_providers();
+        let available = self.providers.read().await.available_providers();
 
         if available.is_empty() {
             return Ok(MigrationRecommendation {

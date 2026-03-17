@@ -85,6 +85,7 @@ pub mod types;
 #[cfg(feature = "cpu")]
 pub use backends::CpuComputeUnit;
 #[cfg(feature = "opencl")]
+#[allow(deprecated)]
 pub use backends::OpenClComputeUnit;
 #[cfg(feature = "wgpu-backend")]
 pub use backends::WgpuComputeUnit;

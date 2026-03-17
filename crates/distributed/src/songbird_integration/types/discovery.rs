@@ -209,10 +209,10 @@ impl NetworkHealthMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::ResourceRequirements;
     use crate::types::resources::{
         CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
     };
-    use crate::types::ResourceRequirements;
 
     fn make_minimal_job(
         cpu: f64,

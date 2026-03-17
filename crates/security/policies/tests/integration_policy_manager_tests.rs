@@ -3,7 +3,7 @@
 //!
 //! These tests exercise the full policy evaluation pipeline with real implementations.
 
-use toadstool_testing::fixtures::{security::*, TestEnvironment};
+use toadstool_testing::fixtures::{TestEnvironment, security::*};
 
 #[tokio::test]
 async fn test_policy_manager_loads_from_file() {

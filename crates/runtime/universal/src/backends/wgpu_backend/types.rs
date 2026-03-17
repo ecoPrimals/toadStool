@@ -146,13 +146,13 @@ impl GpuAdapterInfo {
     /// Guards against NVK PTE faults and driver-reported lies about
     /// `max_buffer_size`.
     #[must_use]
-    pub fn is_allocation_safe(&self, size_bytes: u64) -> bool {
+    pub const fn is_allocation_safe(&self, size_bytes: u64) -> bool {
         size_bytes <= self.safe_allocation_limit
     }
 
     /// Whether the sovereign compute pipeline can drive this GPU.
     #[must_use]
-    pub fn is_sovereign_capable(&self) -> bool {
+    pub const fn is_sovereign_capable(&self) -> bool {
         self.fingerprint.sovereign_capable
     }
 
@@ -164,7 +164,7 @@ impl GpuAdapterInfo {
 
     /// Whether f64 compute actually works (supported AND reliable).
     #[must_use]
-    pub fn has_reliable_f64(&self) -> bool {
+    pub const fn has_reliable_f64(&self) -> bool {
         self.supports_shader_f64 && !self.f64_compute_unreliable
     }
 
@@ -177,7 +177,7 @@ impl GpuAdapterInfo {
     /// Ada Lovelace (RTX 40xx) on proprietary drivers is classified as
     /// `F64NativeNoSharedMem` per groundSpring V98 + neuralSpring V90.
     #[must_use]
-    pub fn precision_routing(&self) -> PrecisionRoutingAdvice {
+    pub const fn precision_routing(&self) -> PrecisionRoutingAdvice {
         if !self.supports_shader_f64 {
             return PrecisionRoutingAdvice::F32Only;
         }
@@ -196,14 +196,14 @@ impl GpuAdapterInfo {
     /// zeros (NVK FP64 devices, Ada Lovelace proprietary). Callers should
     /// run a variance canary probe or skip fused reductions.
     #[must_use]
-    pub fn fused_ops_healthy(&self) -> bool {
+    pub const fn fused_ops_healthy(&self) -> bool {
         !self.f64_zeros_risk
     }
 
     /// Maximum safe 2D dispatch dimensions (x * y must fit workgroup limit).
     /// Returns (max_x, max_y) for 2D compute dispatch.
     #[must_use]
-    pub fn max_2d_dispatch(&self) -> (u32, u32) {
+    pub const fn max_2d_dispatch(&self) -> (u32, u32) {
         let max = self.max_compute_workgroups_per_dimension;
         (max, max)
     }
@@ -290,7 +290,7 @@ impl HardwareFingerprint {
 /// Detect Ada Lovelace architecture from adapter name.
 ///
 /// Matches RTX 40xx series, L40, A6000 Ada, and explicit "Ada" mentions.
-pub(crate) fn is_nvidia_ada_lovelace(name: &str) -> bool {
+pub fn is_nvidia_ada_lovelace(name: &str) -> bool {
     let lower = name.to_lowercase();
     lower.contains("rtx 40")
         || lower.contains("rtx40")

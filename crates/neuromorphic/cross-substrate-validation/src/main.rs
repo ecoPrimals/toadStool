@@ -108,18 +108,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Benchmark Neuromorphic (Akida)
-        if akida_manager.device_count() > 0 {
-            if let Ok(neuro_result) = benchmark_neuromorphic(&akida_manager, size).await {
-                let speedup = cpu_time / neuro_result.time_us;
-                println!(
-                    "   │ {:22} │ {:8.1} │ {:10.2}M/s │ {:7.2}x │ {:8} │",
-                    "Akida NPU",
-                    neuro_result.time_us,
-                    neuro_result.throughput / 1e6,
-                    speedup,
-                    "✅ NPU"
-                );
-            }
+        if akida_manager.device_count() > 0
+            && let Ok(neuro_result) = benchmark_neuromorphic(&akida_manager, size).await
+        {
+            let speedup = cpu_time / neuro_result.time_us;
+            println!(
+                "   │ {:22} │ {:8.1} │ {:10.2}M/s │ {:7.2}x │ {:8} │",
+                "Akida NPU",
+                neuro_result.time_us,
+                neuro_result.throughput / 1e6,
+                speedup,
+                "✅ NPU"
+            );
         }
 
         println!("   └────────────────────────┴──────────┴────────────────┴──────────┴──────────┘");

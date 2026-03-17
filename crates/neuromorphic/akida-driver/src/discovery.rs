@@ -174,11 +174,12 @@ impl DeviceManager {
             // Read device ID
             let device_id = Self::read_hex_sysfs(&path.join("device")).ok();
 
-            if let (Some(vendor), Some(device)) = (vendor_id, device_id) {
-                if vendor == BRAINCHIP_VENDOR_ID && AKIDA_DEVICE_IDS.contains(&device) {
-                    let pcie_addr = entry.file_name().to_string_lossy().to_string();
-                    matches.push(pcie_addr);
-                }
+            if let (Some(vendor), Some(device)) = (vendor_id, device_id)
+                && vendor == BRAINCHIP_VENDOR_ID
+                && AKIDA_DEVICE_IDS.contains(&device)
+            {
+                let pcie_addr = entry.file_name().to_string_lossy().to_string();
+                matches.push(pcie_addr);
             }
         }
 

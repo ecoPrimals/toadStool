@@ -207,15 +207,17 @@ async fn test_window_not_found_errors() {
     // All operations should fail with non-existent window
     assert!(manager.get_window_info(fake_id).is_err());
     assert!(manager.destroy_window(fake_id).is_err());
-    assert!(manager
-        .resize_window(
-            fake_id,
-            Size {
-                width: 100,
-                height: 100
-            }
-        )
-        .is_err());
+    assert!(
+        manager
+            .resize_window(
+                fake_id,
+                Size {
+                    width: 100,
+                    height: 100
+                }
+            )
+            .is_err()
+    );
 }
 
 #[test]

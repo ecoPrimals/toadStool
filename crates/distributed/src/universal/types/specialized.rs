@@ -92,7 +92,7 @@ pub enum SpecializedArchitecture {
 
 impl SpecializedArchitecture {
     /// Get the architecture type name
-    pub fn architecture_type(&self) -> &'static str {
+    pub const fn architecture_type(&self) -> &'static str {
         match self {
             Self::TPU { .. } => "TPU",
             Self::NPU { .. } => "NPU",
@@ -222,7 +222,7 @@ pub enum ExperimentalPlatform {
 
 impl ExperimentalPlatform {
     /// Get the platform type name
-    pub fn platform_type(&self) -> &'static str {
+    pub const fn platform_type(&self) -> &'static str {
         match self {
             Self::MolecularComputing { .. } => "Molecular Computing",
             Self::CyborgSystems { .. } => "Cyborg Systems",
@@ -264,7 +264,7 @@ impl ExperimentalPlatform {
     }
 
     /// Get operating temperature in Kelvin (if applicable)
-    pub fn operating_temperature_k(&self) -> Option<f64> {
+    pub const fn operating_temperature_k(&self) -> Option<f64> {
         match self {
             Self::MolecularComputing {
                 operation_temperature_k,

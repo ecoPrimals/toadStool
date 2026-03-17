@@ -37,7 +37,7 @@
 
 use crate::error::{NvPmuError, Result};
 use crate::hwmon::HwmonSensors;
-use crate::monitor::{assert_thermal_safe, MonitorConfig};
+use crate::monitor::{MonitorConfig, assert_thermal_safe};
 use hw_learn::applicator::{ApplyVerdict, RecipeApplicator, RegisterAccess};
 use hw_learn::distiller::{
     DriverKind, GpuArch, InitRecipe, InitStep, RegFunction, Vendor, VerifyCheck,
@@ -69,10 +69,10 @@ impl RegisterSnapshot {
     pub fn capture(recipe: &InitRecipe, access: &dyn RegisterAccess) -> Self {
         let mut entries = Vec::new();
         for step in &recipe.steps {
-            if let InitStep::RegisterWrite { offset, .. } = step {
-                if let Ok(val) = access.read_u32(*offset) {
-                    entries.push((*offset, val));
-                }
+            if let InitStep::RegisterWrite { offset, .. } = step
+                && let Ok(val) = access.read_u32(*offset)
+            {
+                entries.push((*offset, val));
             }
         }
         tracing::debug!(registers = entries.len(), "captured register snapshot");
@@ -103,13 +103,13 @@ impl RegisterSnapshot {
 
     /// Number of register values captured.
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.entries.len()
     }
 
     /// Whether the snapshot captured any registers.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 }
@@ -340,7 +340,7 @@ pub fn apply_with_recovery(
     tracing::warn!(chip = %chip, "init failed — attempting rollback");
     let rollback_ok = snapshot.rollback(register_access);
 
-    let mut init_result = tally_results(chip.clone(), &result);
+    let mut init_result = tally_results(chip, &result);
     init_result.rollback_attempted = Some(true);
     init_result.rollback_succeeded = Some(rollback_ok);
 

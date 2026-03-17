@@ -356,9 +356,11 @@ fn test_logs_file_path_construction() {
 
     assert!(log_path.contains(biome_name));
     assert!(log_path.contains(service_name));
-    assert!(std::path::Path::new(&log_path)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("log")));
+    assert!(
+        std::path::Path::new(&log_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("log"))
+    );
 }
 
 #[test]
@@ -662,9 +664,11 @@ fn test_wasm_module_validation() {
     // Covers: Module validation
 
     let module_path = "/path/to/module.wasm";
-    assert!(std::path::Path::new(module_path)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("wasm")));
+    assert!(
+        std::path::Path::new(module_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("wasm"))
+    );
 }
 
 #[test]

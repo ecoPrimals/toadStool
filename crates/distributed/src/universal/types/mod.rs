@@ -114,7 +114,7 @@ impl UniversalSubstrateCapabilities {
     }
 
     /// Get total number of detected platforms
-    pub fn total_platforms(&self) -> usize {
+    pub const fn total_platforms(&self) -> usize {
         self.traditional_platforms.len()
             + self.biological_platforms.len()
             + self.neuromorphic_platforms.len()
@@ -128,27 +128,27 @@ impl UniversalSubstrateCapabilities {
     }
 
     /// Check if any platforms were detected
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.total_platforms() == 0
     }
 
     /// Check if traditional platforms are available
-    pub fn has_traditional_platforms(&self) -> bool {
+    pub const fn has_traditional_platforms(&self) -> bool {
         !self.traditional_platforms.is_empty()
     }
 
     /// Check if container platforms are available
-    pub fn has_container_platforms(&self) -> bool {
+    pub const fn has_container_platforms(&self) -> bool {
         !self.container_platforms.is_empty()
     }
 
     /// Check if language runtimes are available
-    pub fn has_language_runtimes(&self) -> bool {
+    pub const fn has_language_runtimes(&self) -> bool {
         !self.language_runtimes.is_empty()
     }
 
     /// Check if operating systems are available
-    pub fn has_operating_systems(&self) -> bool {
+    pub const fn has_operating_systems(&self) -> bool {
         !self.operating_systems.is_empty()
     }
 
@@ -160,12 +160,12 @@ impl UniversalSubstrateCapabilities {
     }
 
     /// Check if quantum platforms are available
-    pub fn has_quantum_platforms(&self) -> bool {
+    pub const fn has_quantum_platforms(&self) -> bool {
         !self.quantum_platforms.is_empty()
     }
 
     /// Check if experimental platforms are available
-    pub fn has_experimental_platforms(&self) -> bool {
+    pub const fn has_experimental_platforms(&self) -> bool {
         !self.experimental_platforms.is_empty()
     }
 }

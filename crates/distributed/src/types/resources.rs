@@ -92,7 +92,7 @@ pub struct GpuRequirements {
 
 impl From<ResourceRequirements> for CoreResourceRequirements {
     fn from(distributed: ResourceRequirements) -> Self {
-        CoreResourceRequirements {
+        Self {
             cpu: CoreCpuRequirements {
                 min_cores: distributed.cpu.min_cores,
                 max_cores: distributed.cpu.max_cores,
@@ -127,7 +127,7 @@ impl From<ResourceRequirements> for CoreResourceRequirements {
 
 impl From<CoreResourceRequirements> for ResourceRequirements {
     fn from(core: CoreResourceRequirements) -> Self {
-        ResourceRequirements {
+        Self {
             cpu: CpuRequirements {
                 min_cores: core.cpu.min_cores,
                 max_cores: core.cpu.max_cores,

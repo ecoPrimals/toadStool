@@ -15,8 +15,8 @@
 //! Coverage target: Get capabilities.rs from current low coverage to >80%
 
 use anyhow::Result;
-use toadstool_cli::universal::operations::CapabilityDisplayOps;
 use toadstool_cli::universal::UniversalComputeManager;
+use toadstool_cli::universal::operations::CapabilityDisplayOps;
 
 /// Helper to create a test manager
 async fn create_manager() -> Result<UniversalComputeManager> {

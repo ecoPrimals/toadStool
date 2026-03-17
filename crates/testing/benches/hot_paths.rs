@@ -4,7 +4,7 @@
 //! Benchmarks for the most frequently executed code paths to identify
 //! optimization opportunities through data-driven analysis.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -129,7 +129,7 @@ fn bench_vec_operations(c: &mut Criterion) {
 
 /// Benchmark JSON serialization (common in API responses)
 fn bench_json_operations(c: &mut Criterion) {
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     let mut group = c.benchmark_group("json_operations");
 

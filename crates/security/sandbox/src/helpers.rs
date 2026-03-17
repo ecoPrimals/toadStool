@@ -20,20 +20,20 @@ pub fn generate_sandbox_id() -> String {
 /// Validate sandbox specification
 pub async fn validate_sandbox_spec(spec: &SandboxSpec) -> ToadStoolResult<()> {
     // Validate resource limits
-    if let Some(memory) = spec.resource_limits.max_memory_bytes {
-        if memory == 0 {
-            return Err(ToadStoolError::validation(
-                "Memory limit cannot be zero".to_string(),
-            ));
-        }
+    if let Some(memory) = spec.resource_limits.max_memory_bytes
+        && memory == 0
+    {
+        return Err(ToadStoolError::validation(
+            "Memory limit cannot be zero".to_string(),
+        ));
     }
 
-    if let Some(cpu) = spec.resource_limits.max_cpu_percent {
-        if cpu <= 0.0 || cpu > 100.0 {
-            return Err(ToadStoolError::validation(format!(
-                "CPU limit must be between 1 and 100, got {cpu}"
-            )));
-        }
+    if let Some(cpu) = spec.resource_limits.max_cpu_percent
+        && (cpu <= 0.0 || cpu > 100.0)
+    {
+        return Err(ToadStoolError::validation(format!(
+            "CPU limit must be between 1 and 100, got {cpu}"
+        )));
     }
 
     // Validate network configuration

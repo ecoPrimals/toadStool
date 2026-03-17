@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(dead_code)]
+#![allow(clippy::nursery, dead_code)]
 #![allow(unused_variables)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::useless_format)]
@@ -36,8 +36,8 @@ use toadstool::universal::{
     UniversalComputePlatform, UniversalJob, UniversalJobType,
 };
 use toadstool::{
-    init, CpuRequirements, MemoryRequirements, ResourceRequirements, ToadStoolError,
-    ToadStoolResult,
+    CpuRequirements, MemoryRequirements, ResourceRequirements, ToadStoolError, ToadStoolResult,
+    init,
 };
 
 #[tokio::main]

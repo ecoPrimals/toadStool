@@ -42,12 +42,12 @@ impl TestWorkloadBuilder {
         self
     }
 
-    pub fn with_timeout(mut self, seconds: u64) -> Self {
+    pub const fn with_timeout(mut self, seconds: u64) -> Self {
         self.timeout_seconds = seconds;
         self
     }
 
-    pub fn with_resources(mut self, cpu_cores: f64, memory_mb: u64) -> Self {
+    pub const fn with_resources(mut self, cpu_cores: f64, memory_mb: u64) -> Self {
         self.cpu_cores = cpu_cores;
         self.memory_mb = memory_mb;
         self

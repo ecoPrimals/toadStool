@@ -4,6 +4,7 @@
 #[cfg(unix)]
 use std::os::unix::fs::FileTypeExt;
 
+use crate::Result;
 use crate::monitoring::collectors::{
     MetricsCollector, NetworkMetricsCollector, SystemMetricsCollector,
 };
@@ -11,7 +12,6 @@ use crate::monitoring::types::{
     BiomeStatusSummary, HealthStatus, MetricValue, MonitoringSession, PerformanceMetrics,
     SessionStatus, SystemHealth, SystemResourceUsage,
 };
-use crate::Result;
 use std::collections::HashMap;
 use toadstool_common::platform_paths;
 
@@ -78,7 +78,7 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
     let fallback = platform_paths::toadstool_temp_dir();
     let fallback_biomeos = fallback.join("biomeos");
 
-    let dirs_to_scan: Vec<_> = [primary, fallback.to_path_buf(), fallback_biomeos]
+    let dirs_to_scan: Vec<_> = [primary, fallback, fallback_biomeos]
         .into_iter()
         .filter(|d| d.exists() && d.is_dir())
         .collect();
@@ -110,27 +110,36 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
             }
 
             let (services_running, services_total, cpu_usage, memory_usage, uptime) = if is_pid {
-                if let Ok(contents) = std::fs::read_to_string(&path) {
-                    if let Ok(pid) = contents.trim().parse::<u32>() {
-                        if let Ok(Some(p)) = toadstool_sysmon::process_info(pid) {
-                            let cpu = f64::from(p.cpu_usage);
-                            #[allow(clippy::cast_precision_loss)]
-                            let mem = p.memory as f64 / 1_073_741_824.0;
-                            let uptime_secs = std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs()
-                                .saturating_sub(p.start_time);
-                            (1, 1, cpu, mem, std::time::Duration::from_secs(uptime_secs))
-                        } else {
-                            (0, 1, 0.0, 0.0, std::time::Duration::ZERO)
-                        }
-                    } else {
-                        (1, 1, 0.0, 0.0, std::time::Duration::ZERO)
-                    }
-                } else {
-                    (1, 1, 0.0, 0.0, std::time::Duration::ZERO)
-                }
+                std::fs::read_to_string(&path).map_or(
+                    (1, 1, 0.0, 0.0, std::time::Duration::ZERO),
+                    |contents| {
+                        contents.trim().parse::<u32>().map_or(
+                            (1, 1, 0.0, 0.0, std::time::Duration::ZERO),
+                            |pid| {
+                                toadstool_sysmon::process_info(pid).ok().flatten().map_or(
+                                    (0, 1, 0.0, 0.0, std::time::Duration::ZERO),
+                                    |p| {
+                                        let cpu = f64::from(p.cpu_usage);
+                                        #[allow(clippy::cast_precision_loss)]
+                                        let mem = p.memory as f64 / 1_073_741_824.0;
+                                        let uptime_secs = std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .unwrap_or_default()
+                                            .as_secs()
+                                            .saturating_sub(p.start_time);
+                                        (
+                                            1,
+                                            1,
+                                            cpu,
+                                            mem,
+                                            std::time::Duration::from_secs(uptime_secs),
+                                        )
+                                    },
+                                )
+                            },
+                        )
+                    },
+                )
             } else {
                 (1, 1, 0.0, 0.0, std::time::Duration::ZERO)
             };

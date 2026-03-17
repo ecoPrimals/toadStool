@@ -23,7 +23,7 @@ impl Default for SystemMetricsCollector {
 }
 
 impl SystemMetricsCollector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -103,7 +103,7 @@ impl Default for ProcessMetricsCollector {
 }
 
 impl ProcessMetricsCollector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -148,7 +148,7 @@ impl Default for NetworkMetricsCollector {
 }
 
 impl NetworkMetricsCollector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

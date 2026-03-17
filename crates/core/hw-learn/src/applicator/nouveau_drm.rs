@@ -91,7 +91,7 @@ unsafe impl Ioctl for DrmIoctl {
 /// DRM ioctls encode direction+size+type+nr via _IOWR/_IOW/_IOR macros,
 /// producing 32-bit values. rustix's `Opcode` is `c_uint` (u32).
 #[allow(clippy::cast_possible_truncation)]
-fn ioctl_nr_to_opcode(nr: u64) -> Opcode {
+const fn ioctl_nr_to_opcode(nr: u64) -> Opcode {
     nr as u32
 }
 

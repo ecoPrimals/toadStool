@@ -68,14 +68,11 @@ impl CudaComputeResource {
             ])
             .output()
             .await
+            && output.status.success()
+            && let Ok(stdout) = String::from_utf8(output.stdout)
+            && let Ok(util) = stdout.trim().parse::<f32>()
         {
-            if output.status.success() {
-                if let Ok(stdout) = String::from_utf8(output.stdout) {
-                    if let Ok(util) = stdout.trim().parse::<f32>() {
-                        return Some(util / 100.0);
-                    }
-                }
-            }
+            return Some(util / 100.0);
         }
 
         None
@@ -191,7 +188,7 @@ impl ComputeContext for CudaComputeContext {
 
                 let output_elements = workload.output_size / 4;
                 let block_size = 256u32;
-                let grid_size = ((output_elements as u32 + block_size - 1) / block_size).max(1);
+                let grid_size = (output_elements as u32).div_ceil(block_size).max(1);
 
                 let input_refs: Vec<&[f32]> = input_vecs.iter().map(|v| v.as_slice()).collect();
                 let output = self
@@ -206,13 +203,21 @@ impl ComputeContext for CudaComputeContext {
                     )
                     .await?;
 
-                let output_bytes: Vec<u8> = output.iter().flat_map(|f| f.to_le_bytes()).collect();
+                let output_bytes: bytes::Bytes = output
+                    .iter()
+                    .flat_map(|f| f.to_le_bytes())
+                    .collect::<Vec<u8>>()
+                    .into();
 
                 Ok(WorkloadResult {
-                    output: output_bytes,
-                    execution_time: start.elapsed(),
-                    resource_used: self.resource_id.clone(),
-                    metrics: HashMap::new(),
+                    outputs: HashMap::from([("output_0".to_string(), output_bytes)]),
+                    metrics: crate::universal::ExecutionMetrics {
+                        execution_time: start.elapsed(),
+                        memory_used: workload.output_size as u64,
+                        energy_joules: None,
+                        utilization: 0.0,
+                    },
+                    messages: vec![],
                 })
             }
 
@@ -277,7 +282,7 @@ impl CudaComputeContext {
 
         let n = a_data.len().min(b_data.len());
         let block_size = 256u32;
-        let grid_size = ((n as u32 + block_size - 1) / block_size).max(1);
+        let grid_size = (n as u32).div_ceil(block_size).max(1);
 
         let output = self
             .backend
@@ -291,13 +296,21 @@ impl CudaComputeContext {
             )
             .await?;
 
-        let output_bytes: Vec<u8> = output.iter().flat_map(|f| f.to_le_bytes()).collect();
+        let output_bytes: bytes::Bytes = output
+            .iter()
+            .flat_map(|f| f.to_le_bytes())
+            .collect::<Vec<u8>>()
+            .into();
 
         Ok(WorkloadResult {
-            output: output_bytes,
-            execution_time: start.elapsed(),
-            resource_used: self.resource_id.clone(),
-            metrics: HashMap::new(),
+            outputs: HashMap::from([("output_0".to_string(), output_bytes)]),
+            metrics: crate::universal::ExecutionMetrics {
+                execution_time: start.elapsed(),
+                memory_used: workload.output_size as u64,
+                energy_joules: None,
+                utilization: 0.0,
+            },
+            messages: vec![],
         })
     }
 
@@ -324,7 +337,7 @@ impl CudaComputeContext {
 
         let n = input_data.len();
         let block_size = 256u32;
-        let grid_size = ((n as u32 + block_size - 1) / block_size).max(1);
+        let grid_size = (n as u32).div_ceil(block_size).max(1);
         let output_size = grid_size as usize;
 
         let partial_sums = self
@@ -340,13 +353,17 @@ impl CudaComputeContext {
             .await?;
 
         let final_sum: f32 = partial_sums.iter().sum();
-        let output_bytes = final_sum.to_le_bytes().to_vec();
+        let output_bytes: bytes::Bytes = final_sum.to_le_bytes().to_vec().into();
 
         Ok(WorkloadResult {
-            output: output_bytes,
-            execution_time: start.elapsed(),
-            resource_used: self.resource_id.clone(),
-            metrics: HashMap::new(),
+            outputs: HashMap::from([("output_0".to_string(), output_bytes)]),
+            metrics: crate::universal::ExecutionMetrics {
+                execution_time: start.elapsed(),
+                memory_used: std::mem::size_of::<f32>() as u64,
+                energy_joules: None,
+                utilization: 0.0,
+            },
+            messages: vec![],
         })
     }
 }

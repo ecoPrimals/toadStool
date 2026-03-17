@@ -76,11 +76,11 @@ pub enum InterfaceType {
     F64,
     String,
     /// Complex types
-    List(Box<InterfaceType>),
-    Record(Vec<(String, InterfaceType)>),
-    Variant(Vec<(String, Option<InterfaceType>)>),
-    Option(Box<InterfaceType>),
-    Result(Box<InterfaceType>, Box<InterfaceType>),
+    List(Box<Self>),
+    Record(Vec<(String, Self)>),
+    Variant(Vec<(String, Option<Self>)>),
+    Option(Box<Self>),
+    Result(Box<Self>, Box<Self>),
     /// Custom types
     Custom(String),
 }
@@ -100,10 +100,10 @@ pub enum ComponentValue {
     F32(f32),
     F64(f64),
     String(String),
-    List(Vec<ComponentValue>),
-    Record(HashMap<String, ComponentValue>),
-    Option(Option<Box<ComponentValue>>),
-    Variant(String, Option<Box<ComponentValue>>),
+    List(Vec<Self>),
+    Record(HashMap<String, Self>),
+    Option(Option<Box<Self>>),
+    Variant(String, Option<Box<Self>>),
 }
 
 impl ComponentValue {
@@ -111,23 +111,23 @@ impl ComponentValue {
     #[must_use]
     pub fn matches_type(&self, expected: &InterfaceType) -> bool {
         match (self, expected) {
-            (ComponentValue::Bool(_), InterfaceType::Bool)
-            | (ComponentValue::U8(_), InterfaceType::U8)
-            | (ComponentValue::U16(_), InterfaceType::U16)
-            | (ComponentValue::U32(_), InterfaceType::U32)
-            | (ComponentValue::U64(_), InterfaceType::U64)
-            | (ComponentValue::S8(_), InterfaceType::S8)
-            | (ComponentValue::S16(_), InterfaceType::S16)
-            | (ComponentValue::S32(_), InterfaceType::S32)
-            | (ComponentValue::S64(_), InterfaceType::S64)
-            | (ComponentValue::F32(_), InterfaceType::F32)
-            | (ComponentValue::F64(_), InterfaceType::F64)
-            | (ComponentValue::String(_), InterfaceType::String)
-            | (ComponentValue::Option(None), InterfaceType::Option(_)) => true,
-            (ComponentValue::List(values), InterfaceType::List(element_type)) => {
+            (Self::Bool(_), InterfaceType::Bool)
+            | (Self::U8(_), InterfaceType::U8)
+            | (Self::U16(_), InterfaceType::U16)
+            | (Self::U32(_), InterfaceType::U32)
+            | (Self::U64(_), InterfaceType::U64)
+            | (Self::S8(_), InterfaceType::S8)
+            | (Self::S16(_), InterfaceType::S16)
+            | (Self::S32(_), InterfaceType::S32)
+            | (Self::S64(_), InterfaceType::S64)
+            | (Self::F32(_), InterfaceType::F32)
+            | (Self::F64(_), InterfaceType::F64)
+            | (Self::String(_), InterfaceType::String)
+            | (Self::Option(None), InterfaceType::Option(_)) => true,
+            (Self::List(values), InterfaceType::List(element_type)) => {
                 values.iter().all(|v| v.matches_type(element_type))
             }
-            (ComponentValue::Option(Some(value)), InterfaceType::Option(inner_type)) => {
+            (Self::Option(Some(value)), InterfaceType::Option(inner_type)) => {
                 value.matches_type(inner_type)
             }
             _ => false,

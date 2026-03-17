@@ -20,7 +20,7 @@ pub(super) struct ResourceManager<'a> {
 
 impl<'a> ResourceManager<'a> {
     /// Create new resource manager
-    pub fn new(executor: &'a BiomeExecutor) -> Self {
+    pub const fn new(executor: &'a BiomeExecutor) -> Self {
         Self {
             _executor: executor,
         }
@@ -79,16 +79,18 @@ impl<'a> ResourceManager<'a> {
     /// Find process by execution ID
     pub async fn find_process_pid(&self, execution_id: &Uuid) -> Option<u32> {
         let biomes = self._executor.biomes.read().await;
-
-        for (_biome_name, biome) in biomes.iter() {
-            for process in &biome.process_handles {
-                if process.execution_id == *execution_id {
-                    return process.pid;
+        let result = 'block: {
+            for (_biome_name, biome) in biomes.iter() {
+                for process in &biome.process_handles {
+                    if process.execution_id == *execution_id {
+                        break 'block process.pid;
+                    }
                 }
             }
-        }
-
-        None
+            None
+        };
+        drop(biomes);
+        result
     }
 
     /// Check if biome exists

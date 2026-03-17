@@ -33,7 +33,10 @@ pub(super) async fn run(state: ServerState) {
 
         debug!(
             "Resource monitoring: CPU: {:.1}%, Memory: {:.1}%, Available CPU cores: {:.1}, Available Memory: {} bytes",
-            cpu_usage_percent, memory_usage_percent, system_resources.available_cpu_cores, system_resources.available_memory_bytes
+            cpu_usage_percent,
+            memory_usage_percent,
+            system_resources.available_cpu_cores,
+            system_resources.available_memory_bytes
         );
 
         let active_executions =

@@ -151,6 +151,8 @@ pub async fn discover_network_services(
 
 #[cfg(test)]
 mod tests {
+    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
+
     use super::*;
 
     #[tokio::test]
@@ -255,7 +257,8 @@ mod tests {
     async fn test_get_service_info_version_from_env() {
         use crate::ecosystem_types::{ServicePattern, ServiceType};
         let old = std::env::var("COMPUTE_SVC_VERSION").ok();
-        std::env::set_var("COMPUTE_SVC_VERSION", "2.0.0");
+        // SAFETY: Test-only; sequential test execution
+        unsafe { std::env::set_var("COMPUTE_SVC_VERSION", "2.0.0") };
         let pattern = ServicePattern {
             name: "compute-svc".to_string(),
             description: String::new(),
@@ -266,9 +269,9 @@ mod tests {
         };
         let info = get_service_info("http://localhost:8080", &pattern);
         if let Some(v) = old {
-            std::env::set_var("COMPUTE_SVC_VERSION", v);
+            unsafe { std::env::set_var("COMPUTE_SVC_VERSION", v) };
         } else {
-            std::env::remove_var("COMPUTE_SVC_VERSION");
+            unsafe { std::env::remove_var("COMPUTE_SVC_VERSION") };
         }
         assert_eq!(info.version, "2.0.0");
     }

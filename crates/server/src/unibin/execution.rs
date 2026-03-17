@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use crate::errors::{ServerError, ServerResult};
-use crate::pure_jsonrpc::{serve_tcp, serve_unix, JsonRpcHandler};
-use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 use crate::CoordinatorExecutor;
+use crate::errors::{ServerError, ServerResult};
+use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix};
+use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
 use super::capabilities;
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
@@ -217,7 +217,7 @@ pub fn is_selinux_enforcing() -> bool {
 pub async fn wait_for_shutdown_signal() -> super::ShutdownSignal {
     #[cfg(unix)]
     {
-        use tokio::signal::unix::{signal, SignalKind};
+        use tokio::signal::unix::{SignalKind, signal};
 
         let mut sigint = match signal(SignalKind::interrupt()) {
             Ok(s) => s,
@@ -270,19 +270,22 @@ pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> 
 
 #[cfg(test)]
 mod tests {
+    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
+
     use super::*;
 
     #[tokio::test]
     async fn create_executor_standalone_mode() {
         // Async tests: keep manual save/restore (temp_env + block_on incompatible with tokio::test)
         let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        std::env::set_var("TOADSTOOL_STANDALONE", "1");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "1") };
 
         let result = create_executor("test-family").await;
         if let Some(v) = old {
-            std::env::set_var("TOADSTOOL_STANDALONE", v);
+            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
         } else {
-            std::env::remove_var("TOADSTOOL_STANDALONE");
+            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
         }
 
         assert!(
@@ -295,13 +298,14 @@ mod tests {
     #[tokio::test]
     async fn create_executor_standalone_mode_true_lowercase() {
         let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        std::env::set_var("TOADSTOOL_STANDALONE", "true");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "true") };
 
         let result = create_executor("my-family").await;
         if let Some(v) = old {
-            std::env::set_var("TOADSTOOL_STANDALONE", v);
+            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
         } else {
-            std::env::remove_var("TOADSTOOL_STANDALONE");
+            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
         }
 
         assert!(result.is_ok());
@@ -310,13 +314,14 @@ mod tests {
     #[tokio::test]
     async fn create_executor_standalone_mode_true_uppercase() {
         let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        std::env::set_var("TOADSTOOL_STANDALONE", "TRUE");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "TRUE") };
 
         let result = create_executor("test-family").await;
         if let Some(v) = old {
-            std::env::set_var("TOADSTOOL_STANDALONE", v);
+            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
         } else {
-            std::env::remove_var("TOADSTOOL_STANDALONE");
+            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
         }
 
         assert!(
@@ -338,13 +343,14 @@ mod tests {
     #[tokio::test]
     async fn create_executor_integrated_mode_when_standalone_unset() {
         let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
 
         let result = create_executor("integrated-family").await;
         if let Some(v) = old {
-            std::env::set_var("TOADSTOOL_STANDALONE", v);
+            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
         } else {
-            std::env::remove_var("TOADSTOOL_STANDALONE");
+            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
         }
 
         // Integrated mode may fail if Songbird not available
@@ -357,13 +363,14 @@ mod tests {
     #[tokio::test]
     async fn create_executor_integrated_mode_when_standalone_0() {
         let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        std::env::set_var("TOADSTOOL_STANDALONE", "0");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "0") };
 
         let result = create_executor("family-0").await;
         if let Some(v) = old {
-            std::env::set_var("TOADSTOOL_STANDALONE", v);
+            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
         } else {
-            std::env::remove_var("TOADSTOOL_STANDALONE");
+            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
         }
 
         match &result {

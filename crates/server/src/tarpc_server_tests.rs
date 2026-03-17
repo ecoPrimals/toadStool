@@ -97,10 +97,11 @@ fn test_standalone_executor_new() {
     let exec = StandaloneExecutor::new();
     assert_eq!(exec.capabilities.service_id, "toadstool-standalone");
     assert!(!exec.capabilities.compute_units.is_empty());
-    assert!(exec
-        .capabilities
-        .supported_workload_types
-        .contains(&"cpu_compute".to_string()));
+    assert!(
+        exec.capabilities
+            .supported_workload_types
+            .contains(&"cpu_compute".to_string())
+    );
 }
 
 #[test]

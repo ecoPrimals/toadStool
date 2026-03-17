@@ -45,17 +45,14 @@ impl Default for NetworkConfig {
             tracing::error!("Invalid default bind address, using fallback: {}", e);
             // Fallback to BIND_ALL_IPV4:DEV_HTTP_PORT, which should always parse
             let fallback = format!("{BIND_ALL_IPV4}:{DEV_HTTP_PORT}");
-            match fallback.parse() {
-                Ok(addr) => addr,
-                Err(_) => {
-                    // Last resort: LOCALHOST_IPV4:DEV_HTTP_PORT is guaranteed valid by IP spec
-                    // This expect is justified: it's a compile-time constant that must be valid
-                    #[allow(clippy::expect_used)]
-                    format!("{LOCALHOST_IPV4}:{DEV_HTTP_PORT}").parse().expect(
-                        "Constants LOCALHOST_IPV4:DEV_HTTP_PORT must parse - language guarantee",
-                    )
-                }
-            }
+            fallback.parse().unwrap_or_else(|_| {
+                // Last resort: LOCALHOST_IPV4:DEV_HTTP_PORT is guaranteed valid by IP spec
+                // This expect is justified: it's a compile-time constant that must be valid
+                #[allow(clippy::expect_used)]
+                format!("{LOCALHOST_IPV4}:{DEV_HTTP_PORT}").parse().expect(
+                    "Constants LOCALHOST_IPV4:DEV_HTTP_PORT must parse - language guarantee",
+                )
+            })
         });
 
         Self {

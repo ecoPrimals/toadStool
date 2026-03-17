@@ -17,8 +17,8 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::SystemTime;
-use toadstool_cli::executor::{WasiExecutionConfig, WasmExecutionInfo, WasmModule};
 use toadstool_cli::CliError;
+use toadstool_cli::executor::{WasiExecutionConfig, WasmExecutionInfo, WasmModule};
 use uuid::Uuid;
 
 // ============================================================================

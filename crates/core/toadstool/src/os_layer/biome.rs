@@ -166,7 +166,9 @@ impl BiomeOrchestrator {
                 output: ExecutionOutput::default(),
                 metrics: crate::RuntimeMetrics::default(),
                 duration: Duration::ZERO,
-                runtime_used: RuntimeType::from(toadstool_common::interned_strings::runtime_types::BIOMEOS),
+                runtime_used: RuntimeType::from(
+                    toadstool_common::interned_strings::runtime_types::BIOMEOS,
+                ),
                 warnings: vec![
                     "BiomeOS integration disabled - validation passed but deployment not executed"
                         .to_string(),

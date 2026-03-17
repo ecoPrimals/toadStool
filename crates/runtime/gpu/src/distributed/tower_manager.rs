@@ -88,28 +88,18 @@ impl TowerManager {
             return Ok(self.tower_id.clone());
         }
 
-        // Filter towers by required capabilities
+        // Filter towers by required capabilities (clone to allow early drop of lock)
         let capable_towers: Vec<_> = towers
             .iter()
             .filter(|tower| {
-                // If tower has GPU capabilities defined, check if it matches requirements
-                if let Some(gpu_caps) = &tower.gpu_capabilities {
-                    // Check memory requirement (graceful: assume capable if can't verify)
+                tower.gpu_capabilities.as_ref().is_none_or(|gpu_caps| {
                     let required_mem = requirements.memory_bytes;
-                    if required_mem > 0 {
-                        // Check if tower has enough memory
-                        if gpu_caps.memory.total_bytes < required_mem {
-                            return false;
-                        }
-                    }
-                    // Tower has sufficient capabilities
-                    true
-                } else {
-                    // No GPU caps defined - assume capable (graceful degradation)
-                    true
-                }
+                    required_mem == 0 || gpu_caps.memory.total_bytes >= required_mem
+                })
             })
+            .cloned()
             .collect();
+        drop(towers);
 
         if capable_towers.is_empty() {
             // No capable remote towers, fall back to local
@@ -145,8 +135,9 @@ impl TowerManager {
 
         let towers = self.remote_towers.read().await;
 
-        // Add remote towers sorted by latency
-        let mut sorted: Vec<_> = towers.iter().collect();
+        // Add remote towers sorted by latency (clone to allow early drop of lock)
+        let mut sorted: Vec<_> = towers.iter().cloned().collect();
+        drop(towers);
         sorted.sort_by_key(|t| t.latency_ms);
 
         for tower in sorted.iter().take(count.saturating_sub(1)) {
@@ -175,21 +166,23 @@ impl TowerManager {
 
         // Simplified capability matching (production would query Songbird)
         // For now, select first available tower (graceful degradation)
-        if let Some(tower) = towers.first() {
-            tracing::debug!(
-                "Selected tower {} for capability {}",
-                tower.tower_id,
-                capability
-            );
-            Ok(tower.tower_id.clone())
-        } else {
-            // Default to local if no remote towers (graceful degradation)
-            tracing::debug!(
-                "No remote towers available, using local for capability: {}",
-                capability
-            );
-            Ok(self.tower_id.clone())
-        }
+        towers.first().map_or_else(
+            || {
+                tracing::debug!(
+                    "No remote towers available, using local for capability: {}",
+                    capability
+                );
+                Ok(self.tower_id.clone())
+            },
+            |tower| {
+                tracing::debug!(
+                    "Selected tower {} for capability {}",
+                    tower.tower_id,
+                    capability
+                );
+                Ok(tower.tower_id.clone())
+            },
+        )
     }
 
     /// Get endpoint for remote tower
@@ -206,6 +199,7 @@ impl TowerManager {
         let before_count = towers.len();
         towers.retain(|t| now.duration_since(t.last_seen).as_secs() < max_age_secs);
         let after_count = towers.len();
+        drop(towers);
 
         if before_count != after_count {
             tracing::info!("Pruned {} stale towers", before_count - after_count);

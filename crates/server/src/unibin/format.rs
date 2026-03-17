@@ -137,6 +137,8 @@ pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf>
 
 #[cfg(test)]
 mod tests {
+    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
+
     use super::*;
 
     #[test]
@@ -171,26 +173,26 @@ mod tests {
         let old_primal = std::env::var("PRIMAL_SOCKET").ok();
         let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
         let old_xdg = std::env::var("XDG_RUNTIME_DIR").ok();
-        std::env::remove_var("TOADSTOOL_SOCKET");
-        std::env::remove_var("PRIMAL_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::set_var("XDG_RUNTIME_DIR", "/nonexistent-path-12345-abcd");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_SOCKET") };
+        unsafe { std::unsafe { env::remove_var("PRIMAL_SOCKET") };
+        unsafe { std::unsafe { env::remove_var("BIOMEOS_SOCKET_PATH") };
+        unsafe { std::unsafe { env::set_var("XDG_RUNTIME_DIR", "/nonexistent-path-12345-abcd") };
 
         let result = get_socket_path("custom", "node1");
 
         if let Some(v) = old_toad {
-            std::env::set_var("TOADSTOOL_SOCKET", v);
+            unsafe { std::unsafe { env::set_var("TOADSTOOL_SOCKET", v) };
         }
         if let Some(v) = old_primal {
-            std::env::set_var("PRIMAL_SOCKET", v);
+            unsafe { std::unsafe { env::set_var("PRIMAL_SOCKET", v) };
         }
         if let Some(v) = old_biome {
-            std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+            unsafe { std::unsafe { env::set_var("BIOMEOS_SOCKET_PATH", v) };
         }
         if let Some(v) = old_xdg {
-            std::env::set_var("XDG_RUNTIME_DIR", v);
+            unsafe { std::unsafe { env::set_var("XDG_RUNTIME_DIR", v) };
         } else {
-            std::env::remove_var("XDG_RUNTIME_DIR");
+            unsafe { std::unsafe { env::remove_var("XDG_RUNTIME_DIR") };
         }
 
         assert!(result.is_ok());
@@ -217,13 +219,13 @@ mod tests {
         let socket_path = temp_dir.path().join("custom-toadstool.sock");
         let path_str = socket_path.to_string_lossy().to_string();
         let old = std::env::var("TOADSTOOL_SOCKET").ok();
-        std::env::set_var("TOADSTOOL_SOCKET", &path_str);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_SOCKET", &path_str) };
 
         let result = get_socket_path("any-family", "any-node");
         if let Some(v) = old {
-            std::env::set_var("TOADSTOOL_SOCKET", v);
+            unsafe { std::unsafe { env::set_var("TOADSTOOL_SOCKET", v) };
         } else {
-            std::env::remove_var("TOADSTOOL_SOCKET");
+            unsafe { std::unsafe { env::remove_var("TOADSTOOL_SOCKET") };
         }
 
         assert!(result.is_ok());
@@ -234,18 +236,18 @@ mod tests {
     fn get_socket_path_from_primal_socket_with_family_suffix() {
         let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
         let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
-        std::env::remove_var("TOADSTOOL_SOCKET");
-        std::env::set_var("PRIMAL_SOCKET", "/run/primal");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_SOCKET") };
+        unsafe { std::unsafe { env::set_var("PRIMAL_SOCKET", "/run/primal") };
+        unsafe { std::unsafe { env::remove_var("BIOMEOS_SOCKET_PATH") };
 
         let result = get_socket_path("family-x", "node1");
         if let Some(v) = old_toad {
-            std::env::set_var("TOADSTOOL_SOCKET", v);
+            unsafe { std::unsafe { env::set_var("TOADSTOOL_SOCKET", v) };
         }
         if let Some(v) = old_biome {
-            std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+            unsafe { std::unsafe { env::set_var("BIOMEOS_SOCKET_PATH", v) };
         }
-        std::env::remove_var("PRIMAL_SOCKET");
+        unsafe { std::unsafe { env::remove_var("PRIMAL_SOCKET") };
 
         assert!(result.is_ok());
         assert_eq!(
@@ -260,24 +262,24 @@ mod tests {
         let old_primal = std::env::var("PRIMAL_SOCKET").ok();
         let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
         let old_xdg = std::env::var("XDG_RUNTIME_DIR").ok();
-        std::env::remove_var("TOADSTOOL_SOCKET");
-        std::env::remove_var("PRIMAL_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::remove_var("XDG_RUNTIME_DIR");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_SOCKET") };
+        unsafe { std::unsafe { env::remove_var("PRIMAL_SOCKET") };
+        unsafe { std::unsafe { env::remove_var("BIOMEOS_SOCKET_PATH") };
+        unsafe { std::unsafe { env::remove_var("XDG_RUNTIME_DIR") };
 
         let result = get_socket_path("default", "node1");
 
         if let Some(v) = old_toad {
-            std::env::set_var("TOADSTOOL_SOCKET", v);
+            unsafe { std::unsafe { env::set_var("TOADSTOOL_SOCKET", v) };
         }
         if let Some(v) = old_primal {
-            std::env::set_var("PRIMAL_SOCKET", v);
+            unsafe { std::unsafe { env::set_var("PRIMAL_SOCKET", v) };
         }
         if let Some(v) = old_biome {
-            std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+            unsafe { std::unsafe { env::set_var("BIOMEOS_SOCKET_PATH", v) };
         }
         if let Some(v) = old_xdg {
-            std::env::set_var("XDG_RUNTIME_DIR", v);
+            unsafe { std::unsafe { env::set_var("XDG_RUNTIME_DIR", v) };
         }
 
         assert!(result.is_ok());

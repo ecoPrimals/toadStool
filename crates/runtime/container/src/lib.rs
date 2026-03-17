@@ -118,25 +118,22 @@ impl ContainerRuntimeEngine {
 
 impl Default for ContainerRuntimeEngine {
     fn default() -> Self {
-        match Self::new() {
-            Ok(engine) => engine,
-            Err(_) => {
-                // Return a minimal engine configuration if creation fails
-                Self {
-                    config: ContainerRuntimeConfig::default(),
-                    docker: None,
-                    active_containers: Arc::new(RwLock::new(HashMap::new())),
-                    resource_monitor: None,
-                    capabilities: RuntimeCapabilities {
-                        supported_workloads: vec![],
-                        max_concurrent_executions: Some(0),
-                        supported_architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
-                        platform_features: HashMap::new(),
-                        version: "1.0.0".to_string(),
-                    },
-                }
+        Self::new().unwrap_or_else(|_| {
+            // Return a minimal engine configuration if creation fails
+            Self {
+                config: ContainerRuntimeConfig::default(),
+                docker: None,
+                active_containers: Arc::new(RwLock::new(HashMap::new())),
+                resource_monitor: None,
+                capabilities: RuntimeCapabilities {
+                    supported_workloads: vec![],
+                    max_concurrent_executions: Some(0),
+                    supported_architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
+                    platform_features: HashMap::new(),
+                    version: "1.0.0".to_string(),
+                },
             }
-        }
+        })
     }
 }
 
@@ -190,9 +187,11 @@ mod tests {
     async fn test_capabilities() {
         if let Ok(engine) = ContainerRuntimeEngine::new() {
             let capabilities = engine.get_capabilities();
-            assert!(capabilities
-                .supported_workloads
-                .contains(&WorkloadType::Container));
+            assert!(
+                capabilities
+                    .supported_workloads
+                    .contains(&WorkloadType::Container)
+            );
         }
     }
 

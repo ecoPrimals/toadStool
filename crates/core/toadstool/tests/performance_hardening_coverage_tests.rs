@@ -387,10 +387,12 @@ async fn monitoring_adaptive_sampling_low_load() {
 async fn monitoring_get_aggregated_missing_workload() {
     let config = OptimizedMonitoringConfig::default();
     let monitor = OptimizedResourceMonitor::new(config);
-    assert!(monitor
-        .get_aggregated_metrics("nonexistent")
-        .await
-        .is_none());
+    assert!(
+        monitor
+            .get_aggregated_metrics("nonexistent")
+            .await
+            .is_none()
+    );
 }
 
 #[tokio::test]

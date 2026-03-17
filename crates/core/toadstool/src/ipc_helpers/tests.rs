@@ -4,7 +4,7 @@
 //! Uses `temp_env` for safe, isolated environment variable testing. No unsafe
 //! env var manipulation; temp_env handles serialization and restoration.
 
-use super::connection::{get_default_songbird_socket, IPC_TIMEOUT};
+use super::connection::{IPC_TIMEOUT, get_default_songbird_socket};
 use super::*;
 use serde_json::json;
 
@@ -420,10 +420,12 @@ fn test_register_with_songbird_error_reply_via_mock() {
                 let result = register_with_songbird().await;
                 handle.abort();
                 assert!(result.is_err());
-                assert!(result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("Songbird registration failed"));
+                assert!(
+                    result
+                        .unwrap_err()
+                        .to_string()
+                        .contains("Songbird registration failed")
+                );
             });
         })
         .join()

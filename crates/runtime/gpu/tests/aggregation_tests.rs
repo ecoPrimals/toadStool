@@ -3,13 +3,13 @@
 //! Tests for Result Aggregation with Fault Tolerance
 
 use toadstool_runtime_gpu::aggregation::{
+    AggregatedResult, AggregationMetadata,
     fault_tolerance::{
         PartialResult, PartialResultCollector, PartialResultSet, PartialResultStatus,
         RecoveryStrategy,
     },
     merger::{MatrixChunk, MatrixMerger, ScalarReducer, VectorMerger},
     strategies::{AggregationStrategy, ReductionOp, ResultAggregator},
-    AggregatedResult, AggregationMetadata,
 };
 
 // ============================================================================

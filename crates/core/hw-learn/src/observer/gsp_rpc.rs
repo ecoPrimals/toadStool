@@ -72,11 +72,10 @@ fn extract_field_u32(line: &str, prefix: &str) -> Option<u32> {
         .find(|c: char| !c.is_ascii_hexdigit() && c != 'x')
         .unwrap_or(rest.len());
     let val_str = &rest[..end];
-    if let Some(hex) = val_str.strip_prefix("0x") {
-        u32::from_str_radix(hex, 16).ok()
-    } else {
-        val_str.parse().ok()
-    }
+    val_str.strip_prefix("0x").map_or_else(
+        || val_str.parse().ok(),
+        |hex| u32::from_str_radix(hex, 16).ok(),
+    )
 }
 
 #[allow(

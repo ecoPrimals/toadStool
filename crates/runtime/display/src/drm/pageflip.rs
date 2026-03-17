@@ -55,7 +55,7 @@ impl PageFlipper {
 
     /// The framebuffer handle for the buffer currently being written to (back).
     #[must_use]
-    pub fn back_fb(&self) -> drm::control::framebuffer::Handle {
+    pub const fn back_fb(&self) -> drm::control::framebuffer::Handle {
         if self.swapped {
             self.front_fb
         } else {

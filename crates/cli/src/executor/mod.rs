@@ -47,7 +47,7 @@ use tracing::{info, warn};
 use toadstool_config::ToadStoolConfig;
 use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
 
-use crate::{load_biome_manifest, validate_manifest, BiomeStatus, CliContext};
+use crate::{BiomeStatus, CliContext, load_biome_manifest, validate_manifest};
 
 /// Options for running a biome in foreground mode
 #[derive(Debug, Clone)]

@@ -8,15 +8,15 @@
 //! This is a **Tx-only** transport: HDMI/DP outputs are unidirectional.
 
 use toadstool_core::{
-    encode_frame, HardwareTransport, TransportDirection, TransportError, TransportInfo,
-    TransportMedium, FRAME_HEADER_SIZE,
+    FRAME_HEADER_SIZE, HardwareTransport, TransportDirection, TransportError, TransportInfo,
+    TransportMedium, encode_frame,
 };
 
 use crate::drm::{
-    connector::{enumerate_connectors, ConnectionStatus},
-    modesetting::{modeset, ModesetPipeline},
-    pageflip::PageFlipper,
     Device, DumbBuffer, PixelFormat,
+    connector::{ConnectionStatus, enumerate_connectors},
+    modesetting::{ModesetPipeline, modeset},
+    pageflip::PageFlipper,
 };
 use crate::{DisplayError, Result as DisplayResult};
 
@@ -73,13 +73,12 @@ impl DisplayTransport {
         let frame_capacity =
             (w as usize) * (h as usize) * format.bytes_per_pixel() - FRAME_HEADER_SIZE;
 
-        let label = connector.label.clone();
-        let id = format!("{drm_path}:{label}");
+        let id = format!("{drm_path}:{}", connector.label);
 
         Ok(Self {
             info: TransportInfo {
                 id,
-                label,
+                label: connector.label,
                 medium: TransportMedium::Display,
                 direction: TransportDirection::Tx,
             },
@@ -95,7 +94,7 @@ impl DisplayTransport {
 
     /// Maximum payload bytes that fit in a single display frame.
     #[must_use]
-    pub fn frame_capacity(&self) -> usize {
+    pub const fn frame_capacity(&self) -> usize {
         self.frame_capacity
     }
 }

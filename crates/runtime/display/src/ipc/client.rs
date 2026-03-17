@@ -187,14 +187,12 @@ impl DisplayClient {
         let discovery_files = Self::get_tcp_discovery_file_candidates();
 
         for file in discovery_files {
-            if let Ok(contents) = std::fs::read_to_string(&file) {
-                // Parse format: tcp:127.0.0.1:PORT
-                if let Some(addr_str) = contents.trim().strip_prefix("tcp:") {
-                    if let Ok(addr) = addr_str.parse::<SocketAddr>() {
-                        tracing::debug!("   TCP discovery file: {}", file.display());
-                        return Ok(IpcEndpoint::TcpLocal(addr));
-                    }
-                }
+            if let Ok(contents) = std::fs::read_to_string(&file)
+                && let Some(addr_str) = contents.trim().strip_prefix("tcp:")
+                && let Ok(addr) = addr_str.parse::<SocketAddr>()
+            {
+                tracing::debug!("   TCP discovery file: {}", file.display());
+                return Ok(IpcEndpoint::TcpLocal(addr));
             }
         }
 

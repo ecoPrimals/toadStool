@@ -68,7 +68,7 @@ pub struct MonitorSample {
 
 /// Evaluate safety status for a sensor reading against the config.
 #[must_use]
-pub fn evaluate_safety(sensors: &HwmonSensors, config: &MonitorConfig) -> SafetyStatus {
+pub const fn evaluate_safety(sensors: &HwmonSensors, config: &MonitorConfig) -> SafetyStatus {
     if let Some(temp) = sensors.temp_mc {
         if temp >= config.temp_crit_mc {
             return SafetyStatus::ThermalCritical;
@@ -78,10 +78,10 @@ pub fn evaluate_safety(sensors: &HwmonSensors, config: &MonitorConfig) -> Safety
         }
     }
 
-    if let Some(power) = sensors.power_uw {
-        if power >= config.power_warn_uw {
-            return SafetyStatus::PowerWarning;
-        }
+    if let Some(power) = sensors.power_uw
+        && power >= config.power_warn_uw
+    {
+        return SafetyStatus::PowerWarning;
     }
 
     if sensors.temp_mc.is_none() && sensors.power_uw.is_none() {
@@ -115,14 +115,14 @@ pub fn sample(device_path: &Path, config: &MonitorConfig) -> Result<MonitorSampl
 ///
 /// # Errors
 /// Returns [`NvPmuError::ThermalLimit`] if temperature exceeds limit.
-pub fn assert_thermal_safe(sensors: &HwmonSensors, config: &MonitorConfig) -> Result<()> {
-    if let Some(temp) = sensors.temp_mc {
-        if temp >= config.temp_crit_mc {
-            return Err(NvPmuError::ThermalLimit {
-                temp_mc: temp,
-                limit_mc: config.temp_crit_mc,
-            });
-        }
+pub const fn assert_thermal_safe(sensors: &HwmonSensors, config: &MonitorConfig) -> Result<()> {
+    if let Some(temp) = sensors.temp_mc
+        && temp >= config.temp_crit_mc
+    {
+        return Err(NvPmuError::ThermalLimit {
+            temp_mc: temp,
+            limit_mc: config.temp_crit_mc,
+        });
     }
     Ok(())
 }

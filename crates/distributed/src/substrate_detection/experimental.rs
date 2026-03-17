@@ -90,6 +90,8 @@ fn probe_quantum_sim() -> Option<PlatformType> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
+
     use super::*;
 
     #[tokio::test]
@@ -102,22 +104,31 @@ mod tests {
 
     #[test]
     fn probe_fpga_returns_none_without_hardware() {
-        std::env::remove_var("XILINX_XRT");
-        std::env::remove_var("QUARTUS_ROOTDIR");
+        // SAFETY: Test-only; sequential test execution
+        unsafe {
+            std::env::remove_var("XILINX_XRT");
+            std::env::remove_var("QUARTUS_ROOTDIR");
+        }
         assert!(probe_fpga().is_none());
     }
 
     #[test]
     fn probe_neuromorphic_returns_none_without_hardware() {
-        std::env::remove_var("AKIDA_DEVICE_ID");
-        std::env::remove_var("SPINNAKER_ROOT");
+        // SAFETY: Test-only; sequential test execution
+        unsafe {
+            std::env::remove_var("AKIDA_DEVICE_ID");
+            std::env::remove_var("SPINNAKER_ROOT");
+        }
         assert!(probe_neuromorphic().is_none());
     }
 
     #[test]
     fn probe_quantum_returns_none_without_runtime() {
-        std::env::remove_var("QISKIT_HOME");
-        std::env::remove_var("CIRQ_HOME");
+        // SAFETY: Test-only; sequential test execution
+        unsafe {
+            std::env::remove_var("QISKIT_HOME");
+            std::env::remove_var("CIRQ_HOME");
+        }
         assert!(probe_quantum_sim().is_none());
     }
 }

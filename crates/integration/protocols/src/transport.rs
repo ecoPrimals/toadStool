@@ -34,24 +34,24 @@ impl Transport {
         endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
         match self {
-            Transport::Http(transport) => transport.send_message(message, endpoint).await,
-            Transport::TRpc(transport) => transport.send_message(message, endpoint).await,
+            Self::Http(transport) => transport.send_message(message, endpoint).await,
+            Self::TRpc(transport) => transport.send_message(message, endpoint).await,
         }
     }
 
     /// Check if this transport supports the given endpoint
-    pub fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
+    pub const fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
         match self {
-            Transport::Http(transport) => transport.supports_endpoint(endpoint),
-            Transport::TRpc(transport) => transport.supports_endpoint(endpoint),
+            Self::Http(transport) => transport.supports_endpoint(endpoint),
+            Self::TRpc(transport) => transport.supports_endpoint(endpoint),
         }
     }
 
     /// Get transport type
-    pub fn transport_type(&self) -> TransportType {
+    pub const fn transport_type(&self) -> TransportType {
         match self {
-            Transport::Http(transport) => transport.transport_type(),
-            Transport::TRpc(transport) => transport.transport_type(),
+            Self::Http(transport) => transport.transport_type(),
+            Self::TRpc(transport) => transport.transport_type(),
         }
     }
 }
@@ -72,7 +72,7 @@ impl Default for HttpTransport {
 }
 
 impl HttpTransport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -89,11 +89,11 @@ impl HttpTransport {
         ))
     }
 
-    pub fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
+    pub const fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
         matches!(endpoint.transport, TransportType::Http)
     }
 
-    pub fn transport_type(&self) -> TransportType {
+    pub const fn transport_type(&self) -> TransportType {
         TransportType::Http
     }
 }
@@ -113,7 +113,7 @@ impl Default for TRpcTransport {
 }
 
 impl TRpcTransport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -129,11 +129,11 @@ impl TRpcTransport {
         ))
     }
 
-    pub fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
+    pub const fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
         matches!(endpoint.transport, TransportType::TRpc)
     }
 
-    pub fn transport_type(&self) -> TransportType {
+    pub const fn transport_type(&self) -> TransportType {
         TransportType::TRpc
     }
 }

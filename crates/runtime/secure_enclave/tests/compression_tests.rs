@@ -10,7 +10,7 @@
 //! - ✅ Smart organization (logical test groups)
 //! - ✅ Discover capabilities (not assumptions!)
 
-use toadstool_runtime_secure_enclave::decompression::{decompress_isolated, CompressionAlgorithm};
+use toadstool_runtime_secure_enclave::decompression::{CompressionAlgorithm, decompress_isolated};
 
 // Helper: Create LZ4 compressed data using lz4_flex
 fn compress_lz4(data: &[u8]) -> Vec<u8> {

@@ -82,6 +82,7 @@ impl RuntimeDiscovery {
         }
 
         state.running = true;
+        drop(state);
         info!("🔍 Runtime discovery started");
 
         // Start background discovery tasks
@@ -98,6 +99,7 @@ impl RuntimeDiscovery {
         }
 
         state.running = false;
+        drop(state);
         info!("🛑 Runtime discovery stopped");
 
         Ok(())
@@ -111,9 +113,10 @@ impl RuntimeDiscovery {
         &self,
         capability: &str,
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
-        let services = self.services.read().await;
-
-        let matching: Vec<DiscoveredService> = services
+        let matching: Vec<DiscoveredService> = self
+            .services
+            .read()
+            .await
             .values()
             .filter(|service| {
                 service
@@ -138,9 +141,10 @@ impl RuntimeDiscovery {
         &self,
         requirement: &CapabilityRequirement,
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
-        let services = self.services.read().await;
-
-        let matching: Vec<DiscoveredService> = services
+        let matching: Vec<DiscoveredService> = self
+            .services
+            .read()
+            .await
             .values()
             .filter(|service| self.identity.matches_requirement(requirement, service))
             .cloned()
@@ -187,10 +191,13 @@ impl RuntimeDiscovery {
             service.primal_type, service.instance_id
         );
         services.insert(service.instance_id, service);
+        let services_len = services.len();
+        drop(services);
 
         let mut state = self.state.write().await;
         state.stats.total_discovered += 1;
-        state.stats.active_services = services.len();
+        state.stats.active_services = services_len;
+        drop(state);
 
         Ok(())
     }
@@ -199,11 +206,14 @@ impl RuntimeDiscovery {
     pub async fn remove_service(&self, instance_id: &Uuid) -> ToadStoolResult<()> {
         let mut services = self.services.write().await;
 
-        if services.remove(instance_id).is_some() {
-            info!("🗑️ Removed service: {}", instance_id);
+        let removed = services.remove(instance_id).is_some();
+        let len = services.len();
+        drop(services);
 
+        if removed {
+            info!("🗑️ Removed service: {}", instance_id);
             let mut state = self.state.write().await;
-            state.stats.active_services = services.len();
+            state.stats.active_services = len;
         }
 
         Ok(())

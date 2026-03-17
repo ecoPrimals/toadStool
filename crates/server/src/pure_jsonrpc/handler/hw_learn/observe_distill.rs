@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Observe and distill handlers — parse mmiotraces, diff traces, build init recipes.
 
-use super::helpers::observe_from_text;
 use super::HwLearnHandler;
+use super::helpers::observe_from_text;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 impl HwLearnHandler {

@@ -171,7 +171,7 @@ impl MockGpuAdapter {
 
     /// Whether this adapter supports native f64 reliably.
     #[must_use]
-    pub fn has_reliable_f64(&self) -> bool {
+    pub const fn has_reliable_f64(&self) -> bool {
         self.supports_shader_f64 && !self.f64_compute_unreliable
     }
 }

@@ -94,10 +94,8 @@ impl RuntimePortDiscovery {
             format!("0.0.0.0:{port}")
         };
 
-        match addr.parse::<SocketAddr>() {
-            Ok(socket_addr) => TcpListener::bind(socket_addr).is_ok(),
-            Err(_) => false,
-        }
+        addr.parse::<SocketAddr>()
+            .is_ok_and(|socket_addr| TcpListener::bind(socket_addr).is_ok())
     }
 
     /// Find any available port (let OS choose if port=0)
@@ -188,7 +186,7 @@ mod tests {
         assert!(port.is_ok());
         let port = port.unwrap();
         assert!(port >= 1024); // Unprivileged
-                               // port is u16, so always < 65536
+        // port is u16, so always < 65536
     }
 
     #[test]

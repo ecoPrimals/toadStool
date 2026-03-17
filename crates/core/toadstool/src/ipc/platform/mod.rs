@@ -79,18 +79,18 @@ impl Endpoint {
     }
 
     /// Check if endpoint is Unix socket
-    pub fn is_unix(&self) -> bool {
+    pub const fn is_unix(&self) -> bool {
         matches!(self, Self::Unix { .. })
     }
 
     /// Check if endpoint is Abstract socket
     #[cfg(target_os = "linux")]
-    pub fn is_abstract(&self) -> bool {
+    pub const fn is_abstract(&self) -> bool {
         matches!(self, Self::Abstract { .. })
     }
 
     /// Check if endpoint is TCP
-    pub fn is_tcp(&self) -> bool {
+    pub const fn is_tcp(&self) -> bool {
         matches!(self, Self::Tcp { .. })
     }
 
@@ -110,7 +110,7 @@ impl Endpoint {
     ///
     /// Tier 1: Preferred (Unix, Abstract)\
     /// Tier 2: Fallback (TCP)
-    pub fn tier(&self) -> TransportTier {
+    pub const fn tier(&self) -> TransportTier {
         match self {
             Self::Unix { .. } => TransportTier::Tier1,
             #[cfg(target_os = "linux")]
@@ -164,12 +164,10 @@ fn is_android() -> bool {
 fn get_runtime_dir() -> String {
     std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
         // Pure Rust UID fallback (no unsafe libc!)
-        if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
-            format!("/run/user/{uid}")
-        } else {
-            // Ultimate fallback
-            "/tmp/biomeos-runtime".to_string()
-        }
+        toadstool_common::uid_detector::get_user_id().map_or_else(
+            |_| "/tmp/biomeos-runtime".to_string(),
+            |uid| format!("/run/user/{uid}"),
+        )
     })
 }
 

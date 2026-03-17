@@ -7,6 +7,7 @@ use toadstool::error::ToadStoolResult;
 use tracing::{debug, info};
 
 /// Reliability extension trait
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) trait ReliabilityExt {
     /// Apply circuit breaker configuration
     async fn apply_circuit_breaker_config(&self) -> ToadStoolResult<()>;

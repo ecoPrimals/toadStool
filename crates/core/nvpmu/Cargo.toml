@@ -1,7 +1,7 @@
 [package]
 name = "nvpmu"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 license = "AGPL-3.0-only"
 description = "Sovereign GPU power management for NVIDIA GPUs — pure Rust, no firmware dependency"
 repository = "https://github.com/ecoPrimals/toadstool"

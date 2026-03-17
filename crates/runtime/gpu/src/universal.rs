@@ -285,7 +285,7 @@ impl ComputeCapabilities {
 
 impl PrecisionCapabilities {
     /// Check if precision is supported
-    pub fn supports(&self, precision: Precision) -> bool {
+    pub const fn supports(&self, precision: Precision) -> bool {
         match precision {
             Precision::Fp16 => self.fp16,
             Precision::Fp32 => self.fp32,

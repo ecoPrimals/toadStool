@@ -487,8 +487,10 @@ impl AgentBackend for InMemoryAgentBackend {
             last_updated: SystemTime::now(),
         };
 
-        let mut agents = self.agents.lock().await;
-        agents.insert(config.name.clone(), agent_info.clone());
+        self.agents
+            .lock()
+            .await
+            .insert(config.name.clone(), agent_info.clone());
 
         tracing::debug!("Deployed test agent: {}", config.name);
         Ok(agent_info)
@@ -515,8 +517,10 @@ impl AgentBackend for InMemoryAgentBackend {
             loaded_at: SystemTime::now(),
         };
 
-        let mut models = self.models.lock().await;
-        models.insert(config.name.clone(), model_info.clone());
+        self.models
+            .lock()
+            .await
+            .insert(config.name.clone(), model_info.clone());
 
         tracing::debug!("Loaded test model: {}", config.name);
         Ok(model_info)
@@ -551,8 +555,9 @@ impl AgentBackend for InMemoryAgentBackend {
     }
 
     async fn remove_agent(&self, agent_name: &str) -> ToadStoolResult<()> {
-        let mut agents = self.agents.lock().await;
-        agents
+        self.agents
+            .lock()
+            .await
             .remove(agent_name)
             .ok_or_else(|| ToadStoolError::not_found(format!("Agent {agent_name} not found")))?;
 
@@ -587,8 +592,9 @@ impl AgentBackend for InMemoryAgentBackend {
     }
 
     async fn unload_model(&self, model_name: &str) -> ToadStoolResult<()> {
-        let mut models = self.models.lock().await;
-        models
+        self.models
+            .lock()
+            .await
             .remove(model_name)
             .ok_or_else(|| ToadStoolError::not_found(format!("Model {model_name} not found")))?;
 

@@ -61,7 +61,7 @@ impl MacOSCompatibilityLayer {
     }
 
     #[must_use]
-    pub fn get_config(&self) -> &MacOSCompatConfig {
+    pub const fn get_config(&self) -> &MacOSCompatConfig {
         &self.config
     }
 }

@@ -5,7 +5,7 @@
 #[expect(clippy::float_cmp, reason = "comparing against exact literal")]
 mod wgpu_backend_tests {
     use super::super::types::{
-        is_nvidia_ada_lovelace, GpuAdapterInfo, GpuDeviceType, HardwareFingerprint,
+        GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, is_nvidia_ada_lovelace,
     };
     use super::super::*;
 
@@ -40,9 +40,10 @@ mod wgpu_backend_tests {
         assert!(fp.estimated_tflops_f32 > 0.0);
         assert!(fp.estimated_tflops_f64 > 0.0);
         assert!(fp.sovereign_capable);
-        assert!(fp
-            .capabilities
-            .contains(&SubstrateCapabilityKind::F64Native));
+        assert!(
+            fp.capabilities
+                .contains(&SubstrateCapabilityKind::F64Native)
+        );
         assert!(fp.capabilities.contains(&SubstrateCapabilityKind::MdForce));
         assert!(fp.capabilities.contains(&SubstrateCapabilityKind::Fft));
     }
@@ -52,12 +53,14 @@ mod wgpu_backend_tests {
         let fp = make_test_fingerprint(GpuDeviceType::Integrated, false, false, "anv", "Test GPU");
         assert!(fp.estimated_tflops_f32 > 0.0);
         assert_eq!(fp.estimated_tflops_f64, 0.0);
-        assert!(!fp
-            .capabilities
-            .contains(&SubstrateCapabilityKind::F64Native));
-        assert!(fp
-            .capabilities
-            .contains(&SubstrateCapabilityKind::Df64Emulation));
+        assert!(
+            !fp.capabilities
+                .contains(&SubstrateCapabilityKind::F64Native)
+        );
+        assert!(
+            fp.capabilities
+                .contains(&SubstrateCapabilityKind::Df64Emulation)
+        );
     }
 
     #[test]
@@ -150,12 +153,14 @@ mod wgpu_backend_tests {
     fn test_f64_compute_unreliable_nvk_volta() {
         let fp =
             make_test_fingerprint(GpuDeviceType::Discrete, true, true, "nvk", "NVIDIA Titan V");
-        assert!(!fp
-            .capabilities
-            .contains(&SubstrateCapabilityKind::F64Native));
-        assert!(fp
-            .capabilities
-            .contains(&SubstrateCapabilityKind::Df64Emulation));
+        assert!(
+            !fp.capabilities
+                .contains(&SubstrateCapabilityKind::F64Native)
+        );
+        assert!(
+            fp.capabilities
+                .contains(&SubstrateCapabilityKind::Df64Emulation)
+        );
     }
 
     #[test]
@@ -167,12 +172,14 @@ mod wgpu_backend_tests {
             "nvk",
             "NVIDIA GeForce RTX 3080",
         );
-        assert!(fp
-            .capabilities
-            .contains(&SubstrateCapabilityKind::F64Native));
-        assert!(fp
-            .capabilities
-            .contains(&SubstrateCapabilityKind::Df64Emulation));
+        assert!(
+            fp.capabilities
+                .contains(&SubstrateCapabilityKind::F64Native)
+        );
+        assert!(
+            fp.capabilities
+                .contains(&SubstrateCapabilityKind::Df64Emulation)
+        );
     }
 
     #[test]

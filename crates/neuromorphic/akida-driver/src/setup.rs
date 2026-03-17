@@ -184,11 +184,11 @@ impl NpuSetup {
             .ok_or_else(|| AkidaError::setup_failed("Driver path not set"))?;
 
         // Try direct insmod first
-        if let Ok(status) = Command::new("insmod").arg(driver_path).status() {
-            if status.success() {
-                info!("Module loaded (direct)");
-                return Ok(());
-            }
+        if let Ok(status) = Command::new("insmod").arg(driver_path).status()
+            && status.success()
+        {
+            info!("Module loaded (direct)");
+            return Ok(());
         }
 
         // Need privilege escalation

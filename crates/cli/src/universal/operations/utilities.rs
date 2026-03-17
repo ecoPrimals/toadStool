@@ -3,8 +3,8 @@
 //!
 //! Extension trait for utility helper methods.
 
-use crate::universal::types::{GpuInfo, HardwareInfo};
 use crate::Result;
+use crate::universal::types::{GpuInfo, HardwareInfo};
 use std::collections::HashMap;
 use std::future::Future;
 use toadstool_distributed::substrate_detection::PlatformType;

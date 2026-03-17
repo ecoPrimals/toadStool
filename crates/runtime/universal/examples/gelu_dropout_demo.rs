@@ -10,11 +10,11 @@
 //! These operations are fundamental for modern neural networks (especially Transformers).
 
 use std::collections::HashMap;
+use toadstool_runtime_universal::ComputeError;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
     DataType, OperationType, ParamValue, Workload, WorkloadData, WorkloadParams,
 };
-use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
 async fn main() -> Result<(), ComputeError> {

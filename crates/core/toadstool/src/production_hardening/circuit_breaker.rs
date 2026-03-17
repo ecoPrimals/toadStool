@@ -119,7 +119,8 @@ impl CircuitBreaker {
         let state = self.state.read().await;
         match *state {
             CircuitState::Open => {
-                if let Some(last_failure) = *self.last_failure_time.read().await {
+                let last_failure_opt = *self.last_failure_time.read().await;
+                if let Some(last_failure) = last_failure_opt {
                     if last_failure.elapsed() > self.config.timeout {
                         drop(state);
                         self.transition_to_half_open().await;

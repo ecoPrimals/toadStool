@@ -132,7 +132,7 @@ pub enum SubstrateType {
 }
 
 impl SubstrateType {
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Cpu => "cpu",
             Self::Gpu => "gpu",
@@ -204,6 +204,7 @@ impl SubstrateCapabilities {
     ///
     /// **Note**: These are conservative estimates. Real implementations
     /// should measure actual hardware capabilities.
+    #[allow(clippy::missing_const_for_fn)] // Struct has f64 fields
     pub fn default_for_type(substrate_type: SubstrateType) -> Self {
         match substrate_type {
             SubstrateType::Cpu => Self {
@@ -342,6 +343,7 @@ pub enum BufferOperation {
 
 impl BufferOperation {
     /// Get the total buffer size for this operation
+    #[allow(clippy::missing_const_for_fn)] // Vec::len() not const
     pub fn buffer_size(&self) -> usize {
         match self {
             Self::Add { a, b, .. } => a.len() + b.len(),

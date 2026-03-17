@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Auto-init handlers — auto-detect GPU, find best recipe, apply (single or all).
 
-use super::helpers::check_thermal_for_bdf;
 use super::HwLearnHandler;
+use super::helpers::check_thermal_for_bdf;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 /// Per-GPU init work (runs in spawn_blocking when parallel).
@@ -30,16 +30,16 @@ fn init_one_gpu(
     }
 
     let thermal = check_thermal_for_bdf(&bdf);
-    if let Some(ref status) = thermal {
-        if !status.compute_safe() {
-            return serde_json::json!({
-                "bdf": bdf,
-                "chip": chip,
-                "driver": gpu.driver,
-                "status": "skipped",
-                "reason": format!("thermal {:?} — refusing init", status),
-            });
-        }
+    if let Some(ref status) = thermal
+        && !status.compute_safe()
+    {
+        return serde_json::json!({
+            "bdf": bdf,
+            "chip": chip,
+            "driver": gpu.driver,
+            "status": "skipped",
+            "reason": format!("thermal {:?} — refusing init", status),
+        });
     }
 
     let Ok(mut bar0) = nvpmu::Bar0Access::open(&bdf) else {
@@ -66,15 +66,15 @@ fn init_one_gpu(
         let _ = snapshot.rollback(&mut bar0);
     }
 
-    if let Ok(mut s) = hw_learn::knowledge::KnowledgeStore::open(store_dir) {
-        if let Some(id) = s.best_recipe(&hw_learn::distiller::GpuArch {
+    if let Ok(mut s) = hw_learn::knowledge::KnowledgeStore::open(store_dir)
+        && let Some(id) = s.best_recipe(&hw_learn::distiller::GpuArch {
             vendor: hw_learn::distiller::Vendor::Nvidia,
             generation: String::new(),
             chip: chip.to_string(),
             compute_class: String::new(),
-        }) {
-            let _ = s.update_confidence(&id, confidence);
-        }
+        })
+    {
+        let _ = s.update_confidence(&id, confidence);
     }
 
     serde_json::json!({
@@ -183,12 +183,12 @@ impl HwLearnHandler {
         }
 
         let thermal = check_thermal_for_bdf(&bdf);
-        if let Some(ref status) = thermal {
-            if !status.compute_safe() {
-                return Err(JsonRpcError::internal_error(format!(
-                    "GPU {bdf} thermal status {status:?} — refusing auto_init"
-                )));
-            }
+        if let Some(ref status) = thermal
+            && !status.compute_safe()
+        {
+            return Err(JsonRpcError::internal_error(format!(
+                "GPU {bdf} thermal status {status:?} — refusing auto_init"
+            )));
         }
 
         let mut bar0 = nvpmu::Bar0Access::open(&bdf).map_err(|e| {

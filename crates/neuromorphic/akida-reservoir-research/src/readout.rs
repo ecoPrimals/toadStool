@@ -281,7 +281,7 @@ impl ReadoutPredictor {
     }
 
     /// Get weights
-    pub fn weights(&self) -> &Array2<f32> {
+    pub const fn weights(&self) -> &Array2<f32> {
         &self.weights
     }
 }

@@ -13,8 +13,8 @@
 //!
 //! Tests platform ID, metadata, hardware info WITHOUT real GPU/network probing.
 
-use toadstool_cli::universal::operations::UtilityOps;
 use toadstool_cli::universal::UniversalComputeManager;
+use toadstool_cli::universal::operations::UtilityOps;
 use toadstool_distributed::substrate_detection::PlatformType;
 
 #[tokio::test]

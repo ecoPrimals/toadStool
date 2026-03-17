@@ -11,12 +11,12 @@ pub struct BufferId(u64);
 
 impl BufferId {
     /// Create a new buffer ID
-    pub fn new(id: u64) -> Self {
+    pub const fn new(id: u64) -> Self {
         Self(id)
     }
 
     /// Get the raw ID value
-    pub fn as_u64(self) -> u64 {
+    pub const fn as_u64(self) -> u64 {
         self.0
     }
 }
@@ -34,7 +34,7 @@ pub struct BufferIdGenerator {
 
 impl BufferIdGenerator {
     /// Create a new ID generator
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             next_id: AtomicU64::new(1),
         }
@@ -71,7 +71,7 @@ pub struct MemoryFlags {
 
 impl MemoryFlags {
     /// Default flags (balanced CPU/GPU access)
-    pub fn balanced() -> Self {
+    pub const fn balanced() -> Self {
         Self {
             prefer_cpu: false,
             prefer_gpu: false,
@@ -81,7 +81,7 @@ impl MemoryFlags {
     }
 
     /// CPU-optimized flags
-    pub fn cpu_optimized() -> Self {
+    pub const fn cpu_optimized() -> Self {
         Self {
             prefer_cpu: true,
             prefer_gpu: false,
@@ -91,7 +91,7 @@ impl MemoryFlags {
     }
 
     /// GPU-optimized flags
-    pub fn gpu_optimized() -> Self {
+    pub const fn gpu_optimized() -> Self {
         Self {
             prefer_cpu: false,
             prefer_gpu: true,
@@ -216,12 +216,12 @@ pub struct UnifiedMemoryCapabilities {
 
 impl UnifiedMemoryCapabilities {
     /// Check if this backend is truly unified (zero-copy)
-    pub fn is_truly_unified(&self) -> bool {
+    pub const fn is_truly_unified(&self) -> bool {
         self.zero_copy && (self.cpu_fast_access || self.gpu_fast_access)
     }
 
     /// Check if explicit synchronization is needed
-    pub fn needs_explicit_sync(&self) -> bool {
+    pub const fn needs_explicit_sync(&self) -> bool {
         !self.coherent
     }
 }
@@ -321,7 +321,7 @@ impl UnifiedMemoryStats {
     }
 
     /// Update peak allocation if needed
-    pub fn update_peak(&mut self, current: u64) {
+    pub const fn update_peak(&mut self, current: u64) {
         if current > self.peak_allocated {
             self.peak_allocated = current;
         }
@@ -400,10 +400,10 @@ mod tests {
 
     #[test]
     fn test_buffer_id_generator() {
-        let gen = BufferIdGenerator::new();
-        let id1 = gen.next();
-        let id2 = gen.next();
-        let id3 = gen.next();
+        let id_generator = BufferIdGenerator::new();
+        let id1 = id_generator.next();
+        let id2 = id_generator.next();
+        let id3 = id_generator.next();
 
         assert_ne!(id1, id2);
         assert_ne!(id2, id3);

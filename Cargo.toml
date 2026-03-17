@@ -61,8 +61,8 @@ exclude = []
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.82.0"
+edition = "2024"
+rust-version = "1.85.0"
 authors = ["ToadStool Development Team"]
 license = "AGPL-3.0-only"
 repository = "https://github.com/ecoPrimals/toadstool"
@@ -214,10 +214,10 @@ lto = true
 # Production code quality: warnings as errors
 [workspace.lints.rust]
 
-# Pedantic clippy enabled for improved code quality
+# Pedantic + Nursery clippy enabled for production-grade code quality
 [workspace.lints.clippy]
-# PEDANTIC MODE - Production-grade code quality
 pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
 
 # Cargo lints - selectively enabled (not using full cargo group
 # to avoid multiple_crate_versions blocking on transitive conflicts)

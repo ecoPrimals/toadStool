@@ -14,8 +14,8 @@
 //! Tests `discover_system`, `discover_ecosystem`, and discovery helper methods.
 //! Uses actual system commands on Linux - tests may behave differently on other OS.
 
-use toadstool_cli::zero_config::{DiscoveryExt, ZeroConfigCore, ZeroConfigDeployment};
 use toadstool_cli::Result;
+use toadstool_cli::zero_config::{DiscoveryExt, ZeroConfigCore, ZeroConfigDeployment};
 
 // ============================================================================
 // discover_system tests - runs nproc, /proc/cpuinfo, /proc/meminfo, df, ip, uname, etc.

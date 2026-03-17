@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 use toadstool_server::config::{HealthCheckConfig, ServerConfig};
 use toadstool_server::state::{ServerState, ServerStatistics};

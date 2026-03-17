@@ -252,7 +252,7 @@ impl ToadStoolClient {
             .rpc_client
             .call("compute.list", serde_json::json!({}))
             .await
-            .unwrap_or(serde_json::json!({"jobs": [], "counts": {}}));
+            .unwrap_or_else(|_| serde_json::json!({"jobs": [], "counts": {}}));
 
         let counts = jobs.get("counts").and_then(|c| c.as_object());
         let pending = counts
@@ -335,7 +335,7 @@ impl ToadStoolClient {
     }
 
     /// Start event stream. No-op; use JSON-RPC polling instead.
-    pub fn start_event_stream(&self) -> ClientResult<()> {
+    pub const fn start_event_stream(&self) -> ClientResult<()> {
         Ok(())
     }
 
@@ -382,7 +382,8 @@ mod tests {
 
     #[test]
     fn test_resolve_socket_path_default_fallback() {
-        std::env::remove_var("TOADSTOOL_SOCKET");
+        // SAFETY: Test-only; no other threads access env vars during this test
+        unsafe { std::env::remove_var("TOADSTOOL_SOCKET") };
         let path = resolve_socket_path("http://localhost:8080");
         // Should return some reasonable socket path
         assert!(

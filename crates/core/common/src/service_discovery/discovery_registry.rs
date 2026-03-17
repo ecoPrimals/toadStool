@@ -12,7 +12,7 @@ use tracing::info;
 
 use crate::primal_identity::ServiceEndpoint;
 
-use super::config::{capability_from_str, ConfigFile};
+use super::config::{ConfigFile, capability_from_str};
 use super::discovery_config::discover_from_config;
 use super::types::{DiscoveredService, DiscoveryError, DiscoveryResult};
 

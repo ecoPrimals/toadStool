@@ -53,7 +53,7 @@ pub fn exit_code_for_error(error: &dyn std::error::Error) -> i32 {
 
 /// Initialize enhanced logging with better formatting
 pub fn init_enhanced_logging(verbose: bool) -> Result<()> {
-    use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
 
     let filter = if verbose {
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug"))

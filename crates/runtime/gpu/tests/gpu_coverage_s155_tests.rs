@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use toadstool::{RuntimeEngine, WorkloadType};
+use toadstool_runtime_gpu::ParallelComputeFramework;
 use toadstool_runtime_gpu::config::{
     AllocationStrategy, CachingConfig, CompilationConfig, DeviceSelectionStrategy, ExecutionConfig,
     GpuDiscoveryConfig, LoadBalancingAlgorithm, LoadBalancingConfig, MonitoringConfig,
@@ -38,7 +39,6 @@ use toadstool_runtime_gpu::unified_memory::{
     UnifiedMemoryCapabilities, UnifiedMemoryConfig, UnifiedMemoryStats,
 };
 use toadstool_runtime_gpu::universal::UniversalComputeResource;
-use toadstool_runtime_gpu::ParallelComputeFramework;
 
 // ============================================================================
 // Types - construction, Display/Debug, defaults
@@ -57,10 +57,11 @@ fn types_device_requirements_minimal() {
     let reqs = DeviceRequirements::minimal();
     assert!(reqs.min_memory_bytes.is_some());
     assert!(reqs.min_compute_units.is_some());
-    assert!(reqs
-        .required_data_types
-        .iter()
-        .any(|t| matches!(t, DataType::Float32)));
+    assert!(
+        reqs.required_data_types
+            .iter()
+            .any(|t| matches!(t, DataType::Float32))
+    );
 }
 
 #[test]
@@ -536,9 +537,9 @@ fn unified_memory_buffer_id() {
 
 #[test]
 fn unified_memory_buffer_id_generator() {
-    let gen = BufferIdGenerator::new();
-    let id1 = gen.next();
-    let id2 = gen.next();
+    let id_generator = BufferIdGenerator::new();
+    let id1 = id_generator.next();
+    let id2 = id_generator.next();
     assert_ne!(id1, id2);
 }
 

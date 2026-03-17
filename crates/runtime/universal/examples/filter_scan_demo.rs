@@ -133,7 +133,7 @@ async fn main() -> Result<(), ComputeError> {
         other => {
             return Err(ComputeError::ExecutionFailed(format!(
                 "Filter operation returned unexpected result type: {other:?}"
-            )))
+            )));
         }
     };
 

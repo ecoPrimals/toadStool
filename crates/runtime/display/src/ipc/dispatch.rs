@@ -48,8 +48,7 @@ async fn dispatch_method(
                 .and_then(|p| serde_json::from_value(p.clone()).ok())
                 .unwrap_or_default();
 
-            let mut mgr = manager.write().await;
-            let window_id = mgr.create_window(params)?;
+            let window_id = manager.write().await.create_window(params)?;
 
             Ok(serde_json::json!({
                 "window_id": window_id.as_string()
@@ -64,8 +63,7 @@ async fn dispatch_method(
                 .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
             let window_id = WindowId::from_string(window_id_str)?;
 
-            let mut mgr = manager.write().await;
-            mgr.destroy_window(window_id)?;
+            manager.write().await.destroy_window(window_id)?;
 
             Ok(serde_json::json!({"destroyed": true}))
         }
@@ -95,8 +93,10 @@ async fn dispatch_method(
                 .ok_or_else(|| DisplayError::IpcError("Missing height".to_string()))?
                 as u32;
 
-            let mut mgr = manager.write().await;
-            mgr.resize_window(window_id, Size { width, height })?;
+            manager
+                .write()
+                .await
+                .resize_window(window_id, Size { width, height })?;
 
             Ok(serde_json::json!({"resized": true}))
         }
@@ -109,29 +109,24 @@ async fn dispatch_method(
                 .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
             let window_id = WindowId::from_string(window_id_str)?;
 
-            let mgr = manager.read().await;
-            let info = mgr.get_window_info(window_id)?;
+            let info = manager.read().await.get_window_info(window_id)?;
 
             Ok(serde_json::to_value(info)
                 .map_err(|e| DisplayError::IpcError(format!("Serialization error: {e}")))?)
         }
-        "display.get_capabilities" => {
-            let mgr = manager.read().await;
-
-            Ok(serde_json::json!({
-                "primal_id": "toadstool-primary",
-                "socket_path": platform::discover_socket_path().display().to_string(),
-                "transport": "isomorphic",
-                "max_windows": 16,
-                "supported_formats": ["RGBA8888", "BGRA8888"],
-                "has_gpu_acceleration": true,
-                "vsync_available": true,
-                "display_count": 1,
-                "input_device_count": 0,
-                "window_count": mgr.window_count(),
-                "isomorphic": true,
-            }))
-        }
+        "display.get_capabilities" => Ok(serde_json::json!({
+            "primal_id": "toadstool-primary",
+            "socket_path": platform::discover_socket_path().display().to_string(),
+            "transport": "isomorphic",
+            "max_windows": 16,
+            "supported_formats": ["RGBA8888", "BGRA8888"],
+            "has_gpu_acceleration": true,
+            "vsync_available": true,
+            "display_count": 1,
+            "input_device_count": 0,
+            "window_count": manager.read().await.window_count(),
+            "isomorphic": true,
+        })),
         _ => Err(DisplayError::IpcError(format!(
             "Unknown method: {}",
             request.method
@@ -210,10 +205,12 @@ mod tests {
         assert_eq!(result["primal_id"], "toadstool-primary");
         assert_eq!(result["max_windows"], 16);
         assert_eq!(result["isomorphic"], true);
-        assert!(result["socket_path"]
-            .as_str()
-            .unwrap()
-            .contains("toadstool"));
+        assert!(
+            result["socket_path"]
+                .as_str()
+                .unwrap()
+                .contains("toadstool")
+        );
     }
 
     #[tokio::test]
@@ -225,11 +222,13 @@ mod tests {
             r#"{"jsonrpc":"2.0","method":"display.destroy_window","params":{},"id":1}"#;
         let response = handle_request(request_str, &manager).await;
         assert!(response.error.is_some());
-        assert!(response
-            .error
-            .unwrap()
-            .message
-            .contains("Missing window_id"));
+        assert!(
+            response
+                .error
+                .unwrap()
+                .message
+                .contains("Missing window_id")
+        );
     }
 
     #[tokio::test]
@@ -295,11 +294,13 @@ mod tests {
             r#"{"jsonrpc":"2.0","method":"display.get_window_info","params":{},"id":1}"#;
         let response = handle_request(request_str, &manager).await;
         assert!(response.error.is_some());
-        assert!(response
-            .error
-            .unwrap()
-            .message
-            .contains("Missing window_id"));
+        assert!(
+            response
+                .error
+                .unwrap()
+                .message
+                .contains("Missing window_id")
+        );
     }
 
     #[tokio::test]

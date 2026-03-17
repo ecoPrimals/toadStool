@@ -85,31 +85,38 @@ pub enum CliError {
 
 impl From<base64::DecodeError> for CliError {
     fn from(e: base64::DecodeError) -> Self {
-        CliError::Other(e.to_string())
+        Self::Other(e.to_string())
     }
 }
 
 impl From<std::string::FromUtf8Error> for CliError {
     fn from(e: std::string::FromUtf8Error) -> Self {
-        CliError::Other(e.to_string())
+        Self::Other(e.to_string())
     }
 }
 
 impl From<std::net::AddrParseError> for CliError {
     fn from(e: std::net::AddrParseError) -> Self {
-        CliError::Other(e.to_string())
+        Self::Other(e.to_string())
     }
 }
 
 impl From<ed25519_dalek::ed25519::Error> for CliError {
     fn from(e: ed25519_dalek::ed25519::Error) -> Self {
-        CliError::Other(e.to_string())
+        Self::Other(e.to_string())
+    }
+}
+
+#[cfg(feature = "npu")]
+impl From<akida_driver::AkidaError> for CliError {
+    fn from(e: akida_driver::AkidaError) -> Self {
+        Self::System(e.to_string())
     }
 }
 
 impl From<toadstool::ToadStoolError> for CliError {
     fn from(e: toadstool::ToadStoolError) -> Self {
-        CliError::Other(e.to_string())
+        Self::Other(e.to_string())
     }
 }
 

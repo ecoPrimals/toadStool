@@ -128,10 +128,12 @@ async fn test_create_fallback_service_http() {
     assert_eq!(services[0].endpoints[0].protocol, "http");
     assert_eq!(services[0].endpoints[0].address, "127.0.0.1");
     assert_eq!(services[0].endpoints[0].port, 8080);
-    assert!(services[0]
-        .metadata
-        .get("source")
-        .is_some_and(|s| s == "configuration"));
+    assert!(
+        services[0]
+            .metadata
+            .get("source")
+            .is_some_and(|s| s == "configuration")
+    );
 }
 
 #[tokio::test]

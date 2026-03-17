@@ -8,11 +8,11 @@
 //! These are classic activation functions used in traditional neural networks and LSTMs.
 
 use std::collections::HashMap;
+use toadstool_runtime_universal::ComputeError;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
     DataType, OperationType, Workload, WorkloadData, WorkloadParams,
 };
-use toadstool_runtime_universal::ComputeError;
 
 #[tokio::main]
 async fn main() -> Result<(), ComputeError> {

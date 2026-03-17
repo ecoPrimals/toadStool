@@ -18,11 +18,11 @@
 //! "Test issues ARE production issues" - these tests simulate real failures.
 
 use anyhow::Result;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use toadstool_cli::executor::BiomeExecutor;
 use tokio::sync::broadcast;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 // =============================================================================
 // Test Group 1: Extreme Concurrency Stress

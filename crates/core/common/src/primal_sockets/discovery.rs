@@ -103,7 +103,7 @@ pub async fn discover_coordination_socket() -> Result<PathBuf, SocketDiscoveryEr
 /// **Sovereignty**: No hardcoded primal names. The mapping is driven by environment
 /// variables (`BIOMEOS_CRYPTO_SOCKET`, `BIOMEOS_STORAGE_SOCKET`, etc.) and falls back
 /// to the well-known capability category names (not primal identities).
-pub(crate) fn capability_to_biomeos_fallback(
+pub fn capability_to_biomeos_fallback(
     capability: &crate::primal_identity::Capability,
 ) -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::Capability;
@@ -116,7 +116,7 @@ pub(crate) fn capability_to_biomeos_fallback(
         _ => {
             return Err(SocketDiscoveryError::NoSocketFound(format!(
                 "No fallback path for capability: {capability:?}"
-            )))
+            )));
         }
     };
 
@@ -175,7 +175,7 @@ mod tests {
     /// Test capability fallback uses capability category names (not primal names)
     #[test]
     fn test_capability_fallback_path_crypto() {
-        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        use crate::primal_sockets::{SocketPathEnv, resolve_socket_path_for_service};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
         let path = resolve_socket_path_for_service("crypto", &env_snapshot, None);
         assert!(path.to_string_lossy().contains("crypto"));
@@ -185,7 +185,7 @@ mod tests {
     /// Test capability fallback - Storage category
     #[test]
     fn test_capability_fallback_path_storage() {
-        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        use crate::primal_sockets::{SocketPathEnv, resolve_socket_path_for_service};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
         let path = resolve_socket_path_for_service("storage", &env_snapshot, None);
         assert!(path.to_string_lossy().contains("storage"));
@@ -194,7 +194,7 @@ mod tests {
     /// Test capability fallback - Coordination category
     #[test]
     fn test_capability_fallback_path_coordination() {
-        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        use crate::primal_sockets::{SocketPathEnv, resolve_socket_path_for_service};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
         let path = resolve_socket_path_for_service("coordination", &env_snapshot, None);
         assert!(path.to_string_lossy().contains("coordination"));
@@ -203,7 +203,7 @@ mod tests {
     /// Test capability fallback - Compute category
     #[test]
     fn test_capability_fallback_path_compute() {
-        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        use crate::primal_sockets::{SocketPathEnv, resolve_socket_path_for_service};
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
         let path = resolve_socket_path_for_service("compute", &env_snapshot, None);
         assert!(path.to_string_lossy().contains("compute"));

@@ -7,11 +7,11 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use toadstool::{
+    RuntimeEngine, WorkloadType,
     execution::{ExecutionInput, ExecutionRequest, ExecutionStatus, RuntimeConfig, RuntimeType},
     resources::ResourceRequirements,
     security::{Capability, IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
-    RuntimeEngine, WorkloadType,
 };
 
 use crate::engine::NativeRuntimeEngine;
@@ -61,9 +61,11 @@ async fn test_capabilities() {
     let engine = create_test_engine().await;
     let capabilities = engine.get_capabilities();
 
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Native));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Native)
+    );
     assert!(capabilities.max_concurrent_executions.is_some());
 }
 
@@ -79,11 +81,13 @@ async fn test_simple_execution() {
         .expect("Echo execution should succeed");
 
     assert_eq!(response.status, ExecutionStatus::Success);
-    assert!(response
-        .output
-        .stdout
-        .expect("Echo should produce stdout")
-        .contains("hello"));
+    assert!(
+        response
+            .output
+            .stdout
+            .expect("Echo should produce stdout")
+            .contains("hello")
+    );
 }
 
 #[cfg(unix)]
@@ -235,9 +239,11 @@ async fn test_default_capabilities() {
     let engine = NativeRuntimeEngine::new();
     let capabilities = engine.get_capabilities();
 
-    assert!(capabilities
-        .supported_workloads
-        .contains(&WorkloadType::Native));
+    assert!(
+        capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Native)
+    );
     assert!(capabilities.max_concurrent_executions.is_some());
     assert!(capabilities.max_concurrent_executions.unwrap() > 0);
 }

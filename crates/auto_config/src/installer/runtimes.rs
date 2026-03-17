@@ -18,11 +18,10 @@ pub async fn setup_container_runtime(installation_path: &Path) -> Result<(), Toa
         .args(["version", "--format", "{{.Server.Version}}"])
         .output()
         .await
+        && output.status.success()
     {
-        if output.status.success() {
-            let version = String::from_utf8_lossy(&output.stdout);
-            info!("🐳 Docker version: {}", version.trim());
-        }
+        let version = String::from_utf8_lossy(&output.stdout);
+        info!("🐳 Docker version: {}", version.trim());
     }
 
     // Create Docker configuration if needed
@@ -58,26 +57,25 @@ pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStool
         .arg("--version")
         .output()
         .await
+        && output.status.success()
     {
-        if output.status.success() {
-            info!("🎮 NVIDIA GPU runtime detected");
+        info!("🎮 NVIDIA GPU runtime detected");
 
-            let gpu_config_dir = installation_path.join("config").join("gpu");
-            if !gpu_config_dir.exists() {
-                fs::create_dir_all(&gpu_config_dir).await?;
+        let gpu_config_dir = installation_path.join("config").join("gpu");
+        if !gpu_config_dir.exists() {
+            fs::create_dir_all(&gpu_config_dir).await?;
 
-                let nvidia_config = serde_json::json!({
-                    "runtime": "nvidia",
-                    "memory_fraction": 0.8,
-                    "compute_mode": "default"
-                });
+            let nvidia_config = serde_json::json!({
+                "runtime": "nvidia",
+                "memory_fraction": 0.8,
+                "compute_mode": "default"
+            });
 
-                fs::write(
-                    gpu_config_dir.join("nvidia.json"),
-                    serde_json::to_string_pretty(&nvidia_config)?,
-                )
-                .await?;
-            }
+            fs::write(
+                gpu_config_dir.join("nvidia.json"),
+                serde_json::to_string_pretty(&nvidia_config)?,
+            )
+            .await?;
         }
     }
 

@@ -54,7 +54,7 @@ pub enum RecoveryStrategy {
 
 impl PartialResultSet {
     /// Create a new partial result set
-    pub fn new(expected_count: usize, results: Vec<PartialResultStatus>) -> Self {
+    pub const fn new(expected_count: usize, results: Vec<PartialResultStatus>) -> Self {
         Self {
             expected_count,
             results,
@@ -101,7 +101,7 @@ impl PartialResultSet {
     }
 
     /// Get expected count
-    pub fn expected_count(&self) -> usize {
+    pub const fn expected_count(&self) -> usize {
         self.expected_count
     }
 
@@ -221,7 +221,7 @@ impl PartialResultCollector {
     }
 
     /// Check if all results received
-    pub fn is_complete(&self) -> bool {
+    pub const fn is_complete(&self) -> bool {
         self.results.len() >= self.expected_count
     }
 

@@ -207,14 +207,18 @@ mod tests {
             data_sovereignty_requirements: vec![],
         };
         let enforcer = CloudComplianceEnforcer::new(cfg).await.unwrap();
-        assert!(enforcer
-            .requirements
-            .regions
-            .contains(&"eu-west-1".to_string()));
-        assert!(enforcer
-            .requirements
-            .regions
-            .contains(&"eu-central-1".to_string()));
+        assert!(
+            enforcer
+                .requirements
+                .regions
+                .contains(&"eu-west-1".to_string())
+        );
+        assert!(
+            enforcer
+                .requirements
+                .regions
+                .contains(&"eu-central-1".to_string())
+        );
     }
 
     #[tokio::test]
@@ -250,9 +254,11 @@ mod tests {
         };
 
         let constraints = enforcer.get_constraints_for_job(&job).await.unwrap();
-        assert!(constraints
-            .allowed_providers
-            .contains(&"compliant-prov".to_string()));
+        assert!(
+            constraints
+                .allowed_providers
+                .contains(&"compliant-prov".to_string())
+        );
         assert!(constraints.encryption_required);
     }
 

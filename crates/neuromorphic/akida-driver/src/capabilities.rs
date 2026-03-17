@@ -203,6 +203,16 @@ pub enum ChipVersion {
     Unknown(u16),
 }
 
+impl std::fmt::Display for ChipVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Akd1000 => write!(f, "AKD1000"),
+            Self::Akd1500 => write!(f, "AKD1500"),
+            Self::Unknown(id) => write!(f, "Unknown({id:#06X})"),
+        }
+    }
+}
+
 impl ChipVersion {
     /// Parse chip version from device ID
     pub const fn from_device_id(device_id: u16) -> Self {
@@ -406,11 +416,11 @@ impl Capabilities {
         // Try to read from device-specific sysfs attribute
         let npu_count_path = format!("/sys/bus/pci/devices/{pcie_address}/akida_npu_count");
 
-        if let Ok(count_str) = std::fs::read_to_string(&npu_count_path) {
-            if let Ok(count) = count_str.trim().parse::<u32>() {
-                tracing::debug!("Queried NPU count from device: {count}");
-                return count;
-            }
+        if let Ok(count_str) = std::fs::read_to_string(&npu_count_path)
+            && let Ok(count) = count_str.trim().parse::<u32>()
+        {
+            tracing::debug!("Queried NPU count from device: {count}");
+            return count;
         }
 
         // Fallback to typical values for chip version
@@ -442,12 +452,12 @@ impl Capabilities {
             );
 
             // power1_input is in microwatts, convert to milliwatts
-            if let Ok(power_str) = std::fs::read_to_string(&power_input_path) {
-                if let Ok(power_uw) = power_str.trim().parse::<u32>() {
-                    let power_mw = power_uw / 1000;
-                    tracing::info!("Queried power consumption: {} mW", power_mw);
-                    return Some(power_mw);
-                }
+            if let Ok(power_str) = std::fs::read_to_string(&power_input_path)
+                && let Ok(power_uw) = power_str.trim().parse::<u32>()
+            {
+                let power_mw = power_uw / 1000;
+                tracing::info!("Queried power consumption: {} mW", power_mw);
+                return Some(power_mw);
             }
         }
 
@@ -478,14 +488,14 @@ impl Capabilities {
             );
 
             // temp1_input is in millidegrees Celsius, convert to degrees
-            if let Ok(temp_str) = std::fs::read_to_string(&temp_input_path) {
-                if let Ok(temp_millic) = temp_str.trim().parse::<i32>() {
-                    // Precision loss acceptable: temperature is inherently imprecise
-                    #[allow(clippy::cast_precision_loss)]
-                    let temp_c = temp_millic as f32 / 1000.0;
-                    tracing::info!("Queried temperature: {:.1}°C", temp_c);
-                    return Some(temp_c);
-                }
+            if let Ok(temp_str) = std::fs::read_to_string(&temp_input_path)
+                && let Ok(temp_millic) = temp_str.trim().parse::<i32>()
+            {
+                // Precision loss acceptable: temperature is inherently imprecise
+                #[allow(clippy::cast_precision_loss)]
+                let temp_c = temp_millic as f32 / 1000.0;
+                tracing::info!("Queried temperature: {:.1}°C", temp_c);
+                return Some(temp_c);
             }
         }
 
@@ -549,10 +559,10 @@ impl Capabilities {
 
         // AKD1000 supports full weight mutation (metalForge validated)
         let device_path = format!("/sys/bus/pci/devices/{pcie_address}/device");
-        if let Ok(id_str) = std::fs::read_to_string(&device_path) {
-            if id_str.trim().contains("BCA1") || id_str.trim().contains("bca1") {
-                return WeightMutationSupport::Full;
-            }
+        if let Ok(id_str) = std::fs::read_to_string(&device_path)
+            && (id_str.trim().contains("BCA1") || id_str.trim().contains("bca1"))
+        {
+            return WeightMutationSupport::Full;
         }
 
         WeightMutationSupport::None

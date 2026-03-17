@@ -70,6 +70,8 @@ where
             if now > entry.expires_at {
                 entries.remove(key);
                 stats.misses += 1;
+                drop(entries);
+                drop(stats);
                 None
             } else {
                 // Update access info
@@ -82,6 +84,7 @@ where
                     access_order.remove(pos);
                 }
                 access_order.push_back(key.clone());
+                drop(access_order);
 
                 stats.hits += 1;
                 let hits = stats.hits;
@@ -90,7 +93,10 @@ where
                 let rate = hits as f64 / total as f64;
                 stats.hit_rate = rate;
 
-                Some(entry.value.clone())
+                let value = entry.value.clone();
+                drop(entries);
+                drop(stats);
+                Some(value)
             }
         } else {
             stats.misses += 1;
@@ -134,6 +140,9 @@ where
 
         access_order.push_back(key);
         stats.current_size = entries.len();
+        drop(entries);
+        drop(access_order);
+        drop(stats);
 
         Ok(())
     }

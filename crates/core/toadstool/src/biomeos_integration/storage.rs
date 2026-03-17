@@ -212,7 +212,7 @@ impl StorageProvisioningManager {
 
     /// Get reference to configuration
     #[must_use]
-    pub fn config(&self) -> &StorageProvisioningConfig {
+    pub const fn config(&self) -> &StorageProvisioningConfig {
         &self.config
     }
 }
@@ -223,20 +223,30 @@ impl StorageProvisioningManager {
     reason = "reserved for volume manifest size parsing; used in tests"
 )]
 fn parse_size_string(size_str: &str) -> Option<u64> {
-    if let Some(value) = size_str.strip_suffix("Gi") {
-        value.parse::<u64>().ok().map(|n| n * 1_073_741_824)
-    } else if let Some(value) = size_str.strip_suffix("GB") {
-        value.parse::<u64>().ok().map(|n| n * 1_000_000_000)
-    } else if let Some(value) = size_str.strip_suffix("Mi") {
-        value.parse::<u64>().ok().map(|n| n * 1_048_576)
-    } else if let Some(value) = size_str.strip_suffix("MB") {
-        value.parse::<u64>().ok().map(|n| n * 1_000_000)
-    } else if let Some(value) = size_str.strip_suffix("TB") {
-        value.parse::<u64>().ok().map(|n| n * 1_000_000_000_000)
-    } else {
-        // Assume bytes
-        size_str.parse::<u64>().ok()
-    }
+    size_str
+        .strip_suffix("Gi")
+        .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_073_741_824))
+        .or_else(|| {
+            size_str
+                .strip_suffix("GB")
+                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000_000))
+        })
+        .or_else(|| {
+            size_str
+                .strip_suffix("Mi")
+                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_048_576))
+        })
+        .or_else(|| {
+            size_str
+                .strip_suffix("MB")
+                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000))
+        })
+        .or_else(|| {
+            size_str
+                .strip_suffix("TB")
+                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000_000_000))
+        })
+        .or_else(|| size_str.parse::<u64>().ok())
 }
 
 #[cfg(test)]

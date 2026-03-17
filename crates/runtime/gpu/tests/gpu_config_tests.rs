@@ -95,9 +95,11 @@ fn test_discovery_config_has_rocm() {
 fn test_discovery_config_has_directcompute() {
     let config = GpuDiscoveryConfig::default();
 
-    assert!(config
-        .enabled_frameworks
-        .contains(&GpuFramework::DirectCompute));
+    assert!(
+        config
+            .enabled_frameworks
+            .contains(&GpuFramework::DirectCompute)
+    );
 }
 
 #[test]

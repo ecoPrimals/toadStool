@@ -5,8 +5,8 @@
 
 use akida_driver::DeviceManager;
 use akida_models::Model;
-use akida_reservoir_research::state_extraction::StateExtractor;
 use akida_reservoir_research::ReservoirResult as Result;
+use akida_reservoir_research::state_extraction::StateExtractor;
 use tracing::{error, info, warn};
 
 #[tokio::main]

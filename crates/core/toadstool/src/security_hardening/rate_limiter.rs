@@ -48,6 +48,7 @@ impl RateLimiter {
     }
 
     /// Check if client is allowed to make request
+    #[allow(clippy::significant_drop_tightening)] // client_data borrows from lock for many operations
     pub async fn check_rate_limit(&self, client_id: &str) -> ToadStoolResult<bool> {
         let mut clients = self.client_requests.write().await;
         let now = Instant::now();
@@ -114,10 +115,11 @@ impl RateLimiter {
     }
 
     /// Ban client for specified duration
+    #[allow(clippy::significant_drop_tightening)] // client_data borrows from guard for two field updates
     pub async fn ban_client(&self, client_id: &str, duration: Duration) {
-        let mut clients = self.client_requests.write().await;
         let now = Instant::now();
 
+        let mut clients = self.client_requests.write().await;
         let client_data = clients
             .entry(client_id.to_string())
             .or_insert_with(|| ClientRateData {

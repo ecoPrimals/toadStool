@@ -38,12 +38,12 @@ use super::read_hwmon_power;
 use crate::backend::{BackendType, ModelHandle, NpuBackend};
 use crate::capabilities::Capabilities;
 use crate::error::{AkidaError, Result};
-use crate::mmio::{regs, Bar, MappedRegion};
+use crate::mmio::{Bar, MappedRegion, regs};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, FromRawFd, OwnedFd};
 use std::os::unix::io::AsRawFd;
-use types::ioctls;
 use types::PollConfig;
+use types::ioctls;
 
 /// VFIO NPU backend with DMA support.
 #[derive(Debug)]

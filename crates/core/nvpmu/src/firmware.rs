@@ -54,7 +54,7 @@ impl FirmwareInventory {
     ///
     /// Requires GR firmware plus either PMU (Volta/Turing) or GSP (Ampere+).
     #[must_use]
-    pub fn compute_viable(&self) -> bool {
+    pub const fn compute_viable(&self) -> bool {
         self.gr.is_present() && (self.pmu.is_present() || self.gsp.is_present())
     }
 
@@ -73,7 +73,7 @@ impl FirmwareInventory {
 
     /// Whether a software PMU is needed (PMU firmware missing, no GSP fallback).
     #[must_use]
-    pub fn needs_software_pmu(&self) -> bool {
+    pub const fn needs_software_pmu(&self) -> bool {
         !self.pmu.is_present() && !self.gsp.is_present()
     }
 }

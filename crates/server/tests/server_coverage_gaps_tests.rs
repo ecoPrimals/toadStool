@@ -9,6 +9,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
+use toadstool_server::GraphValidationError;
 use toadstool_server::cross_gate::{GateGpuInfo, JobRouter, RoutingReason};
 use toadstool_server::gpu_job_queue::{
     GpuJobQueue, JobQueueConfig, JobQueueError, JobState, JobType,
@@ -19,7 +20,6 @@ use toadstool_server::graph_types::{
 use toadstool_server::pure_jsonrpc::{JsonRpcError, JsonRpcHandler, JsonRpcRequest};
 use toadstool_server::resource_estimator::{EstimationError, ResourceEstimator};
 use toadstool_server::tarpc_server::StandaloneExecutor;
-use toadstool_server::GraphValidationError;
 use uuid::Uuid;
 
 fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {

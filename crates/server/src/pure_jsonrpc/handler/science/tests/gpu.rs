@@ -41,10 +41,14 @@ async fn science_gpu_capabilities_structure() {
     assert!(result.get("precision_notes").is_some());
     assert!(result.get("compute_backends").is_some());
     assert_eq!(result["domain"], "science");
-    assert!(result["precision_notes"]["f64_shared_memory_reliable"]
-        .as_bool()
-        .is_some());
-    assert!(result["precision_notes"]["df64_reductions"]
-        .as_bool()
-        .is_some());
+    assert!(
+        result["precision_notes"]["f64_shared_memory_reliable"]
+            .as_bool()
+            .is_some()
+    );
+    assert!(
+        result["precision_notes"]["df64_reductions"]
+            .as_bool()
+            .is_some()
+    );
 }

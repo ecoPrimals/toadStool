@@ -63,6 +63,7 @@ impl SongbirdNetworkDiscovery {
         }
     }
 
+    #[allow(clippy::significant_drop_tightening)] // nodes are refs from registry
     pub async fn get_network_capacity(&self) -> ToadStoolResult<NetworkCapacity> {
         let registry = self.node_registry.read().await;
         let nodes = registry.get_active_nodes();
@@ -92,6 +93,7 @@ impl SongbirdNetworkDiscovery {
         })
     }
 
+    #[allow(clippy::significant_drop_tightening)] // available_nodes are refs from registry
     pub async fn get_optimal_distribution(
         &self,
         subtasks: &[SubTask],
@@ -181,6 +183,7 @@ impl SongbirdNetworkDiscovery {
         best_node.ok_or_else(|| ToadStoolError::runtime("No suitable node found for subtask"))
     }
 
+    #[allow(clippy::significant_drop_tightening)] // Multiple operations on registry
     pub async fn register_node(
         &self,
         registration: NodeRegistration,
@@ -211,6 +214,7 @@ impl SongbirdNetworkDiscovery {
         })
     }
 
+    #[allow(clippy::significant_drop_tightening)] // all_nodes/active_nodes are refs from registry
     pub async fn get_network_status(&self) -> ToadStoolResult<NetworkStatus> {
         let registry = self.node_registry.read().await;
         let all_nodes = registry.get_all_nodes();
@@ -269,6 +273,7 @@ impl SongbirdNetworkDiscovery {
         })
     }
 
+    #[allow(clippy::significant_drop_tightening)] // Must hold lock during loop
     async fn perform_discovery(&self) -> ToadStoolResult<()> {
         let discovered_nodes = self.discovery_client.discover_nodes().await?;
 

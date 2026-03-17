@@ -9,35 +9,38 @@ use std::env;
 #[test]
 fn test_invalid_port_number() {
     // Test handling of invalid port numbers (out of range)
-    env::set_var("TOADSTOOL_API_PORT", "99999"); // Invalid: > 65535
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_API_PORT", "99999") }; // Invalid: > 65535
 
     // Configuration should either:
     // 1. Use default port, OR
     // 2. Return validation error
 
     // Clean up
-    env::remove_var("TOADSTOOL_API_PORT");
+    unsafe { env::remove_var("TOADSTOOL_API_PORT") };
 }
 
 #[test]
 fn test_malformed_duration_string() {
     // Test handling of malformed duration strings
-    env::set_var("TOADSTOOL_TIMEOUT", "invalid");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TIMEOUT", "invalid") };
 
     // Should fallback to default or return error
     // Should NOT panic
 
-    env::remove_var("TOADSTOOL_TIMEOUT");
+    unsafe { env::remove_var("TOADSTOOL_TIMEOUT") };
 }
 
 #[test]
 fn test_negative_timeout_value() {
     // Test handling of negative timeout values
-    env::set_var("TOADSTOOL_TIMEOUT", "-100");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TIMEOUT", "-100") };
 
     // Should reject or use default
 
-    env::remove_var("TOADSTOOL_TIMEOUT");
+    unsafe { env::remove_var("TOADSTOOL_TIMEOUT") };
 }
 
 #[test]
@@ -100,15 +103,16 @@ fn test_environment_variable_override() {
     // Test that env vars override config file
     let original = env::var("TOADSTOOL_TEST_VAR").ok();
 
-    env::set_var("TOADSTOOL_TEST_VAR", "override_value");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { env::set_var("TOADSTOOL_TEST_VAR", "override_value") };
 
     let value = env::var("TOADSTOOL_TEST_VAR");
     assert_eq!(value.unwrap(), "override_value");
 
     // Clean up
     match original {
-        Some(val) => env::set_var("TOADSTOOL_TEST_VAR", val),
-        None => env::remove_var("TOADSTOOL_TEST_VAR"),
+        Some(val) => unsafe { env::set_var("TOADSTOOL_TEST_VAR", val) },
+        None => unsafe { env::remove_var("TOADSTOOL_TEST_VAR") },
     }
 }
 

@@ -67,8 +67,7 @@ impl CryptoServiceDiscovery {
         let filtered = self.filter_by_location(&services);
 
         // Cache discovered services
-        let mut cache = self.discovered_services.write().await;
-        *cache = filtered.clone();
+        *self.discovered_services.write().await = filtered.clone();
 
         Ok(filtered)
     }

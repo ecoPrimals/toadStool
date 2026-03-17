@@ -2,6 +2,7 @@
 //! # ToadStool Network Performance Benchmark
 
 #![allow(
+    clippy::nursery,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss
@@ -32,7 +33,7 @@ use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::Semaphore;
 
 use toadstool::universal::UniversalComputePlatform;
-use toadstool::{init, ToadStoolError, ToadStoolResult};
+use toadstool::{ToadStoolError, ToadStoolResult, init};
 
 /// Network benchmark configuration
 #[derive(Debug, Clone)]
@@ -783,10 +784,10 @@ fn display_network_benchmark_results(results: &[NetworkBenchmarkResults]) {
         );
     }
 
-    if let Some(lb_result) = results.iter().find(|r| r.name == "Load Balancing") {
-        if let Some(fairness) = lb_result.metrics.get("fairness_score") {
-            println!("  • Load Balancing: {fairness:.1}% fairness score");
-        }
+    if let Some(lb_result) = results.iter().find(|r| r.name == "Load Balancing")
+        && let Some(fairness) = lb_result.metrics.get("fairness_score")
+    {
+        println!("  • Load Balancing: {fairness:.1}% fairness score");
     }
 
     if let Some(cb_result) = results.iter().find(|r| r.name == "Circuit Breaker") {

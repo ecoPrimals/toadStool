@@ -175,7 +175,7 @@ pub enum LanguageRuntime {
 
 impl LanguageRuntime {
     /// Get the language name
-    pub fn language_name(&self) -> &'static str {
+    pub const fn language_name(&self) -> &'static str {
         match self {
             Self::Rust { .. } => "Rust",
             Self::C { .. } => "C",

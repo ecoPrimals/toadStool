@@ -21,7 +21,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 use toadstool_cli::executor::workload::execute_workload;
 use tokio::sync::broadcast;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 // =============================================================================
 // Test Group 1: Error Path Testing (Non-existent Files)

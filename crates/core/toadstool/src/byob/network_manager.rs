@@ -81,7 +81,7 @@ pub struct ByobNetworkManager {
 impl ByobNetworkManager {
     /// Create a new network manager
     #[must_use]
-    pub fn new(config: Arc<ByobExecutorConfig>) -> Self {
+    pub const fn new(config: Arc<ByobExecutorConfig>) -> Self {
         Self { config }
     }
 }

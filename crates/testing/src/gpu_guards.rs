@@ -55,7 +55,7 @@ pub fn is_wgpu_safe() -> bool {
 
 /// Returns a human-readable skip message for wgpu tests.
 #[must_use]
-pub fn wgpu_skip_reason() -> &'static str {
+pub const fn wgpu_skip_reason() -> &'static str {
     "SKIP: NVIDIA proprietary Vulkan driver detected — wgpu device drop causes SIGSEGV. \
      Set TOADSTOOL_WGPU_SAFE=1 to override."
 }

@@ -12,11 +12,11 @@
 //! ✅ MODERNIZED: Event-driven coordination with sync utilities
 
 use std::sync::{
-    atomic::{AtomicBool, AtomicUsize, Ordering},
     Arc,
+    atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 use tokio::sync::Notify;
-use tokio::time::{interval, timeout, Duration};
+use tokio::time::{Duration, interval, timeout};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_background_task_creation() {

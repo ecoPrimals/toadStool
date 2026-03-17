@@ -355,7 +355,7 @@ impl CompatibilityMode {
     ///
     /// Returns a static string for standard modes, only allocates for LegacyCompat
     #[must_use]
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Native => "native",
             Self::Container => "container",

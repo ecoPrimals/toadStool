@@ -138,8 +138,8 @@ async fn test_multiple_background_tasks() {
 
 #[tokio::test]
 async fn test_background_task_cleanup() {
-    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     let cleanup_called = Arc::new(AtomicBool::new(false));
     let cleanup_called_clone = Arc::clone(&cleanup_called);

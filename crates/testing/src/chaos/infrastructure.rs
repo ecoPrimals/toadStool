@@ -80,7 +80,7 @@ pub struct SystemState {
 
 impl SystemState {
     /// Check if cluster recovered successfully
-    pub fn cluster_recovered(&self) -> bool {
+    pub const fn cluster_recovered(&self) -> bool {
         self.cluster_healthy && self.data_loss_count == 0
     }
 }
@@ -154,7 +154,7 @@ impl ChaosScenario {
     }
 
     /// Set scenario timeout
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -278,8 +278,7 @@ impl ChaosEngine {
         }
 
         // Track active fault
-        let mut faults = self.active_faults.write().await;
-        faults.push(ActiveFault {
+        self.active_faults.write().await.push(ActiveFault {
             _fault_type: fault.clone(),
             _injected_at: Instant::now(),
         });
@@ -328,6 +327,7 @@ impl ChaosEngine {
         // Simulate by slowing operations
         let mut metrics = self.metrics.write().await;
         metrics.max_latency_ms = metrics.max_latency_ms.max(duration_ms);
+        drop(metrics);
 
         Ok(())
     }
@@ -368,14 +368,19 @@ impl ChaosEngine {
     async fn inject_timeout(&self, _operation: &str, delay_ms: u64) -> ToadStoolResult<()> {
         debug!("Injecting timeout: {}ms delay", delay_ms);
 
-        let mut metrics = self.metrics.write().await;
-        metrics.operations_attempted += 1;
+        {
+            let mut metrics = self.metrics.write().await;
+            metrics.operations_attempted += 1;
+        }
 
         // Simulate delayed operation
         tokio::time::sleep(Duration::from_millis(delay_ms)).await;
 
-        metrics.operations_succeeded += 1;
-        metrics.avg_latency_ms = (metrics.avg_latency_ms + delay_ms as f64) / 2.0;
+        {
+            let mut metrics = self.metrics.write().await;
+            metrics.operations_succeeded += 1;
+            metrics.avg_latency_ms = (metrics.avg_latency_ms + delay_ms as f64) / 2.0;
+        }
 
         Ok(())
     }
@@ -396,12 +401,13 @@ impl ChaosEngine {
     async fn heal_all(&self) -> ToadStoolResult<()> {
         debug!("Healing all active faults");
 
-        let mut faults = self.active_faults.write().await;
-        faults.clear();
+        self.active_faults.write().await.clear();
 
         // Ensure system is healthy
-        let mut state = self.system_state.write().await;
-        state.cluster_healthy = true;
+        {
+            let mut state = self.system_state.write().await;
+            state.cluster_healthy = true;
+        }
 
         Ok(())
     }

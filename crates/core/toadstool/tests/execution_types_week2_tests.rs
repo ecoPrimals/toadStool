@@ -7,8 +7,8 @@
 
 use std::collections::HashMap;
 use std::time::Duration;
-use toadstool::execution::*;
 use toadstool::RuntimeMetrics;
+use toadstool::execution::*;
 use uuid::Uuid;
 
 // ============================================================================

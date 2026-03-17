@@ -17,14 +17,15 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::time::SystemTime;
 
+use toadstool::ResourceMonitor;
 use toadstool::biomeos_integration::{
     InMemoryBackend, PersistentVolume, StorageBackend, VolumeConfig, VolumeStatus,
 };
 use toadstool::layer_adaptation::{
-    compute_capabilities, detect_network_bandwidth, detect_storage_read_bandwidth,
-    detect_storage_write_bandwidth, storage_capabilities, AdaptedCapabilities, CapabilityMetadata,
-    ComputeCapabilities, GpuAccess, NetworkAccess, NetworkCapabilities, StorageCapabilities,
-    StorageType,
+    AdaptedCapabilities, CapabilityMetadata, ComputeCapabilities, GpuAccess, NetworkAccess,
+    NetworkCapabilities, StorageCapabilities, StorageType, compute_capabilities,
+    detect_network_bandwidth, detect_storage_read_bandwidth, detect_storage_write_bandwidth,
+    storage_capabilities,
 };
 use toadstool::plugin_system::{PluginManager, PluginManifest};
 use toadstool::resources::{
@@ -47,7 +48,6 @@ use toadstool::workload::{
 use toadstool::workload_migration::{
     CostImpact, MigrationRecommendation, MigrationStats, MigrationTarget,
 };
-use toadstool::ResourceMonitor;
 use uuid::Uuid;
 
 // ============================================================================
@@ -448,9 +448,11 @@ fn test_input_validator_valid_input() {
 fn test_input_validator_rejects_xss() {
     let rules = ValidationRules::default();
     let validator = InputValidator::new(rules);
-    assert!(validator
-        .validate_input("<script>alert(1)</script>")
-        .is_err());
+    assert!(
+        validator
+            .validate_input("<script>alert(1)</script>")
+            .is_err()
+    );
 }
 
 #[test]
@@ -749,9 +751,11 @@ fn test_plugin_manager_load_unload() {
     };
     manager.register_plugin(manifest).unwrap();
     manager.load_plugin("load-plugin").unwrap();
-    assert!(manager
-        .active_plugins()
-        .contains(&"load-plugin".to_string()));
+    assert!(
+        manager
+            .active_plugins()
+            .contains(&"load-plugin".to_string())
+    );
     manager.unload_plugin("load-plugin").unwrap();
 }
 

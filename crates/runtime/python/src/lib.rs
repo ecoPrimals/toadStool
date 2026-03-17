@@ -20,10 +20,10 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use toadstool::{
-    resources::{CpuMetrics, MemoryMetrics, NetworkMetrics, StorageMetrics, TimingMetrics},
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionRuntimeConfig, ExecutionStatus,
     ResourceMonitor, RuntimeCapabilities, RuntimeEngine, RuntimeMetrics, RuntimeType,
     ToadStoolResult, WorkloadType,
+    resources::{CpuMetrics, MemoryMetrics, NetworkMetrics, StorageMetrics, TimingMetrics},
 };
 
 /// Python runtime configuration
@@ -203,7 +203,7 @@ impl Default for PythonRuntimeEngine {
         Self::new().unwrap_or_else(|e| {
             tracing::error!("Failed to create default PythonRuntimeEngine: {}", e);
             // Create a minimal fallback engine that indicates Python is not available
-            PythonRuntimeEngine {
+            Self {
                 config: PythonRuntimeConfig::default(),
                 runtime_config: ExecutionRuntimeConfig::default(),
                 active_executions: Arc::new(RwLock::new(HashMap::new())),

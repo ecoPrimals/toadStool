@@ -12,7 +12,7 @@ use super::provider::CapabilityProvider;
 use super::serialize;
 
 /// Query discovery service for all providers of a capability
-pub(crate) async fn query_providers(capability: Capability) -> Result<Vec<CapabilityProvider>> {
+pub async fn query_providers(capability: Capability) -> Result<Vec<CapabilityProvider>> {
     let discovery_socket =
         std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| "/primal/songbird".to_string());
 

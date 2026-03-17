@@ -13,7 +13,7 @@ use super::types::ioctls;
 use super::types::{VfioDeviceInfo, VfioDmaMap, VfioDmaUnmap, VfioGroupStatus};
 
 /// Ioctl adapter for VFIO commands that return an i32 (no-arg or integer-arg).
-pub(crate) struct VfioIoctlReturn<const OP: Opcode> {
+pub struct VfioIoctlReturn<const OP: Opcode> {
     arg: usize,
 }
 
@@ -40,7 +40,7 @@ unsafe impl<const OP: Opcode> Ioctl for VfioIoctlReturn<OP> {
 }
 
 /// Ioctl adapter for VFIO commands that read/write a kernel ABI struct.
-pub(crate) struct VfioIoctlPtr<const OP: Opcode, T> {
+pub struct VfioIoctlPtr<const OP: Opcode, T> {
     ptr: *mut T,
 }
 
@@ -72,7 +72,7 @@ fn ioctl_err(e: rustix::io::Errno) -> AkidaError {
 }
 
 #[inline]
-pub(crate) fn get_api_version(fd: BorrowedFd<'_>) -> Result<i32> {
+pub fn get_api_version(fd: BorrowedFd<'_>) -> Result<i32> {
     // SAFETY: Invariants: fd must be valid VFIO fd; ioctl opcode matches kernel ABI.
     // Satisfied: fd from caller (VFIO container/device open); opcode is VFIO constant.
     // Violation: invalid fd → kernel error/UB; wrong opcode → wrong syscall.
@@ -81,7 +81,7 @@ pub(crate) fn get_api_version(fd: BorrowedFd<'_>) -> Result<i32> {
 }
 
 #[inline]
-pub(crate) fn check_extension(fd: BorrowedFd<'_>, arg: u32) -> Result<i32> {
+pub fn check_extension(fd: BorrowedFd<'_>, arg: u32) -> Result<i32> {
     // SAFETY: Invariants: fd valid; arg is extension ID (kernel expects u32).
     // Satisfied: fd from caller; arg is VFIO extension constant. Violation: invalid fd → UB.
     let ioctl = VfioIoctlReturn::<{ ioctls::OP_CHECK_EXTENSION }> { arg: arg as usize };
@@ -89,7 +89,7 @@ pub(crate) fn check_extension(fd: BorrowedFd<'_>, arg: u32) -> Result<i32> {
 }
 
 #[inline]
-pub(crate) fn set_iommu(fd: BorrowedFd<'_>, arg: u32) -> Result<i32> {
+pub fn set_iommu(fd: BorrowedFd<'_>, arg: u32) -> Result<i32> {
     // SAFETY: Invariants: fd valid VFIO container; arg is IOMMU type (e.g. TYPE1V2).
     // Satisfied: fd from container open; arg is ioctls constant. Violation: invalid fd → UB.
     let ioctl = VfioIoctlReturn::<{ ioctls::OP_SET_IOMMU }> { arg: arg as usize };
@@ -97,7 +97,7 @@ pub(crate) fn set_iommu(fd: BorrowedFd<'_>, arg: u32) -> Result<i32> {
 }
 
 #[inline]
-pub(crate) fn group_status(fd: BorrowedFd<'_>, arg: &mut VfioGroupStatus) -> Result<()> {
+pub fn group_status(fd: BorrowedFd<'_>, arg: &mut VfioGroupStatus) -> Result<()> {
     // SAFETY: Invariants: fd valid; arg must be repr(C) matching kernel VfioGroupStatus ABI.
     // Satisfied: fd from VFIO group open; VfioGroupStatus is #[repr(C)]. Violation: layout mismatch → kernel corruption.
     let ioctl = VfioIoctlPtr::<{ ioctls::OP_GROUP_GET_STATUS }, _> {
@@ -107,7 +107,7 @@ pub(crate) fn group_status(fd: BorrowedFd<'_>, arg: &mut VfioGroupStatus) -> Res
 }
 
 #[inline]
-pub(crate) fn device_info(fd: BorrowedFd<'_>, arg: &mut VfioDeviceInfo) -> Result<()> {
+pub fn device_info(fd: BorrowedFd<'_>, arg: &mut VfioDeviceInfo) -> Result<()> {
     // SAFETY: Invariants: fd valid VFIO device; arg repr(C) matching kernel ABI.
     // Satisfied: fd from device open; VfioDeviceInfo is #[repr(C)]. Violation: layout mismatch → kernel corruption.
     let ioctl = VfioIoctlPtr::<{ ioctls::OP_DEVICE_GET_INFO }, _> {
@@ -117,7 +117,7 @@ pub(crate) fn device_info(fd: BorrowedFd<'_>, arg: &mut VfioDeviceInfo) -> Resul
 }
 
 #[inline]
-pub(crate) fn dma_map(fd: BorrowedFd<'_>, arg: &VfioDmaMap) -> Result<()> {
+pub fn dma_map(fd: BorrowedFd<'_>, arg: &VfioDmaMap) -> Result<()> {
     // SAFETY: Invariants: fd valid VFIO container; arg repr(C) matching kernel VfioDmaMap.
     // Satisfied: fd from container; VfioDmaMap is #[repr(C)]; vaddr/iova/size from alloc.
     // Violation: layout mismatch → kernel corruption; invalid vaddr → DMA to wrong memory.
@@ -128,7 +128,7 @@ pub(crate) fn dma_map(fd: BorrowedFd<'_>, arg: &VfioDmaMap) -> Result<()> {
 }
 
 #[inline]
-pub(crate) fn dma_unmap(fd: BorrowedFd<'_>, arg: &VfioDmaUnmap) -> Result<()> {
+pub fn dma_unmap(fd: BorrowedFd<'_>, arg: &VfioDmaUnmap) -> Result<()> {
     // SAFETY: Invariants: fd valid; arg repr(C) matching kernel VfioDmaUnmap; iova/size must match prior map.
     // Satisfied: fd from container; VfioDmaUnmap is #[repr(C)]; iova/size from DmaBuffer.
     // Violation: layout mismatch → kernel corruption; wrong iova → unmapping wrong region.
@@ -139,7 +139,7 @@ pub(crate) fn dma_unmap(fd: BorrowedFd<'_>, arg: &VfioDmaUnmap) -> Result<()> {
 }
 
 #[inline]
-pub(crate) fn group_set_container(fd: BorrowedFd<'_>, arg: *const std::ffi::c_void) -> Result<i32> {
+pub fn group_set_container(fd: BorrowedFd<'_>, arg: *const std::ffi::c_void) -> Result<i32> {
     // SAFETY: Invariants: fd valid VFIO group; arg points to int (container fd) valid for ioctl duration.
     // Satisfied: fd from group open; arg from &container_fd. Violation: invalid ptr → kernel read of garbage.
     let ioctl = VfioIoctlReturn::<{ ioctls::OP_GROUP_SET_CONTAINER }> { arg: arg as usize };
@@ -147,7 +147,7 @@ pub(crate) fn group_set_container(fd: BorrowedFd<'_>, arg: *const std::ffi::c_vo
 }
 
 #[inline]
-pub(crate) fn group_get_device_fd(fd: BorrowedFd<'_>, arg: *const std::ffi::c_void) -> Result<i32> {
+pub fn group_get_device_fd(fd: BorrowedFd<'_>, arg: *const std::ffi::c_void) -> Result<i32> {
     // SAFETY: Invariants: fd valid VFIO group; arg is valid C string (null-terminated PCIe address).
     // Satisfied: fd from group open; arg from CString::as_ptr(). Violation: invalid string → kernel crash.
     let ioctl = VfioIoctlReturn::<{ ioctls::OP_GROUP_GET_DEVICE_FD }> { arg: arg as usize };

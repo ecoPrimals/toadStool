@@ -133,6 +133,8 @@ impl JobTracker {
             .filter(|j| j.status == JobStatus::Failed)
             .count();
 
+        drop(jobs);
+
         DistributedStats {
             total_towers: 0,  // Filled in by coordinator
             active_towers: 0, // Filled in by coordinator
@@ -151,13 +153,12 @@ impl JobTracker {
 
         let before_count = jobs.len();
         jobs.retain(|_, job| {
-            if let Some(completed_at) = job.completed_at {
+            job.completed_at.is_none_or(|completed_at| {
                 now.duration_since(completed_at).as_secs() < max_age_secs
-            } else {
-                true // Keep pending/running jobs
-            }
+            })
         });
         let after_count = jobs.len();
+        drop(jobs);
 
         if before_count != after_count {
             tracing::info!("Pruned {} old completed jobs", before_count - after_count);

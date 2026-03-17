@@ -5,12 +5,12 @@
 //! coverage for the natural language configuration system.
 
 use std::collections::HashSet;
+use toadstool_auto_config::NaturalLanguageConfig;
 use toadstool_auto_config::natural_language::{
     ConfigurationIntent, ConfigurationTemplate, ExplicitPreferences, IntentAnalysis,
     PerformancePreference, ResourcePreferences, RuntimePreferences, RuntimeType,
     SecurityPreference, UsagePattern,
 };
-use toadstool_auto_config::NaturalLanguageConfig;
 
 // ============================================================================
 // BASIC FUNCTIONALITY TESTS
@@ -45,9 +45,11 @@ fn test_template_availability() {
     let template_names: Vec<&str> = templates.iter().map(|t| t.name.as_str()).collect();
 
     // Check for common templates
-    assert!(template_names
-        .iter()
-        .any(|&n| n.contains("Machine Learning") || n.contains("ML")));
+    assert!(
+        template_names
+            .iter()
+            .any(|&n| n.contains("Machine Learning") || n.contains("ML"))
+    );
     assert!(template_names.iter().any(|&n| n.contains("Web")));
     assert!(template_names.iter().any(|&n| n.contains("Data")));
 }

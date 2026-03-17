@@ -387,10 +387,12 @@ mod tests {
         let error = response.error.unwrap();
         assert_eq!(error.code, -32_603);
         assert!(error.data.is_some());
-        assert!(error.data.unwrap()["details"]
-            .as_str()
-            .unwrap()
-            .contains("stack trace"));
+        assert!(
+            error.data.unwrap()["details"]
+                .as_str()
+                .unwrap()
+                .contains("stack trace")
+        );
     }
 
     #[test]

@@ -5,7 +5,7 @@
 
 /// CPU information structure
 #[derive(Debug, Clone)]
-pub(crate) struct CpuInfo {
+pub struct CpuInfo {
     pub model: String,
     pub cores: u32,
     pub threads: u32,
@@ -15,7 +15,7 @@ pub(crate) struct CpuInfo {
 }
 
 /// Get CPU information
-pub(crate) fn get_cpu_info() -> CpuInfo {
+pub fn get_cpu_info() -> CpuInfo {
     let cores = std::thread::available_parallelism()
         .map(|p| u32::try_from(p.get()).unwrap_or(4))
         .unwrap_or(4);
@@ -39,7 +39,7 @@ pub(crate) fn get_cpu_info() -> CpuInfo {
 }
 
 #[cfg(target_os = "linux")]
-pub(crate) fn parse_cpuinfo_linux() -> Result<CpuInfo, ()> {
+pub fn parse_cpuinfo_linux() -> Result<CpuInfo, ()> {
     let content = std::fs::read_to_string("/proc/cpuinfo").map_err(|_| ())?;
 
     let cores = std::thread::available_parallelism()
@@ -59,10 +59,10 @@ pub(crate) fn parse_cpuinfo_linux() -> Result<CpuInfo, ()> {
                 match key {
                     "model name" | "Model" => model = val.to_string(),
                     "cache size" => {
-                        if let Some(kb_str) = val.split_whitespace().next() {
-                            if let Ok(kb) = kb_str.parse::<u32>() {
-                                cache_mb = kb.div_ceil(1024);
-                            }
+                        if let Some(kb_str) = val.split_whitespace().next()
+                            && let Ok(kb) = kb_str.parse::<u32>()
+                        {
+                            cache_mb = kb.div_ceil(1024);
                         }
                     }
                     "flags" | "Features" => {
@@ -100,18 +100,19 @@ pub(crate) fn parse_cpuinfo_linux() -> Result<CpuInfo, ()> {
 }
 
 /// Get system memory in gigabytes
-pub(crate) fn get_memory_gb() -> u32 {
+pub fn get_memory_gb() -> u32 {
     #[cfg(target_os = "linux")]
     {
         if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
             for line in content.lines() {
+                if line.starts_with("MemTotal:")
+                    && let Some(kb_str) = line.split_whitespace().nth(1)
+                    && let Ok(kb) = kb_str.parse::<u64>()
+                {
+                    let gb = kb.div_ceil(1024 * 1024);
+                    return gb.min(u32::MAX as u64) as u32;
+                }
                 if line.starts_with("MemTotal:") {
-                    if let Some(kb_str) = line.split_whitespace().nth(1) {
-                        if let Ok(kb) = kb_str.parse::<u64>() {
-                            let gb = kb.div_ceil(1024 * 1024);
-                            return gb.min(u32::MAX as u64) as u32;
-                        }
-                    }
                     break;
                 }
             }
@@ -122,7 +123,7 @@ pub(crate) fn get_memory_gb() -> u32 {
 }
 
 /// Check if a command exists in PATH
-pub(crate) fn check_command_exists(command: &str) -> bool {
+pub fn check_command_exists(command: &str) -> bool {
     std::process::Command::new("which")
         .arg(command)
         .output()
@@ -131,7 +132,7 @@ pub(crate) fn check_command_exists(command: &str) -> bool {
 }
 
 /// Get version string from a command
-pub(crate) fn get_command_version(command: &str) -> String {
+pub fn get_command_version(command: &str) -> String {
     std::process::Command::new("sh")
         .arg("-c")
         .arg(command)
@@ -143,7 +144,7 @@ pub(crate) fn get_command_version(command: &str) -> String {
 }
 
 /// Get Rust target triple
-pub(crate) fn get_rust_target_triple() -> String {
+pub fn get_rust_target_triple() -> String {
     std::process::Command::new("rustc")
         .arg("--print")
         .arg("target-triple")
@@ -155,7 +156,7 @@ pub(crate) fn get_rust_target_triple() -> String {
 }
 
 /// Get Linux distribution name
-pub(crate) fn get_linux_distribution() -> String {
+pub fn get_linux_distribution() -> String {
     #[cfg(target_os = "linux")]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
@@ -183,7 +184,7 @@ pub(crate) fn get_linux_distribution() -> String {
 }
 
 /// Get kernel version
-pub(crate) fn get_kernel_version() -> String {
+pub fn get_kernel_version() -> String {
     std::process::Command::new("uname")
         .arg("-r")
         .output()
@@ -194,7 +195,7 @@ pub(crate) fn get_kernel_version() -> String {
 }
 
 /// Get init system type
-pub(crate) fn get_init_system() -> String {
+pub fn get_init_system() -> String {
     if std::path::Path::new("/run/systemd/system").exists() {
         "systemd".to_string()
     } else {
@@ -203,7 +204,7 @@ pub(crate) fn get_init_system() -> String {
 }
 
 /// Get package manager type
-pub(crate) fn get_package_manager() -> String {
+pub fn get_package_manager() -> String {
     if check_command_exists("apt") {
         "apt".to_string()
     } else if check_command_exists("yum") {
@@ -216,7 +217,7 @@ pub(crate) fn get_package_manager() -> String {
 }
 
 /// Get macOS version
-pub(crate) fn get_macos_version() -> String {
+pub fn get_macos_version() -> String {
     std::process::Command::new("sw_vers")
         .arg("-productVersion")
         .output()
@@ -227,12 +228,12 @@ pub(crate) fn get_macos_version() -> String {
 }
 
 /// Get macOS frameworks
-pub(crate) fn get_macos_frameworks() -> Vec<String> {
+pub fn get_macos_frameworks() -> Vec<String> {
     vec!["Foundation".to_string(), "CoreFoundation".to_string()]
 }
 
 /// Get Windows version
-pub(crate) fn get_windows_version() -> String {
+pub fn get_windows_version() -> String {
     #[cfg(target_os = "windows")]
     {
         if let Ok(output) = std::process::Command::new("cmd")
@@ -257,12 +258,12 @@ pub(crate) fn get_windows_version() -> String {
 }
 
 /// Get Windows features
-pub(crate) fn get_windows_features() -> Vec<String> {
+pub fn get_windows_features() -> Vec<String> {
     vec!["PowerShell".to_string(), "WSL".to_string()]
 }
 
 /// Get Windows subsystems
-pub(crate) fn get_windows_subsystems() -> Vec<String> {
+pub fn get_windows_subsystems() -> Vec<String> {
     vec!["Win32".to_string(), "WSL".to_string()]
 }
 

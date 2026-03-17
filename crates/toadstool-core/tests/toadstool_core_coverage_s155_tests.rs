@@ -12,8 +12,8 @@ use std::borrow::Cow;
 
 use toadstool_core::hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 use toadstool_core::hardware_transport::{
-    decode_frame, encode_frame, TransportDirection, TransportError, TransportInfo, TransportMedium,
-    FRAME_HEADER_SIZE,
+    FRAME_HEADER_SIZE, TransportDirection, TransportError, TransportInfo, TransportMedium,
+    decode_frame, encode_frame,
 };
 use toadstool_core::npu_controller::{
     ControllerError, ParameterSuggestion, ProxyFeature, ProxyFeatureSet, SafetyClamp,
@@ -583,7 +583,7 @@ fn decode_frame_truncated() {
 #[test]
 fn decode_frame_bad_magic() {
     let mut buf = vec![0u8; 64];
-    buf[0..4].copy_from_slice(b"XXXX");
+    buf[0..4].copy_from_slice(b"CAFE");
     assert!(decode_frame(&buf).is_err());
 }
 

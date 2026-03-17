@@ -26,12 +26,12 @@ use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use toadstool_common::ToadStoolResult;
 use toadstool_common::primal_identity::{
     AuthCapability, Capability, ComputeCapability, CoordinationCapability, DiscoveredService,
     DiscoveryCapability, ServiceEndpoint, StorageCapability,
 };
 use toadstool_common::runtime_discovery::DiscoveryClient;
-use toadstool_common::ToadStoolResult;
 
 // Note: The mdns crate (3.0) provides basic hostname resolution.
 // For full mDNS-SD (Service Discovery) with TXT records, a more complete
@@ -159,16 +159,17 @@ impl MdnsDiscoveryClient {
         let now = SystemTime::now();
         // Use service ID or generate one from endpoints
         let id = service.id.clone().unwrap_or_else(|| {
-            if let Some(endpoint) = service.endpoints.first() {
-                format!("{}:{}", endpoint.address, endpoint.port)
-            } else {
-                format!(
-                    "service-{}",
-                    now.duration_since(SystemTime::UNIX_EPOCH)
-                        .unwrap_or(Duration::from_secs(0))
-                        .as_secs()
-                )
-            }
+            service.endpoints.first().map_or_else(
+                || {
+                    format!(
+                        "service-{}",
+                        now.duration_since(SystemTime::UNIX_EPOCH)
+                            .unwrap_or(Duration::from_secs(0))
+                            .as_secs()
+                    )
+                },
+                |endpoint| format!("{}:{}", endpoint.address, endpoint.port),
+            )
         });
 
         let cached = CachedService {
@@ -275,8 +276,10 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         // explicit registration.
 
         // Query cache for services with requested capability
-        let cache = self.cache.read().await;
-        let services: Vec<DiscoveredService> = cache
+        let services: Vec<DiscoveredService> = self
+            .cache
+            .read()
+            .await
             .values()
             .filter_map(|entry| {
                 if entry.service.capabilities.contains(capability) {
@@ -310,9 +313,13 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         // Trigger mDNS browse for all ecoPrimals services
         // Future: When mdns-sd is integrated, this will browse for all services
 
-        let cache = self.cache.read().await;
-        let services: Vec<DiscoveredService> =
-            cache.values().map(|entry| entry.service.clone()).collect();
+        let services: Vec<DiscoveredService> = self
+            .cache
+            .read()
+            .await
+            .values()
+            .map(|entry| entry.service.clone())
+            .collect();
 
         info!("Discovered {} total service(s) via mDNS", services.len());
         Ok(services)
@@ -355,7 +362,8 @@ impl DiscoveryClient for MdnsDiscoveryClient {
 
         // Stop advertising service via mDNS
         // Future: When mdns-sd is integrated, this will stop mDNS responses
-        if let Some(hostname) = self.advertised_services.write().await.remove(service_id) {
+        let value = self.advertised_services.write().await.remove(service_id);
+        if let Some(hostname) = value {
             info!(
                 "Deregistered service {} (hostname: {})",
                 service_id, hostname
@@ -375,16 +383,14 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         // In mDNS, presence on network indicates health
         // Services that go offline stop responding to mDNS queries
         let cache = self.cache.read().await;
-        if let Some(entry) = cache.get(service_id) {
+        cache.get(service_id).map_or(Ok(false), |entry| {
             let age = SystemTime::now()
                 .duration_since(entry.last_seen)
                 .unwrap_or(Duration::from_secs(0));
 
             // Consider healthy if seen within TTL period
             Ok(age < self.cache_ttl)
-        } else {
-            Ok(false)
-        }
+        })
     }
 }
 

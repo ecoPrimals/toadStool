@@ -161,7 +161,7 @@ impl WorkloadExecutor {
     ///
     /// ✅ EVOLVED FROM MVP: Ready for scheduler integration
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -198,7 +198,7 @@ impl WorkloadExecutor {
         // For distributed execution, submit to UniversalScheduler
 
         Ok(WorkloadResponse {
-            request_id: request.request_id.clone(),
+            request_id: request.request_id,
             execution_id: Uuid::new_v4().to_string(),
             status: WorkloadStatus::Accepted,
             output: None,

@@ -143,6 +143,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         for _ in 0..100 {
             copy.copy_from_slice(&data);
         }
+        let _ = std::hint::black_box(&copy);
 
         let duration = start.elapsed();
         let bytes_transferred = (size * 100) as f64;

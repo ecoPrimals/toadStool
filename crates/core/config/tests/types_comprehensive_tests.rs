@@ -243,9 +243,11 @@ fn test_container_config_default() {
     assert_eq!(config.default_registry, "docker.io");
     assert!(config.port_range.0 < config.port_range.1);
     assert_eq!(config.network_mode, "bridge");
-    assert!(config
-        .security_opts
-        .contains(&"no-new-privileges".to_string()));
+    assert!(
+        config
+            .security_opts
+            .contains(&"no-new-privileges".to_string())
+    );
     assert!(config.volume_mounts.is_empty());
     assert!(config.environment.is_empty());
 }

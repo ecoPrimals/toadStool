@@ -26,14 +26,14 @@ pub enum MonitoringGranularity {
 
 impl MonitoringGranularity {
     #[must_use]
-    pub fn to_duration(self) -> Duration {
+    pub const fn to_duration(self) -> Duration {
         match self {
-            MonitoringGranularity::SubMillisecond => Duration::from_micros(100),
-            MonitoringGranularity::Millisecond => Duration::from_millis(1),
-            MonitoringGranularity::HighFrequency => Duration::from_millis(10),
-            MonitoringGranularity::Standard => Duration::from_millis(100),
-            MonitoringGranularity::LowFrequency => Duration::from_secs(1),
-            MonitoringGranularity::Custom(duration) => duration,
+            Self::SubMillisecond => Duration::from_micros(100),
+            Self::Millisecond => Duration::from_millis(1),
+            Self::HighFrequency => Duration::from_millis(10),
+            Self::Standard => Duration::from_millis(100),
+            Self::LowFrequency => Duration::from_secs(1),
+            Self::Custom(duration) => duration,
         }
     }
 }
@@ -103,22 +103,22 @@ pub enum ResourceMonitorError {
 impl std::fmt::Display for ResourceMonitorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ResourceMonitorError::ProcessNotRegistered(id) => {
+            Self::ProcessNotRegistered(id) => {
                 write!(f, "Process not registered for monitoring: {id}")
             }
-            ResourceMonitorError::ProcessNotFound(id) => {
+            Self::ProcessNotFound(id) => {
                 write!(f, "Process not found: {id}")
             }
-            ResourceMonitorError::CommandExecutionFailed(msg) => {
+            Self::CommandExecutionFailed(msg) => {
                 write!(f, "Command execution failed: {msg}")
             }
-            ResourceMonitorError::ParseError(msg) => {
+            Self::ParseError(msg) => {
                 write!(f, "Parse error: {msg}")
             }
-            ResourceMonitorError::PlatformNotSupported(platform) => {
+            Self::PlatformNotSupported(platform) => {
                 write!(f, "Platform not supported: {platform}")
             }
-            ResourceMonitorError::ResourceLimitExceeded {
+            Self::ResourceLimitExceeded {
                 process_id,
                 resource_type,
                 current_value,
@@ -129,10 +129,10 @@ impl std::fmt::Display for ResourceMonitorError {
                     "Resource limit exceeded for {process_id}: {resource_type} current={current_value}, limit={limit}"
                 )
             }
-            ResourceMonitorError::NetworkMonitoringNotAvailable => {
+            Self::NetworkMonitoringNotAvailable => {
                 write!(f, "Network monitoring is not available on this platform")
             }
-            ResourceMonitorError::ThresholdViolation {
+            Self::ThresholdViolation {
                 workload_id,
                 resource_type,
                 current_value,
@@ -143,7 +143,7 @@ impl std::fmt::Display for ResourceMonitorError {
                     "Threshold violation for {workload_id}: {resource_type} current={current_value}, threshold={threshold}"
                 )
             }
-            ResourceMonitorError::Other(msg) => write!(f, "Other error: {msg}"),
+            Self::Other(msg) => write!(f, "Other error: {msg}"),
         }
     }
 }
@@ -152,7 +152,7 @@ impl std::error::Error for ResourceMonitorError {}
 
 impl From<ResourceMonitorError> for ToadStoolError {
     fn from(err: ResourceMonitorError) -> Self {
-        ToadStoolError::resource(err.to_string())
+        Self::resource(err.to_string())
     }
 }
 

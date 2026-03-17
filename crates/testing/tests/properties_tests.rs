@@ -214,21 +214,21 @@ fn test_integer_generator_single_value() {
 
 #[test]
 fn test_string_generator_creation() {
-    let gen = StringGenerator::new(0, 10);
-    drop(gen);
+    let generator = StringGenerator::new(0, 10);
+    drop(generator);
 }
 
 #[test]
 fn test_string_generator_with_charset() {
     let charset = "abc";
-    let gen = StringGenerator::with_charset(5, 15, charset);
-    drop(gen);
+    let generator = StringGenerator::with_charset(5, 15, charset);
+    drop(generator);
 }
 
 #[test]
 fn test_string_generator_fixed_length() {
-    let gen = StringGenerator::new(10, 10);
-    drop(gen);
+    let generator = StringGenerator::new(10, 10);
+    drop(generator);
 }
 
 // ============================================================================
@@ -329,8 +329,8 @@ fn test_property_test_runner_custom_config() {
 
 #[test]
 fn test_integer_generator_implements_generator() {
-    let mut gen = IntegerGenerator::new(1, 100);
-    let value = gen.generate(10);
+    let mut generator = IntegerGenerator::new(1, 100);
+    let value = generator.generate(10);
 
     // Value should be within range
     assert!((1..=100).contains(&value));
@@ -338,8 +338,8 @@ fn test_integer_generator_implements_generator() {
 
 #[test]
 fn test_integer_generator_shrink() {
-    let gen = IntegerGenerator::new(1, 100);
-    let shrunk = gen.shrink(&50);
+    let generator = IntegerGenerator::new(1, 100);
+    let shrunk = generator.shrink(&50);
 
     // Shrinking should produce smaller values
     assert!(!shrunk.is_empty());
@@ -350,8 +350,8 @@ fn test_integer_generator_shrink() {
 
 #[test]
 fn test_string_generator_implements_generator() {
-    let mut gen = StringGenerator::new(5, 10);
-    let value = gen.generate(10);
+    let mut generator = StringGenerator::new(5, 10);
+    let value = generator.generate(10);
 
     // String length should be within range
     assert!(value.len() >= 5 && value.len() <= 10);
@@ -359,9 +359,9 @@ fn test_string_generator_implements_generator() {
 
 #[test]
 fn test_string_generator_shrink() {
-    let gen = StringGenerator::new(1, 20);
+    let generator = StringGenerator::new(1, 20);
     let input = "test_string".to_string();
-    let shrunk = gen.shrink(&input);
+    let shrunk = generator.shrink(&input);
 
     // Shrinking should produce shorter strings
     assert!(!shrunk.is_empty());
@@ -460,8 +460,8 @@ fn test_integer_generator_boundary_values() {
 
 #[test]
 fn test_string_generator_empty_string() {
-    let mut gen = StringGenerator::new(0, 0);
-    let value = gen.generate(1);
+    let mut generator = StringGenerator::new(0, 0);
+    let value = generator.generate(1);
     assert_eq!(value, "");
 }
 
@@ -572,6 +572,6 @@ fn test_integer_generator_large_range() {
 
 #[test]
 fn test_string_generator_large_length() {
-    let gen = StringGenerator::new(0, 10000);
-    drop(gen);
+    let generator = StringGenerator::new(0, 10000);
+    drop(generator);
 }

@@ -109,7 +109,7 @@ pub enum NeuromorphicPlatform {
 
 impl NeuromorphicPlatform {
     /// Get the platform type name
-    pub fn platform_type(&self) -> &'static str {
+    pub const fn platform_type(&self) -> &'static str {
         match self {
             Self::SpikingNeuralNetwork { .. } => "Spiking Neural Network",
             Self::MemristiveComputing { .. } => "Memristive Computing",
@@ -137,7 +137,7 @@ impl NeuromorphicPlatform {
     }
 
     /// Get power efficiency (if applicable)
-    pub fn power_consumption_mw(&self) -> Option<f64> {
+    pub const fn power_consumption_mw(&self) -> Option<f64> {
         match self {
             Self::NeuromorphicChip {
                 power_consumption_mw,

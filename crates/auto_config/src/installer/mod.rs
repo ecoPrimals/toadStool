@@ -25,9 +25,9 @@ use tracing::{info, warn};
 
 use toadstool_common::platform_paths::Platform;
 
+use crate::ToadStoolError;
 use crate::hardware::SystemCapabilities;
 use crate::intelligent::IntelligentAutoConfig;
-use crate::ToadStoolError;
 
 pub use config_manager::ConfigManager;
 pub use types::{InstallationConfig, InstallationResult};
@@ -57,7 +57,7 @@ impl SmartInstaller {
     pub async fn install_zero_touch() -> Result<(), ToadStoolError> {
         info!("🚀 Starting zero-touch ToadStool installation");
 
-        let mut installer = Self::new();
+        let installer = Self::new();
 
         // 1. Auto-detect everything
         let mut hardware_detector = crate::HardwareDetector::new();
@@ -87,7 +87,7 @@ impl SmartInstaller {
 
     /// Install only what's needed for this system
     async fn install_optimal_components(
-        &mut self,
+        &self,
         capabilities: &SystemCapabilities,
     ) -> Result<(), ToadStoolError> {
         info!(

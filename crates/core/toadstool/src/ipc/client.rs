@@ -39,7 +39,7 @@ pub enum IpcStream {
 
 impl IpcStream {
     /// Get endpoint info for this stream
-    pub fn endpoint_type(&self) -> &'static str {
+    pub const fn endpoint_type(&self) -> &'static str {
         match self {
             Self::Unix(_) => "unix",
             #[cfg(target_os = "linux")]
@@ -199,7 +199,7 @@ impl IpcClient {
     /// Create client with custom endpoints
     ///
     /// **Deep Debt**: Flexible, allows override
-    pub fn with_endpoints(endpoints: Vec<Endpoint>) -> Self {
+    pub const fn with_endpoints(endpoints: Vec<Endpoint>) -> Self {
         Self { endpoints }
     }
 
@@ -288,9 +288,11 @@ mod tests {
         assert!(!endpoints.is_empty());
 
         // Should have TCP endpoint with a resolved port
-        assert!(endpoints
-            .iter()
-            .any(|e| { matches!(e, Endpoint::Tcp { .. }) }));
+        assert!(
+            endpoints
+                .iter()
+                .any(|e| { matches!(e, Endpoint::Tcp { .. }) })
+        );
 
         // Should have Unix socket endpoint containing primal name
         assert!(endpoints.iter().any(|e| {

@@ -97,7 +97,7 @@ impl ContainerWorkloadBuilder {
     /// # Arguments
     ///
     /// * `priority` - The job priority level (affects scheduling order)
-    pub fn priority(mut self, priority: JobPriority) -> Self {
+    pub const fn priority(mut self, priority: JobPriority) -> Self {
         self.priority = Some(priority);
         self
     }
@@ -107,7 +107,7 @@ impl ContainerWorkloadBuilder {
     /// # Arguments
     ///
     /// * `timeout` - Maximum duration the workload is allowed to run before being terminated
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
@@ -117,7 +117,7 @@ impl ContainerWorkloadBuilder {
     /// # Arguments
     ///
     /// * `resources` - Resource requirements for the workload
-    pub fn resources(mut self, resources: ResourceRequirements) -> Self {
+    pub const fn resources(mut self, resources: ResourceRequirements) -> Self {
         self.resources = Some(resources);
         self
     }

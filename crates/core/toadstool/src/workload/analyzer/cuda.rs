@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! CUDA workload analysis
 
+use super::WorkloadAnalyzer;
 use super::characteristics::{
     ComputeIntensity, GpuAdvantage, ParallelismLevel, WorkloadCharacteristics,
 };
-use super::WorkloadAnalyzer;
 use crate::workload::CudaWorkload;
 
 impl WorkloadAnalyzer {
-    pub(super) fn analyze_cuda(&self, workload: &CudaWorkload) -> WorkloadCharacteristics {
+    pub(super) const fn analyze_cuda(&self, workload: &CudaWorkload) -> WorkloadCharacteristics {
         let total_threads = workload.launch_config.total_threads();
 
         let compute_intensity = match total_threads {
@@ -24,7 +24,7 @@ impl WorkloadAnalyzer {
         #[allow(clippy::cast_possible_truncation)]
         let total_shared = shared_mem.saturating_mul(blocks as usize);
         #[allow(clippy::cast_possible_truncation)]
-        let memory_requirement = WorkloadAnalyzer::classify_memory(total_shared as u64);
+        let memory_requirement = Self::classify_memory(total_shared as u64);
 
         let parallelism_level = match total_threads {
             0..=1_000 => ParallelismLevel::Low,

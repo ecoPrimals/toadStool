@@ -1,7 +1,7 @@
 [package]
 name = "toadstool-management-monitoring"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Resource monitoring and metrics collection for ToadStool runtime environments"

@@ -129,45 +129,45 @@ impl WorkloadSpec {
     /// for performance optimization.
     #[inline]
     #[must_use]
-    pub fn workload_type(&self) -> WorkloadType {
+    pub const fn workload_type(&self) -> WorkloadType {
         match self {
-            WorkloadSpec::Native { .. } => WorkloadType::Native,
-            WorkloadSpec::Wasm { .. } => WorkloadType::Wasm,
-            WorkloadSpec::Container { .. } => WorkloadType::Container,
-            WorkloadSpec::Gpu { .. } => WorkloadType::Gpu,
-            WorkloadSpec::Python { .. } => WorkloadType::Python,
-            WorkloadSpec::AiMl { .. } => WorkloadType::AiMl,
-            WorkloadSpec::Cuda { .. } => WorkloadType::Cuda,
+            Self::Native { .. } => WorkloadType::Native,
+            Self::Wasm { .. } => WorkloadType::Wasm,
+            Self::Container { .. } => WorkloadType::Container,
+            Self::Gpu { .. } => WorkloadType::Gpu,
+            Self::Python { .. } => WorkloadType::Python,
+            Self::AiMl { .. } => WorkloadType::AiMl,
+            Self::Cuda { .. } => WorkloadType::Cuda,
         }
     }
 
     /// Validate the workload specification
     pub fn validate(&self) -> ToadStoolResult<()> {
         match self {
-            WorkloadSpec::Native { executable, .. } => {
+            Self::Native { executable, .. } => {
                 self.validate_executable(executable)?;
             }
-            WorkloadSpec::Wasm { module, .. } => {
+            Self::Wasm { module, .. } => {
                 self.validate_wasm_module(module)?;
             }
-            WorkloadSpec::Container { image, .. } => {
+            Self::Container { image, .. } => {
                 if image.is_empty() {
                     return Err(ToadStoolError::validation(
                         "Container image cannot be empty",
                     ));
                 }
             }
-            WorkloadSpec::Gpu { program, .. } => {
+            Self::Gpu { program, .. } => {
                 self.validate_gpu_program(program)?;
             }
-            WorkloadSpec::Python { source, .. } => {
+            Self::Python { source, .. } => {
                 self.validate_python_source(source)?;
             }
-            WorkloadSpec::AiMl { workload } => {
+            Self::AiMl { workload } => {
                 // AI/ML workloads are self-validating
                 let _ = workload.estimate_total_memory_bytes(); // Verify it computes
             }
-            WorkloadSpec::Cuda { workload } => {
+            Self::Cuda { workload } => {
                 // CUDA workloads are self-validating
                 let _ = workload.launch_config.total_threads(); // Verify it computes
             }

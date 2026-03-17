@@ -216,10 +216,10 @@ impl ResourceEstimator {
     }
 
     fn estimate_duration(&self, node: &GraphNode) -> Duration {
-        if let Some(duration_str) = node.metadata.get("estimated_duration_secs") {
-            if let Ok(secs) = duration_str.parse::<u64>() {
-                return Duration::from_secs(secs);
-            }
+        if let Some(duration_str) = node.metadata.get("estimated_duration_secs")
+            && let Ok(secs) = duration_str.parse::<u64>()
+        {
+            return Duration::from_secs(secs);
         }
 
         match node.operation.as_str() {

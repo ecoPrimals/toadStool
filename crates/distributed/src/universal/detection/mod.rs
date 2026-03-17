@@ -86,22 +86,22 @@ impl UniversalSubstrateCapabilities {
         #[cfg(target_os = "linux")]
         {
             let dev_akida = std::path::Path::new("/dev");
-            if dev_akida.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(dev_akida) {
-                    for entry in entries.flatten() {
-                        let name = entry.file_name();
-                        let name_str = name.to_string_lossy();
-                        if name_str.starts_with("akida") {
-                            platforms.push(NeuromorphicPlatform::NeuromorphicChip {
-                                chip_name: "Akida".to_string(),
-                                manufacturer: "BrainChip".to_string(),
-                                core_count: 1,
-                                neuron_count_per_core: 1_000_000,
-                                synapse_count_per_core: 4_000_000,
-                                power_consumption_mw: 500.0,
-                            });
-                            break;
-                        }
+            if dev_akida.is_dir()
+                && let Ok(entries) = std::fs::read_dir(dev_akida)
+            {
+                for entry in entries.flatten() {
+                    let name = entry.file_name();
+                    let name_str = name.to_string_lossy();
+                    if name_str.starts_with("akida") {
+                        platforms.push(NeuromorphicPlatform::NeuromorphicChip {
+                            chip_name: "Akida".to_string(),
+                            manufacturer: "BrainChip".to_string(),
+                            core_count: 1,
+                            neuron_count_per_core: 1_000_000,
+                            synapse_count_per_core: 4_000_000,
+                            power_consumption_mw: 500.0,
+                        });
+                        break;
                     }
                 }
             }
@@ -137,14 +137,14 @@ impl UniversalSubstrateCapabilities {
 
             let mut serial_count = 0u32;
             let dev = std::path::Path::new("/dev");
-            if dev.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(dev) {
-                    for entry in entries.flatten() {
-                        let file_name = entry.file_name();
-                        let name = file_name.to_string_lossy();
-                        if name.starts_with("ttyUSB") || name.starts_with("ttyACM") {
-                            serial_count += 1;
-                        }
+            if dev.is_dir()
+                && let Ok(entries) = std::fs::read_dir(dev)
+            {
+                for entry in entries.flatten() {
+                    let file_name = entry.file_name();
+                    let name = file_name.to_string_lossy();
+                    if name.starts_with("ttyUSB") || name.starts_with("ttyACM") {
+                        serial_count += 1;
                     }
                 }
             }

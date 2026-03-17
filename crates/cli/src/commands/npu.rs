@@ -112,7 +112,7 @@ fn list_devices() -> Result<()> {
                 println!(
                     "  {} - {} @ {}",
                     device.index(),
-                    device.capabilities().chip_version.to_string(),
+                    device.capabilities().chip_version,
                     device.pcie_address()
                 );
             }

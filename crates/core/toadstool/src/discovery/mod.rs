@@ -32,7 +32,7 @@ pub mod mdns;
 pub mod orchestration;
 
 pub use mdns::{MdnsDiscoveryService, TOADSTOOL_SERVICE_TYPE};
-pub use orchestration::{discover_orchestration, OrchestrationClient};
+pub use orchestration::{OrchestrationClient, discover_orchestration};
 
 use crate::error::{ToadStoolError, ToadStoolResult};
 use crate::self_identity::Capability;
@@ -86,13 +86,14 @@ impl DiscoveredService {
         capability_name: &str,
         required_features: &[String],
     ) -> bool {
-        if let Some(cap) = self.capabilities.iter().find(|c| c.name == capability_name) {
-            required_features
-                .iter()
-                .all(|feat| cap.features.contains(feat))
-        } else {
-            false
-        }
+        self.capabilities
+            .iter()
+            .find(|c| c.name == capability_name)
+            .is_some_and(|cap| {
+                required_features
+                    .iter()
+                    .all(|feat| cap.features.contains(feat))
+            })
     }
 
     /// Parse socket address from endpoint

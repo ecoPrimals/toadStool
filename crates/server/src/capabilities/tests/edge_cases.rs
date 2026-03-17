@@ -439,11 +439,13 @@ async fn test_find_peer_with_empty_capability_match() {
 
         let found = PrimalCapabilities::find_peer_with("arch").await;
         assert!(found.is_ok());
-        assert!(found
-            .unwrap()
-            .capabilities
-            .iter()
-            .any(|c| c.contains("arch")));
+        assert!(
+            found
+                .unwrap()
+                .capabilities
+                .iter()
+                .any(|c| c.contains("arch"))
+        );
     })
     .await;
 }

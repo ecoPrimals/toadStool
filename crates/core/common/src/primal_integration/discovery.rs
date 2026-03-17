@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use tracing::{debug, info, warn};
 
-use crate::constants::network::{http_url, DEFAULT_HTTP_PORT};
+use crate::constants::network::{DEFAULT_HTTP_PORT, http_url};
 
 use super::{DiscoveryError, DiscoveryResult, PrimalEndpoint};
 
@@ -266,13 +266,10 @@ fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
                     }
                 }
                 if capabilities.iter().any(|c| c == capability) {
-                    let host = info
-                        .get_addresses()
-                        .iter()
-                        .next()
-                        .map_or(info.get_hostname().trim_end_matches('.').to_string(), |a| {
-                            a.to_string()
-                        });
+                    let host = info.get_addresses().iter().next().map_or_else(
+                        || info.get_hostname().trim_end_matches('.').to_string(),
+                        |a| a.to_string(),
+                    );
                     let port = info.get_port();
                     let url = format!("http://{host}:{port}");
                     discovered.push(PrimalEndpoint {
@@ -477,7 +474,7 @@ fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
 /// Built-in default endpoints for known capabilities.
 /// Returns `None` for all capabilities — discovered via capability resolution at runtime.
 /// Caller sets `TOADSTOOL_{CAPABILITY}_ENDPOINT` or discovers via mDNS/registry.
-fn builtin_default_endpoint(_capability: &str) -> Option<String> {
+const fn builtin_default_endpoint(_capability: &str) -> Option<String> {
     None
 }
 

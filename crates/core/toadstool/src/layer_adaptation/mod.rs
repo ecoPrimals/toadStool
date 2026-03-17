@@ -46,7 +46,7 @@ pub use detection::{
     get_available_disk, get_total_memory,
 };
 pub use types::{
-    compute_capabilities, network_capabilities, storage_capabilities, AdaptedCapabilities,
-    CapabilityMetadata, ComputeCapabilities, GpuAccess, NetworkAccess, NetworkCapabilities,
-    StorageCapabilities, StorageType,
+    AdaptedCapabilities, CapabilityMetadata, ComputeCapabilities, GpuAccess, NetworkAccess,
+    NetworkCapabilities, StorageCapabilities, StorageType, compute_capabilities,
+    network_capabilities, storage_capabilities,
 };

@@ -31,10 +31,10 @@ impl From<&str> for DiscoverySource {
 /// Main discovery engine - orchestrates all discovery mechanisms
 pub struct DiscoveryEngine {
     /// Registered endpoint sources (in priority order).
-    sources: Arc<RwLock<Vec<Box<dyn EndpointSource>>>>,
+    sources: Arc<RwLock<Vec<Arc<dyn EndpointSource>>>>,
 
     /// Registered substrate detectors.
-    detectors: Arc<RwLock<Vec<Box<dyn SubstrateDetector>>>>,
+    detectors: Arc<RwLock<Vec<Arc<dyn SubstrateDetector>>>>,
 
     /// Cache of discovered services.
     cache: Arc<RwLock<std::collections::HashMap<String, DiscoveredService>>>,
@@ -93,13 +93,13 @@ impl DiscoveryEngine {
     }
 
     /// Register an endpoint source.
-    pub async fn register_source(&self, source: Box<dyn EndpointSource>) {
+    pub async fn register_source(&self, source: Arc<dyn EndpointSource>) {
         let mut sources = self.sources.write().await;
         sources.push(source);
     }
 
     /// Register a substrate detector.
-    pub async fn register_detector(&self, detector: Box<dyn SubstrateDetector>) {
+    pub async fn register_detector(&self, detector: Arc<dyn SubstrateDetector>) {
         let mut detectors = self.detectors.write().await;
         detectors.push(detector);
     }
@@ -110,8 +110,9 @@ impl DiscoveryEngine {
     ///
     /// Returns `DiscoveryError::CapabilityNotFound` if no source can resolve the capability.
     pub async fn discover_endpoint(&self, capability: &str) -> Result<String, DiscoveryError> {
-        // Try each source in order
-        let sources = self.sources.read().await;
+        // Try each source in order (clone to avoid holding lock across await)
+        let sources: Vec<Arc<dyn EndpointSource>> =
+            self.sources.read().await.iter().map(Arc::clone).collect();
 
         for source in sources.iter() {
             match source.resolve(capability).await {
@@ -151,7 +152,8 @@ impl DiscoveryEngine {
     ///
     /// Returns `DiscoveryError` if substrate detection fails or no detectors are available.
     pub async fn detect_substrate(&self) -> Result<DetectedSubstrate, DiscoveryError> {
-        let detectors = self.detectors.read().await;
+        let detectors: Vec<Arc<dyn SubstrateDetector>> =
+            self.detectors.read().await.iter().map(Arc::clone).collect();
 
         for detector in detectors.iter() {
             match detector.detect().await {
@@ -193,8 +195,10 @@ impl DiscoveryEngine {
             return None;
         }
 
-        let cache = self.cache.read().await;
-        let service = cache.get(capability)?;
+        let service = {
+            let cache = self.cache.read().await;
+            cache.get(capability)?.clone()
+        };
 
         // Check if expired
         let elapsed = service.metadata.last_seen.elapsed().ok()?;
@@ -202,7 +206,7 @@ impl DiscoveryEngine {
             return None;
         }
 
-        Some(service.clone())
+        Some(service)
     }
 
     /// Store in cache
@@ -359,7 +363,8 @@ impl CapabilityDiscovery for DiscoveryEngine {
 
         Box::pin(async move {
             let mut discovered_services = Vec::new();
-            let sources = self.sources.read().await;
+            let sources: Vec<Arc<dyn EndpointSource>> =
+                self.sources.read().await.iter().map(Arc::clone).collect();
 
             // Query all sources sequentially (avoid lifetime issues)
             for source in sources.iter() {
@@ -416,8 +421,8 @@ impl CapabilityDiscovery for DiscoveryEngine {
 /// Builder for discovery engine with fluent API
 pub struct DiscoveryEngineBuilder {
     config: ServiceDiscoveryConfig,
-    sources: Vec<Box<dyn EndpointSource>>,
-    detectors: Vec<Box<dyn SubstrateDetector>>,
+    sources: Vec<Arc<dyn EndpointSource>>,
+    detectors: Vec<Arc<dyn SubstrateDetector>>,
 }
 
 impl DiscoveryEngineBuilder {
@@ -454,14 +459,14 @@ impl DiscoveryEngineBuilder {
 
     /// Add an endpoint source
     #[must_use]
-    pub fn with_source(mut self, source: Box<dyn EndpointSource>) -> Self {
+    pub fn with_source(mut self, source: Arc<dyn EndpointSource>) -> Self {
         self.sources.push(source);
         self
     }
 
     /// Add a substrate detector
     #[must_use]
-    pub fn with_detector(mut self, detector: Box<dyn SubstrateDetector>) -> Self {
+    pub fn with_detector(mut self, detector: Arc<dyn SubstrateDetector>) -> Self {
         self.detectors.push(detector);
         self
     }
@@ -531,7 +536,7 @@ mod tests {
 
         // Register a mock source
         engine
-            .register_source(Box::new(MockSource {
+            .register_source(Arc::new(MockSource {
                 name: "mock".to_string(),
                 endpoint: Some("http://localhost:8080".to_string()),
             }))
@@ -549,14 +554,14 @@ mod tests {
 
         // Register multiple sources (first fails, second succeeds)
         engine
-            .register_source(Box::new(MockSource {
+            .register_source(Arc::new(MockSource {
                 name: "failing".to_string(),
                 endpoint: None,
             }))
             .await;
 
         engine
-            .register_source(Box::new(MockSource {
+            .register_source(Arc::new(MockSource {
                 name: "working".to_string(),
                 endpoint: Some("http://fallback:9090".to_string()),
             }))
@@ -573,7 +578,7 @@ mod tests {
         let engine = DiscoveryEngineBuilder::new()
             .timeout(Duration::from_secs(10))
             .cache_ttl(Duration::from_secs(60))
-            .with_source(Box::new(MockSource {
+            .with_source(Arc::new(MockSource {
                 name: "test".to_string(),
                 endpoint: Some("http://test:8080".to_string()),
             }))
@@ -702,7 +707,7 @@ mod tests {
         };
 
         engine
-            .register_detector(Box::new(MockDetector {
+            .register_detector(Arc::new(MockDetector {
                 name: "test_detector".to_string(),
                 result: Some(substrate.clone()),
             }))
@@ -723,7 +728,7 @@ mod tests {
 
         // Register a mock source
         engine
-            .register_source(Box::new(MockSource {
+            .register_source(Arc::new(MockSource {
                 name: "test".to_string(),
                 endpoint: Some("http://localhost:9999".to_string()),
             }))
@@ -749,7 +754,7 @@ mod tests {
         let engine = DiscoveryEngine::new();
 
         engine
-            .register_source(Box::new(MockSource {
+            .register_source(Arc::new(MockSource {
                 name: "test".to_string(),
                 endpoint: Some("http://localhost:7777".to_string()),
             }))
@@ -777,7 +782,7 @@ mod tests {
         let engine = DiscoveryEngine::new();
 
         engine
-            .register_source(Box::new(MockSource {
+            .register_source(Arc::new(MockSource {
                 name: "test".to_string(),
                 endpoint: Some("http://localhost:6666".to_string()),
             }))
@@ -794,11 +799,11 @@ mod tests {
             .cache_ttl(Duration::from_secs(120))
             .timeout(Duration::from_secs(15))
             .disable_cache()
-            .with_source(Box::new(MockSource {
+            .with_source(Arc::new(MockSource {
                 name: "source1".to_string(),
                 endpoint: Some("http://s1:8080".to_string()),
             }))
-            .with_source(Box::new(MockSource {
+            .with_source(Arc::new(MockSource {
                 name: "source2".to_string(),
                 endpoint: Some("http://s2:8080".to_string()),
             }))

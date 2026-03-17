@@ -6,7 +6,7 @@
 //! DisplayTransport::open requires real DRM - not tested in CI.
 
 use toadstool_core::{
-    TransportDirection, TransportError, TransportInfo, TransportMedium, FRAME_HEADER_SIZE,
+    FRAME_HEADER_SIZE, TransportDirection, TransportError, TransportInfo, TransportMedium,
 };
 use toadstool_display::transport::discover_display_transports;
 

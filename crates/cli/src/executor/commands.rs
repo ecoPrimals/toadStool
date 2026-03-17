@@ -245,7 +245,6 @@ impl BiomeExecutor {
         _status_filter: Option<&str>,
     ) -> Result<()> {
         let biomes = self.biomes.read().await;
-
         let biome_refs: Vec<&RunningBiome> = biomes.values().collect();
         self.print_biomes_table(&biome_refs, show_resources).await?;
 
@@ -255,6 +254,7 @@ impl BiomeExecutor {
             println!("💡 Use 'toadstool logs <name>' to view logs");
             println!("💡 Use 'toadstool down <name>' to stop a biome");
         }
+        drop(biomes);
 
         Ok(())
     }

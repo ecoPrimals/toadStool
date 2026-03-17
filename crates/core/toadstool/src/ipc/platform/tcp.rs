@@ -113,7 +113,7 @@ pub fn local_network_addr() -> ToadStoolResult<SocketAddr> {
 /// Check if TCP is available (always true)
 ///
 /// **Deep Debt**: Universal availability
-pub fn is_supported() -> bool {
+pub const fn is_supported() -> bool {
     true // TCP works everywhere!
 }
 

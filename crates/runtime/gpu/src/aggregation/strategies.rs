@@ -43,7 +43,7 @@ pub struct ResultAggregator {
 
 impl ResultAggregator {
     /// Create a new aggregator with specified strategy
-    pub fn new(strategy: AggregationStrategy) -> Self {
+    pub const fn new(strategy: AggregationStrategy) -> Self {
         Self { strategy }
     }
 

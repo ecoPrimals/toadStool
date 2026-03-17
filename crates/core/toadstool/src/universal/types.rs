@@ -73,13 +73,13 @@ impl PrimalType {
     #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
-            PrimalType::Compute => "compute",
-            PrimalType::Security => "security",
-            PrimalType::Storage => "storage",
-            PrimalType::AI => "ai",
-            PrimalType::Network => "network",
-            PrimalType::OS => "os",
-            PrimalType::Custom(name) => name.as_str(),
+            Self::Compute => "compute",
+            Self::Security => "security",
+            Self::Storage => "storage",
+            Self::AI => "ai",
+            Self::Network => "network",
+            Self::OS => "os",
+            Self::Custom(name) => name.as_str(),
         }
     }
 
@@ -87,13 +87,13 @@ impl PrimalType {
     #[must_use]
     pub fn from_str_lossy(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
-            "compute" => PrimalType::Compute,
-            "security" => PrimalType::Security,
-            "storage" => PrimalType::Storage,
-            "ai" => PrimalType::AI,
-            "network" => PrimalType::Network,
-            "os" => PrimalType::OS,
-            other => PrimalType::Custom(other.to_string()),
+            "compute" => Self::Compute,
+            "security" => Self::Security,
+            "storage" => Self::Storage,
+            "ai" => Self::AI,
+            "network" => Self::Network,
+            "os" => Self::OS,
+            other => Self::Custom(other.to_string()),
         }
     }
 }

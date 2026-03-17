@@ -7,6 +7,7 @@ use toadstool::error::ToadStoolResult;
 use tracing::{debug, info};
 
 /// Discovery extension trait
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) trait DiscoveryExt {
     /// Apply DNS discovery configuration
     async fn apply_dns_discovery_config(&self) -> ToadStoolResult<()>;

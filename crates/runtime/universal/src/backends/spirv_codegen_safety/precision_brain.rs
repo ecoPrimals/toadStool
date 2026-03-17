@@ -26,7 +26,7 @@ impl PrecisionBrain {
     }
 
     #[must_use]
-    pub fn route(&self, hint: PrecisionHint) -> PrecisionTier {
+    pub const fn route(&self, hint: PrecisionHint) -> PrecisionTier {
         self.route_table[hint as usize]
     }
 
@@ -36,7 +36,7 @@ impl PrecisionBrain {
     }
 
     #[must_use]
-    pub fn calibration(&self) -> &HardwareCalibration {
+    pub const fn calibration(&self) -> &HardwareCalibration {
         &self.calibration
     }
 

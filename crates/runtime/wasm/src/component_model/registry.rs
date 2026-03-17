@@ -42,6 +42,7 @@ impl ComponentRegistry {
 
         let interface_name = interface.name.clone();
         interfaces.insert(interface_name.clone(), interface);
+        drop(interfaces);
         info!("Registered component interface: {}", interface_name);
         Ok(())
     }
@@ -57,14 +58,19 @@ impl ComponentRegistry {
         }
         drop(instances);
 
-        let interfaces = self.interfaces.read().await;
-        let interface = interfaces.get(interface_name).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Interface not found: {interface_name}"))
-        })?;
+        let interface = self
+            .interfaces
+            .read()
+            .await
+            .get(interface_name)
+            .ok_or_else(|| {
+                ToadStoolError::not_found(format!("Interface not found: {interface_name}"))
+            })?
+            .clone();
 
         let instance_id = uuid::Uuid::new_v4().to_string();
         let mut instance_interfaces = HashMap::new();
-        instance_interfaces.insert(interface_name.to_string(), interface.clone());
+        instance_interfaces.insert(interface_name.to_string(), interface);
 
         let instance = ComponentInstance {
             id: instance_id.clone(),
@@ -74,8 +80,10 @@ impl ComponentRegistry {
             resource_usage: ComponentResourceUsage::default(),
         };
 
-        let mut instances = self.instances.write().await;
-        instances.insert(instance_id.clone(), instance);
+        self.instances
+            .write()
+            .await
+            .insert(instance_id.clone(), instance);
 
         info!("Created component instance: {}", instance_id);
         Ok(instance_id)
@@ -84,20 +92,24 @@ impl ComponentRegistry {
     /// Get component instance
     pub async fn get_instance(&self, instance_id: &str) -> ToadStoolResult<ComponentInstance> {
         let instances = self.instances.read().await;
-        if let Some(instance) = instances.get(instance_id) {
-            // Create a copy of the instance data without using Clone
-            Ok(ComponentInstance {
-                id: instance.id.clone(),
-                interfaces: instance.interfaces.clone(),
-                state: instance.state.clone(),
-                created_at: instance.created_at,
-                resource_usage: instance.resource_usage.clone(),
-            })
-        } else {
-            Err(ToadStoolError::not_found(format!(
-                "Component instance not found: {instance_id}"
-            )))
-        }
+        let result = instances.get(instance_id).map_or_else(
+            || {
+                Err(ToadStoolError::not_found(format!(
+                    "Component instance not found: {instance_id}"
+                )))
+            },
+            |instance| {
+                Ok(ComponentInstance {
+                    id: instance.id.clone(),
+                    interfaces: instance.interfaces.clone(),
+                    state: instance.state.clone(),
+                    created_at: instance.created_at,
+                    resource_usage: instance.resource_usage.clone(),
+                })
+            },
+        );
+        drop(instances);
+        result
     }
 
     /// Update component state
@@ -164,7 +176,8 @@ impl ComponentRegistry {
             stats.total_cpu_time_ms += instance.resource_usage.cpu_time_ms;
             stats.total_function_calls += instance.resource_usage.function_calls;
         }
-
+        drop(instances);
+        drop(interfaces);
         stats
     }
 }

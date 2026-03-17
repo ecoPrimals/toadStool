@@ -57,7 +57,7 @@ impl SystemResourceMonitor {
     /// Creates a new `SystemResourceMonitor` instance with custom configuration
     #[must_use]
     pub fn with_config(config: MonitoringConfig) -> Self {
-        SystemResourceMonitor {
+        Self {
             process_map: Arc::new(RwLock::new(HashMap::new())),
             usage_data: Arc::new(RwLock::new(HashMap::new())),
             threshold_data: Arc::new(RwLock::new(HashMap::new())),
@@ -88,6 +88,7 @@ impl SystemResourceMonitor {
         }
 
         *is_monitoring = true;
+        drop(is_monitoring);
         let interval = self.config.granularity.to_duration();
         info!("Starting resource monitoring with interval {:?}", interval);
 
@@ -144,19 +145,20 @@ impl SystemResourceMonitor {
                     usage_data_guard.insert(workload_id.clone(), metrics.clone());
 
                     // Check thresholds if enabled
-                    if config.enable_threshold_monitoring {
-                        if let Some(requirements) = thresholds.get(&workload_id) {
-                            if let Err(err) = Self::check_thresholds(
-                                &workload_id,
-                                &metrics,
-                                requirements,
-                                &config.threshold_action,
-                            ) {
-                                error!("Threshold violation: {}", err);
-                            }
-                        }
+                    if config.enable_threshold_monitoring
+                        && let Some(requirements) = thresholds.get(&workload_id)
+                        && let Err(err) = Self::check_thresholds(
+                            &workload_id,
+                            &metrics,
+                            requirements,
+                            &config.threshold_action,
+                        )
+                    {
+                        error!("Threshold violation: {}", err);
                     }
                 }
+                drop(usage_data_guard);
+                drop(thresholds);
             }
         });
 
@@ -165,8 +167,10 @@ impl SystemResourceMonitor {
 
     /// Stops the monitoring loop
     pub async fn stop_monitoring_loop(&self) -> ToadStoolResult<()> {
-        let mut is_monitoring = self.is_monitoring.write().await;
-        *is_monitoring = false;
+        {
+            let mut is_monitoring = self.is_monitoring.write().await;
+            *is_monitoring = false;
+        }
         info!("Stopped resource monitoring");
         Ok(())
     }
@@ -227,12 +231,9 @@ impl ResourceMonitor for SystemResourceMonitor {
         let workload_id = workload_id.to_string();
 
         tokio::spawn(async move {
-            let mut process_map = process_map.write().await;
-            let mut usage_data = usage_data.write().await;
-            let mut threshold_data = threshold_data.write().await;
-            process_map.remove(&workload_id);
-            usage_data.remove(&workload_id);
-            threshold_data.remove(&workload_id);
+            process_map.write().await.remove(&workload_id);
+            usage_data.write().await.remove(&workload_id);
+            threshold_data.write().await.remove(&workload_id);
         });
         Ok(())
     }
@@ -277,17 +278,16 @@ impl ResourceMonitor for SystemResourceMonitor {
                 if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
                     for line in meminfo.lines() {
                         if line.starts_with("MemTotal:") {
-                            if let Some(value) = line.split_whitespace().nth(1) {
-                                if let Ok(mem_kb) = value.parse::<u64>() {
-                                    total_memory_bytes = mem_kb * 1024;
-                                }
+                            if let Some(value) = line.split_whitespace().nth(1)
+                                && let Ok(mem_kb) = value.parse::<u64>()
+                            {
+                                total_memory_bytes = mem_kb * 1024;
                             }
-                        } else if line.starts_with("MemAvailable:") {
-                            if let Some(value) = line.split_whitespace().nth(1) {
-                                if let Ok(mem_kb) = value.parse::<u64>() {
-                                    available_memory_bytes = mem_kb * 1024;
-                                }
-                            }
+                        } else if line.starts_with("MemAvailable:")
+                            && let Some(value) = line.split_whitespace().nth(1)
+                            && let Ok(mem_kb) = value.parse::<u64>()
+                        {
+                            available_memory_bytes = mem_kb * 1024;
                         }
                     }
                 }

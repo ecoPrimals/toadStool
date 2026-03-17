@@ -5,11 +5,11 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
-use toadstool::universal::{
-    get_platform_status, JobPriority, NetworkLocation, PrimalCapability, PrimalContext,
-    PrimalRequest, SecurityLevel, UniversalComputePlatform, UniversalJob, UniversalJobType,
-};
 use toadstool::UniversalResourceRequirements;
+use toadstool::universal::{
+    JobPriority, NetworkLocation, PrimalCapability, PrimalContext, PrimalRequest, SecurityLevel,
+    UniversalComputePlatform, UniversalJob, UniversalJobType, get_platform_status,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

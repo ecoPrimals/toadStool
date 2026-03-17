@@ -26,9 +26,9 @@ pub use validation::*;
 
 use tracing::info;
 
+use crate::ToadStoolResult;
 use crate::ecosystem::{DiscoveredServices, EcosystemDiscoverer};
 use crate::hardware::{HardwareDetector, SystemCapabilities};
-use crate::ToadStoolResult;
 use toadstool_config::ToadStoolConfig;
 
 /// Intelligent auto-configuration system that makes `ToadStool` work out-of-the-box

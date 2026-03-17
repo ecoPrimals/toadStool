@@ -53,7 +53,7 @@ pub struct LearningAdvisor {
 impl LearningAdvisor {
     /// Create an advisor from a fleet of discovered GPUs.
     #[must_use]
-    pub fn new(fleet: Vec<FleetGpu>) -> Self {
+    pub const fn new(fleet: Vec<FleetGpu>) -> Self {
         Self { fleet }
     }
 
@@ -183,12 +183,12 @@ fn format_rationale(
 mod tests {
     use super::*;
 
-    fn make_gpu(id: &str, vendor: Vendor, gen: &str, cc: &str, works: bool) -> FleetGpu {
+    fn make_gpu(id: &str, vendor: Vendor, generation: &str, cc: &str, works: bool) -> FleetGpu {
         FleetGpu {
             id: id.into(),
             arch: GpuArch {
                 vendor,
-                generation: gen.into(),
+                generation: generation.into(),
                 chip: format!("test_{cc}"),
                 compute_class: cc.into(),
             },

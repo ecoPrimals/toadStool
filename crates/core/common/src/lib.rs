@@ -58,7 +58,7 @@ pub use error::{
     ToadStoolErrorWithCode, ToadStoolResult, ToadStoolResultWithCode,
 };
 
-pub use error_codes::{codes, ErrorCategory, ErrorCode};
+pub use error_codes::{ErrorCategory, ErrorCode, codes};
 pub use secret_string::SecretString;
 
 /// A unique identifier for `ToadStool` resources

@@ -3,12 +3,12 @@
 
 use tracing::{debug, info};
 
+use crate::ToadStoolResult;
 use crate::ecosystem::DiscoveredServices;
 use crate::hardware::SystemCapabilities;
-use crate::ToadStoolResult;
 use toadstool_config::{GpuConfig, SecurityConfig, ToadStoolConfig};
 
-use super::analysis::{classify_performance, ConfigSnapshot, UsageHints};
+use super::analysis::{ConfigSnapshot, UsageHints, classify_performance};
 use super::detection::PlatformConfig;
 
 /// Configuration generator
@@ -25,7 +25,7 @@ impl Default for ConfigGenerator {
 
 impl ConfigGenerator {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             config_history: Vec::new(),
         }

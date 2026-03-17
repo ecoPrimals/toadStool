@@ -3,7 +3,7 @@
 //!
 //! These tests exercise resource allocation, monitoring, and limits.
 
-use toadstool_testing::fixtures::{runtime::*, TestEnvironment};
+use toadstool_testing::fixtures::{TestEnvironment, runtime::*};
 
 #[tokio::test]
 async fn test_resource_requirements_in_workloads() {

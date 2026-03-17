@@ -159,13 +159,13 @@ pub mod stubs {
 
         /// Get security level
         #[must_use]
-        pub fn get_security_level(&self) -> &SecurityLevel {
+        pub const fn get_security_level(&self) -> &SecurityLevel {
             &self.security_level
         }
 
         /// Check if isolation is enabled
         #[must_use]
-        pub fn is_isolation_enabled(&self) -> bool {
+        pub const fn is_isolation_enabled(&self) -> bool {
             self.isolation_enabled
         }
     }
@@ -260,7 +260,7 @@ pub mod stubs {
 
         /// Set resource requirements
         #[must_use]
-        pub fn with_resources(mut self, requirements: ResourceRequirements) -> Self {
+        pub const fn with_resources(mut self, requirements: ResourceRequirements) -> Self {
             self.resource_requirements = requirements;
             self
         }
@@ -274,25 +274,25 @@ pub mod stubs {
 
         /// Get workload type
         #[must_use]
-        pub fn get_workload_type(&self) -> &WorkloadType {
+        pub const fn get_workload_type(&self) -> &WorkloadType {
             &self.workload_type
         }
 
         /// Get resource requirements
         #[must_use]
-        pub fn get_resource_requirements(&self) -> &ResourceRequirements {
+        pub const fn get_resource_requirements(&self) -> &ResourceRequirements {
             &self.resource_requirements
         }
 
         /// Get environment variables
         #[must_use]
-        pub fn get_environment(&self) -> &HashMap<String, String> {
+        pub const fn get_environment(&self) -> &HashMap<String, String> {
             &self.environment
         }
 
         /// Get command
         #[must_use]
-        pub fn get_command(&self) -> &Option<String> {
+        pub const fn get_command(&self) -> &Option<String> {
             &self.command
         }
 

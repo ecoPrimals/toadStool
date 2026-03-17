@@ -89,7 +89,7 @@ pub enum QuantumPlatform {
 
 impl QuantumPlatform {
     /// Get the platform type name
-    pub fn platform_type(&self) -> &'static str {
+    pub const fn platform_type(&self) -> &'static str {
         match self {
             Self::GateBasedQuantum { .. } => "Gate-Based Quantum",
             Self::QuantumAnnealing { .. } => "Quantum Annealing",

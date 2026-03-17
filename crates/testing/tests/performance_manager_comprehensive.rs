@@ -105,8 +105,8 @@ async fn test_benchmark_with_custom_metrics() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_benchmark_error_handling() {
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     let config = PerformanceTestConfig {
         test_name: "error_test".to_string(),
@@ -153,8 +153,8 @@ async fn test_benchmark_with_warm_up() {
 
     let manager = PerformanceTestManager::new(config);
 
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     let call_count = Arc::new(AtomicUsize::new(0));
     let result = manager
         .benchmark(|| {
@@ -225,8 +225,8 @@ async fn test_percentile_metrics() {
 
     let manager = PerformanceTestManager::new(config);
 
-    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU64, Ordering};
     let counter = Arc::new(AtomicU64::new(0));
 
     let result = manager

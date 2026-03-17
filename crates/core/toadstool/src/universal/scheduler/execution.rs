@@ -66,7 +66,7 @@ use crate::universal::types::{NetworkLocation, PrimalCapability, PrimalContext, 
 
 impl UniversalScheduler {
     /// Execute a native job (binary/script)
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation, clippy::significant_drop_tightening)]
     pub(super) async fn execute_native(
         &self,
         executable: &str,
@@ -264,6 +264,7 @@ impl UniversalScheduler {
     }
 
     /// Execute a WASM job
+    #[allow(clippy::significant_drop_tightening)] // wasm_engine borrows from engines; must hold lock across execute().await
     pub(super) async fn execute_wasm(
         &self,
         module: &[u8],

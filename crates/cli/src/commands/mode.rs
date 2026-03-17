@@ -7,7 +7,7 @@
 use std::path::PathBuf;
 
 use nvpmu::vfio_bind::BindingState;
-use toadstool_common::pci_discovery::{discover_pci_devices, PciFilter};
+use toadstool_common::pci_discovery::{PciFilter, discover_pci_devices};
 
 use crate::Result;
 

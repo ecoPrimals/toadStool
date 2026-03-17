@@ -33,7 +33,7 @@ pub struct ProxyFeature {
 impl ProxyFeature {
     /// Create a proxy feature with name and value.
     #[must_use]
-    pub fn new(name: &'static str, value: f64) -> Self {
+    pub const fn new(name: &'static str, value: f64) -> Self {
         Self {
             name,
             value,
@@ -44,14 +44,14 @@ impl ProxyFeature {
 
     /// Set the target value the controller should steer toward.
     #[must_use]
-    pub fn with_target(mut self, target: f64) -> Self {
+    pub const fn with_target(mut self, target: f64) -> Self {
         self.target = Some(target);
         self
     }
 
     /// Set the weight for multi-feature observation.
     #[must_use]
-    pub fn with_weight(mut self, weight: f64) -> Self {
+    pub const fn with_weight(mut self, weight: f64) -> Self {
         self.weight = weight;
         self
     }

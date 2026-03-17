@@ -11,10 +11,8 @@ mod precision_defaults {
     pub const DF64_REDUCTIONS: bool = true;
     pub const SOVEREIGN_BINARY_PIPELINE: bool = true;
     pub const FUSED_OPS_CANARY: &str = "Run variance canary probe before fused GPU reductions";
-    pub const ROUTING_ADVICE: &str =
-        "Use DF64 for shared-memory reductions; per-adapter PrecisionRoutingAdvice available via wgpu backend";
-    pub const NVVM_POISONING_WARNING: &str =
-        "NVIDIA proprietary: DF64/F64Precise exp/log compilation permanently invalidates wgpu device. Use HardwareCalibration.";
+    pub const ROUTING_ADVICE: &str = "Use DF64 for shared-memory reductions; per-adapter PrecisionRoutingAdvice available via wgpu backend";
+    pub const NVVM_POISONING_WARNING: &str = "NVIDIA proprietary: DF64/F64Precise exp/log compilation permanently invalidates wgpu device. Use HardwareCalibration.";
 }
 
 pub(crate) async fn science_gpu_dispatch(

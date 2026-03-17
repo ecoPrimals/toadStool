@@ -231,11 +231,10 @@ impl UnifiedMemoryBackend for WebGpuBackend {
                 // Actual access needs to go through wgpu's BufferSlice API
 
                 // Use the buffer's address as a unique identifier
-                if let Some(buffer) = &alloc.buffer {
-                    Ok(buffer as *const wgpu::Buffer as *mut u8)
-                } else {
-                    Err(ToadStoolError::runtime("Buffer has been freed"))
-                }
+                alloc.buffer.as_ref().map_or_else(
+                    || Err(ToadStoolError::runtime("Buffer has been freed")),
+                    |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
+                )
             }
             _ => Err(ToadStoolError::runtime(
                 "Invalid allocation type for WebGPU backend",
@@ -247,11 +246,9 @@ impl UnifiedMemoryBackend for WebGpuBackend {
         match allocation {
             BackendAllocation::WebGpu(alloc) => {
                 // Return buffer reference as device pointer (opaque handle)
-                if let Some(buffer) = &alloc.buffer {
+                alloc.buffer.as_ref().map_or(std::ptr::null(), |buffer| {
                     buffer as *const wgpu::Buffer as *const u8
-                } else {
-                    std::ptr::null()
-                }
+                })
             }
             _ => std::ptr::null(),
         }

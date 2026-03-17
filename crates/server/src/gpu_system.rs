@@ -44,17 +44,16 @@ pub fn query_gpu_memory() -> Vec<serde_json::Value> {
             "--format=csv,noheader,nounits",
         ])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            for line in stdout.lines() {
-                let parts: Vec<&str> = line.split(',').map(str::trim).collect();
-                if parts.len() >= 4 {
-                    devices.push(serde_json::json!({
-                        "index": parts[0], "total_mb": parts[1],
-                        "used_mb": parts[2], "free_mb": parts[3],
-                    }));
-                }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for line in stdout.lines() {
+            let parts: Vec<&str> = line.split(',').map(str::trim).collect();
+            if parts.len() >= 4 {
+                devices.push(serde_json::json!({
+                    "index": parts[0], "total_mb": parts[1],
+                    "used_mb": parts[2], "free_mb": parts[3],
+                }));
             }
         }
     }

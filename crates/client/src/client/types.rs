@@ -64,7 +64,7 @@ pub enum WorkloadType {
 // JobPriority is now imported from toadstool core (canonical definition in universal.rs)
 
 /// Resource requirements for workload execution (simplified client version)
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceRequirements {
     pub cpu_cores: Option<u32>,
     pub memory_mb: Option<u64>,
@@ -75,7 +75,7 @@ pub struct ResourceRequirements {
 // Conversion to/from core ResourceRequirements
 impl From<ResourceRequirements> for toadstool::resources::ResourceRequirements {
     fn from(client: ResourceRequirements) -> Self {
-        toadstool::resources::ResourceRequirements {
+        Self {
             cpu: toadstool::resources::CpuRequirements {
                 min_cores: f64::from(client.cpu_cores.unwrap_or(1)),
                 max_cores: None,
@@ -112,7 +112,7 @@ impl From<toadstool::resources::ResourceRequirements> for ResourceRequirements {
         reason = "min_cores from f64 to u32 for display; truncation acceptable"
     )]
     fn from(core: toadstool::resources::ResourceRequirements) -> Self {
-        ResourceRequirements {
+        Self {
             cpu_cores: Some(core.cpu.min_cores as u32),
             memory_mb: Some(core.memory.min_bytes / (1024 * 1024)),
             disk_mb: Some(core.storage.min_bytes / (1024 * 1024)),

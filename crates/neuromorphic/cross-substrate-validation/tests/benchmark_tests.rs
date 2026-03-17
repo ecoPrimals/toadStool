@@ -3,7 +3,7 @@
 //!
 //! These tests verify the benchmark suite configuration and workload definitions.
 
-use cross_substrate_validation::{get_benchmark_suite, WorkloadCategory};
+use cross_substrate_validation::{WorkloadCategory, get_benchmark_suite};
 
 /// Test benchmark suite is non-empty
 #[test]

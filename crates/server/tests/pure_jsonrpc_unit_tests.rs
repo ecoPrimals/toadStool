@@ -53,7 +53,7 @@ fn test_error_response() {
 
 #[test]
 fn test_json_workload_submission() {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
 
     let data = vec![1, 2, 3, 4];
     let encoded = STANDARD.encode(&data);
@@ -229,7 +229,7 @@ async fn test_submit_workload_missing_params() {
 
 #[tokio::test]
 async fn test_submit_workload_success() {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
     let handler = test_handler();
     let params = serde_json::json!({
         "workload_id": "work-submit-1",

@@ -23,7 +23,7 @@ pub struct MatrixChunk {
 
 impl MatrixMerger {
     /// Create a new matrix merger
-    pub fn new(total_rows: usize, total_cols: usize) -> Self {
+    pub const fn new(total_rows: usize, total_cols: usize) -> Self {
         Self {
             total_rows,
             total_cols,

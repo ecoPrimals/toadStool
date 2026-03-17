@@ -80,8 +80,7 @@ impl LegacyAdapter for VAXVMSAdapter {
             return Err(ToadStoolError::runtime("No VAX/VMS configuration found"));
         }
 
-        let mut connected = self.connected.lock().await;
-        *connected = true;
+        *self.connected.lock().await = true;
 
         info!("VAX/VMS adapter initialized successfully");
         Ok(())
@@ -90,8 +89,7 @@ impl LegacyAdapter for VAXVMSAdapter {
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down VAX/VMS adapter");
 
-        let mut connected = self.connected.lock().await;
-        *connected = false;
+        *self.connected.lock().await = false;
 
         info!("VAX/VMS adapter shutdown complete");
         Ok(())
@@ -126,14 +124,15 @@ impl LegacyAdapter for VAXVMSAdapter {
 
     async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(job.status.clone())
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| Ok(job.status.clone()),
+        )
     }
 
     async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
@@ -152,20 +151,23 @@ impl LegacyAdapter for VAXVMSAdapter {
 
     async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
         let jobs = self.active_jobs.read().await;
-        if let Some(job) = jobs.get(&job_id) {
-            Ok(JobOutput {
-                stdout: job.job_log.clone(),
-                stderr: String::new(),
-                return_code: job.return_code,
-                output_files: vec![],
-                binary_output: None,
-            })
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Job not found: {}",
-                job_id
-            )))
-        }
+        jobs.get(&job_id).map_or_else(
+            || {
+                Err(ToadStoolError::runtime(format!(
+                    "Job not found: {}",
+                    job_id
+                )))
+            },
+            |job| {
+                Ok(JobOutput {
+                    stdout: job.job_log.clone(),
+                    stderr: String::new(),
+                    return_code: job.return_code,
+                    output_files: vec![],
+                    binary_output: None,
+                })
+            },
+        )
     }
 
     async fn get_system_info(&self) -> ToadStoolResult<SystemInfo> {

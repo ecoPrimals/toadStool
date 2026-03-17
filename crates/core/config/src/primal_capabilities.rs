@@ -441,9 +441,11 @@ cache_ttl_seconds = 300
         let registry = create_test_registry();
         let self_def = get_self_capabilities(&registry).unwrap();
         assert_eq!(self_def.name, "toadstool");
-        assert!(self_def
-            .capabilities
-            .contains(&"universal-compute".to_string()));
+        assert!(
+            self_def
+                .capabilities
+                .contains(&"universal-compute".to_string())
+        );
     }
 
     #[test]

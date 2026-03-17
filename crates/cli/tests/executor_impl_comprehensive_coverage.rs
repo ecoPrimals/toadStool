@@ -509,9 +509,11 @@ fn test_start_service_validates_source() {
 
     let wasm_source = "/path/to/module.wasm";
     assert!(!wasm_source.is_empty());
-    assert!(std::path::Path::new(wasm_source)
-        .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("wasm")));
+    assert!(
+        std::path::Path::new(wasm_source)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("wasm"))
+    );
 }
 
 #[test]

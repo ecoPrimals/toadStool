@@ -123,19 +123,19 @@ fn find_parallelization_opportunities(
     for (level, nodes) in level_groups {
         if nodes.len() == 1 && level > 0 {
             let first_node_id = nodes[0].clone();
-            if let Some(node) = graph.get_node(&first_node_id) {
-                if node.operation == "cpu_compute" || node.operation == "gpu_compute" {
-                    opportunities.push(Opportunity {
-                        opportunity_type: OpportunityType::Parallelization,
-                        affected_nodes: nodes,
-                        benefit: 0.7,
-                        description: format!("Node '{first_node_id}' could be parallelized"),
-                        recommendation: "Consider splitting this node into multiple parallel tasks."
-                            .to_string(),
-                        time_savings_secs: 30,
-                        resource_savings: HashMap::new(),
-                    });
-                }
+            if let Some(node) = graph.get_node(&first_node_id)
+                && (node.operation == "cpu_compute" || node.operation == "gpu_compute")
+            {
+                opportunities.push(Opportunity {
+                    opportunity_type: OpportunityType::Parallelization,
+                    affected_nodes: nodes,
+                    benefit: 0.7,
+                    description: format!("Node '{first_node_id}' could be parallelized"),
+                    recommendation: "Consider splitting this node into multiple parallel tasks."
+                        .to_string(),
+                    time_savings_secs: 30,
+                    resource_savings: HashMap::new(),
+                });
             }
         }
     }

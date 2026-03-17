@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Barrier;
 
-use toadstool_cli::executor::{BiomeExecutor, RunBiomeOptions};
 use toadstool_cli::CliContext;
+use toadstool_cli::executor::{BiomeExecutor, RunBiomeOptions};
 
 // ============================================================================
 // TEST FIXTURES

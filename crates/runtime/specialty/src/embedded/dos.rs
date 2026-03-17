@@ -78,7 +78,7 @@ impl DOSInterface {
     }
 
     /// Get current directory
-    pub fn current_directory(&self) -> &PathBuf {
+    pub const fn current_directory(&self) -> &PathBuf {
         &self.current_directory
     }
 
@@ -98,12 +98,12 @@ impl DOSInterface {
     }
 
     /// Get file system
-    pub fn file_system(&self) -> &DOSFileSystem {
+    pub const fn file_system(&self) -> &DOSFileSystem {
         &self.file_system
     }
 
     /// Get mutable file system
-    pub fn file_system_mut(&mut self) -> &mut DOSFileSystem {
+    pub const fn file_system_mut(&mut self) -> &mut DOSFileSystem {
         &mut self.file_system
     }
 }
@@ -129,29 +129,29 @@ impl DOSFileSystem {
     }
 
     /// Get current drive
-    pub fn current_drive(&self) -> char {
+    pub const fn current_drive(&self) -> char {
         self.current_drive
     }
 
     /// Set current drive
-    pub fn set_current_drive(&mut self, drive: char) {
+    pub const fn set_current_drive(&mut self, drive: char) {
         self.current_drive = drive;
     }
 
     /// Get FAT
-    pub fn fat(&self) -> &FileAllocationTable {
+    pub const fn fat(&self) -> &FileAllocationTable {
         &self.fat
     }
 
     /// Get mutable FAT
-    pub fn fat_mut(&mut self) -> &mut FileAllocationTable {
+    pub const fn fat_mut(&mut self) -> &mut FileAllocationTable {
         &mut self.fat
     }
 }
 
 impl FileAllocationTable {
     /// Create a new file allocation table
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             _entries: Vec::new(),
             cluster_size: 512,
@@ -160,12 +160,12 @@ impl FileAllocationTable {
     }
 
     /// Get cluster size
-    pub fn cluster_size(&self) -> u16 {
+    pub const fn cluster_size(&self) -> u16 {
         self.cluster_size
     }
 
     /// Set cluster size
-    pub fn set_cluster_size(&mut self, size: u16) {
+    pub const fn set_cluster_size(&mut self, size: u16) {
         self.cluster_size = size;
     }
 

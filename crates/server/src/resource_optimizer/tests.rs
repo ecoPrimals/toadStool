@@ -70,10 +70,12 @@ async fn test_suggest_optimizations_sequential_graph() {
     };
     let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
     assert!(!suggestions.bottlenecks.is_empty());
-    assert!(suggestions
-        .bottlenecks
-        .iter()
-        .any(|b| b.bottleneck_type == BottleneckType::SequentialExecution));
+    assert!(
+        suggestions
+            .bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::SequentialExecution)
+    );
     assert!(!suggestions.opportunities.is_empty());
 }
 
@@ -124,10 +126,12 @@ async fn test_long_critical_path_bottleneck() {
         .connect("n6", "n7")
         .build();
     let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
-    assert!(suggestions
-        .bottlenecks
-        .iter()
-        .any(|b| b.bottleneck_type == BottleneckType::LongCriticalPath));
+    assert!(
+        suggestions
+            .bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::LongCriticalPath)
+    );
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -146,10 +150,12 @@ async fn test_caching_opportunity() {
         .connect("fan", "c")
         .build();
     let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
-    assert!(suggestions
-        .opportunities
-        .iter()
-        .any(|o| o.opportunity_type == OpportunityType::Caching));
+    assert!(
+        suggestions
+            .opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::Caching)
+    );
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -170,10 +176,12 @@ async fn test_batching_opportunity() {
         .connect("n3", "n4")
         .build();
     let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
-    assert!(suggestions
-        .opportunities
-        .iter()
-        .any(|o| o.opportunity_type == OpportunityType::Batching));
+    assert!(
+        suggestions
+            .opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::Batching)
+    );
 }
 
 #[test]
@@ -282,9 +290,11 @@ fn test_identify_bottlenecks_sequential() {
     let caps = mock_capabilities(0);
 
     let bottlenecks = identify_bottlenecks(&graph, &estimate, &caps);
-    assert!(bottlenecks
-        .iter()
-        .any(|b| b.bottleneck_type == BottleneckType::SequentialExecution));
+    assert!(
+        bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::SequentialExecution)
+    );
 }
 
 #[test]
@@ -320,9 +330,11 @@ fn test_identify_bottlenecks_long_critical_path() {
     let caps = mock_capabilities(0);
 
     let bottlenecks = identify_bottlenecks(&graph, &estimate, &caps);
-    assert!(bottlenecks
-        .iter()
-        .any(|b| b.bottleneck_type == BottleneckType::LongCriticalPath));
+    assert!(
+        bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::LongCriticalPath)
+    );
 }
 
 #[test]
@@ -346,9 +358,11 @@ fn test_identify_bottlenecks_memory() {
     let caps = mock_capabilities(0);
 
     let bottlenecks = identify_bottlenecks(&graph, &estimate, &caps);
-    assert!(bottlenecks
-        .iter()
-        .any(|b| b.bottleneck_type == BottleneckType::MemoryBottleneck));
+    assert!(
+        bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::MemoryBottleneck)
+    );
 }
 
 #[test]
@@ -363,9 +377,11 @@ fn test_identify_bottlenecks_gpu_underutilization() {
     let caps = mock_capabilities(1); // GPU available but not used
 
     let bottlenecks = identify_bottlenecks(&graph, &estimate, &caps);
-    assert!(bottlenecks
-        .iter()
-        .any(|b| b.bottleneck_type == BottleneckType::GpuUnderutilization));
+    assert!(
+        bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::GpuUnderutilization)
+    );
 }
 
 #[test]
@@ -397,9 +413,11 @@ fn test_discover_opportunities_caching() {
     let caps = mock_capabilities(0);
 
     let opportunities = discover_opportunities(&graph, &estimate, &caps);
-    assert!(opportunities
-        .iter()
-        .any(|o| o.opportunity_type == OpportunityType::Caching));
+    assert!(
+        opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::Caching)
+    );
 }
 
 #[test]
@@ -433,9 +451,11 @@ fn test_discover_opportunities_batching() {
     let caps = mock_capabilities(0);
 
     let opportunities = discover_opportunities(&graph, &estimate, &caps);
-    assert!(opportunities
-        .iter()
-        .any(|o| o.opportunity_type == OpportunityType::Batching));
+    assert!(
+        opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::Batching)
+    );
 }
 
 #[test]

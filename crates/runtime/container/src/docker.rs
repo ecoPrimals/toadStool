@@ -23,17 +23,15 @@ use crate::types::{
 
 #[cfg(feature = "docker")]
 use bollard::{
+    Docker,
     auth::DockerCredentials,
     container::{Config, CreateContainerOptions},
     image::CreateImageOptions,
-    Docker,
 };
 
 /// Create a Docker client from the given runtime configuration.
 #[cfg(feature = "docker")]
-pub(crate) fn create_docker_client(
-    config: &ContainerRuntimeConfig,
-) -> ToadStoolResult<Option<Docker>> {
+pub fn create_docker_client(config: &ContainerRuntimeConfig) -> ToadStoolResult<Option<Docker>> {
     match &config.engine {
         ContainerEngineType::Docker {
             socket_path: _socket_path,
@@ -57,15 +55,13 @@ pub(crate) fn create_docker_client(
 
 /// Create a Docker client (no-op when docker feature is disabled).
 #[cfg(not(feature = "docker"))]
-pub(crate) fn create_docker_client(
-    _config: &ContainerRuntimeConfig,
-) -> ToadStoolResult<Option<()>> {
+pub fn create_docker_client(_config: &ContainerRuntimeConfig) -> ToadStoolResult<Option<()>> {
     Ok(None)
 }
 
 /// Ensure the container image is available locally, pulling if necessary.
 #[cfg(feature = "docker")]
-pub(crate) async fn ensure_image(
+pub async fn ensure_image(
     docker: &Docker,
     config: &ContainerRuntimeConfig,
     image: &str,
@@ -116,7 +112,7 @@ pub(crate) async fn ensure_image(
 
 /// Ensure image (no-op when docker feature is disabled).
 #[cfg(not(feature = "docker"))]
-pub(crate) async fn ensure_image(
+pub async fn ensure_image(
     _docker: &(),
     _config: &ContainerRuntimeConfig,
     _image: &str,
@@ -127,7 +123,7 @@ pub(crate) async fn ensure_image(
 
 /// Execute a container with the given parameters.
 #[cfg(feature = "docker")]
-pub(crate) async fn execute_container(
+pub async fn execute_container(
     docker: &Docker,
     runtime_config: &ContainerRuntimeConfig,
     request: &ExecutionRequest,
@@ -175,7 +171,7 @@ pub(crate) async fn execute_container(
 
 /// Execute container (no-op when docker feature is disabled).
 #[cfg(not(feature = "docker"))]
-pub(crate) async fn execute_container(
+pub async fn execute_container(
     _docker: &(),
     _runtime_config: &ContainerRuntimeConfig,
     _request: &ExecutionRequest,
@@ -186,7 +182,7 @@ pub(crate) async fn execute_container(
 
 /// Stop and remove the given containers.
 #[cfg(feature = "docker")]
-pub(crate) async fn cleanup_containers(docker: &Docker, container_ids: &[String]) {
+pub async fn cleanup_containers(docker: &Docker, container_ids: &[String]) {
     for container_id in container_ids {
         let _ = docker.stop_container(container_id, None).await;
         let _ = docker.remove_container(container_id, None).await;

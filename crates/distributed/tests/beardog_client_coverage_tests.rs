@@ -17,8 +17,8 @@
 use std::time::Duration;
 use toadstool_distributed::beardog_integration::types::{EncryptionRequest, KeyManagementRequest};
 use toadstool_distributed::beardog_integration::{
-    types::{EncryptionOperation, KeyOperation, SecurityLevel},
     BearDogClient, BearDogConfig,
+    types::{EncryptionOperation, KeyOperation, SecurityLevel},
 };
 use toadstool_distributed::security_provider::types::{
     ExternalTarget, PermissionRequest, PermissionScope, ProviderMetadata, SecurityPermission,

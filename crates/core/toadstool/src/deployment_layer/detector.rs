@@ -15,7 +15,7 @@ pub struct LayerDetector {
 
 impl LayerDetector {
     /// Create a new layer detector
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { cached_layer: None }
     }
 
@@ -231,13 +231,13 @@ impl LayerDetector {
     fn get_aws_instance_type(&self) -> Result<String, DetectionError> {
         std::env::var("AWS_INSTANCE_TYPE")
             .or_else(|_| std::env::var("EC2_INSTANCE_TYPE"))
-            .or(Ok("unknown".to_string()))
+            .or_else(|_| Ok("unknown".to_string()))
     }
 
     fn get_aws_region(&self) -> Result<String, DetectionError> {
         std::env::var("AWS_REGION")
             .or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
-            .or(Ok("us-east-1".to_string()))
+            .or_else(|_| Ok("us-east-1".to_string()))
     }
 
     fn check_gcp_metadata(&self) -> bool {
@@ -247,13 +247,13 @@ impl LayerDetector {
     }
 
     fn get_gcp_instance_type(&self) -> Result<String, DetectionError> {
-        std::env::var("GCE_MACHINE_TYPE").or(Ok("unknown".to_string()))
+        std::env::var("GCE_MACHINE_TYPE").or_else(|_| Ok("unknown".to_string()))
     }
 
     fn get_gcp_region(&self) -> Result<String, DetectionError> {
         std::env::var("GCE_ZONE")
             .or_else(|_| std::env::var("GOOGLE_CLOUD_ZONE"))
-            .or(Ok("unknown".to_string()))
+            .or_else(|_| Ok("unknown".to_string()))
     }
 
     fn check_azure_metadata(&self) -> bool {
@@ -263,13 +263,13 @@ impl LayerDetector {
     }
 
     fn get_azure_instance_type(&self) -> Result<String, DetectionError> {
-        std::env::var("AZURE_VM_SIZE").or(Ok("unknown".to_string()))
+        std::env::var("AZURE_VM_SIZE").or_else(|_| Ok("unknown".to_string()))
     }
 
     fn get_azure_region(&self) -> Result<String, DetectionError> {
         std::env::var("AZURE_LOCATION")
             .or_else(|_| std::env::var("AZURE_REGION"))
-            .or(Ok("unknown".to_string()))
+            .or_else(|_| Ok("unknown".to_string()))
     }
 
     fn detect_gpu_passthrough(&self) -> bool {

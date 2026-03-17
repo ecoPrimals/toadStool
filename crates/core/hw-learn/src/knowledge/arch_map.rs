@@ -47,11 +47,11 @@ impl ArchMapping {
     }
 
     #[must_use]
-    pub fn confidence(&self) -> f64 {
+    pub const fn confidence(&self) -> f64 {
         self.confidence
     }
 
-    pub fn set_confidence(&mut self, confidence: f64) {
+    pub const fn set_confidence(&mut self, confidence: f64) {
         self.confidence = confidence;
     }
 }

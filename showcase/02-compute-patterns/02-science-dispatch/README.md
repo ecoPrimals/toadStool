@@ -35,5 +35,5 @@ cargo run --release
 
 ## Prerequisites
 
-- Rust 1.82+
+- Rust 1.85+
 - Primals optional (demo shows simulated responses when sockets unavailable)

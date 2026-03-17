@@ -7,10 +7,10 @@
 //! - Audit logging: < 0.1ms per event
 //! - Total overhead: < 10% vs plaintext
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use toadstool_runtime_secure_enclave::{
-    decompress_isolated, AuditEventType, AuditLogger, CompressionAlgorithm, IsolatedMemoryRegion,
-    SecureEnclaveRuntime,
+    AuditEventType, AuditLogger, CompressionAlgorithm, IsolatedMemoryRegion, SecureEnclaveRuntime,
+    decompress_isolated,
 };
 
 /// Benchmark isolated memory allocation

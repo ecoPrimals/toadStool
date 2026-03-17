@@ -8,7 +8,7 @@
 //! - Zero-knowledge compute patterns
 
 use toadstool_runtime_secure_enclave::{
-    decompress_isolated, AuditEventType, CompressionAlgorithm, SecureEnclaveRuntime,
+    AuditEventType, CompressionAlgorithm, SecureEnclaveRuntime, decompress_isolated,
 };
 
 #[test]

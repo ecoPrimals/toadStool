@@ -11,8 +11,8 @@
 ///
 /// Uses rustix `opcode::none()` for `_IO(';', base + offset)`.
 /// VFIO uses `_IO` for extensibility (no size in opcode).
-pub(crate) mod ioctls {
-    use rustix::ioctl::{opcode, Opcode};
+pub mod ioctls {
+    use rustix::ioctl::{Opcode, opcode};
 
     pub const VFIO_TYPE: u8 = b';';
     pub const VFIO_BASE: u8 = 100;
@@ -66,7 +66,7 @@ pub(crate) mod ioctls {
 
 /// Parameters for polling a status register.
 #[derive(Clone, Copy)]
-pub(crate) struct PollConfig<'a> {
+pub struct PollConfig<'a> {
     pub reg: usize,
     pub done_mask: u32,
     pub error_mask: u32,
@@ -79,7 +79,7 @@ pub(crate) struct PollConfig<'a> {
 /// VFIO device info structure (kernel ABI)
 #[repr(C)]
 #[derive(Debug, Default)]
-pub(crate) struct VfioDeviceInfo {
+pub struct VfioDeviceInfo {
     pub argsz: u32,
     pub flags: u32,
     pub num_regions: u32,
@@ -93,7 +93,7 @@ pub(crate) struct VfioDeviceInfo {
     dead_code,
     reason = "VFIO kernel struct; fields required for ioctl interface"
 )]
-pub(crate) struct VfioRegionInfo {
+pub struct VfioRegionInfo {
     pub argsz: u32,
     pub flags: u32,
     pub index: u32,
@@ -105,7 +105,7 @@ pub(crate) struct VfioRegionInfo {
 /// VFIO group status structure (kernel ABI)
 #[repr(C)]
 #[derive(Debug, Default)]
-pub(crate) struct VfioGroupStatus {
+pub struct VfioGroupStatus {
     pub argsz: u32,
     pub flags: u32,
 }
@@ -113,7 +113,7 @@ pub(crate) struct VfioGroupStatus {
 /// VFIO DMA map structure (kernel ABI)
 #[repr(C)]
 #[derive(Debug, Default)]
-pub(crate) struct VfioDmaMap {
+pub struct VfioDmaMap {
     pub argsz: u32,
     pub flags: u32,
     pub vaddr: u64,
@@ -124,7 +124,7 @@ pub(crate) struct VfioDmaMap {
 /// VFIO DMA unmap structure (kernel ABI)
 #[repr(C)]
 #[derive(Debug, Default)]
-pub(crate) struct VfioDmaUnmap {
+pub struct VfioDmaUnmap {
     pub argsz: u32,
     pub flags: u32,
     pub iova: u64,

@@ -28,11 +28,11 @@ use rayon::prelude::*;
 pub(super) fn execute_map(workload: Workload) -> Result<WorkloadData, ComputeError> {
     match workload.input {
         WorkloadData::F32Vec(input) => {
-            let output: Vec<f32> = input.par_iter().map(|&x| x * 2.0 + 1.0).collect();
+            let output: Vec<f32> = input.par_iter().map(|&x| x.mul_add(2.0, 1.0)).collect();
             Ok(WorkloadData::F32Vec(output))
         }
         WorkloadData::F64Vec(input) => {
-            let output: Vec<f64> = input.par_iter().map(|&x| x * 2.0 + 1.0).collect();
+            let output: Vec<f64> = input.par_iter().map(|&x| x.mul_add(2.0, 1.0)).collect();
             Ok(WorkloadData::F64Vec(output))
         }
         WorkloadData::I32Vec(input) => {

@@ -68,23 +68,18 @@ impl OpenClComputeResource {
             .vendor
             .to_lowercase()
             .contains("nvidia")
-        {
-            if let Ok(output) = tokio::process::Command::new("nvidia-smi")
+            && let Ok(output) = tokio::process::Command::new("nvidia-smi")
                 .args([
                     "--query-gpu=utilization.gpu",
                     "--format=csv,noheader,nounits",
                 ])
                 .output()
                 .await
-            {
-                if output.status.success() {
-                    if let Ok(stdout) = String::from_utf8(output.stdout) {
-                        if let Ok(util) = stdout.trim().parse::<f32>() {
-                            return Some(util / 100.0);
-                        }
-                    }
-                }
-            }
+            && output.status.success()
+            && let Ok(stdout) = String::from_utf8(output.stdout)
+            && let Ok(util) = stdout.trim().parse::<f32>()
+        {
+            return Some(util / 100.0);
         }
 
         // Try radeontop for AMD GPUs

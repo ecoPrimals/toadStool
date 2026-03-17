@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! AI/ML workload analysis
 
+use super::WorkloadAnalyzer;
 use super::characteristics::{
     ComputeIntensity, GpuAdvantage, ParallelismLevel, WorkloadCharacteristics,
 };
-use super::WorkloadAnalyzer;
 use crate::workload::{AiMlWorkload, AiOperation, ModelSize};
 
 impl WorkloadAnalyzer {
-    pub(super) fn analyze_aiml(&self, workload: &AiMlWorkload) -> WorkloadCharacteristics {
+    pub(super) const fn analyze_aiml(&self, workload: &AiMlWorkload) -> WorkloadCharacteristics {
         let compute_intensity = match (&workload.operation, &workload.model_size) {
             (AiOperation::Training, ModelSize::XXLarge) => ComputeIntensity::Extreme,
             (AiOperation::Training, ModelSize::XLarge) => ComputeIntensity::VeryHigh,
@@ -25,7 +25,7 @@ impl WorkloadAnalyzer {
         };
 
         let memory_bytes = workload.estimate_total_memory_bytes();
-        let memory_requirement = WorkloadAnalyzer::classify_memory(memory_bytes);
+        let memory_requirement = Self::classify_memory(memory_bytes);
 
         let parallelism_level = match (&workload.operation, workload.batch_size) {
             (AiOperation::Training, bs) if bs >= 64 => ParallelismLevel::VeryHigh,

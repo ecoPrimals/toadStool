@@ -37,8 +37,10 @@ impl MigrationCoordinator {
             }
         };
 
-        let mut locations = self.workload_locations.write().await;
-        locations.insert(workload_id.to_string(), new_location.clone());
+        self.workload_locations
+            .write()
+            .await
+            .insert(workload_id.to_string(), new_location.clone());
 
         let duration = start.elapsed();
         self.update_migration_stats(true, &new_location, duration.as_secs_f64())
@@ -73,7 +75,9 @@ impl MigrationCoordinator {
 
         #[allow(clippy::cast_precision_loss)]
         let total = stats.total_migrations as f64;
-        stats.avg_migration_time_secs =
-            ((stats.avg_migration_time_secs * (total - 1.0)) + duration_secs) / total;
+        stats.avg_migration_time_secs = stats
+            .avg_migration_time_secs
+            .mul_add(total - 1.0, duration_secs)
+            / total;
     }
 }

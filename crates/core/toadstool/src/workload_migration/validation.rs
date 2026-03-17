@@ -33,8 +33,8 @@
 
 use std::time::SystemTime;
 
-use crate::workload::WorkloadSpec;
 use crate::ToadStoolResult;
+use crate::workload::WorkloadSpec;
 
 use super::{MigrationCoordinator, MigrationRecommendation, MigrationTarget};
 
@@ -143,13 +143,10 @@ pub fn validate_preflight(
             // and only reject if a GPU is required but the provider is known not
             // to support it (heuristic — full capability lookup is out of scope
             // for this pre-flight pass).
-            if requirements.requires_gpu {
-                // Cloud GPU availability is declared by the recommendation itself;
-                // presence of a recommendation for a GPU workload is sufficient.
-                Ok(PreflightOutcome::Ok)
-            } else {
-                Ok(PreflightOutcome::Ok)
-            }
+            // Cloud GPU availability is declared by the recommendation itself;
+            // presence of a recommendation for a GPU workload is sufficient.
+            let _ = requirements.requires_gpu;
+            Ok(PreflightOutcome::Ok)
         }
     }
 }

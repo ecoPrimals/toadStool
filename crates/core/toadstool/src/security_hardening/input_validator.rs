@@ -16,7 +16,7 @@ pub struct InputValidator {
 impl InputValidator {
     /// Create new input validator
     #[must_use]
-    pub fn new(rules: ValidationRules) -> Self {
+    pub const fn new(rules: ValidationRules) -> Self {
         Self { rules }
     }
 

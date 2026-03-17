@@ -14,7 +14,7 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use uuid::Uuid;
 
 /// OpenCL compute context
-pub(crate) struct OpenClComputeContext {
+pub struct OpenClComputeContext {
     pub(crate) backend: Arc<OpenClBackend>,
     pub(crate) context_id: Uuid,
     pub(crate) resource_id: String,
@@ -64,11 +64,13 @@ impl ComputeContext for OpenClComputeContext {
                 // Execute (no extra args for general compute/matrix multiply)
                 let extra_args = if matches!(operation, Operation::Reduction) {
                     // Reduction kernel needs the 'n' parameter
-                    vec![workload
-                        .inputs
-                        .first()
-                        .map(|i| i.data.len() as i32)
-                        .unwrap_or(0)]
+                    vec![
+                        workload
+                            .inputs
+                            .first()
+                            .map(|i| i.data.len() as i32)
+                            .unwrap_or(0),
+                    ]
                 } else {
                     vec![]
                 };
@@ -88,16 +90,15 @@ impl ComputeContext for OpenClComputeContext {
                 let execution_time = start_time.elapsed();
 
                 Ok(WorkloadResult {
-                    outputs: {
-                        let mut map = HashMap::new();
-                        map.insert("output_0".to_string(), output_data);
-                        map
-                    },
+                    outputs: HashMap::from([(
+                        "output_0".to_string(),
+                        bytes::Bytes::from(output_data),
+                    )]),
                     metrics: crate::universal::ExecutionMetrics {
                         execution_time,
                         memory_used: workload.output_size as u64,
-                        energy_joules: Some(execution_time.as_secs_f64() * 15.0), // ~150W GPU estimate
-                        utilization: 0.85, // 85% utilization estimate
+                        energy_joules: Some(execution_time.as_secs_f64() * 15.0),
+                        utilization: 0.85,
                     },
                     messages: vec![],
                 })
@@ -144,11 +145,10 @@ impl ComputeContext for OpenClComputeContext {
                 let execution_time = start_time.elapsed();
 
                 Ok(WorkloadResult {
-                    outputs: {
-                        let mut map = HashMap::new();
-                        map.insert("output_0".to_string(), output_data);
-                        map
-                    },
+                    outputs: HashMap::from([(
+                        "output_0".to_string(),
+                        bytes::Bytes::from(output_data),
+                    )]),
                     metrics: crate::universal::ExecutionMetrics {
                         execution_time,
                         memory_used: workload.output_size as u64,

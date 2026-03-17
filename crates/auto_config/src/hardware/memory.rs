@@ -33,10 +33,10 @@ pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<Memo
     let mut memory_info = MemoryInfo::default();
 
     // Try to get memory info from /proc/meminfo on Linux
-    if cfg!(target_os = "linux") {
-        if let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await {
-            memory_info = parse_linux_meminfo(&meminfo);
-        }
+    if cfg!(target_os = "linux")
+        && let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await
+    {
+        memory_info = parse_linux_meminfo(&meminfo);
     }
 
     // macOS memory detection
@@ -98,18 +98,17 @@ fn parse_linux_meminfo(meminfo: &str) -> MemoryInfo {
 
             match key {
                 "MemTotal" => {
-                    if let Some(kb_str) = value.split_whitespace().next() {
-                        if let Ok(kb) = kb_str.parse::<u64>() {
-                            memory_info.total_gb = (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
-                        }
+                    if let Some(kb_str) = value.split_whitespace().next()
+                        && let Ok(kb) = kb_str.parse::<u64>()
+                    {
+                        memory_info.total_gb = (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
                     }
                 }
                 "MemAvailable" => {
-                    if let Some(kb_str) = value.split_whitespace().next() {
-                        if let Ok(kb) = kb_str.parse::<u64>() {
-                            memory_info.available_gb =
-                                (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
-                        }
+                    if let Some(kb_str) = value.split_whitespace().next()
+                        && let Ok(kb) = kb_str.parse::<u64>()
+                    {
+                        memory_info.available_gb = (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
                     }
                 }
                 _ => {}

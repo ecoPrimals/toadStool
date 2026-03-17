@@ -45,7 +45,7 @@ pub struct IntegrationTestDetails {
 }
 
 /// Test status enumeration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestStatus {
     Passed,
     Failed,
@@ -143,11 +143,11 @@ pub enum CleanupAction {
 impl std::fmt::Debug for CleanupAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CleanupAction::RemoveDirectory(path) => write!(f, "RemoveDirectory({path:?})"),
-            CleanupAction::KillProcess(pid) => write!(f, "KillProcess({pid})"),
-            CleanupAction::CloseConnection(conn) => write!(f, "CloseConnection({conn})"),
-            CleanupAction::RestoreFile(from, to) => write!(f, "RestoreFile({from:?}, {to:?})"),
-            CleanupAction::Custom(_) => write!(f, "Custom(...)"),
+            Self::RemoveDirectory(path) => write!(f, "RemoveDirectory({path:?})"),
+            Self::KillProcess(pid) => write!(f, "KillProcess({pid})"),
+            Self::CloseConnection(conn) => write!(f, "CloseConnection({conn})"),
+            Self::RestoreFile(from, to) => write!(f, "RestoreFile({from:?}, {to:?})"),
+            Self::Custom(_) => write!(f, "Custom(...)"),
         }
     }
 }

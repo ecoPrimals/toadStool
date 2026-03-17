@@ -44,17 +44,17 @@ impl ProcessType {
     }
 
     #[allow(dead_code, reason = "used in tests")]
-    pub(super) fn type_str(&self) -> &str {
+    pub(super) const fn type_str(&self) -> &str {
         match self {
-            ProcessType::Primal(_) => "primal",
-            ProcessType::Service(_) => "service",
-            ProcessType::HealthCheck(_) => "healthcheck",
+            Self::Primal(_) => "primal",
+            Self::Service(_) => "service",
+            Self::HealthCheck(_) => "healthcheck",
         }
     }
 }
 
 impl BiomeProcess {
-    pub(super) fn process_type_name(&self) -> &str {
+    pub(super) const fn process_type_name(&self) -> &str {
         match &self.process_type {
             ProcessType::Primal(_) => "primal",
             ProcessType::Service(_) => "service",

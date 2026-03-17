@@ -3,8 +3,8 @@
 //!
 //! Creates .fbz models suitable for reservoir computing with different seeds.
 
-use akida_reservoir_research::reservoir::{ReservoirConfig, ReservoirGenerator};
 use akida_reservoir_research::ReservoirResult as Result;
+use akida_reservoir_research::reservoir::{ReservoirConfig, ReservoirGenerator};
 use tracing::info;
 
 fn main() -> Result<()> {

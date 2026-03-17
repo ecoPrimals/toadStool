@@ -88,16 +88,16 @@ impl ConfigSelector {
     #[must_use]
     pub fn select_workgroup(&self, op_type: OpType, input_size: usize) -> usize {
         // Try cache first (non-blocking read)
-        if let Ok(cache_guard) = self.cache.try_read() {
-            if let Some(config) = cache_guard.get_optimal(op_type, input_size) {
-                tracing::trace!(
-                    "Using cached workgroup {} for {:?} (size: {})",
-                    config.workgroup_size,
-                    op_type,
-                    input_size
-                );
-                return config.workgroup_size;
-            }
+        if let Ok(cache_guard) = self.cache.try_read()
+            && let Some(config) = cache_guard.get_optimal(op_type, input_size)
+        {
+            tracing::trace!(
+                "Using cached workgroup {} for {:?} (size: {})",
+                config.workgroup_size,
+                op_type,
+                input_size
+            );
+            return config.workgroup_size;
         }
 
         // Fallback to strategy
@@ -116,14 +116,14 @@ impl ConfigSelector {
     /// Get selection with metadata
     #[must_use]
     pub fn select_with_metadata(&self, op_type: OpType, input_size: usize) -> WorkgroupSelection {
-        if let Ok(cache_guard) = self.cache.try_read() {
-            if let Some(config) = cache_guard.get_optimal(op_type, input_size) {
-                return WorkgroupSelection {
-                    workgroup_size: config.workgroup_size,
-                    source: SelectionSource::LocalCache,
-                    confidence: config.confidence,
-                };
-            }
+        if let Ok(cache_guard) = self.cache.try_read()
+            && let Some(config) = cache_guard.get_optimal(op_type, input_size)
+        {
+            return WorkgroupSelection {
+                workgroup_size: config.workgroup_size,
+                source: SelectionSource::LocalCache,
+                confidence: config.confidence,
+            };
         }
 
         let fallback = self

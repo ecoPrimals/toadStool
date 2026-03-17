@@ -7,7 +7,7 @@ use tracing::debug;
 
 use super::estimators;
 
-pub(crate) fn evaluate_constraint(
+pub fn evaluate_constraint(
     runtime: &FractalRuntime,
     capabilities: &AdaptedCapabilities,
     constraint: &Constraint,
@@ -70,47 +70,49 @@ fn evaluate_min_memory_gb(
     capabilities: &AdaptedCapabilities,
     required_gb: f64,
 ) -> ConstraintSatisfaction {
-    if let Some(available_bytes) = capabilities.compute.memory_bytes {
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "integer count to f64 acceptable"
-        )]
-        let available_gb = available_bytes as f64 / 1_073_741_824.0;
-        if available_gb >= required_gb {
-            ConstraintSatisfaction::Satisfied
-        } else {
-            ConstraintSatisfaction::Unsatisfied {
-                reason: format!(
-                    "Insufficient memory: need {required_gb}GB, have {available_gb:.2}GB"
-                ),
-            }
-        }
-    } else {
-        ConstraintSatisfaction::Unsatisfied {
+    capabilities.compute.memory_bytes.map_or_else(
+        || ConstraintSatisfaction::Unsatisfied {
             reason: "Memory information unavailable".to_string(),
-        }
-    }
+        },
+        |available_bytes| {
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "integer count to f64 acceptable"
+            )]
+            let available_gb = available_bytes as f64 / 1_073_741_824.0;
+            if available_gb >= required_gb {
+                ConstraintSatisfaction::Satisfied
+            } else {
+                ConstraintSatisfaction::Unsatisfied {
+                    reason: format!(
+                        "Insufficient memory: need {required_gb}GB, have {available_gb:.2}GB"
+                    ),
+                }
+            }
+        },
+    )
 }
 
 fn evaluate_min_cpu_cores(
     capabilities: &AdaptedCapabilities,
     required_cores: usize,
 ) -> ConstraintSatisfaction {
-    if let Some(available_cores) = capabilities.compute.cpu_cores {
-        if available_cores >= required_cores {
-            ConstraintSatisfaction::Satisfied
-        } else {
-            ConstraintSatisfaction::Unsatisfied {
-                reason: format!(
-                    "Insufficient CPU cores: need {required_cores}, have {available_cores}"
-                ),
-            }
-        }
-    } else {
-        ConstraintSatisfaction::Unsatisfied {
+    capabilities.compute.cpu_cores.map_or_else(
+        || ConstraintSatisfaction::Unsatisfied {
             reason: "CPU information unavailable".to_string(),
-        }
-    }
+        },
+        |available_cores| {
+            if available_cores >= required_cores {
+                ConstraintSatisfaction::Satisfied
+            } else {
+                ConstraintSatisfaction::Unsatisfied {
+                    reason: format!(
+                        "Insufficient CPU cores: need {required_cores}, have {available_cores}"
+                    ),
+                }
+            }
+        },
+    )
 }
 
 fn evaluate_max_latency_ms(runtime: &FractalRuntime, max_ms: u64) -> ConstraintSatisfaction {

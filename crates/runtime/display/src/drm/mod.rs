@@ -16,7 +16,7 @@ pub mod pageflip;
 pub use buffer::{DumbBuffer, MappedBuffer, MappedBufferView, PixelFormat};
 pub use connector::{ConnectionStatus, ConnectorInfo, ConnectorType, DisplayMode};
 pub use device::{Device, DeviceCapabilities};
-pub use modesetting::{modeset, ModesetPipeline};
+pub use modesetting::{ModesetPipeline, modeset};
 pub use pageflip::PageFlipper;
 
 use crate::Result;
@@ -74,7 +74,7 @@ impl DrmBackend {
 
     /// Get the underlying DRM device (for buffer mapping)
     #[must_use]
-    pub fn device(&self) -> &Device {
+    pub const fn device(&self) -> &Device {
         &self.device
     }
 

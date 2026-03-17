@@ -78,7 +78,7 @@ impl VulkanBackend {
     ///
     /// Call `try_init()` or `try_init_with_wgpu()` to connect to actual hardware.
     /// This exists for capability reporting before device initialization.
-    pub fn new_uninitialized() -> Self {
+    pub const fn new_uninitialized() -> Self {
         // Default capabilities (conservative estimates)
         let capabilities = UnifiedMemoryCapabilities {
             backend_type: BackendType::Vulkan,
@@ -219,7 +219,7 @@ impl VulkanBackend {
         dead_code,
         reason = "Vulkan device constructor; used when Vulkan runtime is available"
     )]
-    pub unsafe fn with_device(
+    pub const unsafe fn with_device(
         _device: u64,          // vk::Device as u64
         _physical_device: u64, // vk::PhysicalDevice as u64
         max_allocation: usize,
@@ -362,13 +362,10 @@ impl UnifiedMemoryBackend for VulkanBackend {
     async fn map_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<*mut u8> {
         match allocation {
             // Handle wgpu-based allocations
-            BackendAllocation::WebGpu(alloc) => {
-                if let Some(buffer) = &alloc.buffer {
-                    Ok(buffer as *const wgpu::Buffer as *mut u8)
-                } else {
-                    Err(ToadStoolError::runtime("Buffer has been freed"))
-                }
-            }
+            BackendAllocation::WebGpu(alloc) => alloc.buffer.as_ref().map_or_else(
+                || Err(ToadStoolError::runtime("Buffer has been freed")),
+                |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
+            ),
             // Handle direct Vulkan allocations
             BackendAllocation::Vulkan(alloc) => Ok(alloc.cpu_ptr),
             _ => Err(ToadStoolError::runtime(
@@ -381,11 +378,9 @@ impl UnifiedMemoryBackend for VulkanBackend {
         match allocation {
             // Handle wgpu-based allocations
             BackendAllocation::WebGpu(alloc) => {
-                if let Some(buffer) = &alloc.buffer {
+                alloc.buffer.as_ref().map_or(std::ptr::null(), |buffer| {
                     buffer as *const wgpu::Buffer as *const u8
-                } else {
-                    std::ptr::null()
-                }
+                })
             }
             // Handle direct Vulkan allocations
             BackendAllocation::Vulkan(alloc) => alloc.memory as *const u8,

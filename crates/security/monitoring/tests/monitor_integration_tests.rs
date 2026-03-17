@@ -191,9 +191,11 @@ async fn test_concurrent_writes_do_not_corrupt() {
 
     let events = monitor.events().await;
     assert_eq!(events.len(), 20);
-    assert!(events
-        .iter()
-        .all(|e| e.category == EventCategory::AuthFailure));
+    assert!(
+        events
+            .iter()
+            .all(|e| e.category == EventCategory::AuthFailure)
+    );
 }
 
 // ── Resource sampling (smoke test) ───────────────────────────────────────────

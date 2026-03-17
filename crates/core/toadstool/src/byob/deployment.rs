@@ -86,7 +86,7 @@ impl ActiveDeployment {
     }
 
     /// Check if deployment is active (Starting or Running)
-    pub fn is_active(&self) -> bool {
+    pub const fn is_active(&self) -> bool {
         matches!(
             self.status,
             DeploymentStatus::Starting | DeploymentStatus::Running
@@ -94,7 +94,7 @@ impl ActiveDeployment {
     }
 
     /// Check if deployment has reached a terminal state
-    pub fn is_completed(&self) -> bool {
+    pub const fn is_completed(&self) -> bool {
         matches!(
             self.status,
             DeploymentStatus::Stopped

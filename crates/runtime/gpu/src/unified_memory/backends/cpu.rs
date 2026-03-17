@@ -22,7 +22,7 @@ use crate::unified_memory::{
     types::*,
 };
 use async_trait::async_trait;
-use std::alloc::{dealloc, Layout};
+use std::alloc::{Layout, dealloc};
 use std::ptr::NonNull;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -67,13 +67,13 @@ impl AlignedBuffer {
     }
 
     /// Get the raw pointer (for use in allocations)
-    fn _as_ptr(&self) -> *mut u8 {
+    const fn _as_ptr(&self) -> *mut u8 {
         self.ptr.as_ptr()
     }
 
     /// Consume the buffer and return the raw pointer
     /// Caller takes ownership and responsibility for deallocation
-    fn into_raw(self) -> *mut u8 {
+    const fn into_raw(self) -> *mut u8 {
         let ptr = self.ptr.as_ptr();
         // Prevent Drop from running (caller now owns memory)
         std::mem::forget(self);
@@ -144,7 +144,7 @@ pub struct CpuBackend {
 
 impl CpuBackend {
     /// Create new CPU backend
-    pub fn new() -> ToadStoolResult<Self> {
+    pub const fn new() -> ToadStoolResult<Self> {
         Ok(Self {
             capabilities: UnifiedMemoryCapabilities {
                 backend_type: BackendType::Cpu,

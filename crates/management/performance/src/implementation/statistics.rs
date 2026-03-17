@@ -64,22 +64,22 @@ pub(super) fn update_runtime_stats(
 
     if let Some(duration) = metrics.execution_duration {
         runtime_stats.avg_execution_time = Duration::from_secs_f64(
-            (runtime_stats.avg_execution_time.as_secs_f64()
-                * (runtime_stats.total_executions - 1) as f64
-                + duration.as_secs_f64())
-                / runtime_stats.total_executions as f64,
+            runtime_stats.avg_execution_time.as_secs_f64().mul_add(
+                (runtime_stats.total_executions - 1) as f64,
+                duration.as_secs_f64(),
+            ) / runtime_stats.total_executions as f64,
         );
     }
 
-    runtime_stats.avg_memory_usage = (runtime_stats.avg_memory_usage
-        * (runtime_stats.total_executions - 1) as f64
-        + metrics.resource_metrics.memory.used_bytes as f64 / 1024.0 / 1024.0)
-        / runtime_stats.total_executions as f64;
+    runtime_stats.avg_memory_usage = runtime_stats.avg_memory_usage.mul_add(
+        (runtime_stats.total_executions - 1) as f64,
+        metrics.resource_metrics.memory.used_bytes as f64 / 1024.0 / 1024.0,
+    ) / runtime_stats.total_executions as f64;
 
-    runtime_stats.avg_cpu_usage = (runtime_stats.avg_cpu_usage
-        * (runtime_stats.total_executions - 1) as f64
-        + metrics.resource_metrics.cpu.usage_percent)
-        / runtime_stats.total_executions as f64;
+    runtime_stats.avg_cpu_usage = runtime_stats.avg_cpu_usage.mul_add(
+        (runtime_stats.total_executions - 1) as f64,
+        metrics.resource_metrics.cpu.usage_percent,
+    ) / runtime_stats.total_executions as f64;
 
     runtime_stats.efficiency_score = metrics.efficiency_score;
 }

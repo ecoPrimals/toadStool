@@ -53,8 +53,14 @@ impl SongbirdLoadBalancer {
             )
         } else {
             let least = self.capacity_tracker.least_loaded();
-            match least {
-                Some(node) => {
+            least.map_or_else(
+                || {
+                    (
+                        vec![toadstool_common::constants::network::LOCALHOST_IPV4.to_string()],
+                        "All nodes saturated; defaulting to localhost".to_string(),
+                    )
+                },
+                |node| {
                     let load = snapshot.get(&node).copied().unwrap_or(0.0);
                     (
                         vec![node.clone()],
@@ -64,12 +70,8 @@ impl SongbirdLoadBalancer {
                             load * 100.0
                         ),
                     )
-                }
-                None => (
-                    vec![toadstool_common::constants::network::LOCALHOST_IPV4.to_string()],
-                    "All nodes saturated; defaulting to localhost".to_string(),
-                ),
-            }
+                },
+            )
         };
 
         let elapsed_ms = start.elapsed().as_millis() as u64;

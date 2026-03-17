@@ -155,9 +155,11 @@ mod tests {
 
         // Test prefix functions
         let checkpoint = paths::checkpoint_prefix();
-        assert!(checkpoint
-            .to_string_lossy()
-            .contains("toadstool_checkpoint_"));
+        assert!(
+            checkpoint
+                .to_string_lossy()
+                .contains("toadstool_checkpoint_")
+        );
 
         let export = paths::export_prefix();
         assert!(export.to_string_lossy().contains("toadstool_export_"));

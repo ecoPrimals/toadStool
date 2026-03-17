@@ -20,7 +20,7 @@
 
 use crate::data::{Dataset, Sample};
 use crate::{Benchmark, BenchmarkConfig, BenchmarkResult, Error, Result};
-use akida_driver::{select_backend, BackendSelection, NpuBackend};
+use akida_driver::{BackendSelection, NpuBackend, select_backend};
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
@@ -164,10 +164,11 @@ impl Harness {
             }
 
             // Power measurement (every 10 samples)
-            if config.measure_power && i % 10 == 0 {
-                if let Ok(power) = self.device.measure_power() {
-                    power_samples.push(f64::from(power));
-                }
+            if config.measure_power
+                && i % 10 == 0
+                && let Ok(power) = self.device.measure_power()
+            {
+                power_samples.push(f64::from(power));
             }
         }
 
@@ -240,10 +241,11 @@ impl Harness {
                 }
             }
 
-            if config.measure_power && i % 10 == 0 {
-                if let Ok(power) = self.device.measure_power() {
-                    power_samples.push(f64::from(power));
-                }
+            if config.measure_power
+                && i % 10 == 0
+                && let Ok(power) = self.device.measure_power()
+            {
+                power_samples.push(f64::from(power));
             }
         }
 

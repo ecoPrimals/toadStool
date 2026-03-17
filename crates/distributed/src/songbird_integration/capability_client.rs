@@ -161,15 +161,12 @@ impl CapabilityClient {
     pub async fn get_available_services(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
         let should_refresh = {
             let last = self.last_discovery.read().await;
-            match *last {
-                None => true,
-                Some(last_time) => {
-                    let age = SystemTime::now()
-                        .duration_since(last_time)
-                        .unwrap_or_default();
-                    age.as_secs() > 300 // 5 minutes
-                }
-            }
+            (*last).is_none_or(|last_time| {
+                let age = SystemTime::now()
+                    .duration_since(last_time)
+                    .unwrap_or_default();
+                age.as_secs() > 300 // 5 minutes
+            })
         };
 
         if should_refresh {
@@ -268,10 +265,9 @@ impl CapabilityClient {
 
     /// Check if client is healthy
     pub async fn is_healthy(&self) -> bool {
-        match self.get_available_services().await {
-            Ok(services) => !services.is_empty(),
-            Err(_) => false,
-        }
+        self.get_available_services()
+            .await
+            .is_ok_and(|services| !services.is_empty())
     }
 
     /// Get client statistics
@@ -348,7 +344,7 @@ mod tests {
     async fn test_discover_with_mock_source() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
-            .register_source(Box::new(MockEndpointSource {
+            .register_source(Arc::new(MockEndpointSource {
                 endpoint: "http://localhost:9999".to_string(),
             }))
             .await;
@@ -366,7 +362,7 @@ mod tests {
     async fn test_get_best_service() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
-            .register_source(Box::new(MockEndpointSource {
+            .register_source(Arc::new(MockEndpointSource {
                 endpoint: "http://songbird:8080".to_string(),
             }))
             .await;
@@ -396,7 +392,7 @@ mod tests {
     async fn test_is_healthy_with_services() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
-            .register_source(Box::new(MockEndpointSource {
+            .register_source(Arc::new(MockEndpointSource {
                 endpoint: "http://localhost:1".to_string(),
             }))
             .await;
@@ -423,7 +419,7 @@ mod tests {
     async fn test_get_stats() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
-            .register_source(Box::new(MockEndpointSource {
+            .register_source(Arc::new(MockEndpointSource {
                 endpoint: "http://a:1".to_string(),
             }))
             .await;
@@ -442,7 +438,7 @@ mod tests {
     async fn test_execute_with_failover_success() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
-            .register_source(Box::new(MockEndpointSource {
+            .register_source(Arc::new(MockEndpointSource {
                 endpoint: "http://ok:1".to_string(),
             }))
             .await;
@@ -480,7 +476,7 @@ mod tests {
     async fn test_refresh_discovery() {
         let discovery = Arc::new(DiscoveryEngine::new());
         discovery
-            .register_source(Box::new(MockEndpointSource {
+            .register_source(Arc::new(MockEndpointSource {
                 endpoint: "http://refresh:1".to_string(),
             }))
             .await;
@@ -514,7 +510,7 @@ mod tests {
                 rt.block_on(async {
                     let discovery = Arc::new(DiscoveryEngine::new());
                     discovery
-                        .register_source(Box::new(EnvironmentSource::default()))
+                        .register_source(Arc::new(EnvironmentSource::default()))
                         .await;
 
                     let client =

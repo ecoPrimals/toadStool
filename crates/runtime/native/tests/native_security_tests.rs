@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Native runtime security and isolation
 
-use toadstool::security::{IsolationLevel, SecurityContext};
 use toadstool::RuntimeEngine;
 use toadstool::WorkloadType;
+use toadstool::security::{IsolationLevel, SecurityContext};
 use toadstool_runtime_native::NativeRuntimeEngine;
 
 // ============================================================================
@@ -249,9 +249,11 @@ fn test_native_engine_current_arch_supported() {
     let capabilities = engine.get_capabilities();
 
     let current_arch = std::env::consts::ARCH;
-    assert!(capabilities
-        .supported_architectures
-        .contains(&current_arch.to_string()));
+    assert!(
+        capabilities
+            .supported_architectures
+            .contains(&current_arch.to_string())
+    );
 }
 
 // ============================================================================

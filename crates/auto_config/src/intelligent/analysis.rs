@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use tracing::debug;
 
-use crate::hardware::{PerformanceClass, SystemCapabilities};
 use crate::ToadStoolResult;
+use crate::hardware::{PerformanceClass, SystemCapabilities};
 use toadstool_config::ToadStoolConfig;
 
 /// Usage pattern learning and prediction
@@ -22,7 +22,7 @@ impl Default for UsageLearner {
 
 impl UsageLearner {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             environment_hints: Vec::new(),
         }

@@ -15,7 +15,7 @@ use toadstool::workload::WasmModuleSource;
 
 use crate::config::WasmRuntimeConfig;
 use crate::module_loader::ModuleLoader;
-use crate::wasi_context::{create_wasi_context, WasiConfig};
+use crate::wasi_context::{WasiConfig, create_wasi_context};
 
 /// WASM module executor
 pub struct ModuleExecutor {
@@ -25,7 +25,7 @@ pub struct ModuleExecutor {
 
 impl ModuleExecutor {
     /// Create a new module executor
-    pub fn new(engine: Engine, config: WasmRuntimeConfig) -> Self {
+    pub const fn new(engine: Engine, config: WasmRuntimeConfig) -> Self {
         Self { engine, config }
     }
 
@@ -60,10 +60,6 @@ impl ModuleExecutor {
     }
 
     /// Synchronous execution logic (runs in blocking thread pool)
-    #[expect(
-        clippy::needless_pass_by_value,
-        reason = "args cloned into WasiConfig; Vec needed for spawn_blocking move"
-    )]
     fn execute_module_sync(
         engine: &Engine,
         module: &Module,
@@ -78,7 +74,7 @@ impl ModuleExecutor {
             inherit_stdio: false, // Don't inherit for security
             inherit_env: false,
             preopened_dirs: Vec::new(),
-            args: args.clone(),
+            args,
             capture_stdout: true, // Capture outputs
             capture_stderr: true,
         };
@@ -126,12 +122,10 @@ impl ModuleExecutor {
             .map_err(|e| ToadStoolError::runtime(format!("Execution failed: {e}")))?;
 
         // Get fuel consumed (wasmi 1.0 uses get_fuel to check remaining fuel)
-        let fuel_consumed = if let Some(fuel_limit) = config.fuel_limit {
+        let fuel_consumed = config.fuel_limit.map_or(0, |fuel_limit| {
             let remaining_fuel = store.get_fuel().unwrap_or(fuel_limit);
             fuel_limit.saturating_sub(remaining_fuel)
-        } else {
-            0
-        };
+        });
 
         debug!("Execution complete. Fuel consumed: {}", fuel_consumed);
 

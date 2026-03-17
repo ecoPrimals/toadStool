@@ -40,10 +40,10 @@
 mod estimators;
 mod evaluators;
 
+use crate::ToadStoolResult;
 use crate::composition_constraints::*;
 use crate::fractal_integration::FractalRuntime;
 use crate::layer_adaptation::AdaptedCapabilities;
-use crate::ToadStoolResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -204,7 +204,7 @@ impl CompositionEngine {
             }
         };
 
-        (hard_score * 0.7) + (soft_score * 0.3)
+        hard_score.mul_add(0.7, soft_score * 0.3)
     }
 
     async fn update_stats(&self, evaluation: &ConstraintEvaluation, duration_ms: f64) {
@@ -223,7 +223,7 @@ impl CompositionEngine {
             reason = "integer count to f64 acceptable"
         )]
         let total = stats.total_evaluations as f64;
-        stats.avg_evaluation_ms = ((stats.avg_evaluation_ms * (total - 1.0)) + duration_ms) / total;
+        stats.avg_evaluation_ms = stats.avg_evaluation_ms.mul_add(total - 1.0, duration_ms) / total;
     }
 
     /// Get engine statistics
@@ -232,7 +232,7 @@ impl CompositionEngine {
     }
 
     /// Get current capabilities
-    pub fn capabilities(&self) -> &AdaptedCapabilities {
+    pub const fn capabilities(&self) -> &AdaptedCapabilities {
         &self.capabilities
     }
 }

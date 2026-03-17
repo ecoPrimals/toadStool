@@ -13,11 +13,11 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use toadstool::{
+    ToadStoolResult,
     execution::{ExecutionRequest, RuntimeType},
     resources::ResourceRequirements,
     security::{IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
-    ToadStoolResult,
 };
 
 use toadstool::UniversalComputePlatform;

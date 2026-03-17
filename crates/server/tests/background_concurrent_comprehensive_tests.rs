@@ -16,11 +16,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{broadcast, Barrier, RwLock};
+use tokio::sync::{Barrier, RwLock, broadcast};
 use tokio::time::timeout;
 
 use toadstool_server::{
-    start_background_services, ServerConfig, ServerEvent, ServerState, ServerStatistics,
+    ServerConfig, ServerEvent, ServerState, ServerStatistics, start_background_services,
 };
 
 /// Create test server state

@@ -96,11 +96,10 @@ fn extract_hex_field(line: &str, prefix: &str) -> Option<u64> {
         .find(|c: char| !c.is_ascii_hexdigit() && c != 'x')
         .unwrap_or(rest.len());
     let val = &rest[..end];
-    if let Some(hex) = val.strip_prefix("0x") {
-        u64::from_str_radix(hex, 16).ok()
-    } else {
-        u64::from_str_radix(val, 16).ok()
-    }
+    val.strip_prefix("0x").map_or_else(
+        || u64::from_str_radix(val, 16).ok(),
+        |hex| u64::from_str_radix(hex, 16).ok(),
+    )
 }
 
 fn extract_dec_field(line: &str, prefix: &str) -> Option<u16> {

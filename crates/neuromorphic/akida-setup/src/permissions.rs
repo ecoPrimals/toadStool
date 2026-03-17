@@ -67,10 +67,10 @@ pub fn setup_pcie_permissions(pcie_address: &str) -> Result<()> {
         let entry = entry?;
         let path = entry.path();
 
-        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            if name.starts_with("resource") || name == "enable" || name == "config" {
-                set_file_permissions(&path, 0o666)?;
-            }
+        if let Some(name) = path.file_name().and_then(|n| n.to_str())
+            && (name.starts_with("resource") || name == "enable" || name == "config")
+        {
+            set_file_permissions(&path, 0o666)?;
         }
     }
 

@@ -192,7 +192,7 @@ fn arch_to_id(arch: &GpuArch) -> ArchId {
     format!("{}_{}", arch.compute_class, arch.chip).to_lowercase()
 }
 
-fn vendor_dirname(vendor: Vendor) -> &'static str {
+const fn vendor_dirname(vendor: Vendor) -> &'static str {
     match vendor {
         Vendor::Amd => "amd",
         Vendor::Intel => "intel",

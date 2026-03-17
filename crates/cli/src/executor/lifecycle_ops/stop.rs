@@ -7,9 +7,9 @@ use tokio::time::timeout;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+use super::super::BiomeExecutor;
 use super::super::resources::ResourceManager;
 use super::super::signals::SignalManager;
-use super::super::BiomeExecutor;
 
 impl BiomeExecutor {
     pub(in crate::executor) async fn stop_biome_internal(

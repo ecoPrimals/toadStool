@@ -40,11 +40,11 @@ pub async fn add_to_path(
                 bin_path.display()
             );
 
-            if let Ok(content) = fs::read_to_string(&profile_path).await {
-                if !content.contains("ToadStool") {
-                    fs::write(&profile_path, format!("{content}{path_export}")).await?;
-                    info!("✅ Added ToadStool to PATH in {}", shell_profile);
-                }
+            if let Ok(content) = fs::read_to_string(&profile_path).await
+                && !content.contains("ToadStool")
+            {
+                fs::write(&profile_path, format!("{content}{path_export}")).await?;
+                info!("✅ Added ToadStool to PATH in {}", shell_profile);
             }
         }
         Platform::Windows => {

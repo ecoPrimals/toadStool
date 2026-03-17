@@ -139,9 +139,10 @@ async fn test_biome_name_validation() {
         assert!(!name.is_empty());
         assert!(!name.contains(' '));
         // Biome names should be lowercase, alphanumeric, with hyphens/underscores
-        assert!(name
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
+        assert!(
+            name.chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+        );
     }
 
     let invalid_names = vec![
@@ -503,9 +504,11 @@ async fn test_wasm_module_path_validation() {
     ];
 
     for path in wasm_paths {
-        assert!(std::path::Path::new(path)
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("wasm")));
+        assert!(
+            std::path::Path::new(path)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("wasm"))
+        );
         let path_buf = PathBuf::from(path);
         assert!(path_buf.extension().and_then(|s| s.to_str()) == Some("wasm"));
     }

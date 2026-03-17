@@ -8,8 +8,8 @@ use tracing::info;
 use crate::{CliContext, Result};
 
 use super::definitions::Commands;
-use crate::executor::RunBiomeOptions;
 use crate::Cli;
+use crate::executor::RunBiomeOptions;
 
 mod biome;
 mod ecosystem;

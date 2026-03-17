@@ -29,13 +29,14 @@ use toadstool_server::unibin::{
 #[tokio::test]
 async fn create_executor_standalone_with_empty_string() {
     let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    std::env::set_var("TOADSTOOL_STANDALONE", "");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", "") };
 
     let result = create_executor("empty-family").await;
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_STANDALONE", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_STANDALONE") };
     }
 
     // Empty string => distributed mode (may fail if Songbird unavailable)
@@ -48,13 +49,14 @@ async fn create_executor_standalone_with_empty_string() {
 #[tokio::test]
 async fn create_executor_standalone_with_false() {
     let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    std::env::set_var("TOADSTOOL_STANDALONE", "false");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", "false") };
 
     let result = create_executor("false-family").await;
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_STANDALONE", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_STANDALONE") };
     }
 
     match &result {
@@ -66,13 +68,14 @@ async fn create_executor_standalone_with_false() {
 #[tokio::test]
 async fn create_executor_includes_family_id_in_instance_id() {
     let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    std::env::set_var("TOADSTOOL_STANDALONE", "1");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", "1") };
 
     let result = create_executor("my-unique-family-123").await;
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_STANDALONE", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_STANDALONE") };
     }
 
     assert!(result.is_ok());
@@ -82,20 +85,23 @@ async fn create_executor_includes_family_id_in_instance_id() {
 async fn create_executor_distributed_with_songbird_endpoint() {
     let old_standalone = std::env::var("TOADSTOOL_STANDALONE").ok();
     let old_songbird = std::env::var("SONGBIRD_ENDPOINT").ok();
-    std::env::set_var("TOADSTOOL_STANDALONE", "0");
-    std::env::set_var("SONGBIRD_ENDPOINT", "unix:///tmp/songbird.sock");
+    // SAFETY: Test-only; sequential test execution
+    unsafe {
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", "0") };
+        unsafe { std::unsafe { env::set_var("SONGBIRD_ENDPOINT", "unix:///tmp/songbird.sock") };
+    }
 
     let result = create_executor("songbird-family").await;
 
     if let Some(v) = old_standalone {
-        std::env::set_var("TOADSTOOL_STANDALONE", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_STANDALONE") };
     }
     if let Some(v) = old_songbird {
-        std::env::set_var("SONGBIRD_ENDPOINT", v);
+        unsafe { std::unsafe { env::set_var("SONGBIRD_ENDPOINT", v) };
     } else {
-        std::env::remove_var("SONGBIRD_ENDPOINT");
+        unsafe { std::unsafe { env::remove_var("SONGBIRD_ENDPOINT") };
     }
 
     match &result {
@@ -109,26 +115,29 @@ async fn create_executor_distributed_with_coordination_endpoint() {
     let old_standalone = std::env::var("TOADSTOOL_STANDALONE").ok();
     let old_songbird = std::env::var("SONGBIRD_ENDPOINT").ok();
     let old_coord = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT").ok();
-    std::env::set_var("TOADSTOOL_STANDALONE", "0");
-    std::env::remove_var("SONGBIRD_ENDPOINT");
-    std::env::set_var("TOADSTOOL_COORDINATION_ENDPOINT", "unix:///tmp/coord.sock");
+    // SAFETY: Test-only; sequential test execution
+    unsafe {
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", "0") };
+        unsafe { std::unsafe { env::remove_var("SONGBIRD_ENDPOINT") };
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_COORDINATION_ENDPOINT", "unix:///tmp/coord.sock") };
+    }
 
     let result = create_executor("coord-family").await;
 
     if let Some(v) = old_standalone {
-        std::env::set_var("TOADSTOOL_STANDALONE", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_STANDALONE") };
     }
     if let Some(v) = old_songbird {
-        std::env::set_var("SONGBIRD_ENDPOINT", v);
+        unsafe { std::unsafe { env::set_var("SONGBIRD_ENDPOINT", v) };
     } else {
-        std::env::remove_var("SONGBIRD_ENDPOINT");
+        unsafe { std::unsafe { env::remove_var("SONGBIRD_ENDPOINT") };
     }
     if let Some(v) = old_coord {
-        std::env::set_var("TOADSTOOL_COORDINATION_ENDPOINT", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_COORDINATION_ENDPOINT", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_COORDINATION_ENDPOINT");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_COORDINATION_ENDPOINT") };
     }
 
     match &result {
@@ -141,20 +150,23 @@ async fn create_executor_distributed_with_coordination_endpoint() {
 async fn create_executor_distributed_with_auth_token() {
     let old_standalone = std::env::var("TOADSTOOL_STANDALONE").ok();
     let old_token = std::env::var("SONGBIRD_AUTH_TOKEN").ok();
-    std::env::set_var("TOADSTOOL_STANDALONE", "0");
-    std::env::set_var("SONGBIRD_AUTH_TOKEN", "test-secret-token");
+    // SAFETY: Test-only; sequential test execution
+    unsafe {
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", "0") };
+        unsafe { std::unsafe { env::set_var("SONGBIRD_AUTH_TOKEN", "test-secret-token") };
+    }
 
     let result = create_executor("auth-family").await;
 
     if let Some(v) = old_standalone {
-        std::env::set_var("TOADSTOOL_STANDALONE", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_STANDALONE") };
     }
     if let Some(v) = old_token {
-        std::env::set_var("SONGBIRD_AUTH_TOKEN", v);
+        unsafe { std::unsafe { env::set_var("SONGBIRD_AUTH_TOKEN", v) };
     } else {
-        std::env::remove_var("SONGBIRD_AUTH_TOKEN");
+        unsafe { std::unsafe { env::remove_var("SONGBIRD_AUTH_TOKEN") };
     }
 
     match &result {
@@ -306,31 +318,33 @@ fn exit_codes_constants() {
 #[test]
 fn resolve_family_id_from_env() {
     let old = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    std::env::set_var("TOADSTOOL_FAMILY_ID", "test-family");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::unsafe { env::set_var("TOADSTOOL_FAMILY_ID", "test-family") };
 
     let family_id = toadstool_server::unibin::resolve_family_id(None);
     assert_eq!(family_id, "test-family");
 
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_FAMILY_ID", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_FAMILY_ID");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_FAMILY_ID") };
     }
 }
 
 #[test]
 fn resolve_family_id_override_takes_precedence() {
     let old_family = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    std::env::set_var("TOADSTOOL_FAMILY_ID", "env-family");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::unsafe { env::set_var("TOADSTOOL_FAMILY_ID", "env-family") };
 
     let family_id =
         toadstool_server::unibin::resolve_family_id(Some("override-family".to_string()));
     assert_eq!(family_id, "override-family");
 
     if let Some(v) = old_family {
-        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_FAMILY_ID", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_FAMILY_ID");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_FAMILY_ID") };
     }
 }
 
@@ -339,21 +353,24 @@ fn resolve_family_id_fallback_to_default() {
     let old1 = std::env::var("TOADSTOOL_FAMILY_ID").ok();
     let old2 = std::env::var("TOADSTOOL_FAMILY").ok();
     let old3 = std::env::var("BIOMEOS_FAMILY_ID").ok();
-    std::env::remove_var("TOADSTOOL_FAMILY_ID");
-    std::env::remove_var("TOADSTOOL_FAMILY");
-    std::env::remove_var("BIOMEOS_FAMILY_ID");
+    // SAFETY: Test-only; sequential test execution
+    unsafe {
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_FAMILY_ID") };
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_FAMILY") };
+        unsafe { std::unsafe { env::remove_var("BIOMEOS_FAMILY_ID") };
+    }
 
     let family_id = toadstool_server::unibin::resolve_family_id(None);
     assert_eq!(family_id, "default");
 
     if let Some(v) = old1 {
-        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_FAMILY_ID", v) };
     }
     if let Some(v) = old2 {
-        std::env::set_var("TOADSTOOL_FAMILY", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_FAMILY", v) };
     }
     if let Some(v) = old3 {
-        std::env::set_var("BIOMEOS_FAMILY_ID", v);
+        unsafe { std::unsafe { env::set_var("BIOMEOS_FAMILY_ID", v) };
     }
 }
 
@@ -366,15 +383,16 @@ fn resolve_node_id_returns_string() {
 #[test]
 fn resolve_node_id_from_env() {
     let old = std::env::var("TOADSTOOL_NODE_ID").ok();
-    std::env::set_var("TOADSTOOL_NODE_ID", "node-42");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::unsafe { env::set_var("TOADSTOOL_NODE_ID", "node-42") };
 
     let node_id = toadstool_server::unibin::resolve_node_id();
     assert_eq!(node_id, "node-42");
 
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_NODE_ID", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_NODE_ID", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_NODE_ID");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_NODE_ID") };
     }
 }
 
@@ -509,12 +527,13 @@ fn is_platform_constraint_str_protocol_substring() {
 #[tokio::test]
 async fn create_executor_family_id_in_instance() {
     let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    std::env::set_var("TOADSTOOL_STANDALONE", "1");
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", "1") };
     let exec_result = create_executor("family-xyz").await;
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_STANDALONE", v);
+        unsafe { std::unsafe { env::set_var("TOADSTOOL_STANDALONE", v) };
     } else {
-        std::env::remove_var("TOADSTOOL_STANDALONE");
+        unsafe { std::unsafe { env::remove_var("TOADSTOOL_STANDALONE") };
     }
     assert!(exec_result.is_ok());
 }

@@ -460,9 +460,11 @@ mod property_tests {
                 assert!(path.contains("logs"));
                 assert!(path.contains(*biome));
                 assert!(path.contains(*component));
-                assert!(std::path::Path::new(&path)
-                    .extension()
-                    .is_some_and(|e| e.eq_ignore_ascii_case("log")));
+                assert!(
+                    std::path::Path::new(&path)
+                        .extension()
+                        .is_some_and(|e| e.eq_ignore_ascii_case("log"))
+                );
             }
         }
     }

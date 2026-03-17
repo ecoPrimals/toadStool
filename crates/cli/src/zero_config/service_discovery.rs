@@ -33,7 +33,7 @@ pub struct ServiceDiscovery {
 
 impl ServiceDiscovery {
     /// Create new service discovery coordinator
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             discovery_timeout: Duration::from_secs(2),
         }
@@ -452,7 +452,7 @@ mod tests {
         data.extend_from_slice(&[0x00, 0x01]); // 1 answer
         data.extend_from_slice(&[0x00, 0x00]); // 0 auth
         data.extend_from_slice(&[0x00, 0x00]); // 0 additional
-                                               // Question: _test._tcp.local (simplified)
+        // Question: _test._tcp.local (simplified)
         data.push(5);
         data.extend_from_slice(b"_test");
         data.push(4);
@@ -462,7 +462,7 @@ mod tests {
         data.push(0);
         data.extend_from_slice(&[0x00, 0x0C]); // PTR
         data.extend_from_slice(&[0x00, 0x01]); // IN
-                                               // Answer: instance._test._tcp.local, A record, 127.0.0.1
+        // Answer: instance._test._tcp.local, A record, 127.0.0.1
         data.push(8);
         data.extend_from_slice(b"instance");
         data.push(5);

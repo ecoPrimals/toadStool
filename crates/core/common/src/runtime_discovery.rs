@@ -328,7 +328,7 @@ impl LocalhostDiscoveryClient {
     /// Starts with an empty service list. Register services via `add_service()`
     /// or use `with_local_compute()` to seed a local compute endpoint.
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             services: Vec::new(),
         }

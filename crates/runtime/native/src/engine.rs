@@ -15,6 +15,7 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use toadstool::{
+    WorkloadType,
     error::{ToadStoolError, ToadStoolResult},
     execution::{
         ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
@@ -22,7 +23,6 @@ use toadstool::{
     },
     resources::{ResourceMonitor, RuntimeMetrics},
     workload::WorkloadSpec,
-    WorkloadType,
 };
 
 use crate::capabilities;
@@ -80,7 +80,7 @@ impl NativeRuntimeEngine {
             _ => {
                 return Err(ToadStoolError::validation(
                     "Invalid workload type for native runtime",
-                ))
+                ));
             }
         };
 
@@ -276,9 +276,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
         &self,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async {
-            let processes = self.active_processes.read().await;
-
-            if processes.is_empty() {
+            if self.active_processes.read().await.is_empty() {
                 return Ok(RuntimeMetrics::default());
             }
 
@@ -299,10 +297,10 @@ impl RuntimeEngine for NativeRuntimeEngine {
             };
 
             for (execution_id, child_opt) in to_kill {
-                if let Some(mut child) = child_opt {
-                    if let Err(e) = child.kill().await {
-                        warn!("Failed to kill process {}: {}", execution_id, e);
-                    }
+                if let Some(mut child) = child_opt
+                    && let Err(e) = child.kill().await
+                {
+                    warn!("Failed to kill process {}: {}", execution_id, e);
                 }
             }
 

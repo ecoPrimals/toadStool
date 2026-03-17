@@ -1,7 +1,7 @@
 [package]
 name = "toadstool-runtime-specialty"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 description = "Specialty Hardware Runtime for ToadStool - Mainframes, embedded systems, industrial controllers, and exotic platforms"
 authors = ["ToadStool Team <team@toadstool.dev>"]
 license.workspace = true

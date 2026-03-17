@@ -70,7 +70,7 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
     use std::time::Duration;
-    use tokio::sync::{broadcast, RwLock};
+    use tokio::sync::{RwLock, broadcast};
     use uuid::Uuid;
 
     use crate::state::{ActiveExecution, ClientInfo, ServerState, ServerStatistics};

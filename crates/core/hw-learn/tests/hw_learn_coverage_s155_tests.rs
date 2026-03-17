@@ -7,12 +7,12 @@
 #![allow(clippy::pedantic)]
 
 use hw_learn::distiller::classify::{
-    classify_events, classify_register, classify_register_for_gen, GpuGen,
+    GpuGen, classify_events, classify_register, classify_register_for_gen,
 };
 use hw_learn::distiller::{
     DriverKind, GpuArch, InitRecipe, InitStep, RegFunction, Vendor, VerifyCheck,
 };
-use hw_learn::knowledge::{amd_baseline, arch_map, export_recipe, import_recipe, KnowledgeStore};
+use hw_learn::knowledge::{KnowledgeStore, amd_baseline, arch_map, export_recipe, import_recipe};
 use hw_learn::observer::{
     GpuSelector, ObserveConfig, ObserveError, ObserveResult, RpcDirection, TraceEvent,
     TraceEventKind, TraceMode, TraceObserver,

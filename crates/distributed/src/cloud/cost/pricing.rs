@@ -24,65 +24,65 @@ pub enum PricingTier {
 
 impl PricingTier {
     /// Returns the base CPU cost per core-hour for this tier.
-    pub fn cpu_cost_per_core_hour(self) -> f64 {
+    pub const fn cpu_cost_per_core_hour(self) -> f64 {
         match self {
-            PricingTier::StandardCompute => 0.08,
-            PricingTier::HighMemoryCompute => 0.12,
-            PricingTier::GpuAccelerated => 0.15,
-            PricingTier::BareMetalDedicated => 0.25,
-            PricingTier::Serverless => 0.0001, // Per-invocation dominated; use small base
-            PricingTier::EdgeLocal => 0.01,
+            Self::StandardCompute => 0.08,
+            Self::HighMemoryCompute => 0.12,
+            Self::GpuAccelerated => 0.15,
+            Self::BareMetalDedicated => 0.25,
+            Self::Serverless => 0.0001, // Per-invocation dominated; use small base
+            Self::EdgeLocal => 0.01,
         }
     }
 
     /// Returns the memory cost per GB-hour for this tier.
-    pub fn memory_cost_per_gb_hour(self) -> f64 {
+    pub const fn memory_cost_per_gb_hour(self) -> f64 {
         match self {
-            PricingTier::StandardCompute => 0.012,
-            PricingTier::HighMemoryCompute => 0.018,
-            PricingTier::GpuAccelerated => 0.020,
-            PricingTier::BareMetalDedicated => 0.030,
-            PricingTier::Serverless => 0.000016,
-            PricingTier::EdgeLocal => 0.002,
+            Self::StandardCompute => 0.012,
+            Self::HighMemoryCompute => 0.018,
+            Self::GpuAccelerated => 0.020,
+            Self::BareMetalDedicated => 0.030,
+            Self::Serverless => 0.000016,
+            Self::EdgeLocal => 0.002,
         }
     }
 
     /// Returns the storage cost per GB-month for this tier.
-    pub fn storage_cost_per_gb_month(self) -> f64 {
+    pub const fn storage_cost_per_gb_month(self) -> f64 {
         match self {
-            PricingTier::StandardCompute => 0.08,
-            PricingTier::HighMemoryCompute => 0.10,
-            PricingTier::GpuAccelerated => 0.08,
-            PricingTier::BareMetalDedicated => 0.15,
-            PricingTier::Serverless => 0.023,
-            PricingTier::EdgeLocal => 0.0,
+            Self::StandardCompute => 0.08,
+            Self::HighMemoryCompute => 0.10,
+            Self::GpuAccelerated => 0.08,
+            Self::BareMetalDedicated => 0.15,
+            Self::Serverless => 0.023,
+            Self::EdgeLocal => 0.0,
         }
     }
 
     /// Returns the network cost per GB for this tier.
-    pub fn network_cost_per_gb(self) -> f64 {
+    pub const fn network_cost_per_gb(self) -> f64 {
         match self {
-            PricingTier::StandardCompute => 0.05,
-            PricingTier::HighMemoryCompute => 0.05,
-            PricingTier::GpuAccelerated => 0.06,
-            PricingTier::BareMetalDedicated => 0.04,
-            PricingTier::Serverless => 0.09,
-            PricingTier::EdgeLocal => 0.0,
+            Self::StandardCompute => 0.05,
+            Self::HighMemoryCompute => 0.05,
+            Self::GpuAccelerated => 0.06,
+            Self::BareMetalDedicated => 0.04,
+            Self::Serverless => 0.09,
+            Self::EdgeLocal => 0.0,
         }
     }
 
     /// Returns the GPU cost per GPU-hour for tiers that support GPU.
-    pub fn gpu_cost_per_gpu_hour(self) -> f64 {
+    pub const fn gpu_cost_per_gpu_hour(self) -> f64 {
         match self {
-            PricingTier::GpuAccelerated => 2.50,
-            PricingTier::BareMetalDedicated => 3.00,
+            Self::GpuAccelerated => 2.50,
+            Self::BareMetalDedicated => 3.00,
             _ => 0.0,
         }
     }
 }
 
 /// Infer pricing tier from cloud capabilities.
-pub(crate) fn infer_pricing_tier(capabilities: &CloudCapabilities) -> PricingTier {
+pub fn infer_pricing_tier(capabilities: &CloudCapabilities) -> PricingTier {
     if capabilities.gpu_support {
         PricingTier::GpuAccelerated
     } else if capabilities.serverless_support {
@@ -113,75 +113,69 @@ pub struct CloudCostModel {
 
 impl CloudCostModel {
     /// Create cost model for standard compute tier.
-    pub fn standard_compute() -> Self {
-        let t = PricingTier::StandardCompute;
+    pub const fn standard_compute() -> Self {
         Self {
-            cpu_rate: t.cpu_cost_per_core_hour(),
-            memory_rate: t.memory_cost_per_gb_hour(),
-            storage_rate: t.storage_cost_per_gb_month(),
-            network_rate: t.network_cost_per_gb(),
+            cpu_rate: PricingTier::StandardCompute.cpu_cost_per_core_hour(),
+            memory_rate: PricingTier::StandardCompute.memory_cost_per_gb_hour(),
+            storage_rate: PricingTier::StandardCompute.storage_cost_per_gb_month(),
+            network_rate: PricingTier::StandardCompute.network_cost_per_gb(),
         }
     }
 
     /// Create cost model for high-memory tier.
-    pub fn high_memory() -> Self {
-        let t = PricingTier::HighMemoryCompute;
+    pub const fn high_memory() -> Self {
         Self {
-            cpu_rate: t.cpu_cost_per_core_hour(),
-            memory_rate: t.memory_cost_per_gb_hour(),
-            storage_rate: t.storage_cost_per_gb_month(),
-            network_rate: t.network_cost_per_gb(),
+            cpu_rate: PricingTier::HighMemoryCompute.cpu_cost_per_core_hour(),
+            memory_rate: PricingTier::HighMemoryCompute.memory_cost_per_gb_hour(),
+            storage_rate: PricingTier::HighMemoryCompute.storage_cost_per_gb_month(),
+            network_rate: PricingTier::HighMemoryCompute.network_cost_per_gb(),
         }
     }
 
     /// Create cost model for GPU-accelerated tier.
-    pub fn gpu_accelerated() -> Self {
-        let t = PricingTier::GpuAccelerated;
+    pub const fn gpu_accelerated() -> Self {
         Self {
-            cpu_rate: t.cpu_cost_per_core_hour(),
-            memory_rate: t.memory_cost_per_gb_hour(),
-            storage_rate: t.storage_cost_per_gb_month(),
-            network_rate: t.network_cost_per_gb(),
+            cpu_rate: PricingTier::GpuAccelerated.cpu_cost_per_core_hour(),
+            memory_rate: PricingTier::GpuAccelerated.memory_cost_per_gb_hour(),
+            storage_rate: PricingTier::GpuAccelerated.storage_cost_per_gb_month(),
+            network_rate: PricingTier::GpuAccelerated.network_cost_per_gb(),
         }
     }
 
     /// Create cost model for bare-metal / dedicated tier.
-    pub fn bare_metal_dedicated() -> Self {
-        let t = PricingTier::BareMetalDedicated;
+    pub const fn bare_metal_dedicated() -> Self {
         Self {
-            cpu_rate: t.cpu_cost_per_core_hour(),
-            memory_rate: t.memory_cost_per_gb_hour(),
-            storage_rate: t.storage_cost_per_gb_month(),
-            network_rate: t.network_cost_per_gb(),
+            cpu_rate: PricingTier::BareMetalDedicated.cpu_cost_per_core_hour(),
+            memory_rate: PricingTier::BareMetalDedicated.memory_cost_per_gb_hour(),
+            storage_rate: PricingTier::BareMetalDedicated.storage_cost_per_gb_month(),
+            network_rate: PricingTier::BareMetalDedicated.network_cost_per_gb(),
         }
     }
 
     /// Create cost model for serverless tier.
-    pub fn serverless() -> Self {
-        let t = PricingTier::Serverless;
+    pub const fn serverless() -> Self {
         Self {
-            cpu_rate: t.cpu_cost_per_core_hour(),
-            memory_rate: t.memory_cost_per_gb_hour(),
-            storage_rate: t.storage_cost_per_gb_month(),
-            network_rate: t.network_cost_per_gb(),
+            cpu_rate: PricingTier::Serverless.cpu_cost_per_core_hour(),
+            memory_rate: PricingTier::Serverless.memory_cost_per_gb_hour(),
+            storage_rate: PricingTier::Serverless.storage_cost_per_gb_month(),
+            network_rate: PricingTier::Serverless.network_cost_per_gb(),
         }
     }
 
     /// Create cost model for edge/local tier.
-    pub fn edge_local() -> Self {
-        let t = PricingTier::EdgeLocal;
+    pub const fn edge_local() -> Self {
         Self {
-            cpu_rate: t.cpu_cost_per_core_hour(),
-            memory_rate: t.memory_cost_per_gb_hour(),
-            storage_rate: t.storage_cost_per_gb_month(),
-            network_rate: t.network_cost_per_gb(),
+            cpu_rate: PricingTier::EdgeLocal.cpu_cost_per_core_hour(),
+            memory_rate: PricingTier::EdgeLocal.memory_cost_per_gb_hour(),
+            storage_rate: PricingTier::EdgeLocal.storage_cost_per_gb_month(),
+            network_rate: PricingTier::EdgeLocal.network_cost_per_gb(),
         }
     }
 }
 
 // Legacy constructors for backward compatibility
 impl CloudCostModel {
-    pub fn new_aws() -> Self {
+    pub const fn new_aws() -> Self {
         Self::standard_compute()
     }
 
@@ -225,7 +219,7 @@ impl CloudCostModel {
         }
     }
 
-    pub fn new_localhost() -> Self {
+    pub const fn new_localhost() -> Self {
         Self::edge_local()
     }
 }

@@ -72,53 +72,58 @@ impl ByobComputeExecutor {
         _deployment_id: Uuid,
     ) -> ExecutionRequest {
         // ✅ OPTIMIZED: Reduce clones by using references where possible
-        let workload = if let Some(image) = &service.image {
-            // Container workload
-            WorkloadSpec::Container {
-                image: image.clone(),
-                command: service.command.clone(),
-                args: None,
-                working_dir: None,
-                env_vars: service.environment.clone(),
-                volumes: service
-                    .volumes
-                    .iter()
-                    .map(|v| crate::workload::VolumeMount {
-                        source: v.source.as_str().into(),
-                        target: v.target.as_str().into(),
-                        mount_type: match v.mount_type.as_str() {
-                            "volume" => crate::workload::VolumeMountType::Volume,
-                            _ => crate::workload::VolumeMountType::Bind,
-                        },
-                        read_only: v.read_only,
-                    })
-                    .collect(),
-                ports: service
-                    .ports
-                    .iter()
-                    .map(|p| crate::workload::PortMapping {
-                        container_port: p.container_port,
-                        host_port: p.host_port.unwrap_or(self.config.default_host_port),
-                        protocol: match p.protocol.as_str() {
-                            "udp" => crate::workload::PortProtocol::Udp,
-                            _ => crate::workload::PortProtocol::Tcp,
-                        },
-                    })
-                    .collect(),
-                registry_auth: None,
-            }
-        } else {
-            // Native workload (assume command is provided)
-            WorkloadSpec::Native {
-                executable: crate::ExecutableSource::File {
-                    path: std::path::PathBuf::from(service.image.as_deref().unwrap_or("/bin/sh")),
-                },
-                args: None,
-                working_dir: None,
-                env_vars: service.environment.clone(),
-                user: None,
-            }
-        };
+        let workload = service.image.as_ref().map_or_else(
+            || {
+                // Native workload (assume command is provided)
+                WorkloadSpec::Native {
+                    executable: crate::ExecutableSource::File {
+                        path: std::path::PathBuf::from(
+                            service.image.as_deref().unwrap_or("/bin/sh"),
+                        ),
+                    },
+                    args: None,
+                    working_dir: None,
+                    env_vars: service.environment.clone(),
+                    user: None,
+                }
+            },
+            |image| {
+                // Container workload
+                WorkloadSpec::Container {
+                    image: image.clone(),
+                    command: service.command.clone(),
+                    args: None,
+                    working_dir: None,
+                    env_vars: service.environment.clone(),
+                    volumes: service
+                        .volumes
+                        .iter()
+                        .map(|v| crate::workload::VolumeMount {
+                            source: v.source.as_str().into(),
+                            target: v.target.as_str().into(),
+                            mount_type: match v.mount_type.as_str() {
+                                "volume" => crate::workload::VolumeMountType::Volume,
+                                _ => crate::workload::VolumeMountType::Bind,
+                            },
+                            read_only: v.read_only,
+                        })
+                        .collect(),
+                    ports: service
+                        .ports
+                        .iter()
+                        .map(|p| crate::workload::PortMapping {
+                            container_port: p.container_port,
+                            host_port: p.host_port.unwrap_or(self.config.default_host_port),
+                            protocol: match p.protocol.as_str() {
+                                "udp" => crate::workload::PortProtocol::Udp,
+                                _ => crate::workload::PortProtocol::Tcp,
+                            },
+                        })
+                        .collect(),
+                    registry_auth: None,
+                }
+            },
+        );
 
         ExecutionRequest {
             execution_id: Uuid::new_v4(),
@@ -261,8 +266,12 @@ impl ByobComputeExecutor {
     async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);
 
-        let mut deployments = self.active_deployments.write().await;
-        if let Some(deployment) = deployments.get_mut(&deployment_id) {
+        if let Some(deployment) = self
+            .active_deployments
+            .write()
+            .await
+            .get_mut(&deployment_id)
+        {
             // Check health of all services in the deployment
             let mut all_healthy = true;
             let mut failed_services = Vec::new();
@@ -361,8 +370,12 @@ impl ByobComputeExecutor {
             deployment_id
         );
 
-        let mut deployments = self.active_deployments.write().await;
-        if let Some(deployment) = deployments.get_mut(&deployment_id) {
+        if let Some(deployment) = self
+            .active_deployments
+            .write()
+            .await
+            .get_mut(&deployment_id)
+        {
             // Collect resource usage from all services
             let mut cpu_total = 0.0;
             let mut total_memory = 0;
@@ -427,8 +440,13 @@ impl ByobComputeExecutor {
                 },
             });
 
-            debug!("📊 Updated resource usage for deployment {}: CPU: {:.2}, Memory: {}MB, Storage: {}MB", 
-                   deployment_id, cpu_total, total_memory / (1024 * 1024), total_storage / (1024 * 1024));
+            debug!(
+                "📊 Updated resource usage for deployment {}: CPU: {:.2}, Memory: {}MB, Storage: {}MB",
+                deployment_id,
+                cpu_total,
+                total_memory / (1024 * 1024),
+                total_storage / (1024 * 1024)
+            );
         }
 
         Ok(())
@@ -551,22 +569,29 @@ impl ByobExecutor for ByobComputeExecutor {
         &self,
         deployment_id: Uuid,
     ) -> ToadStoolResult<ByobDeploymentResponse> {
-        let deployments = self.active_deployments.read().await;
-
-        if let Some(deployment) = deployments.get(&deployment_id) {
-            Ok(deployment.to_response())
-        } else {
-            Err(ToadStoolError::not_found(format!(
-                "Deployment {deployment_id} not found"
-            )))
-        }
+        self.active_deployments
+            .read()
+            .await
+            .get(&deployment_id)
+            .map_or_else(
+                || {
+                    Err(ToadStoolError::not_found(format!(
+                        "Deployment {deployment_id} not found"
+                    )))
+                },
+                |deployment| Ok(deployment.to_response()),
+            )
     }
 
     async fn stop_deployment(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         info!("🛑 Stopping deployment: {}", deployment_id);
 
-        let mut deployments = self.active_deployments.write().await;
-        if let Some(deployment) = deployments.get_mut(&deployment_id) {
+        if let Some(deployment) = self
+            .active_deployments
+            .write()
+            .await
+            .get_mut(&deployment_id)
+        {
             deployment.update_status(DeploymentStatus::Stopping);
 
             // Stop all running services in reverse dependency order
@@ -630,9 +655,10 @@ impl ByobExecutor for ByobComputeExecutor {
     }
 
     async fn list_deployments(&self) -> ToadStoolResult<Vec<ByobDeploymentResponse>> {
-        let deployments = self.active_deployments.read().await;
-
-        let responses = deployments
+        let responses = self
+            .active_deployments
+            .read()
+            .await
             .values()
             .inspect(|d| {
                 if d.is_completed() {
@@ -654,14 +680,18 @@ impl ByobExecutor for ByobComputeExecutor {
         // Refresh usage metrics before returning so callers always see current stats.
         self.update_resource_usage(deployment_id).await?;
 
-        let deployments = self.active_deployments.read().await;
-        if let Some(deployment) = deployments.get(&deployment_id) {
-            Ok(deployment.resource_usage.clone())
-        } else {
-            Err(ToadStoolError::not_found(format!(
-                "Deployment {deployment_id} not found"
-            )))
-        }
+        self.active_deployments
+            .read()
+            .await
+            .get(&deployment_id)
+            .map_or_else(
+                || {
+                    Err(ToadStoolError::not_found(format!(
+                        "Deployment {deployment_id} not found"
+                    )))
+                },
+                |deployment| Ok(deployment.resource_usage.clone()),
+            )
     }
 }
 

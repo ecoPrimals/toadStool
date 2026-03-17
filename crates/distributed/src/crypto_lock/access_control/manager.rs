@@ -75,11 +75,11 @@ impl ToadStoolCryptoLock {
             });
         }
 
-        if let Some(cached_result) = self.permission_cache.get(target).await {
-            if !cached_result.is_expired() {
-                debug!("✅ Using cached permission result");
-                return Ok(cached_result.result);
-            }
+        if let Some(cached_result) = self.permission_cache.get(target).await
+            && !cached_result.is_expired()
+        {
+            debug!("✅ Using cached permission result");
+            return Ok(cached_result.result);
         }
 
         let permissions = self.find_permissions_for_target(target).await?;
@@ -257,14 +257,13 @@ impl ToadStoolCryptoLock {
 
         for (target, permission) in &self.active_permissions {
             if let Ok(time_until_expiry) = permission.valid_until.duration_since(SystemTime::now())
+                && time_until_expiry < Duration::from_secs(7 * 24 * 60 * 60)
             {
-                if time_until_expiry < Duration::from_secs(7 * 24 * 60 * 60) {
-                    status.expiring_permissions.push(ExpiringPermission {
-                        permission_id: permission.permission_id,
-                        target: target.clone(),
-                        expires_in: time_until_expiry,
-                    });
-                }
+                status.expiring_permissions.push(ExpiringPermission {
+                    permission_id: permission.permission_id,
+                    target: target.clone(),
+                    expires_in: time_until_expiry,
+                });
             }
 
             if let Some(delegation_chain) = &permission.delegation_chain {
@@ -398,6 +397,7 @@ impl ToadStoolCryptoLock {
         }
     }
 
+    #[allow(clippy::missing_const_for_fn)] // Stub; ToadStoolResult not const
     fn load_permissions(&self) -> ToadStoolResult<()> {
         Ok(())
     }

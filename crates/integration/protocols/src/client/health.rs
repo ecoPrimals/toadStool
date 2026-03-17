@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tracing::debug;
 
 use crate::config::HealthConfig;
@@ -80,10 +80,9 @@ pub fn spawn_health_monitor(
                 }
             }
 
-            debug!(
-                "Health check cycle completed for {} services",
-                services_snapshot.len()
-            );
+            let len = services_snapshot.len();
+            drop(services_snapshot);
+            debug!("Health check cycle completed for {} services", len);
         }
     });
 }

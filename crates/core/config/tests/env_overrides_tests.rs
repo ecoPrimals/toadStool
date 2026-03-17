@@ -16,7 +16,8 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 fn clear_toadstool_env_vars() {
     for (key, _) in std::env::vars() {
         if key.starts_with("TOADSTOOL_") {
-            std::env::remove_var(&key);
+            // SAFETY: Test-only; sequential test execution via ENV_LOCK
+            unsafe { std::env::remove_var(&key) };
         }
     }
 }
@@ -28,7 +29,8 @@ fn test_env_override_app_environment() {
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
-    std::env::set_var("TOADSTOOL_ENV", "production");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { std::env::set_var("TOADSTOOL_ENV", "production") };
 
     config.apply_env_overrides().unwrap();
 
@@ -45,20 +47,23 @@ fn test_env_override_debug_flag() {
     let mut config = ToadStoolConfig::default();
     config.features.enable_debug = false;
 
-    std::env::set_var("TOADSTOOL_DEBUG", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_DEBUG", "true");
+    }
     config.apply_env_overrides().unwrap();
     assert!(config.features.enable_debug);
 
     // Test case insensitivity
     let mut config2 = ToadStoolConfig::default();
-    std::env::set_var("TOADSTOOL_DEBUG", "TRUE");
+    unsafe { std::env::set_var("TOADSTOOL_DEBUG", "TRUE") };
     config2.apply_env_overrides().unwrap();
     assert!(config2.features.enable_debug);
 
     // Test false
     let mut config3 = ToadStoolConfig::default();
     config3.features.enable_debug = true;
-    std::env::set_var("TOADSTOOL_DEBUG", "false");
+    unsafe { std::env::set_var("TOADSTOOL_DEBUG", "false") };
     config3.apply_env_overrides().unwrap();
     assert!(!config3.features.enable_debug);
 
@@ -74,13 +79,14 @@ fn test_env_override_verbose() {
     let mut config = ToadStoolConfig::default();
     config.logging.level = "info".to_string();
 
-    std::env::set_var("TOADSTOOL_VERBOSE", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { std::env::set_var("TOADSTOOL_VERBOSE", "true") };
     config.apply_env_overrides().unwrap();
     assert_eq!(config.logging.level, "debug");
 
     // Test false sets info
     let mut config2 = ToadStoolConfig::default();
-    std::env::set_var("TOADSTOOL_VERBOSE", "false");
+    unsafe { std::env::set_var("TOADSTOOL_VERBOSE", "false") };
     config2.apply_env_overrides().unwrap();
     assert_eq!(config2.logging.level, "info");
 
@@ -95,7 +101,8 @@ fn test_env_override_bind_address() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0:8080");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { std::env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0:8080") };
     config.apply_env_overrides().unwrap();
 
     assert_eq!(config.network.bind_address.to_string(), "0.0.0.0:8080");
@@ -111,14 +118,17 @@ fn test_env_override_bind_address_invalid() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_BIND_ADDRESS", "invalid_address");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { std::env::set_var("TOADSTOOL_BIND_ADDRESS", "invalid_address") };
     let result = config.apply_env_overrides();
 
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Invalid bind address"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid bind address")
+    );
 
     clear_toadstool_env_vars();
 }
@@ -132,7 +142,8 @@ fn test_env_override_port() {
     let mut config = ToadStoolConfig::default();
     config.network.bind_address = "127.0.0.1:3000".parse().unwrap();
 
-    std::env::set_var("TOADSTOOL_PORT", "9090");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe { std::env::set_var("TOADSTOOL_PORT", "9090") };
     config.apply_env_overrides().unwrap();
 
     assert_eq!(config.network.bind_address.port(), 9090);
@@ -148,7 +159,7 @@ fn test_env_override_port_invalid() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_PORT", "invalid");
+    unsafe { std::env::set_var("TOADSTOOL_PORT", "invalid") };
     let result = config.apply_env_overrides();
 
     assert!(result.is_err());
@@ -168,7 +179,7 @@ fn test_env_override_primal_endpoints() {
     // NOTE: All endpoint fields are deprecated in favor of ServiceDiscovery::find_by_capability()
     // This test verifies the override mechanism works, but production code should use capability discovery
 
-    std::env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://songbird:8001");
+    unsafe { std::env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://songbird:8001") };
 
     config.apply_env_overrides().unwrap();
 
@@ -185,8 +196,11 @@ fn test_env_override_resource_limits() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_MAX_CPU", "80.5");
-    std::env::set_var("TOADSTOOL_MAX_MEMORY", "4294967296");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_MAX_CPU", "80.5");
+        std::env::set_var("TOADSTOOL_MAX_MEMORY", "4294967296");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -204,7 +218,7 @@ fn test_env_override_resource_limits_invalid() {
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
-    std::env::set_var("TOADSTOOL_MAX_CPU", "invalid");
+    unsafe { std::env::set_var("TOADSTOOL_MAX_CPU", "invalid") };
     let result = config.apply_env_overrides();
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("Invalid max CPU"));
@@ -212,13 +226,15 @@ fn test_env_override_resource_limits_invalid() {
     clear_toadstool_env_vars();
 
     let mut config2 = ToadStoolConfig::default();
-    std::env::set_var("TOADSTOOL_MAX_MEMORY", "not_a_number");
+    unsafe { std::env::set_var("TOADSTOOL_MAX_MEMORY", "not_a_number") };
     let result2 = config2.apply_env_overrides();
     assert!(result2.is_err());
-    assert!(result2
-        .unwrap_err()
-        .to_string()
-        .contains("Invalid max memory"));
+    assert!(
+        result2
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid max memory")
+    );
 
     clear_toadstool_env_vars();
 }
@@ -231,7 +247,7 @@ fn test_env_override_log_level() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_LOG_LEVEL", "trace");
+    unsafe { std::env::set_var("TOADSTOOL_LOG_LEVEL", "trace") };
     config.apply_env_overrides().unwrap();
 
     assert_eq!(config.logging.level, "trace");
@@ -247,8 +263,11 @@ fn test_env_override_directories() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_DATA_DIR", "/custom/data");
-    std::env::set_var("TOADSTOOL_CACHE_DIR", "/custom/cache");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_DATA_DIR", "/custom/data");
+        std::env::set_var("TOADSTOOL_CACHE_DIR", "/custom/cache");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -266,7 +285,7 @@ fn test_env_override_worker_threads() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_WORKER_THREADS", "16");
+    unsafe { std::env::set_var("TOADSTOOL_WORKER_THREADS", "16") };
     config.apply_env_overrides().unwrap();
 
     assert_eq!(config.app.worker_threads, 16);
@@ -282,7 +301,7 @@ fn test_env_override_max_concurrent() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_MAX_CONCURRENT_EXECUTIONS", "50");
+    unsafe { std::env::set_var("TOADSTOOL_MAX_CONCURRENT_EXECUTIONS", "50") };
     config.apply_env_overrides().unwrap();
 
     assert_eq!(config.runtime.max_concurrent_executions, 50);
@@ -298,8 +317,11 @@ fn test_env_override_timeouts() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_EXECUTION_TIMEOUT", "300");
-    std::env::set_var("TOADSTOOL_REQUEST_TIMEOUT", "60");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_EXECUTION_TIMEOUT", "300");
+        std::env::set_var("TOADSTOOL_REQUEST_TIMEOUT", "60");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -323,7 +345,7 @@ fn test_env_override_metrics() {
         ..Default::default()
     };
 
-    std::env::set_var("TOADSTOOL_ENABLE_METRICS", "true");
+    unsafe { std::env::set_var("TOADSTOOL_ENABLE_METRICS", "true") };
     config.apply_env_overrides().unwrap();
 
     assert!(config.metrics.is_some());
@@ -334,7 +356,7 @@ fn test_env_override_metrics() {
         ..Default::default()
     };
 
-    std::env::set_var("TOADSTOOL_ENABLE_METRICS", "false");
+    unsafe { std::env::set_var("TOADSTOOL_ENABLE_METRICS", "false") };
     config2.apply_env_overrides().unwrap();
 
     assert!(config2.metrics.is_none());
@@ -353,7 +375,7 @@ fn test_env_override_cache() {
         ..Default::default()
     };
 
-    std::env::set_var("TOADSTOOL_ENABLE_CACHE", "true");
+    unsafe { std::env::set_var("TOADSTOOL_ENABLE_CACHE", "true") };
     config.apply_env_overrides().unwrap();
 
     assert!(config.cache.is_some());
@@ -364,7 +386,7 @@ fn test_env_override_cache() {
         ..Default::default()
     };
 
-    std::env::set_var("TOADSTOOL_ENABLE_CACHE", "false");
+    unsafe { std::env::set_var("TOADSTOOL_ENABLE_CACHE", "false") };
     config2.apply_env_overrides().unwrap();
 
     assert!(config2.cache.is_none());
@@ -382,8 +404,11 @@ fn test_env_override_security_features() {
     config.security.auth.enabled = false;
     config.security.sandbox.enabled = false;
 
-    std::env::set_var("TOADSTOOL_ENABLE_AUTH", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_SANDBOX", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_ENABLE_AUTH", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_SANDBOX", "true");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -404,9 +429,12 @@ fn test_env_override_feature_flags() {
     config.features.enable_distributed = false;
     config.features.enable_auto_config = false;
 
-    std::env::set_var("TOADSTOOL_ENABLE_FEDERATION", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_DISTRIBUTED", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_AUTO_CONFIG", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_ENABLE_FEDERATION", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_DISTRIBUTED", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_AUTO_CONFIG", "true");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -429,10 +457,13 @@ fn test_env_override_experimental_flags() {
     config.features.enable_beta = false;
     config.features.enable_profiling = false;
 
-    std::env::set_var("TOADSTOOL_ENABLE_HOT_RELOAD", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_EXPERIMENTAL", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_BETA", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_PROFILING", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_ENABLE_HOT_RELOAD", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_EXPERIMENTAL", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_BETA", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_PROFILING", "true");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -458,9 +489,12 @@ fn test_env_override_api_protocols() {
     }
     config.features.enable_graphql = false;
 
-    std::env::set_var("TOADSTOOL_ENABLE_OPENAPI", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_GRPC", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_GRAPHQL", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_ENABLE_OPENAPI", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_GRPC", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_GRAPHQL", "true");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -481,9 +515,12 @@ fn test_env_override_container_config() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_CONTAINER_RUNTIME", "podman");
-    std::env::set_var("TOADSTOOL_CONTAINER_REGISTRY", "quay.io");
-    std::env::set_var("TOADSTOOL_CONTAINER_NETWORK_MODE", "host");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_CONTAINER_RUNTIME", "podman");
+        std::env::set_var("TOADSTOOL_CONTAINER_REGISTRY", "quay.io");
+        std::env::set_var("TOADSTOOL_CONTAINER_NETWORK_MODE", "host");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -503,9 +540,12 @@ fn test_env_override_wasm_config() {
     let mut config = ToadStoolConfig::default();
     config.runtime.wasm.enable_wasi = false;
 
-    std::env::set_var("TOADSTOOL_WASM_ENGINE", "wasmi");
-    std::env::set_var("TOADSTOOL_WASM_MAX_MEMORY", "536870912");
-    std::env::set_var("TOADSTOOL_WASM_ENABLE_WASI", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_WASM_ENGINE", "wasmi");
+        std::env::set_var("TOADSTOOL_WASM_MAX_MEMORY", "536870912");
+        std::env::set_var("TOADSTOOL_WASM_ENABLE_WASI", "true");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -524,10 +564,13 @@ fn test_env_override_python_config() {
 
     let mut config = ToadStoolConfig::default();
 
-    std::env::set_var("TOADSTOOL_PYTHON_EXECUTABLE", "/usr/bin/python3.11");
-    std::env::set_var("TOADSTOOL_PYTHON_VENV_PATH", "/opt/venv");
-    std::env::set_var("TOADSTOOL_PYTHON_INDEX_URL", "https://pypi.org/simple");
-    std::env::set_var("TOADSTOOL_PYTHON_MAX_MEMORY", "2147483648");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_PYTHON_EXECUTABLE", "/usr/bin/python3.11");
+        std::env::set_var("TOADSTOOL_PYTHON_VENV_PATH", "/opt/venv");
+        std::env::set_var("TOADSTOOL_PYTHON_INDEX_URL", "https://pypi.org/simple");
+        std::env::set_var("TOADSTOOL_PYTHON_MAX_MEMORY", "2147483648");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -551,10 +594,13 @@ fn test_env_override_jwt_config() {
     let mut config = ToadStoolConfig::default();
     config.security.auth.jwt_secret = None;
 
-    std::env::set_var("TOADSTOOL_JWT_SECRET", "super_secret_key_12345");
-    std::env::set_var("TOADSTOOL_SESSION_TIMEOUT", "7200");
-    std::env::set_var("TOADSTOOL_MAX_LOGIN_ATTEMPTS", "5");
-    std::env::set_var("TOADSTOOL_LOCKOUT_DURATION", "1800");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_JWT_SECRET", "super_secret_key_12345");
+        std::env::set_var("TOADSTOOL_SESSION_TIMEOUT", "7200");
+        std::env::set_var("TOADSTOOL_MAX_LOGIN_ATTEMPTS", "5");
+        std::env::set_var("TOADSTOOL_LOCKOUT_DURATION", "1800");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -584,9 +630,12 @@ fn test_env_override_encryption_config() {
     let mut config = ToadStoolConfig::default();
     config.security.encryption.enabled = false;
 
-    std::env::set_var("TOADSTOOL_ENCRYPTION_ENABLED", "true");
-    std::env::set_var("TOADSTOOL_ENCRYPTION_ALGORITHM", "AES-256-GCM");
-    std::env::set_var("TOADSTOOL_ENCRYPTION_KEY_LENGTH", "256");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_ENCRYPTION_ENABLED", "true");
+        std::env::set_var("TOADSTOOL_ENCRYPTION_ALGORITHM", "AES-256-GCM");
+        std::env::set_var("TOADSTOOL_ENCRYPTION_KEY_LENGTH", "256");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -606,9 +655,12 @@ fn test_env_override_audit_config() {
     let mut config = ToadStoolConfig::default();
     config.security.audit.enabled = false;
 
-    std::env::set_var("TOADSTOOL_AUDIT_ENABLED", "true");
-    std::env::set_var("TOADSTOOL_AUDIT_LOG_FILE", "/var/log/toadstool/audit.log");
-    std::env::set_var("TOADSTOOL_AUDIT_LOG_LEVEL", "info");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_AUDIT_ENABLED", "true");
+        std::env::set_var("TOADSTOOL_AUDIT_LOG_FILE", "/var/log/toadstool/audit.log");
+        std::env::set_var("TOADSTOOL_AUDIT_LOG_LEVEL", "info");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -632,9 +684,12 @@ fn test_env_override_sandbox_config() {
     config.security.sandbox.allow_network = true;
     config.security.sandbox.allow_file_access = true;
 
-    std::env::set_var("TOADSTOOL_SANDBOX_TYPE", "seccomp");
-    std::env::set_var("TOADSTOOL_SANDBOX_ALLOW_NETWORK", "false");
-    std::env::set_var("TOADSTOOL_SANDBOX_ALLOW_FILE_ACCESS", "false");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_SANDBOX_TYPE", "seccomp");
+        std::env::set_var("TOADSTOOL_SANDBOX_ALLOW_NETWORK", "false");
+        std::env::set_var("TOADSTOOL_SANDBOX_ALLOW_FILE_ACCESS", "false");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -656,11 +711,14 @@ fn test_env_override_logging_config() {
     config.logging.enable_colors = true;
     config.logging.enable_timestamps = true;
 
-    std::env::set_var("TOADSTOOL_LOG_TO_FILE", "true");
-    std::env::set_var("TOADSTOOL_LOG_FILE", "/var/log/toadstool/app.log");
-    std::env::set_var("TOADSTOOL_LOG_FORMAT", "json");
-    std::env::set_var("TOADSTOOL_LOG_COLORS", "false");
-    std::env::set_var("TOADSTOOL_LOG_TIMESTAMPS", "false");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_LOG_TO_FILE", "true");
+        std::env::set_var("TOADSTOOL_LOG_FILE", "/var/log/toadstool/app.log");
+        std::env::set_var("TOADSTOOL_LOG_FORMAT", "json");
+        std::env::set_var("TOADSTOOL_LOG_COLORS", "false");
+        std::env::set_var("TOADSTOOL_LOG_TIMESTAMPS", "false");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -684,11 +742,14 @@ fn test_env_override_logging_advanced() {
     config.logging.enable_module_paths = false;
     config.logging.log_rotation = false;
 
-    std::env::set_var("TOADSTOOL_LOG_THREAD_IDS", "true");
-    std::env::set_var("TOADSTOOL_LOG_MODULE_PATHS", "true");
-    std::env::set_var("TOADSTOOL_LOG_ROTATION", "true");
-    std::env::set_var("TOADSTOOL_LOG_MAX_SIZE", "104857600");
-    std::env::set_var("TOADSTOOL_LOG_MAX_FILES", "10");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_LOG_THREAD_IDS", "true");
+        std::env::set_var("TOADSTOOL_LOG_MODULE_PATHS", "true");
+        std::env::set_var("TOADSTOOL_LOG_ROTATION", "true");
+        std::env::set_var("TOADSTOOL_LOG_MAX_SIZE", "104857600");
+        std::env::set_var("TOADSTOOL_LOG_MAX_FILES", "10");
+    }
 
     config.apply_env_overrides().unwrap();
 
@@ -710,13 +771,16 @@ fn test_env_override_multiple_integration() {
     let mut config = ToadStoolConfig::default();
 
     // Set many variables
-    std::env::set_var("TOADSTOOL_ENV", "production");
-    std::env::set_var("TOADSTOOL_DEBUG", "false");
-    std::env::set_var("TOADSTOOL_PORT", "8080");
-    std::env::set_var("TOADSTOOL_LOG_LEVEL", "warn");
-    std::env::set_var("TOADSTOOL_WORKER_THREADS", "8");
-    std::env::set_var("TOADSTOOL_ENABLE_METRICS", "true");
-    std::env::set_var("TOADSTOOL_ENABLE_AUTH", "true");
+    // SAFETY: Test-only; sequential test execution via ENV_LOCK
+    unsafe {
+        std::env::set_var("TOADSTOOL_ENV", "production");
+        std::env::set_var("TOADSTOOL_DEBUG", "false");
+        std::env::set_var("TOADSTOOL_PORT", "8080");
+        std::env::set_var("TOADSTOOL_LOG_LEVEL", "warn");
+        std::env::set_var("TOADSTOOL_WORKER_THREADS", "8");
+        std::env::set_var("TOADSTOOL_ENABLE_METRICS", "true");
+        std::env::set_var("TOADSTOOL_ENABLE_AUTH", "true");
+    }
 
     config.apply_env_overrides().unwrap();
 

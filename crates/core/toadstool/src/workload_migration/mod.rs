@@ -39,14 +39,14 @@ mod tests;
 mod validation;
 
 pub use validation::{
-    validate_migration, validate_preflight, validate_recommendation, PreMigrationSnapshot,
-    PreflightOutcome, ResourceRequirements,
+    PreMigrationSnapshot, PreflightOutcome, ResourceRequirements, validate_migration,
+    validate_preflight, validate_recommendation,
 };
 
+use crate::ToadStoolResult;
 use crate::cloud_provider_trait::*;
 use crate::composition_engine::CompositionEngine;
 use crate::fractal_integration::FractalRuntime;
-use crate::ToadStoolResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -169,8 +169,7 @@ impl MigrationCoordinator {
     /// Register a cloud provider
     pub async fn register_provider(&self, provider: Box<dyn CloudProvider>) {
         let name = provider.name().to_string();
-        let mut providers = self.providers.write().await;
-        providers.register(provider);
+        self.providers.write().await.register(provider);
         info!("📦 Registered cloud provider: {}", name);
     }
 

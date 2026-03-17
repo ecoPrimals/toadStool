@@ -8,8 +8,8 @@
 use crate::coral_reef_client::SharedCoralReefClient;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 
 /// Tracks an in-flight dispatch job.
@@ -88,12 +88,12 @@ impl DispatchHandler {
         let dispatch_mode = detect_dispatch_mode(p, &bdf);
 
         let thermal = super::hw_learn::check_thermal_for_bdf_pub(&bdf);
-        if let Some(ref status) = thermal {
-            if !status.compute_safe() {
-                return Err(JsonRpcError::internal_error(format!(
-                    "GPU {bdf} thermal status {status:?} — refusing dispatch"
-                )));
-            }
+        if let Some(ref status) = thermal
+            && !status.compute_safe()
+        {
+            return Err(JsonRpcError::internal_error(format!(
+                "GPU {bdf} thermal status {status:?} — refusing dispatch"
+            )));
         }
 
         let workgroup_size = p

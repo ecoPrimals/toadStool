@@ -201,9 +201,11 @@ fn test_security_env_config_cors_comma_separated() {
         || {
             let config = SecurityEnvConfig::from_env();
             assert_eq!(config.cors_allowed_origins.len(), 3);
-            assert!(config
-                .cors_allowed_origins
-                .contains(&"https://a.com".to_string()));
+            assert!(
+                config
+                    .cors_allowed_origins
+                    .contains(&"https://a.com".to_string())
+            );
         },
     );
 }

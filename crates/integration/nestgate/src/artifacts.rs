@@ -71,18 +71,16 @@ impl StorageClient {
         let payload = serde_json::json!({ "artifact_id": id.to_string() });
 
         let rt = tokio::runtime::Handle::try_current();
-        if let Ok(handle) = rt {
-            if let Ok(response) =
+        if let Ok(handle) = rt
+            && let Ok(response) =
                 handle.block_on(self.rpc_client.call("storage.artifact.retrieve", payload))
-            {
-                if let Some(data_b64) = response.get("data_base64").and_then(|v| v.as_str()) {
-                    use base64::Engine;
-                    let bytes = base64::engine::general_purpose::STANDARD
-                        .decode(data_b64)
-                        .map_err(|e| NestGateError::Storage(format!("base64 decode: {e}")))?;
-                    return Ok(Some(bytes));
-                }
-            }
+            && let Some(data_b64) = response.get("data_base64").and_then(|v| v.as_str())
+        {
+            use base64::Engine;
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(data_b64)
+                .map_err(|e| NestGateError::Storage(format!("base64 decode: {e}")))?;
+            return Ok(Some(bytes));
         }
 
         Ok(None)

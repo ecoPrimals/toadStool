@@ -6,11 +6,11 @@
 //! The API crate has been fossilized; this is the canonical BYOB route implementation.
 
 use axum::{
+    Router,
     extract::{Path, State},
     http::StatusCode,
     response::Json,
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -18,8 +18,8 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use toadstool::{
-    byob::{ByobDeploymentRequest, ByobDeploymentResponse, ByobExecutor, ResourceUsage},
     ToadStoolError,
+    byob::{ByobDeploymentRequest, ByobDeploymentResponse, ByobExecutor, ResourceUsage},
 };
 
 /// HTTP API for BYOB operations (router factory)

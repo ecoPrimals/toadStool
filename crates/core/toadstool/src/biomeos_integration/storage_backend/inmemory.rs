@@ -56,8 +56,10 @@ impl StorageBackend for InMemoryBackend {
                 created_at: SystemTime::now(),
             };
 
-            let mut vols = volumes.lock().await;
-            vols.insert(config_name, volume_info.clone());
+            volumes
+                .lock()
+                .await
+                .insert(config_name, volume_info.clone());
 
             tracing::debug!("Provisioned test volume: {}", volume_info.name);
             Ok(volume_info)
@@ -83,8 +85,10 @@ impl StorageBackend for InMemoryBackend {
                 created_at: SystemTime::now(),
             };
 
-            let mut vols = volumes.lock().await;
-            vols.insert(config_name, volume_info.clone());
+            volumes
+                .lock()
+                .await
+                .insert(config_name, volume_info.clone());
 
             tracing::debug!("Provisioned test persistent volume: {}", volume_info.name);
             Ok(volume_info)
@@ -102,8 +106,7 @@ impl StorageBackend for InMemoryBackend {
         let service_name = service_name.to_string();
 
         Box::pin(async move {
-            let vols = volumes.lock().await;
-            if !vols.contains_key(&volume_name) {
+            if !volumes.lock().await.contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
                 )));
@@ -128,8 +131,7 @@ impl StorageBackend for InMemoryBackend {
         let service_name = service_name.to_string();
 
         Box::pin(async move {
-            let vols = volumes.lock().await;
-            if !vols.contains_key(&volume_name) {
+            if !volumes.lock().await.contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
                 )));
@@ -152,8 +154,7 @@ impl StorageBackend for InMemoryBackend {
         let volume_name = volume_name.to_string();
 
         Box::pin(async move {
-            let mut vols = volumes.lock().await;
-            vols.remove(&volume_name).ok_or_else(|| {
+            volumes.lock().await.remove(&volume_name).ok_or_else(|| {
                 ToadStoolError::not_found(format!("Volume {volume_name} not found"))
             })?;
 

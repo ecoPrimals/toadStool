@@ -69,7 +69,7 @@ pub struct Toolchain8086;
 pub struct Toolchain68000;
 
 impl Toolchain6502 {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -125,35 +125,35 @@ impl EmbeddedToolchain for Toolchain6502 {
 
 impl ToolchainZ80 {
     /// Create a new Z80 toolchain
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl Toolchain8080 {
     /// Create a new 8080 toolchain
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl Toolchain8051 {
     /// Create a new 8051 toolchain
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl Toolchain8086 {
     /// Create a new 8086 toolchain
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl Toolchain68000 {
     /// Create a new 68000 toolchain
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

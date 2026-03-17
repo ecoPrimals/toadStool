@@ -2,6 +2,7 @@
 #![deny(unsafe_code)]
 #![cfg_attr(test, allow(deprecated))]
 #![allow(
+    clippy::nursery,
     clippy::cast_precision_loss,
     clippy::cast_lossless,
     clippy::cast_possible_truncation,

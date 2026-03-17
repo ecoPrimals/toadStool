@@ -75,7 +75,7 @@ impl UniversalAdapter {
     ///
     /// Passes through the response unchanged — adaptation is a request-side
     /// concern. Response validation belongs at the caller boundary.
-    pub fn adapt_response(
+    pub const fn adapt_response(
         &self,
         response: ExecutionResponse,
     ) -> ToadStoolResult<ExecutionResponse> {

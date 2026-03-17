@@ -34,38 +34,35 @@ impl GpuFramework {
     #[must_use]
     pub fn name(&self) -> &str {
         match self {
-            GpuFramework::WebGpu => "WebGPU",
-            GpuFramework::Vulkan => "Vulkan",
-            GpuFramework::OpenCl => "OpenCL",
-            GpuFramework::Cuda => "CUDA",
-            GpuFramework::Metal => "Metal",
-            GpuFramework::Rocm => "ROCm",
-            GpuFramework::DirectCompute => "DirectCompute",
-            GpuFramework::Custom(name) => name,
+            Self::WebGpu => "WebGPU",
+            Self::Vulkan => "Vulkan",
+            Self::OpenCl => "OpenCL",
+            Self::Cuda => "CUDA",
+            Self::Metal => "Metal",
+            Self::Rocm => "ROCm",
+            Self::DirectCompute => "DirectCompute",
+            Self::Custom(name) => name,
         }
     }
 
     /// Check if framework is universally supported
     #[must_use]
     pub const fn is_universal(&self) -> bool {
-        matches!(
-            self,
-            GpuFramework::WebGpu | GpuFramework::Vulkan | GpuFramework::OpenCl
-        )
+        matches!(self, Self::WebGpu | Self::Vulkan | Self::OpenCl)
     }
 
     /// Get platform compatibility information
     #[must_use]
     pub fn platform_compatibility(&self) -> Vec<&str> {
         match self {
-            GpuFramework::WebGpu => vec!["Windows", "macOS", "Linux", "Web"],
-            GpuFramework::Vulkan => vec!["Windows", "macOS", "Linux", "Android"],
-            GpuFramework::OpenCl => vec!["Windows", "macOS", "Linux"],
-            GpuFramework::Cuda => vec!["Windows", "Linux"],
-            GpuFramework::Metal => vec!["macOS", "iOS"],
-            GpuFramework::Rocm => vec!["Linux"],
-            GpuFramework::DirectCompute => vec!["Windows"],
-            GpuFramework::Custom(_) => vec!["Unknown"],
+            Self::WebGpu => vec!["Windows", "macOS", "Linux", "Web"],
+            Self::Vulkan => vec!["Windows", "macOS", "Linux", "Android"],
+            Self::OpenCl => vec!["Windows", "macOS", "Linux"],
+            Self::Cuda => vec!["Windows", "Linux"],
+            Self::Metal => vec!["macOS", "iOS"],
+            Self::Rocm => vec!["Linux"],
+            Self::DirectCompute => vec!["Windows"],
+            Self::Custom(_) => vec!["Unknown"],
         }
     }
 }
@@ -263,15 +260,15 @@ impl Clone for FrameworkHandle {
     fn clone(&self) -> Self {
         match self {
             #[cfg(feature = "opencl")]
-            FrameworkHandle::OpenCl(device) => FrameworkHandle::OpenCl(*device),
+            Self::OpenCl(device) => Self::OpenCl(*device),
             #[cfg(feature = "cuda")]
             // cudarc 0.19: CudaContext is in Arc, so we can clone it
-            FrameworkHandle::Cuda(context) => FrameworkHandle::Cuda(Arc::clone(context)),
+            Self::Cuda(context) => Self::Cuda(Arc::clone(context)),
             #[cfg(feature = "vulkan")]
-            FrameworkHandle::Vulkan(device) => FrameworkHandle::Vulkan(Arc::clone(device)),
+            Self::Vulkan(device) => Self::Vulkan(Arc::clone(device)),
             #[cfg(feature = "webgpu")]
-            FrameworkHandle::WebGpu(device) => FrameworkHandle::WebGpu(Arc::clone(device)),
-            FrameworkHandle::Unavailable { name, reason } => FrameworkHandle::Unavailable {
+            Self::WebGpu(device) => Self::WebGpu(Arc::clone(device)),
+            Self::Unavailable { name, reason } => Self::Unavailable {
                 name: name.clone(),
                 reason: reason.clone(),
             },
@@ -489,7 +486,7 @@ pub struct ComputeWorkload {
     /// Parent session (for recursive execution)
     pub parent_session: Option<Uuid>,
     /// Recursive workloads to spawn
-    pub recursive_workloads: Vec<ComputeWorkload>,
+    pub recursive_workloads: Vec<Self>,
     /// Execution priority
     pub priority: u32,
 }
@@ -504,7 +501,7 @@ pub struct ComputeResult {
     /// Primary kernel output
     pub primary_output: KernelOutput,
     /// Results from recursive workloads
-    pub recursive_results: Vec<ComputeResult>,
+    pub recursive_results: Vec<Self>,
     /// Total execution time
     pub total_execution_time: std::time::Duration,
 }

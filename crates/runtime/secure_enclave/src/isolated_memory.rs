@@ -16,14 +16,14 @@
 //! This eliminates unsafe libc FFI while maintaining identical functionality.
 
 use crate::error::{Error, Result};
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::{Layout, alloc, dealloc};
 use std::ptr::NonNull;
 
 #[cfg(target_family = "unix")]
 use rustix::mm::{mlock, munlock};
 
 #[cfg(target_os = "linux")]
-use rustix::mm::{madvise, Advice};
+use rustix::mm::{Advice, madvise};
 
 use std::ffi::c_void;
 

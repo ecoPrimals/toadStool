@@ -78,36 +78,36 @@ impl JobHandler {
         // If routing to a remote gate, forward the job instead of local submit
         {
             let router = self.router.read().await;
-            if router.is_remote_gate(routing.gate_id.as_ref()) {
-                if let Some(endpoint) = router.gate_endpoint(routing.gate_id.as_ref()) {
-                    drop(router);
-                    match crate::cross_gate::RemoteDispatcher::forward(
-                        &endpoint,
-                        "compute.submit",
-                        params.clone(),
-                    )
-                    .await
-                    {
-                        Ok(remote_result) => {
-                            return Ok(serde_json::json!({
-                                "routing": {
-                                    "gate_id": routing.gate_id.as_ref(),
-                                    "reason": routing.reason,
-                                    "estimated_wait_ms": routing.estimated_wait_ms,
-                                },
-                                "forwarded": true,
-                                "remote_gate": routing.gate_id.as_ref(),
-                                "remote_result": remote_result,
-                            }));
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                gate = routing.gate_id.as_ref(),
-                                error = %e,
-                                "remote dispatch failed, falling back to local"
-                            );
-                            // Fall through to local submission
-                        }
+            if router.is_remote_gate(routing.gate_id.as_ref())
+                && let Some(endpoint) = router.gate_endpoint(routing.gate_id.as_ref())
+            {
+                drop(router);
+                match crate::cross_gate::RemoteDispatcher::forward(
+                    &endpoint,
+                    "compute.submit",
+                    params.clone(),
+                )
+                .await
+                {
+                    Ok(remote_result) => {
+                        return Ok(serde_json::json!({
+                            "routing": {
+                                "gate_id": routing.gate_id.as_ref(),
+                                "reason": routing.reason,
+                                "estimated_wait_ms": routing.estimated_wait_ms,
+                            },
+                            "forwarded": true,
+                            "remote_gate": routing.gate_id.as_ref(),
+                            "remote_result": remote_result,
+                        }));
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            gate = routing.gate_id.as_ref(),
+                            error = %e,
+                            "remote dispatch failed, falling back to local"
+                        );
+                        // Fall through to local submission
                     }
                 }
             }

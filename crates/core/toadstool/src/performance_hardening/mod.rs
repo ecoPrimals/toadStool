@@ -141,8 +141,10 @@ impl PerformanceHardeningManager {
             factory,
         ));
 
-        let mut pools = self.memory_pools.write().await;
-        pools.insert(name.to_string(), pool.clone());
+        self.memory_pools
+            .write()
+            .await
+            .insert(name.to_string(), pool.clone());
 
         Ok(pool)
     }
@@ -163,8 +165,10 @@ impl PerformanceHardeningManager {
         let cache = Arc::new(IntelligentCache::new(self.config.caching_config.clone()));
         cache.start_cleanup_task().await;
 
-        let mut caches = self.caches.write().await;
-        caches.insert(name.to_string(), cache.clone());
+        self.caches
+            .write()
+            .await
+            .insert(name.to_string(), cache.clone());
 
         Ok(cache)
     }

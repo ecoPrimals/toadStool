@@ -1,7 +1,7 @@
 [package]
 name = "akida-setup"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors = ["ToadStool Contributors"]
 description = "Setup and configuration utility for Akida neuromorphic hardware"
 license.workspace = true

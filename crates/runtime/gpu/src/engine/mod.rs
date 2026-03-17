@@ -11,13 +11,13 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use toadstool::{
+    WorkloadSpec, WorkloadType,
     error::{ToadStoolError, ToadStoolResult},
     execution::{
         ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
         RuntimeConfig, RuntimeEngine, RuntimeType,
     },
     resources::{ResourceMonitor, RuntimeMetrics},
-    WorkloadSpec, WorkloadType,
 };
 
 use crate::compiler::UniversalKernelCompiler;
@@ -128,6 +128,7 @@ impl UniversalGpuEngine {
             ));
         }
 
+        drop(frameworks);
         Ok(())
     }
 
@@ -168,9 +169,12 @@ impl UniversalGpuEngine {
     /// Discover available compute devices
     async fn discover_devices(&self) -> ToadStoolResult<()> {
         let frameworks = self.frameworks.read().await;
+        let framework_values: Vec<_> = frameworks.values().cloned().collect();
+        drop(frameworks);
+
         let mut devices = self.devices.write().await;
 
-        for framework in frameworks.values() {
+        for framework in framework_values {
             match framework.discover_devices().await {
                 Ok(framework_devices) => {
                     for device in framework_devices {
@@ -188,6 +192,7 @@ impl UniversalGpuEngine {
         }
 
         info!("Discovered {} compute devices", devices.len());
+        drop(devices);
         Ok(())
     }
 
@@ -234,6 +239,7 @@ impl UniversalGpuEngine {
     ) -> ToadStoolResult<DeviceId> {
         let devices = self.devices.read().await;
         let available_devices: Vec<DeviceId> = devices.keys().cloned().collect();
+        drop(devices);
 
         if available_devices.is_empty() {
             return Err(ToadStoolError::runtime("No devices available"));
@@ -261,9 +267,12 @@ impl UniversalGpuEngine {
             .cloned()
             .ok_or_else(|| ToadStoolError::runtime("Device not found"))?;
 
-        let framework = frameworks
-            .get(&device.id.framework)
-            .ok_or_else(|| ToadStoolError::runtime("Framework not available"))?;
+        let framework = Arc::clone(
+            frameworks
+                .get(&device.id.framework)
+                .ok_or_else(|| ToadStoolError::runtime("Framework not available"))?,
+        );
+        drop(frameworks);
 
         let session_id = framework.create_session(device_id).await?;
 
@@ -340,9 +349,12 @@ impl UniversalGpuEngine {
             .cloned()
             .ok_or_else(|| ToadStoolError::runtime("Device not found"))?;
 
-        let framework = frameworks
-            .get(&device.id.framework)
-            .ok_or_else(|| ToadStoolError::runtime("Framework not available"))?;
+        let framework = Arc::clone(
+            frameworks
+                .get(&device.id.framework)
+                .ok_or_else(|| ToadStoolError::runtime("Framework not available"))?,
+        );
+        drop(frameworks);
 
         // Compile kernel
         let compiled_kernel = framework
@@ -395,9 +407,12 @@ impl UniversalGpuEngine {
                 .cloned()
                 .ok_or_else(|| ToadStoolError::runtime("Device not found"))?;
 
-            let framework = frameworks
-                .get(&device.id.framework)
-                .ok_or_else(|| ToadStoolError::runtime("Framework not available"))?;
+            let framework = Arc::clone(
+                frameworks
+                    .get(&device.id.framework)
+                    .ok_or_else(|| ToadStoolError::runtime("Framework not available"))?,
+            );
+            drop(frameworks);
 
             // Destroy all child sessions first
             for child_session_id in &session.child_sessions {
@@ -698,6 +713,7 @@ impl UniversalGpuEngine {
     ) -> Option<GpuFramework> {
         let frameworks = self.frameworks.read().await;
         let available: Vec<GpuFramework> = frameworks.keys().cloned().collect();
+        drop(frameworks);
 
         self.selection_strategy
             .select_framework(workload, &available)

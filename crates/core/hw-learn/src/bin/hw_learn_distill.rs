@@ -9,7 +9,7 @@
 //! to isolate compute-specific register writes.
 
 use hw_learn::distiller::{GpuArch, RecipeDistiller, Vendor};
-use hw_learn::knowledge::{export_recipe, KnowledgeStore};
+use hw_learn::knowledge::{KnowledgeStore, export_recipe};
 use hw_learn::observer::{GpuSelector, ObserveConfig, TraceMode, TraceObserver};
 use std::path::{Path, PathBuf};
 

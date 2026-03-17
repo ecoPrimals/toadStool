@@ -13,7 +13,7 @@ use super::{
 };
 
 /// Available hardware capabilities
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HardwareCapabilities {
     /// CPU cores available
     pub cpu_cores: usize,
@@ -96,7 +96,7 @@ impl HardwareCapabilities {
     }
 
     /// Detect system RAM
-    fn detect_ram() -> u64 {
+    const fn detect_ram() -> u64 {
         // Platform-specific RAM detection would go here
         // For now, return a reasonable default
         8 * 1024 * 1024 * 1024 // 8GB default
@@ -104,7 +104,7 @@ impl HardwareCapabilities {
 }
 
 /// GPU device information
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GpuDevice {
     /// Device name
     pub name: String,
@@ -282,7 +282,7 @@ impl BackendSelector {
     }
 
     /// Should use native CUDA?
-    fn should_use_native_cuda(&self, chars: &WorkloadCharacteristics) -> bool {
+    const fn should_use_native_cuda(&self, chars: &WorkloadCharacteristics) -> bool {
         // Always use native CUDA if available, unless workload is trivial
         !matches!(chars.compute_intensity, ComputeIntensity::Minimal)
     }
@@ -314,7 +314,7 @@ impl BackendSelector {
     }
 
     /// Should use CPU parallel?
-    fn should_use_cpu_parallel(&self, chars: &WorkloadCharacteristics) -> bool {
+    const fn should_use_cpu_parallel(&self, chars: &WorkloadCharacteristics) -> bool {
         // Use CPU parallel if:
         // 1. Workload has decent parallelism
         // 2. Compute intensity not too high

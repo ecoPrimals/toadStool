@@ -131,23 +131,25 @@ impl LoadEstimator {
         let cpu_load = (job.resource_requirements.cpu.min_cores / cpu_cores).min(1.0);
         let memory_load =
             (job.resource_requirements.memory.min_bytes as f64 / total_memory).min(1.0);
-        let network_load = if let Some(bandwidth) = job.resource_requirements.network.bandwidth_mbps
-        {
-            (bandwidth as f64 / 1000.0).min(1.0)
-        } else {
-            match &job.job_type {
-                Some(crate::types::jobs::UniversalJobType::Local) => 0.1,
-                Some(crate::types::jobs::UniversalJobType::Native) => 0.1,
-                Some(crate::types::jobs::UniversalJobType::RemoteToadStool { .. }) => 0.3,
-                Some(crate::types::jobs::UniversalJobType::EcosystemTool { .. }) => 0.2,
-                Some(crate::types::jobs::UniversalJobType::RecursiveHosting { .. }) => 0.4,
-                Some(crate::types::jobs::UniversalJobType::NetworkIntensive) => 0.8,
-                Some(crate::types::jobs::UniversalJobType::DataProcessing) => 0.4,
-                Some(crate::types::jobs::UniversalJobType::MachineLearning) => 0.3,
-                Some(_) => 0.2,
-                None => 0.2,
-            }
+        let default_network = match &job.job_type {
+            Some(crate::types::jobs::UniversalJobType::Local) => 0.1,
+            Some(crate::types::jobs::UniversalJobType::Native) => 0.1,
+            Some(crate::types::jobs::UniversalJobType::RemoteToadStool { .. }) => 0.3,
+            Some(crate::types::jobs::UniversalJobType::EcosystemTool { .. }) => 0.2,
+            Some(crate::types::jobs::UniversalJobType::RecursiveHosting { .. }) => 0.4,
+            Some(crate::types::jobs::UniversalJobType::NetworkIntensive) => 0.8,
+            Some(crate::types::jobs::UniversalJobType::DataProcessing) => 0.4,
+            Some(crate::types::jobs::UniversalJobType::MachineLearning) => 0.3,
+            Some(_) => 0.2,
+            None => 0.2,
         };
+        let network_load = job
+            .resource_requirements
+            .network
+            .bandwidth_mbps
+            .map_or(default_network, |bandwidth| {
+                (bandwidth as f64 / 1000.0).min(1.0)
+            });
         LoadMetric {
             cpu_load,
             memory_load,

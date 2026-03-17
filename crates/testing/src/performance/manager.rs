@@ -93,17 +93,22 @@ impl PerformanceTestManager {
             }
         }
 
-        // Calculate results
-        let result = {
-            let context_ref = self.active_benchmarks.read().await;
-            let context = context_ref.get(&test_name).ok_or_else(|| {
+        // Calculate results (extract data and drop lock before await)
+        let custom_metrics = self
+            .active_benchmarks
+            .read()
+            .await
+            .get(&test_name)
+            .ok_or_else(|| {
                 ToadStoolError::runtime(format!(
                     "Benchmark context not found for test: {test_name}"
                 ))
-            })?;
-            self.calculate_benchmark_result(test_name.clone(), iteration_times, context)
-                .await
-        }; // Read lock dropped here
+            })?
+            .custom_metrics
+            .clone();
+        let result = self
+            .calculate_benchmark_result(test_name.clone(), iteration_times, custom_metrics)
+            .await;
 
         // Remove from active benchmarks (now safe to acquire write lock)
         {
@@ -266,7 +271,7 @@ impl PerformanceTestManager {
         &self,
         test_name: String,
         mut iteration_times: Vec<Duration>,
-        context: &BenchmarkContext,
+        custom_metrics: HashMap<String, Vec<f64>>,
     ) -> BenchmarkResult {
         if iteration_times.is_empty() {
             return BenchmarkResult::default(test_name);
@@ -305,8 +310,7 @@ impl PerformanceTestManager {
             percentiles,
             throughput,
             resource_usage: ResourceUsageMetrics::default(),
-            custom_metrics: context
-                .custom_metrics
+            custom_metrics: custom_metrics
                 .iter()
                 .map(|(k, v)| (k.clone(), v.iter().sum::<f64>() / v.len() as f64))
                 .collect(),

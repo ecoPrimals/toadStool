@@ -60,13 +60,13 @@ impl From<tokio::time::error::Elapsed> for ToadStoolError {
 
 impl From<tokio::task::JoinError> for ToadStoolError {
     fn from(err: tokio::task::JoinError) -> Self {
-        ToadStoolError::Runtime(format!("Task join failed: {err}"))
+        Self::Runtime(format!("Task join failed: {err}"))
     }
 }
 
 impl From<tokio::sync::broadcast::error::RecvError> for ToadStoolError {
     fn from(err: tokio::sync::broadcast::error::RecvError) -> Self {
-        ToadStoolError::Runtime(format!("Broadcast receive failed: {err}"))
+        Self::Runtime(format!("Broadcast receive failed: {err}"))
     }
 }
 

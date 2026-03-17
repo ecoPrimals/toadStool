@@ -9,7 +9,7 @@
 //!   nvpmu-apply 0000:65:00.0 `gv100_recipe.json` --dry-run
 
 use nvpmu::bar0::Bar0Access;
-use nvpmu::init::{apply_recipe, InitResult};
+use nvpmu::init::{InitResult, apply_recipe};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

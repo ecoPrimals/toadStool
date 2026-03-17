@@ -67,21 +67,25 @@ fn test_deployment_layer_host_os() {
 #[test]
 fn test_deployment_layer_is_virtualized() {
     assert!(!DeploymentLayer::BareMetalOS.is_virtualized());
-    assert!(DeploymentLayer::ContainerLayer {
-        runtime: ContainerRuntime::Docker,
-        container_id: None,
-    }
-    .is_virtualized());
+    assert!(
+        DeploymentLayer::ContainerLayer {
+            runtime: ContainerRuntime::Docker,
+            container_id: None,
+        }
+        .is_virtualized()
+    );
 }
 
 #[test]
 fn test_deployment_layer_has_direct_hardware_access() {
     assert!(DeploymentLayer::BareMetalOS.has_direct_hardware_access());
-    assert!(DeploymentLayer::VMLayer {
-        hypervisor: "QEMU/KVM".to_string(),
-        gpu_passthrough: true,
-    }
-    .has_direct_hardware_access());
+    assert!(
+        DeploymentLayer::VMLayer {
+            hypervisor: "QEMU/KVM".to_string(),
+            gpu_passthrough: true,
+        }
+        .has_direct_hardware_access()
+    );
 }
 
 #[test]
@@ -287,15 +291,19 @@ fn test_deployment_layer_guest_os() {
 #[test]
 fn test_deployment_layer_is_not_virtualized_bare_metal() {
     assert!(!DeploymentLayer::BareMetalOS.is_virtualized());
-    assert!(!DeploymentLayer::MiddlewareLayer {
-        host_os: "Ubuntu".to_string(),
-        host_version: None,
-    }
-    .is_virtualized());
-    assert!(!DeploymentLayer::ServiceLayer {
-        guest_os: vec!["Docker".to_string()],
-    }
-    .is_virtualized());
+    assert!(
+        !DeploymentLayer::MiddlewareLayer {
+            host_os: "Ubuntu".to_string(),
+            host_version: None,
+        }
+        .is_virtualized()
+    );
+    assert!(
+        !DeploymentLayer::ServiceLayer {
+            guest_os: vec!["Docker".to_string()],
+        }
+        .is_virtualized()
+    );
 }
 
 #[test]

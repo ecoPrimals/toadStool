@@ -68,6 +68,6 @@ pub enum CostError {
 
 impl From<CostError> for ToadStoolError {
     fn from(e: CostError) -> Self {
-        ToadStoolError::resource(e.to_string())
+        Self::resource(e.to_string())
     }
 }

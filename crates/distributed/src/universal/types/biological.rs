@@ -87,7 +87,7 @@ pub enum BiologicalComputingPlatform {
 
 impl BiologicalComputingPlatform {
     /// Get the platform type name
-    pub fn platform_type(&self) -> &'static str {
+    pub const fn platform_type(&self) -> &'static str {
         match self {
             Self::DNAComputing { .. } => "DNA Computing",
             Self::ProteinFolding { .. } => "Protein Folding",

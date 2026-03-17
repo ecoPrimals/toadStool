@@ -6,7 +6,7 @@
 use super::helpers::check_command_exists;
 
 /// Get CUDA version
-pub(crate) fn get_cuda_version() -> String {
+pub fn get_cuda_version() -> String {
     std::process::Command::new("nvcc")
         .arg("--version")
         .output()
@@ -17,92 +17,82 @@ pub(crate) fn get_cuda_version() -> String {
 }
 
 /// Get CUDA compute capability
-pub(crate) fn get_cuda_compute_capability() -> String {
-    if check_command_exists("nvidia-smi") {
-        if let Ok(output) = std::process::Command::new("nvidia-smi")
+pub fn get_cuda_compute_capability() -> String {
+    if check_command_exists("nvidia-smi")
+        && let Ok(output) = std::process::Command::new("nvidia-smi")
             .args(["--query-gpu=compute_cap", "--format=csv,noheader"])
             .output()
-        {
-            if output.status.success() {
-                let s = String::from_utf8_lossy(&output.stdout);
-                let cap = s.trim().split('\n').next().unwrap_or("").trim();
-                if !cap.is_empty() {
-                    return cap.to_string();
-                }
-            }
+        && output.status.success()
+    {
+        let s = String::from_utf8_lossy(&output.stdout);
+        let cap = s.trim().split('\n').next().unwrap_or("").trim();
+        if !cap.is_empty() {
+            return cap.to_string();
         }
     }
     "unknown".to_string()
 }
 
 /// Get GPU memory in gigabytes
-pub(crate) fn get_gpu_memory_gb() -> u32 {
-    if check_command_exists("nvidia-smi") {
-        if let Ok(output) = std::process::Command::new("nvidia-smi")
+pub fn get_gpu_memory_gb() -> u32 {
+    if check_command_exists("nvidia-smi")
+        && let Ok(output) = std::process::Command::new("nvidia-smi")
             .args(["--query-gpu=memory.total", "--format=csv,noheader,nounits"])
             .output()
+        && output.status.success()
+    {
+        let s = String::from_utf8_lossy(&output.stdout);
+        if let Some(mb_str) = s
+            .trim()
+            .split('\n')
+            .next()
+            .and_then(|l| l.split(',').next())
+            && let Ok(mb) = mb_str.trim().parse::<u32>()
         {
-            if output.status.success() {
-                let s = String::from_utf8_lossy(&output.stdout);
-                if let Some(mb_str) = s
-                    .trim()
-                    .split('\n')
-                    .next()
-                    .and_then(|l| l.split(',').next())
-                {
-                    let mb_str = mb_str.trim();
-                    if let Ok(mb) = mb_str.parse::<u32>() {
-                        return mb.div_ceil(1024);
-                    }
-                }
-            }
+            return mb.div_ceil(1024);
         }
     }
     0
 }
 
 /// Get ROCm version
-pub(crate) fn get_rocm_version() -> String {
+pub fn get_rocm_version() -> String {
     if let Ok(ver) = std::fs::read_to_string("/opt/rocm/.info/version") {
         let ver = ver.trim();
         if !ver.is_empty() {
             return ver.to_string();
         }
     }
-    if check_command_exists("rocm-smi") {
-        if let Ok(output) = std::process::Command::new("rocm-smi")
+    if check_command_exists("rocm-smi")
+        && let Ok(output) = std::process::Command::new("rocm-smi")
             .arg("--showversion")
             .output()
-        {
-            if output.status.success() {
-                let s = String::from_utf8_lossy(&output.stdout);
-                let first_line = s.lines().next().unwrap_or("").trim();
-                if !first_line.is_empty() {
-                    return first_line.to_string();
-                }
-            }
+        && output.status.success()
+    {
+        let s = String::from_utf8_lossy(&output.stdout);
+        let first_line = s.lines().next().unwrap_or("").trim();
+        if !first_line.is_empty() {
+            return first_line.to_string();
         }
     }
     "unknown".to_string()
 }
 
 /// Get ROCm GFX version
-pub(crate) fn get_rocm_gfx_version() -> String {
-    if check_command_exists("rocm-smi") {
-        if let Ok(output) = std::process::Command::new("rocm-smi")
+pub fn get_rocm_gfx_version() -> String {
+    if check_command_exists("rocm-smi")
+        && let Ok(output) = std::process::Command::new("rocm-smi")
             .arg("--showproductname")
             .output()
-        {
-            if output.status.success() {
-                let s = String::from_utf8_lossy(&output.stdout);
-                for line in s.lines() {
-                    let line = line.trim();
-                    if line.contains("gfx") {
-                        if let Some(gfx) = line.split_whitespace().find(|w| w.starts_with("gfx")) {
-                            return gfx.to_string();
-                        }
-                    }
-                }
+        && output.status.success()
+    {
+        let s = String::from_utf8_lossy(&output.stdout);
+        for line in s.lines() {
+            let line = line.trim();
+            if line.contains("gfx")
+                && let Some(gfx) = line.split_whitespace().find(|w| w.starts_with("gfx"))
+            {
+                return gfx.to_string();
             }
         }
     }
@@ -110,16 +100,16 @@ pub(crate) fn get_rocm_gfx_version() -> String {
 }
 
 /// Check for OpenCL support
-pub(crate) fn check_opencl_support() -> bool {
+pub fn check_opencl_support() -> bool {
     #[cfg(target_os = "linux")]
     {
         let vendors = std::path::Path::new("/etc/OpenCL/vendors");
-        if vendors.is_dir() {
-            if let Ok(entries) = std::fs::read_dir(vendors) {
-                for entry in entries.flatten() {
-                    if entry.path().extension().is_some_and(|e| e == "icd") {
-                        return true;
-                    }
+        if vendors.is_dir()
+            && let Ok(entries) = std::fs::read_dir(vendors)
+        {
+            for entry in entries.flatten() {
+                if entry.path().extension().is_some_and(|e| e == "icd") {
+                    return true;
                 }
             }
         }
@@ -128,17 +118,17 @@ pub(crate) fn check_opencl_support() -> bool {
 }
 
 /// Get OpenCL version
-pub(crate) fn get_opencl_version() -> String {
+pub fn get_opencl_version() -> String {
     "2.0".to_string()
 }
 
 /// Get OpenCL device type
-pub(crate) fn get_opencl_device_type() -> String {
+pub fn get_opencl_device_type() -> String {
     "GPU".to_string()
 }
 
 /// Get OpenCL compute units
-pub(crate) const fn get_opencl_compute_units() -> u32 {
+pub const fn get_opencl_compute_units() -> u32 {
     64
 }
 

@@ -33,7 +33,7 @@ pub(super) fn parse_runtime_hint(hint: &str) -> Result<RuntimeType> {
 }
 
 /// Infer the appropriate runtime type from a workload specification.
-pub(super) fn infer_runtime_type(workload: &WorkloadSpec) -> RuntimeType {
+pub(super) const fn infer_runtime_type(workload: &WorkloadSpec) -> RuntimeType {
     match workload {
         WorkloadSpec::Native { .. } => RuntimeType::Native,
         WorkloadSpec::Python { .. } => RuntimeType::Python,

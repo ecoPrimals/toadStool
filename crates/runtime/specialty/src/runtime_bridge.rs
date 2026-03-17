@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+//! RuntimeEngine trait implementation - bridges ExecutionRequest/Response to legacy jobs
 
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -7,7 +10,7 @@ use std::time::Duration;
 use toadstool::execution;
 use toadstool::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
-    RuntimeEngine, RuntimeMetrics, ToadStoolResult, WorkloadType,
+    RuntimeEngine, RuntimeMetrics, RuntimeType, ToadStoolResult, WorkloadType,
 };
 
 use crate::engine::SpecialtyRuntimeEngine;
@@ -15,61 +18,72 @@ use crate::types::jobs::LegacyJob;
 use crate::types::traits::JobStatus;
 
 impl SpecialtyRuntimeEngine {
-    pub(super) fn convert_execution_request_to_legacy_job(
+    /// Convert ExecutionRequest to LegacyJob
+    pub(crate) fn convert_execution_request_to_legacy_job(
         &self,
         request: ExecutionRequest,
     ) -> ToadStoolResult<LegacyJob> {
-        let job_id = request.workload_id.unwrap_or_else(uuid::Uuid::new_v4);
+        use crate::types::configs::CommunicationSettings;
+        use crate::types::jobs::{LegacyJobSource, LegacyJobType, ProgramFormat};
+        use crate::types::requirements::{
+            CommunicationRequirements, CompilationRequirements, CompilerType, CpuRequirements,
+            LegacyRuntimeRequirements, MemoryModel, MemoryRequirements, MemoryType,
+            NetworkRequirements, StorageRequirements, StorageType, TimingRequirements,
+        };
+        use crate::types::systems::LegacyArchitecture;
+
+        let job_id = request.execution_id;
+
         Ok(LegacyJob {
             job_id,
             target_system: crate::types::systems::LegacySystemType::Intel8086,
-            target_architecture: crate::types::systems::LegacyArchitecture::Intel8086,
-            job_type: crate::types::jobs::LegacyJobType::Execution {
-                program_format: crate::types::jobs::ProgramFormat::DosExe,
+            target_architecture: LegacyArchitecture::Intel8086,
+            job_type: LegacyJobType::Execution {
+                program_format: ProgramFormat::DosExe,
                 arguments: vec![],
             },
-            source: crate::types::jobs::LegacyJobSource::SourceCode {
+            source: LegacyJobSource::SourceCode {
                 language: crate::types::jobs::LegacyLanguage::Ckr,
                 code: "/* Default legacy job */".to_string(),
             },
-            compilation_requirements: crate::types::requirements::CompilationRequirements {
-                compiler: crate::types::requirements::CompilerType::MicrosoftC60,
+            compilation_requirements: CompilationRequirements {
+                compiler: CompilerType::MicrosoftC60,
                 flags: vec![],
                 include_paths: vec![],
                 library_paths: vec![],
                 libraries: vec![],
-                memory_model: crate::types::requirements::MemoryModel::Flat,
+                memory_model: MemoryModel::Flat,
                 optimization: crate::types::requirements::OptimizationLevel::None,
                 debug_info: false,
             },
-            runtime_requirements: crate::types::requirements::LegacyRuntimeRequirements {
-                memory: crate::types::requirements::MemoryRequirements {
+            runtime_requirements: LegacyRuntimeRequirements {
+                memory: MemoryRequirements {
                     min_memory: 64 * 1024,
                     max_memory: 640 * 1024,
-                    memory_type: crate::types::requirements::MemoryType::RAM,
-                    memory_model: crate::types::requirements::MemoryModel::Segmented,
+                    memory_type: MemoryType::RAM,
+                    memory_model: MemoryModel::Segmented,
                 },
-                cpu: crate::types::requirements::CpuRequirements {
-                    architecture: crate::types::systems::LegacyArchitecture::Intel8086,
+                cpu: CpuRequirements {
+                    architecture: LegacyArchitecture::Intel8086,
                     min_speed: 4_770_000,
                     required_features: vec![],
                     fpu_required: false,
                 },
-                storage: crate::types::requirements::StorageRequirements {
+                storage: StorageRequirements {
                     min_storage: 360 * 1024,
-                    storage_type: crate::types::requirements::StorageType::FloppyDisk,
+                    storage_type: StorageType::FloppyDisk,
                     file_system: crate::types::requirements::FileSystemType::DOS,
                 },
-                communication: crate::types::requirements::CommunicationRequirements {
+                communication: CommunicationRequirements {
                     protocols: vec![],
                     ports: vec![],
-                    network: crate::types::requirements::NetworkRequirements {
+                    network: NetworkRequirements {
                         protocols: vec![],
                         bandwidth: None,
                         max_latency: None,
                     },
                 },
-                timing: crate::types::requirements::TimingRequirements {
+                timing: TimingRequirements {
                     real_time: false,
                     max_response_time: Duration::from_secs(10),
                     min_cycle_time: Duration::from_millis(1),
@@ -77,15 +91,16 @@ impl SpecialtyRuntimeEngine {
                 },
                 special_hardware: vec![],
             },
-            communication_settings: crate::types::configs::CommunicationSettings::default(),
+            communication_settings: CommunicationSettings::default(),
             priority: toadstool::JobPriority::Normal,
             created_at: std::time::SystemTime::now(),
             timeout: Duration::from_secs(3600),
         })
     }
 
-    pub(super) async fn get_runtime_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        let _ = self.get_metrics().await?;
+    /// Get runtime metrics in ToadStool format
+    pub(crate) async fn get_runtime_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
+        let _legacy_metrics = self.get_metrics().await?;
         Ok(RuntimeMetrics::default())
     }
 }
@@ -113,65 +128,96 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
         request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-            tracing::info!("Executing specialty hardware runtime request: {:?}", request.workload_id);
+            let execution_id = request.execution_id;
+            tracing::info!(
+                "Executing specialty hardware runtime request: {:?}",
+                execution_id
+            );
+
             let legacy_job = self.convert_execution_request_to_legacy_job(request)?;
             let job_id = self.submit_job(legacy_job).await?;
+
             let timeout = Duration::from_secs(self.config.job_timeout.as_secs());
             let start_time = std::time::Instant::now();
 
             loop {
                 let status = self.get_job_status(job_id).await?;
+
                 match status {
                     JobStatus::Completed => {
                         let output = self.get_job_output(job_id).await?;
+                        let duration = start_time.elapsed();
                         return Ok(ExecutionResponse {
-                            workload_id: job_id,
-                            status: ExecutionStatus::Completed,
-                            output: Some(ExecutionOutput {
-                                stdout: output.stdout,
-                                stderr: output.stderr,
-                                return_code: output.return_code,
-                            }),
-                            error: None,
-                            metrics: Some(self.get_runtime_metrics().await?),
+                            execution_id,
+                            status: ExecutionStatus::Success,
+                            output: ExecutionOutput {
+                                data: output
+                                    .binary_output
+                                    .map(bytes::Bytes::from)
+                                    .unwrap_or_default(),
+                                stdout: Some(output.stdout),
+                                stderr: Some(output.stderr),
+                                exit_code: output.return_code,
+                                format: None,
+                                result: HashMap::new(),
+                                metadata: HashMap::new(),
+                            },
+                            metrics: self.get_runtime_metrics().await?,
+                            duration,
+                            runtime_used: RuntimeType::from("specialty"),
+                            warnings: Vec::new(),
                         });
                     }
                     JobStatus::Failed { error } => {
+                        let duration = start_time.elapsed();
                         return Ok(ExecutionResponse {
-                            workload_id: job_id,
-                            status: ExecutionStatus::Failed,
-                            output: None,
-                            error: Some(error),
-                            metrics: Some(self.get_runtime_metrics().await?),
+                            execution_id,
+                            status: ExecutionStatus::Failed {
+                                error: Cow::Owned(error),
+                            },
+                            output: ExecutionOutput::default(),
+                            metrics: self.get_runtime_metrics().await?,
+                            duration,
+                            runtime_used: RuntimeType::from("specialty"),
+                            warnings: Vec::new(),
                         });
                     }
                     JobStatus::Cancelled => {
+                        let duration = start_time.elapsed();
                         return Ok(ExecutionResponse {
-                            workload_id: job_id,
+                            execution_id,
                             status: ExecutionStatus::Cancelled,
-                            output: None,
-                            error: None,
-                            metrics: Some(self.get_runtime_metrics().await?),
+                            output: ExecutionOutput::default(),
+                            metrics: self.get_runtime_metrics().await?,
+                            duration,
+                            runtime_used: RuntimeType::from("specialty"),
+                            warnings: Vec::new(),
                         });
                     }
                     JobStatus::TimedOut => {
+                        let duration = start_time.elapsed();
                         return Ok(ExecutionResponse {
-                            workload_id: job_id,
+                            execution_id,
                             status: ExecutionStatus::TimedOut,
-                            output: None,
-                            error: Some("Job timed out".to_string()),
-                            metrics: Some(self.get_runtime_metrics().await?),
+                            output: ExecutionOutput::default(),
+                            metrics: self.get_runtime_metrics().await?,
+                            duration,
+                            runtime_used: RuntimeType::from("specialty"),
+                            warnings: Vec::new(),
                         });
                     }
                     JobStatus::Queued | JobStatus::Running => {
                         if start_time.elapsed() > timeout {
                             let _ = self.cancel_job(job_id).await;
+                            let duration = start_time.elapsed();
                             return Ok(ExecutionResponse {
-                                workload_id: job_id,
+                                execution_id,
                                 status: ExecutionStatus::TimedOut,
-                                output: None,
-                                error: Some("Job timed out".to_string()),
-                                metrics: Some(self.get_runtime_metrics().await?),
+                                output: ExecutionOutput::default(),
+                                metrics: self.get_runtime_metrics().await?,
+                                duration,
+                                runtime_used: RuntimeType::from("specialty"),
+                                warnings: Vec::new(),
                             });
                         }
                         tokio::time::sleep(Duration::from_secs(1)).await;
@@ -183,11 +229,8 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
         RuntimeCapabilities {
-            supported_workloads: vec![
-                WorkloadType::Native,
-                WorkloadType::Custom("specialty".to_string()),
-            ],
-            max_concurrent_executions: Some(self.config.max_concurrent_jobs),
+            supported_workloads: vec![WorkloadType::Native],
+            max_concurrent_executions: Some(self.config.max_concurrent_jobs as u32),
             supported_architectures: vec![
                 "x86_64".to_string(),
                 "i386".to_string(),
@@ -198,12 +241,12 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
             ],
             platform_features: {
                 let mut features = std::collections::HashMap::new();
-                features.insert("mainframe".to_string(), "true".to_string());
-                features.insert("embedded".to_string(), "true".to_string());
-                features.insert("realtime".to_string(), "true".to_string());
-                features.insert("industrial".to_string(), "true".to_string());
-                features.insert("cross_compilation".to_string(), "true".to_string());
-                features.insert("emulation".to_string(), "true".to_string());
+                features.insert("mainframe".to_string(), true);
+                features.insert("embedded".to_string(), true);
+                features.insert("realtime".to_string(), true);
+                features.insert("industrial".to_string(), true);
+                features.insert("cross_compilation".to_string(), true);
+                features.insert("emulation".to_string(), true);
                 features
             },
             version: env!("CARGO_PKG_VERSION").to_string(),
@@ -211,13 +254,13 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
     }
 
     fn supports_workload(&self, workload_type: &WorkloadType) -> bool {
-        matches!(workload_type, WorkloadType::Native | WorkloadType::Custom(_))
+        matches!(workload_type, WorkloadType::Native)
     }
 
     fn get_metrics(
         &self,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async move { self.get_runtime_metrics().await })
+        Box::pin(async { self.get_runtime_metrics().await })
     }
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {

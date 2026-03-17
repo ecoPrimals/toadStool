@@ -51,7 +51,7 @@
 //! - `ai.nautilus.shell.import` - Restore brain from serialized JSON
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -148,9 +148,13 @@ pub async fn start_jsonrpc_server(
     // Bind Unix socket
     let listener = UnixListener::bind(socket_path)?;
     info!("🍄 JSON-RPC server listening on {}", socket_path.display());
-    info!("📊 Methods: daemon.{{health,metrics,submit_workload,get_workload,delete_workload,list_workloads}}");
+    info!(
+        "📊 Methods: daemon.{{health,metrics,submit_workload,get_workload,delete_workload,list_workloads}}"
+    );
     #[cfg(feature = "nautilus")]
-    info!("🐚 Methods: ai.nautilus.{{status,observe,train,predict,screen,edges,shell.export,shell.import}}");
+    info!(
+        "🐚 Methods: ai.nautilus.{{status,observe,train,predict,screen,edges,shell.export,shell.import}}"
+    );
 
     // Accept connections
     loop {
@@ -338,22 +342,26 @@ async fn handle_get_workload(params: Value, state: &ServerState) -> Result<Value
         data: None,
     })?;
 
-    match state
+    state
         .workload_manager
         .get_workload_status(workload_id)
         .await
-    {
-        Some(status) => serde_json::to_value(status).map_err(|e| JsonRpcError {
-            code: error_codes::INTERNAL_ERROR,
-            message: format!("Serialization failed: {e}"),
-            data: None,
-        }),
-        None => Err(JsonRpcError {
-            code: error_codes::WORKLOAD_NOT_FOUND,
-            message: format!("Workload not found: {workload_id}"),
-            data: None,
-        }),
-    }
+        .map_or_else(
+            || {
+                Err(JsonRpcError {
+                    code: error_codes::WORKLOAD_NOT_FOUND,
+                    message: format!("Workload not found: {workload_id}"),
+                    data: None,
+                })
+            },
+            |status| {
+                serde_json::to_value(status).map_err(|e| JsonRpcError {
+                    code: error_codes::INTERNAL_ERROR,
+                    message: format!("Serialization failed: {e}"),
+                    data: None,
+                })
+            },
+        )
 }
 
 /// Delete workload handler

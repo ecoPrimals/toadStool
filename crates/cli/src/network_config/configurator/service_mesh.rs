@@ -7,6 +7,7 @@ use toadstool::error::ToadStoolResult;
 use tracing::{debug, info};
 
 /// Service mesh extension trait
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) trait ServiceMeshExt {
     /// Apply service mesh configuration
     async fn apply_service_mesh_config(&self) -> ToadStoolResult<()>;
@@ -39,7 +40,7 @@ impl ServiceMeshExt for super::SongbirdNetworkConfigurator {
                     return Err(toadstool::error::ToadStoolError::configuration(format!(
                         "Invalid mesh type: {}",
                         config.mesh_type
-                    )))
+                    )));
                 }
             }
 

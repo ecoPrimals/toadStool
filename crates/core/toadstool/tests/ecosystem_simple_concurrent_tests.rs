@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use toadstool::ToadStoolResult as Result;
 use tokio::sync::broadcast;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use uuid::Uuid;
 
 // Import the ecosystem types we need to test

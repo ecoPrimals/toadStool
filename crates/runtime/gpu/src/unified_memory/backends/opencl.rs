@@ -198,10 +198,10 @@ impl OpenClBackend {
         #[cfg(feature = "opencl")]
         {
             let platforms = ocl::Platform::list();
-            if let Some(platform) = platforms.first() {
-                if let Ok(version) = platform.version() {
-                    return Some(version);
-                }
+            if let Some(platform) = platforms.first()
+                && let Ok(version) = platform.version()
+            {
+                return Some(version);
             }
         }
         None
@@ -373,13 +373,10 @@ impl UnifiedMemoryBackend for OpenClBackend {
     async fn map_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<*mut u8> {
         match allocation {
             // Handle wgpu-based allocations
-            BackendAllocation::WebGpu(alloc) => {
-                if let Some(buffer) = &alloc.buffer {
-                    Ok(buffer as *const wgpu::Buffer as *mut u8)
-                } else {
-                    Err(ToadStoolError::runtime("Buffer has been freed"))
-                }
-            }
+            BackendAllocation::WebGpu(alloc) => alloc.buffer.as_ref().map_or_else(
+                || Err(ToadStoolError::runtime("Buffer has been freed")),
+                |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
+            ),
             // Handle direct OpenCL allocations
             BackendAllocation::OpenCL(alloc) => Ok(alloc.ptr),
             _ => Err(ToadStoolError::runtime(
@@ -392,11 +389,9 @@ impl UnifiedMemoryBackend for OpenClBackend {
         match allocation {
             // Handle wgpu-based allocations
             BackendAllocation::WebGpu(alloc) => {
-                if let Some(buffer) = &alloc.buffer {
+                alloc.buffer.as_ref().map_or(std::ptr::null(), |buffer| {
                     buffer as *const wgpu::Buffer as *const u8
-                } else {
-                    std::ptr::null()
-                }
+                })
             }
             // Handle direct OpenCL allocations
             BackendAllocation::OpenCL(alloc) => alloc.ptr as *const u8,

@@ -95,7 +95,7 @@ pub enum EdgeIoTPlatform {
 
 impl EdgeIoTPlatform {
     /// Get the platform type name
-    pub fn platform_type(&self) -> &'static str {
+    pub const fn platform_type(&self) -> &'static str {
         match self {
             Self::Microcontroller { .. } => "Microcontroller",
             Self::SingleBoardComputer { .. } => "Single Board Computer",

@@ -134,12 +134,13 @@ impl UniversalAdapter {
     /// Returns `Err` if discovery fails or provider registration fails.
     pub async fn discover_providers(&self) -> ToadStoolResult<usize> {
         let providers = self.discovery.discover_all().await?;
-
-        let mut registry = self.registry.write().await;
         let count = providers.len();
 
-        for provider in providers {
-            registry.register(provider)?;
+        {
+            let mut registry = self.registry.write().await;
+            for provider in providers {
+                registry.register(provider)?;
+            }
         }
 
         Ok(count)
@@ -173,10 +174,12 @@ impl UniversalAdapter {
         &self,
         capability: CapabilityType,
     ) -> ToadStoolResult<CapabilityHandle> {
-        // Try to find a provider
-        let registry = self.registry.read().await;
+        let provider = {
+            let registry = self.registry.read().await;
+            registry.find_best_match(&capability)?
+        };
 
-        if let Some(provider) = registry.find_best_match(&capability)? {
+        if let Some(provider) = provider {
             return Ok(CapabilityHandle::new(provider, capability));
         }
 

@@ -114,7 +114,7 @@ impl Default for RegistryConfig {
 }
 
 /// Image pull policy
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ImagePullPolicy {
     /// Always pull the image
     Always,

@@ -163,7 +163,7 @@ impl ReservoirGenerator {
             let mut config = self.config.clone();
             config.seed = self.config.seed + i as u64;
 
-            let generator = ReservoirGenerator::new(config);
+            let generator = Self::new(config);
             let weights = generator.generate_weights()?;
             reservoirs.push(weights);
         }
@@ -215,7 +215,7 @@ impl ReservoirSimulator {
     }
 
     /// Get current state
-    pub fn state(&self) -> &Array1<f32> {
+    pub const fn state(&self) -> &Array1<f32> {
         &self.state
     }
 }

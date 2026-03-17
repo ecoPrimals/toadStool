@@ -205,8 +205,8 @@ async fn chaos_burst_load() {
 #[tokio::test]
 async fn chaos_resource_leak_detection() {
     // Simulate resource leak detection
-    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     let counter = Arc::new(AtomicU64::new(0));
 

@@ -116,9 +116,11 @@ fn test_module_name() {
     let file_name = path.file_name().unwrap().to_str().unwrap();
 
     assert_eq!(file_name, "akida-pcie.ko");
-    assert!(Path::new(file_name)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("ko")));
+    assert!(
+        Path::new(file_name)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("ko"))
+    );
 
     // Module name for lsmod check
     let module_name = "akida_pcie"; // Note: dash becomes underscore in kernel

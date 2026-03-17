@@ -67,13 +67,13 @@ impl CapabilityRegistry {
     }
 
     /// Configure provider TTL
-    pub fn with_ttl(mut self, ttl: Duration) -> Self {
+    pub const fn with_ttl(mut self, ttl: Duration) -> Self {
         self.provider_ttl = ttl;
         self
     }
 
     /// Configure automatic cleanup
-    pub fn with_auto_cleanup(mut self, enabled: bool) -> Self {
+    pub const fn with_auto_cleanup(mut self, enabled: bool) -> Self {
         self.auto_cleanup = enabled;
         self
     }
@@ -97,6 +97,7 @@ impl CapabilityRegistry {
 
         // Sort by priority (highest first)
         provider_list.sort_by(|a, b| b.priority.cmp(&a.priority));
+        drop(providers);
     }
 
     /// Get providers for a capability
@@ -167,15 +168,14 @@ impl CapabilityRegistry {
     /// Get statistics
     pub async fn stats(&self) -> RegistryStats {
         let providers = self.providers.read().await;
-
         let total_capabilities = providers.len();
         let total_providers: usize = providers.values().map(|v| v.len()).sum();
-
         let healthy_providers = providers
             .values()
             .flatten()
             .filter(|p| matches!(p.health, ServiceHealth::Healthy))
             .count();
+        drop(providers);
 
         RegistryStats {
             total_capabilities,

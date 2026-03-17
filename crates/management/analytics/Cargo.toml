@@ -1,7 +1,7 @@
 [package]
 name = "toadstool-management-analytics"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 description = "Advanced monitoring and analytics engine for ToadStool"
 readme = "README.md"
 license.workspace = true

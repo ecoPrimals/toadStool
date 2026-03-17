@@ -171,10 +171,12 @@ mod tests {
 
         let result = SongbirdConnection::new(config).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No Songbird endpoints"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No Songbird endpoints")
+        );
     }
 
     #[tokio::test]

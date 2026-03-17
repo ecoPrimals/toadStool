@@ -36,7 +36,7 @@ impl OrchestrationClient {
 
     /// Create with custom discovery engine
     #[must_use]
-    pub fn with_discovery(discovery: Arc<DiscoveryEngine>) -> Self {
+    pub const fn with_discovery(discovery: Arc<DiscoveryEngine>) -> Self {
         Self { discovery }
     }
 
@@ -115,7 +115,7 @@ impl OrchestrationClient {
         }
 
         Err(ToadStoolError::configuration(
-            "No orchestration services found. Tried: service-discovery, load-balancing, job-routing"
+            "No orchestration services found. Tried: service-discovery, load-balancing, job-routing",
         ))
     }
 }
@@ -194,7 +194,7 @@ mod tests {
             toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
         );
         engine
-            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .register_source(Arc::new(CapabilityAwareMockSource { results }))
             .await;
 
         let client = OrchestrationClient::with_discovery(Arc::new(engine));
@@ -251,7 +251,7 @@ mod tests {
             toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
         );
         engine
-            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .register_source(Arc::new(CapabilityAwareMockSource { results }))
             .await;
 
         let client = OrchestrationClient::with_discovery(Arc::new(engine));
@@ -272,7 +272,7 @@ mod tests {
             toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
         );
         engine
-            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .register_source(Arc::new(CapabilityAwareMockSource { results }))
             .await;
 
         let client = OrchestrationClient::with_discovery(Arc::new(engine));
@@ -294,7 +294,7 @@ mod tests {
             toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
         );
         engine
-            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .register_source(Arc::new(CapabilityAwareMockSource { results }))
             .await;
 
         let client = OrchestrationClient::with_discovery(Arc::new(engine));

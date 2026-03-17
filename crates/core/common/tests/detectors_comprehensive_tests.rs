@@ -52,9 +52,11 @@ async fn test_bare_metal_detector_capabilities() {
     assert!(result.is_some());
     let substrate = result.unwrap();
     assert!(!substrate.capabilities.is_empty());
-    assert!(substrate
-        .capabilities
-        .contains(&SubstrateCapability::BareMetal));
+    assert!(
+        substrate
+            .capabilities
+            .contains(&SubstrateCapability::BareMetal)
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

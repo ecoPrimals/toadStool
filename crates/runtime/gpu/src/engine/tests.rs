@@ -37,11 +37,12 @@ fn test_engine_get_capabilities() {
     let caps = engine.get_capabilities();
     assert!(caps.supported_workloads.contains(&WorkloadType::Gpu));
     assert_eq!(caps.max_concurrent_executions, Some(64));
-    assert!(caps
-        .platform_features
-        .get("parallel_compute")
-        .copied()
-        .unwrap_or(false));
+    assert!(
+        caps.platform_features
+            .get("parallel_compute")
+            .copied()
+            .unwrap_or(false)
+    );
 }
 
 #[test]
@@ -411,16 +412,18 @@ async fn test_engine_get_statistics_with_sessions() {
 fn test_engine_capabilities_platform_features() {
     let engine = UniversalGpuEngine::default();
     let caps = engine.get_capabilities();
-    assert!(caps
-        .platform_features
-        .get("parallel_compute")
-        .copied()
-        .unwrap_or(false));
-    assert!(caps
-        .platform_features
-        .get("recursive_execution")
-        .copied()
-        .unwrap_or(false));
+    assert!(
+        caps.platform_features
+            .get("parallel_compute")
+            .copied()
+            .unwrap_or(false)
+    );
+    assert!(
+        caps.platform_features
+            .get("recursive_execution")
+            .copied()
+            .unwrap_or(false)
+    );
     assert!(caps.supported_architectures.contains(&"x86_64".to_string()));
 }
 

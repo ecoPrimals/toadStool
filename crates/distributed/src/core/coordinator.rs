@@ -242,6 +242,7 @@ impl StandaloneExecutor {
                 execution_id
             ))
         })?;
+        drop(active_executions);
 
         session.cancel_token.cancel();
         info!("Execution {} cancelled", execution_id);

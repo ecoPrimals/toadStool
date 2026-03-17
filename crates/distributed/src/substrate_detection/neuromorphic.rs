@@ -38,14 +38,14 @@ pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
 
     if let Ok(devices) = fs::read_dir("/dev") {
         for entry in devices.flatten() {
-            if let Some(name) = entry.file_name().to_str() {
-                if name.contains("loihi") || name.contains("neuromorphic") {
-                    platforms.push(PlatformType::NeuromorphicComputing {
-                        platform: "Intel Loihi Hardware".to_string(),
-                        hardware: true,
-                    });
-                    break;
-                }
+            if let Some(name) = entry.file_name().to_str()
+                && (name.contains("loihi") || name.contains("neuromorphic"))
+            {
+                platforms.push(PlatformType::NeuromorphicComputing {
+                    platform: "Intel Loihi Hardware".to_string(),
+                    hardware: true,
+                });
+                break;
             }
         }
     }

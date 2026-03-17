@@ -64,13 +64,13 @@ pub struct EcosystemConfigBuilder {
 
 impl EcosystemConfigBuilder {
     /// Enable or disable auto-discovery
-    pub fn auto_discovery(mut self, enabled: bool) -> Self {
+    pub const fn auto_discovery(mut self, enabled: bool) -> Self {
         self.auto_discovery = enabled;
         self
     }
 
     /// Set discovery timeout
-    pub fn discovery_timeout(mut self, timeout: std::time::Duration) -> Self {
+    pub const fn discovery_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.discovery_timeout = timeout;
         self
     }
@@ -140,19 +140,19 @@ pub enum ServiceStatus {
 
 impl ServiceStatus {
     /// Check if service is usable
-    pub fn is_usable(&self) -> bool {
-        matches!(self, ServiceStatus::Connected)
+    pub const fn is_usable(&self) -> bool {
+        matches!(self, Self::Connected)
     }
 
     /// Check if service is in error state
-    pub fn is_error(&self) -> bool {
-        matches!(self, ServiceStatus::Failed(_))
+    pub const fn is_error(&self) -> bool {
+        matches!(self, Self::Failed(_))
     }
 
     /// Get error message if in failed state
     pub fn error_message(&self) -> Option<&str> {
         match self {
-            ServiceStatus::Failed(msg) => Some(msg),
+            Self::Failed(msg) => Some(msg),
             _ => None,
         }
     }
@@ -210,11 +210,15 @@ pub struct TarpcClientWrapper {
 
 #[cfg(feature = "networking")]
 impl TarpcClientWrapper {
-    pub fn with_fallback(client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient) -> Self {
+    pub const fn with_fallback(
+        client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    ) -> Self {
         Self { fallback: client }
     }
 
-    pub fn fallback_client(&self) -> &toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient {
+    pub const fn fallback_client(
+        &self,
+    ) -> &toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient {
         &self.fallback
     }
 }
@@ -299,19 +303,13 @@ pub enum EcosystemMessageType {
 
 impl EcosystemMessageType {
     /// Check if this message requires a response
-    pub fn requires_response(&self) -> bool {
-        matches!(
-            self,
-            EcosystemMessageType::ResourceRequest | EcosystemMessageType::WorkloadRequest
-        )
+    pub const fn requires_response(&self) -> bool {
+        matches!(self, Self::ResourceRequest | Self::WorkloadRequest)
     }
 
     /// Check if this is a response message
-    pub fn is_response(&self) -> bool {
-        matches!(
-            self,
-            EcosystemMessageType::ResourceResponse | EcosystemMessageType::WorkloadResponse
-        )
+    pub const fn is_response(&self) -> bool {
+        matches!(self, Self::ResourceResponse | Self::WorkloadResponse)
     }
 }
 

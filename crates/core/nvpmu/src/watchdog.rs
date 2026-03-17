@@ -8,10 +8,10 @@
 
 use crate::error::Result;
 use crate::hwmon::HwmonSensors;
-use crate::monitor::{evaluate_safety, MonitorConfig, SafetyStatus};
+use crate::monitor::{MonitorConfig, SafetyStatus, evaluate_safety};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Watchdog handle. Drop to stop the monitoring thread.
 pub struct Watchdog {
@@ -118,17 +118,17 @@ fn attempt_power_reduction(device_path: &Path) -> Result<()> {
         let cap_path = entry.path().join("power1_cap");
         if cap_path.exists() {
             // Read current cap, write 50% as emergency reduction
-            if let Ok(current) = std::fs::read_to_string(&cap_path) {
-                if let Ok(current_uw) = current.trim().parse::<u64>() {
-                    let reduced = current_uw / 2;
-                    tracing::warn!(
-                        current_w = current_uw / 1_000_000,
-                        reduced_w = reduced / 1_000_000,
-                        "emergency power cap reduction"
-                    );
-                    // Best-effort write — may fail if driver doesn't support it
-                    let _ = std::fs::write(&cap_path, reduced.to_string());
-                }
+            if let Ok(current) = std::fs::read_to_string(&cap_path)
+                && let Ok(current_uw) = current.trim().parse::<u64>()
+            {
+                let reduced = current_uw / 2;
+                tracing::warn!(
+                    current_w = current_uw / 1_000_000,
+                    reduced_w = reduced / 1_000_000,
+                    "emergency power cap reduction"
+                );
+                // Best-effort write — may fail if driver doesn't support it
+                let _ = std::fs::write(&cap_path, reduced.to_string());
             }
         }
     }

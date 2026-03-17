@@ -51,10 +51,9 @@ pub async fn with_timeout<F, T>(duration: Duration, future: F) -> UtilResult<T>
 where
     F: Future<Output = T>,
 {
-    match tokio::time::timeout(duration, future).await {
-        Ok(result) => Ok(result),
-        Err(_) => Err(UtilError::Timeout(duration)),
-    }
+    tokio::time::timeout(duration, future)
+        .await
+        .map_or_else(|_| Err(UtilError::Timeout(duration)), Ok)
 }
 
 /// Retry an operation with exponential backoff

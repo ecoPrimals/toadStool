@@ -7,7 +7,7 @@
 use crate::primal_identity::Capability;
 
 /// Convert capability to discovery protocol string
-pub(crate) fn capability_to_string(cap: &Capability) -> String {
+pub fn capability_to_string(cap: &Capability) -> String {
     match cap {
         Capability::Compute(_) => "compute".to_string(),
         Capability::Storage(_) => "storage".to_string(),
@@ -20,7 +20,7 @@ pub(crate) fn capability_to_string(cap: &Capability) -> String {
 }
 
 /// Parse discovery protocol string into capability
-pub(crate) fn string_to_capability(s: &str) -> Capability {
+pub fn string_to_capability(s: &str) -> Capability {
     use crate::primal_identity::{
         AuthCapability, Capability, ComputeCapability, CoordinationCapability, CryptoCapability,
         DiscoveryCapability, StorageCapability,
