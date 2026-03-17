@@ -211,57 +211,51 @@ impl SelfIdentity {
             .unwrap_or(0)
     }
 
-    /// Detect GPU availability using wgpu runtime detection
+    /// Detect GPU availability using wgpu runtime detection.
     ///
-    /// **Modern Pattern**: Uses a dedicated thread for GPU detection to avoid blocking.
-    /// GPU detection is inherently blocking (hardware enumeration), but we isolate it
-    /// from the async runtime.
-    #[allow(clippy::missing_const_for_fn)] // Cannot be const: uses thread::scope, block_on, wgpu
+    /// Result is cached via `OnceLock` since GPU availability does not change
+    /// during process lifetime. This also prevents SIGSEGV from concurrent
+    /// wgpu instance creation in parallel test harnesses.
     fn detect_gpu() -> bool {
-        // EVOLVED: Use wgpu to actually detect GPU availability
-        #[cfg(feature = "wgpu")]
-        {
-            // GPU detection is a one-time initialization task that involves
-            // hardware enumeration. We use a scoped thread to avoid blocking
-            // the async runtime while still getting synchronous results.
-            std::thread::scope(|s| {
-                s.spawn(|| {
-                    // Try to create wgpu instance and enumerate adapters
-                    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-                        backends: wgpu::Backends::all(),
-                        ..Default::default()
-                    });
+        use std::sync::OnceLock;
+        static GPU_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
-                    // Check if any GPU adapter is available (this is inherently blocking)
-                    let has_gpu = futures::executor::block_on(async {
-                        instance
-                            .enumerate_adapters(wgpu::Backends::all())
-                            .into_iter()
-                            .any(|adapter| {
-                                let info = adapter.get_info();
-                                matches!(
-                                    info.device_type,
-                                    wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
-                                )
-                            })
-                    });
+        *GPU_AVAILABLE.get_or_init(|| {
+            #[cfg(feature = "wgpu")]
+            {
+                std::thread::scope(|s| {
+                    s.spawn(|| {
+                        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+                            backends: wgpu::Backends::all(),
+                            ..Default::default()
+                        });
 
-                    if has_gpu {
-                        tracing::debug!("✅ GPU detected via wgpu");
-                    } else {
-                        tracing::debug!("❌ No GPU detected");
-                    }
-                    has_gpu
+                        let has_gpu = futures::executor::block_on(async {
+                            instance
+                                .enumerate_adapters(wgpu::Backends::all())
+                                .into_iter()
+                                .any(|adapter| {
+                                    let info = adapter.get_info();
+                                    matches!(
+                                        info.device_type,
+                                        wgpu::DeviceType::DiscreteGpu
+                                            | wgpu::DeviceType::IntegratedGpu
+                                    )
+                                })
+                        });
+
+                        tracing::debug!(gpu_detected = has_gpu, "GPU hardware probe complete");
+                        has_gpu
+                    })
+                    .join()
+                    .unwrap_or(false)
                 })
-                .join()
-                .unwrap_or(false)
-            })
-        }
-        #[cfg(not(feature = "wgpu"))]
-        {
-            // Conservative: if wgpu feature not enabled, assume no GPU
-            false
-        }
+            }
+            #[cfg(not(feature = "wgpu"))]
+            {
+                false
+            }
+        })
     }
 
     /// Set our network identity

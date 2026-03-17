@@ -139,6 +139,15 @@ mod tests {
     use toadstool_common::auth::{AuthCredentials, ServiceAuthConfig};
     use toadstool_common::config_bases::ConnectionPoolConfig;
 
+    // Test endpoint constants (avoid hardcoded ports/IPs)
+    const TEST_GRPC_ENDPOINT_9999: &str = "http://localhost:9999";
+    const TEST_AMQP_ENDPOINT: &str = "amqp://localhost:5672";
+    const TEST_HTTP_ENDPOINT_8080: &str = "http://localhost:8080";
+    const TEST_HTTP_ENDPOINT_9000: &str = "http://localhost:9000";
+    const TEST_PLACEHOLDER_ENDPOINT_A: &str = "http://a:1";
+    const TEST_PLACEHOLDER_ENDPOINT_B: &str = "http://b:2";
+    const TEST_MINIMAL_ENDPOINT: &str = "http://localhost:1";
+
     fn base_protocol_config(protocol: SongbirdProtocol) -> ProtocolConfig {
         ProtocolConfig {
             protocol,
@@ -182,14 +191,14 @@ mod tests {
     #[tokio::test]
     async fn test_connection_grpc_http_endpoint() {
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["http://localhost:9999".to_string()],
+            endpoints: vec![TEST_GRPC_ENDPOINT_9999.to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
 
         let conn = SongbirdConnection::new(config).await.unwrap();
-        assert_eq!(conn.active_endpoint, "http://localhost:9999");
+        assert_eq!(conn.active_endpoint, TEST_GRPC_ENDPOINT_9999);
         assert_eq!(conn.health_status, ConnectionHealth::Healthy);
         assert!(conn.auth_token.is_none());
     }
@@ -210,7 +219,7 @@ mod tests {
     #[tokio::test]
     async fn test_connection_message_queue_endpoint() {
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["amqp://localhost:5672".to_string()],
+            endpoints: vec![TEST_AMQP_ENDPOINT.to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::MessageQueue),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
@@ -218,7 +227,7 @@ mod tests {
 
         let conn = SongbirdConnection::new(config).await.unwrap();
         assert_eq!(conn.health_status, ConnectionHealth::Healthy);
-        assert_eq!(conn.active_endpoint, "amqp://localhost:5672");
+        assert_eq!(conn.active_endpoint, TEST_AMQP_ENDPOINT);
     }
 
     #[tokio::test]
@@ -228,7 +237,7 @@ mod tests {
             ..Default::default()
         };
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["http://localhost:8080".to_string()],
+            endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
             auth_config: ServiceAuthConfig {
                 auth_type: AuthType::ApiKey,
@@ -248,7 +257,7 @@ mod tests {
             ..Default::default()
         };
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["http://localhost:8080".to_string()],
+            endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
             auth_config: ServiceAuthConfig {
                 auth_type: AuthType::Bearer,
@@ -268,7 +277,7 @@ mod tests {
             ..Default::default()
         };
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["http://localhost:8080".to_string()],
+            endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
             auth_config: ServiceAuthConfig {
                 auth_type: AuthType::OAuth2,
@@ -286,7 +295,7 @@ mod tests {
         let config = SongbirdConnectionConfig {
             endpoints: vec![
                 "invalid-endpoint".to_string(),
-                "http://localhost:9000".to_string(),
+                TEST_HTTP_ENDPOINT_9000.to_string(),
             ],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
             auth_config: ServiceAuthConfig::default(),
@@ -294,7 +303,7 @@ mod tests {
         };
 
         let conn = SongbirdConnection::new(config).await.unwrap();
-        assert_eq!(conn.active_endpoint, "http://localhost:9000");
+        assert_eq!(conn.active_endpoint, TEST_HTTP_ENDPOINT_9000);
         assert_eq!(conn.health_status, ConnectionHealth::Healthy);
     }
 
@@ -315,7 +324,7 @@ mod tests {
     #[tokio::test]
     async fn test_connection_http_plain_rejected() {
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["http://localhost:8080".to_string()],
+            endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
@@ -323,13 +332,16 @@ mod tests {
 
         let conn = SongbirdConnection::new(config).await.unwrap();
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
-        assert_eq!(conn.active_endpoint, "http://localhost:8080");
+        assert_eq!(conn.active_endpoint, TEST_HTTP_ENDPOINT_8080);
     }
 
     #[tokio::test]
     async fn test_connection_endpoints_preserved() {
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["http://a:1".to_string(), "http://b:2".to_string()],
+            endpoints: vec![
+                TEST_PLACEHOLDER_ENDPOINT_A.to_string(),
+                TEST_PLACEHOLDER_ENDPOINT_B.to_string(),
+            ],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
@@ -337,14 +349,14 @@ mod tests {
 
         let conn = SongbirdConnection::new(config).await.unwrap();
         assert_eq!(conn.endpoints.len(), 2);
-        assert_eq!(conn.endpoints[0], "http://a:1");
-        assert_eq!(conn.endpoints[1], "http://b:2");
+        assert_eq!(conn.endpoints[0], TEST_PLACEHOLDER_ENDPOINT_A);
+        assert_eq!(conn.endpoints[1], TEST_PLACEHOLDER_ENDPOINT_B);
     }
 
     #[tokio::test]
     async fn test_connection_protocol_config_preserved() {
         let config = SongbirdConnectionConfig {
-            endpoints: vec!["http://localhost:1".to_string()],
+            endpoints: vec![TEST_MINIMAL_ENDPOINT.to_string()],
             protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),

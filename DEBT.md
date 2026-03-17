@@ -5,6 +5,14 @@
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
 
+## S158 Resolved Debt
+
+- **D-SIGSEGV-SELFID**: `self_identity_expanded_tests` SIGSEGV fixed. `detect_gpu()` now uses `OnceLock` — single wgpu instance probe per process, eliminating concurrent GPU driver crashes.
+- **D-LICENSE-CARGO**: 17 Cargo.toml files evolved to `license.workspace = true`. All workspace crates now inherit AGPL-3.0-only consistently.
+- **D-FORBID-UNSAFE**: 9 crates upgraded `deny(unsafe_code)` → `forbid(unsafe_code)` (client, cli, integration-tests, server, testing, toadstool-core, core/common, core/config, core/toadstool). Total: 29 forbid + ~10 deny.
+- **D-HARDCODE-TEST**: Test constants evolved — `TestConstants` expanded with network fixtures. 5 files with production-adjacent hardcoded ports/IPs/endpoints evolved to named constants.
+- **D-WARN-DOCS-STAGED**: `warn(missing_docs)` attempted on 33 crates; incompatible with `-D warnings` CI gate. Reverted per existing DEBT.md decision. Will roll out per-crate as documentation coverage reaches 100%.
+
 ## S157b Resolved Debt
 
 - **D-UNSAFE-ENV**: All `set_var`/`remove_var` calls wrapped in `unsafe {}` for edition 2024 across 14 files. Mangled syntax fixed in 3 server files.

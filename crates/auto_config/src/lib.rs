@@ -649,11 +649,15 @@ mod tests {
     #[test]
     fn test_system_summary_from_capabilities_with_ecosystem_services() {
         let mut discovered = std::collections::HashMap::new();
+        let test_endpoint = toadstool_common::constants::network::http_url(
+            toadstool_common::constants::network::LOCALHOST_IPV4,
+            toadstool_common::constants::network::DEFAULT_HTTP_PORT,
+        );
         discovered.insert(
             "songbird".to_string(),
             ServiceInfo {
                 name: "songbird".to_string(),
-                endpoint: "http://localhost:8080".to_string(),
+                endpoint: test_endpoint,
                 service_type: "NetworkCoordination".to_string(),
                 version: "1.0".to_string(),
                 capabilities: vec![],

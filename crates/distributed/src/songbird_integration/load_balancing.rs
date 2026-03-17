@@ -122,10 +122,12 @@ mod tests {
     use std::collections::HashMap;
     use std::time::Duration;
 
+    const TEST_MOCK_ENDPOINT: &str = "http://localhost:8080";
+
     fn make_mock_connection() -> SongbirdConnection {
         SongbirdConnection {
-            endpoints: vec!["http://localhost:8080".to_string()],
-            active_endpoint: "http://localhost:8080".to_string(),
+            endpoints: vec![TEST_MOCK_ENDPOINT.to_string()],
+            active_endpoint: TEST_MOCK_ENDPOINT.to_string(),
             auth_token: None,
             health_status: ConnectionHealth::Healthy,
             protocol_config: ProtocolConfig {

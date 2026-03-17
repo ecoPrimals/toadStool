@@ -1,10 +1,13 @@
 [workspace]
+resolver = "2"
+[workspace.package]
+license = "AGPL-3.0-only"
 
 [package]
 name = "hardware-discovery"
 version = "0.1.0"
 edition.workspace = true
-license = "AGPL-3.0-only"
+license.workspace = true
 description = "ToadStool showcase: hardware substrate probing"
 
 [dependencies]

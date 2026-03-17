@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![allow(
     clippy::unused_async, // Test helpers/placeholders; async for trait/API consistency
     clippy::must_use_candidate,

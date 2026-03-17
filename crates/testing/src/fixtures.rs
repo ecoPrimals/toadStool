@@ -50,6 +50,10 @@ use toadstool::{
 pub use security::TestEnvironment;
 
 /// Test configuration constants
+///
+/// Centralizes all test literals to avoid hardcoding in individual tests.
+/// Tests should reference these constants instead of raw port numbers,
+/// IP addresses, or endpoint strings.
 pub struct TestConstants;
 
 impl TestConstants {
@@ -76,6 +80,18 @@ impl TestConstants {
 
     /// Test working directory
     pub const TEST_WORKING_DIR: &'static str = "/tmp";
+
+    /// Loopback address for test endpoints
+    pub const TEST_HOST: &'static str = "127.0.0.1";
+
+    /// Generic test endpoint (use `TestIsolation::get_port` for unique ports)
+    pub const TEST_ENDPOINT: &'static str = "http://127.0.0.1:0";
+
+    /// Test endpoint for service mocking (remote peer simulation)
+    pub const TEST_REMOTE_ENDPOINT: &'static str = "http://test-remote:0";
+
+    /// Test endpoint for registry simulation
+    pub const TEST_REGISTRY_ENDPOINT: &'static str = "http://test-registry:0";
 }
 
 /// Create a basic test execution request

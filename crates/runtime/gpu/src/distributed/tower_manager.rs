@@ -218,6 +218,10 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
+    // Placeholder addresses for unit tests (production uses Songbird discovery)
+    const TEST_TOWER_ADDR_1: &str = "10.0.0.1:8080";
+    const TEST_TOWER_ADDR_2: &str = "10.0.0.2:8080";
+
     #[tokio::test]
     async fn test_tower_manager_creation() {
         let manager = TowerManager::new("local-tower".to_string());
@@ -232,7 +236,7 @@ mod tests {
         // Test fixture: placeholder address for unit test (production uses Songbird discovery)
         let endpoint = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
-            address: "10.0.0.2:8080".to_string(),
+            address: TEST_TOWER_ADDR_2.to_string(),
             gpu_capabilities: None,
             last_seen: Instant::now(),
             latency_ms: 5,
@@ -296,7 +300,7 @@ mod tests {
 
         let endpoint = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
-            address: "10.0.0.1:8080".to_string(),
+            address: TEST_TOWER_ADDR_1.to_string(),
             gpu_capabilities: None,
             last_seen: Instant::now(),
             latency_ms: 10,
@@ -310,7 +314,7 @@ mod tests {
         let manager = TowerManager::new("local".to_string());
         let ep1 = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
-            address: "10.0.0.1:8080".to_string(),
+            address: TEST_TOWER_ADDR_1.to_string(),
             gpu_capabilities: None,
             last_seen: Instant::now(),
             latency_ms: 5,
@@ -318,7 +322,7 @@ mod tests {
         manager.register_tower(ep1).await;
         let ep2 = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
-            address: "10.0.0.2:8080".to_string(),
+            address: TEST_TOWER_ADDR_2.to_string(),
             gpu_capabilities: None,
             last_seen: Instant::now(),
             latency_ms: 3,
@@ -327,6 +331,6 @@ mod tests {
         assert_eq!(manager.tower_count().await, 2);
         let endpoint = manager.get_tower_endpoint("remote-1").await;
         assert!(endpoint.is_some());
-        assert_eq!(endpoint.unwrap().address, "10.0.0.2:8080");
+        assert_eq!(endpoint.unwrap().address, TEST_TOWER_ADDR_2);
     }
 }

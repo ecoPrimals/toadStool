@@ -289,16 +289,18 @@ mod tests {
     use super::*;
     use serde_json::Value;
 
+    const TEST_OLLAMA_UNUSED_PORT: u16 = 19999;
+
     #[test]
     fn test_default_config() {
         // Don't pollute env, just check defaults work
         let config = OllamaConfig {
-            host: "127.0.0.1".to_string(),
-            port: 11434,
+            host: LOCALHOST_IPV4.to_string(),
+            port: DEFAULT_OLLAMA_PORT,
             timeout_secs: 30,
         };
-        assert_eq!(config.host, "127.0.0.1");
-        assert_eq!(config.port, 11434);
+        assert_eq!(config.host, LOCALHOST_IPV4);
+        assert_eq!(config.port, DEFAULT_OLLAMA_PORT);
     }
 
     #[test]
@@ -404,19 +406,19 @@ mod tests {
     #[tokio::test]
     async fn test_client_creation() {
         let client = OllamaClient::new(OllamaConfig {
-            host: "127.0.0.1".to_string(),
-            port: 11434,
+            host: LOCALHOST_IPV4.to_string(),
+            port: DEFAULT_OLLAMA_PORT,
             timeout_secs: 5,
         });
         // Client should be created without error even if Ollama isn't running
-        assert_eq!(client.config.port, 11434);
+        assert_eq!(client.config.port, DEFAULT_OLLAMA_PORT);
     }
 
     #[tokio::test]
     async fn test_is_available_when_not_running() {
         let client = OllamaClient::new(OllamaConfig {
-            host: "127.0.0.1".to_string(),
-            port: 19999, // Unlikely to be running on this port
+            host: LOCALHOST_IPV4.to_string(),
+            port: TEST_OLLAMA_UNUSED_PORT,
             timeout_secs: 1,
         });
         // Should return false, not panic
@@ -426,8 +428,8 @@ mod tests {
     #[tokio::test]
     async fn test_list_models_connection_error() {
         let client = OllamaClient::new(OllamaConfig {
-            host: "127.0.0.1".to_string(),
-            port: 19999,
+            host: LOCALHOST_IPV4.to_string(),
+            port: TEST_OLLAMA_UNUSED_PORT,
             timeout_secs: 1,
         });
         let result = client.list_models().await;
@@ -441,8 +443,8 @@ mod tests {
     #[tokio::test]
     async fn test_load_connection_error() {
         let client = OllamaClient::new(OllamaConfig {
-            host: "127.0.0.1".to_string(),
-            port: 19999,
+            host: LOCALHOST_IPV4.to_string(),
+            port: TEST_OLLAMA_UNUSED_PORT,
             timeout_secs: 1,
         });
         let result = client.load("llama3").await;
@@ -452,8 +454,8 @@ mod tests {
     #[tokio::test]
     async fn test_unload_connection_error() {
         let client = OllamaClient::new(OllamaConfig {
-            host: "127.0.0.1".to_string(),
-            port: 19999,
+            host: LOCALHOST_IPV4.to_string(),
+            port: TEST_OLLAMA_UNUSED_PORT,
             timeout_secs: 1,
         });
         let result = client.unload("llama3").await;
@@ -463,8 +465,8 @@ mod tests {
     #[tokio::test]
     async fn test_inference_connection_error() {
         let client = OllamaClient::new(OllamaConfig {
-            host: "127.0.0.1".to_string(),
-            port: 19999,
+            host: LOCALHOST_IPV4.to_string(),
+            port: TEST_OLLAMA_UNUSED_PORT,
             timeout_secs: 1,
         });
         let result = client
@@ -475,14 +477,16 @@ mod tests {
 
     #[test]
     fn test_ollama_config_custom() {
+        const TEST_CUSTOM_HOST: &str = "192.168.1.1";
+        const TEST_CUSTOM_PORT: u16 = 9090;
         let config = OllamaConfig {
-            host: "192.168.1.1".to_string(),
-            port: 9090,
+            host: TEST_CUSTOM_HOST.to_string(),
+            port: TEST_CUSTOM_PORT,
             timeout_secs: 60,
         };
         let client = OllamaClient::new(config);
-        assert_eq!(client.config.host, "192.168.1.1");
-        assert_eq!(client.config.port, 9090);
+        assert_eq!(client.config.host, TEST_CUSTOM_HOST);
+        assert_eq!(client.config.port, TEST_CUSTOM_PORT);
         assert_eq!(client.config.timeout_secs, 60);
     }
 

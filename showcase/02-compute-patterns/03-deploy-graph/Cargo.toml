@@ -1,10 +1,13 @@
 [workspace]
+resolver = "2"
+[workspace.package]
+license = "AGPL-3.0-only"
 
 [package]
 name = "deploy-graph"
 version = "0.1.0"
 edition.workspace = true
-license = "AGPL-3.0-only"
+license.workspace = true
 description = "ToadStool showcase: capability-based routing via deploy.capability_call"
 
 # Local crate path: ../../../crates/core/common

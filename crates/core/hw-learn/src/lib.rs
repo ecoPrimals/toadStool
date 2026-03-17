@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
 //! Vendor-neutral GPU hardware learning.
 //!
 //! Observe working GPUs, distill init patterns into portable recipes,
