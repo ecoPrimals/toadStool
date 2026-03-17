@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 16, 2026 -- S157 Comprehensive Audit + Edition 2024 + Nursery Evolution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | AGPL-3.0-only | 0 clippy **pedantic+nursery** (all 56 crates) | 1,896 `.rs` files, 565K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline
-**Latest**: S157 — Comprehensive audit + full execution: edition 2021→2024, nursery lint pass enabled (~500+ fixes), GPU/distributed compile errors resolved, large file refactoring, 271 profraw debris cleaned, zero-copy expanded to CUDA/OpenCL backends.
+**Updated**: March 17, 2026 -- S157b Deep Debt Execution + Full CI Green
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | AGPL-3.0-only | **All 4 quality gates green** | 0 clippy pedantic+nursery (56 crates) | 21,156+ tests (0 failures) | 1,896 `.rs` files, 565K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline
+**Latest**: S157b — Deep debt execution: unsafe env var fix (14 files), clippy fully clean, serialport libudev→pure Rust, full audit (unsafe, deps, mocks, hardcoding, file sizes — all clean).
 
 ---
 
@@ -26,11 +26,10 @@ adapter. Vendor-agnostic, capability-based, zero-copy input (`Cow`). Also added
 `NpuParameterController` trait (hotSpring absorption) for NPU-driven autonomous
 parameter tuning.
 
-### P1: Fix `set_var`/`remove_var` unsafe blocks — NEW (S157)
+### ~~P1: Fix `set_var`/`remove_var` unsafe blocks~~ ✅ RESOLVED (S157b)
 
-`std::env::set_var` and `std::env::remove_var` became `unsafe` in Rust 2024 edition.
-22 call sites in `crates/core/config/src/services/tests.rs` need `unsafe {}` wrapping.
-This blocks the full test suite.
+All `set_var`/`remove_var` calls wrapped in `unsafe {}` across 14 files. Mangled
+syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S157)
 

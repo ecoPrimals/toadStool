@@ -1,9 +1,17 @@
 # Active Technical Debt Register
 
-**Date**: March 16, 2026 — S157
+**Date**: March 17, 2026 — S157b
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S157b Resolved Debt
+
+- **D-UNSAFE-ENV**: All `set_var`/`remove_var` calls wrapped in `unsafe {}` for edition 2024 across 14 files. Mangled syntax fixed in 3 server files.
+- **D-CLIPPY-TARGETS**: Clippy clean with `--all-targets` (collapsible_if, module_inception, dead code, unused imports, stale expects).
+- **D-SERIALPORT**: `serialport` in runtime/specialty → `default-features = false` (eliminates libudev C dependency).
+- **D-OPENCL-DOCTEST**: Migration example marked `ignore` (illustrative only).
+- **D-AUDIT-COMPLETE**: Full audit: unsafe (70+ justified), deps (C FFI all optional), mocks (zero production), hardcoding (capability-based), files (all production < 850).
 
 ## S157 Resolved Debt
 
@@ -14,7 +22,7 @@ iterations, evolving toward vendor-agnostic, capability-based solutions.
 - **D-CLI-NPU**: `akida-driver` dependency wired for `npu` feature. `ChipVersion` Display impl added.
 - **D-OPENCL-DEPRECATED**: Deprecated OpenCL module properly `#[allow(deprecated)]` gated.
 - **D-PROFRAW**: 271 stale `.profraw` files cleaned from crate directories.
-- **D-LARGE-FILES**: 8 files (900+ lines) smart-refactored into coherent submodules. All production < 500 lines.
+- **D-LARGE-FILES**: 8 files (900+ lines) smart-refactored into coherent submodules. All production < 850 lines.
 - **D-ZERO-COPY**: OpenCL/CUDA backends fully migrated to `bytes::Bytes`.
 
 ---

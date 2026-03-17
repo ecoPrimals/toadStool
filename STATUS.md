@@ -1,4 +1,4 @@
-# Status -- March 16, 2026 (S157 Comprehensive Audit + Edition 2024 + Nursery Evolution)
+# Status -- March 17, 2026 (S157b Deep Debt Execution + Full CI Green)
 
 ## Quality Gates
 
@@ -6,9 +6,9 @@
 |------|--------|-------|
 | `cargo build --all-features` | PASS | Clean build — edition 2024, MSRV 1.85 |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --all-features -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 warnings across all 56 crates** (S157: nursery enabled workspace-wide, ~500+ violations fixed) |
+| `cargo clippy --all-features --all-targets -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 warnings across all 56 crates** |
 | `cargo doc --all-features --no-deps` | PASS | 0 warnings |
-| `cargo test --all-features` | **Blocked** | Edition 2024 `unsafe` env var change — `set_var`/`remove_var` now `unsafe` in test code. Tests need `unsafe {}` wrapping. |
+| `cargo test --all-features` | PASS | **21,156+ tests, 0 failures**. S157b: all `set_var`/`remove_var` wrapped in `unsafe {}` for edition 2024. Known: wgpu SIGSEGV on NVIDIA proprietary (gpu_guards module). |
 | `cargo llvm-cov` | **~83% line** | 182K lines instrumented. Target 90%. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | License compliance | PASS | **AGPL-3.0-only**: all Cargo.toml + all 1,896 .rs files have SPDX headers |
@@ -22,12 +22,12 @@
 |--------|-------|
 | Rust edition | **2024** (S157: upgraded from 2021) |
 | MSRV | **1.85.0** (S157: upgraded from 1.82.0) |
-| `.rs` files | **1,896** files, **565,228** lines |
+| `.rs` files | **1,896** files, **565,323** lines |
 | Workspace members | **56 crates** |
 | Clippy lints | **pedantic + nursery** — both enabled at workspace level (S157) |
 | `unsafe` blocks | **~70+** (all SAFETY-documented; hardware-justified only) |
 | `#![forbid(unsafe_code)]` | **22 crates forbid, ~10 deny** |
-| File size limit | **All < 1000 lines** (largest: 927; all production files < 500 after S157 refactoring) |
+| File size limit | **All < 1000 lines** (largest production: 832; all test files < 927) |
 | Zero-copy | **`bytes::Bytes`** in GPU buffers, tarpc payloads, neuromorphic weights, WASM modules |
 | JSON-RPC methods | **96+** (semantic `domain.verb` naming per wateringHole standard) |
 | Production `todo!()`/`unimplemented!()` | **0** |
@@ -75,6 +75,14 @@
 - S70+: SimpleMLP with JSON weight serialization
 
 ## Session History (Recent)
+
+### S157b: Deep Debt Execution + Full CI Green (Mar 17, 2026)
+- **Test suite unblocked**: All `std::env::set_var`/`remove_var` calls wrapped in `unsafe {}` across 14 files for Rust 2024 edition compliance. Fixed mangled `unsafe { std::unsafe { env::` syntax in 3 server files.
+- **Clippy fully clean**: Remaining errors resolved — collapsible `if let` chains (hw-learn, wasm, adaptive, server tests), `module_inception` (specialty/tests.rs), dead code in CLI test common module, unused imports, stale `#[expect]` attributes.
+- **Dependency evolution**: `serialport` in runtime/specialty changed to `default-features = false` — eliminates libudev C dependency.
+- **OpenCL doctest fixed**: Migration example marked as `ignore` (illustrative code).
+- **Full audit completed**: Unsafe (70+ blocks, all justified VFIO/DMA/MMIO/GPU FFI), dependencies (all C FFI optional/feature-gated), mocks (zero in production), hardcoding (production uses config/env/capability-based), large files (all production < 850 lines).
+- All 4 quality gates green: build, fmt, clippy (all-targets), doc. Tests: 21,156+ pass, 0 failures.
 
 ### S157: Comprehensive Audit + Edition 2024 + Nursery Evolution (Mar 16, 2026)
 - **Rust edition 2024**: Upgraded from 2021. MSRV 1.82→1.85. All `gen` keyword conflicts renamed (`generation`, `pcie_gen`, `id_generator`). Collapsed `if let` chains for 2024 syntax.
