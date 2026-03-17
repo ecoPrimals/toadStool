@@ -51,8 +51,8 @@ pub use toadstool::{
 pub use types::*;
 
 // Disambiguate conflicting names
-pub use types::configs::emulation::EmulationConfig as ConfigEmulationConfig;
 pub use types::configs::CompilationToolchainConfig as ToolchainConfig;
+pub use types::configs::emulation::EmulationConfig as ConfigEmulationConfig;
 pub use types::requirements::OptimizationLevel;
 
 // Re-export main public API

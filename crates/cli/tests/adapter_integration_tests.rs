@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -42,7 +43,10 @@ fn test_adapter_instantiation() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_env_var_discovery() {
     // Set test environment variable
-    env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
+    }
 
     let discovery = Arc::new(DiscoveryEngine::new());
     let registry = Arc::new(CapabilityRegistry::new());
@@ -53,7 +57,10 @@ async fn test_env_var_discovery() {
     println!("✅ Adapter created with environment variables configured");
 
     // Cleanup
-    env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+    }
 }
 
 /// Test that missing services are handled gracefully
@@ -119,7 +126,10 @@ fn test_multiple_adapter_instances() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_priority() {
     // Test that environment variables take precedence
-    env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9999");
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9999");
+    }
 
     let discovery = Arc::new(DiscoveryEngine::new());
     let registry = Arc::new(CapabilityRegistry::new());
@@ -130,7 +140,10 @@ async fn test_discovery_priority() {
     println!("✅ Discovery priority chain configured");
 
     // Cleanup
-    env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+    }
 }
 
 /// Test that deprecated functions have clear migration notes
@@ -182,12 +195,15 @@ async fn test_error_messages() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_workflow() {
     // Setup: Configure mock services via environment
-    env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
-    env::set_var("TOADSTOOL_STORAGE_SERVICE_URL", "http://127.0.0.1:8082");
-    env::set_var(
-        "TOADSTOOL_COORDINATION_SERVICE_URL",
-        "http://127.0.0.1:8080",
-    );
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
+        env::set_var("TOADSTOOL_STORAGE_SERVICE_URL", "http://127.0.0.1:8082");
+        env::set_var(
+            "TOADSTOOL_COORDINATION_SERVICE_URL",
+            "http://127.0.0.1:8080",
+        );
+    }
 
     // Create adapters (they require Arc for shared ownership)
     let discovery = Arc::new(DiscoveryEngine::new());
@@ -209,9 +225,12 @@ async fn test_complete_workflow() {
     println!("   Services are discovered dynamically at runtime");
 
     // Cleanup
-    env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
-    env::remove_var("TOADSTOOL_STORAGE_SERVICE_URL");
-    env::remove_var("TOADSTOOL_COORDINATION_SERVICE_URL");
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+        env::remove_var("TOADSTOOL_STORAGE_SERVICE_URL");
+        env::remove_var("TOADSTOOL_COORDINATION_SERVICE_URL");
+    }
 
     println!("✅ Complete workflow test passed!");
 }

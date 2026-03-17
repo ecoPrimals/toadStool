@@ -9,7 +9,9 @@ use crate::crypto_lock::permissions::{
     DelegationScope, PermissionHolder, PermissionMetadata, PermissionScope, ResourceLimits,
     SecurityProviderPermission, TimeRestrictions, UsageQuotas,
 };
-use crate::crypto_lock::validation::{CryptoAlgorithm, ProofMetadata, SecurityProof, VerificationLevel};
+use crate::crypto_lock::validation::{
+    CryptoAlgorithm, ProofMetadata, SecurityProof, VerificationLevel,
+};
 
 use super::helpers::{cloud_target, make_expired_permission};
 

@@ -794,11 +794,13 @@ mod tests {
     #[test]
     fn test_config_file_source_default_path() {
         let source = ConfigFileSource::default_path();
-        assert!(source
-            .config_path
-            .to_str()
-            .unwrap()
-            .contains("toadstool.toml"));
+        assert!(
+            source
+                .config_path
+                .to_str()
+                .unwrap()
+                .contains("toadstool.toml")
+        );
     }
 
     #[tokio::test]

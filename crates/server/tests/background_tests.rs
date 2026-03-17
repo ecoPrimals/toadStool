@@ -107,13 +107,13 @@ async fn test_resource_monitoring_emits_events() {
     // Wait for resource monitoring to emit at least one event
     let event_result = tokio::time::timeout(Duration::from_secs(3), async {
         loop {
-            if let Ok(event) = rx.recv().await {
-                if matches!(
+            if let Ok(event) = rx.recv().await
+                && matches!(
                     event,
                     toadstool_server::ServerEvent::ResourceUsageUpdate { .. }
-                ) {
-                    return true;
-                }
+                )
+            {
+                return true;
             }
         }
     })
@@ -144,13 +144,13 @@ async fn test_resource_monitoring_updates_statistics() {
     // ✅ MODERNIZED: Wait for resource monitoring event to confirm task is running
     let _event_received = tokio::time::timeout(Duration::from_secs(1), async {
         loop {
-            if let Ok(event) = rx.recv().await {
-                if matches!(
+            if let Ok(event) = rx.recv().await
+                && matches!(
                     event,
                     toadstool_server::ServerEvent::ResourceUsageUpdate { .. }
-                ) {
-                    return true;
-                }
+                )
+            {
+                return true;
             }
         }
     })
@@ -264,13 +264,13 @@ async fn test_health_monitoring_emits_events() {
     // Wait for health check events
     let event_result = tokio::time::timeout(Duration::from_secs(3), async {
         loop {
-            if let Ok(event) = rx.recv().await {
-                if matches!(
+            if let Ok(event) = rx.recv().await
+                && matches!(
                     event,
                     toadstool_server::ServerEvent::HealthStatusChanged { .. }
-                ) {
-                    return true;
-                }
+                )
+            {
+                return true;
             }
         }
     })

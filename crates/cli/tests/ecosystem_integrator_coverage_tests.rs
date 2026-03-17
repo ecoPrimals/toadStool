@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![allow(clippy::pedantic)]
+#![allow(unsafe_code)]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -130,13 +131,22 @@ async fn discover_services_with_legacy_names() {
 #[tokio::test(flavor = "current_thread")]
 async fn discover_services_with_crypto_env_set() {
     let old = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL").ok();
-    std::env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        std::env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
+    }
     let mut i = EcosystemIntegrator::new();
     let result = i.discover_services(vec!["crypto".to_string()], 1).await;
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", v);
+        // SAFETY: Test-only; not called concurrently
+        unsafe {
+            std::env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", v);
+        }
     } else {
-        std::env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+        // SAFETY: Test-only; not called concurrently
+        unsafe {
+            std::env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+        }
     }
     assert!(result.is_ok());
 }
@@ -144,13 +154,22 @@ async fn discover_services_with_crypto_env_set() {
 #[tokio::test(flavor = "current_thread")]
 async fn discover_services_with_storage_env_set() {
     let old = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL").ok();
-    std::env::set_var("TOADSTOOL_STORAGE_SERVICE_URL", "http://127.0.0.1:8082");
+    // SAFETY: Test-only; not called concurrently
+    unsafe {
+        std::env::set_var("TOADSTOOL_STORAGE_SERVICE_URL", "http://127.0.0.1:8082");
+    }
     let mut i = EcosystemIntegrator::new();
     let result = i.discover_services(vec!["storage".to_string()], 1).await;
     if let Some(v) = old {
-        std::env::set_var("TOADSTOOL_STORAGE_SERVICE_URL", v);
+        // SAFETY: Test-only; not called concurrently
+        unsafe {
+            std::env::set_var("TOADSTOOL_STORAGE_SERVICE_URL", v);
+        }
     } else {
-        std::env::remove_var("TOADSTOOL_STORAGE_SERVICE_URL");
+        // SAFETY: Test-only; not called concurrently
+        unsafe {
+            std::env::remove_var("TOADSTOOL_STORAGE_SERVICE_URL");
+        }
     }
     assert!(result.is_ok());
 }

@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::cloud::types::AvailabilityInfo;
 use crate::cloud::{
-    CloudOrchestratorConfig, CloudProviderInterface, ComplianceConfig, CostConfig, FederationConfig,
-    HybridSchedulingStrategy, LoadBalancerConfig, LoadBalancingAlgorithm,
+    CloudOrchestratorConfig, CloudProviderInterface, ComplianceConfig, CostConfig,
+    FederationConfig, HybridSchedulingStrategy, LoadBalancerConfig, LoadBalancingAlgorithm,
 };
 use crate::types::resources::{
     CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,

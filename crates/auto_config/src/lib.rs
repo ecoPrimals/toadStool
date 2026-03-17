@@ -558,17 +558,21 @@ mod tests {
         assert!(config_error.to_string().contains("Configuration error"));
 
         let hardware_error = ToadStoolError::hardware("test hardware error");
-        assert!(hardware_error
-            .to_string()
-            .contains("Hardware detection error"));
+        assert!(
+            hardware_error
+                .to_string()
+                .contains("Hardware detection error")
+        );
 
         let network_error = ToadStoolError::network("test network error");
         assert!(network_error.to_string().contains("Network error"));
 
         let ecosystem_error = ToadStoolError::ecosystem_discovery("discovery failed");
-        assert!(ecosystem_error
-            .to_string()
-            .contains("Ecosystem discovery error"));
+        assert!(
+            ecosystem_error
+                .to_string()
+                .contains("Ecosystem discovery error")
+        );
 
         let other_error = ToadStoolError::other("misc error");
         assert!(other_error.to_string().contains("Other error"));

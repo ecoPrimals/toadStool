@@ -9,9 +9,7 @@
 
 use std::collections::HashMap;
 use std::time::Duration;
-use toadstool_server::{
-    AuthenticationConfig, HealthCheckConfig, LoggingConfig, RateLimitingConfig, ServerConfig,
-};
+use toadstool_server::{AuthenticationConfig, RateLimitingConfig, ServerConfig};
 
 #[test]
 fn test_server_config_ipv6_bind_address() {

@@ -2,8 +2,7 @@
 //! Message type and serialization tests
 
 use crate::ecosystem::{
-    CommunicationManager, DiscoveryMethodConfig, EcosystemMessage, EcosystemMessageType,
-    ServiceStatus,
+    DiscoveryMethodConfig, EcosystemMessage, EcosystemMessageType, ServiceStatus,
 };
 #[cfg(not(feature = "networking"))]
 use crate::ecosystem::{ServiceChannel, ServiceClient};
@@ -153,8 +152,7 @@ fn test_ecosystem_message_serialization_all_types() {
             serde_json::json!({}),
         );
         let json = serde_json::to_string(&msg).expect("serialize message");
-        let parsed: EcosystemMessage =
-            serde_json::from_str(&json).expect("deserialize message");
+        let parsed: EcosystemMessage = serde_json::from_str(&json).expect("deserialize message");
         assert_eq!(parsed.message_type, mt);
     }
 }
@@ -326,8 +324,7 @@ fn test_fallback_response_contains_reason_and_mode() {
 fn test_service_status_discovered_serialization() {
     let status = ServiceStatus::Discovered;
     let json = serde_json::to_value(&status).expect("serialize Discovered");
-    let parsed: ServiceStatus =
-        serde_json::from_value(json).expect("deserialize Discovered");
+    let parsed: ServiceStatus = serde_json::from_value(json).expect("deserialize Discovered");
     assert_eq!(parsed, status);
 }
 
@@ -335,8 +332,7 @@ fn test_service_status_discovered_serialization() {
 fn test_service_status_connected_serialization() {
     let status = ServiceStatus::Connected;
     let json = serde_json::to_value(&status).expect("serialize Connected");
-    let parsed: ServiceStatus =
-        serde_json::from_value(json).expect("deserialize Connected");
+    let parsed: ServiceStatus = serde_json::from_value(json).expect("deserialize Connected");
     assert_eq!(parsed, status);
 }
 

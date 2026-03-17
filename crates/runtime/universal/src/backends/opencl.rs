@@ -25,7 +25,7 @@
 //!
 //! ## Migration Path
 //!
-//! ```rust
+//! ```rust,ignore
 //! // OLD (OpenCL)
 //! let device = OpenClComputeUnit::from_device(ocl_device)?;
 //! device.execute(workload).await?;

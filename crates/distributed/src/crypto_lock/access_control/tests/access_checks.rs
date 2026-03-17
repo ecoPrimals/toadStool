@@ -2,9 +2,14 @@
 //! Access check tests
 
 use crate::crypto_lock::access_control::{AccessResult, ToadStoolCryptoLock};
-use crate::security_provider::types::{CloudProvider, ContainerPlatform, ExternalTarget, HPCScheduler, QuantumProvider, ServiceTier};
+use crate::security_provider::types::{
+    CloudProvider, ContainerPlatform, ExternalTarget, HPCScheduler, QuantumProvider, ServiceTier,
+};
 
-use super::helpers::{cloud_target, external_tool_target_no_trust, primal_toadstool_target, pure_rust_target, trusted_target};
+use super::helpers::{
+    cloud_target, external_tool_target_no_trust, primal_toadstool_target, pure_rust_target,
+    trusted_target,
+};
 
 #[tokio::test]
 async fn test_crypto_lock_new_creates_instance() {
@@ -24,7 +29,10 @@ async fn test_check_external_access_pure_rust_ecosystem_granted() {
             ..
         } => {
             assert!(reason.contains("Pure Rust"));
-            assert!(matches!(permission_level, crate::crypto_lock::access_control::PermissionLevel::Full));
+            assert!(matches!(
+                permission_level,
+                crate::crypto_lock::access_control::PermissionLevel::Full
+            ));
         }
         AccessResult::Denied { .. } => panic!("Expected Granted for pure Rust ecosystem"),
     }
@@ -77,8 +85,7 @@ async fn test_check_external_access_external_tool_no_trust_denied() {
     match &result {
         AccessResult::Granted { .. } => panic!("Expected Denied"),
         AccessResult::Denied {
-            how_to_get_access,
-            ..
+            how_to_get_access, ..
         } => assert!(how_to_get_access.contains("external tool")),
     }
 }

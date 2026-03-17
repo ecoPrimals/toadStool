@@ -7,8 +7,8 @@ use toadstool::ExecutionRequest;
 use uuid::Uuid;
 
 use super::common::{
-    make_availability, make_mock_capabilities, make_mock_metadata, make_orchestrator_config,
-    make_requirements, MockCloudProvider,
+    MockCloudProvider, make_availability, make_mock_capabilities, make_mock_metadata,
+    make_orchestrator_config, make_requirements,
 };
 use crate::cloud::types::{AvailabilityInfo, CloudDeploymentResult};
 use crate::cloud::{CloudProviderInterface, UniversalCloudOrchestrator};
@@ -39,8 +39,7 @@ async fn test_deploy_universal_job_no_providers() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
-        err.to_string().contains("No compliant providers")
-            || err.to_string().contains("not found")
+        err.to_string().contains("No compliant providers") || err.to_string().contains("not found")
     );
 }
 
@@ -91,11 +90,7 @@ async fn test_error_handling_provider_not_found() {
         target: ExecutionTarget::Local,
         priority: JobPriority::Normal,
         dependencies: vec![],
-        resource_requirements: make_requirements(
-            2.0,
-            1024 * 1024 * 1024,
-            10 * 1024 * 1024 * 1024,
-        ),
+        resource_requirements: make_requirements(2.0, 1024 * 1024 * 1024, 10 * 1024 * 1024 * 1024),
         retry_config: crate::types::DistributedRetryConfig::default(),
         created_at: SystemTime::now(),
     };

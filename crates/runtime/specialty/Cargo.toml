@@ -20,7 +20,7 @@ tracing = "0.1"
 thiserror = { workspace = true }
 
 # Legacy system communication
-serialport = "4.0"
+serialport = { version = "4.3", default-features = false }
 rexpect = "0.5"
 telnet = "0.2"
 regex = "1.0"

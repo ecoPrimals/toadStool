@@ -36,7 +36,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Cross-platform compatibility maximized");
     println!("✅ Community frameworks championed");
     println!("✅ NVIDIA incentivized to join the open ecosystem");
-    println!("\n💡 The message to NVIDIA: 'Your hardware is amazing. Your drivers could power the world.'");
+    println!(
+        "\n💡 The message to NVIDIA: 'Your hardware is amazing. Your drivers could power the world.'"
+    );
 
     Ok(())
 }

@@ -4,7 +4,9 @@
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
-use crate::crypto_lock::access_control::{AccessPolicies, AccessResult, CryptoLockStatus, PermissionLevel};
+use crate::crypto_lock::access_control::{
+    AccessPolicies, AccessResult, CryptoLockStatus, PermissionLevel,
+};
 use crate::crypto_lock::permissions::{
     PermissionHolder, PermissionScope, PermissionStatus, ResourceLimits, TimeRestrictions,
     UsageQuotas,

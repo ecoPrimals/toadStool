@@ -25,8 +25,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
-use toadstool_common::constants::timeouts;
 use toadstool_common::constants::PRIMAL_NAME;
+use toadstool_common::constants::timeouts;
 #[cfg(feature = "networking")]
 use toadstool_common::interned_strings::protocols;
 use toadstool_common::service_discovery::DiscoveredService;

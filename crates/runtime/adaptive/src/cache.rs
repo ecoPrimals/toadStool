@@ -342,10 +342,10 @@ mod tests {
 
         // Add low-confidence config
         cache.update_measurement(OpType::MatMul, 100_000, 128, 1000.0);
-        if let Some(profile) = cache.profiles.get_mut(&OpType::MatMul) {
-            if let Some(config) = profile.size_configs.get_mut(&SizeClass::Small) {
-                config.confidence = 0.3; // Set low confidence
-            }
+        if let Some(profile) = cache.profiles.get_mut(&OpType::MatMul)
+            && let Some(config) = profile.size_configs.get_mut(&SizeClass::Small)
+        {
+            config.confidence = 0.3; // Set low confidence
         }
 
         cache.invalidate_stale();

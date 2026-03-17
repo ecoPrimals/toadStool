@@ -96,8 +96,6 @@ impl VulkanBackend {
     }
 }
 
-
-
 /// Vulkan compute resource handle
 #[derive(Debug)]
 pub struct VulkanComputeResource {

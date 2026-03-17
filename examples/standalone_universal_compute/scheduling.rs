@@ -2,9 +2,14 @@
 #![allow(clippy::nursery, dead_code)]
 //! Workload scheduling logic
 
-use super::types::{ComputeNode, ExecutionStrategy, SchedulingDecision, WorkloadRequest, WorkloadType};
+use super::types::{
+    ComputeNode, ExecutionStrategy, SchedulingDecision, WorkloadRequest, WorkloadType,
+};
 
-pub fn schedule_workload(request: &WorkloadRequest, ecosystem: &[ComputeNode]) -> SchedulingDecision {
+pub fn schedule_workload(
+    request: &WorkloadRequest,
+    ecosystem: &[ComputeNode],
+) -> SchedulingDecision {
     let mut scored_nodes: Vec<(&ComputeNode, f64, f64)> = ecosystem
         .iter()
         .map(|node| {
@@ -113,29 +118,53 @@ pub fn has_open_alternatives(node: &ComputeNode) -> bool {
         || node.capabilities.opencl
 }
 
-fn determine_execution_strategy(request: &WorkloadRequest, node: &ComputeNode) -> ExecutionStrategy {
+fn determine_execution_strategy(
+    request: &WorkloadRequest,
+    node: &ComputeNode,
+) -> ExecutionStrategy {
     match &request.workload_type {
         WorkloadType::AiInference { framework, .. } => match framework.as_str() {
             "llama.cpp" => {
-                if node.capabilities.llama_cpp_backends.contains(&"vulkan".to_string()) {
+                if node
+                    .capabilities
+                    .llama_cpp_backends
+                    .contains(&"vulkan".to_string())
+                {
                     ExecutionStrategy::LlamaCppVulkan
-                } else if node.capabilities.llama_cpp_backends.contains(&"metal".to_string()) {
+                } else if node
+                    .capabilities
+                    .llama_cpp_backends
+                    .contains(&"metal".to_string())
+                {
                     ExecutionStrategy::LlamaCppMetal
-                } else if node.capabilities.llama_cpp_backends.contains(&"rocm".to_string()) {
+                } else if node
+                    .capabilities
+                    .llama_cpp_backends
+                    .contains(&"rocm".to_string())
+                {
                     ExecutionStrategy::LlamaCppROCm
                 } else if node.capabilities.cuda && request.requires_proprietary {
                     ExecutionStrategy::CudaIsolated {
-                        warning: "🚨 Using proprietary CUDA - migration to open standards recommended"
-                            .to_string(),
+                        warning:
+                            "🚨 Using proprietary CUDA - migration to open standards recommended"
+                                .to_string(),
                     }
                 } else {
                     ExecutionStrategy::OptimizedCPU
                 }
             }
             "onnx" => {
-                if node.capabilities.onnx_providers.contains(&"vulkan".to_string()) {
+                if node
+                    .capabilities
+                    .onnx_providers
+                    .contains(&"vulkan".to_string())
+                {
                     ExecutionStrategy::ONNXVulkan
-                } else if node.capabilities.onnx_providers.contains(&"rocm".to_string()) {
+                } else if node
+                    .capabilities
+                    .onnx_providers
+                    .contains(&"rocm".to_string())
+                {
                     ExecutionStrategy::ONNXROCm
                 } else {
                     ExecutionStrategy::OptimizedCPU
@@ -171,8 +200,9 @@ fn determine_execution_strategy(request: &WorkloadRequest, node: &ComputeNode) -
         WorkloadType::ScientificComputing { .. } => {
             if request.requires_proprietary && node.capabilities.cuda {
                 ExecutionStrategy::CudaIsolated {
-                    warning: "🔒 Legacy application locked to CUDA - consider open alternative migration"
-                        .to_string(),
+                    warning:
+                        "🔒 Legacy application locked to CUDA - consider open alternative migration"
+                            .to_string(),
                 }
             } else if node.capabilities.vulkan {
                 ExecutionStrategy::Vulkan
@@ -189,7 +219,10 @@ fn determine_execution_strategy(request: &WorkloadRequest, node: &ComputeNode) -
 fn generate_reasoning(node: &ComputeNode, strategy: &ExecutionStrategy) -> String {
     match strategy {
         ExecutionStrategy::WebGPU => {
-            format!("✅ WebGPU on {} - Universal standard that works everywhere", node.id)
+            format!(
+                "✅ WebGPU on {} - Universal standard that works everywhere",
+                node.id
+            )
         }
         ExecutionStrategy::Vulkan => {
             format!("✅ Vulkan on {} - Industry-standard open GPU API", node.id)

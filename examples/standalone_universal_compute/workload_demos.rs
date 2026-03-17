@@ -3,7 +3,9 @@
 //! Workload demonstration functions
 
 use super::scheduling::{has_open_alternatives, schedule_workload};
-use super::types::{ComputeNode, ExecutionStrategy, SchedulingDecision, WorkloadRequest, WorkloadType};
+use super::types::{
+    ComputeNode, ExecutionStrategy, SchedulingDecision, WorkloadRequest, WorkloadType,
+};
 
 pub fn demonstrate_ai_workloads(ecosystem: &[ComputeNode]) {
     println!("🤖 AI Inference Workloads - Open Framework Priority");

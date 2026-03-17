@@ -522,9 +522,9 @@ async fn test_documentation_example_component_access() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
 async fn test_stress_many_concurrent_configs() {
-   // Skip slow network I/O - tests should be fast and deterministic
-   // SAFETY: Test-only; no other threads access env vars during this test
-   unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
+    // Skip slow network I/O - tests should be fast and deterministic
+    // SAFETY: Test-only; no other threads access env vars during this test
+    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
 
     // Concurrent stress test: create many configs concurrently.
     // Under workspace-wide test runs the system is already under heavy load,

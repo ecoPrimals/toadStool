@@ -65,10 +65,10 @@ async fn test_health_monitoring_detects_status_changes() {
     let timeout_duration = Duration::from_secs(2);
     let _event_result = tokio::time::timeout(timeout_duration, async {
         loop {
-            if let Ok(event) = event_receiver.recv().await {
-                if matches!(event, ServerEvent::HealthStatusChanged { .. }) {
-                    return Some(event);
-                }
+            if let Ok(event) = event_receiver.recv().await
+                && matches!(event, ServerEvent::HealthStatusChanged { .. })
+            {
+                return Some(event);
             }
         }
     })

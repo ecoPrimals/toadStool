@@ -78,10 +78,10 @@ async fn test_resource_monitoring_broadcasts_events() {
     let timeout_duration = Duration::from_secs(2);
     let event_result = tokio::time::timeout(timeout_duration, async {
         loop {
-            if let Ok(event) = event_receiver.recv().await {
-                if matches!(event, ServerEvent::ResourceUsageUpdate { .. }) {
-                    return Some(event);
-                }
+            if let Ok(event) = event_receiver.recv().await
+                && matches!(event, ServerEvent::ResourceUsageUpdate { .. })
+            {
+                return Some(event);
             }
         }
     })
@@ -295,12 +295,10 @@ async fn test_cleanup_task_removes_timed_out_executions() {
                 status,
                 ..
             }) = event_receiver.recv().await
+                && evt_id == execution_id
+                && let toadstool::ExecutionStatus::Failed { error } = status
             {
-                if evt_id == execution_id {
-                    if let toadstool::ExecutionStatus::Failed { error } = status {
-                        return error.contains("timed out");
-                    }
-                }
+                return error.contains("timed out");
             }
         }
     })

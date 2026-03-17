@@ -9,16 +9,16 @@ use uuid::Uuid;
 
 use crate::config::SpecialtyRuntimeConfig;
 use crate::types::configs::CompilationToolchainConfig as ToolchainConfig;
-use crate::types::systems::{LegacyArchitecture, LegacySystemType};
 use crate::types::emulation::LegacyEmulator;
 use crate::types::jobs::LegacyJob;
+use crate::types::systems::{LegacyArchitecture, LegacySystemType};
 use crate::types::traits::{
     JobOutput, JobStatus, LegacyAdapter, LegacyCommunicationSession, SpecialtyRuntimeMetrics,
 };
 use toadstool::{ToadStoolError, ToadStoolResult};
 
-use super::emulation;
 use super::embedded;
+use super::emulation;
 use super::industrial;
 use super::mainframe;
 use super::realtime;
@@ -34,7 +34,8 @@ pub struct SpecialtyRuntimeEngine {
     /// Active specialty jobs
     pub(crate) active_jobs: Arc<RwLock<HashMap<Uuid, LegacyJob>>>,
     /// Communication sessions
-    pub(crate) _communication_sessions: Arc<RwLock<HashMap<Uuid, Box<dyn LegacyCommunicationSession>>>>,
+    pub(crate) _communication_sessions:
+        Arc<RwLock<HashMap<Uuid, Box<dyn LegacyCommunicationSession>>>>,
     /// System emulators
     pub(crate) emulators: Arc<RwLock<HashMap<LegacySystemType, Box<dyn LegacyEmulator>>>>,
     /// Runtime metrics

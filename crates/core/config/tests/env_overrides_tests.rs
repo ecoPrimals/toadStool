@@ -159,6 +159,7 @@ fn test_env_override_port_invalid() {
 
     let mut config = ToadStoolConfig::default();
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_PORT", "invalid") };
     let result = config.apply_env_overrides();
 
@@ -179,6 +180,7 @@ fn test_env_override_primal_endpoints() {
     // NOTE: All endpoint fields are deprecated in favor of ServiceDiscovery::find_by_capability()
     // This test verifies the override mechanism works, but production code should use capability discovery
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://songbird:8001") };
 
     config.apply_env_overrides().unwrap();
@@ -218,6 +220,7 @@ fn test_env_override_resource_limits_invalid() {
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_MAX_CPU", "invalid") };
     let result = config.apply_env_overrides();
     assert!(result.is_err());
@@ -247,6 +250,7 @@ fn test_env_override_log_level() {
 
     let mut config = ToadStoolConfig::default();
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_LOG_LEVEL", "trace") };
     config.apply_env_overrides().unwrap();
 
@@ -301,6 +305,7 @@ fn test_env_override_max_concurrent() {
 
     let mut config = ToadStoolConfig::default();
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_MAX_CONCURRENT_EXECUTIONS", "50") };
     config.apply_env_overrides().unwrap();
 
@@ -345,6 +350,7 @@ fn test_env_override_metrics() {
         ..Default::default()
     };
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_ENABLE_METRICS", "true") };
     config.apply_env_overrides().unwrap();
 
@@ -356,6 +362,7 @@ fn test_env_override_metrics() {
         ..Default::default()
     };
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_ENABLE_METRICS", "false") };
     config2.apply_env_overrides().unwrap();
 
@@ -375,6 +382,7 @@ fn test_env_override_cache() {
         ..Default::default()
     };
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_ENABLE_CACHE", "true") };
     config.apply_env_overrides().unwrap();
 
@@ -386,6 +394,7 @@ fn test_env_override_cache() {
         ..Default::default()
     };
 
+    // SAFETY: Test-only; not called concurrently
     unsafe { std::env::set_var("TOADSTOOL_ENABLE_CACHE", "false") };
     config2.apply_env_overrides().unwrap();
 

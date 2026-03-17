@@ -145,10 +145,8 @@ fn main() {
                 println!("  Events: {}", result.events.len());
                 println!("  Duration: {}us", result.duration_us);
 
-                if json_mode {
-                    if let Ok(json) = serde_json::to_string_pretty(&result) {
-                        println!("\n{json}");
-                    }
+                if json_mode && let Ok(json) = serde_json::to_string_pretty(&result) {
+                    println!("\n{json}");
                 }
             }
             Err(e) => {

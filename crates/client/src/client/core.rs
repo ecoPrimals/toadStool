@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use tracing::{debug, info};
 use url::Url;
 use uuid::Uuid;
@@ -357,6 +357,7 @@ impl ToadStoolClient {
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
 mod tests {
     use super::*;
 
@@ -374,15 +375,16 @@ mod tests {
 
     #[test]
     fn test_resolve_socket_path_env_override() {
-        std::env::set_var("TOADSTOOL_SOCKET", "/tmp/test_toadstool.sock");
+        // SAFETY: Test-only; sequential test execution
+        unsafe { std::env::set_var("TOADSTOOL_SOCKET", "/tmp/test_toadstool.sock") };
         let path = resolve_socket_path("http://localhost:8080");
         assert_eq!(path, std::path::PathBuf::from("/tmp/test_toadstool.sock"));
-        std::env::remove_var("TOADSTOOL_SOCKET");
+        unsafe { std::env::remove_var("TOADSTOOL_SOCKET") };
     }
 
     #[test]
     fn test_resolve_socket_path_default_fallback() {
-        // SAFETY: Test-only; no other threads access env vars during this test
+        // SAFETY: Test-only; sequential test execution
         unsafe { std::env::remove_var("TOADSTOOL_SOCKET") };
         let path = resolve_socket_path("http://localhost:8080");
         // Should return some reasonable socket path

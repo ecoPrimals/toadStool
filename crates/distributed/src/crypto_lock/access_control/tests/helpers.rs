@@ -5,10 +5,12 @@ use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 use crate::crypto_lock::permissions::{
-    PermissionHolder, PermissionMetadata, PermissionScope, ResourceLimits, SecurityProviderPermission,
-    TimeRestrictions, UsageQuotas,
+    PermissionHolder, PermissionMetadata, PermissionScope, ResourceLimits,
+    SecurityProviderPermission, TimeRestrictions, UsageQuotas,
 };
-use crate::crypto_lock::validation::{CryptoAlgorithm, ProofMetadata, SecurityProof, VerificationLevel};
+use crate::crypto_lock::validation::{
+    CryptoAlgorithm, ProofMetadata, SecurityProof, VerificationLevel,
+};
 use crate::security_provider::types::{CloudProvider, ExternalTarget};
 
 pub fn pure_rust_target() -> ExternalTarget {
